@@ -1,30 +1,84 @@
 'use client';
 
+import {
+    useQuery,
+    QueryClient,
+    QueryClientProvider,
+    useQueryClient,
+} from '@tanstack/react-query';
 import * as THREE from 'three'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, ThreeEvent, useThree } from '@react-three/fiber'
 import { OrbitControls, useGLTF } from '@react-three/drei'
-import { useEffect, useState } from 'react'
-import { useDrag } from '@use-gesture/react'
+import { PropsWithChildren, useEffect, useState } from 'react'
+import { Handler, useDrag } from '@use-gesture/react'
 import { useSpring, animated } from '@react-spring/three'
 
 const models = {
     GameAssets: { url: '/assets/models/GameAssets.glb' }
 }
 
-const entities = {
+type Entity = {
+    name: string,
+    height?: number,
+    stackable?: boolean
+}
+
+const entities: Record<string, Entity> = {
     BlockGround: {
         name: 'Block_Ground',
-        height: 0.3,
+        height: 0.4,
         stackable: true
     },
     RaisedBed: {
-        name: 'Raised_Bed'
+        name: 'Raised_Bed',
+        height: 0.3
     }
 };
 
+function getEntityByName(name: string) {
+    return Object.values(entities).find(entity => entity.name === name);
+}
+
+function stackHeight(stack: Stack | undefined, stopBlock?: Block) {
+    let height = 0;
+    if (!stack) {
+        return height;
+    }
+
+    for (const block of stack.blocks) {
+        if (block === stopBlock) {
+            return height;
+        }
+        height += getEntityByName(block.name)?.height ?? 0;
+    }
+    return height
+}
+
+type EntityProps = {
+    stack: Stack,
+    block: Block,
+    position: THREE.Vector3,
+    rotation: number
+    variant?: number
+}
+
+function EntityFactory({ name, ...rest }: { name: string } & EntityProps) {
+    switch (name) {
+        case entities.BlockGround.name:
+            return <BlockGround {...rest} />
+        case entities.RaisedBed.name:
+            return <RaisedBed {...rest} />
+        default:
+            return null;
+    }
+}
+
 useGLTF.preload(models.GameAssets.url);
 
-function Pickup({ children, position, onPositionChanged }: { children: React.ReactNode, position: THREE.Vector3, onPositionChanged: (movement: THREE.Vector3) => void }) {
+function Pickup({ children, stack, block, position, onPositionChanged }: { children: React.ReactNode, stack: Stack, block: Block, position: THREE.Vector3, onPositionChanged: (movement: THREE.Vector3) => void }) {
+    const { data: garden } = useGarden();
+    const { stacks } = garden ?? { stacks: [] };
+
     const [springs, api] = useSpring(() => ({
         from: { internalPosition: [0, 0, 0] },
         config: {
@@ -35,17 +89,14 @@ function Pickup({ children, position, onPositionChanged }: { children: React.Rea
     }));
 
     useEffect(() => {
-        console.log('position changed', position);
         api.set({ internalPosition: [0, 0, 0] });
     }, [position]);
 
     const camera = useThree(state => state.camera);
     const domElement = useThree(state => state.gl.domElement);
 
-    const dragHandler = ({ pressed, initial, movement, event }) => {
+    const dragHandler: Handler<"drag", any> = ({ pressed, initial, movement, event }) => {
         event.stopPropagation();
-
-        console.log('position drag start', position);
 
         const rect = domElement.getClientRects()[0];
         const pointerClientX = initial[0] + movement[0];
@@ -56,7 +107,7 @@ function Pickup({ children, position, onPositionChanged }: { children: React.Rea
             ((pointerClientX - rect.left) / rect.width) * 2 - 1,
             ((rect.top - pointerClientY) / rect.height) * 2 + 1,
             1
-        )
+        );
 
         raycaster.setFromCamera(new THREE.Vector2(pt.x, pt.y), camera)
 
@@ -67,22 +118,28 @@ function Pickup({ children, position, onPositionChanged }: { children: React.Rea
         }
 
         const dest = new THREE.Vector3(Math.round(pt.x), 0, Math.round(pt.z));
-        const relative = dest.sub(position).setY(0);
+        const relative = dest.clone().sub(position).setY(0);
+
+        const hoveredStack = stacks.find(stack => stack.position.x === dest.x && stack.position.z === dest.z);
+        const hoveredStackHeight = hoveredStack === stack ? 0 : stackHeight(hoveredStack);
 
         if (pressed) {
             if (!isIntersecting) {
                 return;
             }
 
-            api.start({ internalPosition: [relative.x, 0.3, relative.z] });
+            api.start({ internalPosition: [relative.x, hoveredStackHeight + 0.1, relative.z] });
         } else {
-            api.start({ internalPosition: [relative.x, 0, relative.z] })[0].then(() => {
+            api.start({ internalPosition: [relative.x, hoveredStackHeight, relative.z] })[0].then(() => {
                 onPositionChanged(relative);
             });
         }
     };
 
-    const bind = useDrag(dragHandler);
+    const bind = useDrag(dragHandler, {
+        filterTaps: true,
+        enabled: stack.blocks.at(-1) === block
+    });
 
     return (
         <animated.group
@@ -93,78 +150,261 @@ function Pickup({ children, position, onPositionChanged }: { children: React.Rea
     )
 }
 
-export function BlockGround({ position, rotation, variant = 1 }: { position: THREE.Vector3, rotation: number, variant: number }) {
-    const { nodes, materials }: any = useGLTF(models.GameAssets.url);
-    const [internalPosition, setInternalPosition] = useState(position);
+function useAnimatedEntityRotation(rotation: number) {
+    const [springs, api] = useSpring(() => ({
+        from: { rotation: [0, rotation * (Math.PI / 2), 0] },
+        config: {
+            mass: 0.1,
+            tension: 200,
+            friction: 10
+        }
+    }));
 
+    useEffect(() => {
+        api.start({ rotation: [0, rotation * (Math.PI / 2), 0] });
+    }, [rotation]);
+
+    return [springs.rotation];
+}
+
+export function BlockGround({ stack, block, position, rotation, variant }: EntityProps) {
+    const { nodes, materials }: any = useGLTF(models.GameAssets.url);
+    const [animatedRotation] = useAnimatedEntityRotation(rotation);
+
+    const { data: garden } = useGarden();
+    const updateGarden = useUpdateGarden();
+    const { stacks } = garden ?? { stacks: [] };
     const handlePositionChanged = (movement: THREE.Vector3) => {
-        console.log('Block position changed', movement, 'to', internalPosition.clone().add(movement));
-        setInternalPosition((curr) => curr.clone().add(movement));
+        // Remove block from current stack
+        stack.blocks.splice(stack.blocks.length - 1, 1);
+
+        // Add block to destination stack
+        const dest = position.clone().add(movement).setY(0);
+        let destStack = stacks.find(stack => stack.position.x === dest.x && stack.position.z === dest.z);
+        if (!destStack) {
+            destStack = { position: dest, blocks: [] };
+            stacks.push(destStack);
+        }
+        destStack.blocks.push(block);
+
+        // Update state
+        updateGarden([...stacks]);
+    }
+
+    const variantResolved = (variant ?? 1) % 2;
+
+    return (
+        <Pickup
+            stack={stack}
+            block={block}
+            position={position}
+            onPositionChanged={handlePositionChanged}>
+            <animated.group
+                position={position.clone().add(new THREE.Vector3(0, stackHeight(stack, block) + 1, 0))}
+                rotation={animatedRotation}>
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes[`Block_Ground_${variantResolved}_1`].geometry}
+                    material={nodes[`Block_Ground_${variantResolved}_1`].material}
+                />
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes[`Block_Ground_${variantResolved}_2`].geometry}
+                    material={materials['Material.Dirt']}
+                />
+            </animated.group>
+        </Pickup>
+    )
+}
+
+export function RaisedBed({ stack, block, position, rotation }: EntityProps) {
+    const { nodes, materials }: any = useGLTF(models.GameAssets.url)
+    const [animatedRotation] = useAnimatedEntityRotation(rotation);
+
+    const [internalPosition, setInternalPosition] = useState(position);
+    const handlePositionChanged = (movement: THREE.Vector3) => {
+        const dest = internalPosition.clone().add(movement);
+        console.log('Block position changed', movement, 'to', dest);
+        setInternalPosition(dest);
     }
 
     return (
         <Pickup
+            stack={stack}
+            block={block}
             position={internalPosition}
             onPositionChanged={handlePositionChanged}>
-            <group
-                position={internalPosition.add(new THREE.Vector3(0, 1, 0))}
-                rotation={[0, rotation, 0]}
-            >
+            <animated.group
+                position={position.clone().add(new THREE.Vector3(0, stackHeight(stack, block) + 1, 0))}
+                rotation={animatedRotation}>
                 <mesh
                     castShadow
                     receiveShadow
-                    geometry={nodes[`Block_Ground_${variant}_1`].geometry}
-                    material={nodes[`Block_Ground_${variant}_1`].material}
+                    geometry={nodes.Raised_Bed_I_2.geometry}
+                    material={materials['Material.Planks']}
                 />
                 <mesh
                     castShadow
                     receiveShadow
-                    geometry={nodes[`Block_Ground_${variant}_2`].geometry}
+                    geometry={nodes.Raised_Bed_I_1.geometry}
                     material={materials['Material.Dirt']}
                 />
-            </group>
-        </Pickup >
+            </animated.group>
+        </Pickup>
     )
 }
 
-export function RaisedBed({ position }: { position: THREE.Vector3 }) {
-    const { nodes, materials }: any = useGLTF(models.GameAssets.url)
-    return (
-        <group position={position.add(new THREE.Vector3(0, 1, 0))}>
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes.Raised_Bed_I_2.geometry}
-                material={materials['Material.Planks']}
-            />
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes.Raised_Bed_I_1.geometry}
-                material={materials['Material.Dirt']}
-            />
-        </group>
-    )
+type Stack = {
+    position: THREE.Vector3,
+    blocks: Block[]
+}
+
+type Block = {
+    name: string,
+    rotation: number
+    variant?: number
+}
+
+function serializeGarden(garden: { stacks: Stack[] }) {
+    return JSON.stringify(garden);
+}
+
+function deserializeGarden(serializedGarden: string) {
+    return JSON.parse(serializedGarden);
+}
+
+function getDefaultGarden() {
+    return ({
+        stacks: [
+            {
+                position: new THREE.Vector3(0, 0, 0),
+                blocks: [
+                    { name: entities.BlockGround.name, rotation: 0 },
+                    { name: entities.RaisedBed.name, rotation: 0 }
+                ]
+            },
+            {
+                position: new THREE.Vector3(1, 0, 0),
+                blocks: [
+                    { name: entities.BlockGround.name, rotation: 0 }
+                ]
+            },
+            {
+                position: new THREE.Vector3(0, 0, 1),
+                blocks: [
+                    { name: entities.BlockGround.name, rotation: 0 }
+                ]
+            },
+            {
+                position: new THREE.Vector3(1, 0, 1),
+                blocks: [
+                    { name: entities.BlockGround.name, rotation: 0 }
+                ]
+            },
+            {
+                position: new THREE.Vector3(-1, 0, 1),
+                blocks: [
+                    { name: entities.BlockGround.name, rotation: 0 }
+                ]
+            },
+            {
+                position: new THREE.Vector3(-1, 0, -1),
+                blocks: [
+                    { name: entities.BlockGround.name, rotation: 0 }
+                ]
+            },
+            {
+                position: new THREE.Vector3(1, 0, -1),
+                blocks: [
+                    { name: entities.BlockGround.name, rotation: 0 }
+                ]
+            },
+            {
+                position: new THREE.Vector3(-1, 0, 0),
+                blocks: [
+                    { name: entities.BlockGround.name, rotation: 0 }
+                ]
+            },
+            {
+                position: new THREE.Vector3(0, 0, -1),
+                blocks: [
+                    { name: entities.BlockGround.name, rotation: 0 }
+                ]
+            },
+        ]
+    });
+}
+
+function useGarden() {
+    return useQuery<{ stacks: Stack[] }>({
+        queryKey: ['garden'],
+        queryFn: async () => {
+            // Load garden from local storage
+            const serializedGarden = localStorage.getItem('garden');
+            if (serializedGarden) {
+                console.log('useGarden', serializedGarden);
+                return deserializeGarden(serializedGarden);
+            } else {
+                const newGarden = deserializeGarden(serializeGarden(getDefaultGarden()));
+                localStorage.setItem('garden', serializeGarden(newGarden));
+                return newGarden;
+            }
+        },
+        staleTime: 0
+    })
+}
+
+function useUpdateGarden() {
+    const queryClient = useQueryClient();
+    return async (stacks: Stack[]) => {
+        const garden = { stacks: structuredClone(stacks) };
+
+        // Garden cleanup
+        // - remove empty stacks
+        garden.stacks = garden.stacks.filter(stack => stack.blocks.length > 0);
+
+        localStorage.setItem('garden', serializeGarden(garden));
+        queryClient.invalidateQueries({ queryKey: ['garden'] });
+    }
 }
 
 export function Garden() {
-    const groundSize = 10;
+    const { data: garden } = useGarden();
+    const { stacks } = garden ?? { stacks: [] };
+    const updateGarden = useUpdateGarden();
+    const [, setRefresh] = useState(0);
+
+    const handleContextMenu = (block: Block, event: ThreeEvent<MouseEvent>) => {
+        event.nativeEvent.preventDefault()
+        event.stopPropagation();
+
+        block.rotation++;
+
+        updateGarden([...stacks]);
+        setRefresh(curr => curr + 1);
+    }
 
     return (
         <group>
-            {(new Array(groundSize)).fill(0).map((_, i) => (
-                (new Array(groundSize)).fill(0).map((_, j) => (
-                    <group key={`${i}|${j}`}>
-                        <BlockGround
-                            key={j}
-                            position={new THREE.Vector3(i - 5, 0, j - 5)}
-                            rotation={i * j * Math.PI / 2}
-                            variant={2}
-                        />
-                    </group>
-                ))
-            ))}
-            <RaisedBed position={new THREE.Vector3(0, 0.5, 0)} />
+            {stacks.map((stack) =>
+                stack.blocks?.map((block, i) => {
+                    return (
+                        <group
+                            key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${i}-${block.name}`}
+                            onContextMenu={(event) => handleContextMenu(block, event)}>
+                            <EntityFactory
+                                name={block.name}
+                                stack={stack}
+                                block={block}
+                                position={new THREE.Vector3(stack.position.x, 0, stack.position.z)}
+                                rotation={block.rotation}
+                                variant={block.variant} />
+                        </group>
+                    );
+                })
+            )}
         </group>
     )
 }
@@ -176,7 +416,7 @@ function Environment({ sunDirection }: { sunDirection: THREE.Vector3 }) {
 
     return (
         <>
-            <color attach="background" args={['skyblue']} />
+            <color attach="background" args={[0xE7E2CC]} />
             <ambientLight intensity={3} />
             <hemisphereLight
                 color={0xffffbb}
@@ -207,39 +447,52 @@ function Environment({ sunDirection }: { sunDirection: THREE.Vector3 }) {
     );
 }
 
+const queryClient = new QueryClient();
+
+function GameSceneProviders({ children }: PropsWithChildren) {
+    return (
+        <QueryClientProvider client={queryClient}>
+            {children}
+        </QueryClientProvider>
+    );
+}
+
 export function GameScene() {
     const cameraPosition = 100;
 
-    const [sunDirection, setSunDirection] = useState(new THREE.Vector3(-0.5, 1, 0.3));
+    const [sunDirection, setSunDirection] = useState(new THREE.Vector3(-1, 1, 1));
 
     return (
         <div className='h-screen w-full'>
-            <Canvas
-                orthographic
-                shadows={{
-                    type: THREE.PCFSoftShadowMap,
-                    enabled: true,
-                }}
-                camera={{
-                    position: [cameraPosition, cameraPosition, cameraPosition],
-                    zoom: 75,
-                    far: 10000,
-                    near: 0.01
-                }}>
+            <GameSceneProviders>
+                <Canvas
+                    orthographic
+                    shadows={{
+                        type: THREE.PCFSoftShadowMap,
+                        enabled: true,
+                    }}
+                    camera={{
+                        position: [cameraPosition, cameraPosition, cameraPosition],
+                        zoom: 100,
+                        far: 10000,
+                        near: 0.01
+                    }}>
 
-                <Environment sunDirection={sunDirection} />
+                    <Environment sunDirection={sunDirection} />
 
-                <Garden />
+                    <Garden />
 
-                <gridHelper args={[100, 100, '#222', '#999']} position={[0, 0, 0]} />
+                    {/* <gridHelper rotation={[Math.PI / 2, 0, 0]} args={[10, 100, '#B8B4A3', '#CFCBB7']} position={[0, 0, 0]} />
+                <gridHelper args={[100, 100, '#B8B4A3', '#CFCBB7']} position={[0, 0, 0]} /> */}
 
-                {/* <OrbitControls /> */}
-            </Canvas>
-            <div className='fixed top-0 left-0'>
-                <input type='range' min='-100' max='100' step='0.01' value={sunDirection.x} onChange={(e) => setSunDirection(new THREE.Vector3(parseFloat(e.target.value), sunDirection.y, sunDirection.z))} />
-                <input type='range' min='-100' max='100' step='0.01' value={sunDirection.y} onChange={(e) => setSunDirection(new THREE.Vector3(sunDirection.x, parseFloat(e.target.value), sunDirection.z))} />
-                <input type='range' min='-100' max='100' step='0.01' value={sunDirection.z} onChange={(e) => setSunDirection(new THREE.Vector3(sunDirection.x, sunDirection.y, parseFloat(e.target.value)))} />
-            </div>
+                    <OrbitControls enableRotate={false} />
+                </Canvas>
+                <div className='fixed top-0 left-0'>
+                    <input type='range' min='-1' max='1' step='0.01' value={sunDirection.x} onChange={(e) => setSunDirection(new THREE.Vector3(parseFloat(e.target.value), sunDirection.y, sunDirection.z))} />
+                    <input type='range' min='-1' max='1' step='0.01' value={sunDirection.y} onChange={(e) => setSunDirection(new THREE.Vector3(sunDirection.x, parseFloat(e.target.value), sunDirection.z))} />
+                    <input type='range' min='-1' max='1' step='0.01' value={sunDirection.z} onChange={(e) => setSunDirection(new THREE.Vector3(sunDirection.x, sunDirection.y, parseFloat(e.target.value)))} />
+                </div>
+            </GameSceneProviders>
         </div>
     );
 }
