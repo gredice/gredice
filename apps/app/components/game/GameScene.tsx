@@ -9,7 +9,7 @@ import {
 import * as THREE from 'three'
 import { Canvas, ThreeEvent, useThree } from '@react-three/fiber'
 import { OrbitControls, useGLTF } from '@react-three/drei'
-import { PropsWithChildren, useEffect, useState } from 'react'
+import { PropsWithChildren, useEffect, useMemo, useState } from 'react'
 import { Handler, useDrag } from '@use-gesture/react'
 import { useSpring, animated } from '@react-spring/three'
 
@@ -54,6 +54,10 @@ function stackHeight(stack: Stack | undefined, stopBlock?: Block) {
     return height
 }
 
+function getStack(stacks: Stack[], { x, z }: THREE.Vector3 | { x: number, z: number }) {
+    return stacks.find(stack => stack.position.x === x && stack.position.z === z);
+}
+
 type EntityProps = {
     stack: Stack,
     block: Block,
@@ -62,20 +66,60 @@ type EntityProps = {
     variant?: number
 }
 
-function EntityFactory({ name, ...rest }: { name: string } & EntityProps) {
-    switch (name) {
-        case entities.BlockGround.name:
-            return <BlockGround {...rest} />
-        case entities.RaisedBed.name:
-            return <RaisedBed {...rest} />
-        default:
-            return null;
+const entityNameMap = {
+    [entities.BlockGround.name]: BlockGround,
+    [entities.RaisedBed.name]: RaisedBed
+}
+
+function EntityFactory({ name, stack, block, position, ...rest }: { name: string } & EntityProps) {
+    const EntityComponent = entityNameMap[name];
+    if (!EntityComponent) {
+        return null;
     }
+
+    const { data: garden } = useGarden();
+    const updateGarden = useUpdateGarden();
+    const { stacks } = garden ?? { stacks: [] };
+    const handlePositionChanged = (movement: THREE.Vector3) => {
+        // Remove block from current stack
+        stack.blocks.splice(stack.blocks.length - 1, 1);
+
+        // Add block to destination stack
+        const dest = position.clone().add(movement).setY(0);
+        let destStack = stacks.find(stack => stack.position.x === dest.x && stack.position.z === dest.z);
+        if (!destStack) {
+            destStack = { position: dest, blocks: [] };
+            stacks.push(destStack);
+        }
+        destStack.blocks.push(block);
+
+        // Update state
+        updateGarden([...stacks]);
+    }
+
+    return (
+        <Pickup
+            stack={stack}
+            block={block}
+            position={position}
+            onPositionChanged={handlePositionChanged}>
+            <EntityComponent
+                stack={stack}
+                block={block}
+                position={position}
+                {...rest} />
+        </Pickup>
+    );
 }
 
 useGLTF.preload(models.GameAssets.url);
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
-function Pickup({ children, stack, block, position, onPositionChanged }: { children: React.ReactNode, stack: Stack, block: Block, position: THREE.Vector3, onPositionChanged: (movement: THREE.Vector3) => void }) {
+type PickupProps = PropsWithChildren<
+    Pick<EntityProps, 'position' | 'stack' | 'block'> &
+    { onPositionChanged: (movement: THREE.Vector3) => void }>;
+
+function Pickup({ children, stack, block, position, onPositionChanged }: PickupProps) {
     const { data: garden } = useGarden();
     const { stacks } = garden ?? { stacks: [] };
 
@@ -88,51 +132,51 @@ function Pickup({ children, stack, block, position, onPositionChanged }: { child
         }
     }));
 
+    // Reset position animation when block is moved
     useEffect(() => {
         api.set({ internalPosition: [0, 0, 0] });
     }, [position]);
 
     const camera = useThree(state => state.camera);
     const domElement = useThree(state => state.gl.domElement);
+    const rect = useMemo(() => domElement.getClientRects()[0], [domElement]);
+    const dragState = useMemo(() => ({
+        pt: new THREE.Vector3(),
+        dest: new THREE.Vector3(),
+        relative: new THREE.Vector3()
+    }), []);
+    const currentStackHeight = useMemo(() => stackHeight(stack, block), [stack, block]);
 
-    const dragHandler: Handler<"drag", any> = ({ pressed, initial, movement, event }) => {
+    const dragHandler: Handler<"drag", any> = ({ last, event, xy: [x, y] }) => {
         event.stopPropagation();
-
-        const rect = domElement.getClientRects()[0];
-        const pointerClientX = initial[0] + movement[0];
-        const pointerClientY = initial[1] + movement[1];
-        const raycaster = new THREE.Raycaster()
-        const pt = new THREE.Vector3()
+        const { pt, dest, relative } = dragState;
         pt.set(
-            ((pointerClientX - rect.left) / rect.width) * 2 - 1,
-            ((rect.top - pointerClientY) / rect.height) * 2 + 1,
-            1
+            ((x - rect.left) / rect.width) * 2 - 1,
+            ((rect.top - y) / rect.height) * 2 + 1,
+            0
         );
 
+        const raycaster = new THREE.Raycaster()
         raycaster.setFromCamera(new THREE.Vector2(pt.x, pt.y), camera)
-
-        const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.3);
-        const isIntersecting = raycaster.ray.intersectPlane(ground, pt);
+        const isIntersecting = raycaster.ray.intersectPlane(groundPlane, pt);
         if (!isIntersecting) {
             return;
         }
 
-        const dest = new THREE.Vector3(Math.round(pt.x), 0, Math.round(pt.z));
-        const relative = dest.clone().sub(position).setY(0);
+        dest.set(pt.x, 0, pt.z).ceil();
+        relative.set(dest.x - position.x, 0, dest.z - position.z);
 
-        const hoveredStack = stacks.find(stack => stack.position.x === dest.x && stack.position.z === dest.z);
-        const hoveredStackHeight = hoveredStack === stack ? 0 : stackHeight(hoveredStack);
+        const hoveredStack = getStack(stacks, dest);
+        const hoveredStackHeight = hoveredStack === stack
+            ? 0
+            : stackHeight(hoveredStack) - currentStackHeight;
 
-        if (pressed) {
-            if (!isIntersecting) {
-                return;
-            }
-
-            api.start({ internalPosition: [relative.x, hoveredStackHeight + 0.1, relative.z] });
-        } else {
+        if (last) {
             api.start({ internalPosition: [relative.x, hoveredStackHeight, relative.z] })[0].then(() => {
                 onPositionChanged(relative);
             });
+        } else {
+            api.start({ internalPosition: [relative.x, hoveredStackHeight + 0.1, relative.z] });
         }
     };
 
@@ -171,89 +215,50 @@ export function BlockGround({ stack, block, position, rotation, variant }: Entit
     const { nodes, materials }: any = useGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
 
-    const { data: garden } = useGarden();
-    const updateGarden = useUpdateGarden();
-    const { stacks } = garden ?? { stacks: [] };
-    const handlePositionChanged = (movement: THREE.Vector3) => {
-        // Remove block from current stack
-        stack.blocks.splice(stack.blocks.length - 1, 1);
-
-        // Add block to destination stack
-        const dest = position.clone().add(movement).setY(0);
-        let destStack = stacks.find(stack => stack.position.x === dest.x && stack.position.z === dest.z);
-        if (!destStack) {
-            destStack = { position: dest, blocks: [] };
-            stacks.push(destStack);
-        }
-        destStack.blocks.push(block);
-
-        // Update state
-        updateGarden([...stacks]);
-    }
-
     const variantResolved = (variant ?? 1) % 2;
 
     return (
-        <Pickup
-            stack={stack}
-            block={block}
-            position={position}
-            onPositionChanged={handlePositionChanged}>
-            <animated.group
-                position={position.clone().add(new THREE.Vector3(0, stackHeight(stack, block) + 1, 0))}
-                rotation={animatedRotation}>
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes[`Block_Ground_${variantResolved}_1`].geometry}
-                    material={nodes[`Block_Ground_${variantResolved}_1`].material}
-                />
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes[`Block_Ground_${variantResolved}_2`].geometry}
-                    material={materials['Material.Dirt']}
-                />
-            </animated.group>
-        </Pickup>
-    )
+        <animated.group
+            position={position.clone().setY(stackHeight(stack, block) + 1)}
+            rotation={animatedRotation}>
+            <mesh
+                castShadow
+                receiveShadow
+                geometry={nodes[`Block_Ground_${variantResolved}_1`].geometry}
+                material={nodes[`Block_Ground_${variantResolved}_1`].material}
+            />
+            <mesh
+                castShadow
+                receiveShadow
+                geometry={nodes[`Block_Ground_${variantResolved}_2`].geometry}
+                material={materials['Material.Dirt']}
+            />
+        </animated.group>
+    );
 }
 
 export function RaisedBed({ stack, block, position, rotation }: EntityProps) {
     const { nodes, materials }: any = useGLTF(models.GameAssets.url)
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
 
-    const [internalPosition, setInternalPosition] = useState(position);
-    const handlePositionChanged = (movement: THREE.Vector3) => {
-        const dest = internalPosition.clone().add(movement);
-        console.log('Block position changed', movement, 'to', dest);
-        setInternalPosition(dest);
-    }
-
     return (
-        <Pickup
-            stack={stack}
-            block={block}
-            position={internalPosition}
-            onPositionChanged={handlePositionChanged}>
-            <animated.group
-                position={position.clone().add(new THREE.Vector3(0, stackHeight(stack, block) + 1, 0))}
-                rotation={animatedRotation}>
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes.Raised_Bed_I_2.geometry}
-                    material={materials['Material.Planks']}
-                />
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes.Raised_Bed_I_1.geometry}
-                    material={materials['Material.Dirt']}
-                />
-            </animated.group>
-        </Pickup>
-    )
+        <animated.group
+            position={position.clone().setY(stackHeight(stack, block) + 1)}
+            rotation={animatedRotation}>
+            <mesh
+                castShadow
+                receiveShadow
+                geometry={nodes.Raised_Bed_I_2.geometry}
+                material={materials['Material.Planks']}
+            />
+            <mesh
+                castShadow
+                receiveShadow
+                geometry={nodes.Raised_Bed_I_1.geometry}
+                material={materials['Material.Dirt']}
+            />
+        </animated.group>
+    );
 }
 
 type Stack = {
@@ -439,10 +444,6 @@ function Environment() {
                 shadow-camera-near={0.01}
                 shadow-camera-far={1000}
                 castShadow />
-            {/* <mesh position={sunDirection} scale={[2, 2, 2]}>
-                <sphereGeometry args={[0.1, 32, 32]} />
-                <meshBasicMaterial color={sunColor} />
-            </mesh> */}
         </>
     );
 }
