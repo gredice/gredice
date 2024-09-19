@@ -409,7 +409,7 @@ export function Garden() {
     )
 }
 
-function Environment({ sunDirection }: { sunDirection: THREE.Vector3 }) {
+function Environment() {
     const sunColor = new THREE.Color(0xffffff);
     const cameraShadowSize = 30;
     const shadowMapSize = 5;
@@ -426,7 +426,7 @@ function Environment({ sunDirection }: { sunDirection: THREE.Vector3 }) {
             />
             <directionalLight
                 color={sunColor}
-                position={sunDirection}
+                position={[-1, 1, 1]}
                 intensity={5}
                 shadow-mapSize={shadowMapSize * 1024}
                 shadow-near={0.01}
@@ -460,7 +460,7 @@ function GameSceneProviders({ children }: PropsWithChildren) {
 export function GameScene() {
     const cameraPosition = 100;
 
-    const [sunDirection, setSunDirection] = useState(new THREE.Vector3(-1, 1, 1));
+    const [sunDirection] = useState(new THREE.Vector3(-1, 1, 1));
 
     return (
         <div className='h-screen w-full'>
@@ -478,7 +478,7 @@ export function GameScene() {
                         near: 0.01
                     }}>
 
-                    <Environment sunDirection={sunDirection} />
+                    <Environment />
 
                     <Garden />
 
@@ -487,11 +487,6 @@ export function GameScene() {
 
                     <OrbitControls enableRotate={false} />
                 </Canvas>
-                <div className='fixed top-0 left-0'>
-                    <input type='range' min='-1' max='1' step='0.01' value={sunDirection.x} onChange={(e) => setSunDirection(new THREE.Vector3(parseFloat(e.target.value), sunDirection.y, sunDirection.z))} />
-                    <input type='range' min='-1' max='1' step='0.01' value={sunDirection.y} onChange={(e) => setSunDirection(new THREE.Vector3(sunDirection.x, parseFloat(e.target.value), sunDirection.z))} />
-                    <input type='range' min='-1' max='1' step='0.01' value={sunDirection.z} onChange={(e) => setSunDirection(new THREE.Vector3(sunDirection.x, sunDirection.y, parseFloat(e.target.value)))} />
-                </div>
             </GameSceneProviders>
         </div>
     );
