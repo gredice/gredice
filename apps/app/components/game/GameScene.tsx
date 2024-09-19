@@ -9,9 +9,11 @@ import {
 import * as THREE from 'three'
 import { Canvas, ThreeEvent, useThree } from '@react-three/fiber'
 import { OrbitControls, useGLTF } from '@react-three/drei'
-import { PropsWithChildren, useEffect, useMemo, useState } from 'react'
+import { PointerEvent, PropsWithChildren, useEffect, useMemo, useState } from 'react'
 import { Handler, useDrag } from '@use-gesture/react'
 import { useSpring, animated } from '@react-spring/three'
+import { Bloom, EffectComposer, SSAO, Vignette } from '@react-three/postprocessing';
+import { BlendFunction } from 'postprocessing'
 
 const models = {
     GameAssets: { url: '/assets/models/GameAssets.glb' }
@@ -23,7 +25,7 @@ type Entity = {
     stackable?: boolean
 }
 
-const entities: Record<string, Entity> = {
+const entities = {
     BlockGround: {
         name: 'Block_Ground',
         height: 0.4,
@@ -147,7 +149,7 @@ function Pickup({ children, stack, block, position, onPositionChanged }: PickupP
     }), []);
     const currentStackHeight = useMemo(() => stackHeight(stack, block), [stack, block]);
 
-    const dragHandler: Handler<"drag", any> = ({ last, event, xy: [x, y] }) => {
+    const dragHandler: Handler<"drag", any> = ({ pressed, event, xy: [x, y] }) => {
         event.stopPropagation();
         const { pt, dest, relative } = dragState;
         pt.set(
@@ -171,7 +173,7 @@ function Pickup({ children, stack, block, position, onPositionChanged }: PickupP
             ? 0
             : stackHeight(hoveredStack) - currentStackHeight;
 
-        if (last) {
+        if (!pressed) {
             api.start({ internalPosition: [relative.x, hoveredStackHeight, relative.z] })[0].then(() => {
                 onPositionChanged(relative);
             });
@@ -181,14 +183,24 @@ function Pickup({ children, stack, block, position, onPositionChanged }: PickupP
     };
 
     const bind = useDrag(dragHandler, {
-        filterTaps: true,
-        enabled: stack.blocks.at(-1) === block
+        filterTaps: true
     });
+
+    const customBind = () => {
+        const bindProps = bind();
+        return {
+            ...bindProps,
+            onPointerDown: (event: PointerEvent) => {
+                event.stopPropagation();
+                bindProps.onPointerDown?.(event);
+            }
+        };
+    };
 
     return (
         <animated.group
             position={springs.internalPosition}
-            {...bind()}>
+            {...customBind()}>
             {children}
         </animated.group>
     )
@@ -281,65 +293,23 @@ function deserializeGarden(serializedGarden: string) {
 }
 
 function getDefaultGarden() {
-    return ({
-        stacks: [
-            {
-                position: new THREE.Vector3(0, 0, 0),
+    const size = 2;
+    const stacks: Stack[] = [];
+    for (let x = -size; x <= size; x++) {
+        for (let z = -size; z <= size; z++) {
+            stacks.push({
+                position: new THREE.Vector3(x, 0, z),
                 blocks: [
-                    { name: entities.BlockGround.name, rotation: 0 },
-                    { name: entities.RaisedBed.name, rotation: 0 }
+                    { name: entities.BlockGround.name, rotation: Math.floor(Math.random() * 4) },
                 ]
-            },
-            {
-                position: new THREE.Vector3(1, 0, 0),
-                blocks: [
-                    { name: entities.BlockGround.name, rotation: 0 }
-                ]
-            },
-            {
-                position: new THREE.Vector3(0, 0, 1),
-                blocks: [
-                    { name: entities.BlockGround.name, rotation: 0 }
-                ]
-            },
-            {
-                position: new THREE.Vector3(1, 0, 1),
-                blocks: [
-                    { name: entities.BlockGround.name, rotation: 0 }
-                ]
-            },
-            {
-                position: new THREE.Vector3(-1, 0, 1),
-                blocks: [
-                    { name: entities.BlockGround.name, rotation: 0 }
-                ]
-            },
-            {
-                position: new THREE.Vector3(-1, 0, -1),
-                blocks: [
-                    { name: entities.BlockGround.name, rotation: 0 }
-                ]
-            },
-            {
-                position: new THREE.Vector3(1, 0, -1),
-                blocks: [
-                    { name: entities.BlockGround.name, rotation: 0 }
-                ]
-            },
-            {
-                position: new THREE.Vector3(-1, 0, 0),
-                blocks: [
-                    { name: entities.BlockGround.name, rotation: 0 }
-                ]
-            },
-            {
-                position: new THREE.Vector3(0, 0, -1),
-                blocks: [
-                    { name: entities.BlockGround.name, rotation: 0 }
-                ]
-            },
-        ]
-    });
+            });
+        }
+    }
+    stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
+
+    return {
+        stacks
+    };
 }
 
 function useGarden() {
@@ -415,13 +385,14 @@ export function Garden() {
 }
 
 function Environment() {
+    const backgroundColor = new THREE.Color(0xE7E2CC);
     const sunColor = new THREE.Color(0xffffff);
     const cameraShadowSize = 30;
     const shadowMapSize = 5;
 
     return (
         <>
-            <color attach="background" args={[0xE7E2CC]} />
+            <color attach="background" args={[backgroundColor]} />
             <ambientLight intensity={3} />
             <hemisphereLight
                 color={0xffffbb}
@@ -461,34 +432,38 @@ function GameSceneProviders({ children }: PropsWithChildren) {
 export function GameScene() {
     const cameraPosition = 100;
 
-    const [sunDirection] = useState(new THREE.Vector3(-1, 1, 1));
-
     return (
-        <div className='h-screen w-full'>
-            <GameSceneProviders>
-                <Canvas
-                    orthographic
-                    shadows={{
-                        type: THREE.PCFSoftShadowMap,
-                        enabled: true,
-                    }}
-                    camera={{
-                        position: [cameraPosition, cameraPosition, cameraPosition],
-                        zoom: 100,
-                        far: 10000,
-                        near: 0.01
-                    }}>
+        <div className='relative'>
+            <div className='absolute h-full w-full'>
+                <GameSceneProviders>
+                    <Canvas
+                        orthographic
+                        shadows={{
+                            type: THREE.PCFSoftShadowMap,
+                            enabled: true,
+                        }}
+                        camera={{
+                            position: cameraPosition,
+                            zoom: 100,
+                            far: 10000,
+                            near: 0.01
+                        }}>
 
-                    <Environment />
+                        <Environment />
 
-                    <Garden />
+                        <Garden />
 
-                    {/* <gridHelper rotation={[Math.PI / 2, 0, 0]} args={[10, 100, '#B8B4A3', '#CFCBB7']} position={[0, 0, 0]} />
+                        {/* <gridHelper rotation={[Math.PI / 2, 0, 0]} args={[10, 100, '#B8B4A3', '#CFCBB7']} position={[0, 0, 0]} />
                 <gridHelper args={[100, 100, '#B8B4A3', '#CFCBB7']} position={[0, 0, 0]} /> */}
 
-                    <OrbitControls enableRotate={false} />
-                </Canvas>
-            </GameSceneProviders>
+                        <OrbitControls
+                            enableRotate={false}
+                            minZoom={50}
+                            maxZoom={200} />
+                    </Canvas>
+                </GameSceneProviders>
+            </div>
+            <div className='absolute pointer-events-none select-none h-full w-full [box-shadow:inset_0px_0px_4px_4px_var(--section-bg)]' />
         </div>
     );
 }
