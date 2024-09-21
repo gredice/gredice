@@ -12,8 +12,6 @@ import { OrbitControls, useGLTF } from '@react-three/drei'
 import { PointerEvent, PropsWithChildren, useEffect, useMemo, useState } from 'react'
 import { Handler, useDrag } from '@use-gesture/react'
 import { useSpring, animated } from '@react-spring/three'
-import { Bloom, EffectComposer, SSAO, Vignette } from '@react-three/postprocessing';
-import { BlendFunction } from 'postprocessing'
 
 const models = {
     GameAssets: { url: '/assets/models/GameAssets.glb' }
@@ -28,6 +26,11 @@ type Entity = {
 const entities = {
     BlockGround: {
         name: 'Block_Ground',
+        height: 0.4,
+        stackable: true
+    },
+    BlockGrass: {
+        name: 'Block_Grass',
         height: 0.4,
         stackable: true
     },
@@ -70,6 +73,7 @@ type EntityProps = {
 
 const entityNameMap = {
     [entities.BlockGround.name]: BlockGround,
+    [entities.BlockGrass.name]: BlockGrass,
     [entities.RaisedBed.name]: RaisedBed
 }
 
@@ -223,6 +227,31 @@ function useAnimatedEntityRotation(rotation: number) {
     return [springs.rotation];
 }
 
+export function BlockGrass({ stack, block, position, rotation }: EntityProps) {
+    const { nodes, materials }: any = useGLTF(models.GameAssets.url);
+    const [animatedRotation] = useAnimatedEntityRotation(rotation);
+
+    const variantResolved = 1;
+
+    return (
+        <animated.group
+            position={position.clone().setY(stackHeight(stack, block) + 0.2)}
+            rotation={animatedRotation}>
+            <mesh
+                castShadow
+                geometry={nodes.Block_Grass_1_1.geometry}
+                material={materials['Material.GrassPart']}
+            />
+            <mesh
+                castShadow
+                receiveShadow
+                geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}
+                material={materials[`Material.Grass`]}
+            />
+        </animated.group>
+    );
+}
+
 export function BlockGround({ stack, block, position, rotation, variant }: EntityProps) {
     const { nodes, materials }: any = useGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
@@ -253,6 +282,61 @@ export function RaisedBed({ stack, block, position, rotation }: EntityProps) {
     const { nodes, materials }: any = useGLTF(models.GameAssets.url)
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
 
+    // Switch between shapes (O, L, I, U) based on neighbors
+    let shape = "O";
+    const { data: garden } = useGarden();
+    const { stacks } = garden ?? { stacks: [] };
+    const neighbors = [
+        getStack(stacks, { x: position.x, z: position.z + 1 }),
+        getStack(stacks, { x: position.x + 1, z: position.z }),
+        getStack(stacks, { x: position.x, z: position.z - 1 }),
+        getStack(stacks, { x: position.x - 1, z: position.z }),
+    ];
+    if (neighbors[0] && neighbors[1] && neighbors[2] && neighbors[3]) {
+        // O shape
+    } else if (neighbors[0] && neighbors[1] && neighbors[2]) {
+        // L shape
+        shape = "L";
+    } else if (neighbors[1] && neighbors[2] && neighbors[3]) {
+        // I shape
+        shape = "I";
+    } else if (neighbors[2] && neighbors[3] && neighbors[0]) {
+        // U shape
+        shape = "U";
+    } else if (neighbors[3] && neighbors[0] && neighbors[1]) {
+        // U shape
+        shape = "U";
+    } else if (neighbors[0] && neighbors[2]) {
+        // L shape
+        shape = "L";
+    } else if (neighbors[1] && neighbors[3]) {
+        // I shape
+        shape = "I";
+    } else if (neighbors[0] && neighbors[1]) {
+        // O shape
+    } else if (neighbors[1] && neighbors[2]) {
+        // L shape
+        shape = "L";
+    } else if (neighbors[2] && neighbors[3]) {
+        // I shape
+        shape = "I";
+    } else if (neighbors[3] && neighbors[0]) {
+        // L shape
+        shape = "L";
+    } else if (neighbors[0]) {
+        // O shape
+    } else if (neighbors[1]) {
+        // I shape
+        shape = "I";
+    } else if (neighbors[2]) {
+        // O shape
+    } else if (neighbors[3]) {
+        // I shape
+        shape = "I";
+    } else {
+        // O shape
+    }
+
     return (
         <animated.group
             position={position.clone().setY(stackHeight(stack, block) + 1)}
@@ -260,13 +344,13 @@ export function RaisedBed({ stack, block, position, rotation }: EntityProps) {
             <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes.Raised_Bed_I_2.geometry}
+                geometry={nodes[`Raised_Bed_${shape}_2`].geometry}
                 material={materials['Material.Planks']}
             />
             <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes.Raised_Bed_I_1.geometry}
+                geometry={nodes[`Raised_Bed_${shape}_1`].geometry}
                 material={materials['Material.Dirt']}
             />
         </animated.group>
@@ -300,12 +384,16 @@ function getDefaultGarden() {
             stacks.push({
                 position: new THREE.Vector3(x, 0, z),
                 blocks: [
-                    { name: entities.BlockGround.name, rotation: Math.floor(Math.random() * 4) },
+                    { name: entities.BlockGrass.name, rotation: Math.floor(Math.random() * 4) },
                 ]
             });
         }
     }
     stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
+    stacks.find(stack => stack.position.x === 1 && stack.position.z === 0)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
+    stacks.find(stack => stack.position.x === 0 && stack.position.z === 1)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
+    stacks.find(stack => stack.position.x === 0 && stack.position.z === 2)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
+    stacks.find(stack => stack.position.x === 2 && stack.position.z === 0)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
 
     return {
         stacks
@@ -463,7 +551,7 @@ export function GameScene() {
                     </Canvas>
                 </GameSceneProviders>
             </div>
-            <div className='absolute pointer-events-none select-none h-full w-full [box-shadow:inset_0px_0px_4px_4px_var(--section-bg)]' />
+            <div className='absolute pointer-events-none select-none h-full w-full [box-shadow:inset_0px_0px_8px_8px_var(--section-bg)]' />
         </div>
     );
 }
