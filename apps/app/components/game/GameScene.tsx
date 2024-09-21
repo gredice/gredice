@@ -6,12 +6,13 @@ import {
     QueryClientProvider,
     useQueryClient,
 } from '@tanstack/react-query';
-import * as THREE from 'three'
-import { Canvas, ThreeEvent, useThree } from '@react-three/fiber'
-import { OrbitControls, useGLTF } from '@react-three/drei'
-import { PointerEvent, PropsWithChildren, useEffect, useMemo, useState } from 'react'
-import { Handler, useDrag } from '@use-gesture/react'
-import { useSpring, animated } from '@react-spring/three'
+import * as THREE from 'three';
+import { Canvas, ThreeEvent, useFrame, useThree } from '@react-three/fiber';
+import { MeshWobbleMaterial, OrbitControls, StatsGl, useCamera, useGLTF } from '@react-three/drei';
+import { PointerEvent, PropsWithChildren, useEffect, useMemo, useRef } from 'react';
+import { Handler, useDrag } from '@use-gesture/react';
+import { useSpring, animated } from '@react-spring/three';
+import { create } from 'zustand';
 
 const models = {
     GameAssets: { url: '/assets/models/GameAssets.glb' }
@@ -83,24 +84,11 @@ function EntityFactory({ name, stack, block, position, ...rest }: { name: string
         return null;
     }
 
-    const { data: garden } = useGarden();
-    const updateGarden = useUpdateGarden();
-    const { stacks } = garden ?? { stacks: [] };
+    const moveBlock = useGameState(state => state.moveBlock);
     const handlePositionChanged = (movement: THREE.Vector3) => {
-        // Remove block from current stack
-        stack.blocks.splice(stack.blocks.length - 1, 1);
-
-        // Add block to destination stack
-        const dest = position.clone().add(movement).setY(0);
-        let destStack = stacks.find(stack => stack.position.x === dest.x && stack.position.z === dest.z);
-        if (!destStack) {
-            destStack = { position: dest, blocks: [] };
-            stacks.push(destStack);
-        }
-        destStack.blocks.push(block);
-
-        // Update state
-        updateGarden([...stacks]);
+        const dest = position.clone().add(movement);
+        const blockIndex = stack.blocks.indexOf(block);
+        moveBlock(stack.position, blockIndex, dest);
     }
 
     return (
@@ -126,8 +114,7 @@ type PickupProps = PropsWithChildren<
     { onPositionChanged: (movement: THREE.Vector3) => void }>;
 
 function Pickup({ children, stack, block, position, onPositionChanged }: PickupProps) {
-    const { data: garden } = useGarden();
-    const { stacks } = garden ?? { stacks: [] };
+    const stacks = useGameState(state => state.stacks);
 
     const [springs, api] = useSpring(() => ({
         from: { internalPosition: [0, 0, 0] },
@@ -145,6 +132,7 @@ function Pickup({ children, stack, block, position, onPositionChanged }: PickupP
 
     const camera = useThree(state => state.camera);
     const domElement = useThree(state => state.gl.domElement);
+    // TODO: Use observed DOM element client rect (hook from @signalco/hooks when available)
     const rect = useMemo(() => domElement.getClientRects()[0], [domElement]);
     const dragState = useMemo(() => ({
         pt: new THREE.Vector3(),
@@ -224,7 +212,7 @@ function useAnimatedEntityRotation(rotation: number) {
         api.start({ rotation: [0, rotation * (Math.PI / 2), 0] });
     }, [rotation]);
 
-    return [springs.rotation];
+    return useMemo(() => [springs.rotation], [springs.rotation]);
 }
 
 export function BlockGrass({ stack, block, position, rotation }: EntityProps) {
@@ -239,9 +227,12 @@ export function BlockGrass({ stack, block, position, rotation }: EntityProps) {
             rotation={animatedRotation}>
             <mesh
                 castShadow
+                receiveShadow
                 geometry={nodes.Block_Grass_1_1.geometry}
-                material={materials['Material.GrassPart']}
-            />
+            >
+                {/* // TODO: Apply environment wind to wobble animation */}
+                <MeshWobbleMaterial {...materials['Material.GrassPart']} factor={0.01} speed={4} />
+            </mesh>
             <mesh
                 castShadow
                 receiveShadow
@@ -278,69 +269,67 @@ export function BlockGround({ stack, block, position, rotation, variant }: Entit
     );
 }
 
-export function RaisedBed({ stack, block, position, rotation }: EntityProps) {
+export function RaisedBed({ stack, block, position }: EntityProps) {
     const { nodes, materials }: any = useGLTF(models.GameAssets.url)
-    const [animatedRotation] = useAnimatedEntityRotation(rotation);
 
     // Switch between shapes (O, L, I, U) based on neighbors
     let shape = "O";
-    const { data: garden } = useGarden();
-    const { stacks } = garden ?? { stacks: [] };
-    const neighbors = [
-        getStack(stacks, { x: position.x, z: position.z + 1 }),
-        getStack(stacks, { x: position.x + 1, z: position.z }),
-        getStack(stacks, { x: position.x, z: position.z - 1 }),
-        getStack(stacks, { x: position.x - 1, z: position.z }),
-    ];
-    if (neighbors[0] && neighbors[1] && neighbors[2] && neighbors[3]) {
-        // O shape
-    } else if (neighbors[0] && neighbors[1] && neighbors[2]) {
-        // L shape
-        shape = "L";
-    } else if (neighbors[1] && neighbors[2] && neighbors[3]) {
-        // I shape
-        shape = "I";
-    } else if (neighbors[2] && neighbors[3] && neighbors[0]) {
-        // U shape
+    const stacks = useGameState(state => state.stacks);
+    const currentInStackIndex = stack.blocks.indexOf(block);
+    const neighbors = {
+        w: getStack(stacks, { x: position.x, z: position.z + 1 })?.blocks.at(currentInStackIndex)?.name === entities.RaisedBed.name,
+        n: getStack(stacks, { x: position.x + 1, z: position.z })?.blocks.at(currentInStackIndex)?.name === entities.RaisedBed.name,
+        e: getStack(stacks, { x: position.x, z: position.z - 1 })?.blocks.at(currentInStackIndex)?.name === entities.RaisedBed.name,
+        s: getStack(stacks, { x: position.x - 1, z: position.z })?.blocks.at(currentInStackIndex)?.name === entities.RaisedBed.name,
+    };
+
+    const numberOfNeighbors = Object.values(neighbors).filter(Boolean).length;
+    let shapeRotation = 0;
+    if (numberOfNeighbors === 1) {
         shape = "U";
-    } else if (neighbors[3] && neighbors[0] && neighbors[1]) {
-        // U shape
-        shape = "U";
-    } else if (neighbors[0] && neighbors[2]) {
-        // L shape
-        shape = "L";
-    } else if (neighbors[1] && neighbors[3]) {
-        // I shape
-        shape = "I";
-    } else if (neighbors[0] && neighbors[1]) {
-        // O shape
-    } else if (neighbors[1] && neighbors[2]) {
-        // L shape
-        shape = "L";
-    } else if (neighbors[2] && neighbors[3]) {
-        // I shape
-        shape = "I";
-    } else if (neighbors[3] && neighbors[0]) {
-        // L shape
-        shape = "L";
-    } else if (neighbors[0]) {
-        // O shape
-    } else if (neighbors[1]) {
-        // I shape
-        shape = "I";
-    } else if (neighbors[2]) {
-        // O shape
-    } else if (neighbors[3]) {
-        // I shape
-        shape = "I";
-    } else {
-        // O shape
+
+        if (neighbors.n) {
+            shapeRotation = 0;
+        } else if (neighbors.e) {
+            shapeRotation = 1;
+        } else if (neighbors.s) {
+            shapeRotation = 2;
+        } else if (neighbors.w) {
+            shapeRotation = 3;
+        }
+    } else if (numberOfNeighbors === 2) {
+        if ((neighbors.n && neighbors.s) ||
+            (neighbors.e && neighbors.w)) {
+            shape = "I";
+
+            if (neighbors.n && neighbors.s) {
+                shapeRotation = 1;
+            } else {
+                shapeRotation = 0;
+            }
+        } else {
+            shape = "L";
+
+            if (neighbors.n && neighbors.e) {
+                shapeRotation = 0;
+            } else if (neighbors.e && neighbors.s) {
+                shapeRotation = 1;
+            } else if (neighbors.s && neighbors.w) {
+                shapeRotation = 2;
+            } else {
+                shapeRotation = 3;
+            }
+        }
+    } else if (numberOfNeighbors === 3) {
+        shape = "O"
     }
+
+    // const [animatedRotation] = useAnimatedEntityRotation(shapeRotation);
 
     return (
         <animated.group
             position={position.clone().setY(stackHeight(stack, block) + 1)}
-            rotation={animatedRotation}>
+            rotation={[0, shapeRotation * (Math.PI / 2), 0]}>
             <mesh
                 castShadow
                 receiveShadow
@@ -391,9 +380,9 @@ function getDefaultGarden() {
     }
     stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
     stacks.find(stack => stack.position.x === 1 && stack.position.z === 0)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
-    stacks.find(stack => stack.position.x === 0 && stack.position.z === 1)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
-    stacks.find(stack => stack.position.x === 0 && stack.position.z === 2)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
-    stacks.find(stack => stack.position.x === 2 && stack.position.z === 0)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
+    // stacks.find(stack => stack.position.x === 0 && stack.position.z === 1)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
+    // stacks.find(stack => stack.position.x === 0 && stack.position.z === 2)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
+    // stacks.find(stack => stack.position.x === 2 && stack.position.z === 0)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
 
     return {
         stacks
@@ -407,7 +396,6 @@ function useGarden() {
             // Load garden from local storage
             const serializedGarden = localStorage.getItem('garden');
             if (serializedGarden) {
-                console.log('useGarden', serializedGarden);
                 return deserializeGarden(serializedGarden);
             } else {
                 const newGarden = deserializeGarden(serializeGarden(getDefaultGarden()));
@@ -421,7 +409,7 @@ function useGarden() {
 
 function useUpdateGarden() {
     const queryClient = useQueryClient();
-    return async (stacks: Stack[]) => {
+    return async ({ stacks }: { stacks: Stack[] }) => {
         const garden = { stacks: structuredClone(stacks) };
 
         // Garden cleanup
@@ -434,19 +422,33 @@ function useUpdateGarden() {
 }
 
 export function Garden() {
-    const { data: garden } = useGarden();
-    const { stacks } = garden ?? { stacks: [] };
-    const updateGarden = useUpdateGarden();
-    const [, setRefresh] = useState(0);
+    const stacks = useGameState(state => state.stacks);
+    const setStacks = useGameState(state => state.setStacks);
+    const rotateBlock = useGameState(state => state.rotateBlock);
 
-    const handleContextMenu = (block: Block, event: ThreeEvent<MouseEvent>) => {
+    // Load garden from remote
+    const { data: garden } = useGarden();
+    useEffect(() => {
+        // Only update local state if we don't have any local state (first load or no stacks)
+        if (stacks.length <= 0) {
+            const { stacks } = garden ?? { stacks: [] };
+            setStacks([...stacks]);
+        }
+
+        // TODO: Check if we are ou-of-sync with remote state and
+        //       present user with "Reload" button (notification)
+    }, [garden]);
+
+    // Update garden remote state
+    const updateGarden = useUpdateGarden();
+    useEffect(() => {
+        updateGarden({ stacks });
+    }, [stacks]);
+
+    const handleContextMenu = (stack: Stack, block: Block, blockIndex: number, event: ThreeEvent<MouseEvent>) => {
         event.nativeEvent.preventDefault()
         event.stopPropagation();
-
-        block.rotation++;
-
-        updateGarden([...stacks]);
-        setRefresh(curr => curr + 1);
+        rotateBlock(stack.position, blockIndex, block.rotation + 1);
     }
 
     return (
@@ -456,7 +458,7 @@ export function Garden() {
                     return (
                         <group
                             key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${i}-${block.name}`}
-                            onContextMenu={(event) => handleContextMenu(block, event)}>
+                            onContextMenu={(event) => handleContextMenu(stack, block, i, event)}>
                             <EntityFactory
                                 name={block.name}
                                 stack={stack}
@@ -475,8 +477,8 @@ export function Garden() {
 function Environment() {
     const backgroundColor = new THREE.Color(0xE7E2CC);
     const sunColor = new THREE.Color(0xffffff);
-    const cameraShadowSize = 30;
-    const shadowMapSize = 5;
+    const cameraShadowSize = 100;
+    const shadowMapSize = 10;
 
     return (
         <>
@@ -488,6 +490,7 @@ function Environment() {
                 intensity={5}
                 position={[0, 1, 0]}
             />
+            {/* TODO: Update shadow camera position based on camera position */}
             <directionalLight
                 color={sunColor}
                 position={[-1, 1, 1]}
@@ -509,6 +512,58 @@ function Environment() {
 
 const queryClient = new QueryClient();
 
+type GameState = {
+    stacks: Stack[],
+    setStacks: (stacks: Stack[]) => void,
+    placeBlock: (to: THREE.Vector3, block: Block) => void,
+    moveBlock: (from: THREE.Vector3, blockIndex: number, to: THREE.Vector3) => void,
+    rotateBlock: (stackPosition: THREE.Vector3, blockIndex: number, rotation: number) => void
+};
+
+const useGameState = create<GameState>((set) => ({
+    stacks: [],
+    setStacks: (stacks) => set({ stacks }),
+    placeBlock: (to, block) => set((state) => {
+        let stack = getStack(state.stacks, to);
+        if (!stack) {
+            stack = { position: to, blocks: [] };
+            state.stacks.push(stack);
+        }
+
+        stack.blocks.push(block);
+        return { stacks: [...state.stacks] };
+    }),
+    moveBlock: (from, blockIndex, to) => set((state) => {
+        // Determine source stack and block
+        const sourceStack = getStack(state.stacks, from);
+        const block = sourceStack?.blocks[blockIndex];
+        if (!block) {
+            return state;
+        }
+
+        // Determine destination stack or create new one if it doesn't exist
+        let destStack = getStack(state.stacks, to);
+        if (!destStack) {
+            destStack = { position: to, blocks: [] };
+            state.stacks.push(destStack);
+        }
+
+        sourceStack?.blocks.splice(blockIndex, 1);
+        destStack?.blocks.push(block);
+        return { stacks: [...state.stacks] };
+    }),
+    rotateBlock: (stackPosition, blockIndex, rotation) => set((state) => {
+        const stack = getStack(state.stacks, stackPosition);
+        const block = stack?.blocks[blockIndex];
+        if (!block) {
+            return state;
+        }
+
+        block.rotation = rotation;
+        return { stacks: [...state.stacks] };
+    })
+}));
+
 function GameSceneProviders({ children }: PropsWithChildren) {
     return (
         <QueryClientProvider client={queryClient}>
@@ -519,6 +574,11 @@ function GameSceneProviders({ children }: PropsWithChildren) {
 
 export function GameScene() {
     const cameraPosition = 100;
+
+    const placeBlock = useGameState(state => state.placeBlock);
+    const handlePickBlock = (name: string) => {
+        placeBlock(new THREE.Vector3(0, 0, 0), { name, rotation: 0 });
+    };
 
     return (
         <div className='relative'>
@@ -548,10 +608,26 @@ export function GameScene() {
                             enableRotate={false}
                             minZoom={50}
                             maxZoom={200} />
+
+                        <StatsGl />
                     </Canvas>
                 </GameSceneProviders>
             </div>
             <div className='absolute pointer-events-none select-none h-full w-full [box-shadow:inset_0px_0px_8px_8px_var(--section-bg)]' />
+            { /* Block picker */}
+            <div className='absolute right-4 top-4 bg-white rounded-lg'>
+                <ul>
+                    <li>
+                        <button onClick={() => handlePickBlock(entities.BlockGround.name)}>Zemlja</button>
+                    </li>
+                    <li>
+                        <button onClick={() => handlePickBlock(entities.BlockGrass.name)}>Trava</button>
+                    </li>
+                    <li>
+                        <button onClick={() => handlePickBlock(entities.RaisedBed.name)}>Gredica</button>
+                    </li>
+                </ul>
+            </div>
         </div>
     );
 }
