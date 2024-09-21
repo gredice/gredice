@@ -634,14 +634,13 @@ export function GameScene() {
 
                         <Garden />
 
-                        <gridHelper args={[100, 100, '#B8B4A3', '#CFCBB7']} position={[0.5, 0, 0.5]} />
-
                         <OrbitControls
                             enableRotate={false}
                             minZoom={50}
                             maxZoom={200} />
 
-                        <StatsGl />
+                        {/* <gridHelper args={[100, 100, '#B8B4A3', '#CFCBB7']} position={[0.5, 0, 0.5]} /> */}
+                        {/* <StatsGl /> */}
                     </Canvas>
                 </GameSceneProviders>
             </div>
