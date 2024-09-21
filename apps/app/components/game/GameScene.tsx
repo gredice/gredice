@@ -38,6 +38,10 @@ const entities = {
     RaisedBed: {
         name: 'Raised_Bed',
         height: 0.3
+    },
+    Shade: {
+        name: 'Shade',
+        height: 1
     }
 };
 
@@ -75,7 +79,8 @@ type EntityProps = {
 const entityNameMap = {
     [entities.BlockGround.name]: BlockGround,
     [entities.BlockGrass.name]: BlockGrass,
-    [entities.RaisedBed.name]: RaisedBed
+    [entities.RaisedBed.name]: RaisedBed,
+    [entities.Shade.name]: BlockShade
 }
 
 function EntityFactory({ name, stack, block, position, ...rest }: { name: string } & EntityProps) {
@@ -140,6 +145,7 @@ function Pickup({ children, stack, block, position, onPositionChanged }: PickupP
         relative: new THREE.Vector3()
     }), []);
     const currentStackHeight = useMemo(() => stackHeight(stack, block), [stack, block]);
+    const didDrag = useRef(false);
 
     const dragHandler: Handler<"drag", any> = ({ pressed, event, xy: [x, y] }) => {
         event.stopPropagation();
@@ -166,10 +172,15 @@ function Pickup({ children, stack, block, position, onPositionChanged }: PickupP
             : stackHeight(hoveredStack) - currentStackHeight;
 
         if (!pressed) {
+            if (!didDrag.current) {
+                return;
+            }
+            didDrag.current = false;
             api.start({ internalPosition: [relative.x, hoveredStackHeight, relative.z] })[0].then(() => {
                 onPositionChanged(relative);
             });
         } else {
+            didDrag.current = true;
             api.start({ internalPosition: [relative.x, hoveredStackHeight + 0.1, relative.z] });
         }
     };
@@ -213,6 +224,24 @@ function useAnimatedEntityRotation(rotation: number) {
     }, [rotation]);
 
     return useMemo(() => [springs.rotation], [springs.rotation]);
+}
+
+export function BlockShade({ stack, block, position, rotation }: EntityProps) {
+    const { nodes, materials }: any = useGLTF(models.GameAssets.url);
+    const [animatedRotation] = useAnimatedEntityRotation(rotation);
+
+    return (
+        <animated.group
+            position={position.clone().setY(stackHeight(stack, block) + 1)}
+            rotation={animatedRotation}>
+            <mesh
+                castShadow
+                receiveShadow
+                geometry={nodes.Shade_Solo.geometry}
+                material={materials['Material.Planks']}
+            />
+        </animated.group>
+    );
 }
 
 export function BlockGrass({ stack, block, position, rotation }: EntityProps) {
@@ -263,7 +292,7 @@ export function BlockGround({ stack, block, position, rotation, variant }: Entit
                 castShadow
                 receiveShadow
                 geometry={nodes[`Block_Ground_${variantResolved}_2`].geometry}
-                material={materials['Material.Dirt']}
+                material={materials['Material.Stone']}
             />
         </animated.group>
     );
@@ -457,7 +486,7 @@ export function Garden() {
                 stack.blocks?.map((block, i) => {
                     return (
                         <group
-                            key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${i}-${block.name}`}
+                            key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.name}-${stack.blocks.filter(b => b.name === block.name).length - 1}`}
                             onContextMenu={(event) => handleContextMenu(stack, block, i, event)}>
                             <EntityFactory
                                 name={block.name}
@@ -493,7 +522,7 @@ function Environment() {
             {/* TODO: Update shadow camera position based on camera position */}
             <directionalLight
                 color={sunColor}
-                position={[-1, 1, 1]}
+                position={[-10, 10, 10]}
                 intensity={5}
                 shadow-mapSize={shadowMapSize * 1024}
                 shadow-near={0.01}
@@ -534,6 +563,10 @@ const useGameState = create<GameState>((set) => ({
         return { stacks: [...state.stacks] };
     }),
     moveBlock: (from, blockIndex, to) => set((state) => {
+        if (from.x === to.x && from.z === to.z) {
+            return state;
+        }
+
         // Determine source stack and block
         const sourceStack = getStack(state.stacks, from);
         const block = sourceStack?.blocks[blockIndex];
@@ -601,8 +634,7 @@ export function GameScene() {
 
                         <Garden />
 
-                        {/* <gridHelper rotation={[Math.PI / 2, 0, 0]} args={[10, 100, '#B8B4A3', '#CFCBB7']} position={[0, 0, 0]} />
-                <gridHelper args={[100, 100, '#B8B4A3', '#CFCBB7']} position={[0, 0, 0]} /> */}
+                        <gridHelper args={[100, 100, '#B8B4A3', '#CFCBB7']} position={[0.5, 0, 0.5]} />
 
                         <OrbitControls
                             enableRotate={false}
@@ -625,6 +657,9 @@ export function GameScene() {
                     </li>
                     <li>
                         <button onClick={() => handlePickBlock(entities.RaisedBed.name)}>Gredica</button>
+                    </li>
+                    <li>
+                        <button onClick={() => handlePickBlock(entities.Shade.name)}>Shade</button>
                     </li>
                 </ul>
             </div>
