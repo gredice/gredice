@@ -80,7 +80,7 @@ const entityNameMap = {
     [entities.BlockGround.name]: BlockGround,
     [entities.BlockGrass.name]: BlockGrass,
     [entities.RaisedBed.name]: RaisedBed,
-    [entities.Shade.name]: BlockShade
+    [entities.Shade.name]: Shade
 }
 
 function EntityFactory({ name, stack, block, position, ...rest }: { name: string } & EntityProps) {
@@ -226,9 +226,23 @@ function useAnimatedEntityRotation(rotation: number) {
     return useMemo(() => [springs.rotation], [springs.rotation]);
 }
 
-export function BlockShade({ stack, block, position, rotation }: EntityProps) {
+export function Shade({ stack, block, position, rotation }: EntityProps) {
     const { nodes, materials }: any = useGLTF(models.GameAssets.url);
-    const [animatedRotation] = useAnimatedEntityRotation(rotation);
+
+    let variant = "Solo";
+    let realizedRotation = rotation % 2;
+    const neighbors = getEntityNeighbors(stack, block, position);
+    if (neighbors.total === 1) {
+        if ((neighbors.n && neighbors.nr === realizedRotation) || (neighbors.e && neighbors.er === realizedRotation)) {
+            variant = "End_Left";
+        } else if ((neighbors.w && neighbors.wr === realizedRotation) || (neighbors.s && neighbors.sr === realizedRotation)) {
+            variant = "End_Right";
+        }
+    } else if (neighbors.total === 2) {
+        variant = "Middle";
+    }
+
+    const [animatedRotation] = useAnimatedEntityRotation(realizedRotation);
 
     return (
         <animated.group
@@ -237,7 +251,7 @@ export function BlockShade({ stack, block, position, rotation }: EntityProps) {
             <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes.Shade_Solo.geometry}
+                geometry={nodes[`Shade_${variant}`].geometry}
                 material={materials['Material.Planks']}
             />
         </animated.group>
@@ -298,23 +312,33 @@ export function BlockGround({ stack, block, position, rotation, variant }: Entit
     );
 }
 
+function getEntityNeighbors(stack: Stack, block: Block, position: THREE.Vector3) {
+    const stacks = useGameState(state => state.stacks);
+    const currentInStackIndex = stack.blocks.indexOf(block);
+    const neighbors = {
+        w: getStack(stacks, { x: position.x, z: position.z + 1 })?.blocks.at(currentInStackIndex)?.name === block.name,
+        wr: getStack(stacks, { x: position.x, z: position.z + 1 })?.blocks.at(currentInStackIndex)?.rotation,
+        n: getStack(stacks, { x: position.x + 1, z: position.z })?.blocks.at(currentInStackIndex)?.name === block.name,
+        nr: getStack(stacks, { x: position.x + 1, z: position.z })?.blocks.at(currentInStackIndex)?.rotation,
+        e: getStack(stacks, { x: position.x, z: position.z - 1 })?.blocks.at(currentInStackIndex)?.name === block.name,
+        er: getStack(stacks, { x: position.x, z: position.z - 1 })?.blocks.at(currentInStackIndex)?.rotation,
+        s: getStack(stacks, { x: position.x - 1, z: position.z })?.blocks.at(currentInStackIndex)?.name === block.name,
+        sr: getStack(stacks, { x: position.x - 1, z: position.z })?.blocks.at(currentInStackIndex)?.rotation
+    };
+    return {
+        total: Object.values(neighbors).filter(Boolean).length,
+        ...neighbors
+    };
+}
+
 export function RaisedBed({ stack, block, position }: EntityProps) {
     const { nodes, materials }: any = useGLTF(models.GameAssets.url)
 
     // Switch between shapes (O, L, I, U) based on neighbors
     let shape = "O";
-    const stacks = useGameState(state => state.stacks);
-    const currentInStackIndex = stack.blocks.indexOf(block);
-    const neighbors = {
-        w: getStack(stacks, { x: position.x, z: position.z + 1 })?.blocks.at(currentInStackIndex)?.name === entities.RaisedBed.name,
-        n: getStack(stacks, { x: position.x + 1, z: position.z })?.blocks.at(currentInStackIndex)?.name === entities.RaisedBed.name,
-        e: getStack(stacks, { x: position.x, z: position.z - 1 })?.blocks.at(currentInStackIndex)?.name === entities.RaisedBed.name,
-        s: getStack(stacks, { x: position.x - 1, z: position.z })?.blocks.at(currentInStackIndex)?.name === entities.RaisedBed.name,
-    };
-
-    const numberOfNeighbors = Object.values(neighbors).filter(Boolean).length;
     let shapeRotation = 0;
-    if (numberOfNeighbors === 1) {
+    const neighbors = getEntityNeighbors(stack, block, position);
+    if (neighbors.total === 1) {
         shape = "U";
 
         if (neighbors.n) {
@@ -326,7 +350,7 @@ export function RaisedBed({ stack, block, position }: EntityProps) {
         } else if (neighbors.w) {
             shapeRotation = 3;
         }
-    } else if (numberOfNeighbors === 2) {
+    } else if (neighbors.total === 2) {
         if ((neighbors.n && neighbors.s) ||
             (neighbors.e && neighbors.w)) {
             shape = "I";
@@ -349,7 +373,7 @@ export function RaisedBed({ stack, block, position }: EntityProps) {
                 shapeRotation = 3;
             }
         }
-    } else if (numberOfNeighbors === 3) {
+    } else if (neighbors.total === 3) {
         shape = "O"
     }
 
