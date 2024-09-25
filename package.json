@@ -1,0 +1,17 @@
+{
+    "name": "gredice-monorepo",
+    "private": true,
+    "scripts": {
+        "build": "turbo build",
+        "dev": "turbo dev",
+        "lint": "turbo lint"
+    },
+    "devDependencies": {
+        "turbo": "2.1.2",
+        "typescript": "5.6.2"
+    },
+    "packageManager": "pnpm@9.11.0",
+    "engines": {
+        "node": ">=20"
+    }
+}
