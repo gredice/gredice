@@ -29,6 +29,7 @@
     "@use-gesture/react": "10.3.1",
     "@react-spring/three": "9.7.4",
     "@tanstack/react-query": "5.56.2",
-    "zustand": "5.0.0-rc.2"
+    "zustand": "5.0.0-rc.2",
+    "@vercel/analytics": "1.3.1"
   }
 }
