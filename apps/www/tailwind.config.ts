@@ -1,18 +1,13 @@
 import type { Config } from "tailwindcss";
+import { config } from '@signalco/ui-themes-minimal/config';
 
-const config: Config = {
+const tailwindConfig: Config = {
   content: [
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./node_modules/@signalco/ui-primitives/**/*.{js,ts,jsx,tsx,mdx}",
   ],
-  theme: {
-    extend: {
-      colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-      },
-    },
-  },
+  presets: [config],
   plugins: [],
 };
-export default config;
+export default tailwindConfig;
