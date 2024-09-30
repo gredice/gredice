@@ -3,6 +3,9 @@ import { drizzle } from 'drizzle-orm/vercel-postgres';
 import { config } from 'dotenv';
 import * as schema from './schema';
 
-config({ path: '.env.development.local' });
+const isProduction = process.env.NODE_ENV === 'production';
+if (!isProduction) {
+    config({ path: '.env.development.local' });
+}
 
 export const storage = drizzle(sql, { schema });

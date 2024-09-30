@@ -1,7 +1,10 @@
 import { defineConfig } from "drizzle-kit";
 import { config } from 'dotenv';
 
-config({ path: '.env.development.local' });
+const isProduction = process.env.NODE_ENV === 'production';
+if (!isProduction) {
+    config({ path: '.env.development.local' });
+}
 
 export default defineConfig({
     dialect: "postgresql",
