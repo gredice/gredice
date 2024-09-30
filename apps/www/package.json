@@ -7,23 +7,33 @@
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "storage:generate": "drizzle-kit generate",
+    "storage:migrate": "drizzle-kit migrate",
+    "storage:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "drizzle-orm": "0.33.0",
+    "next": "14.2.11",
     "react": "^18",
     "react-dom": "^18",
-    "next": "14.2.11"
+    "@vercel/postgres": "0.10.0",
+    "@vercel/kv": "3.0.0"
   },
   "devDependencies": {
-    "@signalco/ui-primitives": "0.1.7",
+    "@signalco/ui-primitives": "0.1.8",
     "@signalco/ui-themes-minimal": "0.1.3",
-    "typescript": "^5",
+    "@signalco/ui-icons": "0.1.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@vercel/analytics": "1.3.1",
+    "next-axiom": "1.5.1",
+    "dotenv": "16.4.5",
+    "drizzle-kit": "0.24.2",
+    "lucide-react": "0.446.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "@vercel/analytics": "1.3.1",
-    "lucide-react": "0.446.0"
+    "typescript": "^5"
   }
 }
