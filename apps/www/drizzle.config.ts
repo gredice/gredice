@@ -1,7 +1,7 @@
 import { defineConfig } from "drizzle-kit";
 import { config } from 'dotenv';
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.VERCEL_ENV === 'production';
 if (!isProduction) {
     config({ path: '.env.development.local' });
 }
