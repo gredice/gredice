@@ -1,6 +1,6 @@
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { getPlants } from "../../lib/storage/repositories/plantsRepo";
+import { getPlants } from "@gredice/storage";
 import { Card } from "@signalco/ui-primitives/Card";
 import Link from "next/link";
 

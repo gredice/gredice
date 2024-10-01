@@ -26,7 +26,7 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#2e6f40" />
         <meta name="theme-color" content="#2e6f40" />
       </Head>
-      <body className="antialiased">
+      <body className="antialiased bg-background">
         {children}
         <Analytics />
         <AxiomWebVitals />

@@ -8,7 +8,7 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { CSSProperties, Fragment, PropsWithChildren } from "react";
 import { Sun, Droplet, Sprout, Leaf, Ruler, ArrowDownToLine } from "lucide-react"
 import { notFound } from "next/navigation";
-import { getPlant, PlantCalendarEntry, PlantInstruction, type PlantAttributes } from "../../../lib/storage/repositories/plantsRepo";
+import { getPlant, PlantCalendarEntry, PlantInstruction, type PlantAttributes } from "@gredice/storage";
 import Image from "next/image";
 
 function DetailCard({ icon, header, value }: { icon: React.ReactNode; header: string; value: string }) {
@@ -59,7 +59,7 @@ export default async function PlantPage({ params }: { params: { plantId: string 
         return notFound();
 
     return (
-        <div className="bg-[#FDF6F0] py-10">
+        <div className="py-10">
             <Container maxWidth="sm">
                 <Stack spacing={4}>
                     <Row spacing={2} alignItems="start">

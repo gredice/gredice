@@ -3,3 +3,6 @@ import { drizzle } from 'drizzle-orm/vercel-postgres';
 import * as schema from './schema';
 
 export const storage = drizzle(sql, { schema });
+
+export * from './schema';
+export * from './repositories/plantsRepo';
