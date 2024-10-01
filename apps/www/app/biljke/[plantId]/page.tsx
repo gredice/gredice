@@ -25,7 +25,7 @@ function DetailCard({ icon, header, value }: { icon: React.ReactNode; header: st
     )
 }
 
-export function PlantAttributes({ attributes }: { attributes: PlantAttributes }) {
+function PlantAttributes({ attributes }: { attributes: PlantAttributes }) {
     const { light, water, soil, nutrients, seedingDistance, seedingDepth } = attributes;
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -49,6 +49,8 @@ function NoDataPlaceholder({ children }: PropsWithChildren) {
         </Typography>
     )
 }
+
+export const dynamic = 'force-dynamic';
 
 export default async function PlantPage({ params }: { params: { plantId: string } }) {
     const plantId = params.plantId;
@@ -145,7 +147,7 @@ const activityTypes = {
     }
 } as const;
 
-export function YearCalendar({ activities, now }: { activities: PlantCalendarEntry[], now?: Date }) {
+function YearCalendar({ activities, now }: { activities: PlantCalendarEntry[], now?: Date }) {
     const currentDate = now ?? new Date();
     const currentMonth = currentDate.getMonth() // 0-indexed
     const currentMonthProgress = currentDate.getDate() / new Date(currentDate.getFullYear(), currentMonth, 0).getDate();
@@ -211,7 +213,7 @@ export function YearCalendar({ activities, now }: { activities: PlantCalendarEnt
     )
 }
 
-export function PlantingInstructions({ instructions }: { instructions?: PlantInstruction[] }) {
+function PlantingInstructions({ instructions }: { instructions?: PlantInstruction[] }) {
     return (
         <div className="p-4">
             <div className="space-y-4">

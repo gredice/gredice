@@ -4,6 +4,8 @@ import { getPlants } from "../../lib/storage/repositories/plantsRepo";
 import { Card } from "@signalco/ui-primitives/Card";
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic';
+
 export default async function PlantsPage() {
     const plants = await getPlants();
 
