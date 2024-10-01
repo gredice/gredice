@@ -1,4 +1,4 @@
-import { GameScene } from "@/components/game/GameScene";
+import { GameScene } from "../components/game/GameScene";
 import { CSSProperties } from "react";
 
 export default function Home() {

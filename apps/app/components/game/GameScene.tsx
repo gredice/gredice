@@ -13,6 +13,9 @@ import { PointerEvent, PropsWithChildren, useEffect, useMemo, useRef } from 'rea
 import { Handler, useDrag } from '@use-gesture/react';
 import { useSpring, animated } from '@react-spring/three';
 import { create } from 'zustand';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Card } from '@signalco/ui-primitives/Card';
+import { Stack } from '@signalco/ui-primitives/Stack';
 
 const models = {
     GameAssets: { url: '/assets/models/GameAssets.glb' }
@@ -670,22 +673,14 @@ export function GameScene() {
             </div>
             <div className='absolute pointer-events-none select-none h-full w-full [box-shadow:inset_0px_0px_8px_8px_var(--section-bg)]' />
             { /* Block picker */}
-            <div className='absolute right-4 top-4 bg-white rounded-lg'>
-                <ul>
-                    <li>
-                        <button onClick={() => handlePickBlock(entities.BlockGround.name)}>Zemlja</button>
-                    </li>
-                    <li>
-                        <button onClick={() => handlePickBlock(entities.BlockGrass.name)}>Trava</button>
-                    </li>
-                    <li>
-                        <button onClick={() => handlePickBlock(entities.RaisedBed.name)}>Gredica</button>
-                    </li>
-                    <li>
-                        <button onClick={() => handlePickBlock(entities.Shade.name)}>Shade</button>
-                    </li>
-                </ul>
-            </div>
+            <Card className='absolute right-4 top-4'>
+                <Stack>
+                    <Button onClick={() => handlePickBlock(entities.BlockGround.name)}>Zemlja</Button>
+                    <Button onClick={() => handlePickBlock(entities.BlockGrass.name)}>Trava</Button>
+                    <Button onClick={() => handlePickBlock(entities.RaisedBed.name)}>Gredica</Button>
+                    <Button onClick={() => handlePickBlock(entities.Shade.name)}>Shade</Button>
+                </Stack>
+            </Card>
         </div>
     );
 }
