@@ -15,7 +15,6 @@ export default async function PlantsPage() {
                     <Link key={plant.id} href={`/biljke/${plant.id}`} passHref>
                         <Card key={plant.id}>
                             <Typography>{plant.name}</Typography>
-                            {/* <img src={plant.image} alt={plant.name} /> */}
                         </Card>
                     </Link>
                 ))}
