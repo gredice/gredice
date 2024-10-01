@@ -1,10 +1,4 @@
 import { defineConfig } from "drizzle-kit";
-import { config } from 'dotenv';
-
-const isProduction = process.env.VERCEL_ENV === 'production';
-if (!isProduction) {
-    config({ path: '.env.development.local' });
-}
 
 export default defineConfig({
     dialect: "postgresql",
