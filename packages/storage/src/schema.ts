@@ -5,8 +5,10 @@ export const attributeDefinitions = pgTable('attribute_definitions', {
     id: serial('id').primaryKey(),
     category: text('category').notNull(),
     name: text('name').notNull(),
+    label: text('label'),
     entityType: text('entity_type').notNull(),
     dataType: text('data_type').notNull(),
+    multiple: boolean('multiple').notNull().default(false),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
 });
@@ -26,6 +28,9 @@ export const attributeValues = pgTable('attribute_values', {
     isDeleted: boolean('is_deleted').notNull().default(false),
 });
 
+export type InsertAttributeValue = typeof attributeValues.$inferInsert;
+export type SelectAttributeValue = typeof attributeValues.$inferSelect;
+
 export const attributeValuesDefinitionRelation = relations(attributeValues, ({ one }) => ({
     definition: one(attributeDefinitions, {
         fields: [attributeValues.attributeDefinitionId],
@@ -36,7 +41,6 @@ export const attributeValuesDefinitionRelation = relations(attributeValues, ({ o
 
 export const plants = pgTable('plants', {
     id: serial('id').primaryKey(),
-    name: text('name').notNull(),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
 });

@@ -1,14 +1,15 @@
 import { and, eq } from 'drizzle-orm';
 import { storage } from '../';
 import { attributeValues, plants } from '../schema';
+import { orderBy } from '@signalco/js';
 
 export type PlantAttributes = {
-    light: number
-    water: string
-    soil: string
-    nutrients: string
-    seedingDistance: number
-    seedingDepth: number
+    light?: number | null
+    water?: string | null
+    soil?: string | null
+    nutrients?: string | null
+    seedingDistance?: number | null
+    seedingDepth?: number | null
 };
 
 export type PlantCalendarEntry = {
@@ -20,7 +21,7 @@ export type PlantCalendarEntry = {
 export type PlantInstruction = {
     id: number
     action: string
-    icon: React.ReactNode
+    icon: unknown
     frequency?: string
     info: string
     relativeDays: number
@@ -32,15 +33,24 @@ export type PlantData = {
     name: string,
     // plantFamily?: PlantFamily,
     information: {
-        description?: string,
-        origin?: string,
-        latinName?: string,
-        tips?: { header: string, content: string }[]
+        description?: string | null,
+        origin?: string | null,
+        latinName?: string | null,
+        soilPreparation?: string | null,
+        sowing?: string | null,
+        planting?: string | null,
+        flowering?: string | null,
+        maintenance?: string | null,
+        growth?: string | null,
+        harvest?: string | null,
+        storage?: string | null,
+        watering?: string | null,
+        tips?: { header: string, content: string }[] | null
     },
     images: { url: string }[],
     attributes?: PlantAttributes,
-    calendar?: PlantCalendarEntry[],
-    instructions?: PlantInstruction[],
+    calendar?: PlantCalendarEntry[] | null,
+    instructions?: PlantInstruction[] | null,
     // companions?: number[],
     // antagonists?: number[],
     // diseases?: number[],
@@ -49,16 +59,57 @@ export type PlantData = {
 
 type PlantInfo = {
     id: number
-    name: string
+    name: string,
+    imageUrl?: string | null
 };
 
-export function getPlants(): Promise<PlantInfo[]> {
-    return storage
+export async function getPlants(): Promise<PlantInfo[]> {
+    const allPlantsPromise = storage
         .select({
-            id: plants.id,
-            name: plants.name
+            id: plants.id
         })
         .from(plants);
+    const allPlantsAttributesPromise = storage.query.attributeValues.findMany({
+        where: and(eq(attributeValues.entityType, "plant"), eq(attributeValues.isDeleted, false)),
+        with: {
+            definition: true
+        }
+    });
+    const [allPlants, allPlantsAttributes] = await Promise.all([allPlantsPromise, allPlantsAttributesPromise]);
+    const plantNames = allPlantsAttributes.filter(a => a.definition.category === "information" && a.definition.name === "name");
+    const plantImages = allPlantsAttributes.filter(a => a.definition.category === "image");
+    return orderBy(allPlants.map(plant => {
+        const nameAttributeValueValue = plantNames.find(n => n.entityId === plant.id)?.value;
+        const imageAttributeValueValue = plantImages.find(i => i.entityId === plant.id)?.value;
+        const imageMetadata = imageAttributeValueValue ? JSON.parse(imageAttributeValueValue) as { url?: string; } : null;
+
+        return ({
+            id: plant.id,
+            name: nameAttributeValueValue || "Nepoznato",
+            imageUrl: imageMetadata?.url
+        });
+    }), (a, b) => a.name.localeCompare(b.name));
+}
+
+export async function getPlantInternal(id: number) {
+    const plantPromise = storage.query.plants.findFirst({
+        where: eq(plants.id, id)
+    });
+    const attributesPromise = storage.query.attributeValues.findMany({
+        where: and(eq(attributeValues.entityType, "plant"), eq(attributeValues.entityId, id), eq(attributeValues.isDeleted, false)),
+        with: {
+            definition: true
+        }
+    });
+    const [plant, attributes] = await Promise.all([plantPromise, attributesPromise]);
+    if (!plant) {
+        return null;
+    }
+
+    return {
+        ...plant,
+        attributes
+    };
 }
 
 export async function getPlant(id: number): Promise<PlantData | null> {
@@ -66,45 +117,60 @@ export async function getPlant(id: number): Promise<PlantData | null> {
         where: eq(plants.id, id)
     });
     const attributesPromise = storage.query.attributeValues.findMany({
-        where: and(eq(attributeValues.entityType, "plant"), eq(attributeValues.entityId, id)),
+        where: and(eq(attributeValues.entityType, "plant"), eq(attributeValues.entityId, id), eq(attributeValues.isDeleted, false)),
         with: {
             definition: true
         }
     });
     const [plant, attributes] = await Promise.all([plantPromise, attributesPromise]);
+    if (!plant) {
+        return null;
+    }
 
     // Extract attributes
+    const name = attributes.find(a => a.definition.category === "information" && a.definition.name === "name")?.value || "Nepoznato";
     const verified = attributes.some(a => a.definition.category === "information" && a.definition.name === "verified" && a.value?.toLowerCase() === "true");
     const images = attributes.filter(a => a.definition.category === "image");
     const information = attributes.filter(a => a.definition.category === "information");
+    const informationTips = information.filter(i => i.definition.name === 'tip' && (i.value?.length ?? 0) > 0).map(t => {
+        const tipMetadata = t.value ? JSON.parse(t.value) as { header?: string, content?: string } : null;
+        return ({
+            header: tipMetadata?.header || "",
+            content: tipMetadata?.content || "",
+        });
+    });
     const plantAttributes = attributes.filter(a => a.definition.category === "attributes");
     const calendar = attributes.filter(a => a.definition.category === "calendar");
 
     return {
         ...plant,
+        name,
         verified,
         images: images.map(i => {
-            const imageMetadata = JSON.parse(i.value);
+            const imageMetadata = i.value ? JSON.parse(i.value) as { url?: string } : null;
             return ({
-                url: imageMetadata.url,
+                url: imageMetadata?.url || "",
             });
         }),
         information: {
             description: information.find(i => i.definition.name === "description")?.value,
             origin: information.find(i => i.definition.name === "origin")?.value,
             latinName: information.find(i => i.definition.name === "latinName")?.value,
-            tips: information.filter(i => i.definition.name === 'tip').map(t => {
-                const tipMetadata = JSON.parse(t.value);
-                return ({
-                    header: tipMetadata.header,
-                    content: tipMetadata.content,
-                });
-            }),
+            soilPreparation: information.find(i => i.definition.name === "soilPreparation")?.value,
+            sowing: information.find(i => i.definition.name === "sowing")?.value,
+            planting: information.find(i => i.definition.name === "planting")?.value,
+            flowering: information.find(i => i.definition.name === "flowering")?.value,
+            maintenance: information.find(i => i.definition.name === "maintenance")?.value,
+            growth: information.find(i => i.definition.name === "growth")?.value,
+            harvest: information.find(i => i.definition.name === "harvest")?.value,
+            storage: information.find(i => i.definition.name === "storage")?.value,
+            watering: information.find(i => i.definition.name === "watering")?.value,
+            tips: informationTips,
         },
-        calendar: calendar.map(c => {
-            const calendarMetadata = JSON.parse(c.value);
-            const metadataStart = calendarMetadata.start;
-            const metadataEnd = calendarMetadata.end;
+        calendar: calendar.filter(c => (c?.value?.length ?? 0) > 0).map(c => {
+            const calendarMetadata = c.value ? JSON.parse(c.value) as { start?: number, end?: number } : null;
+            const metadataStart = calendarMetadata?.start || 0;
+            const metadataEnd = calendarMetadata?.end || 0;
             const start = typeof metadataStart === "number"
                 ? metadataStart
                 : 0;
@@ -119,12 +185,12 @@ export async function getPlant(id: number): Promise<PlantData | null> {
             });
         }),
         attributes: {
-            light: parseFloat(plantAttributes.find(a => a.definition.name === "light")?.value),
+            light: parseFloat(plantAttributes.find(a => a.definition.name === "light")?.value ?? '0'),
             water: plantAttributes.find(a => a.definition.name === "water")?.value,
             soil: plantAttributes.find(a => a.definition.name === "soil")?.value,
             nutrients: plantAttributes.find(a => a.definition.name === "nutrients")?.value,
-            seedingDistance: parseFloat(plantAttributes.find(a => a.definition.name === "seedingDistance")?.value),
-            seedingDepth: parseFloat(plantAttributes.find(a => a.definition.name === "seedingDepth")?.value),
+            seedingDistance: parseFloat(plantAttributes.find(a => a.definition.name === "seedingDistance")?.value ?? '0'),
+            seedingDepth: parseFloat(plantAttributes.find(a => a.definition.name === "seedingDepth")?.value ?? '0'),
         }
     };
 }

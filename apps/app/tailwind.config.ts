@@ -1,5 +1,6 @@
 import type { Config } from "tailwindcss";
-import { config } from '@signalco/ui-themes-minimal/config';
+import { config } from '@signalco/ui-themes-minimal-app/config';
+import tailwindcssTypography from '@tailwindcss/typography';
 
 const tailwindConfig: Config = {
   content: [
@@ -8,6 +9,8 @@ const tailwindConfig: Config = {
     "./node_modules/@signalco/ui-primitives/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   presets: [config],
-  plugins: [],
+  plugins: [
+    tailwindcssTypography
+  ],
 };
 export default tailwindConfig;
