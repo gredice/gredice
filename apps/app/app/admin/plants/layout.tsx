@@ -11,6 +11,8 @@ import { BookA } from "lucide-react";
 import Link from "next/link";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 
+export const dynamic = 'force-dynamic';
+
 async function createPlant() {
     'use server';
 
