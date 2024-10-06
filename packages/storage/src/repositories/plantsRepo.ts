@@ -168,15 +168,13 @@ export async function getPlant(id: number): Promise<PlantData | null> {
             tips: informationTips,
         },
         calendar: calendar.filter(c => (c?.value?.length ?? 0) > 0).map(c => {
-            const calendarMetadata = c.value ? JSON.parse(c.value) as { start?: number, end?: number } : null;
-            const metadataStart = calendarMetadata?.start || 0;
-            const metadataEnd = calendarMetadata?.end || 0;
-            const start = typeof metadataStart === "number"
-                ? metadataStart
-                : 0;
-            const end = typeof metadataEnd === "number"
-                ? metadataEnd
-                : 12;
+            const calendarMetadata = c.value ? JSON.parse(c.value) as { start?: number | string, end?: number | string } : null;
+            const start = typeof calendarMetadata?.start === 'string'
+                ? parseFloat(calendarMetadata.start)
+                : (calendarMetadata?.start || 0);
+            const end = typeof calendarMetadata?.end === 'string'
+                ? parseFloat(calendarMetadata.end)
+                : (calendarMetadata?.end || 0);
 
             return ({
                 name: c.definition.name,

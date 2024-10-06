@@ -2,6 +2,7 @@ import { getAttributeDefinitions, getPlants } from "@gredice/storage";
 import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
+import { Container } from "@signalco/ui-primitives/Container";
 
 function FactCard({ header, value, href }: { header: string, value: string | number, href?: string }) {
     return (
@@ -21,9 +22,11 @@ export default async function AdminPage() {
     const attributeDefinitions = await getAttributeDefinitions();
 
     return (
-        <div className="p-4 grid grid-cols-4 gap-4">
+        <Container>
+            <div className="py-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             <FactCard header="Biljaka" value={plants.length} href={'/admin/plants'} />
             <FactCard header="Definicija atributa" value={attributeDefinitions.length} href={'/admin/attributes'} />
         </div>
+        </Container>
     );
 }

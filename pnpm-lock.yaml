@@ -48,6 +48,9 @@ importers:
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@signalco/ui':
+        specifier: 0.1.0
+        version: 0.1.0(@signalco/ui-primitives@0.1.8(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@signalco/ui-icons':
         specifier: 0.1.0
         version: 0.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1509,6 +1512,13 @@ packages:
     peerDependencies:
       tailwindcss: '>=3'
       tailwindcss-animate: '>=1'
+
+  '@signalco/ui@0.1.0':
+    resolution: {integrity: sha512-2e7ULgB8scV3NrL55Wo8qxENuTWS5uCGAPmQ4AxG9CRdMdguIX6YpnHdrwSf30uHSJNncvPsh54rS3ewpJ4Icw==}
+    peerDependencies:
+      '@signalco/ui-primitives': '0'
+      react: '18'
+      react-dom: '18'
 
   '@stitches/core@1.2.8':
     resolution: {integrity: sha512-Gfkvwk9o9kE9r9XNBmJRfV8zONvXThnm1tcuojL04Uy5uRyqg93DC83lDebl0rocZCfKSjUv+fWYtMQmEDJldg==}
@@ -4561,6 +4571,12 @@ snapshots:
     dependencies:
       tailwindcss: 3.4.13
       tailwindcss-animate: 1.0.7(tailwindcss@3.4.13)
+
+  '@signalco/ui@0.1.0(@signalco/ui-primitives@0.1.8(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@signalco/ui-primitives': 0.1.8(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
 
   '@stitches/core@1.2.8': {}
 

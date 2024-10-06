@@ -22,6 +22,7 @@
     "@react-three/fiber": "8.17.9",
     "@signalco/hooks": "0.1.1",
     "@signalco/js": "0.1.0",
+    "@signalco/ui": "0.1.0",
     "@signalco/ui-icons": "0.1.0",
     "@signalco/ui-primitives": "0.1.8",
     "@signalco/ui-themes-minimal-app": "0.1.3",

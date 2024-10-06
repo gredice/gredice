@@ -9,7 +9,7 @@ export default async function AttributesPage() {
     const attributes = await getAttributeDefinitions();
 
     return (
-        <div className="p-2">
+        <div className="p-4">
             <Card>
                 <CardHeader>
                     <CardTitle>Attributes</CardTitle>
