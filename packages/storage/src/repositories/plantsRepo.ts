@@ -68,7 +68,8 @@ export async function getPlants(): Promise<PlantInfo[]> {
         .select({
             id: plants.id
         })
-        .from(plants);
+        .from(plants)
+        .where(eq(plants.isDeleted, false));
     const allPlantsAttributesPromise = storage.query.attributeValues.findMany({
         where: and(eq(attributeValues.entityType, "plant"), eq(attributeValues.isDeleted, false)),
         with: {
@@ -92,8 +93,11 @@ export async function getPlants(): Promise<PlantInfo[]> {
 }
 
 export async function getPlantInternal(id: number) {
+    if (!id) {
+        return null;
+    }
     const plantPromise = storage.query.plants.findFirst({
-        where: eq(plants.id, id)
+        where: and(eq(plants.id, id), eq(plants.isDeleted, false))
     });
     const attributesPromise = storage.query.attributeValues.findMany({
         where: and(eq(attributeValues.entityType, "plant"), eq(attributeValues.entityId, id), eq(attributeValues.isDeleted, false)),
@@ -114,7 +118,7 @@ export async function getPlantInternal(id: number) {
 
 export async function getPlant(id: number): Promise<PlantData | null> {
     const plantPromise = storage.query.plants.findFirst({
-        where: eq(plants.id, id)
+        where: and(eq(plants.id, id), eq(plants.isDeleted, false))
     });
     const attributesPromise = storage.query.attributeValues.findMany({
         where: and(eq(attributeValues.entityType, "plant"), eq(attributeValues.entityId, id), eq(attributeValues.isDeleted, false)),
@@ -199,4 +203,12 @@ export async function createPlant(): Promise<number> {
         .values({})
         .returning({ id: plants.id });
     return result[0].id;
+}
+
+export async function deletePlant(entityId: number): Promise<void> {
+    await storage
+        .update(plants)
+        .set({ isDeleted: true })
+        .where(eq(plants.id, entityId));
+    console.info('Deleted plant', entityId);
 }

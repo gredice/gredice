@@ -5,8 +5,11 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Add } from "@signalco/ui-icons";
 import { createPlant as storageCreatePlant } from "@gredice/storage";
 import { revalidatePath } from "next/cache";
-import { CreateEntityButton } from "./CreateEntityButton";
+import { ServerActionIconButton } from "./ServerActionIconButton";
 import { redirect } from "next/navigation";
+import { BookA } from "lucide-react";
+import Link from "next/link";
+import { IconButton } from "@signalco/ui-primitives/IconButton";
 
 async function createPlant() {
     'use server';
@@ -19,16 +22,23 @@ async function createPlant() {
 export default function PlantsLayout({ children }: { children: ReactNode }) {
     return (
         <div className='grid grid-cols-3 gap-4 p-4'>
-            <Card className="h-fit max-h-screen sticky top-4">
+            <Card className="h-fit max-h-screen sticky top-20">
                 <CardHeader>
                     <Row spacing={1} justifyContent="space-between">
-                    <CardTitle>Biljke</CardTitle>
-                        <CreateEntityButton
+                        <CardTitle>Biljke</CardTitle>
+                        <Row>
+                            <Link href={`/admin/plants/attribute-definitions`}>
+                                <IconButton variant="plain" title="Definicija atributa">
+                                    <BookA />
+                                </IconButton>
+                            </Link>
+                            <ServerActionIconButton
                             variant="plain"
                             title="Dodaj biljku"
                             onClick={createPlant}>
                             <Add />
-                        </CreateEntityButton>
+                            </ServerActionIconButton>
+                        </Row>
                     </Row>
                 </CardHeader>
                 <CardOverflow>

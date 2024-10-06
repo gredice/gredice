@@ -1,10 +1,11 @@
 import { eq } from 'drizzle-orm';
-import { attributeDefinitions, SelectAttributeDefinition, storage } from "..";
+import { attributeDefinitionCategories, attributeDefinitions, SelectAttributeDefinition, SelectAttributeDefinitionCategory, storage } from "..";
 
 export function getAttributeDefinitions(entityType?: string): Promise<SelectAttributeDefinition[]> {
     const query = storage
         .select()
-        .from(attributeDefinitions);
+        .from(attributeDefinitions)
+        .orderBy(attributeDefinitions.category, attributeDefinitions.label);
 
     if (entityType) {
         return query.where(eq(attributeDefinitions.entityType, entityType));
@@ -13,13 +14,12 @@ export function getAttributeDefinitions(entityType?: string): Promise<SelectAttr
     return query;
 }
 
-export async function getAttributeDefinitionCategories(entityType?: string): Promise<string[]> {
+export async function getAttributeDefinitionCategories(entityType?: string): Promise<SelectAttributeDefinitionCategory[]> {
     const query = storage
-        .selectDistinctOn([attributeDefinitions.category], { category: attributeDefinitions.category })
-        .from(attributeDefinitions);
+        .select()
+        .from(attributeDefinitionCategories);
 
-    const queryResult = await (entityType
-        ? query.where(eq(attributeDefinitions.entityType, entityType))
-        : query);
-    return queryResult.map(c => c.category);
+    return entityType
+        ? query.where(eq(attributeDefinitionCategories.entityType, entityType))
+        : query;
 }

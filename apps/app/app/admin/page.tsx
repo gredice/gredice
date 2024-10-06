@@ -4,6 +4,8 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Container } from "@signalco/ui-primitives/Container";
 
+export const dynamic = 'force-dynamic';
+
 function FactCard({ header, value, href }: { header: string, value: string | number, href?: string }) {
     return (
         <Card href={href}>

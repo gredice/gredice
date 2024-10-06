@@ -1,0 +1,1 @@
+ALTER TABLE "attribute_definition_categories" ALTER COLUMN "order" SET DATA TYPE text;

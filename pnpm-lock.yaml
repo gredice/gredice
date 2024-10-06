@@ -50,13 +50,13 @@ importers:
         version: 0.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@signalco/ui':
         specifier: 0.1.0
-        version: 0.1.0(@signalco/ui-primitives@0.1.8(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 0.1.0(@signalco/ui-primitives@0.1.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@signalco/ui-icons':
         specifier: 0.1.0
         version: 0.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@signalco/ui-primitives':
-        specifier: 0.1.8
-        version: 0.1.8(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 0.1.9
+        version: 0.1.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@signalco/ui-themes-minimal-app':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.13))(tailwindcss@3.4.13)
@@ -1497,6 +1497,12 @@ packages:
 
   '@signalco/ui-primitives@0.1.8':
     resolution: {integrity: sha512-ABLknZlUs+n2tH6+vvOL8f/KjRLNhO5XdTCEuoavawmcrC6vxK1g8fxXpsMH5CbQe75MCcVVM7fE2LD8CDjoeQ==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+
+  '@signalco/ui-primitives@0.1.9':
+    resolution: {integrity: sha512-rnAPiP1UnKD+pUQsnFoNohIqr331yDkzdB3hxMkYunjYnV9VhpFDHaIkq7YodzuZcgN080oEkzxH86AqcRy+vg==}
     peerDependencies:
       react: '>=18'
       react-dom: '>=18'
@@ -4562,6 +4568,11 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
+  '@signalco/ui-primitives@0.1.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+
   '@signalco/ui-themes-minimal-app@0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.13))(tailwindcss@3.4.13)':
     dependencies:
       tailwindcss: 3.4.13
@@ -4572,9 +4583,9 @@ snapshots:
       tailwindcss: 3.4.13
       tailwindcss-animate: 1.0.7(tailwindcss@3.4.13)
 
-  '@signalco/ui@0.1.0(@signalco/ui-primitives@0.1.8(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@signalco/ui@0.1.0(@signalco/ui-primitives@0.1.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@signalco/ui-primitives': 0.1.8(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@signalco/ui-primitives': 0.1.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 

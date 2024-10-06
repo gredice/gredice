@@ -10,7 +10,6 @@ export default function AdminLayout({ children }: PropsWithChildren) {
                 links={[
                     { href: '/admin', text: 'Dashboard' },
                     { href: '/admin/plants', text: 'Biljke' },
-                    { href: '/admin/attribute-definitions', text: 'Definicije atributa' },
                 ]} />
             <main className="mt-16">
                 {children}

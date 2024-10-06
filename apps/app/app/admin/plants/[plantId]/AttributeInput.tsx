@@ -1,3 +1,5 @@
+'use client';
+
 import { SelectAttributeDefinition, SelectAttributeValue } from '@gredice/storage';
 import { Input } from '@signalco/ui-primitives/Input';
 import { useState } from 'react';

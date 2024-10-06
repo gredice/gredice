@@ -1,17 +1,38 @@
 import { relations } from 'drizzle-orm';
 import { integer, pgTable, serial, text, timestamp, boolean } from 'drizzle-orm/pg-core';
 
+export const attributeDefinitionCategories = pgTable('attribute_definition_categories', {
+    id: serial('id').primaryKey(),
+    name: text('name').notNull(),
+    label: text('label').notNull(),
+    entityType: text('entity_type').notNull(),
+    order: text('order'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
+});
+
+export type InsertAttributeDefinitionCategory = typeof attributeDefinitionCategories.$inferInsert;
+export type SelectAttributeDefinitionCategory = typeof attributeDefinitionCategories.$inferSelect;
+
 export const attributeDefinitions = pgTable('attribute_definitions', {
     id: serial('id').primaryKey(),
     category: text('category').notNull(),
     name: text('name').notNull(),
-    label: text('label'),
+    label: text('label').notNull(),
     entityType: text('entity_type').notNull(),
     dataType: text('data_type').notNull(),
     multiple: boolean('multiple').notNull().default(false),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
 });
+
+export const attributeDefinitionCategoriesRelation = relations(attributeDefinitions, ({ one }) => ({
+    category: one(attributeDefinitionCategories, {
+        fields: [attributeDefinitions.category],
+        references: [attributeDefinitionCategories.name],
+        relationName: 'category',
+    }),
+}));
 
 export type InsertAttributeDefinition = typeof attributeDefinitions.$inferInsert;
 export type SelectAttributeDefinition = typeof attributeDefinitions.$inferSelect;
@@ -43,6 +64,7 @@ export const plants = pgTable('plants', {
     id: serial('id').primaryKey(),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
+    isDeleted: boolean('is_deleted').notNull().default(false),
 });
 
 export type InsertPlant = typeof plants.$inferInsert;
