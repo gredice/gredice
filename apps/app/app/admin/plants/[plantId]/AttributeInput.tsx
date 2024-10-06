@@ -1,8 +1,8 @@
 import { SelectAttributeDefinition, SelectAttributeValue } from '@gredice/storage';
 import { Input } from '@signalco/ui-primitives/Input';
 import { useState } from 'react';
-import { Delete } from '@signalco/ui-icons';
-import { Minus, Plus } from 'lucide-react';
+import { Add, Delete } from '@signalco/ui-icons';
+import { Minus } from 'lucide-react';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Skeleton } from '@signalco/ui-primitives/Skeleton';
@@ -96,7 +96,7 @@ function NumberInput({ value, onChange }: AttributeInputProps) {
                 className='rounded-l-none h-auto border-l-0'
                 variant='outlined'
                 onClick={() => handleIncrementDecrement(true)}>
-                <Plus className='size-4' />
+                <Add className='size-4' />
             </Button>
         </Row>
     )

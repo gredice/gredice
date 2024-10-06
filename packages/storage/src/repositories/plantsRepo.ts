@@ -192,3 +192,11 @@ export async function getPlant(id: number): Promise<PlantData | null> {
         }
     };
 }
+
+export async function createPlant(): Promise<number> {
+    const result = await storage
+        .insert(plants)
+        .values({})
+        .returning({ id: plants.id });
+    return result[0].id;
+}
