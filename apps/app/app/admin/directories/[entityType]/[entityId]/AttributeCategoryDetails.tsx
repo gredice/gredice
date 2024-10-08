@@ -7,10 +7,10 @@ import { AttributeInput } from './AttributeInput';
 import { Button } from '@signalco/ui-primitives/Button';
 
 export type AttributeTabsProps = {
-    entity: { id: number, attributes: SelectAttributeValue[] },
+    entity: { id: number, entityTypeName: string, attributes: SelectAttributeValue[] },
     category: SelectAttributeDefinitionCategory,
     attributeDefinitions: SelectAttributeDefinition[],
-    onValueSave: (entityId: number, attributeDefinition: SelectAttributeDefinition, attributeValueId?: number, newValue?: string | null) => Promise<void>,
+    onValueSave: (entityType: string, entityId: number, attributeDefinition: SelectAttributeDefinition, attributeValueId?: number, newValue?: string | null) => Promise<void>,
     onValueDelete: (attributeValue: SelectAttributeValue) => Promise<void>,
 };
 
@@ -29,6 +29,7 @@ export function AttributeCategoryDetails({ entity, category, attributeDefinition
                                     entity.attributes.filter(a => a.attributeDefinitionId === attributeDefinition.id).map(attributeValue => (
                                         <AttributeInput
                                             key={attributeValue.id}
+                                            entityType={entity.entityTypeName}
                                             entityId={entity.id}
                                             attributeDefinition={attributeDefinition}
                                             attributeValue={attributeValue}
@@ -38,13 +39,14 @@ export function AttributeCategoryDetails({ entity, category, attributeDefinition
                                 ) : (
                                     <AttributeInput
                                         entityId={entity.id}
+                                        entityType={entity.entityTypeName}
                                         attributeDefinition={attributeDefinition}
                                         attributeValue={entity.attributes.find(a => a.attributeDefinitionId === attributeDefinition.id)}
                                         upsertAttributeValue={onValueSave}
                                         deleteAttributeValue={onValueDelete} />
                                 )}
                                 {attributeDefinition.multiple && (
-                                    <Button onClick={() => onValueSave(entity.id, attributeDefinition)}>
+                                    <Button onClick={() => onValueSave(entity.entityTypeName, entity.id, attributeDefinition)}>
                                         Dodaj
                                     </Button>
                                 )}

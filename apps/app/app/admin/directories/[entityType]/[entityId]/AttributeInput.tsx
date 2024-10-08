@@ -206,16 +206,18 @@ function JsonInput({ value, onChange, schema }: AttributeInputProps) {
 }
 
 export function AttributeInput({
+    entityType,
     entityId,
     attributeDefinition,
     attributeValue,
     upsertAttributeValue,
     deleteAttributeValue
 }: {
+    entityType: string,
     entityId: number,
     attributeDefinition: SelectAttributeDefinition,
     attributeValue: SelectAttributeValue | undefined | null,
-    upsertAttributeValue: (entityId: number, attributeDefinition: SelectAttributeDefinition, attributeValueId?: number, newValue?: string | null) => Promise<void>
+    upsertAttributeValue: (entityType: string, entityId: number, attributeDefinition: SelectAttributeDefinition, attributeValueId?: number, newValue?: string | null) => Promise<void>
     deleteAttributeValue: (attributeValue: SelectAttributeValue) => Promise<void>
 }) {
     const handleValueChange = async (value: string | null) => {
@@ -226,7 +228,7 @@ export function AttributeInput({
         }
 
         try {
-            await upsertAttributeValue(entityId, attributeDefinition, attributeValue?.id, value);
+            await upsertAttributeValue(entityType, entityId, attributeDefinition, attributeValue?.id, value);
         } catch {
             // TODO: Display error notification
         }

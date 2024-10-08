@@ -1,14 +1,15 @@
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { getPlants } from "@gredice/storage";
+import { getEntitiesFormatted } from "@gredice/storage";
 import { Container } from "@signalco/ui-primitives/Container";
 import { PlantsFilter } from "./PlantsFilter";
 import { PlantsGallery } from "./PlantsGallery";
+import { PlantData } from "./[plantId]/page";
 
 export const dynamic = 'force-dynamic';
 
 export default async function PlantsPage() {
-    const plants = await getPlants();
+    const entities = await getEntitiesFormatted('plant') as unknown as PlantData[];
 
     return (
         <Container>
@@ -20,7 +21,7 @@ export default async function PlantsPage() {
                     </Stack>
                     <PlantsFilter />
                 </div>
-                <PlantsGallery plants={plants} />
+                <PlantsGallery plants={entities} />
             </Stack>
         </Container>
     );

@@ -2,16 +2,16 @@
 
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { getPlants } from "@gredice/storage";
 import { Card } from "@signalco/ui-primitives/Card";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
+import { PlantData } from "./[plantId]/page";
 
-export function PlantsGallery({ plants }: { plants: Awaited<ReturnType<typeof getPlants>> }) {
+export function PlantsGallery({ plants }: { plants: PlantData[] }) {
     const [search] = useSearchParam('pretraga');
 
-    const filteredPlants = plants.filter(plant => !search || plant.name.toLowerCase().includes(search.toLowerCase()));
+    const filteredPlants = plants.filter(plant => !search || plant.information.name.toLowerCase().includes(search.toLowerCase()));
 
     return (
         <div className="flex gap-4 flex-wrap">
@@ -24,12 +24,12 @@ export function PlantsGallery({ plants }: { plants: Awaited<ReturnType<typeof ge
                         <Stack spacing={2} alignItems="center">
                             <div className="p-1">
                                 <Image
-                                    src={plant.imageUrl}
-                                    alt={plant.name}
+                                    src={plant.image?.cover?.url}
+                                    alt={plant.information.name}
                                     width={144}
                                     height={144} />
                             </div>
-                            <Typography level="h5" center className="line-clamp-2">{plant.name}</Typography>
+                            <Typography level="h5" center className="line-clamp-2">{plant.information.name}</Typography>
                         </Stack>
                     </Card>
                 </Link>

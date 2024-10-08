@@ -9,7 +9,7 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { CSSProperties, Fragment, PropsWithChildren, ReactNode } from "react";
 import { Sun, Droplet, Sprout, Leaf, Ruler, ArrowDownToLine, BadgeCheck, Info } from "lucide-react"
 import { notFound } from "next/navigation";
-import { getPlant, PlantCalendarEntry, PlantInstruction, type PlantAttributes } from "@gredice/storage";
+import { getEntityFormatted } from "@gredice/storage";
 import Image from "next/image";
 import Markdown from 'react-markdown'
 
@@ -28,18 +28,17 @@ function DetailCard({ icon, header, value }: { icon: React.ReactNode; header: st
 }
 
 function PlantAttributes({ attributes }: { attributes: PlantAttributes }) {
-    const { light, water, soil, nutrients, seedingDistance, seedingDepth } = attributes;
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <DetailCard
                 icon={<Sun className="w-6 h-6" />}
                 header="Svijetlost"
-                value={light == null || Number.isNaN(light) ? '-' : (light > 0.3 ? 'Polu-sjena' : (light > 0.7 ? 'Sunce' : 'Hlad'))} />
-            <DetailCard icon={<Droplet className="w-6 h-6" />} header="Voda" value={water} />
-            <DetailCard icon={<Sprout className="w-6 h-6" />} header="Zemlja" value={soil} />
-            <DetailCard icon={<Leaf className="w-6 h-6" />} header="Nutrijenti" value={nutrients} />
-            <DetailCard icon={<Ruler className="w-6 h-6" />} header="Razmak sijanja/sadnje" value={`${seedingDistance || '-'} cm`} />
-            <DetailCard icon={<ArrowDownToLine className="w-6 h-6" />} header="Dubina sijanja" value={`${seedingDepth || '-'} cm`} />
+                value={attributes?.light == null || Number.isNaN(attributes?.light) ? '-' : (attributes?.light > 0.3 ? 'Polu-sjena' : (attributes?.light > 0.7 ? 'Sunce' : 'Hlad'))} />
+            <DetailCard icon={<Droplet className="w-6 h-6" />} header="Voda" value={attributes?.water} />
+            <DetailCard icon={<Sprout className="w-6 h-6" />} header="Zemlja" value={attributes?.soil} />
+            <DetailCard icon={<Leaf className="w-6 h-6" />} header="Nutrijenti" value={attributes?.nutrients} />
+            <DetailCard icon={<Ruler className="w-6 h-6" />} header="Razmak sijanja/sadnje" value={`${attributes?.seedingDistance || '-'} cm`} />
+            <DetailCard icon={<ArrowDownToLine className="w-6 h-6" />} header="Dubina sijanja" value={`${attributes?.seedingDepth || '-'} cm`} />
         </div>
     )
 }
@@ -66,11 +65,63 @@ function InformationSection({ icon, header, content }: { icon: ReactNode, header
     )
 }
 
+export type PlantAttributes = {
+    light?: number | null
+    water?: string | null
+    soil?: string | null
+    nutrients?: string | null
+    seedingDistance?: number | null
+    seedingDepth?: number | null
+};
+
+export type PlantInstruction = {
+    id: number
+    action: string
+    icon: unknown
+    frequency?: string
+    info: string
+    relativeDays: number
+};
+
+export type PlantData = {
+    id: number,
+    // plantFamily?: PlantFamily,
+    information: {
+        name: string,
+        verified: boolean,
+        description?: string | null,
+        origin?: string | null,
+        latinName?: string | null,
+        soilPreparation?: string | null,
+        sowing?: string | null,
+        planting?: string | null,
+        flowering?: string | null,
+        maintenance?: string | null,
+        growth?: string | null,
+        harvest?: string | null,
+        storage?: string | null,
+        watering?: string | null,
+        tip?: { header: string, content: string }[] | null
+    },
+    image?: { cover?: { url?: string } },
+    attributes?: PlantAttributes,
+    calendar?: {
+        [key: string]: { start: number, end: number }[]
+    },
+    instructions?: PlantInstruction[] | null,
+    // companions?: number[],
+    // antagonists?: number[],
+    // diseases?: number[],
+    // pests?: number[],
+};
+
 export default async function PlantPage({ params }: { params: { plantId: string } }) {
     const plantId = params.plantId;
-    const plant = await getPlant(parseInt(plantId));
+    const plant = await getEntityFormatted(parseInt(plantId)) as unknown as PlantData; 
     if (!plant)
         return notFound();
+
+    console.log('plant', plant);
 
     return (
         <div className="py-10">
@@ -80,15 +131,15 @@ export default async function PlantPage({ params }: { params: { plantId: string 
                         <Card className="min-w-36 min-h-36 size-36">
                             <CardOverflow className="p-2">
                                 <Image
-                                    src={plant.images.at(0)?.url}
-                                    alt={plant.name}
+                                    src={plant.image?.cover?.url}
+                                    alt={plant.information.name}
                                     width={144}
                                     height={144} />
                             </CardOverflow>
                         </Card>
                         <Stack spacing={2}>
-                            <Typography level="h1">{plant.name}</Typography>
-                            {plant.verified && (
+                            <Typography level="h1">{plant.information.name}</Typography>
+                            {plant.information.verified && (
                                 <Row>
                                     <Chip color="success" size="sm">
                                         <BadgeCheck className="size-4" />
@@ -108,7 +159,7 @@ export default async function PlantPage({ params }: { params: { plantId: string 
                     </div>
                     <Stack spacing={1}>
                         <Typography level="h5">Kalendar</Typography>
-                        {plant.calendar.length === 0 ? (
+                        {Object.keys(plant.calendar).length === 0 ? (
                             <NoDataPlaceholder>
                                 Nema podataka o kalendaru
                             </NoDataPlaceholder>
@@ -153,7 +204,7 @@ export default async function PlantPage({ params }: { params: { plantId: string 
                             <PlantingInstructions instructions={plant.instructions} />
                         </Stack>
                     )}
-                    {plant.information.tips.length !== 0 && (
+                    {plant.information.tip.length !== 0 && (
                         <Stack spacing={1}>
                             <Typography level="h5">
                                 <Row spacing={1}>
@@ -162,7 +213,7 @@ export default async function PlantPage({ params }: { params: { plantId: string 
                                 </Row>
                             </Typography>
                             <Stack spacing={1}>
-                                {plant.information.tips.map((tip) => (
+                                {plant.information.tip.map((tip) => (
                                     <Card key={tip.header}>
                                         <CardHeader>
                                             <CardTitle>{tip.header}</CardTitle>
@@ -202,7 +253,7 @@ const calendarActivityTypes = {
     }
 } as const;
 
-function YearCalendar({ activities, now }: { activities: PlantCalendarEntry[], now?: Date }) {
+function YearCalendar({ activities, now }: { activities: { [key: string]: { start: number, end: number }[] }, now?: Date }) {
     const currentDate = now ?? new Date();
     const currentMonth = currentDate.getMonth() // 0-indexed
     const currentMonthProgress = currentDate.getDate() / new Date(currentDate.getFullYear(), currentMonth, 0).getDate();
@@ -218,7 +269,7 @@ function YearCalendar({ activities, now }: { activities: PlantCalendarEntry[], n
                 ))}
                 {Object.keys(calendarActivityTypes).map((activityTypeName) => {
                     const activityType = calendarActivityTypes[activityTypeName];
-                    if (!activities.some(a => a.name === activityTypeName))
+                    if (!Object.keys(activities).some(a => a === activityTypeName))
                         return null;
 
                     return (
@@ -233,7 +284,7 @@ function YearCalendar({ activities, now }: { activities: PlantCalendarEntry[], n
                                 <div className="h-full w-full flex items-center relative">
                                     {calendarMonths.map((_, index) => {
                                         const month = index + 1;
-                                        const currentActivities = activities.filter(a => a.name === activityTypeName);
+                                        const currentActivities = activities[activityTypeName];
                                         const currentMonthActivities = currentActivities.filter(a => month >= Math.floor(a.start) && month <= Math.floor(a.end));
                                         const minStart = Math.min(...currentMonthActivities.map(a => a.start % 1));
                                         const maxEnd = Math.max(...currentMonthActivities.map(a => a.end % 1));

@@ -64,6 +64,13 @@
       "when": 1728228526493,
       "tag": "0008_romantic_karma",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1728314806774,
+      "tag": "0009_shiny_alex_power",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { attributeDefinitionCategories, attributeDefinitions, SelectAttributeDefinition, SelectAttributeDefinitionCategory, storage } from "..";
 
 export function getAttributeDefinitions(entityType?: string): Promise<SelectAttributeDefinition[]> {
@@ -8,10 +8,19 @@ export function getAttributeDefinitions(entityType?: string): Promise<SelectAttr
         .orderBy(attributeDefinitions.category, attributeDefinitions.label);
 
     if (entityType) {
-        return query.where(eq(attributeDefinitions.entityType, entityType));
+        return query.where(eq(attributeDefinitions.entityTypeName, entityType));
     }
 
     return query;
+}
+
+export function getAttributeDefinition(id: number) {
+    return storage.query.attributeDefinitions.findFirst({
+        where: and(
+            eq(attributeDefinitions.id, id),
+            eq(attributeDefinitions.isDeleted, false)
+        )
+    });
 }
 
 export async function getAttributeDefinitionCategories(entityType?: string): Promise<SelectAttributeDefinitionCategory[]> {
@@ -20,6 +29,6 @@ export async function getAttributeDefinitionCategories(entityType?: string): Pro
         .from(attributeDefinitionCategories);
 
     return entityType
-        ? query.where(eq(attributeDefinitionCategories.entityType, entityType))
+        ? query.where(eq(attributeDefinitionCategories.entityTypeName, entityType))
         : query;
 }

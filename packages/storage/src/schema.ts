@@ -5,11 +5,19 @@ export const attributeDefinitionCategories = pgTable('attribute_definition_categ
     id: serial('id').primaryKey(),
     name: text('name').notNull(),
     label: text('label').notNull(),
-    entityType: text('entity_type').notNull(),
+    entityTypeName: text('entity_type').notNull(),
     order: text('order'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
 });
+
+export const attributeDefinitionCategoriesRelation = relations(attributeDefinitionCategories, ({ one }) => ({
+    entityType: one(entityTypes, {
+        fields: [attributeDefinitionCategories.entityTypeName],
+        references: [entityTypes.name],
+        relationName: 'entityType',
+    }),
+}));
 
 export type InsertAttributeDefinitionCategory = typeof attributeDefinitionCategories.$inferInsert;
 export type SelectAttributeDefinitionCategory = typeof attributeDefinitionCategories.$inferSelect;
@@ -19,18 +27,25 @@ export const attributeDefinitions = pgTable('attribute_definitions', {
     category: text('category').notNull(),
     name: text('name').notNull(),
     label: text('label').notNull(),
-    entityType: text('entity_type').notNull(),
+    entityTypeName: text('entity_type').notNull(),
     dataType: text('data_type').notNull(),
+    defaultValue: text('default_value'),
     multiple: boolean('multiple').notNull().default(false),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
+    isDeleted: boolean('is_deleted').notNull().default(false),
 });
 
-export const attributeDefinitionCategoriesRelation = relations(attributeDefinitions, ({ one }) => ({
+export const attributeDefinitionRelation = relations(attributeDefinitions, ({ one }) => ({
     category: one(attributeDefinitionCategories, {
         fields: [attributeDefinitions.category],
         references: [attributeDefinitionCategories.name],
         relationName: 'category',
+    }),
+    entityType: one(entityTypes, {
+        fields: [attributeDefinitions.entityTypeName],
+        references: [entityTypes.name],
+        relationName: 'entityType',
     }),
 }));
 
@@ -40,7 +55,7 @@ export type SelectAttributeDefinition = typeof attributeDefinitions.$inferSelect
 export const attributeValues = pgTable('attribute_values', {
     id: serial('id').primaryKey(),
     attributeDefinitionId: integer('attribute_definition_id').notNull(),
-    entityType: text('entity_type').notNull(),
+    entityTypeName: text('entity_type').notNull(),
     entityId: integer('entity_id').notNull(),
     value: text('value'),
     order: text('order'),
@@ -49,23 +64,56 @@ export const attributeValues = pgTable('attribute_values', {
     isDeleted: boolean('is_deleted').notNull().default(false),
 });
 
-export type InsertAttributeValue = typeof attributeValues.$inferInsert;
-export type SelectAttributeValue = typeof attributeValues.$inferSelect;
-
 export const attributeValuesDefinitionRelation = relations(attributeValues, ({ one }) => ({
-    definition: one(attributeDefinitions, {
+    attributeDefinition: one(attributeDefinitions, {
         fields: [attributeValues.attributeDefinitionId],
         references: [attributeDefinitions.id],
         relationName: 'attributeDefinition',
     }),
+    entity: one(entities, {
+        fields: [attributeValues.entityId],
+        references: [entities.id],
+        relationName: 'entity',
+    }),
+    entityType: one(entityTypes, {
+        fields: [attributeValues.entityTypeName],
+        references: [entityTypes.name],
+        relationName: 'entityType',
+    }),
 }));
 
-export const plants = pgTable('plants', {
+export type InsertAttributeValue = typeof attributeValues.$inferInsert;
+export type SelectAttributeValue = typeof attributeValues.$inferSelect;
+
+export const entityTypes = pgTable('entity_types', {
     id: serial('id').primaryKey(),
+    name: text('name').notNull(),
+    label: text('label').notNull(),
+    order: text('order'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
 });
 
-export type InsertPlant = typeof plants.$inferInsert;
-export type SelectPlant = typeof plants.$inferSelect;
+export type InsertEntityType = typeof entityTypes.$inferInsert;
+export type SelectEntityType = typeof entityTypes.$inferSelect;
+
+export const entities = pgTable('entities', {
+    id: serial('id').primaryKey(),
+    entityTypeName: text('entity_type').notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
+    isDeleted: boolean('is_deleted').notNull().default(false),
+});
+
+export const entityRelation = relations(entities, ({ one, many }) => ({
+    attributes: many(attributeValues),
+    entityType: one(entityTypes, {
+        fields: [entities.entityTypeName],
+        references: [entityTypes.name],
+        relationName: 'entityType',
+    }),
+}));
+
+export type InsertEntity = typeof entities.$inferInsert;
+export type SelectEntity = typeof entities.$inferSelect;

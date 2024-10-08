@@ -1,10 +1,10 @@
-import { getPlants } from '@gredice/storage';
+import { getEntitiesRaw } from '@gredice/storage';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 
-export async function PlantsTable() {
-    const plants = await getPlants();
+export async function EntitiesTable({ entityType }: { entityType: string }) {
+    const entities = await getEntitiesRaw(entityType);
 
     return (
         <Table>
@@ -14,11 +14,11 @@ export async function PlantsTable() {
                 </Table.Row>
             </Table.Header>
             <Table.Body>
-                {plants.map(plant => (
-                    <Table.Row key={plant.id}>
+                {entities.map(entity => (
+                    <Table.Row key={entity.id}>
                         <Table.Cell>
-                            <Link href={`/admin/plants/${plant.id}`}>
-                                <Typography>{plant.name}</Typography>
+                            <Link href={`/admin/directories/${entityType}/${entity.id}`}>
+                                <Typography>{entity.attributes.find(a => a.attributeDefinition.name === 'name')?.value ?? `${entity.entityType.label} ${entity.id}`}</Typography>
                             </Link>
                         </Table.Cell>
                     </Table.Row>

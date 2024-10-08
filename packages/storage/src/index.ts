@@ -6,6 +6,7 @@ export const connection = sql;
 export const storage = drizzle(sql, { schema });
 
 export * from './schema';
-export * from './repositories/plantsRepo';
+export * from './repositories/entitiesRepo';
+export * from './repositories/entityTypesRepo';
 export * from './repositories/attributeValuesRepo';
 export * from './repositories/attributeDefinitionsRepo';
