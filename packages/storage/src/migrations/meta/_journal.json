@@ -78,6 +78,20 @@
       "when": 1728513637501,
       "tag": "0010_wide_captain_midlands",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1728587629829,
+      "tag": "0011_furry_killraven",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1728589560627,
+      "tag": "0012_nervous_lucky_pierre",
+      "breakpoints": true
     }
   ]
 }

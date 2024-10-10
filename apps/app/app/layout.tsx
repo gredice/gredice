@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { AxiomWebVitals } from 'next-axiom';
 import "./globals.css";
 import Head from "next/head";
+import { ClientAppProvider } from "../components/providers/ClientAppProvider";
 
 export const metadata: Metadata = {
   title: "Gredice",
@@ -26,7 +27,9 @@ export default function RootLayout({
         <meta name="theme-color" content="#ffffff" />
       </Head>
       <body className="antialiased bg-muted">
-        {children}
+        <ClientAppProvider>
+          {children}
+        </ClientAppProvider>
         <Analytics />
         <AxiomWebVitals />
       </body>

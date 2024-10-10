@@ -43,11 +43,11 @@ importers:
         specifier: 8.17.10
         version: 8.17.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.169.0)
       '@signalco/auth-client':
-        specifier: 0.1.1
-        version: 0.1.1(@tanstack/react-query@5.59.8(react@18.3.1))(next@14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 0.1.2
+        version: 0.1.2(@tanstack/react-query@5.59.8(react@18.3.1))(next@14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@signalco/auth-server':
-        specifier: 0.1.1
-        version: 0.1.1(jose@5.9.3)(next@14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 0.1.2
+        version: 0.1.2(jose@5.9.3)(next@14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@signalco/hooks':
         specifier: 0.1.1
         version: 0.1.1(next@14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1487,16 +1487,16 @@ packages:
       react-native:
         optional: true
 
-  '@signalco/auth-client@0.1.1':
-    resolution: {integrity: sha512-6MS6U5VZ9aw8+bh2ZPMT1cbM5bpRXbPZiSVKSJSqQeEpt45UdUfmaYwGoPWG6lhW8gHYzIcBhw3/OTzeUQDfng==}
+  '@signalco/auth-client@0.1.2':
+    resolution: {integrity: sha512-BfoTMXOYXcGC9qhpjfFZgVuRGAdLeahT3+ET1t/EvfB+qtCwbXqCpW2h5FgFl4e+rgs8JxPULQPVisuvhxiPCg==}
     peerDependencies:
       '@tanstack/react-query': '>=5'
       next: '>=14'
       react: '>=18'
       react-dom: '>=18'
 
-  '@signalco/auth-server@0.1.1':
-    resolution: {integrity: sha512-tymSJIFzTPf8ie4taXP/1nxQFr8ey3R4zYM9g31uYZ69hSDnGdkZhISuG0a6mW+mnVyyJeFcjYeA4M/MT7MdzA==}
+  '@signalco/auth-server@0.1.2':
+    resolution: {integrity: sha512-zjcJuQY597PJ3hjo57mqWAlnK8drFg9aozWUe45Fmhm5sa2ZaIZ/ybQd7LURsOnP0uJWDDWzcmxNjUwtLBBBuw==}
     peerDependencies:
       jose: '>=5'
       next: '>=14'
@@ -4576,14 +4576,14 @@ snapshots:
     optionalDependencies:
       react-dom: 18.3.1(react@18.3.1)
 
-  '@signalco/auth-client@0.1.1(@tanstack/react-query@5.59.8(react@18.3.1))(next@14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@signalco/auth-client@0.1.2(@tanstack/react-query@5.59.8(react@18.3.1))(next@14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@tanstack/react-query': 5.59.8(react@18.3.1)
       next: 14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@signalco/auth-server@0.1.1(jose@5.9.3)(next@14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@signalco/auth-server@0.1.2(jose@5.9.3)(next@14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       jose: 5.9.3
       next: 14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
