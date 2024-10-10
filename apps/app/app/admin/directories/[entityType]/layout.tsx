@@ -1,54 +1,53 @@
 import { Card, CardContent, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
 import { ReactNode } from "react";
-import { EntitiesTable } from "./EntitiesTable";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Add } from "@signalco/ui-icons";
-import { revalidatePath } from "next/cache";
-import { ServerActionIconButton } from "./ServerActionIconButton";
-import { redirect } from "next/navigation";
-import { BookA } from "lucide-react";
+import { ServerActionIconButton } from "../../../../components/shared/ServerActionIconButton";
+import { BookA, LayoutList } from "lucide-react";
 import Link from "next/link";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { createEntity } from "@gredice/storage";
+import { getEntityTypeByName } from "@gredice/storage";
+import { createEntity } from "../../../(actions)/entityActions";
 
 export const dynamic = 'force-dynamic';
 
-async function createPlant(entityType: string) {
-    'use server';
+export default async function PlantsLayout({ children, list, params }: { children: ReactNode, list: ReactNode, params: { entityType: string } }) {
+    const entityType = await getEntityTypeByName(params.entityType);
 
-    const plantId = await createEntity(entityType);
-    revalidatePath('/admin/plants');
-    redirect(`/admin/plants/${plantId}`);
-}
-
-export default function PlantsLayout({ children, params }: { children: ReactNode, params: { entityType: string } }) {
     return (
-        <div className='grid grid-cols-3 gap-4 p-4'>
-            <Card className="h-fit max-h-screen sticky top-20">
+        <div className='grid grid-cols-3 gap-4'>
+            <Card className="h-fit">
                 <CardHeader>
                     <Row spacing={1} justifyContent="space-between">
-                        <CardTitle>Biljke</CardTitle>
-                        <Row>
+                        <CardTitle>{entityType?.label}</CardTitle>
+                        <Row spacing={1}>
+                            <Row>
+                                <Link href={`/admin/directories/${params.entityType}`}>
+                                    <IconButton variant="outlined" title="Lista entiteta" className="rounded-r-none border-r-[0.5px]">
+                                        <LayoutList />
+                                    </IconButton>
+                                </Link>
                             <Link href={`/admin/directories/${params.entityType}/attribute-definitions`}>
-                                <IconButton variant="plain" title="Definicija atributa">
+                                    <IconButton variant="outlined" title="Definicija atributa" className="rounded-l-none border-l-[0.5px]">
                                     <BookA />
                                 </IconButton>
                             </Link>
+                            </Row>
                             <ServerActionIconButton
                                 variant="plain"
                                 title="Dodaj zapis"
                                 actionProps={[params.entityType]}
-                                onClick={createPlant}>
+                                onClick={createEntity}>
                                 <Add />
                             </ServerActionIconButton>
                         </Row>
                     </Row>
                 </CardHeader>
                 <CardOverflow>
-                    <EntitiesTable entityType={params.entityType} />
+                    {list}
                 </CardOverflow>
             </Card>
-            <Card className='col-span-2'>
+            <Card className='col-span-2 h-fit'>
                 <CardContent className="pt-6">
                     {children}
                 </CardContent>

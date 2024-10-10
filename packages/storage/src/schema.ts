@@ -30,6 +30,7 @@ export const attributeDefinitions = pgTable('attribute_definitions', {
     entityTypeName: text('entity_type').notNull(),
     dataType: text('data_type').notNull(),
     defaultValue: text('default_value'),
+    order: text('order'),
     multiple: boolean('multiple').notNull().default(false),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
@@ -37,7 +38,7 @@ export const attributeDefinitions = pgTable('attribute_definitions', {
 });
 
 export const attributeDefinitionRelation = relations(attributeDefinitions, ({ one }) => ({
-    category: one(attributeDefinitionCategories, {
+    categoryDefinition: one(attributeDefinitionCategories, {
         fields: [attributeDefinitions.category],
         references: [attributeDefinitionCategories.name],
         relationName: 'category',
@@ -51,6 +52,10 @@ export const attributeDefinitionRelation = relations(attributeDefinitions, ({ on
 
 export type InsertAttributeDefinition = typeof attributeDefinitions.$inferInsert;
 export type SelectAttributeDefinition = typeof attributeDefinitions.$inferSelect;
+export type ExtendedAttributeDefinition = SelectAttributeDefinition & {
+    categoryDefinition: SelectAttributeDefinitionCategory,
+    entityType: SelectEntityType
+};
 
 export const attributeValues = pgTable('attribute_values', {
     id: serial('id').primaryKey(),

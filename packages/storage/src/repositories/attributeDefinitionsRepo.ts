@@ -1,17 +1,17 @@
 import { and, eq } from 'drizzle-orm';
-import { attributeDefinitionCategories, attributeDefinitions, SelectAttributeDefinition, SelectAttributeDefinitionCategory, storage } from "..";
+import { attributeDefinitionCategories, attributeDefinitions, ExtendedAttributeDefinition, SelectAttributeDefinition, SelectAttributeDefinitionCategory, storage } from "..";
 
-export function getAttributeDefinitions(entityType?: string): Promise<SelectAttributeDefinition[]> {
-    const query = storage
-        .select()
-        .from(attributeDefinitions)
-        .orderBy(attributeDefinitions.category, attributeDefinitions.label);
-
-    if (entityType) {
-        return query.where(eq(attributeDefinitions.entityTypeName, entityType));
-    }
-
-    return query;
+export function getAttributeDefinitions(entityTypeName?: string): Promise<ExtendedAttributeDefinition[]> {
+    return storage.query.attributeDefinitions.findMany({
+        where: entityTypeName
+            ? and(eq(attributeDefinitions.isDeleted, false), eq(attributeDefinitions.entityTypeName, entityTypeName))
+            : eq(attributeDefinitions.isDeleted, false),
+        with: {
+            categoryDefinition: true,
+            entityType: true
+        },
+        orderBy: attributeDefinitions.order
+    });
 }
 
 export function getAttributeDefinition(id: number) {
@@ -26,7 +26,8 @@ export function getAttributeDefinition(id: number) {
 export async function getAttributeDefinitionCategories(entityType?: string): Promise<SelectAttributeDefinitionCategory[]> {
     const query = storage
         .select()
-        .from(attributeDefinitionCategories);
+        .from(attributeDefinitionCategories)
+        .orderBy(attributeDefinitionCategories.order);
 
     return entityType
         ? query.where(eq(attributeDefinitionCategories.entityTypeName, entityType))

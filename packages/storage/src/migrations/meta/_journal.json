@@ -71,6 +71,13 @@
       "when": 1728314806774,
       "tag": "0009_shiny_alex_power",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1728513637501,
+      "tag": "0010_wide_captain_midlands",
+      "breakpoints": true
     }
   ]
 }

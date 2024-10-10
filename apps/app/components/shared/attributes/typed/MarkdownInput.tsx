@@ -2,7 +2,8 @@
 
 import { MDXEditor, UndoRedo, BoldItalicUnderlineToggles, toolbarPlugin, markdownShortcutPlugin, headingsPlugin, listsPlugin, quotePlugin, thematicBreakPlugin, BlockTypeSelect, ChangeAdmonitionType, CreateLink, InsertAdmonition, InsertTable, InsertThematicBreak, ListsToggle, Separator } from "@mdxeditor/editor";
 import { useState } from "react";
-import { AttributeInputProps } from "./AttributeInput";
+import { AttributeInputProps } from '../AttributeInputProps';
+import '@mdxeditor/editor/style.css'
 
 export function MarkdownInput({ value, onChange }: AttributeInputProps) {
     const [inputValue, setInputValue] = useState<string>(value || '');

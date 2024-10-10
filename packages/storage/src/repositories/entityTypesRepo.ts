@@ -1,8 +1,14 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { entityTypes, InsertEntityType, storage } from "..";
 
 export function getEntityTypes() {
     return storage.select().from(entityTypes).orderBy(entityTypes.order);
+}
+
+export function getEntityTypeByName(entityTypeName: string) {
+    return storage.query.entityTypes.findFirst({
+        where: and(eq(entityTypes.name, entityTypeName), eq(entityTypes.isDeleted, false)),
+    });
 }
 
 export function upsertEntityType(value: InsertEntityType) {
