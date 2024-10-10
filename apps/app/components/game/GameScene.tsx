@@ -675,10 +675,10 @@ export function GameScene() {
             { /* Block picker */}
             <Card className='absolute right-4 top-4'>
                 <Stack>
-                    <Button onClick={() => handlePickBlock(entities.BlockGround.name)}>Zemlja</Button>
-                    <Button onClick={() => handlePickBlock(entities.BlockGrass.name)}>Trava</Button>
-                    <Button onClick={() => handlePickBlock(entities.RaisedBed.name)}>Gredica</Button>
-                    <Button onClick={() => handlePickBlock(entities.Shade.name)}>Shade</Button>
+                    <Button variant='plain' onClick={() => handlePickBlock(entities.BlockGround.name)}>Zemlja</Button>
+                    <Button variant='plain' onClick={() => handlePickBlock(entities.BlockGrass.name)}>Trava</Button>
+                    <Button variant='plain' onClick={() => handlePickBlock(entities.RaisedBed.name)}>Gredica</Button>
+                    <Button variant='plain' onClick={() => handlePickBlock(entities.Shade.name)}>Shade</Button>
                 </Stack>
             </Card>
         </div>

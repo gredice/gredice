@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"name": "✨ gredice-monorepo",
+			"path": "."
+		},
+		{
+			"name": "🚀 app",
+			"path": "apps/app"
+		},
+		{
+			"name": "🚀 www",
+			"path": "apps/www"
+		},
+		{
+			"name": "📦 @gredice/storage",
+			"path": "packages/storage"
+		}
+	],
+	"settings": {}
+}
