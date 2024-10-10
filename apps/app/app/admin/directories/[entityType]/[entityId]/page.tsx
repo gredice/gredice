@@ -33,7 +33,7 @@ export default async function EntityDetailsPage({ params }: { params: { entityTy
                     </TabsList>
                     <div className='self-end'>
                         <ServerActionIconButton
-                            actionProps={[{ entityTypeName: params.entityType, entityId: entity.id }]}
+                            actionProps={[{ entityTypeName: params.entityType, entityId: params.entityId }]}
                             onClick={handleEntityDelete}
                             variant='plain'>
                             <Delete />

@@ -1,5 +1,5 @@
-import { ExtendedAttributeDefinition, getAttributeDefinitions, SelectAttributeDefinition } from "@gredice/storage";
-import { Card, CardContent, CardHeader } from "@signalco/ui-primitives/Card";
+import { ExtendedAttributeDefinition, getAttributeDefinitions } from "@gredice/storage";
+import { Card, CardContent } from "@signalco/ui-primitives/Card";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";

@@ -29,7 +29,6 @@ export default async function AdminPage() {
             count: entities.length
         };
     }));
-    const attributeDefinitions = await getAttributeDefinitions();
 
     return (
         <Container>
@@ -37,7 +36,6 @@ export default async function AdminPage() {
                 {entitiesCounts.map(({ label, count, entityTypeName }) => (
                     <FactCard key={entityTypeName} header={label} value={count} href={`/admin/directories/${entityTypeName}`} />
                 ))}
-                <FactCard header="Definicija atributa" value={attributeDefinitions.length} href={'/admin/attributes'} />
             </div>
         </Container>
     );
