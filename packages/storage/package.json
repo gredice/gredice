@@ -8,10 +8,17 @@
     "exports": {
         ".": "./src/index.ts"
     },
+    "scripts": {
+        "generate": "drizzle-kit generate",
+        "migrate": "tsx --env-file=.env ./src/migrate.ts",
+        "studio": "drizzle-kit studio"
+    },
     "devDependencies": {
+        "@signalco/js": "0.1.0",
         "@vercel/postgres": "0.10.0",
-        "drizzle-orm": "0.33.0",
-        "drizzle-kit": "0.24.2",
-        "typescript": "5.6.2"
+        "drizzle-kit": "0.25.0",
+        "drizzle-orm": "0.34.1",
+        "tsx": "4.19.1",
+        "typescript": "5.6.3"
     }
 }

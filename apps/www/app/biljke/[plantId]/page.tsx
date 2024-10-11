@@ -4,12 +4,14 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Container } from "@signalco/ui-primitives/Container";
+import { Chip } from "@signalco/ui-primitives/Chip";
 import { Row } from "@signalco/ui-primitives/Row";
-import { CSSProperties, Fragment, PropsWithChildren } from "react";
-import { Sun, Droplet, Sprout, Leaf, Ruler, ArrowDownToLine } from "lucide-react"
+import { CSSProperties, Fragment, PropsWithChildren, ReactNode } from "react";
+import { Sun, Droplet, Sprout, Leaf, Ruler, ArrowDownToLine, BadgeCheck, Info } from "lucide-react"
 import { notFound } from "next/navigation";
-import { getPlant, PlantCalendarEntry, PlantInstruction, type PlantAttributes } from "@gredice/storage";
+import { getEntityFormatted } from "@gredice/storage";
 import Image from "next/image";
+import Markdown from 'react-markdown'
 
 function DetailCard({ icon, header, value }: { icon: React.ReactNode; header: string; value: string }) {
     return (
@@ -26,18 +28,17 @@ function DetailCard({ icon, header, value }: { icon: React.ReactNode; header: st
 }
 
 function PlantAttributes({ attributes }: { attributes: PlantAttributes }) {
-    const { light, water, soil, nutrients, seedingDistance, seedingDepth } = attributes;
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <DetailCard
                 icon={<Sun className="w-6 h-6" />}
                 header="Svijetlost"
-                value={light == null || Number.isNaN(light) ? '-' : (light > 0.3 ? 'Polu-sjena' : (light > 0.7 ? 'Sunce' : 'Hlad'))} />
-            <DetailCard icon={<Droplet className="w-6 h-6" />} header="Voda" value={water} />
-            <DetailCard icon={<Sprout className="w-6 h-6" />} header="Zemlja" value={soil} />
-            <DetailCard icon={<Leaf className="w-6 h-6" />} header="Nutrijenti" value={nutrients} />
-            <DetailCard icon={<Ruler className="w-6 h-6" />} header="Razmak sijanja" value={`${seedingDistance || '-'} cm`} />
-            <DetailCard icon={<ArrowDownToLine className="w-6 h-6" />} header="Dubina sijanja" value={`${seedingDepth || '-'} cm`} />
+                value={attributes?.light == null || Number.isNaN(attributes?.light) ? '-' : (attributes?.light > 0.3 ? 'Polu-sjena' : (attributes?.light > 0.7 ? 'Sunce' : 'Hlad'))} />
+            <DetailCard icon={<Droplet className="w-6 h-6" />} header="Voda" value={attributes?.water} />
+            <DetailCard icon={<Sprout className="w-6 h-6" />} header="Zemlja" value={attributes?.soil} />
+            <DetailCard icon={<Leaf className="w-6 h-6" />} header="Nutrijenti" value={attributes?.nutrients} />
+            <DetailCard icon={<Ruler className="w-6 h-6" />} header="Razmak sijanja/sadnje" value={`${attributes?.seedingDistance || '-'} cm`} />
+            <DetailCard icon={<ArrowDownToLine className="w-6 h-6" />} header="Dubina sijanja" value={`${attributes?.seedingDepth || '-'} cm`} />
         </div>
     )
 }
@@ -52,29 +53,102 @@ function NoDataPlaceholder({ children }: PropsWithChildren) {
 
 export const dynamic = 'force-dynamic';
 
+function InformationSection({ icon, header, content }: { icon: ReactNode, header: string, content: string }) {
+    return (
+        <Stack spacing={1}>
+            <Row spacing={1}>
+                {Boolean(icon) && icon}
+                <Typography level="h5">{header}</Typography>
+            </Row>
+            <Markdown className="prose max-w-none">{content}</Markdown>
+        </Stack>
+    )
+}
+
+export type PlantAttributes = {
+    light?: number | null
+    water?: string | null
+    soil?: string | null
+    nutrients?: string | null
+    seedingDistance?: number | null
+    seedingDepth?: number | null
+};
+
+export type PlantInstruction = {
+    id: number
+    action: string
+    icon: unknown
+    frequency?: string
+    info: string
+    relativeDays: number
+};
+
+export type PlantData = {
+    id: number,
+    // plantFamily?: PlantFamily,
+    information: {
+        name: string,
+        verified: boolean,
+        description?: string | null,
+        origin?: string | null,
+        latinName?: string | null,
+        soilPreparation?: string | null,
+        sowing?: string | null,
+        planting?: string | null,
+        flowering?: string | null,
+        maintenance?: string | null,
+        growth?: string | null,
+        harvest?: string | null,
+        storage?: string | null,
+        watering?: string | null,
+        tip?: { header: string, content: string }[] | null
+    },
+    image?: { cover?: { url?: string } },
+    attributes?: PlantAttributes,
+    calendar?: {
+        [key: string]: { start: number, end: number }[]
+    },
+    instructions?: PlantInstruction[] | null,
+    // companions?: number[],
+    // antagonists?: number[],
+    // diseases?: number[],
+    // pests?: number[],
+};
+
 export default async function PlantPage({ params }: { params: { plantId: string } }) {
     const plantId = params.plantId;
-    const plant = await getPlant(parseInt(plantId));
+    const plant = await getEntityFormatted(parseInt(plantId)) as unknown as PlantData; 
     if (!plant)
         return notFound();
 
+    console.log('plant', plant);
+
     return (
         <div className="py-10">
-            <Container maxWidth="sm">
+            <Container maxWidth="md">
                 <Stack spacing={4}>
-                    <Row spacing={2} alignItems="start">
+                    <div className="flex flex-col md:flex-row gap-4">
                         <Card className="min-w-36 min-h-36 size-36">
                             <CardOverflow className="p-2">
                                 <Image
-                                    src={plant.images.at(0)?.url}
-                                    alt={plant.name}
+                                    src={plant.image?.cover?.url}
+                                    alt={plant.information.name}
                                     width={144}
                                     height={144} />
                             </CardOverflow>
                         </Card>
                         <Stack spacing={2}>
-                            <Typography level="h1">{plant.name}</Typography>
-                            {plant.information.description && <Typography level="body1">{plant.information.description}</Typography>}
+                            <Typography level="h1">{plant.information.name}</Typography>
+                            {plant.information.verified && (
+                                <Row>
+                                    <Chip color="success" size="sm">
+                                        <BadgeCheck className="size-4" />
+                                        <span>Verificirano</span>
+                                    </Chip>
+                                </Row>
+                            )}
+                            {plant.information.latinName && <Typography level="body2">lat. {plant.information.latinName}</Typography>}
+                            {plant.information.description && <Typography level="body1" className="text-pretty">{plant.information.description}</Typography>}
                             {plant.information.origin && (
                                 <Stack>
                                     <Typography level="body2">Porijeklo</Typography>
@@ -82,10 +156,10 @@ export default async function PlantPage({ params }: { params: { plantId: string 
                                 </Stack>
                             )}
                         </Stack>
-                    </Row>
+                    </div>
                     <Stack spacing={1}>
                         <Typography level="h5">Kalendar</Typography>
-                        {plant.calendar.length === 0 ? (
+                        {Object.keys(plant.calendar).length === 0 ? (
                             <NoDataPlaceholder>
                                 Nema podataka o kalendaru
                             </NoDataPlaceholder>
@@ -97,17 +171,49 @@ export default async function PlantPage({ params }: { params: { plantId: string 
                         <Typography level="h5">Svojstva</Typography>
                         <PlantAttributes attributes={plant.attributes} />
                     </Stack>
+                    {plant.information.sowing && (
+                        <InformationSection icon="🌱" header="Sijanje" content={plant.information.sowing} />
+                    )}
+                    {plant.information.soilPreparation && (
+                        <InformationSection icon="🟤" header="Priprema tla" content={plant.information.soilPreparation} />
+                    )}
+                    {plant.information.planting && (
+                        <InformationSection icon="🌿" header="Sadnja" content={plant.information.planting} />
+                    )}
+                    {plant.information.growth && (
+                        <InformationSection icon="🌿" header="Rast" content={plant.information.growth} />
+                    )}
+                    {plant.information.maintenance && (
+                        <InformationSection icon="✂️" header="Održavanje" content={plant.information.maintenance} />
+                    )}
+                    {plant.information.watering && (
+                        <InformationSection icon="💧" header="Zalijevanje" content={plant.information.watering} />
+                    )}
+                    {plant.information.flowering && (
+                        <InformationSection icon="🌸" header="Cvjetanje" content={plant.information.flowering} />
+                    )}
+                    {plant.information.harvest && (
+                        <InformationSection icon="🟢" header="Berba" content={plant.information.harvest} />
+                    )}
+                    {plant.information.storage && (
+                        <InformationSection icon="📦" header="Skladištenje" content={plant.information.storage} />
+                    )}
                     {plant.instructions && (
                         <Stack spacing={1}>
                             <Typography level="h5">Postupak</Typography>
                             <PlantingInstructions instructions={plant.instructions} />
                         </Stack>
                     )}
-                    {plant.information.tips.length !== 0 && (
+                    {plant.information.tip.length !== 0 && (
                         <Stack spacing={1}>
-                            <Typography level="h5">Savjeti</Typography>
+                            <Typography level="h5">
+                                <Row spacing={1}>
+                                    <Info />
+                                    <span>Savjeti</span>
+                                </Row>
+                            </Typography>
                             <Stack spacing={1}>
-                                {plant.information.tips.map((tip) => (
+                                {plant.information.tip.map((tip) => (
                                     <Card key={tip.header}>
                                         <CardHeader>
                                             <CardTitle>{tip.header}</CardTitle>
@@ -126,9 +232,9 @@ export default async function PlantPage({ params }: { params: { plantId: string 
     );
 }
 
-const months = ['S', 'V', 'O', 'T', 'S', 'L', 'S', 'K', 'R', 'L', 'S', 'P']
+const calendarMonths = ['S', 'V', 'O', 'T', 'S', 'L', 'S', 'K', 'R', 'L', 'S', 'P']
 
-const activityTypes = {
+const calendarActivityTypes = {
     sowing: {
         name: 'Sijanje',
         color: 'bg-yellow-400'
@@ -147,23 +253,23 @@ const activityTypes = {
     }
 } as const;
 
-function YearCalendar({ activities, now }: { activities: PlantCalendarEntry[], now?: Date }) {
+function YearCalendar({ activities, now }: { activities: { [key: string]: { start: number, end: number }[] }, now?: Date }) {
     const currentDate = now ?? new Date();
     const currentMonth = currentDate.getMonth() // 0-indexed
     const currentMonthProgress = currentDate.getDate() / new Date(currentDate.getFullYear(), currentMonth, 0).getDate();
 
     return (
-        <Card className="p-0">
-            <div className="grid grid-cols-[auto_repeat(12,1fr)] text-sm rounded-lg overflow-hidden">
+        <Card className="p-0 w-fit">
+            <div className="grid grid-cols-[min-content_repeat(12,36px)] text-sm rounded-lg overflow-hidden">
                 <div className="font-semibold p-2"></div>
-                {months.map((month) => (
+                {calendarMonths.map((month) => (
                     <Typography level="body2" center key={month} className="p-2 border-l">
                         {month}
                     </Typography>
                 ))}
-                {Object.keys(activityTypes).map((activityTypeName) => {
-                    const activityType = activityTypes[activityTypeName];
-                    if (!activities.some(a => a.name === activityTypeName))
+                {Object.keys(calendarActivityTypes).map((activityTypeName) => {
+                    const activityType = calendarActivityTypes[activityTypeName];
+                    if (!Object.keys(activities).some(a => a === activityTypeName))
                         return null;
 
                     return (
@@ -176,9 +282,9 @@ function YearCalendar({ activities, now }: { activities: PlantCalendarEntry[], n
                             </Row>
                             <div className="col-span-12 h-6 flex items-center">
                                 <div className="h-full w-full flex items-center relative">
-                                    {months.map((_, index) => {
+                                    {calendarMonths.map((_, index) => {
                                         const month = index + 1;
-                                        const currentActivities = activities.filter(a => a.name === activityTypeName);
+                                        const currentActivities = activities[activityTypeName];
                                         const currentMonthActivities = currentActivities.filter(a => month >= Math.floor(a.start) && month <= Math.floor(a.end));
                                         const minStart = Math.min(...currentMonthActivities.map(a => a.start % 1));
                                         const maxEnd = Math.max(...currentMonthActivities.map(a => a.end % 1));
@@ -223,11 +329,13 @@ function PlantingInstructions({ instructions }: { instructions?: PlantInstructio
                             <span>Dan {instruction.relativeDays}</span>
                             <div className="group-first:hidden absolute top-0 left-1/2 w-0.5 h-[54px] bg-muted-foreground/20 transform -translate-y-full" />
                         </div>
+                        {/* TODO: Extract insutrction card */}
                         <Card className="flex-grow ml-4">
                             <CardContent className="py-0 flex items-center justify-between">
                                 <div className="flex items-center space-x-4">
                                     <div className="text-primary">
-                                        {instruction.icon}
+                                        {/* TODO: Display instruction icon here */}
+                                        {/* {instruction.icon} */}
                                     </div>
                                     <div>
                                         <h3 className="font-semibold">{instruction.action}</h3>
