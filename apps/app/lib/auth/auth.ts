@@ -1,7 +1,7 @@
 import { getUser as storageGetUser } from '@gredice/storage';
-import { InitAuth } from '@signalco/auth-server';
+import { initAuth } from '@signalco/auth-server';
 
-function jwtSecret() {
+function jwtSecretFactory() {
     const signSecret = process.env.GREDICE_JWT_SIGN_SECRET as string;
     return Buffer.from(signSecret, 'base64');
 }
@@ -18,9 +18,14 @@ async function getUser(id: string) {
     }
 }
 
-export const { withAuth, createJwt, setJwtCookie } = InitAuth({
-    namespace: 'gredice',
-    cookieName: 'gredice_session',
-    jwtSecretFactory: async () => jwtSecret(),
+export const { withAuth, createJwt, setCookie, auth } = initAuth({
+    jwt: {
+        namespace: 'gredice',
+        issuer: 'app',
+        jwtSecretFactory,
+    },
+    cookie: {
+        name: 'gredice_session'
+    },
     getUser
 });

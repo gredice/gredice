@@ -1,4 +1,4 @@
-import { getAttributeDefinitions, getEntitiesRaw, getEntityTypes } from "@gredice/storage";
+import { getEntitiesRaw, getEntityTypes } from "@gredice/storage";
 import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";

@@ -34,7 +34,7 @@ export function LoginDialog() {
         }
 
         queryClient.invalidateQueries({ queryKey: authCurrentUserQueryKeys });
-        router.push('/admin');
+        window.location.reload();
     }
 
     return (

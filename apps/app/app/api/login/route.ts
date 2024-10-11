@@ -1,6 +1,6 @@
 import { getUserWithLogins } from "@gredice/storage";
 import { pbkdf2Sync } from 'crypto';
-import { createJwt, setJwtCookie } from "../../../lib/auth/auth";
+import { createJwt, setCookie } from "../../../lib/auth/auth";
 
 export async function POST(request: Request) {
     const body = await request.json();
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         return new Response('User name and password incorrect', { status: 404 });
     }
 
-    await setJwtCookie(createJwt(user.id));
+    await setCookie(createJwt(user.id));
 
     return new Response(null, { status: 204 });
 }
