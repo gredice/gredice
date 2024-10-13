@@ -8,7 +8,7 @@ import {
 } from '@tanstack/react-query';
 import * as THREE from 'three';
 import { Canvas, ThreeEvent, useFrame, useThree } from '@react-three/fiber';
-import { MeshWobbleMaterial, OrbitControls, StatsGl, useCamera, useGLTF } from '@react-three/drei';
+import { MeshWobbleMaterial, OrbitControls, useGLTF } from '@react-three/drei';
 import { PointerEvent, PropsWithChildren, useEffect, useMemo, useRef } from 'react';
 import { Handler, useDrag } from '@use-gesture/react';
 import { useSpring, animated } from '@react-spring/three';
@@ -16,6 +16,7 @@ import { create } from 'zustand';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import { Environment } from './Environment';
 
 const models = {
     GameAssets: { url: '/assets/models/GameAssets.glb' }
@@ -528,42 +529,6 @@ export function Garden() {
             )}
         </group>
     )
-}
-
-function Environment() {
-    const backgroundColor = new THREE.Color(0xE7E2CC);
-    const sunColor = new THREE.Color(0xffffff);
-    const cameraShadowSize = 100;
-    const shadowMapSize = 10;
-
-    return (
-        <>
-            <color attach="background" args={[backgroundColor]} />
-            <ambientLight intensity={3} />
-            <hemisphereLight
-                color={0xffffbb}
-                groundColor={0x360E0E}
-                intensity={5}
-                position={[0, 1, 0]}
-            />
-            {/* TODO: Update shadow camera position based on camera position */}
-            <directionalLight
-                color={sunColor}
-                position={[-10, 10, 10]}
-                intensity={5}
-                shadow-mapSize={shadowMapSize * 1024}
-                shadow-near={0.01}
-                shadow-far={1000}
-                shadow-normalBias={0.03}
-                shadow-camera-left={-cameraShadowSize}
-                shadow-camera-right={cameraShadowSize}
-                shadow-camera-top={cameraShadowSize}
-                shadow-camera-bottom={-cameraShadowSize}
-                shadow-camera-near={0.01}
-                shadow-camera-far={1000}
-                castShadow />
-        </>
-    );
 }
 
 const queryClient = new QueryClient();
