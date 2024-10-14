@@ -3,8 +3,8 @@
 import * as THREE from 'three';
 import { useEffect, useRef } from 'react';
 import chroma from 'chroma-js';
-import { useTweaks } from "use-tweaks"
 import { getTimes, getPosition } from 'suncalc';
+import { useGameState } from './useGameState';
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
@@ -21,11 +21,6 @@ const hemisphereSkyColorScale = chroma
     .scale([chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000), chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000)])
     .domain([0.2, 0.25, 0.3, 0.75, 0.8, 0.85]);
 
-function numberMap(current: number, in_min: number, in_max: number, out_min: number, out_max: number): number {
-    const mapped = ((current - in_min) * (out_max - out_min)) / (in_max - in_min) + out_min;
-    return Math.max(out_min, Math.min(mapped, out_max));
-}
-
 /**
  * Get the current time of day based on the current date and location
  * 
@@ -33,25 +28,39 @@ function numberMap(current: number, in_min: number, in_max: number, out_min: num
  * 
  * @returns A number between 0 and 1 representing the current time of day
  */
-function getTimeOfDay() {
+function getTimeOfDay(currentTime: Date) {
     // TODO: Use garden location instead of hard-coded coordinates
     const lat = 45.739;
     const lon = 16.572;
-    const date = new Date();
-    const { sunrise: sunriseStart, sunsetStart: sunsetStart } = getTimes(date, lat, lon);
+
+    const { sunrise: sunriseStart, sunsetStart: sunsetStart } = getTimes(currentTime, lat, lon);
+
     const sunrise = sunriseStart.getHours() * 60 + sunriseStart.getMinutes();
     const sunset = sunsetStart.getHours() * 60 + sunsetStart.getMinutes();
-    return numberMap(date.getHours() * 60 + date.getMinutes(), sunrise, sunset, sunriseValue, sunsetValue);
+
+    // 00 - 0
+    // 7:00 - 0.2 (sunriseValue)
+    // 19:00 - 0.8 (sunsetValue)
+    // 23:59 - 1
+    const time = currentTime.getHours() * 60 + currentTime.getMinutes();
+    if (time < sunrise) {
+        return time / sunrise * sunriseValue;
+    } else if (time < sunset) {
+        return sunriseValue + (time - sunrise) / (sunset - sunrise) * (sunsetValue - sunriseValue);
+    } else {
+        return sunsetValue + (time - sunset) / (24 * 60 - sunset) * (1 - sunsetValue);
+    }
 }
 
-function getSunPosition(timeOfDay: number) {
+function getSunPosition(currentTime: Date, timeOfDay: number) {
     const lat = 45.739;
     const lon = 16.572;
-    const date = new Date();
+
+    const date = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
     date.setHours(Math.trunc(timeOfDay * 24));
     date.setMinutes(Math.trunc((timeOfDay * 24 - Math.trunc(timeOfDay * 24)) * 60));
 
-    const sunPosition = getPosition(date, lat, lon);
+    const sunPosition = getPosition(currentTime, lat, lon);
 
     const pos = new THREE.Vector3(5, 10, 0);
 
@@ -68,8 +77,6 @@ function getSunPosition(timeOfDay: number) {
     return pos;
 }
 
-const isDevelopment = process.env.NODE_ENV === 'development';
-
 export function Environment() {
     const cameraShadowSize = 20;
     const shadowMapSize = 8;
@@ -79,17 +86,12 @@ export function Environment() {
     const hemisphereRef = useRef<THREE.HemisphereLight>(null);
     const directionalLightRef = useRef<THREE.DirectionalLight>(null);
 
-    let timeOfDay = getTimeOfDay();
-    if (isDevelopment) {
-        timeOfDay = useTweaks('Environment', {
-            timeOfDay: { value: getTimeOfDay(), min: 0, max: 1 },
-        }).timeOfDay;
-    }
-
-    const sunPosition = getSunPosition(timeOfDay);
-    console.log('sun position', sunPosition);
+    const currentTime = useGameState((state) => state.currentTime);
 
     useEffect(() => {
+        const timeOfDay = getTimeOfDay(currentTime);
+        console.log(timeOfDay);
+
         const sunIntensity = sunIntensityTimeScale(timeOfDay).get('rgb.r') / 255;
         if (directionalLightRef.current) {
             directionalLightRef.current.intensity = sunIntensity * 5;
@@ -103,6 +105,8 @@ export function Environment() {
             sunTemperature[1] / 255,
             sunTemperature[2] / 255,
             'srgb');
+        const sunPosition = getSunPosition(currentTime, timeOfDay);
+        directionalLightRef.current?.position.copy(sunPosition);
 
         const backgroundColor = backgroundColorScale(timeOfDay).rgb();
         backgroundRef.current?.setRGB(
@@ -122,7 +126,7 @@ export function Environment() {
             backgroundColor[1] / 255 * 0.5,
             backgroundColor[2] / 255 * 0.5,
             'srgb');
-    }, [timeOfDay]);
+    }, [currentTime]);
 
     return (
         <>
@@ -137,7 +141,6 @@ export function Environment() {
             {/* TODO: Update shadow camera position based on camera position */}
             <directionalLight
                 ref={directionalLightRef}
-                position={sunPosition}
                 shadow-mapSize={shadowMapSize * 1024}
                 // shadow-near={0.01}
                 // shadow-far={1000}

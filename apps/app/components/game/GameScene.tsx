@@ -12,10 +12,11 @@ import { MeshWobbleMaterial, OrbitControls, StatsGl, useGLTF } from '@react-thre
 import { PointerEvent, PropsWithChildren, useEffect, useMemo, useRef } from 'react';
 import { Handler, useDrag } from '@use-gesture/react';
 import { useSpring, animated } from '@react-spring/three';
-import { create } from 'zustand';
-import { Stack } from '@signalco/ui-primitives/Stack';
 import { Environment } from './Environment';
 import { makeButton, makeFolder, useTweaks } from 'use-tweaks';
+import { useGameState } from './useGameState';
+import type { Stack } from './@types/Stack';
+import type { Block } from './@types/Block';
 
 const models = {
     GameAssets: { url: '/assets/models/GameAssets.glb' }
@@ -67,7 +68,7 @@ function stackHeight(stack: Stack | undefined, stopBlock?: Block) {
     return height
 }
 
-function getStack(stacks: Stack[], { x, z }: THREE.Vector3 | { x: number, z: number }) {
+export function getStack(stacks: Stack[], { x, z }: THREE.Vector3 | { x: number, z: number }) {
     return stacks.find(stack => stack.position.x === x && stack.position.z === z);
 }
 
@@ -402,17 +403,6 @@ export function RaisedBed({ stack, block, position }: EntityProps) {
     );
 }
 
-type Stack = {
-    position: THREE.Vector3,
-    blocks: Block[]
-}
-
-type Block = {
-    name: string,
-    rotation: number
-    variant?: number
-}
-
 function serializeGarden(garden: { stacks: Stack[] }) {
     return JSON.stringify(garden);
 }
@@ -529,62 +519,6 @@ export function Garden() {
 
 const queryClient = new QueryClient();
 
-type GameState = {
-    stacks: Stack[],
-    setStacks: (stacks: Stack[]) => void,
-    placeBlock: (to: THREE.Vector3, block: Block) => void,
-    moveBlock: (from: THREE.Vector3, blockIndex: number, to: THREE.Vector3) => void,
-    rotateBlock: (stackPosition: THREE.Vector3, blockIndex: number, rotation: number) => void
-};
-
-const useGameState = create<GameState>((set) => ({
-    stacks: [],
-    setStacks: (stacks) => set({ stacks }),
-    placeBlock: (to, block) => set((state) => {
-        let stack = getStack(state.stacks, to);
-        if (!stack) {
-            stack = { position: to, blocks: [] };
-            state.stacks.push(stack);
-        }
-
-        stack.blocks.push(block);
-        return { stacks: [...state.stacks] };
-    }),
-    moveBlock: (from, blockIndex, to) => set((state) => {
-        if (from.x === to.x && from.z === to.z) {
-            return state;
-        }
-
-        // Determine source stack and block
-        const sourceStack = getStack(state.stacks, from);
-        const block = sourceStack?.blocks[blockIndex];
-        if (!block) {
-            return state;
-        }
-
-        // Determine destination stack or create new one if it doesn't exist
-        let destStack = getStack(state.stacks, to);
-        if (!destStack) {
-            destStack = { position: to, blocks: [] };
-            state.stacks.push(destStack);
-        }
-
-        sourceStack?.blocks.splice(blockIndex, 1);
-        destStack?.blocks.push(block);
-        return { stacks: [...state.stacks] };
-    }),
-    rotateBlock: (stackPosition, blockIndex, rotation) => set((state) => {
-        const stack = getStack(state.stacks, stackPosition);
-        const block = stack?.blocks[blockIndex];
-        if (!block) {
-            return state;
-        }
-
-        block.rotation = rotation;
-        return { stacks: [...state.stacks] };
-    })
-}));
-
 function GameSceneProviders({ children }: PropsWithChildren) {
     return (
         <QueryClientProvider client={queryClient}>
@@ -626,6 +560,21 @@ function DebugHud() {
         }),
     });
 
+    const currentTime = useGameState((state) => state.currentTime);
+    const setCurrentTime = useGameState((state) => state.setCurrentTime);
+    const { timeOfDay } = useTweaks('Environment', {
+        timeOfDay: { value: (currentTime.getHours() * 60 * 60 + currentTime.getMinutes() * 60 + currentTime.getSeconds()) / (24 * 60 * 60), min: 0, max: 1 },
+    });
+
+    useEffect(() => {
+        const date = new Date();
+        const seconds = timeOfDay * 24 * 60 * 60;
+        date.setHours(seconds / 60 / 60);
+        date.setMinutes((seconds / 60) % 60);
+        date.setSeconds(seconds % 60);
+        setCurrentTime(date);
+    }, [timeOfDay]);
+
     return (
         <>
             {/* <gridHelper args={[100, 100, '#B8B4A3', '#CFCBB7']} position={[0.5, 0, 0.5]} /> */}
@@ -638,6 +587,15 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 
 export function GameScene() {
     const cameraPosition = 100;
+
+    // Update current time every second
+    const setCurrentTime = useGameState((state) => state.setCurrentTime);
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <div className='relative'>
