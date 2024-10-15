@@ -27,7 +27,7 @@ function DetailCard({ icon, header, value }: { icon: React.ReactNode; header: st
     )
 }
 
-function PlantAttributes({ attributes }: { attributes: PlantAttributes }) {
+function PlantAttributes({ attributes }: { attributes: PlantAttributes | undefined }) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <DetailCard
@@ -159,7 +159,7 @@ export default async function PlantPage({ params }: { params: { plantId: string 
                     </div>
                     <Stack spacing={1}>
                         <Typography level="h5">Kalendar</Typography>
-                        {Object.keys(plant.calendar).length === 0 ? (
+                        {(!plant.calendar || Object.keys(plant.calendar).length <= 0) ? (
                             <NoDataPlaceholder>
                                 Nema podataka o kalendaru
                             </NoDataPlaceholder>
@@ -204,7 +204,7 @@ export default async function PlantPage({ params }: { params: { plantId: string 
                             <PlantingInstructions instructions={plant.instructions} />
                         </Stack>
                     )}
-                    {plant.information.tip.length !== 0 && (
+                    {((plant.information.tip?.length ?? 0) > 0) && (
                         <Stack spacing={1}>
                             <Typography level="h5">
                                 <Row spacing={1}>

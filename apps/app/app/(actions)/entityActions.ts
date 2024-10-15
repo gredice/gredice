@@ -8,7 +8,7 @@ import { auth } from "../../lib/auth/auth";
 export async function createEntityType(entityTypeName: string, label: string) {
     await auth();
 
-    await upsertEntityType({ name: entityTypeName, label: entityTypeName });
+    await upsertEntityType({ name: entityTypeName, label: label });
     revalidatePath(`/admin/directories`);
     redirect(`/admin/directories/${entityTypeName}`);
 }
