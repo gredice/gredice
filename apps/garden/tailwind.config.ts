@@ -8,9 +8,8 @@ const tailwindConfig: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./node_modules/@signalco/auth-client/**/*.{js,ts,jsx,tsx,mdx}",
     "./node_modules/@signalco/auth-server/**/*.{js,ts,jsx,tsx,mdx}",
-    "./node_modules/@signalco/ui-primitives/**/*.{js,ts,jsx,tsx,mdx}",
     "./node_modules/@signalco/ui/**/*.{js,ts,jsx,tsx,mdx}",
-    './node_modules/@signalco/cms-components-marketing/**/*.{js,ts,jsx,tsx,mdx}',
+    "./node_modules/@signalco/ui-primitives/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   presets: [config],
   plugins: [
