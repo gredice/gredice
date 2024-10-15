@@ -5,5 +5,5 @@ export const KnownPages = {
     AboutUs: '/o-nama',
     FAQ: '/cesta-pitanja',
 
-    GardenApp: 'https://biljke.gredice.com',
+    GardenApp: 'https://vrt.gredice.com',
 }
