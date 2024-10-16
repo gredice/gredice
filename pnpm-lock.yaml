@@ -84,6 +84,9 @@ importers:
       next-axiom:
         specifier: 1.5.1
         version: 1.5.1(next@15.0.0-rc.1(babel-plugin-react-compiler@0.0.0-experimental-605e95c-20241015)(react-dom@19.0.0-rc-cd22717c-20241013(react@19.0.0-rc-cd22717c-20241013))(react@19.0.0-rc-cd22717c-20241013))(react@19.0.0-rc-cd22717c-20241013)
+      postcss:
+        specifier: 8.4.47
+        version: 8.4.47
       tailwindcss:
         specifier: 3.4.14
         version: 3.4.14
@@ -272,6 +275,9 @@ importers:
       next-axiom:
         specifier: 1.5.1
         version: 1.5.1(next@15.0.0-rc.1(babel-plugin-react-compiler@0.0.0-experimental-605e95c-20241015)(react-dom@19.0.0-rc-cd22717c-20241013(react@19.0.0-rc-cd22717c-20241013))(react@19.0.0-rc-cd22717c-20241013))(react@19.0.0-rc-cd22717c-20241013)
+      postcss:
+        specifier: 8.4.47
+        version: 8.4.47
       react-markdown:
         specifier: 9.0.1
         version: 9.0.1(react@19.0.0-rc-cd22717c-20241013)(types-react@19.0.0-rc.1)
