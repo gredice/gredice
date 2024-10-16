@@ -26,7 +26,7 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#2e6f40" />
         <meta name="theme-color" content="#ffffff" />
       </Head>
-      <body className="antialiased bg-muted">
+      <body className="antialiased min-h-screen flex">
         <ClientAppProvider>
           {children}
         </ClientAppProvider>

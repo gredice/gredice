@@ -1,11 +1,5 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <div>
-      <Link href="/admin">
-        Admin
-      </Link>
-    </div>
-  );
+  redirect('https://www.gredice.com');
 }

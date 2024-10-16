@@ -90,7 +90,6 @@ export function Environment() {
 
     useEffect(() => {
         const timeOfDay = getTimeOfDay(currentTime);
-        console.log(timeOfDay);
 
         const sunIntensity = sunIntensityTimeScale(timeOfDay).get('rgb.r') / 255;
         if (directionalLightRef.current) {

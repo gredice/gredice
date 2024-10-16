@@ -13,7 +13,9 @@ import { AttributeInputSchema } from '../AttributeInputSchema';
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 
-const MarkdownInput = dynamic(() => import('./MarkdownInput').then(mod => mod.MarkdownInput), {
+const MarkdownInput = dynamic(() => import('./MarkdownInput').then(mod => ({
+    default: mod.MarkdownInput
+})), {
     ssr: false,
     loading: () => <Skeleton className='w-full h-40' />
 });

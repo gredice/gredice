@@ -2,7 +2,6 @@ import { getEntitiesRaw, getEntityTypes } from "@gredice/storage";
 import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Container } from "@signalco/ui-primitives/Container";
 
 export const dynamic = 'force-dynamic';
 
@@ -31,12 +30,10 @@ export default async function AdminPage() {
     }));
 
     return (
-        <Container>
-            <div className="py-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {entitiesCounts.map(({ label, count, entityTypeName }) => (
-                    <FactCard key={entityTypeName} header={label} value={count} href={`/admin/directories/${entityTypeName}`} />
-                ))}
-            </div>
-        </Container>
+        <div className="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {entitiesCounts.map(({ label, count, entityTypeName }) => (
+                <FactCard key={entityTypeName} header={label} value={count} href={`/admin/directories/${entityTypeName}`} />
+            ))}
+        </div>
     );
 }

@@ -1,3 +1,5 @@
+// @ts-check
+
 import { withAxiom } from 'next-axiom';
 
 /** @type {import('next').NextConfig} */
@@ -7,7 +9,7 @@ const nextConfig = {
     },
     typescript: {
         ignoreBuildErrors: true,
-    },
+    }
 };
 
 export default withAxiom(nextConfig);
