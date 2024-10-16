@@ -22,7 +22,7 @@ export function PlantsGallery({ plants }: { plants: PlantData[] }) {
                 <Link key={plant.id} href={`/biljke/${plant.id}`} passHref>
                     <Card key={plant.id} className="w-40 h-[232px]">
                         <Stack spacing={2} alignItems="center">
-                            <div className="p-1">
+                            <div className="p-4">
                                 <Image
                                     src={plant.image?.cover?.url ?? '/assets/plants/placeholder.png'}
                                     alt={plant.information.name}

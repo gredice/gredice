@@ -127,13 +127,13 @@ export default async function PlantPage(props: { params: Promise<{ plantId: stri
             <Container maxWidth="md">
                 <Stack spacing={4}>
                     <div className="flex flex-col md:flex-row gap-4">
-                        <Card className="min-w-36 min-h-36 size-36">
-                            <CardOverflow className="p-2">
+                        <Card className="min-w-48 min-h-48 size-48">
+                            <CardOverflow className="p-6">
                                 <Image
                                     src={plant.image?.cover?.url ?? '/assets/plants/placeholder.png'}
                                     alt={plant.information.name}
-                                    width={144}
-                                    height={144} />
+                                    width={142}
+                                    height={142} />
                             </CardOverflow>
                         </Card>
                         <Stack spacing={2}>
