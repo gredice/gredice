@@ -11,7 +11,9 @@ import { NumberInput } from './typed/NumberInput';
 import { JsonInput } from './typed/JsonInput';
 import { handleValueSave, handleValueDelete } from '../../../app/(actions)/entityActions';
 
-const MarkdownInput = dynamic(() => import('./typed/MarkdownInput').then(mod => mod.MarkdownInput), {
+const MarkdownInput = dynamic(() => import('./typed/MarkdownInput').then(mod => ({
+    default: mod.MarkdownInput
+})), {
     ssr: false,
     loading: () => <Skeleton className='w-full h-40' />
 });

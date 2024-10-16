@@ -2,7 +2,8 @@ import { EntitiesTable } from "./EntitiesTable";
 
 export const dynamic = 'force-dynamic';
 
-export default function EntityTypesListPage({ params }: { params: { entityType: string } }) {
+export default async function EntityTypesListPage(props: { params: Promise<{ entityType: string }> }) {
+    const params = await props.params;
     return (
         <EntitiesTable entityType={params.entityType} />
     );

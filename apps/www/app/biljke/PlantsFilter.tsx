@@ -30,5 +30,5 @@ export function PlantsFilter() {
                 // startDecorator={<Search className="size-5 ml-3" />}
                 className="self-start min-w-60 bg-primary/10 shadow-sm border-primary/15" />
         </form>
-    )
+    );
 }

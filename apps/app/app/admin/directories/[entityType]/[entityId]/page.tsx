@@ -9,7 +9,8 @@ import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function EntityDetailsPage({ params }: { params: { entityType: string, entityId: string } }) {
+export default async function EntityDetailsPage(props: { params: Promise<{ entityType: string, entityId: string }> }) {
+    const params = await props.params;
     const [attributeDefinitions, attributeCategories, entity] = await Promise.all([
         getAttributeDefinitions(params.entityType),
         getAttributeDefinitionCategories(params.entityType),

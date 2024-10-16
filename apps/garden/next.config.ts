@@ -1,13 +1,16 @@
+import type { NextConfig } from 'next';
 import { withAxiom } from 'next-axiom';
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
     eslint: {
         ignoreDuringBuilds: true,
     },
     typescript: {
         ignoreBuildErrors: true,
     },
+    experimental: {
+        useLightningcss: true
+    }
 };
 
 export default withAxiom(nextConfig);

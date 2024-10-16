@@ -115,9 +115,10 @@ export type PlantData = {
     // pests?: number[],
 };
 
-export default async function PlantPage({ params }: { params: { plantId: string } }) {
+export default async function PlantPage(props: { params: Promise<{ plantId: string }> }) {
+    const params = await props.params;
     const plantId = params.plantId;
-    const plant = await getEntityFormatted(parseInt(plantId)) as unknown as PlantData; 
+    const plant = await getEntityFormatted(parseInt(plantId)) as unknown as PlantData;
     if (!plant)
         return notFound();
 

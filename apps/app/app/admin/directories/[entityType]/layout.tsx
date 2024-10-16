@@ -46,7 +46,16 @@ async function EntityTypeListCardHeader({ entityTypeName }: { entityTypeName: st
     );
 }
 
-export default function PlantsLayout({ children, list, params }: { children: ReactNode, list: ReactNode, params: { entityType: string } }) {
+export default async function PlantsLayout(
+    props: { children: ReactNode, list: ReactNode, params: Promise<{ entityType: string }> }
+) {
+    const params = await props.params;
+
+    const {
+        children,
+        list
+    } = props;
+
     return (
         <div className='grid grid-cols-3 gap-4'>
             <Card className="h-fit">
@@ -68,5 +77,4 @@ export default function PlantsLayout({ children, list, params }: { children: Rea
             </Suspense>
         </div>
     );
-
 }
