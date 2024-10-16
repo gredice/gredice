@@ -31,6 +31,7 @@
     "@types/react": "npm:types-react@19.0.0-rc.1",
     "@types/react-dom": "npm:types-react-dom@19.0.0-rc.1",
     "@vercel/analytics": "1.3.1",
+    "babel-plugin-react-compiler": "0.0.0-experimental-605e95c-20241015",
     "lucide-react": "0.453.0",
     "next-axiom": "1.5.1",
     "postcss": "8.4.47",

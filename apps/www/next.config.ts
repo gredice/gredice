@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
         ignoreBuildErrors: true,
     },
     experimental: {
-        useLightningcss: true
+        reactCompiler: true,
     }
 };
 

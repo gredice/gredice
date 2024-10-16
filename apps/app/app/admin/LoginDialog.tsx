@@ -29,7 +29,7 @@ export function LoginDialog() {
         });
         if (response.status !== 204) {
             // TODO: Show notification
-            console.log('Login failed with status', response.status);
+            console.error('Login failed with status', response.status);
             return;
         }
 

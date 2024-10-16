@@ -13,7 +13,7 @@ import { getEntityFormatted } from "@gredice/storage";
 import Image from "next/image";
 import Markdown from 'react-markdown'
 
-function DetailCard({ icon, header, value }: { icon: React.ReactNode; header: string; value: string }) {
+function DetailCard({ icon, header, value }: { icon: React.ReactNode; header: string; value: string | null | undefined }) {
     return (
         <Card className="flex items-center">
             <Row spacing={2}>
@@ -122,8 +122,6 @@ export default async function PlantPage(props: { params: Promise<{ plantId: stri
     if (!plant)
         return notFound();
 
-    console.log('plant', plant);
-
     return (
         <div className="py-10">
             <Container maxWidth="md">
@@ -132,7 +130,7 @@ export default async function PlantPage(props: { params: Promise<{ plantId: stri
                         <Card className="min-w-36 min-h-36 size-36">
                             <CardOverflow className="p-2">
                                 <Image
-                                    src={plant.image?.cover?.url}
+                                    src={plant.image?.cover?.url ?? '/assets/plants/placeholder.png'}
                                     alt={plant.information.name}
                                     width={144}
                                     height={144} />
@@ -214,7 +212,7 @@ export default async function PlantPage(props: { params: Promise<{ plantId: stri
                                 </Row>
                             </Typography>
                             <Stack spacing={1}>
-                                {plant.information.tip.map((tip) => (
+                                {plant.information.tip?.map((tip) => (
                                     <Card key={tip.header}>
                                         <CardHeader>
                                             <CardTitle>{tip.header}</CardTitle>
@@ -263,18 +261,18 @@ function YearCalendar({ activities, now }: { activities: { [key: string]: { star
         <Card className="p-0 w-fit">
             <div className="grid grid-cols-[min-content_repeat(12,36px)] text-sm rounded-lg overflow-hidden">
                 <div className="font-semibold p-2"></div>
-                {calendarMonths.map((month) => (
-                    <Typography level="body2" center key={month} className="p-2 border-l">
+                {calendarMonths.map((month, monthIndex) => (
+                    <Typography level="body2" center key={monthIndex} className="p-2 border-l">
                         {month}
                     </Typography>
                 ))}
                 {Object.keys(calendarActivityTypes).map((activityTypeName) => {
-                    const activityType = calendarActivityTypes[activityTypeName];
+                    const activityType = calendarActivityTypes[activityTypeName as keyof typeof calendarActivityTypes];
                     if (!Object.keys(activities).some(a => a === activityTypeName))
                         return null;
 
                     return (
-                        <Fragment key={activityType.name}>
+                        <Fragment key={activityTypeName}>
                             <Row justifyContent="space-between" spacing={1} className="mx-2">
                                 <Typography level="body2">
                                     {activityType.name}

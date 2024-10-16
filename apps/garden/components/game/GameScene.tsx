@@ -6,7 +6,7 @@ import {
     QueryClientProvider,
     useQueryClient,
 } from '@tanstack/react-query';
-import * as THREE from 'three';
+import { Vector3, Plane, Raycaster, Vector2, PCFSoftShadowMap } from 'three';
 import { Canvas, ThreeEvent, useThree } from '@react-three/fiber';
 import { MeshWobbleMaterial, OrbitControls, StatsGl, useGLTF } from '@react-three/drei';
 import { PointerEvent, PropsWithChildren, useEffect, useMemo, useRef } from 'react';
@@ -68,14 +68,14 @@ function stackHeight(stack: Stack | undefined, stopBlock?: Block) {
     return height
 }
 
-export function getStack(stacks: Stack[], { x, z }: THREE.Vector3 | { x: number, z: number }) {
+export function getStack(stacks: Stack[], { x, z }: Vector3 | { x: number, z: number }) {
     return stacks.find(stack => stack.position.x === x && stack.position.z === z);
 }
 
 type EntityProps = {
     stack: Stack,
     block: Block,
-    position: THREE.Vector3,
+    position: Vector3,
     rotation: number
     variant?: number
 }
@@ -94,7 +94,7 @@ function EntityFactory({ name, stack, block, position, ...rest }: { name: string
     }
 
     const moveBlock = useGameState(state => state.moveBlock);
-    const handlePositionChanged = (movement: THREE.Vector3) => {
+    const handlePositionChanged = (movement: Vector3) => {
         const dest = position.clone().add(movement);
         const blockIndex = stack.blocks.indexOf(block);
         moveBlock(stack.position, blockIndex, dest);
@@ -116,11 +116,11 @@ function EntityFactory({ name, stack, block, position, ...rest }: { name: string
 }
 
 useGLTF.preload(models.GameAssets.url);
-const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 
 type PickupProps = PropsWithChildren<
     Pick<EntityProps, 'position' | 'stack' | 'block'> &
-    { onPositionChanged: (movement: THREE.Vector3) => void }>;
+    { onPositionChanged: (movement: Vector3) => void }>;
 
 function Pickup({ children, stack, block, position, onPositionChanged }: PickupProps) {
     const stacks = useGameState(state => state.stacks);
@@ -144,9 +144,9 @@ function Pickup({ children, stack, block, position, onPositionChanged }: PickupP
     // TODO: Use observed DOM element client rect (hook from @signalco/hooks when available)
     const rect = useMemo(() => domElement.getClientRects()[0], [domElement]);
     const dragState = useMemo(() => ({
-        pt: new THREE.Vector3(),
-        dest: new THREE.Vector3(),
-        relative: new THREE.Vector3()
+        pt: new Vector3(),
+        dest: new Vector3(),
+        relative: new Vector3()
     }), []);
     const currentStackHeight = useMemo(() => stackHeight(stack, block), [stack, block]);
     const didDrag = useRef(false);
@@ -160,8 +160,8 @@ function Pickup({ children, stack, block, position, onPositionChanged }: PickupP
             0
         );
 
-        const raycaster = new THREE.Raycaster()
-        raycaster.setFromCamera(new THREE.Vector2(pt.x, pt.y), camera)
+        const raycaster = new Raycaster()
+        raycaster.setFromCamera(new Vector2(pt.x, pt.y), camera)
         const isIntersecting = raycaster.ray.intersectPlane(groundPlane, pt);
         if (!isIntersecting) {
             return;
@@ -318,7 +318,7 @@ export function BlockGround({ stack, block, position, rotation, variant }: Entit
     );
 }
 
-function getEntityNeighbors(stack: Stack, block: Block, position: THREE.Vector3) {
+function getEntityNeighbors(stack: Stack, block: Block, position: Vector3) {
     const stacks = useGameState(state => state.stacks);
     const currentInStackIndex = stack.blocks.indexOf(block);
     const neighbors = {
@@ -417,7 +417,7 @@ function getDefaultGarden() {
     for (let x = -size; x <= size; x++) {
         for (let z = -size; z <= size; z++) {
             stacks.push({
-                position: new THREE.Vector3(x, 0, z),
+                position: new Vector3(x, 0, z),
                 blocks: [
                     { name: entities.BlockGrass.name, rotation: Math.floor(Math.random() * 4) },
                 ]
@@ -506,7 +506,7 @@ export function Garden() {
                                 name={block.name}
                                 stack={stack}
                                 block={block}
-                                position={new THREE.Vector3(stack.position.x, 0, stack.position.z)}
+                                position={new Vector3(stack.position.x, 0, stack.position.z)}
                                 rotation={block.rotation}
                                 variant={block.variant} />
                         </group>
@@ -546,7 +546,7 @@ function DebugHud() {
             }
         }
 
-        placeBlock(new THREE.Vector3(x, 0, z), { name, rotation: 0 });
+        placeBlock(new Vector3(x, 0, z), { name, rotation: 0 });
     };
 
     useTweaks('Entities', {
@@ -604,7 +604,7 @@ export function GameScene() {
                     <Canvas
                         orthographic
                         shadows={{
-                            type: THREE.PCFSoftShadowMap,
+                            type: PCFSoftShadowMap,
                             enabled: true,
                         }}
                         camera={{

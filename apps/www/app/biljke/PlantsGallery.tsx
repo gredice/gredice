@@ -24,7 +24,7 @@ export function PlantsGallery({ plants }: { plants: PlantData[] }) {
                         <Stack spacing={2} alignItems="center">
                             <div className="p-1">
                                 <Image
-                                    src={plant.image?.cover?.url}
+                                    src={plant.image?.cover?.url ?? '/assets/plants/placeholder.png'}
                                     alt={plant.information.name}
                                     width={144}
                                     height={144} />
