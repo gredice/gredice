@@ -54,11 +54,11 @@ function getEntityByName(name: string) {
 }
 
 function stackHeight(stack: Stack | undefined, stopBlock?: Block) {
-    let height = 0;
-    if (!stack) {
-        return height;
+    if (!stack || stack.blocks.length <= 0) {
+        return 0;
     }
 
+    let height = 0;
     for (const block of stack.blocks) {
         if (block === stopBlock) {
             return height;
