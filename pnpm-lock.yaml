@@ -17,6 +17,9 @@ importers:
 
   apps/app:
     dependencies:
+      hypertune:
+        specifier: 2.5.5
+        version: 2.5.5
       next:
         specifier: 15.0.0-rc.1
         version: 15.0.0-rc.1(babel-plugin-react-compiler@0.0.0-experimental-605e95c-20241015)(react-dom@19.0.0-rc-cd22717c-20241013(react@19.0.0-rc-cd22717c-20241013))(react@19.0.0-rc-cd22717c-20241013)
@@ -26,6 +29,9 @@ importers:
       react-dom:
         specifier: 19.0.0-rc-cd22717c-20241013
         version: 19.0.0-rc-cd22717c-20241013(react@19.0.0-rc-cd22717c-20241013)
+      server-only:
+        specifier: 0.0.1
+        version: 0.0.1
     devDependencies:
       '@gredice/storage':
         specifier: workspace:*
@@ -96,6 +102,9 @@ importers:
 
   apps/garden:
     dependencies:
+      hypertune:
+        specifier: 2.5.5
+        version: 2.5.5
       next:
         specifier: 14.2.15
         version: 14.2.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -105,6 +114,9 @@ importers:
       react-dom:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
+      server-only:
+        specifier: 0.0.1
+        version: 0.0.1
     devDependencies:
       '@gredice/storage':
         specifier: workspace:*
@@ -215,7 +227,7 @@ importers:
         specifier: 0.10.0
         version: 0.10.0
       hypertune:
-        specifier: ^2.5.5
+        specifier: 2.5.5
         version: 2.5.5
       next:
         specifier: 15.0.0-rc.1
@@ -227,7 +239,7 @@ importers:
         specifier: 19.0.0-rc-cd22717c-20241013
         version: 19.0.0-rc-cd22717c-20241013(react@19.0.0-rc-cd22717c-20241013)
       server-only:
-        specifier: ^0.0.1
+        specifier: 0.0.1
         version: 0.0.1
     devDependencies:
       '@gredice/storage':

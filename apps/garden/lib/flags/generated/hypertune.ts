@@ -2,25 +2,25 @@
 
 import * as sdk from "hypertune";
 
-export const queryCode = `query FullQuery{root{landingPageFooter}}`;
+export const queryCode = `query FullQuery{root{enableDebugHud}}`;
 
-export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"landingPageFooter":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
+export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"enableDebugHud":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
 
-export const initData = {"commitId":19075,"hash":"5630274241907649","reducedExpression":{"id":"aSYD5sRoX5E3yt1VdQu_e","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"mVlU96bBrUq2pFr7LvmL6","body":{"id":"v7OKVmigjMDLFjxa9kFxr","logs":{},"type":"ObjectExpression","fields":{"landingPageFooter":{"id":"PzFMCfR5Xix5C9G9C-j_j","type":"SwitchExpression","cases":[{"id":"n-aVFzo4a7z6-zoyAEB7b","when":{"a":{"id":"A7DBE3UGENi0vRYAkCYaR","type":"GetFieldExpression","object":{"id":"L_h0yRwIfB5fXh9A4frhn","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"tvsyZ9Ks8fQ7w0Eze2VXz"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"LV94L1RnCYSIPX4VQNkU9","type":"ListExpression","items":[{"id":"ZYzVCEu0T9DQEA_mXNXr4","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},{"id":"fhe_hHzm0kqLb9r2M-q-M","type":"EnumExpression","value":"test","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"x511AHWlhnc4c9QQuTxtx","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"rZPTMwn2IJpvJ9pr_lXMv","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"dirtO6mDr-vaqpSPoG3Is","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"STGJnocw94DVyXUUnguBd","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"2gsmuYPEQEVnum_GfYL7x":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"tvsyZ9Ks8fQ7w0Eze2VXz","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
+export const initData = {"commitId":19149,"hash":"1876329122546949","reducedExpression":{"id":"hSzx_K7sNYI77jRriD4U1","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"sAbJTW3LHNEltLHB8AA4n","body":{"id":"8qdt_QWcSqIYYFTe-_aA0","logs":{},"type":"ObjectExpression","fields":{"enableDebugHud":{"id":"Mtmi1IYM6njIsW8GtY_nz","type":"SwitchExpression","cases":[{"id":"QMRGlwOYR8ftLC5PaYv3f","when":{"a":{"id":"CFPf03mL_IrYeVqDCFkFX","type":"GetFieldExpression","object":{"id":"0XtUBFH9kcSr2JpUboBAO","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"BZ17_qmFfcyqAuDSTOPbH"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"m6CkH8xPniVBY7xaeYiY4","type":"ListExpression","items":[{"id":"W5YSdKM0LaQD1iFaj49Ts","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"jxrczTLb4JoCDS92YkatR","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"o2yTJWspoeGw-lrTFAQJI","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"Udb-DvT4n56Sy1UP6H-qC","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"eBU-zMgJe6dO6jTG4feRf","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"HC9HIJsBk_0LEh72su_AH":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"BZ17_qmFfcyqAuDSTOPbH","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
   
 /**
  * @deprecated use '@vercel/flags/providers/hypertune' package instead.
  */
-export const vercelFlagDefinitions = {"landingPageFooter":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3ElandingPageFooter","description":"The landing page footer displayed at bottom"}};
+export const vercelFlagDefinitions = {"enableDebugHud":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugHud"}};
 
 export type FlagValues = {
-  "landingPageFooter": boolean;
+  "enableDebugHud": boolean;
 }
 
 export type FlagPaths = keyof FlagValues & string;
 
 export const flagFallbacks: FlagValues = {
-  "landingPageFooter": false,
+  "enableDebugHud": false,
 }
 
 export function decodeFlagValues<TFlagPaths extends keyof FlagValues & string>(
@@ -64,13 +64,10 @@ export type RootArgs = {
 }
 
 export type Root = {
-  /**
-   * The landing page footer displayed at bottom
-   */
-  landingPageFooter: boolean;
+  enableDebugHud: boolean;
 }
 
-const rootFallback = {landingPageFooter:false};
+const rootFallback = {enableDebugHud:false};
 
 export class RootNode extends sdk.Node {
   override typeName = "Root" as const;
@@ -86,11 +83,10 @@ export class RootNode extends sdk.Node {
   }
 
   /**
-   * The landing page footer displayed at bottom
-   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3ElandingPageFooter})
+   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugHud})
    */
-  landingPageFooter({ args = {}, fallback }: { args?: Rec; fallback: boolean; }): boolean {
-    const props0 = this.getFieldNodeProps("landingPageFooter", { fieldArguments: args });
+  enableDebugHud({ args = {}, fallback }: { args?: Rec; fallback: boolean; }): boolean {
+    const props0 = this.getFieldNodeProps("enableDebugHud", { fieldArguments: args });
     const expression0 = props0.expression;
 
     if (
@@ -128,7 +124,7 @@ export type Source = {
   root: Root;
 }
 
-const sourceFallback = {root:{landingPageFooter:false}};
+const sourceFallback = {root:{enableDebugHud:false}};
 
 export type Rec5 = {
   args: RootArgs;

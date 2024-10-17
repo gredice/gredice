@@ -7,12 +7,16 @@
     "dev": "next dev --turbo -p 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "regenerate": "pnpm run /^regenerate:.*/",
+    "regenerate:feature-flags": "hypertune"
   },
   "dependencies": {
     "next": "14.2.15",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "hypertune": "2.5.5",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
     "@gredice/storage": "workspace:*",

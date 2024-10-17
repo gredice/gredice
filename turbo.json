@@ -23,6 +23,17 @@
         "dev": {
             "cache": false,
             "persistent": true
+        },
+        "regenerate": {
+            "dependsOn": [
+                "^regenerate"
+            ],
+            "inputs": [
+                ".env*"
+            ],
+            "outputs": [
+                "libs/flags/**"
+            ]
         }
     }
 }
