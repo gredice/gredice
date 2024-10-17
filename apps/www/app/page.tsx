@@ -6,7 +6,7 @@ export default function Home() {
       <div className="text-center max-w-xl w-full">
         <div className="relative w-full aspect-[512/123] mb-8">
           <Image
-            src="/logotype.svg"
+            src="/Logotype - gredice@2x.svg"
             alt="Gredice Logo"
             fill
             style={{ objectFit: 'contain' }}
