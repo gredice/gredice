@@ -4,7 +4,8 @@
     "scripts": {
         "build": "turbo build",
         "dev": "turbo dev",
-        "lint": "turbo lint"
+        "lint": "turbo lint",
+        "regenerate": "turbo regenerate"
     },
     "devDependencies": {
         "turbo": "2.1.3",

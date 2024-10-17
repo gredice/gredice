@@ -2,25 +2,27 @@
 
 import * as sdk from "hypertune";
 
-export const queryCode = `query FullQuery{root{landingPageFooter}}`;
+export const queryCode = `query FullQuery{root{test exampleFlag}}`;
 
-export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"landingPageFooter":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
+export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"test":{"fieldArguments":{},"fieldQuery":null},"exampleFlag":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
 
-export const initData = {"commitId":19075,"hash":"5630274241907649","reducedExpression":{"id":"aSYD5sRoX5E3yt1VdQu_e","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"mVlU96bBrUq2pFr7LvmL6","body":{"id":"v7OKVmigjMDLFjxa9kFxr","logs":{},"type":"ObjectExpression","fields":{"landingPageFooter":{"id":"PzFMCfR5Xix5C9G9C-j_j","type":"SwitchExpression","cases":[{"id":"n-aVFzo4a7z6-zoyAEB7b","when":{"a":{"id":"A7DBE3UGENi0vRYAkCYaR","type":"GetFieldExpression","object":{"id":"L_h0yRwIfB5fXh9A4frhn","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"tvsyZ9Ks8fQ7w0Eze2VXz"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"LV94L1RnCYSIPX4VQNkU9","type":"ListExpression","items":[{"id":"ZYzVCEu0T9DQEA_mXNXr4","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},{"id":"fhe_hHzm0kqLb9r2M-q-M","type":"EnumExpression","value":"test","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"x511AHWlhnc4c9QQuTxtx","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"rZPTMwn2IJpvJ9pr_lXMv","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"dirtO6mDr-vaqpSPoG3Is","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"STGJnocw94DVyXUUnguBd","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"2gsmuYPEQEVnum_GfYL7x":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"tvsyZ9Ks8fQ7w0Eze2VXz","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
+export const initData = {"commitId":19151,"hash":"8583753002240367","reducedExpression":{"id":"4cmrVZ7gmP7cQUXSyil6V","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"p75oIfghy517QKWcPUlB1","body":{"id":"efsCvfq0oaArjAx_CQ3qF","logs":{},"type":"ObjectExpression","fields":{"test":{"id":"wO0nzrm_i_KfVsVQIj17U","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"c8EbrBZoww0glEA3r4hHi":1,"RgEsXrAmtQk_o2GIaPDZy":1,"pk_cazPsQ5RDDacfC-tqJ":1}}},"exampleFlag":{"id":"OZeMibLHPWNDYNouilyYc","logs":{"evaluations":{"cN-TSxQ1UHTEpnZwd1RQt":1}},"type":"SwitchExpression","cases":[{"id":"R8WNfrIeMP1KEE2n8Vzr1","when":{"a":{"id":"ojxwSLfDcmPnvyYtFo9O6","logs":{},"type":"GetFieldExpression","object":{"id":"bBc68NqffeX5GysazApXb","logs":{},"type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"d7xvtNWcJynsxjcV8aLk2"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"_agWRFFyNgE74nXFxGZGV","logs":{},"type":"ListExpression","items":[{"id":"bamtJ7m4H7_kNREfGZKr0","logs":{},"type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"LZYXRB3kISNGY-8PYup4V","logs":{},"type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"Pl25nSTgnUY9fSVjnBIuB","logs":{},"type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}},{"id":"HkQ82oreQczxOHefkdge9","when":{"a":{"id":"PHyjXvYQV9wP7qmiDI2RM","logs":{},"type":"GetFieldExpression","object":{"id":"3d1KXn8ANVEdSuhosepi6","logs":{},"type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"d7xvtNWcJynsxjcV8aLk2"},"fieldPath":"context > user > id","valueType":{"type":"StringValueType"}},"b":{"id":"gWY2nDOyhA26fEovEBtEa","logs":{},"type":"ListExpression","items":[{"id":"QK38Y-ikgiXExMzN5E8F8","logs":{},"type":"StringExpression","value":"user_123","valueType":{"type":"StringValueType"}},{"id":"AMSyKePv7cmXt5x4zmfYH","logs":{},"type":"StringExpression","value":"user_456","valueType":{"type":"StringValueType"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"StringValueType"}}},"id":"g94EpMhZD0nUsXixuo1G_","logs":{},"type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"Oye-AL1JIj54LnoIAF5E4","logs":{},"type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"Y5psBexZCFa3NORYB9D6l","logs":{},"type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"DqJRaz55Xs3AjXDQMv5Gj","logs":{},"type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"d7xvtNWcJynsxjcV8aLk2","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
   
 /**
  * @deprecated use '@vercel/flags/providers/hypertune' package instead.
  */
-export const vercelFlagDefinitions = {"landingPageFooter":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3ElandingPageFooter","description":"The landing page footer displayed at bottom"}};
+export const vercelFlagDefinitions = {"test":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4088/main/draft/logic?selected_field_path=root%3Etest"},"exampleFlag":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4088/main/draft/logic?selected_field_path=root%3EexampleFlag"}};
 
 export type FlagValues = {
-  "landingPageFooter": boolean;
+  "test": boolean;
+  "exampleFlag": boolean;
 }
 
 export type FlagPaths = keyof FlagValues & string;
 
 export const flagFallbacks: FlagValues = {
-  "landingPageFooter": false,
+  "test": false,
+  "exampleFlag": false,
 }
 
 export function decodeFlagValues<TFlagPaths extends keyof FlagValues & string>(
@@ -64,13 +66,11 @@ export type RootArgs = {
 }
 
 export type Root = {
-  /**
-   * The landing page footer displayed at bottom
-   */
-  landingPageFooter: boolean;
+  test: boolean;
+  exampleFlag: boolean;
 }
 
-const rootFallback = {landingPageFooter:false};
+const rootFallback = {test:false,exampleFlag:false};
 
 export class RootNode extends sdk.Node {
   override typeName = "Root" as const;
@@ -86,11 +86,30 @@ export class RootNode extends sdk.Node {
   }
 
   /**
-   * The landing page footer displayed at bottom
-   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3ElandingPageFooter})
+   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4088/main/draft/logic?selected_field_path=root%3Etest})
    */
-  landingPageFooter({ args = {}, fallback }: { args?: Rec; fallback: boolean; }): boolean {
-    const props0 = this.getFieldNodeProps("landingPageFooter", { fieldArguments: args });
+  test({ args = {}, fallback }: { args?: Rec; fallback: boolean; }): boolean {
+    const props0 = this.getFieldNodeProps("test", { fieldArguments: args });
+    const expression0 = props0.expression;
+
+    if (
+      expression0 &&
+      expression0.type === "BooleanExpression"
+    ) {
+      const node = new sdk.BooleanNode(props0);
+      return node.get({ fallback });
+    }
+
+    const node = new sdk.BooleanNode(props0);
+    node._logUnexpectedTypeError();
+    return node.get({ fallback });
+  }
+
+  /**
+   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4088/main/draft/logic?selected_field_path=root%3EexampleFlag})
+   */
+  exampleFlag({ args = {}, fallback }: { args?: Rec; fallback: boolean; }): boolean {
+    const props0 = this.getFieldNodeProps("exampleFlag", { fieldArguments: args });
     const expression0 = props0.expression;
 
     if (
@@ -128,7 +147,7 @@ export type Source = {
   root: Root;
 }
 
-const sourceFallback = {root:{landingPageFooter:false}};
+const sourceFallback = {root:{test:false,exampleFlag:false}};
 
 export type Rec5 = {
   args: RootArgs;

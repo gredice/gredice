@@ -7,16 +7,18 @@
     "dev": "next dev --turbo -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "regenerate": "pnpm run /^regenerate:.*/",
+    "regenerate:feature-flags": "hypertune"
   },
   "dependencies": {
     "@vercel/kv": "3.0.0",
     "@vercel/postgres": "0.10.0",
-    "hypertune": "^2.5.5",
+    "hypertune": "2.5.5",
     "next": "15.0.0-rc.1",
     "react": "19.0.0-rc-cd22717c-20241013",
     "react-dom": "19.0.0-rc-cd22717c-20241013",
-    "server-only": "^0.0.1"
+    "server-only": "0.0.1"
   },
   "devDependencies": {
     "@gredice/storage": "workspace:*",
