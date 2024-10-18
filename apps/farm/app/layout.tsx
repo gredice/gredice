@@ -6,8 +6,8 @@ import Head from "next/head";
 import { ClientAppProvider } from "../components/providers/ClientAppProvider";
 
 export const metadata: Metadata = {
-  title: "Admin | Gredice",
-  description: "Gredice admin - upravljanje gredicama.",
+  title: "Farma | Gredice",
+  description: "Gredice farma - upravljanje farmom.",
 };
 
 export default function RootLayout({
