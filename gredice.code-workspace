@@ -9,6 +9,10 @@
 			"path": "apps/app"
 		},
 		{
+			"name": "🚀 farm",
+			"path": "apps/farm"
+		},
+		{
 			"name": "🚀 garden",
 			"path": "apps/garden"
 		},
