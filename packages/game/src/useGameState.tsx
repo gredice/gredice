@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { getStack } from "./GameScene";
-import type { Stack } from "./@types/Stack";
-import type { Block } from "./@types/Block";
+import type { Stack } from "./types/Stack";
+import type { Block } from "./types/Block";
 import type { Vector3 } from "three";
 
 export type GameState = {

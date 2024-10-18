@@ -2,8 +2,6 @@
 
 import {
     useQuery,
-    QueryClient,
-    QueryClientProvider,
     useQueryClient,
 } from '@tanstack/react-query';
 import { Vector3, Plane, Raycaster, Vector2, PCFSoftShadowMap } from 'three';
@@ -15,8 +13,10 @@ import { useSpring, animated } from '@react-spring/three';
 import { Environment } from './Environment';
 import { makeButton, makeFolder, useTweaks } from 'use-tweaks';
 import { useGameState } from './useGameState';
-import type { Stack } from './@types/Stack';
-import type { Block } from './@types/Block';
+import type { Stack } from './types/Stack';
+import type { Block } from './types/Block';
+import type { Garden } from './types/Garden';
+import { RecursivePartial } from '@signalco/js';
 
 const models = {
     GameAssets: { url: '/assets/models/GameAssets.glb' }
@@ -193,7 +193,7 @@ function Pickup({ children, stack, block, position, onPositionChanged }: PickupP
         filterTaps: true
     });
 
-    const customBind = () => {
+    function customBind() {
         const bindProps = bind();
         return {
             ...bindProps,
@@ -202,12 +202,12 @@ function Pickup({ children, stack, block, position, onPositionChanged }: PickupP
                 bindProps.onPointerDown?.(event);
             }
         };
-    };
+    }
 
     return (
         <animated.group
-            position={springs.internalPosition}
-            {...customBind()}>
+            position={springs.internalPosition as unknown as [number, number, number]}
+            {...customBind() as any}>
             {children}
         </animated.group>
     )
@@ -253,7 +253,7 @@ export function Shade({ stack, block, position, rotation }: EntityProps) {
     return (
         <animated.group
             position={position.clone().setY(stackHeight(stack, block) + 1)}
-            rotation={animatedRotation}>
+            rotation={animatedRotation as unknown as [number, number, number]}>
             <mesh
                 castShadow
                 receiveShadow
@@ -273,7 +273,7 @@ export function BlockGrass({ stack, block, position, rotation }: EntityProps) {
     return (
         <animated.group
             position={position.clone().setY(stackHeight(stack, block) + 0.2)}
-            rotation={animatedRotation}>
+            rotation={animatedRotation as unknown as [number, number, number]}>
             <mesh
                 castShadow
                 receiveShadow
@@ -301,7 +301,7 @@ export function BlockGround({ stack, block, position, rotation, variant }: Entit
     return (
         <animated.group
             position={position.clone().setY(stackHeight(stack, block) + 1)}
-            rotation={animatedRotation}>
+            rotation={animatedRotation as unknown as [number, number, number]}>
             <mesh
                 castShadow
                 receiveShadow
@@ -403,15 +403,24 @@ export function RaisedBed({ stack, block, position }: EntityProps) {
     );
 }
 
-function serializeGarden(garden: { stacks: Stack[] }) {
+function serializeGarden(garden: Garden) {
     return JSON.stringify(garden);
 }
 
-function deserializeGarden(serializedGarden: string) {
-    return JSON.parse(serializedGarden);
+function deserializeGarden(serializedGarden: string): Garden {
+    const garden = JSON.parse(serializedGarden) as RecursivePartial<Garden>;
+
+    if (!garden.name) {
+        garden.name = getDefaultGarden().name;
+    }
+    if (!garden.location || !garden.location.lat || !garden.location.lon) {
+        garden.location = getDefaultGarden().location;
+    }
+
+    return garden as Garden;
 }
 
-function getDefaultGarden() {
+function getDefaultGarden(): Garden {
     const size = 2;
     const stacks: Stack[] = [];
     for (let x = -size; x <= size; x++) {
@@ -428,43 +437,57 @@ function getDefaultGarden() {
     stacks.find(stack => stack.position.x === 1 && stack.position.z === 0)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
 
     return {
-        stacks
+        name: 'Moj vrt',
+        stacks,
+        location: {
+            lat: 45.739,
+            lon: 16.572
+        }
     };
 }
 
+const gardenLocalStorageKey = 'garden';
+function gardenQueryKey() {
+    return ['garden'];
+}
+
+async function getGarden() {
+    const serializedGarden = localStorage.getItem(gardenLocalStorageKey);
+    if (serializedGarden) {
+        return deserializeGarden(serializedGarden);
+    } else {
+        const newGarden = deserializeGarden(serializeGarden(getDefaultGarden()));
+        localStorage.setItem(gardenLocalStorageKey, serializeGarden(newGarden));
+        return newGarden;
+    }
+}
+
 function useGarden() {
-    return useQuery<{ stacks: Stack[] }>({
+    return useQuery({
         queryKey: ['garden'],
-        queryFn: async () => {
-            // Load garden from local storage
-            const serializedGarden = localStorage.getItem('garden');
-            if (serializedGarden) {
-                return deserializeGarden(serializedGarden);
-            } else {
-                const newGarden = deserializeGarden(serializeGarden(getDefaultGarden()));
-                localStorage.setItem('garden', serializeGarden(newGarden));
-                return newGarden;
-            }
-        },
+        queryFn: getGarden,
         staleTime: 0
     })
 }
 
 function useUpdateGarden() {
     const queryClient = useQueryClient();
-    return async ({ stacks }: { stacks: Stack[] }) => {
-        const garden = { stacks: structuredClone(stacks) };
+    return async ({ stacks }: { stacks?: Stack[] }) => {
+        const garden = await getGarden();
+        if (stacks) {
+            garden.stacks = structuredClone(stacks);
 
-        // Garden cleanup
-        // - remove empty stacks
-        garden.stacks = garden.stacks.filter(stack => stack.blocks.length > 0);
+            // Garden cleanup
+            // - remove empty stacks
+            garden.stacks = garden.stacks.filter(stack => stack.blocks.length > 0);
+        }
 
-        localStorage.setItem('garden', serializeGarden(garden));
-        queryClient.invalidateQueries({ queryKey: ['garden'] });
+        localStorage.setItem(gardenLocalStorageKey, serializeGarden(garden));
+        queryClient.invalidateQueries({ queryKey: gardenQueryKey() });
     }
 }
 
-export function Garden() {
+export function GardenDisplay() {
     const stacks = useGameState(state => state.stacks);
     const setStacks = useGameState(state => state.setStacks);
     const rotateBlock = useGameState(state => state.rotateBlock);
@@ -494,37 +517,34 @@ export function Garden() {
         rotateBlock(stack.position, blockIndex, block.rotation + 1);
     }
 
+    if (!garden) {
+        return null;
+    }
+
     return (
-        <group>
-            {stacks.map((stack) =>
-                stack.blocks?.map((block, i) => {
-                    return (
-                        <group
-                            key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.name}-${i}`}
-                            onContextMenu={(event) => handleContextMenu(stack, block, i, event)}>
-                            <EntityFactory
-                                name={block.name}
-                                stack={stack}
-                                block={block}
-                                position={new Vector3(stack.position.x, 0, stack.position.z)}
-                                rotation={block.rotation}
-                                variant={block.variant} />
-                        </group>
-                    );
-                })
-            )}
-        </group>
+        <>
+            <Environment location={garden.location} />
+            <group>
+                {stacks.map((stack) =>
+                    stack.blocks?.map((block, i) => {
+                        return (
+                            <group
+                                key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.name}-${i}`}
+                                onContextMenu={(event) => handleContextMenu(stack, block, i, event)}>
+                                <EntityFactory
+                                    name={block.name}
+                                    stack={stack}
+                                    block={block}
+                                    position={new Vector3(stack.position.x, 0, stack.position.z)}
+                                    rotation={block.rotation}
+                                    variant={block.variant} />
+                            </group>
+                        );
+                    })
+                )}
+            </group>
+        </>
     )
-}
-
-const queryClient = new QueryClient();
-
-function GameSceneProviders({ children }: PropsWithChildren) {
-    return (
-        <QueryClientProvider client={queryClient}>
-            {children}
-        </QueryClientProvider>
-    );
 }
 
 function DebugHud() {
@@ -583,9 +603,7 @@ function DebugHud() {
     );
 }
 
-const isDevelopment = process.env.NODE_ENV === 'development';
-
-export function GameScene() {
+export function GameScene({ isDevelopment }: { isDevelopment?: boolean }) {
     const cameraPosition = 100;
 
     // Update current time every second
@@ -598,35 +616,28 @@ export function GameScene() {
     }, []);
 
     return (
-        <div className='relative'>
-            <div className='absolute h-full w-full'>
-                <GameSceneProviders>
-                    <Canvas
-                        orthographic
-                        shadows={{
-                            type: PCFSoftShadowMap,
-                            enabled: true,
-                        }}
-                        camera={{
-                            position: cameraPosition,
-                            zoom: 100,
-                            far: 10000,
-                            near: 0.01
-                        }}>
+        <Canvas
+            className='h-full w-full'
+            orthographic
+            shadows={{
+                type: PCFSoftShadowMap,
+                enabled: true,
+            }}
+            camera={{
+                position: cameraPosition,
+                zoom: 100,
+                far: 10000,
+                near: 0.01
+            }}>
 
-                        {isDevelopment && <DebugHud />}
+            {isDevelopment && <DebugHud />}
 
-                        <Environment />
-                        <Garden />
+            <GardenDisplay />
 
-                        <OrbitControls
-                            enableRotate={false}
-                            minZoom={50}
-                            maxZoom={200} />
-                    </Canvas>
-                </GameSceneProviders>
-            </div>
-            <div className='absolute pointer-events-none select-none h-full w-full [box-shadow:inset_0px_0px_8px_8px_var(--section-bg)]' />
-        </div>
+            <OrbitControls
+                enableRotate={false}
+                minZoom={50}
+                maxZoom={200} />
+        </Canvas>
     );
 }

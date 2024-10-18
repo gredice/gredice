@@ -1,10 +1,11 @@
 'use client';
 
-import * as THREE from 'three';
 import { useEffect, useRef } from 'react';
 import chroma from 'chroma-js';
 import { getTimes, getPosition } from 'suncalc';
 import { useGameState } from './useGameState';
+import { AmbientLight, Color, DirectionalLight, HemisphereLight, Quaternion, Vector3 } from 'three';
+import { Garden } from './types/Garden';
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
@@ -28,11 +29,7 @@ const hemisphereSkyColorScale = chroma
  * 
  * @returns A number between 0 and 1 representing the current time of day
  */
-function getTimeOfDay(currentTime: Date) {
-    // TODO: Use garden location instead of hard-coded coordinates
-    const lat = 45.739;
-    const lon = 16.572;
-
+function getTimeOfDay({ lat, lon }: Garden['location'], currentTime: Date) {
     const { sunrise: sunriseStart, sunsetStart: sunsetStart } = getTimes(currentTime, lat, lon);
 
     const sunrise = sunriseStart.getHours() * 60 + sunriseStart.getMinutes();
@@ -52,24 +49,21 @@ function getTimeOfDay(currentTime: Date) {
     }
 }
 
-function getSunPosition(currentTime: Date, timeOfDay: number) {
-    const lat = 45.739;
-    const lon = 16.572;
-
+function getSunPosition({ lat, lon }: Garden['location'], currentTime: Date, timeOfDay: number) {
     const date = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
     date.setHours(Math.trunc(timeOfDay * 24));
     date.setMinutes(Math.trunc((timeOfDay * 24 - Math.trunc(timeOfDay * 24)) * 60));
 
     const sunPosition = getPosition(currentTime, lat, lon);
 
-    const pos = new THREE.Vector3(5, 10, 0);
+    const pos = new Vector3(5, 10, 0);
 
-    const hinge = new THREE.Quaternion();
+    const hinge = new Quaternion();
 
-    const rotator = new THREE.Quaternion();
-    rotator.setFromAxisAngle(new THREE.Vector3(0, -1, 0), sunPosition.altitude);
+    const rotator = new Quaternion();
+    rotator.setFromAxisAngle(new Vector3(0, -1, 0), sunPosition.altitude);
     hinge.premultiply(rotator);
-    rotator.setFromAxisAngle(new THREE.Vector3(1, 0, 0), sunPosition.azimuth);
+    rotator.setFromAxisAngle(new Vector3(1, 0, 0), sunPosition.azimuth);
     hinge.premultiply(rotator);
 
     pos.applyQuaternion(hinge);
@@ -77,19 +71,19 @@ function getSunPosition(currentTime: Date, timeOfDay: number) {
     return pos;
 }
 
-export function Environment() {
+export function Environment({ location }: { location: Garden['location'] }) {
     const cameraShadowSize = 20;
     const shadowMapSize = 8;
 
-    const backgroundRef = useRef<THREE.Color>(null);
-    const ambientRef = useRef<THREE.AmbientLight>(null);
-    const hemisphereRef = useRef<THREE.HemisphereLight>(null);
-    const directionalLightRef = useRef<THREE.DirectionalLight>(null);
+    const backgroundRef = useRef<Color>(null);
+    const ambientRef = useRef<AmbientLight>(null);
+    const hemisphereRef = useRef<HemisphereLight>(null);
+    const directionalLightRef = useRef<DirectionalLight>(null);
 
     const currentTime = useGameState((state) => state.currentTime);
 
     useEffect(() => {
-        const timeOfDay = getTimeOfDay(currentTime);
+        const timeOfDay = getTimeOfDay(location, currentTime);
 
         const sunIntensity = sunIntensityTimeScale(timeOfDay).get('rgb.r') / 255;
         if (directionalLightRef.current) {
@@ -104,7 +98,7 @@ export function Environment() {
             sunTemperature[1] / 255,
             sunTemperature[2] / 255,
             'srgb');
-        const sunPosition = getSunPosition(currentTime, timeOfDay);
+        const sunPosition = getSunPosition(location, currentTime, timeOfDay);
         directionalLightRef.current?.position.copy(sunPosition);
 
         const backgroundColor = backgroundColorScale(timeOfDay).rgb();
@@ -144,13 +138,9 @@ export function Environment() {
                 // shadow-near={0.01}
                 // shadow-far={1000}
                 shadow-normalBias={0.03}
-                shadow-camera-left={-cameraShadowSize}
-                shadow-camera-right={cameraShadowSize}
-                shadow-camera-top={cameraShadowSize}
-                shadow-camera-bottom={-cameraShadowSize}
-                // shadow-camera-near={0.01}
-                // shadow-camera-far={1000}
-                castShadow />
+                castShadow>
+                <orthographicCamera attach="shadow-camera" args={[-cameraShadowSize, cameraShadowSize, cameraShadowSize, -cameraShadowSize]} />
+            </directionalLight>
         </>
     );
 }
