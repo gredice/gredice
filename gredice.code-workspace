@@ -21,9 +21,15 @@
 			"path": "apps/www"
 		},
 		{
+			"name": "📦 @gredice/game",
+			"path": "packages/game"
+		},
+		{
 			"name": "📦 @gredice/storage",
 			"path": "packages/storage"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"typescript.tsdk": "✨ gredice-monorepo\\node_modules\\typescript\\lib"
+	}
 }

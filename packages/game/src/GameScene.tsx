@@ -2,21 +2,22 @@
 
 import {
     useQuery,
-    QueryClient,
-    QueryClientProvider,
     useQueryClient,
 } from '@tanstack/react-query';
 import { Vector3, Plane, Raycaster, Vector2, PCFSoftShadowMap } from 'three';
 import { Canvas, ThreeEvent, useThree } from '@react-three/fiber';
 import { MeshWobbleMaterial, OrbitControls, StatsGl, useGLTF } from '@react-three/drei';
-import { PointerEvent, PropsWithChildren, useEffect, useMemo, useRef } from 'react';
+import { HTMLAttributes, PointerEvent, PropsWithChildren, useEffect, useMemo, useRef } from 'react';
 import { Handler, useDrag } from '@use-gesture/react';
 import { useSpring, animated } from '@react-spring/three';
 import { Environment } from './Environment';
 import { makeButton, makeFolder, useTweaks } from 'use-tweaks';
 import { useGameState } from './useGameState';
-import type { Stack } from './@types/Stack';
-import type { Block } from './@types/Block';
+import type { Stack } from './types/Stack';
+import type { Block } from './types/Block';
+import type { Garden } from './types/Garden';
+import { RecursivePartial } from '@signalco/js';
+import { cx } from '@signalco/ui-primitives/cx';
 
 const models = {
     GameAssets: { url: '/assets/models/GameAssets.glb' }
@@ -115,7 +116,6 @@ function EntityFactory({ name, stack, block, position, ...rest }: { name: string
     );
 }
 
-useGLTF.preload(models.GameAssets.url);
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 
 type PickupProps = PropsWithChildren<
@@ -193,7 +193,7 @@ function Pickup({ children, stack, block, position, onPositionChanged }: PickupP
         filterTaps: true
     });
 
-    const customBind = () => {
+    function customBind() {
         const bindProps = bind();
         return {
             ...bindProps,
@@ -202,12 +202,12 @@ function Pickup({ children, stack, block, position, onPositionChanged }: PickupP
                 bindProps.onPointerDown?.(event);
             }
         };
-    };
+    }
 
     return (
         <animated.group
-            position={springs.internalPosition}
-            {...customBind()}>
+            position={springs.internalPosition as unknown as [number, number, number]}
+            {...customBind() as any}>
             {children}
         </animated.group>
     )
@@ -230,8 +230,13 @@ function useAnimatedEntityRotation(rotation: number) {
     return useMemo(() => [springs.rotation], [springs.rotation]);
 }
 
+function useGameGLTF(url: string) {
+    const appBaseUrl = useGameState(state => state.appBaseUrl);
+    return useGLTF(appBaseUrl + url);
+}
+
 export function Shade({ stack, block, position, rotation }: EntityProps) {
-    const { nodes, materials }: any = useGLTF(models.GameAssets.url);
+    const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
 
     let variant = "Solo";
     let realizedRotation = rotation % 2;
@@ -253,7 +258,7 @@ export function Shade({ stack, block, position, rotation }: EntityProps) {
     return (
         <animated.group
             position={position.clone().setY(stackHeight(stack, block) + 1)}
-            rotation={animatedRotation}>
+            rotation={animatedRotation as unknown as [number, number, number]}>
             <mesh
                 castShadow
                 receiveShadow
@@ -265,7 +270,7 @@ export function Shade({ stack, block, position, rotation }: EntityProps) {
 }
 
 export function BlockGrass({ stack, block, position, rotation }: EntityProps) {
-    const { nodes, materials }: any = useGLTF(models.GameAssets.url);
+    const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
 
     const variantResolved = 1;
@@ -273,7 +278,7 @@ export function BlockGrass({ stack, block, position, rotation }: EntityProps) {
     return (
         <animated.group
             position={position.clone().setY(stackHeight(stack, block) + 0.2)}
-            rotation={animatedRotation}>
+            rotation={animatedRotation as unknown as [number, number, number]}>
             <mesh
                 castShadow
                 receiveShadow
@@ -293,7 +298,7 @@ export function BlockGrass({ stack, block, position, rotation }: EntityProps) {
 }
 
 export function BlockGround({ stack, block, position, rotation, variant }: EntityProps) {
-    const { nodes, materials }: any = useGLTF(models.GameAssets.url);
+    const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
 
     const variantResolved = (variant ?? 1) % 2;
@@ -301,7 +306,7 @@ export function BlockGround({ stack, block, position, rotation, variant }: Entit
     return (
         <animated.group
             position={position.clone().setY(stackHeight(stack, block) + 1)}
-            rotation={animatedRotation}>
+            rotation={animatedRotation as unknown as [number, number, number]}>
             <mesh
                 castShadow
                 receiveShadow
@@ -338,7 +343,7 @@ function getEntityNeighbors(stack: Stack, block: Block, position: Vector3) {
 }
 
 export function RaisedBed({ stack, block, position }: EntityProps) {
-    const { nodes, materials }: any = useGLTF(models.GameAssets.url)
+    const { nodes, materials }: any = useGameGLTF(models.GameAssets.url)
 
     // Switch between shapes (O, L, I, U) based on neighbors
     let shape = "O";
@@ -403,18 +408,27 @@ export function RaisedBed({ stack, block, position }: EntityProps) {
     );
 }
 
-function serializeGarden(garden: { stacks: Stack[] }) {
+function serializeGarden(garden: Garden) {
     return JSON.stringify(garden);
 }
 
-function deserializeGarden(serializedGarden: string) {
-    return JSON.parse(serializedGarden);
+function deserializeGarden(serializedGarden: string): Garden {
+    const garden = JSON.parse(serializedGarden) as RecursivePartial<Garden>;
+
+    if (!garden.name) {
+        garden.name = getDefaultGarden().name;
+    }
+    if (!garden.location || !garden.location.lat || !garden.location.lon) {
+        garden.location = getDefaultGarden().location;
+    }
+
+    return garden as Garden;
 }
 
-function getDefaultGarden() {
-    const size = 2;
+function getDefaultGarden(): Garden {
+    const size = 1;
     const stacks: Stack[] = [];
-    for (let x = -size; x <= size; x++) {
+    for (let x = -size; x <= size + 1; x++) {
         for (let z = -size; z <= size; z++) {
             stacks.push({
                 position: new Vector3(x, 0, z),
@@ -428,43 +442,57 @@ function getDefaultGarden() {
     stacks.find(stack => stack.position.x === 1 && stack.position.z === 0)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
 
     return {
-        stacks
+        name: 'Moj vrt',
+        stacks,
+        location: {
+            lat: 45.739,
+            lon: 16.572
+        }
     };
 }
 
+const gardenLocalStorageKey = 'garden';
+function gardenQueryKey() {
+    return ['garden'];
+}
+
+async function getGarden() {
+    const serializedGarden = localStorage.getItem(gardenLocalStorageKey);
+    if (serializedGarden) {
+        return deserializeGarden(serializedGarden);
+    } else {
+        const newGarden = deserializeGarden(serializeGarden(getDefaultGarden()));
+        localStorage.setItem(gardenLocalStorageKey, serializeGarden(newGarden));
+        return newGarden;
+    }
+}
+
 function useGarden() {
-    return useQuery<{ stacks: Stack[] }>({
+    return useQuery({
         queryKey: ['garden'],
-        queryFn: async () => {
-            // Load garden from local storage
-            const serializedGarden = localStorage.getItem('garden');
-            if (serializedGarden) {
-                return deserializeGarden(serializedGarden);
-            } else {
-                const newGarden = deserializeGarden(serializeGarden(getDefaultGarden()));
-                localStorage.setItem('garden', serializeGarden(newGarden));
-                return newGarden;
-            }
-        },
+        queryFn: getGarden,
         staleTime: 0
     })
 }
 
 function useUpdateGarden() {
     const queryClient = useQueryClient();
-    return async ({ stacks }: { stacks: Stack[] }) => {
-        const garden = { stacks: structuredClone(stacks) };
+    return async ({ stacks }: { stacks?: Stack[] }) => {
+        const garden = await getGarden();
+        if (stacks) {
+            garden.stacks = structuredClone(stacks);
 
-        // Garden cleanup
-        // - remove empty stacks
-        garden.stacks = garden.stacks.filter(stack => stack.blocks.length > 0);
+            // Garden cleanup
+            // - remove empty stacks
+            garden.stacks = garden.stacks.filter(stack => stack.blocks.length > 0);
+        }
 
-        localStorage.setItem('garden', serializeGarden(garden));
-        queryClient.invalidateQueries({ queryKey: ['garden'] });
+        localStorage.setItem(gardenLocalStorageKey, serializeGarden(garden));
+        queryClient.invalidateQueries({ queryKey: gardenQueryKey() });
     }
 }
 
-export function Garden() {
+export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
     const stacks = useGameState(state => state.stacks);
     const setStacks = useGameState(state => state.setStacks);
     const rotateBlock = useGameState(state => state.rotateBlock);
@@ -494,37 +522,34 @@ export function Garden() {
         rotateBlock(stack.position, blockIndex, block.rotation + 1);
     }
 
+    if (!garden) {
+        return null;
+    }
+
     return (
-        <group>
-            {stacks.map((stack) =>
-                stack.blocks?.map((block, i) => {
-                    return (
-                        <group
-                            key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.name}-${i}`}
-                            onContextMenu={(event) => handleContextMenu(stack, block, i, event)}>
-                            <EntityFactory
-                                name={block.name}
-                                stack={stack}
-                                block={block}
-                                position={new Vector3(stack.position.x, 0, stack.position.z)}
-                                rotation={block.rotation}
-                                variant={block.variant} />
-                        </group>
-                    );
-                })
-            )}
-        </group>
+        <>
+            <Environment noBackground={noBackground} location={garden.location} />
+            <group>
+                {stacks.map((stack) =>
+                    stack.blocks?.map((block, i) => {
+                        return (
+                            <group
+                                key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.name}-${i}`}
+                                onContextMenu={(event) => handleContextMenu(stack, block, i, event)}>
+                                <EntityFactory
+                                    name={block.name}
+                                    stack={stack}
+                                    block={block}
+                                    position={new Vector3(stack.position.x, 0, stack.position.z)}
+                                    rotation={block.rotation}
+                                    variant={block.variant} />
+                            </group>
+                        );
+                    })
+                )}
+            </group>
+        </>
     )
-}
-
-const queryClient = new QueryClient();
-
-function GameSceneProviders({ children }: PropsWithChildren) {
-    return (
-        <QueryClientProvider client={queryClient}>
-            {children}
-        </QueryClientProvider>
-    );
 }
 
 function DebugHud() {
@@ -583,14 +608,40 @@ function DebugHud() {
     );
 }
 
-const isDevelopment = process.env.NODE_ENV === 'development';
+export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
+    appBaseUrl?: string,
+    isDevelopment?: boolean,
+    zoom?: 'far' | 'normal',
+    freezeTime?: Date,
+    noBackground?: boolean
+}
 
-export function GameScene() {
+export function GameScene({
+    appBaseUrl,
+    isDevelopment,
+    zoom = 'normal',
+    freezeTime,
+    noBackground,
+    ...rest
+}: GameSceneProps) {
     const cameraPosition = 100;
+
+    // Set app base URL
+    const setAppBaseUrl = useGameState((state) => state.setAppBaseUrl);
+    useEffect(() => {
+        setAppBaseUrl(appBaseUrl ?? '');
+
+        useGLTF.preload(appBaseUrl + models.GameAssets.url);
+    }, [appBaseUrl]);
 
     // Update current time every second
     const setCurrentTime = useGameState((state) => state.setCurrentTime);
     useEffect(() => {
+        if (freezeTime) {
+            setCurrentTime(freezeTime);
+            return;
+        }
+
         const interval = setInterval(() => {
             setCurrentTime(new Date());
         }, 1000);
@@ -598,35 +649,28 @@ export function GameScene() {
     }, []);
 
     return (
-        <div className='relative'>
-            <div className='absolute h-full w-full'>
-                <GameSceneProviders>
-                    <Canvas
-                        orthographic
-                        shadows={{
-                            type: PCFSoftShadowMap,
-                            enabled: true,
-                        }}
-                        camera={{
-                            position: cameraPosition,
-                            zoom: 100,
-                            far: 10000,
-                            near: 0.01
-                        }}>
+        <Canvas
+            orthographic
+            shadows={{
+                type: PCFSoftShadowMap,
+                enabled: true,
+            }}
+            camera={{
+                position: cameraPosition,
+                zoom: zoom === 'far' ? 75 : 100,
+                far: 10000,
+                near: 0.01
+            }}
+            {...rest}>
 
-                        {isDevelopment && <DebugHud />}
+            {isDevelopment && <DebugHud />}
 
-                        <Environment />
-                        <Garden />
+            <GardenDisplay noBackground={noBackground} />
 
-                        <OrbitControls
-                            enableRotate={false}
-                            minZoom={50}
-                            maxZoom={200} />
-                    </Canvas>
-                </GameSceneProviders>
-            </div>
-            <div className='absolute pointer-events-none select-none h-full w-full [box-shadow:inset_0px_0px_8px_8px_var(--section-bg)]' />
-        </div>
+            <OrbitControls
+                enableRotate={false}
+                minZoom={50}
+                maxZoom={200} />
+        </Canvas>
     );
 }

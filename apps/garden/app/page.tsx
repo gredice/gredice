@@ -1,12 +1,13 @@
-import { GameScene } from "../components/game/GameScene";
-import { CSSProperties } from "react";
+import { GameScene } from "@gredice/game/GameScene";
+import getHypertune from "../lib/flags/getHypertune";
 
-export default function Home() {
+export default async function Home() {
+  const hypertune = await getHypertune();
+  const enableDebugHud = hypertune.enableDebugHud({ fallback: false });
+
   return (
-    <div
-      className="grid grid-cols-1 h-screen bg-[#E7E2CC]"
-      style={{ '--section-bg': '#E7E2CC' } as CSSProperties}>
-      <GameScene />
+    <div className="grid grid-cols-1 h-screen">
+      <GameScene isDevelopment={enableDebugHud} />
     </div>
   );
 }

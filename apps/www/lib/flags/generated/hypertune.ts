@@ -2,25 +2,25 @@
 
 import * as sdk from "hypertune";
 
-export const queryCode = `query FullQuery{root{landingPageFooter}}`;
+export const queryCode = `query FullQuery{root{preSeason}}`;
 
-export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"landingPageFooter":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
+export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"preSeason":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
 
-export const initData = {"commitId":19075,"hash":"5630274241907649","reducedExpression":{"id":"aSYD5sRoX5E3yt1VdQu_e","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"mVlU96bBrUq2pFr7LvmL6","body":{"id":"v7OKVmigjMDLFjxa9kFxr","logs":{},"type":"ObjectExpression","fields":{"landingPageFooter":{"id":"PzFMCfR5Xix5C9G9C-j_j","type":"SwitchExpression","cases":[{"id":"n-aVFzo4a7z6-zoyAEB7b","when":{"a":{"id":"A7DBE3UGENi0vRYAkCYaR","type":"GetFieldExpression","object":{"id":"L_h0yRwIfB5fXh9A4frhn","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"tvsyZ9Ks8fQ7w0Eze2VXz"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"LV94L1RnCYSIPX4VQNkU9","type":"ListExpression","items":[{"id":"ZYzVCEu0T9DQEA_mXNXr4","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},{"id":"fhe_hHzm0kqLb9r2M-q-M","type":"EnumExpression","value":"test","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"x511AHWlhnc4c9QQuTxtx","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"rZPTMwn2IJpvJ9pr_lXMv","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"dirtO6mDr-vaqpSPoG3Is","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"STGJnocw94DVyXUUnguBd","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"2gsmuYPEQEVnum_GfYL7x":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"tvsyZ9Ks8fQ7w0Eze2VXz","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
+export const initData = {"commitId":19306,"hash":"3376041817202543","reducedExpression":{"id":"aSYD5sRoX5E3yt1VdQu_e","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"mVlU96bBrUq2pFr7LvmL6","body":{"id":"v7OKVmigjMDLFjxa9kFxr","logs":{},"type":"ObjectExpression","fields":{"preSeason":{"id":"VSyDYJcckoNeyZlz_UXNS","type":"SwitchExpression","cases":[{"id":"5sY9FQG8YrzbTZ__9VCAC","when":{"a":{"id":"1TrfI3vjyjLGFG5zPTVPf","type":"GetFieldExpression","object":{"id":"mNJH5yfiRvdMPd-6prq4H","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"tvsyZ9Ks8fQ7w0Eze2VXz"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"zoDFcBwaLaFgIGayWb4z5","type":"ListExpression","items":[{"id":"x_qI0aYGB5zNmB2rC_a1L","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"2wvd9ynKWWJP2K47Rw1R2","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"X3W1Zs82gQ0QdeAE9fak_","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"D30yJjI-z7E_T7_49gnZM","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"NDL61LP_HqkAxksxbMyko","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"0ynfs6c7DzYuhe1ilcBBM":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"tvsyZ9Ks8fQ7w0Eze2VXz","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
   
 /**
  * @deprecated use '@vercel/flags/providers/hypertune' package instead.
  */
-export const vercelFlagDefinitions = {"landingPageFooter":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3ElandingPageFooter","description":"The landing page footer displayed at bottom"}};
+export const vercelFlagDefinitions = {"preSeason":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3EpreSeason"}};
 
 export type FlagValues = {
-  "landingPageFooter": boolean;
+  "preSeason": boolean;
 }
 
 export type FlagPaths = keyof FlagValues & string;
 
 export const flagFallbacks: FlagValues = {
-  "landingPageFooter": false,
+  "preSeason": false,
 }
 
 export function decodeFlagValues<TFlagPaths extends keyof FlagValues & string>(
@@ -32,12 +32,6 @@ export function decodeFlagValues<TFlagPaths extends keyof FlagValues & string>(
 
 export type Rec = {
 
-}
-
-export type Rec3 = {
-  id: string;
-  name: string;
-  email: string;
 }
 
 export const EnvironmentEnumValues = [
@@ -55,7 +49,6 @@ export type Environment = typeof EnvironmentEnumValues[number];
  * or other input types.
  */
 export type Rec2 = {
-  user: Rec3;
   environment: Environment;
 }
 
@@ -64,13 +57,10 @@ export type RootArgs = {
 }
 
 export type Root = {
-  /**
-   * The landing page footer displayed at bottom
-   */
-  landingPageFooter: boolean;
+  preSeason: boolean;
 }
 
-const rootFallback = {landingPageFooter:false};
+const rootFallback = {preSeason:false};
 
 export class RootNode extends sdk.Node {
   override typeName = "Root" as const;
@@ -86,11 +76,10 @@ export class RootNode extends sdk.Node {
   }
 
   /**
-   * The landing page footer displayed at bottom
-   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3ElandingPageFooter})
+   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3EpreSeason})
    */
-  landingPageFooter({ args = {}, fallback }: { args?: Rec; fallback: boolean; }): boolean {
-    const props0 = this.getFieldNodeProps("landingPageFooter", { fieldArguments: args });
+  preSeason({ args = {}, fallback }: { args?: Rec; fallback: boolean; }): boolean {
+    const props0 = this.getFieldNodeProps("preSeason", { fieldArguments: args });
     const expression0 = props0.expression;
 
     if (
@@ -128,14 +117,14 @@ export type Source = {
   root: Root;
 }
 
-const sourceFallback = {root:{landingPageFooter:false}};
+const sourceFallback = {root:{preSeason:false}};
 
-export type Rec5 = {
+export type Rec4 = {
   args: RootArgs;
 }
 
-export type Rec4 = {
-  root: Rec5;
+export type Rec3 = {
+  root: Rec4;
 }
 
 /**
@@ -152,7 +141,7 @@ export type Rec4 = {
 export class SourceNode extends sdk.Node {
   override typeName = "Query" as const;
 
-  get({ args, fallback = sourceFallback as Source}: { args: Rec4; fallback?: Source }): Source {
+  get({ args, fallback = sourceFallback as Source}: { args: Rec3; fallback?: Source }): Source {
     const getQuery = sdk.mergeFieldQueryAndArgs(
       query.fragmentDefinitions,
       sdk.getFieldQueryForPath(query.fragmentDefinitions, query.fieldQuery, []), 

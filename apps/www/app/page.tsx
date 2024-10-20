@@ -1,35 +1,68 @@
-import Image from "next/image";
-import getHypertune from "../lib/flags/getHypertune";
+import { SectionsView } from "@signalco/cms-core/SectionsView";
+import { sectionsComponentRegistry } from "../components/shared/sectionsComponentRegistry";
+import { Navigate } from "@signalco/ui-icons";
+import { KnownPages } from "../src/KnownPages";
+import { GameScene } from "@gredice/game/GameScene";
+import { SectionData } from "@signalco/cms-core/SectionData";
+import { getFlags } from "../lib/flags/getFlags";
+import { Stack } from "@signalco/ui-primitives/Stack";
+import { Typography } from "@signalco/ui-primitives/Typography";
+import { NewsletterSignUp } from "./NewsletterSignUp";
 
-async function Footer() {
-  const hypertune = await getHypertune();
-  const landingPageFooter = hypertune.landingPageFooter({ fallback: false });
-  return <div>Flag: {String(landingPageFooter)}</div>;
-}
+const sectionsData: SectionData[] = [
+    {
+        component: 'Heading1',
+        tagline: 'Gredice',
+        header: 'Vrt po tvom',
+        description: 'Dobiješ povrćeg iz svojih gredica - nit oro, nit kopo!',
+        asset: (
+            <div className="min-h-96 relative rounded-xl overflow-hidden">
+                <GameScene
+                    className="!absolute"
+                    appBaseUrl="https://vrt.gredice.com"
+                    freezeTime={new Date(2024, 5, 21, 14)}
+                    noBackground />
+            </div>
+        ),
+        ctas: [
+            { label: 'Posjeti svoj vrt', href: KnownPages.GardenApp, icon: <Navigate /> }
+        ]
+    }
+];
 
-export default function Home() {
-  return (
-    <div>
-      <div className="min-h-screen bg-gradient-to-b from-green-50 to-green-100 flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-xl w-full">
-          <div className="relative w-full aspect-[512/123] mb-8">
-            <Image
-              src="/Logotype - gredice@2x.svg"
-              alt="Gredice Logo"
-              fill
-              style={{ objectFit: 'contain' }}
-              priority
-            />
-          </div>
-          <h1 className="text-2xl sm:text-3xl md:text-3xl font-bold text-green-800 mb-4 text-balance">
-            Pripremamo se za proljece 2025.
-          </h1>
-          <p className="text-lg sm:text-xl text-green-600 text-pretty">
-            Posjetite nas uskoro za vise informacija!
-          </p>
-        </div>
-      </div>
-      <Footer />
-    </div>
-  );
+const preSeasonSectionsData: SectionData[] = [
+    {
+        component: 'Heading1',
+        tagline: 'Gredice',
+        header: 'Vrt po tvom',
+        description: (
+            <Stack spacing={6}>
+                <Typography>Dobiješ povrćeg iz svojih gredica - nit oro, nit kopo!</Typography>
+                <NewsletterSignUp />
+            </Stack>
+        ),
+        asset: (
+            <div className="min-h-96 relative rounded-xl overflow-hidden">
+                <GameScene
+                    className="!absolute"
+                    appBaseUrl="https://vrt.gredice.com"
+                    freezeTime={new Date(2024, 5, 21, 14)}
+                    noBackground />
+            </div>
+        ),
+        ctas: [
+
+        ]
+    }
+];
+
+export default async function Home() {
+    const flags = await getFlags();
+    const preSeason = flags.preSeason({ fallback: true });
+
+    return (
+        <SectionsView
+            sectionsData={preSeason ? preSeasonSectionsData : sectionsData}
+            componentsRegistry={sectionsComponentRegistry} />
+    );
 }

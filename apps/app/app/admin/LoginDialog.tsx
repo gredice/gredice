@@ -4,18 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitive
 import { Input } from "@signalco/ui-primitives/Input";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Stack } from "@signalco/ui-primitives/Stack";
-import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { Alert } from "@signalco/ui/Alert";
 import { authCurrentUserQueryKeys } from "@signalco/auth-client";
+import { queryClient } from "../../components/providers/ClientAppProvider";
+import { useActionState } from "react";
+import { AlertTriangle } from "lucide-react";
 
 export function LoginDialog() {
-    const router = useRouter();
-    const queryClient = useQueryClient();
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-
-        // Get the form data
-        const formData = new FormData(e.currentTarget);
+    const [error, submitAction, isPending] = useActionState(async (_previousState: unknown, formData: FormData) => {
         const email = formData.get('email') as string;
         const password = formData.get('password') as string;
 
@@ -28,14 +24,13 @@ export function LoginDialog() {
             body: JSON.stringify({ email, password })
         });
         if (response.status !== 204) {
-            // TODO: Show notification
             console.error('Login failed with status', response.status);
-            return;
+            return { error: true }
         }
 
         queryClient.invalidateQueries({ queryKey: authCurrentUserQueryKeys });
         window.location.reload();
-    }
+    }, null);
 
     return (
         <Card className="w-80 shadow-lg">
@@ -43,11 +38,16 @@ export function LoginDialog() {
                 <CardTitle>Login</CardTitle>
             </CardHeader>
             <CardContent>
-                <form onSubmit={handleSubmit}>
+                <form action={submitAction}>
                     <Stack spacing={2}>
                         <Input name="email" label="Email" type="email" autoComplete="email" />
                         <Input name="password" label="Password" type="password" autoComplete="current-password" />
-                        <Button type="submit">Login</Button>
+                        <Button type="submit" loading={isPending}>Login</Button>
+                        {error && (
+                            <Alert color="danger" startDecorator={<AlertTriangle />}>
+                                Greška prilikom prijave. Pokušajte ponovo.
+                            </Alert>
+                        )}
                     </Stack>
                 </form>
             </CardContent>

@@ -2,27 +2,25 @@
 
 import * as sdk from "hypertune";
 
-export const queryCode = `query FullQuery{root{showUI exampleFlag}}`;
+export const queryCode = `query FullQuery{root{showUI}}`;
 
-export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"showUI":{"fieldArguments":{},"fieldQuery":null},"exampleFlag":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
+export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"showUI":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
 
-export const initData = {"commitId":19209,"hash":"6734089747439798","reducedExpression":{"id":"DLtynSOOp0PagiOhQUw0f","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"JY75eOxQTEzlV-A6Ni37v","body":{"id":"az-7S84s8S4CqbMMBi2z3","logs":{},"type":"ObjectExpression","fields":{"showUI":{"id":"B78l7-qHhFBZSvOn_ty9O","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"chgmSwThmZFMS-q0jyO_7":1,"0Z52N1oXb2apI6ZC_csP-":1,"f1ryfOsxx6_i9yN74QSlW":1}}},"exampleFlag":{"id":"E-LUrzTrAfAvXipLmcLbS","logs":{"evaluations":{"qQzh2csOc0tpKnBUIM5Vn":1}},"type":"SwitchExpression","cases":[{"id":"R8WNfrIeMP1KEE2n8Vzr1","when":{"a":{"id":"C1A6Pcsz5bin2L9CDA0y5","logs":{},"type":"GetFieldExpression","object":{"id":"l7iz1y3WqMFVk4X1fSb52","logs":{},"type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"CbT1XTBNkXnaDuUjpkURx"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"H0cYpqKgrXxygEdpc8C8h","logs":{},"type":"ListExpression","items":[{"id":"L58fKKSi6T8iGiB0m-Nf0","logs":{},"type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"949lSvMxBQ1mb7TmZ8Fd4","logs":{},"type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"Tjw20wTdhM7XFkDyAA2eH","logs":{},"type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}},{"id":"HkQ82oreQczxOHefkdge9","when":{"a":{"id":"6uBopP-7SpJmQgQh2ngD6","logs":{},"type":"GetFieldExpression","object":{"id":"dSvq1YjxiFUpqPppvpjly","logs":{},"type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"CbT1XTBNkXnaDuUjpkURx"},"fieldPath":"context > user > id","valueType":{"type":"StringValueType"}},"b":{"id":"bpHWGTiSInmiESbf0DHwr","logs":{},"type":"ListExpression","items":[{"id":"CwoTJrrlQGv6qFveKnKkL","logs":{},"type":"StringExpression","value":"user_123","valueType":{"type":"StringValueType"}},{"id":"BuWdeiriEOVFRJaL5XPpu","logs":{},"type":"StringExpression","value":"user_456","valueType":{"type":"StringValueType"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"StringValueType"}}},"id":"MounAcwPoBtt7kMotzNiN","logs":{},"type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"5ioGAlequlHR-RFZSrWA0","logs":{},"type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"NYnNWaSlFbm41xFIgtq7q","logs":{},"type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"BqGVzrNWcYpsvdzs84CMJ","logs":{},"type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"CbT1XTBNkXnaDuUjpkURx","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
+export const initData = {"commitId":19212,"hash":"8763432039174089","reducedExpression":{"id":"DLtynSOOp0PagiOhQUw0f","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"JY75eOxQTEzlV-A6Ni37v","body":{"id":"az-7S84s8S4CqbMMBi2z3","logs":{},"type":"ObjectExpression","fields":{"showUI":{"id":"0Z52N1oXb2apI6ZC_csP-","type":"SwitchExpression","cases":[{"id":"aHto_R5OkFsfhJiSmj0Za","when":{"a":{"id":"bW6KAK3IVzLXK7Wsggolw","type":"GetFieldExpression","object":{"id":"mnM9fr7nSlZ5pr1Ief6V0","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"CbT1XTBNkXnaDuUjpkURx"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"lf8VUBWywLUJd6AfbSrs3","type":"ListExpression","items":[{"id":"_FudFyMhG9fIkMHp68RlO","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},{"id":"uQ70SQNZhGjQiawrl7kdo","type":"EnumExpression","value":"test","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"adZPQ08a0L80Gs43FGzWZ","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"kAccljBkWAVpmRi-_O55D","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"f1ryfOsxx6_i9yN74QSlW","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"B78l7-qHhFBZSvOn_ty9O","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"chgmSwThmZFMS-q0jyO_7":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"CbT1XTBNkXnaDuUjpkURx","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
   
 /**
  * @deprecated use '@vercel/flags/providers/hypertune' package instead.
  */
-export const vercelFlagDefinitions = {"showUI":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4089/main/draft/logic?selected_field_path=root%3EshowUI"},"exampleFlag":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4089/main/draft/logic?selected_field_path=root%3EexampleFlag"}};
+export const vercelFlagDefinitions = {"showUI":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4089/main/draft/logic?selected_field_path=root%3EshowUI"}};
 
 export type FlagValues = {
   "showUI": boolean;
-  "exampleFlag": boolean;
 }
 
 export type FlagPaths = keyof FlagValues & string;
 
 export const flagFallbacks: FlagValues = {
   "showUI": false,
-  "exampleFlag": false,
 }
 
 export function decodeFlagValues<TFlagPaths extends keyof FlagValues & string>(
@@ -67,10 +65,9 @@ export type RootArgs = {
 
 export type Root = {
   showUI: boolean;
-  exampleFlag: boolean;
 }
 
-const rootFallback = {showUI:false,exampleFlag:false};
+const rootFallback = {showUI:false};
 
 export class RootNode extends sdk.Node {
   override typeName = "Root" as const;
@@ -90,26 +87,6 @@ export class RootNode extends sdk.Node {
    */
   showUI({ args = {}, fallback }: { args?: Rec; fallback: boolean; }): boolean {
     const props0 = this.getFieldNodeProps("showUI", { fieldArguments: args });
-    const expression0 = props0.expression;
-
-    if (
-      expression0 &&
-      expression0.type === "BooleanExpression"
-    ) {
-      const node = new sdk.BooleanNode(props0);
-      return node.get({ fallback });
-    }
-
-    const node = new sdk.BooleanNode(props0);
-    node._logUnexpectedTypeError();
-    return node.get({ fallback });
-  }
-
-  /**
-   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4089/main/draft/logic?selected_field_path=root%3EexampleFlag})
-   */
-  exampleFlag({ args = {}, fallback }: { args?: Rec; fallback: boolean; }): boolean {
-    const props0 = this.getFieldNodeProps("exampleFlag", { fieldArguments: args });
     const expression0 = props0.expression;
 
     if (
@@ -147,7 +124,7 @@ export type Source = {
   root: Root;
 }
 
-const sourceFallback = {root:{showUI:false,exampleFlag:false}};
+const sourceFallback = {root:{showUI:false}};
 
 export type Rec5 = {
   args: RootArgs;

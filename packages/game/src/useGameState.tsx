@@ -1,12 +1,14 @@
 import { create } from "zustand";
 import { getStack } from "./GameScene";
-import type { Stack } from "./@types/Stack";
-import type { Block } from "./@types/Block";
+import type { Stack } from "./types/Stack";
+import type { Block } from "./types/Block";
 import type { Vector3 } from "three";
 
 export type GameState = {
+    appBaseUrl: string,
     currentTime: Date,
     stacks: Stack[],
+    setAppBaseUrl: (appBaseUrl: string) => void,
     setCurrentTime: (currentTime: Date) => void,
     setStacks: (stacks: Stack[]) => void,
     placeBlock: (to: Vector3, block: Block) => void,
@@ -15,8 +17,10 @@ export type GameState = {
 };
 
 export const useGameState = create<GameState>((set) => ({
+    appBaseUrl: '',
     currentTime: new Date(),
     stacks: [],
+    setAppBaseUrl: (appBaseUrl) => set({ appBaseUrl }),
     setCurrentTime: (currentTime) => set({ currentTime }),
     setStacks: (stacks) => set({ stacks }),
     placeBlock: (to, block) => set((state) => {
