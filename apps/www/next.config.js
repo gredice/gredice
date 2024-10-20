@@ -1,15 +1,11 @@
-import type { NextConfig } from 'next';
 import { withAxiom } from 'next-axiom';
 
-const nextConfig: NextConfig = {
+const nextConfig = {
     eslint: {
         ignoreDuringBuilds: true,
     },
     typescript: {
         ignoreBuildErrors: true,
-    },
-    experimental: {
-        reactCompiler: true,
     }
 };
 

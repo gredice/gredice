@@ -21,6 +21,7 @@
     "@types/react": "18.3.11",
     "@types/react-dom": "18.3.1",
     "@use-gesture/react": "10.3.1",
+    "@signalco/ui-primitives": "0.1.11",
     "chroma-js": "3.1.2",
     "suncalc": "1.9.0",
     "three": "0.169.0",

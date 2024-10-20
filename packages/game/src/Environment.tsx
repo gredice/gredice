@@ -71,7 +71,7 @@ function getSunPosition({ lat, lon }: Garden['location'], currentTime: Date, tim
     return pos;
 }
 
-export function Environment({ location }: { location: Garden['location'] }) {
+export function Environment({ location, noBackground }: { location: Garden['location'], noBackground?: boolean }) {
     const cameraShadowSize = 20;
     const shadowMapSize = 8;
 
@@ -123,7 +123,7 @@ export function Environment({ location }: { location: Garden['location'] }) {
 
     return (
         <>
-            <color ref={backgroundRef} attach="background" />
+            {!noBackground && <color ref={backgroundRef} attach="background" />}
             <ambientLight ref={ambientRef} intensity={3} />
             <hemisphereLight ref={hemisphereRef} position={[0, 1, 0]} intensity={2} />
             <directionalLight
