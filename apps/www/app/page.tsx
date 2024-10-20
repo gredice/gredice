@@ -4,13 +4,17 @@ import { Navigate } from "@signalco/ui-icons";
 import { KnownPages } from "../src/KnownPages";
 import { GameScene } from "@gredice/game/GameScene";
 import { SectionData } from "@signalco/cms-core/SectionData";
+import { getFlags } from "../lib/flags/getFlags";
+import { Stack } from "@signalco/ui-primitives/Stack";
+import { Typography } from "@signalco/ui-primitives/Typography";
+import { NewsletterSignUp } from "./NewsletterSignUp";
 
 const sectionsData: SectionData[] = [
     {
         component: 'Heading1',
         tagline: 'Gredice',
         header: 'Vrt po tvom',
-        description: 'Dobiješ povrćeg iz gredicama - nit oro, nit kopo!',
+        description: 'Dobiješ povrćeg iz svojih gredica - nit oro, nit kopo!',
         asset: (
             <div className="min-h-96 relative rounded-xl overflow-hidden">
                 <GameScene
@@ -26,11 +30,39 @@ const sectionsData: SectionData[] = [
     }
 ];
 
+const preSeasonSectionsData: SectionData[] = [
+    {
+        component: 'Heading1',
+        tagline: 'Gredice',
+        header: 'Vrt po tvom',
+        description: (
+            <Stack spacing={6}>
+                <Typography>Dobiješ povrćeg iz svojih gredica - nit oro, nit kopo!</Typography>
+                <NewsletterSignUp />
+            </Stack>
+        ),
+        asset: (
+            <div className="min-h-96 relative rounded-xl overflow-hidden">
+                <GameScene
+                    className="!absolute"
+                    appBaseUrl="https://vrt.gredice.com"
+                    freezeTime={new Date(2024, 5, 21, 14)}
+                    noBackground />
+            </div>
+        ),
+        ctas: [
 
-export default function Home() {
-  return (
-      <SectionsView
-          sectionsData={sectionsData}
-          componentsRegistry={sectionsComponentRegistry} />
-  );
+        ]
+    }
+];
+
+export default async function Home() {
+    const flags = await getFlags();
+    const preSeason = flags.preSeason({ fallback: true });
+
+    return (
+        <SectionsView
+            sectionsData={preSeason ? preSeasonSectionsData : sectionsData}
+            componentsRegistry={sectionsComponentRegistry} />
+    );
 }

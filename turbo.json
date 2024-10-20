@@ -25,6 +25,7 @@
             "persistent": true
         },
         "regenerate": {
+            "cache": false,
             "dependsOn": [
                 "^regenerate"
             ],
