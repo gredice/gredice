@@ -1,8 +1,8 @@
 import { create } from "zustand";
-import { getStack } from "./GameScene";
 import type { Stack } from "./types/Stack";
 import type { Block } from "./types/Block";
 import type { Vector3 } from "three";
+import { getStack } from "./utils/getStack";
 
 export type GameState = {
     appBaseUrl: string,
@@ -13,7 +13,7 @@ export type GameState = {
     setStacks: (stacks: Stack[]) => void,
     placeBlock: (to: Vector3, block: Block) => void,
     moveBlock: (from: Vector3, blockIndex: number, to: Vector3) => void,
-    rotateBlock: (stackPosition: Vector3, blockIndex: number, rotation: number) => void
+    rotateBlock: (stackPosition: Vector3, blockOrIndex: Block | number, rotation?: number) => void
 };
 
 export const useGameState = create<GameState>((set) => ({
@@ -24,7 +24,7 @@ export const useGameState = create<GameState>((set) => ({
     setCurrentTime: (currentTime) => set({ currentTime }),
     setStacks: (stacks) => set({ stacks }),
     placeBlock: (to, block) => set((state) => {
-        let stack = getStack(state.stacks, to);
+        let stack = getStack(to);
         if (!stack) {
             stack = { position: to, blocks: [] };
             state.stacks.push(stack);
@@ -39,14 +39,14 @@ export const useGameState = create<GameState>((set) => ({
         }
 
         // Determine source stack and block
-        const sourceStack = getStack(state.stacks, from);
+        const sourceStack = getStack(from);
         const block = sourceStack?.blocks[blockIndex];
         if (!block) {
             return state;
         }
 
         // Determine destination stack or create new one if it doesn't exist
-        let destStack = getStack(state.stacks, to);
+        let destStack = getStack(to);
         if (!destStack) {
             destStack = { position: to, blocks: [] };
             state.stacks.push(destStack);
@@ -56,14 +56,14 @@ export const useGameState = create<GameState>((set) => ({
         destStack?.blocks.push(block);
         return { stacks: [...state.stacks] };
     }),
-    rotateBlock: (stackPosition, blockIndex, rotation) => set((state) => {
-        const stack = getStack(state.stacks, stackPosition);
-        const block = stack?.blocks[blockIndex];
+    rotateBlock: (stackPosition, blockOrIndex, rotation) => set((state) => {
+        const stack = getStack(stackPosition);
+        const block = typeof blockOrIndex === 'number' ? stack?.blocks[blockOrIndex] : blockOrIndex;
         if (!block) {
             return state;
         }
 
-        block.rotation = rotation;
+        block.rotation = rotation ?? (block.rotation + 1);
         return { stacks: [...state.stacks] };
     })
 }));
