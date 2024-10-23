@@ -5,7 +5,8 @@
         "build": "turbo build",
         "dev": "turbo dev",
         "lint": "turbo lint",
-        "regenerate": "turbo regenerate"
+        "regenerate": "turbo regenerate",
+        "test": "turbo test"
     },
     "devDependencies": {
         "turbo": "2.2.3",
