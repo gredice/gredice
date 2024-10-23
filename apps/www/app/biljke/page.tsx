@@ -13,6 +13,7 @@ export default async function PlantsPage() {
     return (
         <Stack>
             <PageHeader
+                padded
                 header="Biljke"
                 subHeader="Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu.">
                 <PlantsFilter />

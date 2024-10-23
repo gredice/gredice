@@ -37,6 +37,7 @@ const sectionsData: SectionData[] = [
                 header: 'Informacije',
                 ctas: [
                     { label: 'Biljke', href: KnownPages.Plants },
+                    { label: 'Blokovi', href: KnownPages.Blocks },
                     { label: 'Česta pitanja', href: KnownPages.FAQ },
                     { label: 'O nama', href: KnownPages.AboutUs },
                 ]
@@ -116,6 +117,8 @@ export default async function RootLayout({
                             )}
                             links={preSeason ? [] : [
                                 { href: KnownPages.Plants, text: 'Biljke' },
+                                { href: KnownPages.Blocks, text: 'Blokovi' },
+                                { href: KnownPages.FAQ, text: 'Česta pitanja' },
                             ]}>
                             {preSeason ? (
                                 <Tooltip delayDuration={0}>

@@ -24,6 +24,11 @@
             "cache": false,
             "persistent": true
         },
+        "test": {
+            "dependsOn": [
+                "^test"
+            ]
+        },
         "regenerate": {
             "cache": false,
             "dependsOn": [
