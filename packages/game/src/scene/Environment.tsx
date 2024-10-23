@@ -3,9 +3,9 @@
 import { useEffect, useRef } from 'react';
 import chroma from 'chroma-js';
 import { getTimes, getPosition } from 'suncalc';
-import { useGameState } from './useGameState';
+import { useGameState } from '../useGameState';
 import { AmbientLight, Color, DirectionalLight, HemisphereLight, Quaternion, Vector3 } from 'three';
-import { Garden } from './types/Garden';
+import { Garden } from '../types/Garden';
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;

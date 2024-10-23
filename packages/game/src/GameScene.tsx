@@ -4,255 +4,21 @@ import {
     useQuery,
     useQueryClient,
 } from '@tanstack/react-query';
-import { Vector3, PCFSoftShadowMap } from 'three';
-import { Canvas } from '@react-three/fiber';
-import { MeshWobbleMaterial, OrbitControls, StatsGl, useGLTF } from '@react-three/drei';
-import { useSpring, animated } from '@react-spring/three';
-import { HTMLAttributes, useEffect, useMemo } from 'react';
-import { Environment } from './Environment';
+import { Vector3 } from 'three';
+import { OrbitControls, StatsGl, useGLTF } from '@react-three/drei';
+import { HTMLAttributes, useEffect } from 'react';
+import { Environment } from './scene/Environment';
 import { makeButton, makeFolder, useTweaks } from 'use-tweaks';
 import { useGameState } from './useGameState';
 import type { Stack } from './types/Stack';
-import type { Block } from './types/Block';
 import type { Garden } from './types/Garden';
 import { RecursivePartial } from '@signalco/js';
 import { RotatableGroup } from './controls/RotatableGroup';
-import { PickableGroup } from './controls/PickableGroup';
-import { EntityInstanceProps } from './types/runtime/EntityInstanceProps';
 import { getStack } from './utils/getStack';
 import { entities } from './data/entities';
-import { stackHeight } from './utils/getStackHeight';
-
-const models = {
-    GameAssets: { url: '/assets/models/GameAssets.glb' }
-}
-
-const entityNameMap = {
-    [entities.BlockGround.name]: BlockGround,
-    [entities.BlockGrass.name]: BlockGrass,
-    [entities.RaisedBed.name]: RaisedBed,
-    [entities.Shade.name]: Shade
-}
-
-function EntityFactory({ name, stack, block, ...rest }: { name: string } & EntityInstanceProps) {
-    const EntityComponent = entityNameMap[name];
-    if (!EntityComponent) {
-        return null;
-    }
-
-    const moveBlock = useGameState(state => state.moveBlock);
-    const handlePositionChanged = (movement: Vector3) => {
-        const dest = stack.position.clone().add(movement);
-        const blockIndex = stack.blocks.indexOf(block);
-        moveBlock(stack.position, blockIndex, dest);
-    }
-
-    return (
-        <PickableGroup
-            stack={stack}
-            block={block}
-            onPositionChanged={handlePositionChanged}>
-            <EntityComponent
-                stack={stack}
-                block={block}
-                {...rest} />
-        </PickableGroup>
-    );
-}
-
-function useAnimatedEntityRotation(rotation: number) {
-    const [springs, api] = useSpring(() => ({
-        from: { rotation: [0, rotation * (Math.PI / 2), 0] },
-        config: {
-            mass: 0.1,
-            tension: 200,
-            friction: 10
-        }
-    }));
-
-    useEffect(() => {
-        api.start({ rotation: [0, rotation * (Math.PI / 2), 0] });
-    }, [rotation]);
-
-    return useMemo(() => [springs.rotation], [springs.rotation]);
-}
-
-function useGameGLTF(url: string) {
-    const appBaseUrl = useGameState(state => state.appBaseUrl);
-    return useGLTF(appBaseUrl + url);
-}
-
-export function Shade({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
-
-    let variant = "Solo";
-    let realizedRotation = rotation % 2;
-    const neighbors = getEntityNeighbors(stack, block);
-    const nInline = neighbors.n && realizedRotation === 0 && (neighbors.nr % 2) === 0;
-    const eInline = neighbors.e && realizedRotation === 1 && (neighbors.er % 2) === 1;
-    const wInline = neighbors.w && realizedRotation === 1 && (neighbors.wr % 2) === 1;
-    const sInline = neighbors.s && realizedRotation === 0 && (neighbors.sr % 2) === 0;
-    if (neighbors.total >= 2 && ((nInline && sInline) || (eInline && wInline))) {
-        variant = "Middle";
-    } else if (nInline || eInline) {
-        variant = "End_Left";
-    } else if (wInline || sInline) {
-        variant = "End_Right";
-    }
-
-    const [animatedRotation] = useAnimatedEntityRotation(realizedRotation);
-
-    return (
-        <animated.group
-            position={stack.position.clone().setY(stackHeight(stack, block) + 1)}
-            rotation={animatedRotation as unknown as [number, number, number]}>
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes[`Shade_${variant}`].geometry}
-                material={materials['Material.Planks']}
-            />
-        </animated.group>
-    );
-}
-
-export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
-    const [animatedRotation] = useAnimatedEntityRotation(rotation);
-
-    const variantResolved = 1;
-
-    return (
-        <animated.group
-            position={stack.position.clone().setY(stackHeight(stack, block) + 0.2)}
-            rotation={animatedRotation as unknown as [number, number, number]}>
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes.Block_Grass_1_1.geometry}
-            >
-                {/* // TODO: Apply environment wind to wobble animation */}
-                <MeshWobbleMaterial {...materials['Material.GrassPart']} factor={0.01} speed={4} />
-            </mesh>
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}
-                material={materials[`Material.Grass`]}
-            />
-        </animated.group>
-    );
-}
-
-export function BlockGround({ stack, block, rotation, variant }: EntityInstanceProps) {
-    const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
-    const [animatedRotation] = useAnimatedEntityRotation(rotation);
-
-    const variantResolved = (variant ?? 1) % 2;
-
-    return (
-        <animated.group
-            position={stack.position.clone().setY(stackHeight(stack, block) + 1)}
-            rotation={animatedRotation as unknown as [number, number, number]}>
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes[`Block_Ground_${variantResolved}_1`].geometry}
-                material={nodes[`Block_Ground_${variantResolved}_1`].material}
-            />
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes[`Block_Ground_${variantResolved}_2`].geometry}
-                material={materials['Material.Stone']}
-            />
-        </animated.group>
-    );
-}
-
-function getEntityNeighbors(stack: Stack, block: Block) {
-    const currentInStackIndex = stack.blocks.indexOf(block);
-    const neighbors = {
-        w: getStack({ x: stack.position.x, z: stack.position.z + 1 })?.blocks.at(currentInStackIndex)?.name === block.name,
-        wr: getStack({ x: stack.position.x, z: stack.position.z + 1 })?.blocks.at(currentInStackIndex)?.rotation ?? 0,
-        n: getStack({ x: stack.position.x + 1, z: stack.position.z })?.blocks.at(currentInStackIndex)?.name === block.name,
-        nr: getStack({ x: stack.position.x + 1, z: stack.position.z })?.blocks.at(currentInStackIndex)?.rotation ?? 0,
-        e: getStack({ x: stack.position.x, z: stack.position.z - 1 })?.blocks.at(currentInStackIndex)?.name === block.name,
-        er: getStack({ x: stack.position.x, z: stack.position.z - 1 })?.blocks.at(currentInStackIndex)?.rotation ?? 0,
-        s: getStack({ x: stack.position.x - 1, z: stack.position.z })?.blocks.at(currentInStackIndex)?.name === block.name,
-        sr: getStack({ x: stack.position.x - 1, z: stack.position.z })?.blocks.at(currentInStackIndex)?.rotation ?? 0
-    };
-    return {
-        total: (neighbors.w ? 1 : 0) + (neighbors.n ? 1 : 0) + (neighbors.e ? 1 : 0) + (neighbors.s ? 1 : 0),
-        ...neighbors
-    };
-}
-
-export function RaisedBed({ stack, block }: EntityInstanceProps) {
-    const { nodes, materials }: any = useGameGLTF(models.GameAssets.url)
-
-    // Switch between shapes (O, L, I, U) based on neighbors
-    let shape = "O";
-    let shapeRotation = 0;
-    const neighbors = getEntityNeighbors(stack, block);
-    if (neighbors.total === 1) {
-        shape = "U";
-
-        if (neighbors.n) {
-            shapeRotation = 0;
-        } else if (neighbors.e) {
-            shapeRotation = 1;
-        } else if (neighbors.s) {
-            shapeRotation = 2;
-        } else if (neighbors.w) {
-            shapeRotation = 3;
-        }
-    } else if (neighbors.total === 2) {
-        if ((neighbors.n && neighbors.s) ||
-            (neighbors.e && neighbors.w)) {
-            shape = "I";
-
-            if (neighbors.n && neighbors.s) {
-                shapeRotation = 1;
-            } else {
-                shapeRotation = 0;
-            }
-        } else {
-            shape = "L";
-
-            if (neighbors.n && neighbors.e) {
-                shapeRotation = 0;
-            } else if (neighbors.e && neighbors.s) {
-                shapeRotation = 1;
-            } else if (neighbors.s && neighbors.w) {
-                shapeRotation = 2;
-            } else {
-                shapeRotation = 3;
-            }
-        }
-    } else if (neighbors.total === 3) {
-        shape = "O"
-    }
-
-    return (
-        <animated.group
-            position={stack.position.clone().setY(stackHeight(stack, block) + 1)}
-            rotation={[0, shapeRotation * (Math.PI / 2), 0]}>
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes[`Raised_Bed_${shape}_2`].geometry}
-                material={materials['Material.Planks']}
-            />
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes[`Raised_Bed_${shape}_1`].geometry}
-                material={materials['Material.Dirt']}
-            />
-        </animated.group>
-    );
-}
+import { Scene } from './scene/Scene';
+import { EntityFactory } from './entities/EntityFactory';
+import { models } from './data/models';
 
 function serializeGarden(garden: Garden) {
     return JSON.stringify(garden);
@@ -470,14 +236,6 @@ export function GameScene({
 }: GameSceneProps) {
     const cameraPosition = 100;
 
-    // Set app base URL
-    const setAppBaseUrl = useGameState((state) => state.setAppBaseUrl);
-    useEffect(() => {
-        setAppBaseUrl(appBaseUrl ?? '');
-
-        useGLTF.preload(appBaseUrl + models.GameAssets.url);
-    }, [appBaseUrl]);
-
     // Update current time every second
     const setCurrentTime = useGameState((state) => state.setCurrentTime);
     useEffect(() => {
@@ -493,28 +251,18 @@ export function GameScene({
     }, []);
 
     return (
-        <Canvas
-            orthographic
-            shadows={{
-                type: PCFSoftShadowMap,
-                enabled: true,
-            }}
-            camera={{
-                position: cameraPosition,
-                zoom: zoom === 'far' ? 75 : 100,
-                far: 10000,
-                near: 0.01
-            }}
-            {...rest}>
-
+        <Scene
+            appBaseUrl={appBaseUrl}
+            position={cameraPosition}
+            zoom={zoom === 'far' ? 75 : 100}
+            {...rest}
+        >
             {isDevelopment && <DebugHud />}
-
             <GardenDisplay noBackground={noBackground} />
-
             <OrbitControls
                 enableRotate={false}
                 minZoom={50}
                 maxZoom={200} />
-        </Canvas>
+        </Scene>
     );
 }
