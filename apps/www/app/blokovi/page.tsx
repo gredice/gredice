@@ -31,7 +31,7 @@ export default function BlocksPage() {
             <PageHeader
                 padded
                 header="Blokovi"
-                subHeader="Pregledaj sve blokove koji se mogu koristiti u tvom vrtu." />
+                subHeader="Pregledaj sve blokove koje možeš koristiti u svom vrtu." />
             <Gallery
                 gridHeader={''}
                 items={entitiesArray}
