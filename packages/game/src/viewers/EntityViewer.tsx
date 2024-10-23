@@ -7,7 +7,7 @@ import { Scene } from "../scene/Scene";
 import { HTMLAttributes, useEffect } from "react";
 import { useGameState } from "../useGameState";
 
-const position = new Vector3(0.75, 0, 0.75);
+const position = new Vector3(0.5, 0, 0.5);
 
 export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
     entityName: string;
@@ -21,8 +21,8 @@ export function EntityViewer({ entityName, ...rest }: EntityViewerProps) {
     }, []);
 
     return (
-        <Scene position={100} zoom={100} {...rest}>
-            <Environment location={{ lat: 14, lon: 35 }} noBackground />
+        <Scene position={100} zoom={90} {...rest}>
+            <Environment location={{ lat: 45, lon: 15 }} noBackground />
             <EntityFactory
                 name={entityName}
                 stack={{

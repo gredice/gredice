@@ -12,6 +12,7 @@ import { notFound } from "next/navigation";
 import { getEntityFormatted } from "@gredice/storage";
 import Image from "next/image";
 import Markdown from 'react-markdown'
+import { PageHeader } from "../../../components/shared/PageHeader";
 
 function DetailCard({ icon, header, value }: { icon: React.ReactNode; header: string; value: string | null | undefined }) {
     return (
@@ -126,36 +127,33 @@ export default async function PlantPage(props: { params: Promise<{ plantId: stri
         <div className="py-10">
             <Container maxWidth="md">
                 <Stack spacing={4}>
-                    <div className="flex flex-col md:flex-row gap-4">
-                        <Card className="min-w-48 min-h-48 size-48">
-                            <CardOverflow className="p-6">
-                                <Image
-                                    src={plant.image?.cover?.url ?? '/assets/plants/placeholder.png'}
-                                    alt={plant.information.name}
-                                    width={142}
-                                    height={142} />
-                            </CardOverflow>
-                        </Card>
-                        <Stack spacing={2}>
-                            <Typography level="h1">{plant.information.name}</Typography>
-                            {plant.information.verified && (
-                                <Row>
+                    <PageHeader
+                        visual={(
+                            <Image
+                                src={plant.image?.cover?.url ?? '/assets/plants/placeholder.png'}
+                                alt={plant.information.name}
+                                width={142}
+                                height={142}
+                                priority />
+                        )}
+                        header={plant.information.name}
+                        alternativeName={plant.information.latinName ? `lat. ${plant.information.latinName}` : null}
+                        subHeader={plant.information.description}
+                        headerChildren={(
+                            <Stack spacing={1} alignItems="start">
+                                {plant.information.origin && (
+                                    <Stack>
+                                        <Typography level="body2">Porijeklo</Typography>
+                                        <Typography>{plant.information.origin}</Typography>
+                                    </Stack>
+                                )}
+                                {plant.information.verified && (
                                     <Chip color="success" size="sm">
                                         <BadgeCheck className="size-4" />
                                         <span>Verificirano</span>
-                                    </Chip>
-                                </Row>
-                            )}
-                            {plant.information.latinName && <Typography level="body2">lat. {plant.information.latinName}</Typography>}
-                            {plant.information.description && <Typography level="body1" className="text-pretty">{plant.information.description}</Typography>}
-                            {plant.information.origin && (
-                                <Stack>
-                                    <Typography level="body2">Porijeklo</Typography>
-                                    <Typography>{plant.information.origin}</Typography>
-                                </Stack>
-                            )}
-                        </Stack>
-                    </div>
+                                    </Chip>)}
+                            </Stack>
+                        )} />
                     <Stack spacing={1}>
                         <Typography level="h5">Kalendar</Typography>
                         {(!plant.calendar || Object.keys(plant.calendar).length <= 0) ? (
