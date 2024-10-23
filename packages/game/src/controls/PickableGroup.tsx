@@ -13,9 +13,9 @@ const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 
 type PickableGroupProps = PropsWithChildren<
     Pick<EntityInstanceProps, 'stack' | 'block'> &
-    { onPositionChanged: (movement: Vector3) => void }>;
+    { onPositionChanged: (movement: Vector3) => void, noControl?: boolean }>;
 
-export function PickableGroup({ children, stack, block, onPositionChanged }: PickableGroupProps) {
+export function PickableGroup({ children, stack, block, noControl, onPositionChanged }: PickableGroupProps) {
     const [springs, api] = useSpring(() => ({
         from: { internalPosition: [0, 0, 0] },
         config: {
@@ -38,6 +38,10 @@ export function PickableGroup({ children, stack, block, onPositionChanged }: Pic
     useEffect(() => {
         api.set({ internalPosition: [0, 0, 0] });
     }, [stack.position]);
+
+    if (noControl) {
+        return <>{children}</>;
+    }
 
     const dragHandler: Handler<"drag", any> = ({ pressed, event, xy: [x, y] }) => {
         event.stopPropagation();

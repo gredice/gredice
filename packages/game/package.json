@@ -6,7 +6,7 @@
   "type": "module",
   "license": "MIT",
   "exports": {
-    "./*": "./src/*.tsx"
+    ".": "./src/index.ts"
   },
   "devDependencies": {
     "@react-spring/three": "9.7.5",

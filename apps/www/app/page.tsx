@@ -2,7 +2,7 @@ import { SectionsView } from "@signalco/cms-core/SectionsView";
 import { sectionsComponentRegistry } from "../components/shared/sectionsComponentRegistry";
 import { Navigate } from "@signalco/ui-icons";
 import { KnownPages } from "../src/KnownPages";
-import { GameScene } from "@gredice/game/GameScene";
+import { GameScene } from "@gredice/game";
 import { SectionData } from "@signalco/cms-core/SectionData";
 import { getFlags } from "../lib/flags/getFlags";
 import { Stack } from "@signalco/ui-primitives/Stack";
