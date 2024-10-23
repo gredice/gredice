@@ -1,4 +1,4 @@
-import { GameScene } from "@gredice/game/GameScene";
+import { GameScene } from "@gredice/game";
 import getHypertune from "../lib/flags/getHypertune";
 
 export default async function Home() {
