@@ -7,7 +7,6 @@
     "dev": "next dev --turbo -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
     "test": "pnpm run /^test:.*/",
     "test:run": "playwright test",
     "test-ui": "playwright test --ui",
