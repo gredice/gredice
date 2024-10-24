@@ -32,5 +32,11 @@ export const entities = {
         alias: "Sjenica",
         description: "Sjenica se koristi za stvaranje hladovine.",
         height: 1
-    }
+    },
+    Fence: {
+        name: 'Fence',
+        alias: "Ograda",
+        description: "Ograda se koristi za ograđivanje vrta.",
+        height: 0.575
+    },
 } satisfies Record<string, Entity>;
