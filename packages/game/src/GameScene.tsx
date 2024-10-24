@@ -12,10 +12,10 @@ import { makeButton, makeFolder, useTweaks } from 'use-tweaks';
 import { useGameState } from './useGameState';
 import type { Stack } from './types/Stack';
 import type { Garden } from './types/Garden';
-import { RecursivePartial } from '@signalco/js';
+import { orderBy, RecursivePartial } from '@signalco/js';
 import { RotatableGroup } from './controls/RotatableGroup';
 import { getStack } from './utils/getStack';
-import { entities } from './data/entities';
+import { entities, entitiesArray } from './data/entities';
 import { Scene } from './scene/Scene';
 import { EntityFactory } from './entities/EntityFactory';
 import { models } from './data/models';
@@ -184,22 +184,18 @@ function DebugHud() {
         placeBlock(new Vector3(x, 0, z), { name, rotation: 0 });
     };
 
-    useTweaks('Entities', {
-        ...makeFolder("Blocks", {
-            ...makeButton('Grass', () => handlePlaceBlock(entities.BlockGrass.name)),
-            ...makeButton('Ground', () => handlePlaceBlock(entities.BlockGround.name)),
-        }),
-        ...makeFolder("Structures", {
-            ...makeButton('Raised Bed', () => handlePlaceBlock(entities.RaisedBed.name)),
-            ...makeButton('Shade', () => handlePlaceBlock(entities.Shade.name)),
-            ...makeButton('Fence', () => handlePlaceBlock(entities.Fence.name)),
-        }),
-    });
+    let entitiesButtons = {};
+    for (const entity of orderBy(entitiesArray, (a, b) => a.alias.localeCompare(b.alias))) {
+        entitiesButtons = {
+            ...entitiesButtons,
+            ...makeButton(entity.alias, () => handlePlaceBlock(entity.name))
+        }
+    }
+    useTweaks('Entities', entitiesButtons);
 
-    const currentTime = useGameState((state) => state.currentTime);
-    const setCurrentTime = useGameState((state) => state.setCurrentTime);
+    const gameState = useGameState();
     const { timeOfDay } = useTweaks('Environment', {
-        timeOfDay: { value: (currentTime.getHours() * 60 * 60 + currentTime.getMinutes() * 60 + currentTime.getSeconds()) / (24 * 60 * 60), min: 0, max: 1 },
+        timeOfDay: { value: (gameState.currentTime.getHours() * 60 * 60 + gameState.currentTime.getMinutes() * 60 + gameState.currentTime.getSeconds()) / (24 * 60 * 60), min: 0, max: 1 },
     });
 
     useEffect(() => {
@@ -208,7 +204,7 @@ function DebugHud() {
         date.setHours(seconds / 60 / 60);
         date.setMinutes((seconds / 60) % 60);
         date.setSeconds(seconds % 60);
-        setCurrentTime(date);
+        gameState.setInitial(gameState.appBaseUrl, date);
     }, [timeOfDay]);
 
     return (
@@ -240,13 +236,8 @@ export function GameScene({
     // Update current time every second
     const setCurrentTime = useGameState((state) => state.setCurrentTime);
     useEffect(() => {
-        if (freezeTime) {
-            setCurrentTime(freezeTime);
-            return;
-        }
-
         const interval = setInterval(() => {
-            setCurrentTime(new Date());
+            setCurrentTime(useGameState.getState().freezeTime ?? new Date());
         }, 1000);
         return () => clearInterval(interval);
     }, []);
@@ -254,6 +245,7 @@ export function GameScene({
     return (
         <Scene
             appBaseUrl={appBaseUrl}
+            freezeTime={freezeTime}
             position={cameraPosition}
             zoom={zoom === 'far' ? 75 : 100}
             {...rest}

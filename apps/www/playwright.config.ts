@@ -1,6 +1,6 @@
-import { defineConfig, devices } from '@playwright/experimental-ct-react';
+import { defineConfig, devices, PlaywrightTestConfig } from '@playwright/experimental-ct-react';
 
-export default defineConfig({
+export const config: PlaywrightTestConfig = {
     testDir: './',
     snapshotDir: './__snapshots__',
     timeout: 10 * 1000,
@@ -25,4 +25,6 @@ export default defineConfig({
         url: 'http://127.0.0.1:3000',
         reuseExistingServer: !process.env.CI,
     },
-});
+};
+
+export default defineConfig(config);
