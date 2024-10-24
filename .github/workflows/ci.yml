@@ -93,3 +93,12 @@ jobs:
             path: 'apps/app'
             vercelProjectIdSecretName: 'VERCEL_PROJECT_ID_APP'
         secrets: inherit
+
+    ci_ok:
+        name: "[CI] OK"
+        needs: [changes, ci_www, ci_garden, ci_farm, ci_app]
+        if: ${{ always() }}
+        runs-on: ubuntu-latest
+        steps:
+            - run: exit 1
+              if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
