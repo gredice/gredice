@@ -10,7 +10,7 @@ export const config: PlaywrightTestConfig = {
     workers: process.env.CI ? 1 : undefined,
     reporter: 'html',
     use: {
-        baseURL: 'http://127.0.0.1:3000',
+        baseURL: 'http://127.0.0.1:3002',
         trace: 'on-first-retry',
         ctPort: 3100,
     },
@@ -22,7 +22,7 @@ export const config: PlaywrightTestConfig = {
     ],
     webServer: {
         command: 'pnpm dev',
-        url: 'http://127.0.0.1:3000',
+        url: 'http://127.0.0.1:3002',
         reuseExistingServer: !process.env.CI,
     },
 };
