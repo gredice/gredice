@@ -14,8 +14,8 @@ export const preSeasonNewsletterSubscribe = async (_previousState: unknown, form
         },
         body: JSON.stringify({ email, groups: ['135742419471697742'] })
     });
-    if (response.status !== 200) {
-        console.error('Login failed with status', response.status);
+    if (response.status >= 299) {
+        console.error('Pre-season newsletter subscribe failed with status', response.status);
         return { error: true }
     }
 
