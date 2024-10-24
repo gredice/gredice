@@ -58,10 +58,8 @@ jobs:
         with:
             name: 'www'
             path: 'apps/www'
-        secrets: 
-            VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-            VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-            VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
+            vercelProjectIdSecretName: 'VERCEL_PROJECT_ID_WWW'
+        secrets: inherit
     
     ci_garden:
         name: "CI - garden"
@@ -71,10 +69,8 @@ jobs:
         with:
             name: 'garden'
             path: 'apps/garden'
-        secrets: 
-            VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-            VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-            VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_GARDEN }}
+            vercelProjectIdSecretName: 'VERCEL_PROJECT_ID_GARDEN'
+        secrets: inherit
 
     ci_farm:
         name: "CI - farm"
@@ -84,10 +80,8 @@ jobs:
         with:
             name: 'farm'
             path: 'apps/farm'
-        secrets: 
-            VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-            VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-            VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_FARM }}
+            vercelProjectIdSecretName: 'VERCEL_PROJECT_ID_FARM'
+        secrets: inherit
 
     ci_app:
         name: "CI - app"
@@ -97,7 +91,5 @@ jobs:
         with:
             name: 'app'
             path: 'apps/app'
-        secrets: 
-            VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-            VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-            VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_APP }}
+            vercelProjectIdSecretName: 'VERCEL_PROJECT_ID_APP'
+        secrets: inherit
