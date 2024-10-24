@@ -44,10 +44,10 @@ importers:
         specifier: 3.14.0
         version: 3.14.0(@codemirror/language@6.10.3)(@lezer/common@1.2.3)(@lezer/highlight@1.2.1)(react-dom@19.0.0-rc-65a56d0e-20241020(react@19.0.0-rc-65a56d0e-20241020))(react@19.0.0-rc-65a56d0e-20241020)(types-react-dom@19.0.0-rc.1)(types-react@19.0.0-rc.1)(yjs@13.6.20)
       '@playwright/experimental-ct-react':
-        specifier: ^1.48.1
+        specifier: 1.48.1
         version: 1.48.1(@types/node@20.16.10)(vite@5.4.10(@types/node@20.16.10))
       '@playwright/test':
-        specifier: ^1.48.1
+        specifier: 1.48.1
         version: 1.48.1
       '@signalco/auth-client':
         specifier: 0.3.0
@@ -135,10 +135,10 @@ importers:
         specifier: 3.14.0
         version: 3.14.0(@codemirror/language@6.10.3)(@lezer/common@1.2.3)(@lezer/highlight@1.2.1)(react-dom@19.0.0-rc-65a56d0e-20241020(react@19.0.0-rc-65a56d0e-20241020))(react@19.0.0-rc-65a56d0e-20241020)(types-react-dom@19.0.0-rc.1)(types-react@19.0.0-rc.1)(yjs@13.6.20)
       '@playwright/experimental-ct-react':
-        specifier: ^1.48.1
+        specifier: 1.48.1
         version: 1.48.1(@types/node@20.16.10)(vite@5.4.10(@types/node@20.16.10))
       '@playwright/test':
-        specifier: ^1.48.1
+        specifier: 1.48.1
         version: 1.48.1
       '@signalco/auth-client':
         specifier: 0.3.0
@@ -226,10 +226,10 @@ importers:
         specifier: workspace:*
         version: link:../../packages/storage
       '@playwright/experimental-ct-react':
-        specifier: ^1.48.1
+        specifier: 1.48.1
         version: 1.48.1(@types/node@20.16.10)(vite@5.4.10(@types/node@20.16.10))
       '@playwright/test':
-        specifier: ^1.48.1
+        specifier: 1.48.1
         version: 1.48.1
       '@signalco/auth-client':
         specifier: 0.3.0
@@ -320,10 +320,10 @@ importers:
         specifier: workspace:*
         version: link:../../packages/storage
       '@playwright/experimental-ct-react':
-        specifier: ^1.48.1
+        specifier: 1.48.1
         version: 1.48.1(@types/node@20.16.10)(vite@5.4.10(@types/node@20.16.10))
       '@playwright/test':
-        specifier: ^1.48.1
+        specifier: 1.48.1
         version: 1.48.1
       '@signalco/cms-components-marketing':
         specifier: 0.1.0
