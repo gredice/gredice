@@ -8,6 +8,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "pnpm run /^test:.*/",
+    "test:run": "playwright test",
+    "test-ui": "playwright test --ui",
     "regenerate": "pnpm run /^regenerate:.*/",
     "regenerate:feature-flags": "hypertune"
   },
@@ -21,6 +24,8 @@
   "devDependencies": {
     "@gredice/storage": "workspace:*",
     "@mdxeditor/editor": "3.14.0",
+    "@playwright/experimental-ct-react": "^1.48.1",
+    "@playwright/test": "^1.48.1",
     "@signalco/auth-client": "0.3.0",
     "@signalco/auth-server": "0.3.0",
     "@signalco/hooks": "0.2.0",

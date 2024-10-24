@@ -40,3 +40,5 @@ export const entities = {
         height: 0.575
     },
 } satisfies Record<string, Entity>;
+
+export const entitiesArray = Object.values(entities);

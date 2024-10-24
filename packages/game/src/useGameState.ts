@@ -6,9 +6,10 @@ import { getStack } from "./utils/getStack";
 
 export type GameState = {
     appBaseUrl: string,
+    freezeTime?: Date | null,
     currentTime: Date,
     stacks: Stack[],
-    setAppBaseUrl: (appBaseUrl: string) => void,
+    setInitial: (appBaseUrl: string, freezeTime?: Date | null) => void,
     setCurrentTime: (currentTime: Date) => void,
     setStacks: (stacks: Stack[]) => void,
     placeBlock: (to: Vector3, block: Block) => void,
@@ -18,9 +19,10 @@ export type GameState = {
 
 export const useGameState = create<GameState>((set) => ({
     appBaseUrl: '',
+    freezeTime: null,
     currentTime: new Date(),
     stacks: [],
-    setAppBaseUrl: (appBaseUrl) => set({ appBaseUrl }),
+    setInitial: (appBaseUrl, freezeTime) => set({ appBaseUrl, freezeTime }),
     setCurrentTime: (currentTime) => set({ currentTime }),
     setStacks: (stacks) => set({ stacks }),
     placeBlock: (to, block) => set((state) => {
