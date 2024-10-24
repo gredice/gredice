@@ -192,6 +192,7 @@ function DebugHud() {
         ...makeFolder("Structures", {
             ...makeButton('Raised Bed', () => handlePlaceBlock(entities.RaisedBed.name)),
             ...makeButton('Shade', () => handlePlaceBlock(entities.Shade.name)),
+            ...makeButton('Fence', () => handlePlaceBlock(entities.Fence.name)),
         }),
     });
 

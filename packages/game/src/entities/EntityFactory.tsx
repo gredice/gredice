@@ -7,12 +7,14 @@ import { BlockGround } from "./BlockGround";
 import { BlockGrass } from "./BlockGrass";
 import { RaisedBed } from "./RaisedBed";
 import { Shade } from "./Shade";
+import { Fence } from "./Fence";
 
 const entityNameMap = {
     [entities.BlockGround.name]: BlockGround,
     [entities.BlockGrass.name]: BlockGrass,
     [entities.RaisedBed.name]: RaisedBed,
-    [entities.Shade.name]: Shade
+    [entities.Shade.name]: Shade,
+    [entities.Fence.name]: Fence
 }
 
 export function EntityFactory({ name, stack, block, noControl, ...rest }: { name: string, noControl?: boolean } & EntityInstanceProps) {
