@@ -5,7 +5,12 @@ import { ListItem } from "@signalco/ui-primitives/ListItem";
 import type { getEntityTypes } from "@gredice/storage";
 import Link from "next/link";
 
-export function EntityTypesList({ entityTypes, createEntityType }: { entityTypes: Awaited<ReturnType<typeof getEntityTypes>>, createEntityType: (entityTypeName: string, label: string) => Promise<void> }) {
+export type EntityTypesListProps = {
+    entityTypes: Awaited<ReturnType<typeof getEntityTypes>>;
+    createEntityType: (entityTypeName: string, label: string) => Promise<void>;
+};
+
+export function EntityTypesList({ entityTypes }: EntityTypesListProps) {
     return (
         <>
             {entityTypes.map(entityType => (
