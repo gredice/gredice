@@ -4,19 +4,9 @@ name: 'CI'
 
 on:
   pull_request:
-    paths:
-      - 'packages/**'
-      - 'apps/**'
-      - '.github/workflows/ci.yml'
-      - '.github/workflows/nextjs_ci_reusable.yml'
   push:
     branches:
       - main
-    paths:
-      - 'apps/**'
-      - 'packages/**'
-      - '.github/workflows/ci.yml'
-      - '.github/workflows/nextjs_ci_reusable.yml'
   workflow_dispatch:
 
 jobs:
