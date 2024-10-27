@@ -8,6 +8,7 @@ import { BlockGrass } from "./BlockGrass";
 import { RaisedBed } from "./RaisedBed";
 import { Shade } from "./Shade";
 import { Fence } from "./Fence";
+import { Stool } from "./Stool";
 import { Bucket } from "./Bucket";
 
 const entityNameMap = {
@@ -16,6 +17,7 @@ const entityNameMap = {
     [entities.RaisedBed.name]: RaisedBed,
     [entities.Shade.name]: Shade,
     [entities.Fence.name]: Fence,
+    [entities.Stool.name]: Stool,
     [entities.Bucket.name]: Bucket
 }
 

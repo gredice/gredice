@@ -39,6 +39,12 @@ export const entities = {
         description: "Ograda se koristi za ograđivanje vrta.",
         height: 0.575
     },
+    Stool: {
+        name: 'Stool',
+        alias: "Stolica",
+        description: "Stolica se koristi za odmor ili odlaganje alata.",
+        height: 0.47
+    },
     Bucket: {
         name: 'Bucket',
         alias: "Kantica",
