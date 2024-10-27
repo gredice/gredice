@@ -31,7 +31,7 @@ export const entities = {
         name: 'Shade',
         alias: "Sjenica",
         description: "Sjenica se koristi za stvaranje hladovine.",
-        height: 1
+        height: 1.05
     },
     Fence: {
         name: 'Fence',
@@ -39,6 +39,12 @@ export const entities = {
         description: "Ograda se koristi za ograđivanje vrta.",
         height: 0.575
     },
+    Bucket: {
+        name: 'Bucket',
+        alias: "Kantica",
+        description: "Kantica se koristi za prenošenje vode.",
+        height: 0.66
+    }
 } satisfies Record<string, Entity>;
 
 export const entitiesArray = Object.values(entities);
