@@ -113,7 +113,7 @@ export default async function RootLayout({
                     <Stack>
                         <PageNav
                             logo={(
-                                <Image src="/Logotype - gredice@2x.svg" width={180} height={40} alt="Gredice" quality={100} priority />
+                                <Image src="/Logotype - gredice@2x.svg" width={140} height={38} alt="Gredice" quality={100} priority />
                             )}
                             links={preSeason ? [] : [
                                 { href: KnownPages.Plants, text: 'Biljke' },

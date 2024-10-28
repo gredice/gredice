@@ -28,9 +28,9 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
             <div className="grow flex">
                 <PageNav
                     logo={(
-                        <Row alignItems="end" spacing={1}>
-                            <Image src="/Logotype - gredice@2x.svg" width={180} height={40} alt="Gredice" quality={100} priority />
-                            <Typography level="h4" semiBold className="text-[#2e6f40] pb-1">Admin</Typography>
+                        <Row alignItems="end" spacing={1} className="relative">
+                            <Image src="/Logotype - gredice@2x.svg" width={140} height={38} alt="Gredice" quality={100} priority />
+                            <Typography level="body1" semiBold component="span" className="text-[#2e6f40] absolute right-0 -bottom-3 pb-[1px]">Admin</Typography>
                         </Row>
                     )} />
                 <main className="pt-16 relative grow">
