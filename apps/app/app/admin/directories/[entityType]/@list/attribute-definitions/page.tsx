@@ -9,6 +9,7 @@ import { NoDataPlaceholder } from "../../../../../../components/shared/placehold
 import { Tooltip, TooltipContent, TooltipTrigger } from "@signalco/ui-primitives/Tooltip";
 import Link from "next/link";
 import { KnownPages } from "../../../../../../src/KnownPages";
+
 export const dynamic = 'force-dynamic';
 
 function AttributeDefinitionCard({ attributeDefinition }: { attributeDefinition: ExtendedAttributeDefinition }) {

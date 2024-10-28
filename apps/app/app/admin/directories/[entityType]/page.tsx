@@ -4,6 +4,8 @@ import { createEntity } from "../../../(actions)/entityActions";
 import { Add } from "@signalco/ui-icons";
 import { Stack } from "@signalco/ui-primitives/Stack";
 
+export const dynamic = 'force-dynamic';
+
 export default async function EntitiesPage({ entityTypeName }: { entityTypeName: string }) {
     return (
         <Stack spacing={2} className="py-8" alignItems="center">

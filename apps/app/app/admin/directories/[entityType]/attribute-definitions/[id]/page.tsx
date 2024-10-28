@@ -8,6 +8,8 @@ import { Delete } from "@signalco/ui-icons";
 import { deleteAttributeDefinition } from "../../../../../(actions)/definitionActions";
 import { FormCheckbox, FormInput } from "./Form";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AttributeDefinitionPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idString } = await params;
     const id = parseInt(idString);
