@@ -13,10 +13,10 @@ import { Home } from "lucide-react";
 import { getEntityTypes } from "@gredice/storage";
 import { FileText } from "lucide-react";
 import { EntityTypesList } from "./EntityTypesList";
-import { createEntityType } from "../(actions)/entityActions";
 import { Row } from "@signalco/ui-primitives/Row";
 import Image from "next/image";
 import { Typography } from "@signalco/ui-primitives/Typography";
+import Link from "next/link";
 
 export const dynamic = 'force-dynamic';
 
@@ -37,11 +37,13 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                     <AuthProtectedSection auth={auth}>
                         <SplitView>
                             <List>
-                                <ListItem href={KnownPages.Dashboard} label="Početna" startDecorator={<Home className="size-5" />} />
-                                <ListTreeItem label="Zapisi" startDecorator={<FileText className="size-5" />}>
-                                    <EntityTypesList
-                                        entityTypes={entityTypes}
-                                        createEntityType={createEntityType} />
+                                <Link href={KnownPages.Dashboard} passHref legacyBehavior>
+                                    <ListItem label="Početna" startDecorator={<Home className="size-5" />} />
+                                </Link>
+                                <ListTreeItem
+                                    label="Zapisi"
+                                    startDecorator={<FileText className="size-5" />}>
+                                    <EntityTypesList entityTypes={entityTypes} />
                                 </ListTreeItem>
                             </List>
                             <div className="bg-secondary min-h-full">
