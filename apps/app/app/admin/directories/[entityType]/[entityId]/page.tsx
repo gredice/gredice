@@ -20,11 +20,13 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
         notFound();
     }
 
+    const name = entity.attributes.find(pa => pa.attributeDefinition.category === 'information' && pa.attributeDefinition.name === 'name')?.value ?? 'Nepoznato';
+
     return (
         <div>
             <Tabs defaultValue={attributeCategories.at(0)?.name}> 
                 <div className='flex justify-between items-center'>
-                    <Typography level='h5'>{entity.attributes.find(pa => pa.attributeDefinition.category === 'information' && pa.attributeDefinition.name === 'name')?.value ?? 'Nepoznato'}</Typography>
+                    <Typography level='h5'>{name}</Typography>
                     <TabsList>
                         {attributeCategories.map((category) => (
                             <TabsTrigger key={category.name} value={category.name}>
@@ -51,7 +53,6 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
                     </TabsContent>
                 ))}
             </Tabs>
-
         </div>
     );
 }
