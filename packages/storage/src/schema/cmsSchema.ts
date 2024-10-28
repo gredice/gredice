@@ -51,6 +51,9 @@ export const attributeDefinitionRelation = relations(attributeDefinitions, ({ on
 }));
 
 export type InsertAttributeDefinition = typeof attributeDefinitions.$inferInsert;
+export type UpdateAttributeDefinition =
+    Partial<Omit<typeof attributeDefinitions.$inferInsert, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
+    Pick<typeof attributeDefinitions.$inferSelect, 'id'>;
 export type SelectAttributeDefinition = typeof attributeDefinitions.$inferSelect;
 export type ExtendedAttributeDefinition = SelectAttributeDefinition & {
     categoryDefinition: SelectAttributeDefinitionCategory,

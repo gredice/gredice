@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { attributeDefinitionCategories, attributeDefinitions, ExtendedAttributeDefinition, SelectAttributeDefinition, SelectAttributeDefinitionCategory, storage } from "..";
+import { attributeDefinitionCategories, attributeDefinitions, ExtendedAttributeDefinition, InsertAttributeDefinition, SelectAttributeDefinitionCategory, storage, UpdateAttributeDefinition } from "..";
 
 export function getAttributeDefinitions(entityTypeName?: string): Promise<ExtendedAttributeDefinition[]> {
     return storage.query.attributeDefinitions.findMany({
@@ -21,6 +21,26 @@ export function getAttributeDefinition(id: number) {
             eq(attributeDefinitions.isDeleted, false)
         )
     });
+}
+
+export function createAttributeDefinition(definition: InsertAttributeDefinition) {
+    return storage
+        .insert(attributeDefinitions)
+        .values(definition);
+}
+
+export function updateAttributeDefinition(definition: UpdateAttributeDefinition) {
+    return storage
+        .update(attributeDefinitions)
+        .set(definition)
+        .where(eq(attributeDefinitions.id, definition.id));
+}
+
+export function deleteAttributeDefinition(id: number) {
+    return storage
+        .update(attributeDefinitions)
+        .set({ isDeleted: true })
+        .where(eq(attributeDefinitions.id, id));
 }
 
 export async function getAttributeDefinitionCategories(entityType?: string): Promise<SelectAttributeDefinitionCategory[]> {

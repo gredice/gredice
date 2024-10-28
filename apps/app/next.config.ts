@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
     },
     experimental: {
         reactCompiler: true,
+    },
+    images: {
+        domains: ['www.gredice.com'],
     }
 };
 
