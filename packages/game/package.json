@@ -10,7 +10,7 @@
   },
   "devDependencies": {
     "@react-spring/three": "9.7.5",
-    "@react-three/drei": "9.114.6",
+    "@react-three/drei": "9.115.0",
     "@react-three/fiber": "8.17.10",
     "@signalco/js": "0.1.0",
     "@signalco/ui-primitives": "0.2.0",
