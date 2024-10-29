@@ -45,7 +45,7 @@ importers:
         version: 3.14.0(@codemirror/language@6.10.3)(@lezer/common@1.2.3)(@lezer/highlight@1.2.1)(react-dom@19.0.0-rc-fb9a90fa48-20240614(react@19.0.0-rc-fb9a90fa48-20240614))(react@19.0.0-rc-fb9a90fa48-20240614)(types-react-dom@19.0.0-rc.1)(types-react@19.0.0-rc.1)(yjs@13.6.20)
       '@playwright/experimental-ct-react':
         specifier: 1.48.1
-        version: 1.48.1(@types/node@22.7.9)(vite@5.4.10(@types/node@22.7.9))
+        version: 1.48.1(@types/node@22.8.2)(vite@5.4.10(@types/node@22.8.2))
       '@playwright/test':
         specifier: 1.48.1
         version: 1.48.1
@@ -80,8 +80,8 @@ importers:
         specifier: 5.59.16
         version: 5.59.16(react@19.0.0-rc-fb9a90fa48-20240614)
       '@types/node':
-        specifier: 22.7.9
-        version: 22.7.9
+        specifier: 22.8.2
+        version: 22.8.2
       '@types/react':
         specifier: npm:types-react@19.0.0-rc.1
         version: types-react@19.0.0-rc.1
@@ -136,7 +136,7 @@ importers:
         version: 3.14.0(@codemirror/language@6.10.3)(@lezer/common@1.2.3)(@lezer/highlight@1.2.1)(react-dom@19.0.0-rc-fb9a90fa48-20240614(react@19.0.0-rc-fb9a90fa48-20240614))(react@19.0.0-rc-fb9a90fa48-20240614)(types-react-dom@19.0.0-rc.1)(types-react@19.0.0-rc.1)(yjs@13.6.20)
       '@playwright/experimental-ct-react':
         specifier: 1.48.1
-        version: 1.48.1(@types/node@22.7.9)(vite@5.4.10(@types/node@22.7.9))
+        version: 1.48.1(@types/node@22.8.2)(vite@5.4.10(@types/node@22.8.2))
       '@playwright/test':
         specifier: 1.48.1
         version: 1.48.1
@@ -171,8 +171,8 @@ importers:
         specifier: 5.59.16
         version: 5.59.16(react@19.0.0-rc-fb9a90fa48-20240614)
       '@types/node':
-        specifier: 22.7.9
-        version: 22.7.9
+        specifier: 22.8.2
+        version: 22.8.2
       '@types/react':
         specifier: npm:types-react@19.0.0-rc.1
         version: types-react@19.0.0-rc.1
@@ -227,7 +227,7 @@ importers:
         version: link:../../packages/storage
       '@playwright/experimental-ct-react':
         specifier: 1.48.1
-        version: 1.48.1(@types/node@22.7.9)(vite@5.4.10(@types/node@22.7.9))
+        version: 1.48.1(@types/node@22.8.2)(vite@5.4.10(@types/node@22.8.2))
       '@playwright/test':
         specifier: 1.48.1
         version: 1.48.1
@@ -262,8 +262,8 @@ importers:
         specifier: 5.59.16
         version: 5.59.16(react@18.3.1)
       '@types/node':
-        specifier: 22.7.9
-        version: 22.7.9
+        specifier: 22.8.2
+        version: 22.8.2
       '@types/react':
         specifier: npm:types-react@19.0.0-rc.1
         version: types-react@19.0.0-rc.1
@@ -321,7 +321,7 @@ importers:
         version: link:../../packages/storage
       '@playwright/experimental-ct-react':
         specifier: 1.48.1
-        version: 1.48.1(@types/node@22.7.9)(vite@5.4.10(@types/node@22.7.9))
+        version: 1.48.1(@types/node@22.8.2)(vite@5.4.10(@types/node@22.8.2))
       '@playwright/test':
         specifier: 1.48.1
         version: 1.48.1
@@ -356,8 +356,8 @@ importers:
         specifier: 5.59.16
         version: 5.59.16(react@18.3.1)
       '@types/node':
-        specifier: 22.7.9
-        version: 22.7.9
+        specifier: 22.8.2
+        version: 22.8.2
       '@types/react':
         specifier: npm:types-react@19.0.0-rc.1
         version: types-react@19.0.0-rc.1
@@ -2424,8 +2424,8 @@ packages:
   '@types/ms@0.7.34':
     resolution: {integrity: sha512-nG96G3Wp6acyAgJqGasjODb+acrI7KltPiRxzHPXnP3NgI28bpQDRv53olbqGXbfcgF5aiiHmO3xpwEpS5Ld9g==}
 
-  '@types/node@22.7.9':
-    resolution: {integrity: sha512-jrTfRC7FM6nChvU7X2KqcrgquofrWLFDeYC1hKfwNWomVvrn7JIksqf344WN2X/y8xrgqBd2dJATZV4GbatBfg==}
+  '@types/node@22.8.2':
+    resolution: {integrity: sha512-NzaRNFV+FZkvK/KLCsNdTvID0SThyrs5SHB6tsD/lajr22FGC73N2QeDPM2wHtVde8mgcXuSsHQkH5cX1pbPLw==}
 
   '@types/offscreencanvas@2019.7.3':
     resolution: {integrity: sha512-ieXiYmgSRXUDeOntE1InxjWyvEelZGP63M+cGuquuRLuIKKT1osnkXjxev9B7d1nXSug5vpunx+gNlbVxMlC9A==}
@@ -5698,11 +5698,11 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
-  '@playwright/experimental-ct-core@1.48.1(@types/node@22.7.9)':
+  '@playwright/experimental-ct-core@1.48.1(@types/node@22.8.2)':
     dependencies:
       playwright: 1.48.1
       playwright-core: 1.48.1
-      vite: 5.4.10(@types/node@22.7.9)
+      vite: 5.4.10(@types/node@22.8.2)
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -5713,10 +5713,10 @@ snapshots:
       - sugarss
       - terser
 
-  '@playwright/experimental-ct-react@1.48.1(@types/node@22.7.9)(vite@5.4.10(@types/node@22.7.9))':
+  '@playwright/experimental-ct-react@1.48.1(@types/node@22.8.2)(vite@5.4.10(@types/node@22.8.2))':
     dependencies:
-      '@playwright/experimental-ct-core': 1.48.1(@types/node@22.7.9)
-      '@vitejs/plugin-react': 4.3.3(vite@5.4.10(@types/node@22.7.9))
+      '@playwright/experimental-ct-core': 1.48.1(@types/node@22.8.2)
+      '@vitejs/plugin-react': 4.3.3(vite@5.4.10(@types/node@22.8.2))
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -6480,7 +6480,7 @@ snapshots:
 
   '@types/ms@0.7.34': {}
 
-  '@types/node@22.7.9':
+  '@types/node@22.8.2':
     dependencies:
       undici-types: 6.19.8
 
@@ -6488,14 +6488,14 @@ snapshots:
 
   '@types/pg@8.11.10':
     dependencies:
-      '@types/node': 22.7.9
+      '@types/node': 22.8.2
       pg-protocol: 1.7.0
       pg-types: 4.0.2
     optional: true
 
   '@types/pg@8.11.6':
     dependencies:
-      '@types/node': 22.7.9
+      '@types/node': 22.8.2
       pg-protocol: 1.7.0
       pg-types: 4.0.2
 
@@ -6581,14 +6581,14 @@ snapshots:
     transitivePeerDependencies:
       - utf-8-validate
 
-  '@vitejs/plugin-react@4.3.3(vite@5.4.10(@types/node@22.7.9))':
+  '@vitejs/plugin-react@4.3.3(vite@5.4.10(@types/node@22.8.2))':
     dependencies:
       '@babel/core': 7.25.9
       '@babel/plugin-transform-react-jsx-self': 7.25.9(@babel/core@7.25.9)
       '@babel/plugin-transform-react-jsx-source': 7.25.9(@babel/core@7.25.9)
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.2
-      vite: 5.4.10(@types/node@22.7.9)
+      vite: 5.4.10(@types/node@22.8.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -8699,13 +8699,13 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.2
 
-  vite@5.4.10(@types/node@22.7.9):
+  vite@5.4.10(@types/node@22.8.2):
     dependencies:
       esbuild: 0.21.5
       postcss: 8.4.47
       rollup: 4.24.0
     optionalDependencies:
-      '@types/node': 22.7.9
+      '@types/node': 22.8.2
       fsevents: 2.3.3
 
   w3c-keyname@2.2.8: {}
