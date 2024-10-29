@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitive
 import { Input } from "@signalco/ui-primitives/Input";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Stack } from "@signalco/ui-primitives/Stack";
+import { Container } from "@signalco/ui-primitives/Container";
 import { Alert } from "@signalco/ui/Alert";
 import { authCurrentUserQueryKeys } from "@signalco/auth-client";
 import { queryClient } from "../../components/providers/ClientAppProvider";
 import { useActionState } from "react";
 import { AlertTriangle } from "lucide-react";
+import { Typography } from "@signalco/ui-primitives/Typography";
 
 export function LoginDialog() {
     const [error, submitAction, isPending] = useActionState(async (_previousState: unknown, formData: FormData) => {
@@ -33,24 +35,25 @@ export function LoginDialog() {
     }, null);
 
     return (
-        <Card className="w-80 shadow-lg">
-            <CardHeader>
-                <CardTitle>Login</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <form action={submitAction}>
-                    <Stack spacing={2}>
-                        <Input name="email" label="Email" type="email" autoComplete="email" />
-                        <Input name="password" label="Password" type="password" autoComplete="current-password" />
-                        <Button type="submit" loading={isPending}>Login</Button>
+        <div className="h-full grid md:grid-cols-2 items-center">
+            <div className="h-full hidden lg:flex flex-col text-white bg-muted"></div>
+            <form action={submitAction}>
+                <Container maxWidth="xs" className="py-4">
+                    <Stack spacing={4}>
+                        <Typography level="h2" component="h1" className="tracking-tight height">Prijava</Typography>
+                        <Stack spacing={1}>
+                            <Input name="email" label="Email" placeholder="email@email.com" type="email" autoComplete="email" />
+                            <Input name="password" label="Zaporka" type="password" autoComplete="current-password" />
+                        </Stack>
+                        <Button type="submit" loading={isPending} variant="solid">Prijavi se</Button>
                         {error && (
                             <Alert color="danger" startDecorator={<AlertTriangle />}>
                                 Greška prilikom prijave. Pokušajte ponovo.
                             </Alert>
                         )}
                     </Stack>
-                </form>
-            </CardContent>
-        </Card>
+                </Container>
+            </form>
+        </div>
     )
 }

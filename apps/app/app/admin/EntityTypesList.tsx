@@ -64,9 +64,11 @@ export function EntityTypesList({ entityTypes }: EntityTypesListProps) {
                         </Typography>
                     </Stack>
                     <form action={submitForm}>
-                        <Stack spacing={2}>
-                            <Input name="name" label="Naziv" />
-                            <Input name="label" label="Labela" />
+                        <Stack spacing={4}>
+                            <Stack spacing={1}>
+                                <Input name="name" label="Naziv" />
+                                <Input name="label" label="Labela" />
+                            </Stack>
                             <Button variant="solid" type="submit">Spremi</Button>
                         </Stack>
                     </form>

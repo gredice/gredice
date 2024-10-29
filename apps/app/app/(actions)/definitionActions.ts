@@ -26,7 +26,7 @@ export async function upsertAttributeDefinition(definition: InsertAttributeDefin
     revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(definition.entityTypeName));
 }
 
-export async function deleteAttributeDefinition({ entityTypeName, definitionId }: { entityTypeName: string, definitionId: number }) {
+export async function deleteAttributeDefinition(entityTypeName: string, definitionId: number) {
     await auth();
 
     await storageDeleteAttributeDefinition(definitionId);

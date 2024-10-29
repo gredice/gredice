@@ -4,21 +4,24 @@ import { deleteAttributeValue, deleteEntity, SelectAttributeDefinition, SelectAt
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "../../lib/auth/auth";
+import { KnownPages } from "../../src/KnownPages";
 
 export async function createEntityType(entityTypeName: string, label: string) {
     await auth();
 
     await upsertEntityType({ name: entityTypeName, label: label });
-    revalidatePath(`/admin/directories`);
-    redirect(`/admin/directories/${entityTypeName}`);
+    revalidatePath(KnownPages.Directories);
+    redirect(KnownPages.DirectoryEntityType(entityTypeName));
 }
 
-export async function createEntity(entityType: string) {
+export async function createEntity(entityTypeName: string) {
     await auth();
 
-    const entityId = await storageCreateEntity(entityType);
-    revalidatePath(`/admin/directories/${entityType}`);
-    redirect(`/admin/directories/${entityType}/${entityId}`);
+    const entityId = await storageCreateEntity(entityTypeName);
+    revalidatePath(KnownPages.Directories);
+    revalidatePath(KnownPages.DirectoryEntityType(entityTypeName));
+    revalidatePath(KnownPages.DirectoryEntity(entityTypeName, entityId));
+    redirect(KnownPages.DirectoryEntity(entityTypeName, entityId));
 }
 
 export async function handleValueSave(
@@ -37,7 +40,7 @@ export async function handleValueSave(
         entityId: entityId,
         value: newAttributeValueValue,
     });
-    revalidatePath(`/admin/directories/${entityTypeName}/${entityId}`);
+    revalidatePath(KnownPages.DirectoryEntity(entityTypeName, entityId));
 }
 
 export async function handleValueDelete(attributeValue: SelectAttributeValue) {
@@ -48,10 +51,10 @@ export async function handleValueDelete(attributeValue: SelectAttributeValue) {
     redirect(`/admin/directories/${attributeValue.entityTypeName}`);
 }
 
-export async function handleEntityDelete({ entityTypeName, entityId }: { entityTypeName: string, entityId: number }) {
+export async function handleEntityDelete(entityTypeName: string, entityId: number) {
     await auth();
 
     await deleteEntity(entityId);
-    revalidatePath(`/admin/directories/${entityTypeName}`);
-    redirect(`/admin/directories/${entityTypeName}`);
+    revalidatePath(KnownPages.Directories);
+    redirect(KnownPages.DirectoryEntityType(entityTypeName));
 }

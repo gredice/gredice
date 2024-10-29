@@ -54,9 +54,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                         </SplitView>
                     </AuthProtectedSection>
                     <SignedOut auth={auth}>
-                        <div className="h-screen -mt-16 flex items-center justify-center">
-                            <LoginDialog />
-                        </div>
+                        <LoginDialog />
                     </SignedOut>
                 </main>
             </div>

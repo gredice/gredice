@@ -10,8 +10,8 @@ import { FormCheckbox, FormInput } from "./Form";
 
 export const dynamic = 'force-dynamic';
 
-export default async function AttributeDefinitionPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id: idString } = await params;
+export default async function AttributeDefinitionPage({ params }: { params: Promise<{ entityType: string, id: string }> }) {
+    const { entityType: entityTypeName, id: idString } = await params;
     const id = parseInt(idString);
     if (Number.isNaN(id) || id < 0) {
         notFound();
@@ -31,14 +31,15 @@ export default async function AttributeDefinitionPage({ params }: { params: Prom
         multiple
     } = definition;
 
+    const deleteAttributeDefinitionBound = deleteAttributeDefinition.bind(null, entityTypeName, id);
+
     return (
         <form>
             <Stack spacing={3}>
                 <Row spacing={1} justifyContent="space-between">
                     <Typography level='h5'>{label}</Typography>
                     <ServerActionIconButton
-                        actionProps={[{ definitionId: idString }]}
-                        onClick={deleteAttributeDefinition}
+                        onClick={deleteAttributeDefinitionBound}
                         variant='plain'>
                         <Delete />
                     </ServerActionIconButton>
