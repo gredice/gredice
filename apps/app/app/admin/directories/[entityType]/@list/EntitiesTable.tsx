@@ -8,6 +8,7 @@ import { ServerActionButton } from '../../../../../components/shared/ServerActio
 import { KnownPages } from '../../../../../src/KnownPages';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@signalco/ui-primitives/Tooltip';
 import { cx } from '@signalco/ui-primitives/cx'
+import { Chip } from '@signalco/ui-primitives/Chip';
 
 export async function EntitiesTable({ entityTypeName }: { entityTypeName: string }) {
     const definitions = await getAttributeDefinitions(entityTypeName);
@@ -19,7 +20,8 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
             <Table.Header>
                 <Table.Row>
                     <Table.Head>Naziv</Table.Head>
-                    <Table.Head className='w-20' />
+                    <Table.Head>Podaci</Table.Head>
+                    <Table.Head>Status</Table.Head>
                 </Table.Row>
             </Table.Header>
             <Table.Body>
@@ -40,7 +42,7 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                                     <Tooltip delayDuration={250}>
                                         <TooltipTrigger>
                                             <div className='py-2 px-1'>
-                                                <div className='h-1 bg-gray-200 rounded-full overflow-hidden w-12'>
+                                                <div className='h-1 bg-gray-200 rounded-full overflow-hidden w-14'>
                                                     <div
                                                         className={cx('h-full', progress <= 99.99 ? 'bg-red-400' : 'bg-green-500')}
                                                         style={{ width: `${progress}%` }} />
@@ -54,6 +56,11 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                                         </TooltipContent>
                                     </Tooltip>
                                 </Link>
+                            </Table.Cell>
+                            <Table.Cell>
+                                <Chip color={entity.state === 'draft' ? 'neutral' : 'success'} className='w-fit'>
+                                    {entity.state === 'draft' ? 'U izradi' : 'Objavljeno'}
+                                </Chip>
                             </Table.Cell>
                         </Table.Row>
                     );

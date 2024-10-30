@@ -1,9 +1,11 @@
 import { and, eq } from "drizzle-orm";
-import { entities, SelectAttributeDefinition, SelectAttributeValue, SelectEntity, SelectEntityType, storage } from "..";
+import { entities, SelectAttributeDefinition, SelectAttributeValue, SelectEntity, SelectEntityType, storage, UpdateEntity } from "..";
 
-export function getEntitiesRaw(entityTypeName: string) {
+export function getEntitiesRaw(entityTypeName: string, state?: string) {
     return storage.query.entities.findMany({
-        where: and(eq(entities.entityTypeName, entityTypeName), eq(entities.isDeleted, false)),
+        where: state
+            ? and(eq(entities.entityTypeName, entityTypeName), eq(entities.state, state), eq(entities.isDeleted, false))
+            : and(eq(entities.entityTypeName, entityTypeName), eq(entities.isDeleted, false)),
         with: {
             attributes: {
                 where: eq(entities.isDeleted, false),
@@ -17,7 +19,7 @@ export function getEntitiesRaw(entityTypeName: string) {
 }
 
 export async function getEntitiesFormatted(entityTypeName: string) {
-    const entities = await getEntitiesRaw(entityTypeName);
+    const entities = await getEntitiesRaw(entityTypeName, 'published');
     return entities.map(expandEntity);
 }
 
@@ -115,6 +117,21 @@ export async function createEntity(entityTypeName: string) {
         .values({ entityTypeName })
         .returning({ id: entities.id });
     return result[0].id;
+}
+
+export async function updateEntity(entity: UpdateEntity) {
+    const updateData = {
+        ...entity
+    };
+
+    if (updateData.state === 'published') {
+        updateData.publishedAt = new Date();
+    }
+
+    await storage
+        .update(entities)
+        .set(entity)
+        .where(eq(entities.id, entity.id));
 }
 
 export function deleteEntity(id: number) {
