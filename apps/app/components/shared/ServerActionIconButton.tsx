@@ -1,16 +1,26 @@
 'use client';
 
 import { IconButton, IconButtonProps } from "@signalco/ui-primitives/IconButton";
+import { startTransition, useState } from "react";
 
-export type ServerActionIconButtonProps<TActionProps> = {
-    actionProps?: any,
-    onClick: (...actionProps: TActionProps[]) => Promise<void>,
-} & Omit<IconButtonProps, 'onClick'>;
+export type ServerActionIconButtonProps = Omit<IconButtonProps, 'onClick'> & {
+    onClick?: () => Promise<void>;
+};
 
-export function ServerActionIconButton<TActionProps>({ onClick, actionProps, ...props }: ServerActionIconButtonProps<TActionProps>) {
+export function ServerActionIconButton({ onClick, loading, ...props }: ServerActionIconButtonProps) {
+    const [isLoading, setIsLoading] = useState(false);
+    const handleClick = async () => {
+        setIsLoading(true);
+        if (onClick)
+            startTransition(onClick);
+    }
+
+
     return (
         <IconButton
             {...props}
-            onClick={() => Array.isArray(actionProps) ? onClick(...actionProps) : onClick()} />
+            onClick={handleClick}
+            loading={loading || isLoading}
+            type="submit" />
     );
 }

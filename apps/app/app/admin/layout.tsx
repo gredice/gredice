@@ -5,18 +5,11 @@ import { SignedOut, AuthProtectedSection } from "@signalco/auth-server/component
 import { LoginDialog } from "./LoginDialog";
 import { auth } from "../../lib/auth/auth";
 import { SplitView } from "@signalco/ui/SplitView";
-import { List } from "@signalco/ui-primitives/List";
-import { ListItem } from "@signalco/ui-primitives/ListItem";
-import { ListTreeItem } from "@signalco/ui-primitives/ListTreeItem";
-import { KnownPages } from "../../src/KnownPages";
-import { Home } from "lucide-react";
 import { getEntityTypes } from "@gredice/storage";
-import { FileText } from "lucide-react";
-import { EntityTypesList } from "./EntityTypesList";
 import { Row } from "@signalco/ui-primitives/Row";
 import Image from "next/image";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import Link from "next/link";
+import { MenuList } from "./MenuList";
 
 export const dynamic = 'force-dynamic';
 
@@ -36,16 +29,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                 <main className="pt-16 relative grow">
                     <AuthProtectedSection auth={auth}>
                         <SplitView>
-                            <List>
-                                <Link href={KnownPages.Dashboard} passHref legacyBehavior>
-                                    <ListItem label="Početna" startDecorator={<Home className="size-5" />} />
-                                </Link>
-                                <ListTreeItem
-                                    label="Zapisi"
-                                    startDecorator={<FileText className="size-5" />}>
-                                    <EntityTypesList entityTypes={entityTypes} />
-                                </ListTreeItem>
-                            </List>
+                            <MenuList entityTypes={entityTypes} />
                             <div className="bg-secondary min-h-full">
                                 <Suspense>
                                     {children}
@@ -54,9 +38,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                         </SplitView>
                     </AuthProtectedSection>
                     <SignedOut auth={auth}>
-                        <div className="h-screen -mt-16 flex items-center justify-center">
-                            <LoginDialog />
-                        </div>
+                        <LoginDialog />
                     </SignedOut>
                 </main>
             </div>

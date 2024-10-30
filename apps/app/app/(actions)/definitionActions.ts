@@ -3,8 +3,11 @@
 import {
     InsertAttributeDefinition,
     createAttributeDefinition as storageCreateAttributeDefinition,
-    updateAttributeDefinition as storageUpsertAttributeDefinition,
-    deleteAttributeDefinition as storageDeleteAttributeDefinition
+    updateAttributeDefinition as storageUpdateAttributeDefinition,
+    deleteAttributeDefinition as storageDeleteAttributeDefinition,
+    createAttributeDefinitionCategory as storageCreateAttributeDefinitionCategory,
+    updateAttributeDefinitionCategory as storageUpdateAttributeDefinitionCategory,
+    InsertAttributeDefinitionCategory
 } from "@gredice/storage";
 import { auth } from "../../lib/auth/auth";
 import { KnownPages } from "../../src/KnownPages";
@@ -16,7 +19,7 @@ export async function upsertAttributeDefinition(definition: InsertAttributeDefin
 
     const id = definition.id;
     if (id) {
-        await storageUpsertAttributeDefinition({
+        await storageUpdateAttributeDefinition({
             ...definition,
             id
         });
@@ -26,10 +29,25 @@ export async function upsertAttributeDefinition(definition: InsertAttributeDefin
     revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(definition.entityTypeName));
 }
 
-export async function deleteAttributeDefinition({ entityTypeName, definitionId }: { entityTypeName: string, definitionId: number }) {
+export async function deleteAttributeDefinition(entityTypeName: string, definitionId: number) {
     await auth();
 
     await storageDeleteAttributeDefinition(definitionId);
     revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName));
     redirect(KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName));
+}
+
+export async function upsertAttributeDefinitionCategory(category: InsertAttributeDefinitionCategory) {
+    await auth();
+
+    const id = category.id;
+    if (id) {
+        await storageUpdateAttributeDefinitionCategory({
+            ...category,
+            id
+        });
+    } else {
+        await storageCreateAttributeDefinitionCategory(category);
+    }
+    revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(category.entityTypeName));
 }

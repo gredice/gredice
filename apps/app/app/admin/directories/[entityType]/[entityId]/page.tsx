@@ -21,6 +21,7 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
     }
 
     const name = entity.attributes.find(pa => pa.attributeDefinition.category === 'information' && pa.attributeDefinition.name === 'name')?.value ?? 'Nepoznato';
+    const entityDeleteBound = handleEntityDelete.bind(null, params.entityType, parseInt(params.entityId));
 
     return (
         <div>
@@ -36,8 +37,7 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
                     </TabsList>
                     <div className='self-end'>
                         <ServerActionIconButton
-                            actionProps={[{ entityTypeName: params.entityType, entityId: params.entityId }]}
-                            onClick={handleEntityDelete}
+                            onClick={entityDeleteBound}
                             variant='plain'>
                             <Delete />
                         </ServerActionIconButton>

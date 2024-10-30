@@ -9,6 +9,7 @@ import { KnownPages } from '../../../../../src/KnownPages';
 
 export async function EntitiesTable({ entityTypeName }: { entityTypeName: string }) {
     const entities = await getEntitiesRaw(entityTypeName);
+    const createEntityBound = createEntity.bind(null, entityTypeName);
 
     return (
         <Table>
@@ -34,8 +35,7 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                             size='lg'
                             fullWidth
                             title="Dodaj zapis"
-                            actionProps={[entityTypeName]}
-                            onClick={createEntity}
+                            onClick={createEntityBound}
                             startDecorator={<Add className='size-5' />}>
                             Dodaj zapis
                         </ServerActionButton>
