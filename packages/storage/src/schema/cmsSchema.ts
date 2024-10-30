@@ -110,11 +110,16 @@ export const entityTypes = pgTable('entity_types', {
 });
 
 export type InsertEntityType = typeof entityTypes.$inferInsert;
+export type UpdateEntityType =
+    Partial<Omit<typeof entityTypes.$inferInsert, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
+    Pick<typeof entityTypes.$inferSelect, 'id'>;
 export type SelectEntityType = typeof entityTypes.$inferSelect;
 
 export const entities = pgTable('entities', {
     id: serial('id').primaryKey(),
     entityTypeName: text('entity_type').notNull(),
+    state: text('state').notNull().default('draft'),
+    publishedAt: timestamp('published_at'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
@@ -130,4 +135,7 @@ export const entityRelation = relations(entities, ({ one, many }) => ({
 }));
 
 export type InsertEntity = typeof entities.$inferInsert;
+export type UpdateEntity =
+    Partial<Omit<typeof entities.$inferInsert, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
+    Pick<typeof entities.$inferSelect, 'id'>;
 export type SelectEntity = typeof entities.$inferSelect;
