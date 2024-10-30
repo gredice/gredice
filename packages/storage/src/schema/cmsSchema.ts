@@ -36,6 +36,7 @@ export const attributeDefinitions = pgTable('attribute_definitions', {
     defaultValue: text('default_value'),
     order: text('order'),
     multiple: boolean('multiple').notNull().default(false),
+    required: boolean('required').notNull().default(false),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),

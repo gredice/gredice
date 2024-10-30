@@ -15,7 +15,10 @@ type AttributeCategoryDefinitionItemProps = {
 export function AttributeCategoryDefinitionItem({ attributeDefinition, entity }: AttributeCategoryDefinitionItemProps) {
     return (
         <Stack key={attributeDefinition.id} spacing={1}>
-            <Typography level='body1' semiBold>{attributeDefinition.label}</Typography>
+            <Typography level='body1' semiBold>
+                {attributeDefinition.label}
+                {attributeDefinition.required && <span className="text-red-600/60 ml-1">*</span>}
+            </Typography>
             <Stack spacing={1}>
                 {attributeDefinition.multiple ? (
                     entity.attributes.filter(a => a.attributeDefinitionId === attributeDefinition.id).map(attributeValue => (

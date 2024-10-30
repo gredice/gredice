@@ -101,7 +101,9 @@ export function JsonInput({ value, onChange, schema }: AttributeInputProps) {
 
                     return (
                         <Stack spacing={0.5} key={key}>
-                            <Typography level='body2'>{camelToSentenceCase(key)}</Typography>
+                            <Typography level='body2'>
+                                {camelToSentenceCase(key)}
+                            </Typography>
                             <InputComponent
                                 value={typeof inputValue[key] === 'string'
                                     ? inputValue[key]
