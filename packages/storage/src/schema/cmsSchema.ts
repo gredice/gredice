@@ -9,6 +9,7 @@ export const attributeDefinitionCategories = pgTable('attribute_definition_categ
     order: text('order'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
+    isDeleted: boolean('is_deleted').notNull().default(false),
 });
 
 export const attributeDefinitionCategoriesRelation = relations(attributeDefinitionCategories, ({ one }) => ({
@@ -21,6 +22,9 @@ export const attributeDefinitionCategoriesRelation = relations(attributeDefiniti
 
 export type InsertAttributeDefinitionCategory = typeof attributeDefinitionCategories.$inferInsert;
 export type SelectAttributeDefinitionCategory = typeof attributeDefinitionCategories.$inferSelect;
+export type UpdateAttributeDefinitionCategory =
+    Partial<Omit<typeof attributeDefinitionCategories.$inferInsert, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
+    Pick<typeof attributeDefinitionCategories.$inferSelect, 'id'>;
 
 export const attributeDefinitions = pgTable('attribute_definitions', {
     id: serial('id').primaryKey(),
