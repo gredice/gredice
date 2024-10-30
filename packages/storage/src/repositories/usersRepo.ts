@@ -3,6 +3,10 @@ import { storage } from "..";
 import { accounts, accountUsers, userLogins, users } from "../schema";
 import { randomUUID } from 'node:crypto';
 
+export function getUsers() {
+    return storage.query.users.findMany();
+}
+
 export function getUser(userId: string) {
     return storage.query.users.findFirst({
         where: eq(users.id, userId),
