@@ -28,7 +28,8 @@ export default async function AttributeDefinitionPage({ params }: { params: Prom
         dataType,
         defaultValue,
         label,
-        multiple
+        multiple,
+        required
     } = definition;
 
     const deleteAttributeDefinitionBound = deleteAttributeDefinition.bind(null, entityTypeName, id);
@@ -56,6 +57,7 @@ export default async function AttributeDefinitionPage({ params }: { params: Prom
                     </Row>
                     <FormCheckbox definition={definition} name="multiple" value={multiple ? 'true' : 'false'} label="Više vrijednosti" />
                 </Stack>
+                <FormCheckbox definition={definition} name="required" value={required ? 'true' : 'false'} label="Obavezno" />
             </Stack>
         </form>
     );
