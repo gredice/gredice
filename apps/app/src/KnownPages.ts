@@ -7,4 +7,5 @@ export const KnownPages = {
     DirectoryEntityTypeAttributeDefinitionCategory: (entityTypeName: string, id: number) => `/admin/directories/${entityTypeName}/attribute-definitions/categories/${id}`,
     DirectoryEntity: (entityTypeName: string, entityId: number) => `/admin/directories/${entityTypeName}/${entityId}`,
     DirectoryEntityPath: '/admin/directories/[entityType]/[entityId]',
+    Users: '/admin/users',
 }
