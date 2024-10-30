@@ -24,6 +24,7 @@ function AttributeDefinitionCard({ attributeDefinition }: { attributeDefinition:
                             {attributeDefinition.label}
                             {attributeDefinition.required && <span className="text-red-600/60 ml-1">*</span>}
                         </Typography>
+                        <Typography level="body3" className="line-clamp-2">{attributeDefinition.description}</Typography>
                     </Stack>
                     <Stack>
                         <Chip className="">{

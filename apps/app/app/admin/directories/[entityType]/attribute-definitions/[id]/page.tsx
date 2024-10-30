@@ -50,6 +50,7 @@ export default async function AttributeDefinitionPage({ params }: { params: Prom
                     <FormInput definition={definition} name="label" label="Naziv" value={label} />
                     <FormInput definition={definition} name="name" label="Oznaka" value={name} />
                 </Row>
+                <FormInput definition={definition} name="description" label="Opis" value={definition.description || ''} />
                 <Stack spacing={2}>
                     <Row spacing={2}>
                         <FormInput definition={definition} name="dataType" label="Tip podatka" value={dataType} />

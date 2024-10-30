@@ -32,7 +32,7 @@ export function createAttributeDefinition(definition: InsertAttributeDefinition)
 export function updateAttributeDefinition(definition: UpdateAttributeDefinition) {
     return storage
         .update(attributeDefinitions)
-        .set(definition)
+        .set({ ...definition })
         .where(eq(attributeDefinitions.id, definition.id));
 }
 
