@@ -6,6 +6,9 @@ import { Delete } from '@signalco/ui-icons';
 import { ServerActionIconButton } from '../../../../../components/shared/ServerActionIconButton';
 import { handleEntityDelete } from '../../../../(actions)/entityActions';
 import { notFound } from 'next/navigation';
+import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { EntityStateSelect } from './EntityStateSelect';
+import { Row } from '@signalco/ui-primitives/Row';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,13 +38,14 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
                             </TabsTrigger>
                         ))}
                     </TabsList>
-                    <div className='self-end'>
+                    <Row className='self-end' spacing={1}>
+                        <EntityStateSelect entity={entity} />
                         <ServerActionIconButton
                             onClick={entityDeleteBound}
                             variant='plain'>
                             <Delete />
                         </ServerActionIconButton>
-                    </div>
+                    </Row>
                 </div>
                 {attributeCategories.map((category) => (
                     <TabsContent value={category.name} key={category.name}>
