@@ -1,14 +1,10 @@
 'use client';
 
-import {
-    useQuery,
-    useQueryClient,
-} from '@tanstack/react-query';
 import { Vector3 } from 'three';
-import { OrbitControls, StatsGl, useGLTF } from '@react-three/drei';
+import { OrbitControls, StatsGl } from '@react-three/drei';
 import { HTMLAttributes, useEffect } from 'react';
 import { Environment } from './scene/Environment';
-import { makeButton, makeFolder, useTweaks } from 'use-tweaks';
+import { makeButton, useTweaks } from 'use-tweaks';
 import { useGameState } from './useGameState';
 import type { Stack } from './types/Stack';
 import type { Garden } from './types/Garden';
@@ -67,53 +63,25 @@ function getDefaultGarden(): Garden {
     };
 }
 
-const gardenLocalStorageKey = 'garden';
-function gardenQueryKey() {
-    return ['garden'];
-}
-
-async function getGarden() {
-    const serializedGarden = localStorage.getItem(gardenLocalStorageKey);
-    if (serializedGarden) {
-        return deserializeGarden(serializedGarden);
-    } else {
-        const newGarden = deserializeGarden(serializeGarden(getDefaultGarden()));
-        localStorage.setItem(gardenLocalStorageKey, serializeGarden(newGarden));
-        return newGarden;
-    }
-}
-
-function useGarden() {
-    return useQuery({
-        queryKey: ['garden'],
-        queryFn: getGarden,
-        staleTime: 0
-    })
-}
-
-function useUpdateGarden() {
-    const queryClient = useQueryClient();
-    return async ({ stacks }: { stacks?: Stack[] }) => {
-        const garden = await getGarden();
-        if (stacks) {
-            garden.stacks = structuredClone(stacks);
-
-            // Garden cleanup
-            // - remove empty stacks
-            garden.stacks = garden.stacks.filter(stack => stack.blocks.length > 0);
-        }
-
-        localStorage.setItem(gardenLocalStorageKey, serializeGarden(garden));
-        queryClient.invalidateQueries({ queryKey: gardenQueryKey() });
-    }
-}
+// TODO: Use to deserialize
+// async function getGarden() {
+//     const serializedGarden = localStorage.getItem(gardenLocalStorageKey);
+//     if (serializedGarden) {
+//         return deserializeGarden(serializedGarden);
+//     } else {
+//         const newGarden = deserializeGarden(serializeGarden(getDefaultGarden()));
+//         localStorage.setItem(gardenLocalStorageKey, serializeGarden(newGarden));
+//         return newGarden;
+//     }
+// }
 
 export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
     const stacks = useGameState(state => state.stacks);
     const setStacks = useGameState(state => state.setStacks);
 
     // Load garden from remote
-    const { data: garden, isLoading: isLoadingGarden } = useGarden();
+    const garden = getDefaultGarden();
+    const isLoadingGarden = false;
     useEffect(() => {
         // Only update local state if we don't have any local state (first load or no stacks)
         if (garden && !isLoadingGarden && stacks.length <= 0) {
@@ -124,12 +92,7 @@ export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
         //       present user with "Reload" button (notification)
     }, [garden, isLoadingGarden]);
 
-    // Update garden remote state when local stage changes
-    const updateGarden = useUpdateGarden();
-    useEffect(() => {
-        if (!isLoadingGarden)
-            updateGarden({ stacks });
-    }, [stacks]);
+    // TODO: Update garden remote state when local stage changes
 
     if (!garden) {
         return null;
