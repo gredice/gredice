@@ -1,4 +1,4 @@
-import { getAttributeDefinitions, getEntitiesRaw } from '@gredice/storage';
+import { getEntitiesRaw } from '@gredice/storage';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
@@ -6,12 +6,10 @@ import { Add } from '@signalco/ui-icons';
 import { createEntity } from '../../../../(actions)/entityActions';
 import { ServerActionButton } from '../../../../../components/shared/ServerActionButton';
 import { KnownPages } from '../../../../../src/KnownPages';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@signalco/ui-primitives/Tooltip';
-import { cx } from '@signalco/ui-primitives/cx'
 import { Chip } from '@signalco/ui-primitives/Chip';
+import { EntityAttributeProgress } from './EntityAttributeProgress';
 
 export async function EntitiesTable({ entityTypeName }: { entityTypeName: string }) {
-    const definitions = await getAttributeDefinitions(entityTypeName);
     const entities = await getEntitiesRaw(entityTypeName);
     const createEntityBound = createEntity.bind(null, entityTypeName);
 
@@ -26,9 +24,6 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
             </Table.Header>
             <Table.Body>
                 {entities.map(entity => {
-                    const numberOfRequiredAttributes = definitions.filter(d => d.required).length;
-                    const notPopulatedRequiredAttributes = definitions.filter(d => d.required && !entity.attributes.some(a => a.attributeDefinitionId === d.id));
-                    const progress = ((numberOfRequiredAttributes - notPopulatedRequiredAttributes.length) / numberOfRequiredAttributes) * 100;
                     return (
                         <Table.Row key={entity.id}>
                             <Table.Cell>
@@ -38,23 +33,7 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                             </Table.Cell>
                             <Table.Cell>
                                 <Link href={KnownPages.DirectoryEntity(entityTypeName, entity.id)}>
-                                    {/* Progress bar displaying status of populated required attribute values */}
-                                    <Tooltip delayDuration={250}>
-                                        <TooltipTrigger>
-                                            <div className='py-2 px-1'>
-                                                <div className='h-1 bg-gray-200 rounded-full overflow-hidden w-14'>
-                                                    <div
-                                                        className={cx('h-full', progress <= 99.99 ? 'bg-red-400' : 'bg-green-500')}
-                                                        style={{ width: `${progress}%` }} />
-                                                </div>
-                                            </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            {notPopulatedRequiredAttributes.length === 0
-                                                ? 'Svi obavezni atributi su ispunjeni'
-                                                : `Manjak obaveznih atributa: ${notPopulatedRequiredAttributes.map(a => a.label).join(', ')}`}
-                                        </TooltipContent>
-                                    </Tooltip>
+                                    <EntityAttributeProgress entityTypeName={entityTypeName} entity={entity} />
                                 </Link>
                             </Table.Cell>
                             <Table.Cell>
@@ -66,7 +45,7 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                     );
                 })}
                 <Table.Row>
-                    <Table.Cell className='p-0'>
+                    <Table.Cell className='p-0' colSpan={3}>
                         <ServerActionButton
                             variant="plain"
                             size='lg'

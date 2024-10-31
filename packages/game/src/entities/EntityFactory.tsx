@@ -1,6 +1,5 @@
 import { Vector3 } from "three";
 import { useGameState } from "../useGameState";
-import { entities } from "../data/entities";
 import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
 import { PickableGroup } from "../controls/PickableGroup";
 import { BlockGround } from "./BlockGround";
@@ -11,15 +10,15 @@ import { Fence } from "./Fence";
 import { Stool } from "./Stool";
 import { Bucket } from "./Bucket";
 
-const entityNameMap = {
-    [entities.BlockGround.name]: BlockGround,
-    [entities.BlockGrass.name]: BlockGrass,
-    [entities.RaisedBed.name]: RaisedBed,
-    [entities.Shade.name]: Shade,
-    [entities.Fence.name]: Fence,
-    [entities.Stool.name]: Stool,
-    [entities.Bucket.name]: Bucket
-}
+const entityNameMap: Record<string, any> = {
+    ["Block_Ground"]: BlockGround,
+    ["Block_Grass"]: BlockGrass,
+    ["Raised_Bed"]: RaisedBed,
+    ["Shade"]: Shade,
+    ["Fence"]: Fence,
+    ["Stool"]: Stool,
+    ["Bucket"]: Bucket
+};
 
 export function EntityFactory({ name, stack, block, noControl, ...rest }: { name: string, noControl?: boolean } & EntityInstanceProps) {
     const EntityComponent = entityNameMap[name];

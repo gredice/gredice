@@ -15,10 +15,8 @@ import type { Garden } from './types/Garden';
 import { orderBy, RecursivePartial } from '@signalco/js';
 import { RotatableGroup } from './controls/RotatableGroup';
 import { getStack } from './utils/getStack';
-import { entities, entitiesArray } from './data/entities';
 import { Scene } from './scene/Scene';
 import { EntityFactory } from './entities/EntityFactory';
-import { models } from './data/models';
 
 function serializeGarden(garden: Garden) {
     return JSON.stringify(garden);
@@ -51,13 +49,13 @@ function getDefaultGarden(): Garden {
             stacks.push({
                 position: new Vector3(x, 0, z),
                 blocks: [
-                    { name: entities.BlockGrass.name, rotation: Math.floor(Math.random() * 4) },
+                    { name: "Block_Grass", rotation: Math.floor(Math.random() * 4) },
                 ]
             });
         }
     }
-    stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
-    stacks.find(stack => stack.position.x === 1 && stack.position.z === 0)?.blocks.push({ name: entities.RaisedBed.name, rotation: 0 });
+    stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ name: "Raised_Bed", rotation: 0 });
+    stacks.find(stack => stack.position.x === 1 && stack.position.z === 0)?.blocks.push({ name: "Raised_Bed", rotation: 0 });
 
     return {
         name: 'Moj vrt',
@@ -184,16 +182,17 @@ function DebugHud() {
         placeBlock(new Vector3(x, 0, z), { name, rotation: 0 });
     };
 
+    const gameState = useGameState();
+
     let entitiesButtons = {};
-    for (const entity of orderBy(entitiesArray, (a, b) => a.alias.localeCompare(b.alias))) {
+    for (const entity of orderBy(gameState.data.blocks, (a, b) => a.information.label.localeCompare(b.information.label))) {
         entitiesButtons = {
             ...entitiesButtons,
-            ...makeButton(entity.alias, () => handlePlaceBlock(entity.name))
+            ...makeButton(entity.information.label, () => handlePlaceBlock(entity.information.name))
         }
     }
     useTweaks('Entities', entitiesButtons);
 
-    const gameState = useGameState();
     const { timeOfDay } = useTweaks('Environment', {
         timeOfDay: { value: (gameState.currentTime.getHours() * 60 * 60 + gameState.currentTime.getMinutes() * 60 + gameState.currentTime.getSeconds()) / (24 * 60 * 60), min: 0, max: 1 },
     });
@@ -204,7 +203,7 @@ function DebugHud() {
         date.setHours(seconds / 60 / 60);
         date.setMinutes((seconds / 60) % 60);
         date.setSeconds(seconds % 60);
-        gameState.setInitial(gameState.appBaseUrl, date);
+        gameState.setInitial(gameState.appBaseUrl, gameState.data, date);
     }, [timeOfDay]);
 
     return (

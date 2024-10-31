@@ -1,9 +1,9 @@
-import { entities } from "../data/entities";
 import type { Block } from "../types/Block";
 import type { Stack } from "../types/Stack";
+import { useGameState } from "../useGameState";
 
-function getEntityByName(name: string) {
-    return Object.values(entities).find(entity => entity.name === name);
+function getBlockDataByName(name: string) {
+    return useGameState.getState().data.blocks.find(entity => entity.information.name === name);
 }
 
 export function stackHeight(stack: Stack | undefined, stopBlock?: Block) {
@@ -16,7 +16,7 @@ export function stackHeight(stack: Stack | undefined, stopBlock?: Block) {
         if (block === stopBlock) {
             return height;
         }
-        height += getEntityByName(block.name)?.height ?? 0;
+        height += getBlockDataByName(block.name)?.attributes.height ?? 0;
     }
     return height
 }

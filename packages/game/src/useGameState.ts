@@ -3,13 +3,17 @@ import type { Stack } from "./types/Stack";
 import type { Block } from "./types/Block";
 import type { Vector3 } from "three";
 import { getStack } from "./utils/getStack";
+import { BlockData } from "../@types/BlockData";
 
 export type GameState = {
     appBaseUrl: string,
     freezeTime?: Date | null,
     currentTime: Date,
     stacks: Stack[],
-    setInitial: (appBaseUrl: string, freezeTime?: Date | null) => void,
+    data: {
+        blocks: BlockData[]
+    },
+    setInitial: (appBaseUrl: string, data: { blocks: BlockData[] }, freezeTime?: Date | null) => void,
     setCurrentTime: (currentTime: Date) => void,
     setStacks: (stacks: Stack[]) => void,
     placeBlock: (to: Vector3, block: Block) => void,
@@ -22,7 +26,10 @@ export const useGameState = create<GameState>((set) => ({
     freezeTime: null,
     currentTime: new Date(),
     stacks: [],
-    setInitial: (appBaseUrl, freezeTime) => set({ appBaseUrl, freezeTime }),
+    data: {
+        blocks: []
+    },
+    setInitial: (appBaseUrl, data, freezeTime) => set({ appBaseUrl, freezeTime, data }),
     setCurrentTime: (currentTime) => set({ currentTime }),
     setStacks: (stacks) => set({ stacks }),
     placeBlock: (to, block) => set((state) => {
