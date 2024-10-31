@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Gallery } from "@signalco/ui/Gallery";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../components/shared/PageHeader";
@@ -6,16 +5,13 @@ import { ItemCard } from "../../components/shared/ItemCard";
 import { orderBy } from "@signalco/js";
 import { getEntitiesFormatted } from "@gredice/storage";
 import { BlockData } from "./@types/BlockData";
+import { BlockImage } from "../../components/blocks/BlockImage";
 
 function BlockGalleryItem(props: BlockData) {
     const entity = props;
     return (
         <ItemCard label={entity.information.label} href={`/blokovi/${entity.information.label}`}>
-            <Image
-                src={`/assets/blocks/${entity.information.name}.png`}
-                fill
-                alt={entity.information.label}
-            />
+            <BlockImage blockName={entity.information.name} fill />
         </ItemCard>
     );
 }
