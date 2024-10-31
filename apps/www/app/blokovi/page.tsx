@@ -1,31 +1,28 @@
 import Image from "next/image";
-import { entities, Entity } from "../../../../packages/game/src/data/entities";
 import { Gallery } from "@signalco/ui/Gallery";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { ItemCard } from "../../components/shared/ItemCard";
 import { orderBy } from "@signalco/js";
+import { getEntitiesFormatted } from "@gredice/storage";
+import { BlockData } from "./@types/BlockData";
 
-function BlockGalleryItem(props: Entity & { id: string }) {
+function BlockGalleryItem(props: BlockData) {
     const entity = props;
     return (
-        <ItemCard label={entity.alias} href={`/blokovi/${entity.alias}`}>
+        <ItemCard label={entity.information.label} href={`/blokovi/${entity.information.label}`}>
             <Image
-                src={`/assets/blocks/${entity.name}.png`}
+                src={`/assets/blocks/${entity.information.name}.png`}
                 fill
-                alt={entity.alias}
+                alt={entity.information.label}
             />
         </ItemCard>
     );
 }
 
-export default function BlocksPage() {
-    const entitiesArray: Array<Entity & { id: string }> = orderBy((Object.keys(entities) as Array<keyof typeof entities>)
-        .map((entityKey) => ({
-            id: entities[entityKey].name,
-            ...entities[entityKey]
-        })), (a, b) => a.alias.localeCompare(b.alias));
-
+export default async function BlocksPage() {
+    const entities = await getEntitiesFormatted('block') as unknown as BlockData[];
+    const blocksArray = orderBy(entities, (a, b) => a.information.label.localeCompare(b.information.label));
     return (
         <Stack>
             <PageHeader
@@ -34,7 +31,7 @@ export default function BlocksPage() {
                 subHeader="Pregledaj sve blokove koje možeš koristiti u svom vrtu." />
             <Gallery
                 gridHeader={''}
-                items={entitiesArray}
+                items={blocksArray}
                 itemComponent={BlockGalleryItem} />
         </Stack>
     );

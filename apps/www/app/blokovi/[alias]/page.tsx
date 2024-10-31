@@ -1,16 +1,17 @@
 import { notFound } from "next/navigation";
-import { entities } from "../../../../../packages/game/src/data/entities";
 import { PageHeader } from "../../../components/shared/PageHeader";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { EntityViewer } from "@gredice/game";
 import { ListHeader } from "@signalco/ui-primitives/List";
 import { SplitView } from "@signalco/ui/SplitView";
 import { BlocksList } from "./BlocksList";
+import { getEntitiesFormatted } from "@gredice/storage";
+import { BlockData } from "../@types/BlockData";
 
 export default async function BlockPage({ params }: { params: Promise<{ alias: string }> }) {
     const { alias } = await params;
-    const entityKey = (Object.keys(entities) as Array<keyof typeof entities>).find((entityKey) => entities[entityKey].alias === alias);
-    const entity = entityKey ? entities[entityKey] : null;
+    const blockData = await getEntitiesFormatted('block') as unknown as BlockData[];
+    const entity = blockData.find((block) => block.information.label === alias);
     if (!entity) {
         notFound();
     }
@@ -20,17 +21,17 @@ export default async function BlockPage({ params }: { params: Promise<{ alias: s
             <SplitView>
                 <Stack spacing={1} className="p-4 py-10">
                     <ListHeader header="Blokovi" />
-                    <BlocksList />
+                    <BlocksList blockData={blockData} />
                 </Stack>
                 <Stack spacing={4} className="p-4 py-10">
                     <PageHeader
                         visual={(
                             <EntityViewer
-                                entityName={entity.name}
+                                entityName={entity.information.name}
                                 appBaseUrl="https://vrt.gredice.com" />
                         )}
-                        header={entity.alias}
-                        subHeader={entity.description}
+                        header={entity.information.label}
+                        subHeader={entity.information.shortDescription}
                     />
                 </Stack>
             </SplitView>
