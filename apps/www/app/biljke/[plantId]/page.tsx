@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
+import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
@@ -6,13 +6,16 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { Container } from "@signalco/ui-primitives/Container";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { Row } from "@signalco/ui-primitives/Row";
-import { CSSProperties, Fragment, PropsWithChildren, ReactNode } from "react";
+import { ReactNode } from "react";
 import { Sun, Droplet, Sprout, Leaf, Ruler, ArrowDownToLine, BadgeCheck, Info } from "lucide-react"
 import { notFound } from "next/navigation";
 import { getEntityFormatted } from "@gredice/storage";
 import Image from "next/image";
 import Markdown from 'react-markdown'
 import { PageHeader } from "../../../components/shared/PageHeader";
+import { PlantYearCalendar } from "./PlantYearCalendar";
+import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
+import { BlockImage } from "../../../components/blocks/BlockImage";
 
 function DetailCard({ icon, header, value }: { icon: React.ReactNode; header: string; value: string | null | undefined }) {
     return (
@@ -44,22 +47,14 @@ function PlantAttributes({ attributes }: { attributes: PlantAttributes | undefin
     )
 }
 
-function NoDataPlaceholder({ children }: PropsWithChildren) {
-    return (
-        <Typography level="body2" center>
-            {children || 'Nema podataka'}
-        </Typography>
-    )
-}
-
 export const dynamic = 'force-dynamic';
 
 function InformationSection({ icon, header, content }: { icon: ReactNode, header: string, content: string }) {
     return (
         <Stack spacing={1}>
-            <Row spacing={1}>
+            <Row spacing={2}>
                 {Boolean(icon) && icon}
-                <Typography level="h5">{header}</Typography>
+                <Typography level="h4">{header}</Typography>
             </Row>
             <Markdown className="prose max-w-none">{content}</Markdown>
         </Stack>
@@ -161,7 +156,9 @@ export default async function PlantPage(props: { params: Promise<{ plantId: stri
                                 Nema podataka o kalendaru
                             </NoDataPlaceholder>
                         ) : (
-                            <YearCalendar activities={plant.calendar} />
+                                <Card className="p-0">
+                                    <PlantYearCalendar activities={plant.calendar} />
+                                </Card>
                         )}
                     </Stack>
                     <Stack spacing={1}>
@@ -172,7 +169,11 @@ export default async function PlantPage(props: { params: Promise<{ plantId: stri
                         <InformationSection icon="🌱" header="Sijanje" content={plant.information.sowing} />
                     )}
                     {plant.information.soilPreparation && (
-                        <InformationSection icon="🟤" header="Priprema tla" content={plant.information.soilPreparation} />
+                        <InformationSection
+                            icon={<BlockImage blockName="Raised_Bed" width={64} height={64} />}
+                            header="Priprema tla"
+                            content={plant.information.soilPreparation}
+                        />
                     )}
                     {plant.information.planting && (
                         <InformationSection icon="🌿" header="Sadnja" content={plant.information.planting} />
@@ -184,7 +185,10 @@ export default async function PlantPage(props: { params: Promise<{ plantId: stri
                         <InformationSection icon="✂️" header="Održavanje" content={plant.information.maintenance} />
                     )}
                     {plant.information.watering && (
-                        <InformationSection icon="💧" header="Zalijevanje" content={plant.information.watering} />
+                        <InformationSection
+                            icon={<BlockImage blockName="Bucket" width={64} height={64} />}
+                            header="Zalijevanje"
+                            content={plant.information.watering} />
                     )}
                     {plant.information.flowering && (
                         <InformationSection icon="🌸" header="Cvjetanje" content={plant.information.flowering} />
@@ -227,93 +231,6 @@ export default async function PlantPage(props: { params: Promise<{ plantId: stri
             </Container>
         </div>
     );
-}
-
-const calendarMonths = ['S', 'V', 'O', 'T', 'S', 'L', 'S', 'K', 'R', 'L', 'S', 'P']
-
-const calendarActivityTypes = {
-    sowing: {
-        name: 'Sijanje',
-        color: 'bg-yellow-400'
-    },
-    propagating: {
-        name: 'Uzgoj',
-        color: 'bg-blue-400'
-    },
-    planting: {
-        name: 'Sadnja',
-        color: 'bg-amber-600'
-    },
-    harvest: {
-        name: 'Branje',
-        color: 'bg-green-400'
-    }
-} as const;
-
-function YearCalendar({ activities, now }: { activities: { [key: string]: { start: number, end: number }[] }, now?: Date }) {
-    const currentDate = now ?? new Date();
-    const currentMonth = currentDate.getMonth() // 0-indexed
-    const currentMonthProgress = currentDate.getDate() / new Date(currentDate.getFullYear(), currentMonth, 0).getDate();
-
-    return (
-        <Card className="p-0 w-fit">
-            <div className="grid grid-cols-[min-content_repeat(12,36px)] text-sm rounded-lg overflow-hidden">
-                <div className="font-semibold p-2"></div>
-                {calendarMonths.map((month, monthIndex) => (
-                    <Typography level="body2" center key={monthIndex} className="p-2 border-l">
-                        {month}
-                    </Typography>
-                ))}
-                {Object.keys(calendarActivityTypes).map((activityTypeName) => {
-                    const activityType = calendarActivityTypes[activityTypeName as keyof typeof calendarActivityTypes];
-                    if (!Object.keys(activities).some(a => a === activityTypeName))
-                        return null;
-
-                    return (
-                        <Fragment key={activityTypeName}>
-                            <Row justifyContent="space-between" spacing={1} className="mx-2">
-                                <Typography level="body2">
-                                    {activityType.name}
-                                </Typography>
-                                <div className={`w-4 h-4 rounded-full inline-block ml-2 ${activityType.color}`}></div>
-                            </Row>
-                            <div className="col-span-12 h-6 flex items-center">
-                                <div className="h-full w-full flex items-center relative">
-                                    {calendarMonths.map((_, index) => {
-                                        const month = index + 1;
-                                        const currentActivities = activities[activityTypeName];
-                                        const currentMonthActivities = currentActivities.filter(a => month >= Math.floor(a.start) && month <= Math.floor(a.end));
-                                        const minStart = Math.min(...currentMonthActivities.map(a => a.start % 1));
-                                        const maxEnd = Math.max(...currentMonthActivities.map(a => a.end % 1));
-                                        const isActivityActive = currentMonthActivities.length > 0;
-                                        const isActivityStart = currentActivities.some(a => month === Math.floor(a.start));
-                                        const isActivityEnd = currentActivities.some(a => month === Math.floor(a.end));
-                                        return (
-                                            <div key={index} className="flex-grow h-full relative border-l">
-                                                {isActivityActive && (
-                                                    <div
-                                                        className={`absolute inset-y-1 left-[--activity-left] -ml-[1px] right-[--activity-right] ${activityType.color} ${isActivityStart ? 'rounded-l-full' : ''} ${isActivityEnd ? 'rounded-r-full' : ''}`}
-                                                        style={{
-                                                            '--activity-left': isActivityStart ? `${(minStart) * 100}%` : '0px',
-                                                            '--activity-right': isActivityEnd ? `${Math.min(75, (1 - maxEnd) * 100)}%` : '0px'
-                                                        } as CSSProperties}
-                                                    ></div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                    <div
-                                        className="absolute top-0 bottom-0 w-0.5 bg-red-600"
-                                        style={{ left: `${((currentMonth + currentMonthProgress) / 12) * 100}%` }}
-                                    />
-                                </div>
-                            </div>
-                        </Fragment>
-                    );
-                })}
-            </div>
-        </Card>
-    )
 }
 
 function PlantingInstructions({ instructions }: { instructions?: PlantInstruction[] }) {

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { orderBy } from "@signalco/js";
 import { BlockData } from "../@types/BlockData";
+import { BlockImage } from "../../../components/blocks/BlockImage";
 
 export function BlocksList({ blockData }: { blockData: BlockData[] }) {
     const params = useParams<{ alias: string }>();
@@ -26,11 +27,10 @@ export function BlocksList({ blockData }: { blockData: BlockData[] }) {
                             onSelected={() => { }}
                             label={entity.information.label}
                             startDecorator={(
-                                <Image
-                                    src={`/assets/blocks/${entity.information.name}.png`}
+                                <BlockImage
+                                    blockName={entity.information.name}
                                     width={32}
                                     height={32}
-                                    alt={entity.information.label}
                                 />
                             )} />
                     </Link>
