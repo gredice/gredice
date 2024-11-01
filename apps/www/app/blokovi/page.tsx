@@ -17,7 +17,7 @@ function BlockGalleryItem(props: BlockData) {
 }
 
 export default async function BlocksPage() {
-    const entities = await getEntitiesFormatted('block') as unknown as BlockData[];
+    const entities = await getEntitiesFormatted<BlockData>('block');
     const blocksArray = orderBy(entities, (a, b) => a.information.label.localeCompare(b.information.label));
     return (
         <Stack>

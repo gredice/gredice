@@ -18,9 +18,9 @@ export function getEntitiesRaw(entityTypeName: string, state?: string) {
     });
 }
 
-export async function getEntitiesFormatted(entityTypeName: string) {
+export async function getEntitiesFormatted<T>(entityTypeName: string) {
     const entities = await getEntitiesRaw(entityTypeName, 'published');
-    return entities.map(expandEntity);
+    return entities.map(expandEntity) as T[];
 }
 
 function expandValue(value: string | null | undefined, attributeDefinition: SelectAttributeDefinition) {
