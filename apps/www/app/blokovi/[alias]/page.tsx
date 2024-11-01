@@ -10,7 +10,7 @@ import { BlockData } from "../@types/BlockData";
 
 export default async function BlockPage({ params }: { params: Promise<{ alias: string }> }) {
     const { alias } = await params;
-    const blockData = await getEntitiesFormatted('block') as unknown as BlockData[];
+    const blockData = await getEntitiesFormatted<BlockData>('block');
     const entity = blockData.find((block) => block.information.label === alias);
     if (!entity) {
         notFound();
