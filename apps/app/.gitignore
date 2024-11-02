@@ -41,3 +41,5 @@ next-env.d.ts
 /blob-report/
 /playwright/.cache/
 node_modules/
+
+certificates

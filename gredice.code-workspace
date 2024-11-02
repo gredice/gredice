@@ -21,6 +21,10 @@
 			"path": "apps/www"
 		},
 		{
+			"name": "📦 apidocs",
+			"path": "packages/apidocs"
+		},
+		{
 			"name": "📦 @gredice/game",
 			"path": "packages/game"
 		},

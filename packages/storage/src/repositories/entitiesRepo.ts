@@ -1,5 +1,13 @@
 import { and, eq } from "drizzle-orm";
-import { entities, SelectAttributeDefinition, SelectAttributeValue, SelectEntity, SelectEntityType, storage, UpdateEntity } from "..";
+import {
+    entities,
+    type SelectAttributeDefinition,
+    type SelectAttributeValue,
+    type SelectEntity,
+    type SelectEntityType,
+    storage,
+    type UpdateEntity
+} from "..";
 
 export function getEntitiesRaw(entityTypeName: string, state?: string) {
     return storage.query.entities.findMany({
