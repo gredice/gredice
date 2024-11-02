@@ -1,7 +1,8 @@
 import { getEntitiesFormatted } from "@gredice/storage";
+import { NextRequest } from "next/server";
 
 export async function GET(
-    _req: Request,
+    _req: NextRequest,
     { params }: { params: Promise<{ entityType: string }> }
 ) {
     const { entityType: entityTypeName } = await params;

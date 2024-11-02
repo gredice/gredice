@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@gredice/storage": "workspace:*",
+    "@gredice/apidocs": "workspace:*",
     "@mdxeditor/editor": "3.14.0",
     "@playwright/experimental-ct-react": "1.48.2",
     "@playwright/test": "1.48.2",
