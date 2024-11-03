@@ -22,8 +22,8 @@ importers:
   apps/app:
     dependencies:
       hypertune:
-        specifier: 2.5.5
-        version: 2.5.5
+        specifier: 2.5.6
+        version: 2.5.6
       next:
         specifier: 15.0.2
         version: 15.0.2(@babel/core@7.25.9)(@playwright/test@1.48.2)(babel-plugin-react-compiler@19.0.0-beta-9ee70a1-20241017)(react-dom@19.0.0-rc-603e6108-20241029(react@19.0.0-rc-603e6108-20241029))(react@19.0.0-rc-603e6108-20241029)
@@ -116,8 +116,8 @@ importers:
   apps/farm:
     dependencies:
       hypertune:
-        specifier: 2.5.5
-        version: 2.5.5
+        specifier: 2.5.6
+        version: 2.5.6
       next:
         specifier: 15.0.2
         version: 15.0.2(@playwright/test@1.48.2)(babel-plugin-react-compiler@19.0.0-beta-9ee70a1-20241017)(react-dom@19.0.0-rc-603e6108-20241029(react@19.0.0-rc-603e6108-20241029))(react@19.0.0-rc-603e6108-20241029)
@@ -207,8 +207,8 @@ importers:
   apps/garden:
     dependencies:
       hypertune:
-        specifier: 2.5.5
-        version: 2.5.5
+        specifier: 2.5.6
+        version: 2.5.6
       next:
         specifier: 15.0.2
         version: 15.0.2(@playwright/test@1.48.2)(babel-plugin-react-compiler@19.0.0-beta-9ee70a1-20241017)(react-dom@19.0.0-rc-603e6108-20241029(react@19.0.0-rc-603e6108-20241029))(react@19.0.0-rc-603e6108-20241029)
@@ -301,8 +301,8 @@ importers:
         specifier: 0.10.0
         version: 0.10.0
       hypertune:
-        specifier: 2.5.5
-        version: 2.5.5
+        specifier: 2.5.6
+        version: 2.5.6
       next:
         specifier: 15.0.2
         version: 15.0.2(@playwright/test@1.48.2)(babel-plugin-react-compiler@19.0.0-beta-9ee70a1-20241017)(react-dom@19.0.0-rc-603e6108-20241029(react@19.0.0-rc-603e6108-20241029))(react@19.0.0-rc-603e6108-20241029)
@@ -3084,8 +3084,8 @@ packages:
   html-url-attributes@3.0.1:
     resolution: {integrity: sha512-ol6UPyBWqsrO6EJySPz2O7ZSr856WDrEzM5zMqp+FJJLGMW35cLYmmZnl0vztAZxRUoNZJFTCohfjuIJ8I4QBQ==}
 
-  hypertune@2.5.5:
-    resolution: {integrity: sha512-8GeuA5oYTqEivzrALaUnWj76Sn1HaaPnA+nJSmoNEOVcKyfXf/HDJshybyLJrlc+veXFPu06vWWhgLz8nqFmlA==}
+  hypertune@2.5.6:
+    resolution: {integrity: sha512-xs1hsi+Jex2ydOXwCyqrhNGan7+/A/oZDUhStz2y+vDRGWYy+kXW1nKSbL2K54WClRNSzl/q7L2fYG1w7MjTww==}
     hasBin: true
 
   ieee754@1.2.1:
@@ -7140,7 +7140,7 @@ snapshots:
 
   html-url-attributes@3.0.1: {}
 
-  hypertune@2.5.5:
+  hypertune@2.5.6:
     dependencies:
       cac: 6.7.14
       core-js: 3.38.1
