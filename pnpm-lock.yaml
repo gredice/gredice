@@ -479,8 +479,8 @@ importers:
         specifier: 0.3.2-alpha.0
         version: 0.3.2-alpha.0(react@18.3.1)(tweakpane@3.1.10)
       zustand:
-        specifier: 5.0.0
-        version: 5.0.0(react@18.3.1)(types-react@19.0.0-rc.1)(use-sync-external-store@1.2.2(react@18.3.1))
+        specifier: 5.0.1
+        version: 5.0.1(react@18.3.1)(types-react@19.0.0-rc.1)(use-sync-external-store@1.2.2(react@18.3.1))
 
   packages/storage:
     devDependencies:
@@ -4353,8 +4353,8 @@ packages:
       react:
         optional: true
 
-  zustand@5.0.0:
-    resolution: {integrity: sha512-LE+VcmbartOPM+auOjCCLQOsQ05zUTp8RkgwRzefUk+2jISdMMFnxvyTjA4YNWr5ZGXYbVsEMZosttuxUBkojQ==}
+  zustand@5.0.1:
+    resolution: {integrity: sha512-pRET7Lao2z+n5R/HduXMio35TncTlSW68WsYBq2Lg1ASspsNGjpwLAsij3RpouyV6+kHMwwwzP0bZPD70/Jx/w==}
     engines: {node: '>=12.20.0'}
     peerDependencies:
       '@types/react': npm:types-react@19.0.0-rc.1
@@ -8667,7 +8667,7 @@ snapshots:
       '@types/react': types-react@19.0.0-rc.1
       react: 18.3.1
 
-  zustand@5.0.0(react@18.3.1)(types-react@19.0.0-rc.1)(use-sync-external-store@1.2.2(react@18.3.1)):
+  zustand@5.0.1(react@18.3.1)(types-react@19.0.0-rc.1)(use-sync-external-store@1.2.2(react@18.3.1)):
     optionalDependencies:
       '@types/react': types-react@19.0.0-rc.1
       react: 18.3.1
