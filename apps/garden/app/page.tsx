@@ -6,7 +6,7 @@ export default async function Home() {
   const enableDebugHud = hypertune.enableDebugHud({ fallback: false });
 
   return (
-    <div className="grid grid-cols-1 h-screen">
+    <div className="grid grid-cols-1 h-screen relative">
       <GameScene isDevelopment={enableDebugHud} />
     </div>
   );

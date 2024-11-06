@@ -8,34 +8,35 @@ import { makeButton, useTweaks } from 'use-tweaks';
 import { useGameState } from './useGameState';
 import type { Stack } from './types/Stack';
 import type { Garden } from './types/Garden';
-import { orderBy, RecursivePartial } from '@signalco/js';
+import { orderBy } from '@signalco/js';
 import { RotatableGroup } from './controls/RotatableGroup';
 import { getStack } from './utils/getStack';
 import { Scene } from './scene/Scene';
 import { EntityFactory } from './entities/EntityFactory';
+import { DayNightCycle } from './hud/DayNightCycle';
 
-function serializeGarden(garden: Garden) {
-    return JSON.stringify(garden);
-}
+// function serializeGarden(garden: Garden) {
+//     return JSON.stringify(garden);
+// }
 
-function deserializeGarden(serializedGarden: string): Garden {
-    const garden = JSON.parse(serializedGarden) as RecursivePartial<Garden>;
+// function deserializeGarden(serializedGarden: string): Garden {
+//     const garden = JSON.parse(serializedGarden) as RecursivePartial<Garden>;
 
-    if (!garden.name) {
-        garden.name = getDefaultGarden().name;
-    }
-    if (!garden.location || !garden.location.lat || !garden.location.lon) {
-        garden.location = getDefaultGarden().location;
-    }
+//     if (!garden.name) {
+//         garden.name = getDefaultGarden().name;
+//     }
+//     if (!garden.location || !garden.location.lat || !garden.location.lon) {
+//         garden.location = getDefaultGarden().location;
+//     }
 
-    // Deserialize stacks
-    garden.stacks = garden.stacks?.map(stack => {
-        stack.position = new Vector3(stack.position?.x, stack.position?.y, stack.position?.z);
-        return stack;
-    });
+//     // Deserialize stacks
+//     garden.stacks = garden.stacks?.map(stack => {
+//         stack.position = new Vector3(stack.position?.x, stack.position?.y, stack.position?.z);
+//         return stack;
+//     });
 
-    return garden as Garden;
-}
+//     return garden as Garden;
+// }
 
 function getDefaultGarden(): Garden {
     const size = 1;
@@ -182,7 +183,8 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     isDevelopment?: boolean,
     zoom?: 'far' | 'normal',
     freezeTime?: Date,
-    noBackground?: boolean
+    noBackground?: boolean,
+    hideHud?: boolean
 }
 
 export function GameScene({
@@ -191,6 +193,7 @@ export function GameScene({
     zoom = 'normal',
     freezeTime,
     noBackground,
+    hideHud,
     ...rest
 }: GameSceneProps) {
     const cameraPosition = 100;
@@ -198,6 +201,7 @@ export function GameScene({
     // Update current time every second
     const setCurrentTime = useGameState((state) => state.setCurrentTime);
     useEffect(() => {
+        setCurrentTime(freezeTime ?? new Date());
         const interval = setInterval(() => {
             setCurrentTime(useGameState.getState().freezeTime ?? new Date());
         }, 1000);
@@ -205,19 +209,23 @@ export function GameScene({
     }, []);
 
     return (
-        <Scene
-            appBaseUrl={appBaseUrl}
-            freezeTime={freezeTime}
-            position={cameraPosition}
-            zoom={zoom === 'far' ? 75 : 100}
-            {...rest}
-        >
-            {isDevelopment && <DebugHud />}
-            <GardenDisplay noBackground={noBackground} />
-            <OrbitControls
-                enableRotate={false}
-                minZoom={50}
-                maxZoom={200} />
-        </Scene>
+        <div className='relative' {...rest}>
+            <Scene
+                appBaseUrl={appBaseUrl}
+                freezeTime={freezeTime}
+                position={cameraPosition}
+                zoom={zoom === 'far' ? 75 : 100}
+            >
+                {isDevelopment && <DebugHud />}
+                <GardenDisplay noBackground={noBackground} />
+                <OrbitControls
+                    enableRotate={false}
+                    minZoom={50}
+                    maxZoom={200} />
+            </Scene>
+            {!hideHud && (
+                <DayNightCycle lat={45.739} lon={16.572} currentTime={useGameState((state) => state.currentTime)} />
+            )}
+        </div>
     );
 }

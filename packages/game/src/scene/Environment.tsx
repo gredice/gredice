@@ -22,15 +22,22 @@ const hemisphereSkyColorScale = chroma
     .scale([chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000), chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000)])
     .domain([0.2, 0.25, 0.3, 0.75, 0.8, 0.85]);
 
+function getSunriseSunset({ lat, lon }: Garden['location'], currentTime: Date) {
+    const { sunrise: sunriseStart, sunset: sunsetStart } = getTimes(currentTime, lat, lon);
+    return { sunrise: sunriseStart, sunset: sunsetStart };
+}
+
 /**
  * Get the current time of day based on the current date and location
  * 
  * Uses suncalc to get `sunrise` and sunset times and map them to 0-1 range
  * 
+ * 0.2 - 0.8 is daytime (sunrise start to sunset start)
+ * 
  * @returns A number between 0 and 1 representing the current time of day
  */
 function getTimeOfDay({ lat, lon }: Garden['location'], currentTime: Date) {
-    const { sunrise: sunriseStart, sunsetStart: sunsetStart } = getTimes(currentTime, lat, lon);
+    const { sunrise: sunriseStart, sunset: sunsetStart } = getSunriseSunset({ lat, lon }, currentTime);
 
     const sunrise = sunriseStart.getHours() * 60 + sunriseStart.getMinutes();
     const sunset = sunsetStart.getHours() * 60 + sunsetStart.getMinutes();
@@ -71,6 +78,21 @@ function getSunPosition({ lat, lon }: Garden['location'], currentTime: Date, tim
     return pos;
 }
 
+export function environmentState({ lat, lon }: Garden['location'], currentTime: Date) {
+    const { sunrise, sunset } = getSunriseSunset({ lat, lon }, currentTime);
+    const timeOfDay = getTimeOfDay({ lat, lon }, currentTime);
+    const sunPosition = getSunPosition({ lat, lon }, currentTime, timeOfDay);
+    const colors = {
+        background: backgroundColorScale(timeOfDay).rgb(),
+        sunTemperature: sunTemperatureScale(timeOfDay).rgb(),
+        hemisphereSkyColor: hemisphereSkyColorScale(timeOfDay).rgb(),
+    };
+    const intensities = {
+        sun: sunIntensityTimeScale(timeOfDay).get('rgb.r') / 255,
+    };
+    return { sunrise, sunset, timeOfDay, sunPosition, colors, intensities };
+}
+
 export function Environment({ location, noBackground }: { location: Garden['location'], noBackground?: boolean }) {
     const cameraShadowSize = 20;
     const shadowMapSize = 8;
@@ -83,32 +105,33 @@ export function Environment({ location, noBackground }: { location: Garden['loca
     const currentTime = useGameState((state) => state.currentTime);
 
     useEffect(() => {
-        const timeOfDay = getTimeOfDay(location, currentTime);
+        const {
+            sunPosition,
+            colors: { background: backgroundColor },
+            colors: { sunTemperature },
+            colors: { hemisphereSkyColor },
+            intensities: { sun: sunIntensity },
+        } = environmentState(location, currentTime);
 
-        const sunIntensity = sunIntensityTimeScale(timeOfDay).get('rgb.r') / 255;
         if (directionalLightRef.current) {
             directionalLightRef.current.intensity = sunIntensity * 5;
         }
         if (ambientRef.current)
             ambientRef.current.intensity = sunIntensity * 2 + 1;
 
-        const sunTemperature = sunTemperatureScale(timeOfDay).rgb();
         directionalLightRef.current?.color.setRGB(
             sunTemperature[0] / 255,
             sunTemperature[1] / 255,
             sunTemperature[2] / 255,
             'srgb');
-        const sunPosition = getSunPosition(location, currentTime, timeOfDay);
         directionalLightRef.current?.position.copy(sunPosition);
 
-        const backgroundColor = backgroundColorScale(timeOfDay).rgb();
         backgroundRef.current?.setRGB(
             backgroundColor[0] / 255,
             backgroundColor[1] / 255,
             backgroundColor[2] / 255,
             'srgb');
 
-        const hemisphereSkyColor = hemisphereSkyColorScale(timeOfDay).rgb();
         hemisphereRef.current?.color.setRGB(
             hemisphereSkyColor[0] / 255 * -0,
             hemisphereSkyColor[1] / 255,

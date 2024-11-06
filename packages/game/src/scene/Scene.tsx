@@ -15,7 +15,7 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> & PropsWithChildren<{
 }>;
 
 export function Scene({ children, appBaseUrl, freezeTime, position, zoom, ...rest }: SceneProps) {
-    useGLTF.preload(appBaseUrl + models.GameAssets.url);
+    useGLTF.preload((appBaseUrl ?? '') + models.GameAssets.url);
 
     return (
         <SceneLoader appBaseUrl={appBaseUrl} freezeTime={freezeTime}>
