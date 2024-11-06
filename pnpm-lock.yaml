@@ -427,9 +427,15 @@ importers:
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@signalco/ui':
+        specifier: 0.2.0
+        version: 0.2.0(@signalco/ui-primitives@0.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@signalco/ui-primitives':
         specifier: 0.2.0
         version: 0.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@signalco/ui-themes-minimal':
+        specifier: 0.1.3
+        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.14))(tailwindcss@3.4.14)
       '@tanstack/react-query':
         specifier: 5.59.16
         version: 5.59.16(react@18.3.1)
@@ -463,6 +469,12 @@ importers:
       suncalc:
         specifier: 1.9.0
         version: 1.9.0
+      tailwindcss:
+        specifier: 3.4.14
+        version: 3.4.14
+      tailwindcss-animate:
+        specifier: 1.0.7
+        version: 1.0.7(tailwindcss@3.4.14)
       three:
         specifier: 0.169.0
         version: 0.169.0
@@ -6287,6 +6299,12 @@ snapshots:
     dependencies:
       tailwindcss: 3.4.14
       tailwindcss-animate: 1.0.7(tailwindcss@3.4.14)
+
+  '@signalco/ui@0.2.0(@signalco/ui-primitives@0.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@signalco/ui-primitives': 0.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
 
   '@signalco/ui@0.2.0(@signalco/ui-primitives@0.2.0(react-dom@19.0.0-rc-603e6108-20241029(react@19.0.0-rc-603e6108-20241029))(react@19.0.0-rc-603e6108-20241029))(react-dom@19.0.0-rc-603e6108-20241029(react@19.0.0-rc-603e6108-20241029))(react@19.0.0-rc-603e6108-20241029)':
     dependencies:

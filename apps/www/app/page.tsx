@@ -21,7 +21,8 @@ const sectionsData: SectionData[] = [
                     className="!absolute"
                     appBaseUrl="https://vrt.gredice.com"
                     freezeTime={new Date(2024, 5, 21, 14)}
-                    noBackground />
+                    noBackground
+                    hideHud />
             </div>
         ),
         ctas: [
