@@ -209,12 +209,13 @@ export function GameScene({
     }, []);
 
     return (
-        <div className='relative' {...rest}>
+        <div {...rest}>
             <Scene
                 appBaseUrl={appBaseUrl}
                 freezeTime={freezeTime}
                 position={cameraPosition}
                 zoom={zoom === 'far' ? 75 : 100}
+                className='!absolute'
             >
                 {isDevelopment && <DebugHud />}
                 <GardenDisplay noBackground={noBackground} />

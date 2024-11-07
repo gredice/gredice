@@ -18,7 +18,6 @@ const sectionsData: SectionData[] = [
         asset: (
             <div className="min-h-96 relative rounded-xl overflow-hidden">
                 <GameSceneDynamic
-                    className="!absolute"
                     appBaseUrl="https://vrt.gredice.com"
                     freezeTime={new Date(2024, 5, 21, 14)}
                     noBackground
@@ -45,10 +44,10 @@ const preSeasonSectionsData: SectionData[] = [
         asset: (
             <div className="min-h-96 relative rounded-xl overflow-hidden">
                 <GameSceneDynamic
-                    className="!absolute"
                     appBaseUrl="https://vrt.gredice.com"
                     freezeTime={new Date(2024, 5, 21, 14)}
-                    noBackground />
+                    noBackground
+                    hideHud />
             </div>
         ),
         ctas: [
