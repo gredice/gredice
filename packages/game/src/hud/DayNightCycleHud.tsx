@@ -7,10 +7,12 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { environmentState } from '@gredice/game';
 import { HudCard } from './components/HudCard';
 import { useInterval } from '@signalco/hooks/useInterval';
+import { useControllableState } from '@signalco/hooks/useControllableState';
 
 export function DayNightCycleHud({ lat, lon, currentTime }: { lat: number, lon: number, currentTime?: Date }) {
     const [isHovered, setIsHovered] = useState(false);
-    const [time, setTime] = useState(currentTime || new Date());
+
+    const [time, setTime] = useControllableState(currentTime, new Date());
 
     useInterval(() => {
         if (currentTime)
@@ -19,7 +21,7 @@ export function DayNightCycleHud({ lat, lon, currentTime }: { lat: number, lon: 
         setTime(new Date());
     }, 1000);
 
-    const { timeOfDay, sunrise, sunset } = environmentState({ lat, lon }, time);
+    const { timeOfDay, sunrise, sunset } = environmentState({ lat, lon }, time || new Date());
     const isDaytime = timeOfDay > 0.2 && timeOfDay < 0.8
 
     const startPoint = { x: 0, y: 20 }
@@ -32,8 +34,8 @@ export function DayNightCycleHud({ lat, lon, currentTime }: { lat: number, lon: 
         return { x, y }
     }, [])
 
-    const t = isDaytime ? ((timeOfDay - 0.3) * 2) : (timeOfDay >= 0.8 ? (timeOfDay - 0.8) * 2 : timeOfDay * 2 + 0.5)
-    const currentPoint = calculatePoint(t)
+    const t = isDaytime ? ((timeOfDay - 0.2) * (1 / 0.6)) : (timeOfDay >= 0.8 ? (timeOfDay - 0.8) * (1 / 0.4) : timeOfDay * (1 / 0.4) + 0.5)
+    const currentPoint = calculatePoint(t);
 
     const calculateOpacity = (t: number) => {
         if (t <= 0.05) {
@@ -54,7 +56,7 @@ export function DayNightCycleHud({ lat, lon, currentTime }: { lat: number, lon: 
                 <Stack className='pt-8'>
                     <Row justifyContent='space-between'>
                         <Typography level='body3'>{(isDaytime ? sunrise : sunset).toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}</Typography>
-                        <Typography center className='font-[Arial,sans-serif]'>{time.toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}</Typography>
+                        <Typography center className='font-[Arial,sans-serif]'>{time?.toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}</Typography>
                         <Typography level='body3'>{(isDaytime ? sunset : sunrise).toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}</Typography>
                     </Row>
                     <Typography level='body2' center>{new Date().toLocaleDateString("hr-HR", { day: "numeric", month: 'long', year: 'numeric' })}</Typography>

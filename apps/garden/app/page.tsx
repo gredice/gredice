@@ -1,5 +1,5 @@
-import { GameScene } from "@gredice/game";
 import getHypertune from "../lib/flags/getHypertune";
+import { GameSceneDynamic } from "./GameSceneDynamic";
 
 export default async function Home() {
   const hypertune = await getHypertune();
@@ -7,7 +7,7 @@ export default async function Home() {
 
   return (
     <div className="grid grid-cols-1 h-screen relative">
-      <GameScene isDevelopment={enableDebugHud} />
+      <GameSceneDynamic isDevelopment={enableDebugHud} />
     </div>
   );
 }

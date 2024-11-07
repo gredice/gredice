@@ -20,7 +20,7 @@ export function HudCard({ open, position, className, style, ...rest }: HudCardPr
         /* @ts-ignore TODO: Fix when react-spring is updated for React 19 */
         <animated.div
             className={cx(
-                "absolute bg-white",
+                "absolute bg-background shadow-md",
                 position === 'top' && 'rounded-b-xl',
                 position === 'bottom' && 'rounded-t-xl',
                 position === 'right' && 'rounded-l-xl',
