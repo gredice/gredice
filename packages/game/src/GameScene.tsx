@@ -1,19 +1,17 @@
 'use client';
 
 import { Vector3 } from 'three';
-import { OrbitControls, StatsGl } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import { HTMLAttributes, useEffect } from 'react';
 import { Environment } from './scene/Environment';
-import { makeButton, useTweaks } from 'use-tweaks';
 import { useGameState } from './useGameState';
 import type { Stack } from './types/Stack';
 import type { Garden } from './types/Garden';
-import { orderBy } from '@signalco/js';
 import { RotatableGroup } from './controls/RotatableGroup';
-import { getStack } from './utils/getStack';
 import { Scene } from './scene/Scene';
 import { EntityFactory } from './entities/EntityFactory';
-import { DayNightCycle } from './hud/DayNightCycle';
+import { DayNightCycleHud } from './hud/DayNightCycleHud';
+import { DebugHud } from './hud/DebugHud';
 
 // function serializeGarden(garden: Garden) {
 //     return JSON.stringify(garden);
@@ -125,59 +123,6 @@ export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
     )
 }
 
-function DebugHud() {
-    const placeBlock = useGameState(state => state.placeBlock);
-    const handlePlaceBlock = (name: string) => {
-        let x = 0, z = 0;
-        // Search for empty stack in watter flow pattern
-        // place block in first empty stack
-        while (true) {
-            const stack = getStack({ x, z });
-            if (!stack || stack.blocks.length === 0) {
-                break;
-            }
-            x++;
-            if (x > z + 1) {
-                x = 0;
-                z++;
-            }
-        }
-
-        placeBlock(new Vector3(x, 0, z), { name, rotation: 0 });
-    };
-
-    const gameState = useGameState();
-
-    let entitiesButtons = {};
-    for (const entity of orderBy(gameState.data.blocks, (a, b) => a.information.label.localeCompare(b.information.label))) {
-        entitiesButtons = {
-            ...entitiesButtons,
-            ...makeButton(entity.information.label, () => handlePlaceBlock(entity.information.name))
-        }
-    }
-    useTweaks('Entities', entitiesButtons);
-
-    const { timeOfDay } = useTweaks('Environment', {
-        timeOfDay: { value: (gameState.currentTime.getHours() * 60 * 60 + gameState.currentTime.getMinutes() * 60 + gameState.currentTime.getSeconds()) / (24 * 60 * 60), min: 0, max: 1 },
-    });
-
-    useEffect(() => {
-        const date = new Date();
-        const seconds = timeOfDay * 24 * 60 * 60;
-        date.setHours(seconds / 60 / 60);
-        date.setMinutes((seconds / 60) % 60);
-        date.setSeconds(seconds % 60);
-        gameState.setInitial(gameState.appBaseUrl, gameState.data, date);
-    }, [timeOfDay]);
-
-    return (
-        <>
-            {/* <gridHelper args={[100, 100, '#B8B4A3', '#CFCBB7']} position={[0.5, 0, 0.5]} /> */}
-            <StatsGl className='absolute top-0 left-0' />
-        </>
-    );
-}
-
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string,
     isDevelopment?: boolean,
@@ -225,7 +170,7 @@ export function GameScene({
                     maxZoom={200} />
             </Scene>
             {!hideHud && (
-                <DayNightCycle lat={45.739} lon={16.572} currentTime={useGameState((state) => state.currentTime)} />
+                <DayNightCycleHud lat={45.739} lon={16.572} currentTime={useGameState((state) => state.currentTime)} />
             )}
         </div>
     );
