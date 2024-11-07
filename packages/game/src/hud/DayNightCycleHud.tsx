@@ -1,13 +1,24 @@
 "use client";
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Row } from '@signalco/ui-primitives/Row';
 import { environmentState } from '@gredice/game';
+import { HudCard } from './components/HudCard';
+import { useInterval } from '@signalco/hooks/useInterval';
 
-export function DayNightCycle({ lat, lon, currentTime }: { lat: number, lon: number, currentTime?: Date }) {
-    const time = currentTime || new Date();
+export function DayNightCycleHud({ lat, lon, currentTime }: { lat: number, lon: number, currentTime?: Date }) {
+    const [isHovered, setIsHovered] = useState(false);
+    const [time, setTime] = useState(currentTime || new Date());
+
+    useInterval(() => {
+        if (currentTime)
+            return;
+
+        setTime(new Date());
+    }, 1000);
+
     const { timeOfDay, sunrise, sunset } = environmentState({ lat, lon }, time);
     const isDaytime = timeOfDay > 0.2 && timeOfDay < 0.8
 
@@ -35,9 +46,12 @@ export function DayNightCycle({ lat, lon, currentTime }: { lat: number, lon: num
     }
 
     return (
-        <div className="absolute w-48 h-12 top-0 left-1/2 -translate-x-1/2 group">
-            <div className="absolute w-64 -left-8 top-0 pt-14 bg-white rounded-b-xl p-4 transition-opacity duration-300 opacity-0 hidden group-hover:block group-hover:opacity-100 group-hover:slide-in-from-top-2 group-hover:animate-in">
-                <Stack>
+        <div
+            className="absolute w-48 h-12 top-0 left-1/2 -translate-x-1/2 group"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}>
+            <HudCard open={isHovered} className='w-64 -left-8 top-0 pt-8 p-4' position='top'>
+                <Stack className='pt-8'>
                     <Row justifyContent='space-between'>
                         <Typography level='body3'>{(isDaytime ? sunrise : sunset).toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}</Typography>
                         <Typography center className='font-[Arial,sans-serif]'>{time.toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}</Typography>
@@ -45,7 +59,7 @@ export function DayNightCycle({ lat, lon, currentTime }: { lat: number, lon: num
                     </Row>
                     <Typography level='body2' center>{new Date().toLocaleDateString("hr-HR", { day: "numeric", month: 'long', year: 'numeric' })}</Typography>
                 </Stack>
-            </div>
+            </HudCard>
             <svg
                 viewBox="0 0 100 20"
                 className="absolute w-full h-full overflow-visible"
@@ -89,6 +103,6 @@ export function DayNightCycle({ lat, lon, currentTime }: { lat: number, lon: num
                     )}
                 </g>
             </svg>
-        </div>
+        </div >
     )
 }
