@@ -52,7 +52,7 @@ export const dynamic = 'force-dynamic';
 function InformationSection({ icon, header, content }: { icon: ReactNode, header: string, content: string }) {
     return (
         <Stack spacing={1}>
-            <Row spacing={2}>
+            <Row spacing={1}>
                 {Boolean(icon) && icon}
                 <Typography level="h4">{header}</Typography>
             </Row>
