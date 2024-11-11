@@ -1,6 +1,5 @@
 'use client';
 
-import { entities } from "../../../../../packages/game/src/data/entities";
 import { List } from "@signalco/ui-primitives/List";
 import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { KnownPages } from "../../../src/KnownPages";
@@ -8,30 +7,30 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { orderBy } from "@signalco/js";
+import { BlockData } from "../@types/BlockData";
+import { BlockImage } from "../../../components/blocks/BlockImage";
 
-export function BlocksList() {
+export function BlocksList({ blockData }: { blockData: BlockData[] }) {
     const params = useParams<{ alias: string }>();
     const { alias } = params;
-    const entitiesArray = orderBy(Object.keys(entities) as Array<keyof typeof entities>, (a, b) => entities[a].alias.localeCompare(entities[b].alias));
+    const entitiesArray = orderBy(blockData, (a, b) => a.information.label.localeCompare(b.information.label));
     return (
         <List>
-            {entitiesArray.map((entityKey) => {
-                const entity = entities[entityKey];
+            {entitiesArray.map((entity) => {
                 return (
                     <Link
-                        key={entity.name}
-                        href={KnownPages.Block(entity.alias)}>
+                        key={entity.information.name}
+                        href={KnownPages.Block(entity.information.label)}>
                         <ListItem
-                            nodeId={entity.name}
-                            selected={entity.alias === alias}
+                            nodeId={entity.information.name}
+                            selected={entity.information.label === alias}
                             onSelected={() => { }}
-                            label={entity.alias}
+                            label={entity.information.label}
                             startDecorator={(
-                                <Image
-                                    src={`/assets/blocks/${entity.name}.png`}
+                                <BlockImage
+                                    blockName={entity.information.name}
                                     width={32}
                                     height={32}
-                                    alt={entity.alias}
                                 />
                             )} />
                     </Link>

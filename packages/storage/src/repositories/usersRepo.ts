@@ -2,6 +2,12 @@ import { eq } from "drizzle-orm";
 import { storage } from "..";
 import { accounts, accountUsers, userLogins, users } from "../schema";
 import { randomUUID } from 'node:crypto';
+import { gardens } from "../schema/gardenSchema";
+import { createGarden } from "./gardensRepo";
+
+export function getUsers() {
+    return storage.query.users.findMany();
+}
 
 export function getUser(userId: string) {
     return storage.query.users.findFirst({
@@ -30,13 +36,19 @@ export async function createUserWithPassword(userName: string, passwordHash: str
     const account = storage
         .insert(accounts)
         .values({
-            id: randomUUID()
+            id: randomUUID(),
         })
         .returning({ id: accounts.id });
     const accountId = (await account)[0].id;
     if (!accountId) {
         throw new Error('Failed to create account');
     }
+
+    // Create default garden
+    await createGarden({
+        accountId,
+        name: 'Vrt od ' + userName
+    });
 
     // Create user
     const createdUsers = await storage

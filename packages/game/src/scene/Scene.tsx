@@ -2,8 +2,8 @@
 
 import { PCFSoftShadowMap } from 'three';
 import { Canvas, Vector3 as FiberVector3 } from '@react-three/fiber';
-import { HTMLAttributes, PropsWithChildren, useEffect } from 'react';
-import { useGameState } from '../useGameState';
+import { HTMLAttributes, PropsWithChildren } from 'react';
+import { SceneLoader } from './SceneLoader';
 import { useGLTF } from '@react-three/drei';
 import { models } from '../data/models';
 
@@ -15,29 +15,25 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> & PropsWithChildren<{
 }>;
 
 export function Scene({ children, appBaseUrl, freezeTime, position, zoom, ...rest }: SceneProps) {
-    // Set app base URL
-    const setInitial = useGameState((state) => state.setInitial);
-    useEffect(() => {
-        setInitial(appBaseUrl ?? '', freezeTime);
-
-        useGLTF.preload(appBaseUrl + models.GameAssets.url);
-    }, [appBaseUrl]);
+    useGLTF.preload((appBaseUrl ?? '') + models.GameAssets.url);
 
     return (
-        <Canvas
-            orthographic
-            shadows={{
-                type: PCFSoftShadowMap,
-                enabled: true,
-            }}
-            camera={{
-                position,
-                zoom,
-                far: 10000,
-                near: 0.01
-            }}
-            {...rest}>
-            {children}
-        </Canvas>
+        <SceneLoader appBaseUrl={appBaseUrl} freezeTime={freezeTime}>
+            <Canvas
+                orthographic
+                shadows={{
+                    type: PCFSoftShadowMap,
+                    enabled: true,
+                }}
+                camera={{
+                    position,
+                    zoom,
+                    far: 10000,
+                    near: 0.01
+                }}
+                {...rest}>
+                {children}
+            </Canvas>
+        </SceneLoader>
     )
 }

@@ -1,6 +1,16 @@
 'use server';
 
-import { deleteAttributeValue, deleteEntity, SelectAttributeDefinition, SelectAttributeValue, createEntity as storageCreateEntity, upsertAttributeValue, upsertEntityType } from "@gredice/storage";
+import {
+    deleteAttributeValue,
+    deleteEntity,
+    SelectAttributeDefinition,
+    SelectAttributeValue,
+    createEntity as storageCreateEntity,
+    updateEntity as storageUpdateEntity,
+    UpdateEntity,
+    upsertAttributeValue,
+    upsertEntityType
+} from "@gredice/storage";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "../../lib/auth/auth";
@@ -22,6 +32,15 @@ export async function createEntity(entityTypeName: string) {
     revalidatePath(KnownPages.DirectoryEntityType(entityTypeName));
     revalidatePath(KnownPages.DirectoryEntity(entityTypeName, entityId));
     redirect(KnownPages.DirectoryEntity(entityTypeName, entityId));
+}
+
+export async function updateEntity(entity: UpdateEntity) {
+    await auth();
+
+    await storageUpdateEntity(entity);
+    revalidatePath(KnownPages.Directories);
+    revalidatePath(KnownPages.DirectoryEntityPath, 'page');
+    revalidatePath(KnownPages.DirectoryEntityPath, 'layout');
 }
 
 export async function handleValueSave(

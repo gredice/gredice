@@ -2,12 +2,12 @@ import { SectionsView } from "@signalco/cms-core/SectionsView";
 import { sectionsComponentRegistry } from "../components/shared/sectionsComponentRegistry";
 import { Navigate } from "@signalco/ui-icons";
 import { KnownPages } from "../src/KnownPages";
-import { GameScene } from "@gredice/game";
 import { SectionData } from "@signalco/cms-core/SectionData";
 import { getFlags } from "../lib/flags/getFlags";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NewsletterSignUp } from "./NewsletterSignUp";
+import { GameSceneDynamic } from "./GameSceneDynamic";
 
 const sectionsData: SectionData[] = [
     {
@@ -17,11 +17,11 @@ const sectionsData: SectionData[] = [
         description: 'Dobiješ povrćeg iz svojih gredica - nit oro, nit kopo!',
         asset: (
             <div className="min-h-96 relative rounded-xl overflow-hidden">
-                <GameScene
-                    className="!absolute"
+                <GameSceneDynamic
                     appBaseUrl="https://vrt.gredice.com"
                     freezeTime={new Date(2024, 5, 21, 14)}
-                    noBackground />
+                    noBackground
+                    hideHud />
             </div>
         ),
         ctas: [
@@ -43,11 +43,11 @@ const preSeasonSectionsData: SectionData[] = [
         ),
         asset: (
             <div className="min-h-96 relative rounded-xl overflow-hidden">
-                <GameScene
-                    className="!absolute"
+                <GameSceneDynamic
                     appBaseUrl="https://vrt.gredice.com"
                     freezeTime={new Date(2024, 5, 21, 14)}
-                    noBackground />
+                    noBackground
+                    hideHud />
             </div>
         ),
         ctas: [

@@ -8,8 +8,7 @@ import { PageHeader } from "../../components/shared/PageHeader";
 export const dynamic = 'force-dynamic';
 
 export default async function PlantsPage() {
-    const entities = await getEntitiesFormatted('plant') as unknown as PlantData[];
-
+    const entities = await getEntitiesFormatted<PlantData>('plant');
     return (
         <Stack>
             <PageHeader

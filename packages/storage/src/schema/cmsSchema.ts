@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { desc, relations } from 'drizzle-orm';
 import { integer, pgTable, serial, text, timestamp, boolean } from 'drizzle-orm/pg-core';
 
 export const attributeDefinitionCategories = pgTable('attribute_definition_categories', {
@@ -9,6 +9,7 @@ export const attributeDefinitionCategories = pgTable('attribute_definition_categ
     order: text('order'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
+    isDeleted: boolean('is_deleted').notNull().default(false),
 });
 
 export const attributeDefinitionCategoriesRelation = relations(attributeDefinitionCategories, ({ one }) => ({
@@ -21,17 +22,22 @@ export const attributeDefinitionCategoriesRelation = relations(attributeDefiniti
 
 export type InsertAttributeDefinitionCategory = typeof attributeDefinitionCategories.$inferInsert;
 export type SelectAttributeDefinitionCategory = typeof attributeDefinitionCategories.$inferSelect;
+export type UpdateAttributeDefinitionCategory =
+    Partial<Omit<typeof attributeDefinitionCategories.$inferInsert, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
+    Pick<typeof attributeDefinitionCategories.$inferSelect, 'id'>;
 
 export const attributeDefinitions = pgTable('attribute_definitions', {
     id: serial('id').primaryKey(),
     category: text('category').notNull(),
     name: text('name').notNull(),
     label: text('label').notNull(),
+    description: text('description'),
     entityTypeName: text('entity_type').notNull(),
     dataType: text('data_type').notNull(),
     defaultValue: text('default_value'),
     order: text('order'),
     multiple: boolean('multiple').notNull().default(false),
+    required: boolean('required').notNull().default(false),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
@@ -104,11 +110,16 @@ export const entityTypes = pgTable('entity_types', {
 });
 
 export type InsertEntityType = typeof entityTypes.$inferInsert;
+export type UpdateEntityType =
+    Partial<Omit<typeof entityTypes.$inferInsert, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
+    Pick<typeof entityTypes.$inferSelect, 'id'>;
 export type SelectEntityType = typeof entityTypes.$inferSelect;
 
 export const entities = pgTable('entities', {
     id: serial('id').primaryKey(),
     entityTypeName: text('entity_type').notNull(),
+    state: text('state').notNull().default('draft'),
+    publishedAt: timestamp('published_at'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
@@ -124,4 +135,7 @@ export const entityRelation = relations(entities, ({ one, many }) => ({
 }));
 
 export type InsertEntity = typeof entities.$inferInsert;
+export type UpdateEntity =
+    Partial<Omit<typeof entities.$inferInsert, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
+    Pick<typeof entities.$inferSelect, 'id'>;
 export type SelectEntity = typeof entities.$inferSelect;
