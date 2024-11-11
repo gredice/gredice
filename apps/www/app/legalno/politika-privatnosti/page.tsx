@@ -7,11 +7,15 @@ export default function PolitikaPrivatnostiPage() {
     return (
         <Container maxWidth="sm">
             <Stack spacing={4}>
-                <PageHeader padded header="Politika Privatnosti" />
+                <PageHeader
+                    padded
+                    header="Politika Privatnosti"
+                    subHeader="Ova politika privatnosti objašnjava kako prikupljamo, koristimo i štitimo vaše osobne podatke prilikom korištenja naše web stranice."
+                />
                 <div className="prose">
                     <h2>Uvod</h2>
                     <p>
-                        Dobrodošli na Gredice! Naša web stranica (<a href="https://www.gredice.com">www.gredice.com</a>) pruža usluge upravljanja i dostave povrća i vrtnih proizvoda. Vaša privatnost nam je važna, stoga smo izradili ovu Politiku privatnosti kako bismo vam objasnili kako prikupljamo, koristimo i štitimo vaše osobne podatke.
+                        Dobrodošli na Gredice! Naša web stranica (<a href="https://www.gredice.com">www.gredice.com</a>, uključujući sve podstranice) pruža usluge upravljanja i dostave povrća i vrtnih proizvoda. Vaša privatnost nam je važna, stoga smo izradili ovu Politiku privatnosti kako bismo vam objasnili kako prikupljamo, koristimo i štitimo vaše osobne podatke.
                     </p>
                     <h2>Prikupljanje Podataka</h2>
                     <p>
