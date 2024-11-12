@@ -8,6 +8,9 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NewsletterSignUp } from "./NewsletterSignUp";
 import { GameSceneDynamic } from "./GameSceneDynamic";
+import { BlocksIcon } from "lucide-react";
+import { EntityViewer } from "@gredice/game";
+import { BlockImage } from "../components/blocks/BlockImage";
 
 const sectionsData: SectionData[] = [
     {
@@ -26,6 +29,22 @@ const sectionsData: SectionData[] = [
         ),
         ctas: [
             { label: 'Posjeti svoj vrt', href: KnownPages.GardenApp, icon: <Navigate /> }
+        ]
+    },
+    {
+        component: 'Feature1',
+        tagline: 'Expertise on Demand',
+        header: 'Workers Marketplace',
+        description: 'Hire expert workers to help you with your projects. From software development to personal trainers and chefs, we have you covered.',
+        features: [
+            {
+                header: `heading`,
+                description: 'Experts available to help you with your projects',
+                asset: <BlockImage blockName="Raised_Bed" width={128} height={128} />
+            },
+            {
+                // asset: <DemoMarketplace />,
+            }
         ]
     }
 ];
