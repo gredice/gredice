@@ -16,6 +16,8 @@ import { PageHeader } from "../../../components/shared/PageHeader";
 import { PlantYearCalendar } from "./PlantYearCalendar";
 import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
 import { BlockImage } from "../../../components/blocks/BlockImage";
+import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
+import { KnownPages } from "../../../src/KnownPages";
 
 function DetailCard({ icon, header, value }: { icon: React.ReactNode; header: string; value: string | null | undefined }) {
     return (
@@ -52,7 +54,7 @@ export const dynamic = 'force-dynamic';
 function InformationSection({ icon, header, content }: { icon: ReactNode, header: string, content: string }) {
     return (
         <Stack spacing={1}>
-            <Row spacing={2}>
+            <Row spacing={1}>
                 {Boolean(icon) && icon}
                 <Typography level="h4">{header}</Typography>
             </Row>
@@ -119,116 +121,121 @@ export default async function PlantPage(props: { params: Promise<{ plantId: stri
         return notFound();
 
     return (
-        <div className="py-10">
-            <Container maxWidth="md">
-                <Stack spacing={4}>
-                    <PageHeader
-                        visual={(
-                            <Image
-                                src={plant.image?.cover?.url ?? '/assets/plants/placeholder.png'}
-                                alt={plant.information.name}
-                                width={142}
-                                height={142}
-                                priority />
-                        )}
-                        header={plant.information.name}
-                        alternativeName={plant.information.latinName ? `lat. ${plant.information.latinName}` : null}
-                        subHeader={plant.information.description}
-                        headerChildren={(
-                            <Stack spacing={1} alignItems="start">
-                                {plant.information.origin && (
-                                    <Stack>
-                                        <Typography level="body2">Porijeklo</Typography>
-                                        <Typography>{plant.information.origin}</Typography>
-                                    </Stack>
-                                )}
-                                {plant.information.verified && (
-                                    <Chip color="success" size="sm">
-                                        <BadgeCheck className="size-4" />
-                                        <span>Verificirano</span>
-                                    </Chip>)}
-                            </Stack>
-                        )} />
-                    <Stack spacing={1}>
-                        <Typography level="h5">Kalendar</Typography>
-                        {(!plant.calendar || Object.keys(plant.calendar).length <= 0) ? (
-                            <NoDataPlaceholder>
-                                Nema podataka o kalendaru
-                            </NoDataPlaceholder>
-                        ) : (
+        <div className="py-8">
+            <Stack spacing={4}>
+                <Breadcrumbs items={[
+                    { label: 'Biljke', href: KnownPages.Plants },
+                    { label: plant.information.name }
+                ]} />
+                <PageHeader
+                    visual={(
+                        <Image
+                            src={plant.image?.cover?.url ?? '/assets/plants/placeholder.png'}
+                            alt={plant.information.name}
+                            width={142}
+                            height={142}
+                            priority />
+                    )}
+                    header={plant.information.name}
+                    alternativeName={plant.information.latinName ? `lat. ${plant.information.latinName}` : null}
+                    subHeader={plant.information.description}
+                    headerChildren={(
+                        <Stack spacing={1} alignItems="start">
+                            {plant.information.origin && (
+                                <Stack>
+                                    <Typography level="body2">Porijeklo</Typography>
+                                    <Typography>{plant.information.origin}</Typography>
+                                </Stack>
+                            )}
+                            {plant.information.verified && (
+                                <Chip color="success" size="sm">
+                                    <BadgeCheck className="size-4" />
+                                    <span>Verificirano</span>
+                                </Chip>)}
+                        </Stack>
+                    )}>
+                    <Stack spacing={4}>
+                        <Stack spacing={1}>
+                            <Typography level="h5">Kalendar</Typography>
+                            {(!plant.calendar || Object.keys(plant.calendar).length <= 0) ? (
+                                <NoDataPlaceholder>
+                                    Nema podataka o kalendaru
+                                </NoDataPlaceholder>
+                            ) : (
                                 <Card className="p-0">
                                     <PlantYearCalendar activities={plant.calendar} />
                                 </Card>
-                        )}
+                            )}
+                        </Stack>
+                        <Stack spacing={1}>
+                            <Typography level="h5">Svojstva</Typography>
+                            <PlantAttributes attributes={plant.attributes} />
+                        </Stack>
                     </Stack>
+                </PageHeader>
+                {plant.information.sowing && (
+                    <InformationSection icon="🌱" header="Sijanje" content={plant.information.sowing} />
+                )}
+                {plant.information.soilPreparation && (
+                    <InformationSection
+                        icon={<BlockImage blockName="Raised_Bed" width={64} height={64} />}
+                        header="Priprema tla"
+                        content={plant.information.soilPreparation}
+                    />
+                )}
+                {plant.information.planting && (
+                    <InformationSection icon="🌿" header="Sadnja" content={plant.information.planting} />
+                )}
+                {plant.information.growth && (
+                    <InformationSection icon="🌿" header="Rast" content={plant.information.growth} />
+                )}
+                {plant.information.maintenance && (
+                    <InformationSection icon="✂️" header="Održavanje" content={plant.information.maintenance} />
+                )}
+                {plant.information.watering && (
+                    <InformationSection
+                        icon={<BlockImage blockName="Bucket" width={64} height={64} />}
+                        header="Zalijevanje"
+                        content={plant.information.watering} />
+                )}
+                {plant.information.flowering && (
+                    <InformationSection icon="🌸" header="Cvjetanje" content={plant.information.flowering} />
+                )}
+                {plant.information.harvest && (
+                    <InformationSection icon="🟢" header="Berba" content={plant.information.harvest} />
+                )}
+                {plant.information.storage && (
+                    <InformationSection icon="📦" header="Skladištenje" content={plant.information.storage} />
+                )}
+                {plant.instructions && (
                     <Stack spacing={1}>
-                        <Typography level="h5">Svojstva</Typography>
-                        <PlantAttributes attributes={plant.attributes} />
+                        <Typography level="h5">Postupak</Typography>
+                        <PlantingInstructions instructions={plant.instructions} />
                     </Stack>
-                    {plant.information.sowing && (
-                        <InformationSection icon="🌱" header="Sijanje" content={plant.information.sowing} />
-                    )}
-                    {plant.information.soilPreparation && (
-                        <InformationSection
-                            icon={<BlockImage blockName="Raised_Bed" width={64} height={64} />}
-                            header="Priprema tla"
-                            content={plant.information.soilPreparation}
-                        />
-                    )}
-                    {plant.information.planting && (
-                        <InformationSection icon="🌿" header="Sadnja" content={plant.information.planting} />
-                    )}
-                    {plant.information.growth && (
-                        <InformationSection icon="🌿" header="Rast" content={plant.information.growth} />
-                    )}
-                    {plant.information.maintenance && (
-                        <InformationSection icon="✂️" header="Održavanje" content={plant.information.maintenance} />
-                    )}
-                    {plant.information.watering && (
-                        <InformationSection
-                            icon={<BlockImage blockName="Bucket" width={64} height={64} />}
-                            header="Zalijevanje"
-                            content={plant.information.watering} />
-                    )}
-                    {plant.information.flowering && (
-                        <InformationSection icon="🌸" header="Cvjetanje" content={plant.information.flowering} />
-                    )}
-                    {plant.information.harvest && (
-                        <InformationSection icon="🟢" header="Berba" content={plant.information.harvest} />
-                    )}
-                    {plant.information.storage && (
-                        <InformationSection icon="📦" header="Skladištenje" content={plant.information.storage} />
-                    )}
-                    {plant.instructions && (
+                )}
+                {((plant.information.tip?.length ?? 0) > 0) && (
+                    <Stack spacing={1}>
+                        <Typography level="h5">
+                            <Row spacing={1}>
+                                <Info />
+                                <span>Savjeti</span>
+                            </Row>
+                        </Typography>
                         <Stack spacing={1}>
-                            <Typography level="h5">Postupak</Typography>
-                            <PlantingInstructions instructions={plant.instructions} />
+                            {plant.information.tip?.map((tip) => (
+                                <Card key={tip.header}>
+                                    <CardHeader>
+                                        <CardTitle>{tip.header}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {tip.content}
+                                    </CardContent>
+                                </Card>
+                            ))}
                         </Stack>
-                    )}
-                    {((plant.information.tip?.length ?? 0) > 0) && (
-                        <Stack spacing={1}>
-                            <Typography level="h5">
-                                <Row spacing={1}>
-                                    <Info />
-                                    <span>Savjeti</span>
-                                </Row>
-                            </Typography>
-                            <Stack spacing={1}>
-                                {plant.information.tip?.map((tip) => (
-                                    <Card key={tip.header}>
-                                        <CardHeader>
-                                            <CardTitle>{tip.header}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            {tip.content}
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </Stack>
-                        </Stack>
-                    )}
-                </Stack>
-            </Container>
+                    </Stack>
+                )}
+            </Stack>
         </div>
     );
 }

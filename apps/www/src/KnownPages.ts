@@ -7,5 +7,9 @@ export const KnownPages = {
     AboutUs: '/o-nama',
     FAQ: '/cesta-pitanja',
 
+    LegalPrivacy: '/legalno/politika-privatnosti',
+    LegalTerms: '/legalno/uvjeti-koristenja',
+    LegalCookies: '/legalno/politika-kolacica',
+
     GardenApp: 'https://vrt.gredice.com',
 }
