@@ -12,6 +12,7 @@ import { Scene } from './scene/Scene';
 import { EntityFactory } from './entities/EntityFactory';
 import { DayNightCycleHud } from './hud/DayNightCycleHud';
 import { DebugHud } from './hud/DebugHud';
+import { AccountHud } from './hud/AccountHud';
 
 // function serializeGarden(garden: Garden) {
 //     return JSON.stringify(garden);
@@ -170,7 +171,10 @@ export function GameScene({
                     maxZoom={200} />
             </Scene>
             {!hideHud && (
-                <DayNightCycleHud lat={45.739} lon={16.572} currentTime={useGameState((state) => state.currentTime)} />
+                <>
+                    <AccountHud />
+                    <DayNightCycleHud lat={45.739} lon={16.572} currentTime={useGameState((state) => state.currentTime)} />
+                </>
             )}
         </div>
     );
