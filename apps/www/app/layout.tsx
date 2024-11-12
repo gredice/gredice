@@ -49,6 +49,14 @@ const sectionsData: SectionData[] = [
                     { label: 'Razgovori na GitHub-u', href: 'https://github.com/gredice/gredice/discussions' },
                 ]
             },
+            {
+                header: 'Legalno',
+                ctas: [
+                    { label: 'Politika privatnosti', href: KnownPages.LegalPrivacy },
+                    { label: 'Uvjeti korištenja', href: KnownPages.LegalTerms },
+                    { label: 'Politika kolačića', href: KnownPages.LegalCookies },
+                ]
+            }
         ],
         ctas: [
             { label: 'X', href: 'https://x.com/gredicecom', icon: <CompanyX /> },
