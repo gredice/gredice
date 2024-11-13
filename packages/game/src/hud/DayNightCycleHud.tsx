@@ -49,7 +49,7 @@ export function DayNightCycleHud({ lat, lon, currentTime }: { lat: number, lon: 
 
     return (
         <div
-            className="absolute w-48 h-12 top-0 left-1/2 -translate-x-1/2 group"
+            className="absolute w-48 h-12 -top-2 left-1/2 -translate-x-1/2 group"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}>
             <HudCard open={isHovered} className='w-64 -left-8 top-0 pt-8 p-4' position='top'>

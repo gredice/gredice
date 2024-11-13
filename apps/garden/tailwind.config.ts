@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 import { config } from '@signalco/ui-themes-minimal/config';
 import tailwindcssTypography from '@tailwindcss/typography';
+import tailwindcssAnimate from "tailwindcss-animate";
 
 const tailwindConfig: Config = {
   content: [
@@ -14,6 +15,7 @@ const tailwindConfig: Config = {
   ],
   presets: [config],
   plugins: [
+    tailwindcssAnimate,
     tailwindcssTypography
   ],
 };
