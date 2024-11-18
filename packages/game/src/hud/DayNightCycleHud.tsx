@@ -69,7 +69,7 @@ export function DayNightCycleHud({ lat, lon, currentTime }: { lat: number, lon: 
                 role="img"
             >
                 <defs>
-                    <linearGradient id="curveGradient" x1="0%" y1="0%" x2="100%" y2="0%" className='[&>stop]:[stopColor:white] group-hover:[&>stop]:[stopColor:black]'>
+                    <linearGradient id="curveGradient" x1="0%" y1="0%" x2="100%" y2="0%" className='[&>stop]:[stopColor:white] group-hover:[&>stop]:[stopColor:var(--foreground)]'>
                         <stop offset="0%" stopOpacity="0" />
                         <stop offset="20%" stopOpacity="1" />
                         <stop offset="80%" stopOpacity="1" />

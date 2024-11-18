@@ -9,6 +9,7 @@ import { HTMLAttributes } from "react";
 import { Popper } from "@signalco/ui-primitives/Popper";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Divider } from "@signalco/ui-primitives/Divider";
+import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 
 function SunflowersCard() {
     return (
@@ -77,8 +78,11 @@ function SunflowersAmount() {
             side="bottom"
             sideOffset={12}
             trigger={(
-                <Button variant="plain" startDecorator={(<SunflowerIcon className="size-5" />)} className="rounded-full px-2" size="sm">
-                    <Typography level="body2">{sunflowerCount}</Typography>
+                <Button
+                    variant="plain"
+                    startDecorator={<Typography className="text-xl">🌻</Typography>}
+                    className="rounded-full px-2 min-w-20 justify-between pr-4" size="sm">
+                    <Typography level="body2" className="text-xl">{sunflowerCount}</Typography>
                 </Button>
             )}>
             <SunflowersCard />
@@ -90,8 +94,13 @@ function GardenPicker() {
     return (
         // TODO: Enable when implemented
         // <Button variant="plain" className="rounded-full px-2 max-w-24 min-w-14" size="sm">
-        <div className="px-2 max-w-24 min-w-14">
-            <Typography level="body2" noWrap>Moj vrt</Typography>
+        <div className="px-2 min-w-32">
+            <SelectItems
+                variant="plain"
+                value="1"
+                items={[
+                    { value: '1', label: 'Moj vrt' },
+                ]} />
         </div>
         // </Button>
     )
@@ -115,20 +124,54 @@ function Notifications() {
     );
 }
 
+function ProfileCard() {
+    return (
+        <Stack>
+            <Row className="bg-background px-4 py-2" justifyContent="space-between">
+                <Typography level="body3" bold>Profil</Typography>
+            </Row>
+            <Divider />
+            <Stack className="p-4">
+                <Typography level="body2">Ime Prezime</Typography>
+                <Typography level="body2">
+                    <a href="#">Uredi profil</a>
+                </Typography>
+            </Stack>
+        </Stack>
+    )
+}
+
+function Profile() {
+    return (
+        <Popper
+            className="overflow-hidden"
+            side="bottom"
+            sideOffset={12}
+            trigger={(
+                <Button className="rounded-full p-0 aspect-square" size='sm' variant="plain" title="Obavijesti">
+                    <Avatar>
+                        G
+                    </Avatar>
+                </Button>
+            )}>
+            <ProfileCard />
+        </Popper>
+    )
+}
+
 export function AccountHud() {
     return (
         <>
             <HudCard position='top-left' open className="left-0 top-0 p-1 pr-2">
                 <Row>
-                <Avatar>
-                        G
-                </Avatar>
+                    <Profile />
                     <GardenPicker />
-                <SunflowersAmount />
                     <Notifications />
-            </Row>
-        </HudCard>
-
+                </Row>
+            </HudCard>
+            <HudCard position="floating" open className="right-2 top-2">
+                <SunflowersAmount />
+            </HudCard>
         </>
     );
 }
