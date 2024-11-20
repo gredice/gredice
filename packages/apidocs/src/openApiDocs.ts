@@ -122,6 +122,12 @@ export async function openApiDocs(config?: OpenApiDocsConfig): Promise<OpenAPIV3
                 ...config?.info?.contact
             },
             termsOfService: 'https://www.gredice.com/legalno/uvjeti-koristenja',
+            license: {
+                name: 'AGPL-3.0',
+                url: 'https://www.gredice.com/legalno/licenca',
+                identifier: 'AGPL-3.0',
+                ...config?.info?.license
+            },
             ...config?.info
         },
         servers: config?.servers ?? [

@@ -26,6 +26,11 @@ export function LegalFilesMenu() {
                 href={KnownPages.LegalCookies}
                 label={"Politika kolačića"}
                 variant="outlined" />
+            <ListItem
+                selected={pathname === KnownPages.LegalLicense}
+                href={KnownPages.LegalLicense}
+                label={"Licenca izvnorog koda"}
+                variant="outlined" />
         </List>
     );
 }
