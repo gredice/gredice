@@ -79,7 +79,7 @@ export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
     const stacks = useGameState(state => state.stacks);
     const setStacks = useGameState(state => state.setStacks);
 
-    // Load garden from remote
+    // TODO: Load garden from remote
     const garden = getDefaultGarden();
     const isLoadingGarden = false;
     useEffect(() => {
@@ -133,6 +133,20 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     hideHud?: boolean
 }
 
+function CurrentTimeManager({ freezeTime }: { freezeTime?: Date }) {
+    // Update current time every second
+    const setCurrentTime = useGameState((state) => state.setCurrentTime);
+    useEffect(() => {
+        setCurrentTime(freezeTime ?? new Date());
+        const interval = setInterval(() => {
+            setCurrentTime(useGameState.getState().freezeTime ?? new Date());
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    return null;
+}
+
 export function GameScene({
     appBaseUrl,
     isDevelopment,
@@ -144,18 +158,9 @@ export function GameScene({
 }: GameSceneProps) {
     const cameraPosition = 100;
 
-    // Update current time every second
-    const setCurrentTime = useGameState((state) => state.setCurrentTime);
-    useEffect(() => {
-        setCurrentTime(freezeTime ?? new Date());
-        const interval = setInterval(() => {
-            setCurrentTime(useGameState.getState().freezeTime ?? new Date());
-        }, 1000);
-        return () => clearInterval(interval);
-    }, []);
-
     return (
         <div {...rest}>
+            <CurrentTimeManager freezeTime={freezeTime} />
             <Scene
                 appBaseUrl={appBaseUrl}
                 freezeTime={freezeTime}
@@ -173,7 +178,7 @@ export function GameScene({
             {!hideHud && (
                 <>
                     <AccountHud />
-                    <DayNightCycleHud lat={45.739} lon={16.572} currentTime={useGameState((state) => state.currentTime)} />
+                    <DayNightCycleHud lat={45.739} lon={16.572} />
                 </>
             )}
         </div>

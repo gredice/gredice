@@ -6,22 +6,14 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Row } from '@signalco/ui-primitives/Row';
 import { environmentState } from '@gredice/game';
 import { HudCard } from './components/HudCard';
-import { useInterval } from '@signalco/hooks/useInterval';
-import { useControllableState } from '@signalco/hooks/useControllableState';
+import { useGameState } from '../useGameState';
 
-export function DayNightCycleHud({ lat, lon, currentTime }: { lat: number, lon: number, currentTime?: Date }) {
+export function DayNightCycleHud({ lat, lon }: { lat: number, lon: number }) {
     const [isHovered, setIsHovered] = useState(false);
 
-    const [time, setTime] = useControllableState(currentTime, new Date());
+    const time = useGameState((state) => state.currentTime);
 
-    useInterval(() => {
-        if (currentTime)
-            return;
-
-        setTime(new Date());
-    }, 1000);
-
-    const { timeOfDay, sunrise, sunset } = environmentState({ lat, lon }, time || new Date());
+    const { timeOfDay, sunrise, sunset } = environmentState({ lat, lon }, time);
     const isDaytime = timeOfDay > 0.2 && timeOfDay < 0.8
 
     const startPoint = { x: 0, y: 20 }
