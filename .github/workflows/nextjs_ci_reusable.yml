@@ -151,6 +151,7 @@ jobs:
             run: |
               pnpm install --global playwright
               pnpm playwright install --with-deps
+            working-directory: ${{ inputs.path }}/
 
           - name: ⚒️ Test app
             if: success() && github.event_name == 'pull_request'

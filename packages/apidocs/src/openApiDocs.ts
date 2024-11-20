@@ -121,6 +121,7 @@ export async function openApiDocs(config?: OpenApiDocsConfig): Promise<OpenAPIV3
                 email: 'kontakt@gredice.com',
                 ...config?.info?.contact
             },
+            termsOfService: 'https://www.gredice.com/legalno/uvjeti-koristenja',
             ...config?.info
         },
         servers: config?.servers ?? [
