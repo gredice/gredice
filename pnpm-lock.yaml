@@ -288,6 +288,9 @@ importers:
       tailwindcss:
         specifier: 3.4.14
         version: 3.4.14
+      tailwindcss-animate:
+        specifier: 1.0.7
+        version: 1.0.7(tailwindcss@3.4.14)
       typescript:
         specifier: 5.6.3
         version: 5.6.3
@@ -436,6 +439,9 @@ importers:
       '@signalco/ui':
         specifier: 0.2.0
         version: 0.2.0(@signalco/ui-primitives@0.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@signalco/ui-icons':
+        specifier: 0.2.0
+        version: 0.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@signalco/ui-primitives':
         specifier: 0.2.0
         version: 0.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -466,6 +472,9 @@ importers:
       chroma-js:
         specifier: 3.1.2
         version: 3.1.2
+      lucide-react:
+        specifier: 0.456.0
+        version: 0.456.0(react@18.3.1)
       react:
         specifier: 18.3.1
         version: 18.3.1
@@ -4454,6 +4463,11 @@ packages:
 
   lucide-react@0.454.0:
     resolution: {integrity: sha512-hw7zMDwykCLnEzgncEEjHeA6+45aeEzRYuKHuyRSOPkhko+J3ySGjGIzu+mmMfDFG1vazHepMaYFYHbTFAZAAQ==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0-rc
+
+  lucide-react@0.456.0:
+    resolution: {integrity: sha512-DIIGJqTT5X05sbAsQ+OhA8OtJYyD4NsEMCA/HQW/Y6ToPQ7gwbtujIoeAaup4HpHzV35SQOarKAWH8LYglB6eA==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0-rc
 
@@ -9042,6 +9056,11 @@ snapshots:
       react: 19.0.0-rc-fb9a90fa48-20240614
       react-dom: 19.0.0-rc-fb9a90fa48-20240614(react@19.0.0-rc-fb9a90fa48-20240614)
 
+  '@signalco/ui-icons@0.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+
   '@signalco/ui-icons@0.2.0(react-dom@19.0.0-rc-603e6108-20241029(react@19.0.0-rc-603e6108-20241029))(react@19.0.0-rc-603e6108-20241029)':
     dependencies:
       react: 19.0.0-rc-603e6108-20241029
@@ -10753,6 +10772,10 @@ snapshots:
   lucide-react@0.454.0(react@19.0.0-rc-603e6108-20241029):
     dependencies:
       react: 19.0.0-rc-603e6108-20241029
+
+  lucide-react@0.456.0(react@18.3.1):
+    dependencies:
+      react: 18.3.1
 
   lz-string@1.5.0: {}
 

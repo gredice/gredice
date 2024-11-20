@@ -6,7 +6,7 @@ import { useSpring, animated } from "@react-spring/web";
 
 type HudCardProps = HTMLAttributes<HTMLDivElement> & {
     open?: boolean,
-    position: 'top' | 'bottom' | 'right' | 'left' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
+    position: 'floating' | 'top' | 'bottom' | 'right' | 'left' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
 };
 
 export function HudCard({ open, position, className, style, ...rest }: HudCardProps) {
@@ -20,15 +20,17 @@ export function HudCard({ open, position, className, style, ...rest }: HudCardPr
         /* @ts-ignore TODO: Fix when react-spring is updated for React 19 */
         <animated.div
             className={cx(
-                "absolute bg-background shadow-md",
-                position === 'top' && 'rounded-b-xl',
-                position === 'bottom' && 'rounded-t-xl',
-                position === 'right' && 'rounded-l-xl',
-                position === 'left' && 'rounded-r-xl',
-                position === 'top-right' && 'rounded-bl-xl',
-                position === 'top-left' && 'rounded-br-xl',
-                position === 'bottom-right' && 'rounded-tl-xl',
-                position === 'bottom-left' && 'rounded-tr-xl',
+                "absolute",
+                'bg-background border-tertiary',
+                position === 'floating' && 'rounded-full border-b-4',
+                position === 'top' && 'rounded-b-xl border-b-4',
+                position === 'bottom' && 'rounded-t-xl border-t-4',
+                position === 'right' && 'rounded-l-xl border-l-4',
+                position === 'left' && 'rounded-r-xl border-r-4',
+                position === 'top-right' && 'rounded-bl-xl border-b-4',
+                position === 'top-left' && 'rounded-br-xl border-b-4',
+                position === 'bottom-right' && 'rounded-tl-xl border-t-4',
+                position === 'bottom-left' && 'rounded-tr-xl border-t-4',
                 className
             )}
             style={{

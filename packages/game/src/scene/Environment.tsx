@@ -17,7 +17,7 @@ const sunTemperatureScale = chroma
     .domain([0.2, 0.3, 0.75, 0.85]);
 const sunIntensityTimeScale = chroma
     .scale(['black', 'white', 'white', 'black'])
-    .domain([0.2, 0.225, 0.75, 0.85]);
+    .domain([0.2, 0.225, 0.75, 0.8]);
 const hemisphereSkyColorScale = chroma
     .scale([chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000), chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000)])
     .domain([0.2, 0.25, 0.3, 0.75, 0.8, 0.85]);
