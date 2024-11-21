@@ -13,6 +13,8 @@ import { EntityFactory } from './entities/EntityFactory';
 import { DayNightCycleHud } from './hud/DayNightCycleHud';
 import { DebugHud } from './hud/DebugHud';
 import { AccountHud } from './hud/AccountHud';
+import { SunflowersHud } from './hud/SunflowersHud';
+import { OverviewModal } from './modals/OverviewModal';
 
 // function serializeGarden(garden: Garden) {
 //     return JSON.stringify(garden);
@@ -179,8 +181,10 @@ export function GameScene({
                 <>
                     <AccountHud />
                     <DayNightCycleHud lat={45.739} lon={16.572} />
+                    <SunflowersHud />
                 </>
             )}
+            <OverviewModal />
         </div>
     );
 }
