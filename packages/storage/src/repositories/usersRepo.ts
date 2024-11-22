@@ -80,3 +80,7 @@ export async function createUserWithPassword(userName: string, passwordHash: str
 
     return userId;
 }
+
+export async function updateUserRole(userId: string, newRole: string) {
+    await storage.update(users).set({ role: newRole }).where(eq(users.id, userId));
+}

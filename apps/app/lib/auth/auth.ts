@@ -6,7 +6,13 @@ function jwtSecretFactory() {
     return Buffer.from(signSecret, 'base64');
 }
 
-async function getUser(id: string) {
+type User = {
+    id: string;
+    accountIds: string[];
+    role: string;
+}
+
+async function getUser(id: string): Promise<User | null> {
     const user = await storageGetUser(id);
     if (!user) {
         return null;
@@ -15,6 +21,7 @@ async function getUser(id: string) {
     return {
         id: user.id,
         accountIds: user.accounts.map(accountUsers => accountUsers.accountId),
+        role: user.role,
     }
 }
 
