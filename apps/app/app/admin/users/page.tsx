@@ -1,7 +1,8 @@
 import { getUsers } from "@gredice/storage";
-import { Card, CardContent, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
+import { Card, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { Table } from "@signalco/ui-primitives/Table";
+import { SelectUserRole } from "./SelectUserRole";
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +31,9 @@ export default async function UsersPage() {
                             {users.map(user => (
                                 <Table.Row key={user.id}>
                                     <Table.Cell>{user.userName}</Table.Cell>
-                                    <Table.Cell title={user.role}>{user.role === 'admin' ? 'Administrator' : 'Korisnik'}</Table.Cell>
+                                    <Table.Cell title={user.role}>
+                                        <SelectUserRole user={user} />
+                                    </Table.Cell>
                                     <Table.Cell title={user.createdAt.toISOString()}>{user.createdAt.toLocaleDateString()}</Table.Cell>
                                 </Table.Row>
                             ))}
