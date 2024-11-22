@@ -1,7 +1,7 @@
 import { getAttributeDefinitions, getEntityTypes } from "@gredice/storage";
 import { OpenAPIV3_1 } from "openapi-types";
 
-async function openApiEntitiesDoc(entityTypeName: string): Promise<Required<Pick<OpenAPIV3_1.Document, 'paths' | 'components'>>> {
+async function openApiEntitiesDoc(entityType: Awaited<ReturnType<typeof getEntityTypes>>[0]): Promise<Required<Pick<OpenAPIV3_1.Document, 'paths' | 'components'>>> {
     let properties: OpenAPIV3_1.SchemaObject['properties'] = {
         id: {
             type: 'number'
@@ -10,20 +10,23 @@ async function openApiEntitiesDoc(entityTypeName: string): Promise<Required<Pick
             type: 'object',
             properties: {
                 id: {
-                    type: 'number'
+                    type: 'number',
+                    default: entityType.id
                 },
                 name: {
-                    type: 'string'
+                    type: 'string',
+                    default: entityType.name
                 },
                 label: {
-                    type: 'string'
+                    type: 'string',
+                    default: entityType.label
                 }
             },
             required: ['id', 'name', 'label']
         }
     };
 
-    const attributeDefinitions = await getAttributeDefinitions(entityTypeName);
+    const attributeDefinitions = await getAttributeDefinitions(entityType.name);
     for (const attributeDefinition of attributeDefinitions) {
         const attributeType = attributeDefinition.dataType === 'json' ? 'object' : attributeDefinition.dataType;
         const categoryObject = properties[attributeDefinition.category];
@@ -72,10 +75,10 @@ async function openApiEntitiesDoc(entityTypeName: string): Promise<Required<Pick
 
     return {
         paths: {
-            [`/entities/${entityTypeName}`]: {
+            [`/entities/${entityType.name}`]: {
                 get: {
-                    summary: 'Get entities of a given type',
-                    description: 'Get all entities of a given type',
+                    summary: `Get ${entityType.name} entities`,
+                    description: `Get all entities of type ${entityType.name}.`,
                     responses: {
                         200: {
                             description: 'Successful response',
@@ -84,7 +87,7 @@ async function openApiEntitiesDoc(entityTypeName: string): Promise<Required<Pick
                                     schema: {
                                         type: 'array',
                                         items: {
-                                            $ref: `#/components/schemas/Entity-${entityTypeName}`
+                                            $ref: `#/components/schemas/Entity-${entityType.name}`
                                         }
                                     }
                                 }
@@ -96,7 +99,7 @@ async function openApiEntitiesDoc(entityTypeName: string): Promise<Required<Pick
         },
         components: {
             schemas: {
-                [`Entity-${entityTypeName}`]: {
+                [`Entity-${entityType.name}`]: {
                     type: 'object',
                     properties,
                     required: ['id', 'entityType', 'createdAt', 'updatedAt', ...attributeDefinitions.map(attribute => `${attribute.category}`)]
@@ -132,7 +135,7 @@ export async function openApiDocs(config?: OpenApiDocsConfig): Promise<OpenAPIV3
         },
         servers: config?.servers ?? [
             {
-                url: 'https://app.gredice.com/api',
+                url: 'https://app.gredice.com/api/directories',
                 description: 'Production API'
             }
         ],
@@ -143,7 +146,7 @@ export async function openApiDocs(config?: OpenApiDocsConfig): Promise<OpenAPIV3
     }
 
     const entityTypes = await getEntityTypes();
-    const typeDocs = await Promise.all(entityTypes.map(entityType => openApiEntitiesDoc(entityType.name)))
+    const typeDocs = await Promise.all(entityTypes.map(entityType => openApiEntitiesDoc(entityType)))
     for (const typeDoc of typeDocs) {
         if (baseDoc.paths) {
             Object.assign(baseDoc.paths, typeDoc.paths);
