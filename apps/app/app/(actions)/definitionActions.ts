@@ -15,7 +15,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 export async function upsertAttributeDefinition(definition: InsertAttributeDefinition) {
-    await auth();
+    await auth(['admin']);
 
     const id = definition.id;
     if (id) {
@@ -30,7 +30,7 @@ export async function upsertAttributeDefinition(definition: InsertAttributeDefin
 }
 
 export async function deleteAttributeDefinition(entityTypeName: string, definitionId: number) {
-    await auth();
+    await auth(['admin']);
 
     await storageDeleteAttributeDefinition(definitionId);
     revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName));
@@ -38,7 +38,7 @@ export async function deleteAttributeDefinition(entityTypeName: string, definiti
 }
 
 export async function upsertAttributeDefinitionCategory(category: InsertAttributeDefinitionCategory) {
-    await auth();
+    await auth(['admin']);
 
     const id = category.id;
     if (id) {

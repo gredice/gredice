@@ -1,5 +1,5 @@
 import { getUser as storageGetUser } from '@gredice/storage';
-import { initAuth } from '@signalco/auth-server';
+import { initAuth, initRbac } from '@signalco/auth-server';
 
 function jwtSecretFactory() {
     const signSecret = process.env.GREDICE_JWT_SIGN_SECRET as string;
@@ -15,10 +15,11 @@ async function getUser(id: string) {
     return {
         id: user.id,
         accountIds: user.accounts.map(accountUsers => accountUsers.accountId),
+        role: user.role,
     }
 }
 
-export const { withAuth, createJwt, setCookie, auth } = initAuth({
+export const { withAuth, createJwt, setCookie, auth } = initRbac(initAuth({
     jwt: {
         namespace: 'gredice',
         issuer: 'app',
@@ -28,4 +29,4 @@ export const { withAuth, createJwt, setCookie, auth } = initAuth({
         name: 'gredice_session'
     },
     getUser
-});
+}));
