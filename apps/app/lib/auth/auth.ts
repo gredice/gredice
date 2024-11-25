@@ -1,3 +1,4 @@
+import 'server-only';
 import { getUser as storageGetUser } from '@gredice/storage';
 import { initAuth, initRbac } from '@signalco/auth-server';
 

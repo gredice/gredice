@@ -1,3 +1,4 @@
+import 'server-only';
 import { and, eq } from "drizzle-orm";
 import { entityTypes, InsertEntityType, storage, UpdateEntityType } from "..";
 

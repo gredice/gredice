@@ -1,3 +1,4 @@
+import 'server-only';
 import { migrate } from 'drizzle-orm/vercel-postgres/migrator';
 import { connection, storage } from '.';
 

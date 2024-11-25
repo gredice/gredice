@@ -1,8 +1,8 @@
+import 'server-only';
 import { eq } from "drizzle-orm";
 import { storage } from "..";
 import { accounts, accountUsers, userLogins, users } from "../schema";
 import { randomUUID } from 'node:crypto';
-import { gardens } from "../schema/gardenSchema";
 import { createGarden } from "./gardensRepo";
 
 export function getUsers() {
