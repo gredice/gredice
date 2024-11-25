@@ -36,11 +36,9 @@ export function HypertuneProvider({
 const HypertuneSourceContext = React.createContext<{
   hypertuneSource: hypertune.SourceNode;
   setOverride: (newOverride: sdk.DeepPartial<hypertune.Source> | null) => void;
-  stateHash: string | null;
 }>({
   hypertuneSource: hypertune.emptySource,
   setOverride: () => { /* noop */ },
-  stateHash: null,
 });
 
 export function HypertuneSourceProvider({
@@ -89,6 +87,16 @@ export function HypertuneSourceProvider({
     };
   }, [hypertuneSource, router]);
 
+  const hypertuneSourceForStateHash = React.useMemo(() => {
+    const { context } = hypertuneSource.props;
+    const newProps = {
+      ...hypertuneSource.props,
+      stateHash,
+      expression: context?.initData?.reducedExpression ?? null,
+    };
+    return new hypertune.SourceNode(newProps);
+  }, [hypertuneSource, stateHash]);
+
   const setOverride = React.useCallback(
     (newOverride: sdk.DeepPartial<hypertune.Source> | null) => {
       setOverrideCookie(newOverride);
@@ -98,8 +106,8 @@ export function HypertuneSourceProvider({
   );
 
   const value = React.useMemo(
-    () => ({ hypertuneSource, setOverride, stateHash }),
-    [hypertuneSource, setOverride, stateHash]
+    () => ({ hypertuneSource: hypertuneSourceForStateHash, setOverride }),
+    [hypertuneSourceForStateHash, setOverride]
   );
 
   return (

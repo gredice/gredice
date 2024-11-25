@@ -3,10 +3,12 @@ import { Card, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitiv
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { Table } from "@signalco/ui-primitives/Table";
 import { SelectUserRole } from "./SelectUserRole";
+import { auth } from "../../../lib/auth/auth";
 
 export const dynamic = 'force-dynamic';
 
 export default async function UsersPage() {
+    await auth(['admin']);
     const users = await getUsers();
 
     return (

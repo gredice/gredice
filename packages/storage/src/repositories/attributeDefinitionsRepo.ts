@@ -1,3 +1,4 @@
+import 'server-only';
 import { and, eq } from 'drizzle-orm';
 import { attributeDefinitionCategories, attributeDefinitions, ExtendedAttributeDefinition, InsertAttributeDefinition, InsertAttributeDefinitionCategory, SelectAttributeDefinitionCategory, storage, UpdateAttributeDefinition, UpdateAttributeDefinitionCategory } from "..";
 

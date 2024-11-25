@@ -1,3 +1,4 @@
+import 'server-only';
 import { and, eq } from "drizzle-orm";
 import { storage } from "..";
 import { gardens, InsertGarden, UpdateGarden } from "../schema/gardenSchema";

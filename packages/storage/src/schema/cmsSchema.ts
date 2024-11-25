@@ -1,3 +1,4 @@
+import 'server-only';
 import { desc, relations } from 'drizzle-orm';
 import { integer, pgTable, serial, text, timestamp, boolean } from 'drizzle-orm/pg-core';
 
