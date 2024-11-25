@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminLayout({ children }: PropsWithChildren) {
     const entityTypes = await getEntityTypes();
+    const authAdmin = auth.bind(null, ['admin']);
 
     return (
         <AuthAppProvider>
@@ -27,7 +28,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                         </Row>
                     )} />
                 <main className="pt-16 relative grow">
-                    <AuthProtectedSection auth={auth}>
+                    <AuthProtectedSection auth={authAdmin}>
                         <SplitView>
                             <MenuList entityTypes={entityTypes} />
                             <div className="bg-secondary min-h-full">
@@ -37,7 +38,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                             </div>
                         </SplitView>
                     </AuthProtectedSection>
-                    <SignedOut auth={auth}>
+                    <SignedOut auth={authAdmin}>
                         <LoginDialog />
                     </SignedOut>
                 </main>
