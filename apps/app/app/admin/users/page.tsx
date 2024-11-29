@@ -4,6 +4,7 @@ import { Chip } from "@signalco/ui-primitives/Chip";
 import { Table } from "@signalco/ui-primitives/Table";
 import { SelectUserRole } from "./SelectUserRole";
 import { auth } from "../../../lib/auth/auth";
+import { ButtonImpersonateUser } from "./ButtonImpersonateUser";
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,7 @@ export default async function UsersPage() {
                                 <Table.Head>Korisnicko ime</Table.Head>
                                 <Table.Head>Uloga</Table.Head>
                                 <Table.Head>Datum kreiranja</Table.Head>
+                                <Table.Head></Table.Head>
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
@@ -37,6 +39,9 @@ export default async function UsersPage() {
                                         <SelectUserRole user={user} />
                                     </Table.Cell>
                                     <Table.Cell title={user.createdAt.toISOString()}>{user.createdAt.toLocaleDateString()}</Table.Cell>
+                                    <Table.Cell>
+                                        <ButtonImpersonateUser userId={user.id} />
+                                    </Table.Cell>
                                 </Table.Row>
                             ))}
                         </Table.Body>
