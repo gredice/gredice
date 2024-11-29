@@ -1,4 +1,3 @@
-import 'server-only';
 // Event Sourcing
 // References:
 //   - https://github.com/eugene-khyst/postgresql-event-sourcing
