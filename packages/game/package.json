@@ -37,7 +37,7 @@
     "tweakpane": "3.1.10",
     "tailwindcss": "3.4.14",
     "tailwindcss-animate": "1.0.7",
-    "typescript": "5.6.3",
+    "typescript": "5.7.2",
     "use-tweaks": "0.3.2-alpha.0",
     "zustand": "5.0.1"
   },
