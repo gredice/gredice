@@ -19,7 +19,7 @@
     "react": "19.0.0-rc-603e6108-20241029",
     "react-dom": "19.0.0-rc-603e6108-20241029",
     "server-only": "0.0.1",
-    "@scalar/nextjs-api-reference": "0.4.101"
+    "@scalar/nextjs-api-reference": "0.4.103"
   },
   "devDependencies": {
     "@gredice/apidocs": "workspace:*",
