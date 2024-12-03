@@ -1,9 +1,9 @@
 'use client';
 
-import { Button } from "@signalco/ui-primitives/Button";
+import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Ghost } from "lucide-react";
 
-export function ButtonImpersonateUser({ userId }: { userId: string }) {
+export function ButtonImpersonateUser({ userId, hideText }: { userId: string, hideText?: boolean }) {
     const handleImpersonate = async () => {
         const response = await fetch(`/api/users/${userId}/impersonate`, { method: 'POST' });
         if (response.status === 201) {
@@ -15,12 +15,11 @@ export function ButtonImpersonateUser({ userId }: { userId: string }) {
     }
 
     return (
-        <Button
-            size="sm"
+        <IconButton
             variant="outlined"
             onClick={handleImpersonate}
-            startDecorator={<Ghost className="size-5" />}>
-            Impersonate
-        </Button>
+            title="Prijavi se kao korisnik">
+            <Ghost className="size-5" />
+        </IconButton>
     )
 }

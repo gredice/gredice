@@ -8,4 +8,7 @@ export const KnownPages = {
     DirectoryEntity: (entityTypeName: string, entityId: number) => `/admin/directories/${entityTypeName}/${entityId}`,
     DirectoryEntityPath: '/admin/directories/[entityType]/[entityId]',
     Users: '/admin/users',
+    User: (userId: string) => `/admin/users/${userId}`,
+    Accounts: '/admin/accounts',
+    Account: (accountId: string) => `/admin/accounts/${accountId}`,
 }

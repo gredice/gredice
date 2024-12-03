@@ -1,4 +1,4 @@
 export * from './cmsSchema';
 export * from './usersSchema';
 export * from './gardenSchema';
-export * from './events';
+// export * from './events';

@@ -5,7 +5,7 @@ import { ListItem } from "@signalco/ui-primitives/ListItem";
 import Link from "next/link";
 import { EntityTypesList } from "./EntityTypesList";
 import { getEntityTypes } from "@gredice/storage";
-import { Home } from "lucide-react";
+import { Home, Landmark } from "lucide-react";
 import { KnownPages } from "../../src/KnownPages";
 import { usePathname } from "next/navigation";
 import { User } from "@signalco/ui-icons";
@@ -30,6 +30,14 @@ export function MenuList({ entityTypes }: { entityTypes: Awaited<ReturnType<type
                     onSelected={() => { }}
                     label="Korisnici"
                     startDecorator={<User className="size-5" />} />
+            </Link>
+            <Link href={KnownPages.Accounts} passHref legacyBehavior>
+                <ListItem
+                    nodeId="accounts"
+                    selected={pathname === KnownPages.Accounts}
+                    onSelected={() => { }}
+                    label="Računi"
+                    startDecorator={<Landmark className="size-5" />} />
             </Link>
         </List>
     );
