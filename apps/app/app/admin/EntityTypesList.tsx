@@ -20,6 +20,8 @@ export function EntityTypesList({ entityTypes }: EntityTypesListProps) {
         <>
             <ListTreeItem
                 label="Zapisi"
+                side="end"
+                disablePadding
                 startDecorator={<FileText className="size-5" />}
                 defaultOpen={isDirectoriesSelected}>
                 {entityTypes.map(entityType => (

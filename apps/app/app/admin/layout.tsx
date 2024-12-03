@@ -19,24 +19,22 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 
     return (
         <AuthAppProvider>
-            <div className="grow flex">
-                <PageNav
-                    logo={(
-                        <Row alignItems="end" spacing={1} className="relative">
-                            <Image src="/Logotype - gredice@2x.svg" width={140} height={38} alt="Gredice" quality={100} priority />
-                            <Typography level="body1" semiBold component="span" className="text-[#2e6f40] absolute right-0 -bottom-3 pb-[1px]">Admin</Typography>
-                        </Row>
-                    )} />
-                <main className="pt-16 relative grow">
+            <div className="grow bg-secondary">
+                <div className="h-12 px-4 flex items-center">
+                    <Image src="/Logotype - gredice@2x.svg" width={140} height={38} alt="Gredice" quality={100} priority />
+                </div>
+                <main className="relative">
                     <AuthProtectedSection auth={authAdmin}>
-                        <SplitView>
-                            <MenuList entityTypes={entityTypes} />
-                            <div className="bg-secondary min-h-full">
+                        <div className="flex flex-row">
+                            <div className="p-4 min-w-64">
+                                <MenuList entityTypes={entityTypes} />
+                            </div>
+                            <div className="min-h-full grow py-4 px-2">
                                 <Suspense>
                                     {children}
                                 </Suspense>
                             </div>
-                        </SplitView>
+                        </div>
                     </AuthProtectedSection>
                     <SignedOut auth={authAdmin}>
                         <LoginDialog />

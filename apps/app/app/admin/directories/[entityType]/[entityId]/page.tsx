@@ -1,14 +1,13 @@
 import { getAttributeDefinitionCategories, getAttributeDefinitions, getEntityRaw } from '@gredice/storage';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { AttributeCategoryDetails } from './AttributeCategoryDetails';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@signalco/ui-primitives/Tabs';
 import { Delete } from '@signalco/ui-icons';
 import { ServerActionIconButton } from '../../../../../components/shared/ServerActionIconButton';
 import { handleEntityDelete } from '../../../../(actions)/entityActions';
 import { notFound } from 'next/navigation';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { EntityStateSelect } from './EntityStateSelect';
 import { Row } from '@signalco/ui-primitives/Row';
+import { Card, CardContent, CardHeader, CardTitle } from '@signalco/ui-primitives/Card';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,14 +22,14 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
         notFound();
     }
 
-    const name = entity.attributes.find(pa => pa.attributeDefinition.category === 'information' && pa.attributeDefinition.name === 'name')?.value ?? 'Nepoznato';
+    const name = entity.attributes.find(pa => pa.attributeDefinition.category === 'information' && pa.attributeDefinition.name === 'name')?.value ?? `${entity.entityType.label} ${entity.id}`;
     const entityDeleteBound = handleEntityDelete.bind(null, params.entityType, parseInt(params.entityId));
 
     return (
-        <div>
-            <Tabs defaultValue={attributeCategories.at(0)?.name}> 
-                <div className='flex justify-between items-center'>
-                    <Typography level='h5'>{name}</Typography>
+        <Tabs defaultValue={attributeCategories.at(0)?.name}>
+            <Card>
+                <CardHeader className='flex flex-row justify-between items-center'>
+                    <CardTitle>{name}</CardTitle>
                     <TabsList>
                         {attributeCategories.map((category) => (
                             <TabsTrigger key={category.name} value={category.name}>
@@ -46,7 +45,8 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
                             <Delete />
                         </ServerActionIconButton>
                     </Row>
-                </div>
+                </CardHeader>
+                <CardContent>
                 {attributeCategories.map((category) => (
                     <TabsContent value={category.name} key={category.name}>
                         <AttributeCategoryDetails
@@ -56,7 +56,8 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
                         />
                     </TabsContent>
                 ))}
-            </Tabs>
-        </div>
+                </CardContent>
+            </Card>
+        </Tabs>
     );
 }

@@ -8,6 +8,7 @@ import { ServerActionButton } from '../../../../../components/shared/ServerActio
 import { KnownPages } from '../../../../../src/KnownPages';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { EntityAttributeProgress } from './EntityAttributeProgress';
+import { Row } from '@signalco/ui-primitives/Row';
 
 export async function EntitiesTable({ entityTypeName }: { entityTypeName: string }) {
     const entities = await getEntitiesRaw(entityTypeName);
@@ -18,7 +19,6 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
             <Table.Header>
                 <Table.Row>
                     <Table.Head>Naziv</Table.Head>
-                    <Table.Head>Podaci</Table.Head>
                     <Table.Head>Status</Table.Head>
                 </Table.Row>
             </Table.Header>
@@ -32,14 +32,14 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                                 </Link>
                             </Table.Cell>
                             <Table.Cell>
-                                <Link href={KnownPages.DirectoryEntity(entityTypeName, entity.id)}>
-                                    <EntityAttributeProgress entityTypeName={entityTypeName} entity={entity} />
-                                </Link>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Chip color={entity.state === 'draft' ? 'neutral' : 'success'} className='w-fit'>
-                                    {entity.state === 'draft' ? 'U izradi' : 'Objavljeno'}
-                                </Chip>
+                                <Row spacing={1}>
+                                    <div className='w-14'>
+                                        <EntityAttributeProgress entityTypeName={entityTypeName} entity={entity} />
+                                    </div>
+                                    <Chip color={entity.state === 'draft' ? 'neutral' : 'success'}>
+                                        {entity.state === 'draft' ? 'U izradi' : 'Objavljeno'}
+                                    </Chip>
+                                </Row>
                             </Table.Cell>
                         </Table.Row>
                     );
