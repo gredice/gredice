@@ -24,7 +24,7 @@
   "devDependencies": {
     "@gredice/apidocs": "workspace:*",
     "@gredice/storage": "workspace:*",
-    "@mdxeditor/editor": "3.14.0",
+    "@mdxeditor/editor": "3.19.3",
     "@playwright/experimental-ct-react": "1.48.2",
     "@playwright/test": "1.48.2",
     "@signalco/auth-client": "0.3.0",
