@@ -25,8 +25,8 @@ importers:
         specifier: 0.4.101
         version: 0.4.101(next@15.0.2(@babel/core@7.26.0)(@playwright/test@1.48.2)(babel-plugin-react-compiler@19.0.0-beta-9ee70a1-20241017)(react-dom@19.0.0-rc-603e6108-20241029(react@19.0.0-rc-603e6108-20241029))(react@19.0.0-rc-603e6108-20241029))(react@19.0.0-rc-603e6108-20241029)
       hypertune:
-        specifier: 2.5.6
-        version: 2.5.6
+        specifier: 2.5.7
+        version: 2.5.7
       next:
         specifier: 15.0.2
         version: 15.0.2(@babel/core@7.26.0)(@playwright/test@1.48.2)(babel-plugin-react-compiler@19.0.0-beta-9ee70a1-20241017)(react-dom@19.0.0-rc-603e6108-20241029(react@19.0.0-rc-603e6108-20241029))(react@19.0.0-rc-603e6108-20241029)
@@ -119,8 +119,8 @@ importers:
   apps/farm:
     dependencies:
       hypertune:
-        specifier: 2.5.6
-        version: 2.5.6
+        specifier: 2.5.7
+        version: 2.5.7
       next:
         specifier: 15.0.2
         version: 15.0.2(@playwright/test@1.48.2)(babel-plugin-react-compiler@19.0.0-beta-9ee70a1-20241017)(react-dom@19.0.0-rc-603e6108-20241029(react@19.0.0-rc-603e6108-20241029))(react@19.0.0-rc-603e6108-20241029)
@@ -210,8 +210,8 @@ importers:
   apps/garden:
     dependencies:
       hypertune:
-        specifier: 2.5.6
-        version: 2.5.6
+        specifier: 2.5.7
+        version: 2.5.7
       next:
         specifier: 15.0.2
         version: 15.0.2(@playwright/test@1.48.2)(babel-plugin-react-compiler@19.0.0-beta-9ee70a1-20241017)(react-dom@19.0.0-rc-603e6108-20241029(react@19.0.0-rc-603e6108-20241029))(react@19.0.0-rc-603e6108-20241029)
@@ -307,8 +307,8 @@ importers:
         specifier: 0.10.0
         version: 0.10.0
       hypertune:
-        specifier: 2.5.6
-        version: 2.5.6
+        specifier: 2.5.7
+        version: 2.5.7
       next:
         specifier: 15.0.2
         version: 15.0.2(@playwright/test@1.48.2)(babel-plugin-react-compiler@19.0.0-beta-9ee70a1-20241017)(react-dom@19.0.0-rc-603e6108-20241029(react@19.0.0-rc-603e6108-20241029))(react@19.0.0-rc-603e6108-20241029)
@@ -4154,8 +4154,8 @@ packages:
     resolution: {integrity: sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==}
     engines: {node: '>=10.17.0'}
 
-  hypertune@2.5.6:
-    resolution: {integrity: sha512-xs1hsi+Jex2ydOXwCyqrhNGan7+/A/oZDUhStz2y+vDRGWYy+kXW1nKSbL2K54WClRNSzl/q7L2fYG1w7MjTww==}
+  hypertune@2.5.7:
+    resolution: {integrity: sha512-ynCrXgIbjvppfuXAnR4wzLqJJXGYP8YzhtuWcUf8/LfNbl1h3UoBNsFRR8jUnl81Rk6hnUPzFsWG0KdritFr4g==}
     hasBin: true
 
   ieee754@1.2.1:
@@ -10384,7 +10384,7 @@ snapshots:
   human-signals@2.1.0:
     optional: true
 
-  hypertune@2.5.6:
+  hypertune@2.5.7:
     dependencies:
       cac: 6.7.14
       core-js: 3.38.1
