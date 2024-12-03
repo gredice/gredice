@@ -12,4 +12,5 @@ export * from './repositories/entityTypesRepo';
 export * from './repositories/attributeValuesRepo';
 export * from './repositories/attributeDefinitionsRepo';
 export * from './repositories/usersRepo';
+export * from './repositories/accountsRepo';
 export * from './repositories/gardensRepo';

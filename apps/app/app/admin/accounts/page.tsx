@@ -1,25 +1,23 @@
-import { getUsers } from "@gredice/storage";
+import { getAccounts, getUsers } from "@gredice/storage";
 import { Card, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { Table } from "@signalco/ui-primitives/Table";
-import { SelectUserRole } from "./SelectUserRole";
 import { auth } from "../../../lib/auth/auth";
-import { ButtonImpersonateUser } from "./ButtonImpersonateUser";
-import Link from "next/link";
 import { KnownPages } from "../../../src/KnownPages";
+import Link from "next/link";
 
 export const dynamic = 'force-dynamic';
 
-export default async function UsersPage() {
+export default async function AccountsPage() {
     await auth(['admin']);
-    const users = await getUsers();
+    const accounts = await getAccounts();
 
     return (
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                    {"Korisnici"}
-                    <Chip color="primary" size="sm">{users.length}</Chip>
+                    {"Računi"}
+                    <Chip color="primary" size="sm">{accounts.length}</Chip>
                 </CardTitle>
             </CardHeader>
             <CardOverflow>
@@ -27,26 +25,18 @@ export default async function UsersPage() {
                     <Table.Header>
                         <Table.Row>
                             <Table.Head>Korisnicko ime</Table.Head>
-                            <Table.Head>Uloga</Table.Head>
                             <Table.Head>Datum kreiranja</Table.Head>
-                            <Table.Head></Table.Head>
                         </Table.Row>
                     </Table.Header>
                     <Table.Body>
-                        {users.map(user => (
-                            <Table.Row key={user.id}>
+                        {accounts.map(account => (
+                            <Table.Row key={account.id}>
                                 <Table.Cell>
-                                    <Link href={KnownPages.User(user.id)}>
-                                        {user.userName}
+                                    <Link href={KnownPages.Account(account.id)}>
+                                        -
                                     </Link>
                                 </Table.Cell>
-                                <Table.Cell title={user.role}>
-                                    <SelectUserRole user={user} />
-                                </Table.Cell>
-                                <Table.Cell title={user.createdAt.toISOString()}>{user.createdAt.toLocaleDateString()}</Table.Cell>
-                                <Table.Cell>
-                                    <ButtonImpersonateUser userId={user.id} hideText />
-                                </Table.Cell>
+                                <Table.Cell title={account.createdAt.toISOString()}>{account.createdAt.toLocaleDateString()}</Table.Cell>
                             </Table.Row>
                         ))}
                     </Table.Body>
