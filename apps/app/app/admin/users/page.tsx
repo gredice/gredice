@@ -13,41 +13,39 @@ export default async function UsersPage() {
     const users = await getUsers();
 
     return (
-        <div className="p-4">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        {"Korisnici"}
-                        <Chip color="primary">{users.length}</Chip>
-                    </CardTitle>
-                </CardHeader>
-                <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Korisnicko ime</Table.Head>
-                                <Table.Head>Uloga</Table.Head>
-                                <Table.Head>Datum kreiranja</Table.Head>
-                                <Table.Head></Table.Head>
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    {"Korisnici"}
+                    <Chip color="primary" size="sm">{users.length}</Chip>
+                </CardTitle>
+            </CardHeader>
+            <CardOverflow>
+                <Table>
+                    <Table.Header>
+                        <Table.Row>
+                            <Table.Head>Korisnicko ime</Table.Head>
+                            <Table.Head>Uloga</Table.Head>
+                            <Table.Head>Datum kreiranja</Table.Head>
+                            <Table.Head></Table.Head>
+                        </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                        {users.map(user => (
+                            <Table.Row key={user.id}>
+                                <Table.Cell>{user.userName}</Table.Cell>
+                                <Table.Cell title={user.role}>
+                                    <SelectUserRole user={user} />
+                                </Table.Cell>
+                                <Table.Cell title={user.createdAt.toISOString()}>{user.createdAt.toLocaleDateString()}</Table.Cell>
+                                <Table.Cell>
+                                    <ButtonImpersonateUser userId={user.id} />
+                                </Table.Cell>
                             </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {users.map(user => (
-                                <Table.Row key={user.id}>
-                                    <Table.Cell>{user.userName}</Table.Cell>
-                                    <Table.Cell title={user.role}>
-                                        <SelectUserRole user={user} />
-                                    </Table.Cell>
-                                    <Table.Cell title={user.createdAt.toISOString()}>{user.createdAt.toLocaleDateString()}</Table.Cell>
-                                    <Table.Cell>
-                                        <ButtonImpersonateUser userId={user.id} />
-                                    </Table.Cell>
-                                </Table.Row>
-                            ))}
-                        </Table.Body>
-                    </Table>
-                </CardOverflow>
-            </Card>
-        </div>
-    )
+                        ))}
+                    </Table.Body>
+                </Table>
+            </CardOverflow>
+        </Card>
+    );
 }

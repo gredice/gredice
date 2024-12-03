@@ -1,6 +1,7 @@
 import { SelectAttributeDefinition, SelectAttributeDefinitionCategory, SelectAttributeValue } from '@gredice/storage';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { AttributeCategoryDefinitionItem } from './AttributeCategoryDefinitionItem';
+import { NoDataPlaceholder } from '../../../../../components/shared/placeholders/NoDataPlaceholder';
 
 export type AttributeTabsProps = {
     entity: { id: number, entityTypeName: string, attributes: SelectAttributeValue[] },
@@ -12,6 +13,11 @@ export function AttributeCategoryDetails({ entity, category, attributeDefinition
     const categoryAttributes = attributeDefinitions.filter(a => a.category === category.name);
     return (
         <Stack spacing={2}>
+            {categoryAttributes.length === 0 && (
+                <div className='pt-12 pb-8'>
+                    <NoDataPlaceholder>Nema definiranih atributa u kategoriji {category.label}.</NoDataPlaceholder>
+                </div>
+            )}
             {categoryAttributes.map(attributeDefinition => {
                 return (
                     <AttributeCategoryDefinitionItem

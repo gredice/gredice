@@ -1,5 +1,7 @@
 import { getAttributeDefinitions, getEntitiesRaw } from '@gredice/storage';
+import { Stack } from '@signalco/ui-primitives/Stack';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@signalco/ui-primitives/Tooltip';
+import { Typography } from '@signalco/ui-primitives/Typography';
 import { cx } from '@signalco/ui-primitives/cx'
 import { cache } from 'react';
 
@@ -15,19 +17,28 @@ export async function EntityAttributeProgress({ entityTypeName, entity }: { enti
 
     return (
         <Tooltip delayDuration={250}>
-            <TooltipTrigger>
-                <div className='py-2 px-1'>
-                    <div className='h-1 bg-gray-200 rounded-full overflow-hidden w-14'>
-                        <div
-                            className={cx('h-full', progress <= 99.99 ? 'bg-red-400' : 'bg-green-500')}
-                            style={{ width: `${progress}%` }} />
-                    </div>
+            <TooltipTrigger asChild>
+                <div className='h-1 bg-primary/10 rounded-full overflow-hidden'>
+                    <div
+                        className={cx('h-full', progress <= 99.99 ? 'bg-red-400' : 'bg-green-500')}
+                        style={{ width: `${progress}%` }} />
                 </div>
             </TooltipTrigger>
-            <TooltipContent>
+            <TooltipContent className='min-w-60'>
                 {notPopulatedRequiredAttributes.length === 0
-                    ? 'Svi obavezni atributi su ispunjeni'
-                    : `Manjak obaveznih atributa: ${notPopulatedRequiredAttributes.map(a => a.label).join(', ')}`}
+                    && 'Svi obavezni atributi su ispunjeni'}
+                {notPopulatedRequiredAttributes.length > 0 && (
+                    <Stack spacing={1}>
+                        <Typography semiBold>Manjak obaveznih atributa:</Typography>
+                        <Stack>
+                            {notPopulatedRequiredAttributes.slice(0, 5).map(a => (
+                                <Typography key={a.id}>{a.label}</Typography>
+                            ))}
+                            {notPopulatedRequiredAttributes.length > 5
+                                && <Typography secondary>i {notPopulatedRequiredAttributes.length - 5} drugih...</Typography>}
+                        </Stack>
+                    </Stack>
+                )}
             </TooltipContent>
         </Tooltip>
     );

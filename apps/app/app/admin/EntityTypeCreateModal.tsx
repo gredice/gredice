@@ -14,6 +14,7 @@ export function EntityTypeCreateModal() {
                 <ListItem
                     label="Dodaj novi tip zapisa"
                     startDecorator={<Add className="size-5" />}
+                    className="ml-8"
                 />
             )}>
             <Stack spacing={2}>

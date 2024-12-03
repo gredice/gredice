@@ -42,11 +42,9 @@ export default async function PlantsLayout(
                 </CardOverflow>
             </Card>
             <Suspense>
-                <Card className='col-span-2 h-fit'>
-                    <CardContent className="pt-6">
-                        {children}
-                    </CardContent>
-                </Card>
+                <div className='col-span-2 h-fit'>
+                    {children}
+                </div>
             </Suspense>
         </div>
     );
