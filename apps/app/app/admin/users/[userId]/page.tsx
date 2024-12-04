@@ -10,9 +10,13 @@ import Link from "next/link";
 import { SelectUserRole } from "../SelectUserRole";
 import { Row } from "@signalco/ui-primitives/Row";
 import { ButtonImpersonateUser } from "../ButtonImpersonateUser";
+import { Disabled, Warning } from "@signalco/ui-icons";
+import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
+import { auth } from "../../../../lib/auth/auth";
 
 export default async function UserPage({ params }: { params: Promise<{ userId: string; }> }) {
     const { userId } = await params;
+    await auth(['admin']);
     const user = await getUser(userId);
     if (!user) {
         return notFound();
@@ -22,7 +26,6 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
 
     const {
         id,
-        role,
         createdAt,
         updatedAt,
         userName,
@@ -96,6 +99,15 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                                 </Table.Row>
                             </Table.Header>
                             <Table.Body>
+                                {accounts.length === 0 && (
+                                    <Table.Row>
+                                        <Table.Cell colSpan={3}>
+                                            <NoDataPlaceholder>
+                                                Nema povezanih računa
+                                            </NoDataPlaceholder>
+                                        </Table.Cell>
+                                    </Table.Row>
+                                )}
                                 {accounts.map(account => (
                                     <Table.Row key={account.id}>
                                         <Table.Cell>
@@ -126,17 +138,50 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                             <Table.Header>
                                 <Table.Row>
                                     <Table.Head>Vrsta</Table.Head>
+                                    <Table.Head>Blokiran</Table.Head>
                                     <Table.Head>Datum kreiranja</Table.Head>
                                     <Table.Head>Datum ažuriranja</Table.Head>
                                 </Table.Row>
                             </Table.Header>
                             <Table.Body>
+                                {logins?.usersLogins.length === 0 && (
+                                    <Table.Row>
+                                        <Table.Cell colSpan={3}>
+                                            <NoDataPlaceholder>
+                                                Nema načina prijave
+                                            </NoDataPlaceholder>
+                                        </Table.Cell>
+                                    </Table.Row>
+                                )}
                                 {logins?.usersLogins.map(userLogin => (
                                     <Table.Row key={user.id}>
                                         <Table.Cell>
                                             <Link href={KnownPages.User(user.id)}>
                                                 {userLogin.loginType}
                                             </Link>
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            {userLogin.blockedUntil
+                                                ? (
+                                                    <Row spacing={1}>
+                                                        <Disabled className="text-red-500" />
+                                                        <Typography>
+                                                            {'Blokiran do ' + userLogin.blockedUntil.toLocaleString('hr-HR')}
+                                                        </Typography>
+                                                    </Row>
+                                                ) : userLogin.failedAttempts > 0 ? (
+                                                    <Row spacing={1}>
+                                                        <Warning className="text-amber-500" />
+                                                        <Stack>
+                                                            <Typography>
+                                                                {userLogin.failedAttempts + ' neuspjelih pokušaja'}
+                                                            </Typography>
+                                                            <Typography>
+                                                                {'Zadnji ' + userLogin.lastFailedAttempt?.toLocaleString('hr-HR')}
+                                                            </Typography>
+                                                        </Stack>
+                                                    </Row>
+                                                ) : 'Ne'}
                                         </Table.Cell>
                                         <Table.Cell>
                                             {userLogin.createdAt.toLocaleString('hr-HR')}

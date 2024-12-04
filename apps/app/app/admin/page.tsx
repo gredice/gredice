@@ -6,6 +6,7 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { PropsWithChildren } from "react";
 import { KnownPages } from "../../src/KnownPages";
+import { auth } from "../../lib/auth/auth";
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,7 @@ function DashboardDivider({ children }: PropsWithChildren) {
 }
 
 export default async function AdminPage() {
+    await auth(['admin']);
     const entityTypes = await getEntityTypes();
     const entitiesCounts = await Promise.all(entityTypes.map(async entityType => {
         const entities = await getEntitiesRaw(entityType.name);

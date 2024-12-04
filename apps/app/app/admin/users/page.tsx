@@ -7,6 +7,7 @@ import { auth } from "../../../lib/auth/auth";
 import { ButtonImpersonateUser } from "./ButtonImpersonateUser";
 import Link from "next/link";
 import { KnownPages } from "../../../src/KnownPages";
+import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,15 @@ export default async function UsersPage() {
                         </Table.Row>
                     </Table.Header>
                     <Table.Body>
+                        {users.length === 0 && (
+                            <Table.Row>
+                                <Table.Cell colSpan={3}>
+                                    <NoDataPlaceholder>
+                                        Nema korisnika
+                                    </NoDataPlaceholder>
+                                </Table.Cell>
+                            </Table.Row>
+                        )}
                         {users.map(user => (
                             <Table.Row key={user.id}>
                                 <Table.Cell>

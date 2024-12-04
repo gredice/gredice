@@ -6,11 +6,13 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import Link from "next/link";
 import { KnownPages } from "../../../../src/KnownPages";
 import { Table } from "@signalco/ui-primitives/Table";
+import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
+import { auth } from "../../../../lib/auth/auth";
 
 export default async function AccountPage({ params }: { params: Promise<{ accountId: string; }> }) {
     const { accountId } = await params;
+    await auth(['admin']);
     const users = await getAccountUsers(accountId);
-
 
     return (
         <Stack spacing={2}>
@@ -49,6 +51,15 @@ export default async function AccountPage({ params }: { params: Promise<{ accoun
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
+                            {users.length === 0 && (
+                                <Table.Row>
+                                    <Table.Cell colSpan={3}>
+                                        <NoDataPlaceholder>
+                                            Nema povezanih korisnika
+                                        </NoDataPlaceholder>
+                                    </Table.Cell>
+                                </Table.Row>
+                            )}
                             {users.map(user => (
                                 <Table.Row key={user.id}>
                                     <Table.Cell>

@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, smallint, text, timestamp } from "drizzle-orm/pg-core";
 
 export const accounts = pgTable('accounts', {
     id: text('id').primaryKey(),
@@ -54,6 +54,9 @@ export const userLogins = pgTable('user_logins', {
     loginType: text('login_type').notNull(),
     loginId: text('login_id').notNull(),
     loginData: text('login_data').notNull(),
+    failedAttempts: smallint('failed_attempts').notNull().default(0),
+    lastFailedAttempt: timestamp('last_failed_attempt'),
+    blockedUntil: timestamp('blocked_until'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
 });

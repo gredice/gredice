@@ -5,6 +5,7 @@ import { Table } from "@signalco/ui-primitives/Table";
 import { auth } from "../../../lib/auth/auth";
 import { KnownPages } from "../../../src/KnownPages";
 import Link from "next/link";
+import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,15 @@ export default async function AccountsPage() {
                         </Table.Row>
                     </Table.Header>
                     <Table.Body>
+                        {accounts.length === 0 && (
+                            <Table.Row>
+                                <Table.Cell colSpan={3}>
+                                    <NoDataPlaceholder>
+                                        Nema računa
+                                    </NoDataPlaceholder>
+                                </Table.Cell>
+                            </Table.Row>
+                        )}
                         {accounts.map(account => (
                             <Table.Row key={account.id}>
                                 <Table.Cell>
