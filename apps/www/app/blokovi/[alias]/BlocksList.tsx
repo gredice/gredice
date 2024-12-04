@@ -3,7 +3,6 @@
 import { List } from "@signalco/ui-primitives/List";
 import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { KnownPages } from "../../../src/KnownPages";
-import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { orderBy } from "@signalco/js";

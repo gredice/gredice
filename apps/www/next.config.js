@@ -1,5 +1,6 @@
 import { withAxiom } from 'next-axiom';
 
+/** @type {import('next').NextConfig} */
 const nextConfig = {
     eslint: {
         ignoreDuringBuilds: true,
@@ -9,6 +10,16 @@ const nextConfig = {
     },
     experimental: {
         reactCompiler: true,
+    },
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'www.gredice.com',
+                port: '',
+                pathname: '/assets/**',
+            },
+        ]
     }
 };
 

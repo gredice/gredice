@@ -19,7 +19,7 @@ const calendarActivityTypes = {
     },
     harvest: {
         name: 'Branje',
-        color: 'bg-green-400'
+        color: 'bg-lime-400'
     }
 } as const;
 
