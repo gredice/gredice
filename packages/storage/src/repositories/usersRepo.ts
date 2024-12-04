@@ -1,5 +1,5 @@
 import 'server-only';
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { storage } from "..";
 import { accounts, accountUsers, userLogins, users } from "../schema";
 import { randomUUID } from 'node:crypto';
@@ -83,4 +83,25 @@ export async function createUserWithPassword(userName: string, passwordHash: str
 
 export async function updateUserRole(userId: string, newRole: string) {
     await storage.update(users).set({ role: newRole }).where(eq(users.id, userId));
+}
+
+export async function incLoginFailedAttempts(loginId: number) {
+    await storage.update(userLogins).set({
+        failedAttempts: sql`${userLogins.failedAttempts} + 1`,
+        lastFailedAttempt: new Date()
+    }).where(eq(userLogins.id, loginId));
+}
+
+export async function blockLogin(loginId: number, blockedUntil: Date) {
+    await storage.update(userLogins).set({
+        blockedUntil
+    }).where(eq(userLogins.id, loginId));
+}
+
+export async function clearLoginFailedAttempts(loginId: number) {
+    await storage.update(userLogins).set({
+        failedAttempts: 0,
+        lastFailedAttempt: null,
+        blockedUntil: null
+    }).where(eq(userLogins.id, loginId));
 }
