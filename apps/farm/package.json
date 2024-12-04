@@ -16,8 +16,8 @@
   "dependencies": {
     "hypertune": "2.5.7",
     "next": "15.0.3",
-    "react": "19.0.0-rc-603e6108-20241029",
-    "react-dom": "19.0.0-rc-603e6108-20241029",
+    "react": "19.0.0-rc-66855b96-20241106",
+    "react-dom": "19.0.0-rc-66855b96-20241106",
     "server-only": "0.0.1"
   },
   "devDependencies": {
@@ -27,11 +27,11 @@
     "@playwright/test": "1.49.0",
     "@signalco/auth-client": "0.3.0",
     "@signalco/auth-server": "0.4.0",
-    "@signalco/hooks": "0.2.0",
+    "@signalco/hooks": "0.2.1",
     "@signalco/js": "0.1.0",
-    "@signalco/ui": "0.2.1",
+    "@signalco/ui": "0.2.4",
     "@signalco/ui-icons": "0.2.0",
-    "@signalco/ui-primitives": "0.2.2",
+    "@signalco/ui-primitives": "0.3.0",
     "@signalco/ui-themes-minimal-app": "0.1.3",
     "@tailwindcss/typography": "0.5.15",
     "@tanstack/react-query": "5.62.2",
@@ -39,11 +39,11 @@
     "@types/react": "npm:types-react@19.0.0-rc.1",
     "@types/react-dom": "npm:types-react-dom@19.0.0-rc.1",
     "@vercel/analytics": "1.4.1",
-    "babel-plugin-react-compiler": "19.0.0-beta-9ee70a1-20241017",
-    "lucide-react": "0.454.0",
-    "next-axiom": "1.5.1",
+    "babel-plugin-react-compiler": "19.0.0-beta-df7b47d-20241124",
+    "lucide-react": "0.465.0",
+    "next-axiom": "1.6.0",
     "postcss": "8.4.49",
-    "tailwindcss": "3.4.15",
+    "tailwindcss": "3.4.16",
     "typescript": "5.7.2"
   }
 }

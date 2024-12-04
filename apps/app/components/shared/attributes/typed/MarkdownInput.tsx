@@ -12,7 +12,7 @@ export function MarkdownInput({ value, onChange }: AttributeInputProps) {
             <MDXEditor
                 placeholder="Nema informacija..."
                 className="[&_.mdxeditor-toolbar]:bg-background [&_.mdxeditor-toolbar]:text-muted-foreground"
-                contentEditableClassName="prose prose-sm max-w-none"
+                contentEditableClassName="prose prose-p:my-2 prose-sm max-w-none"
                 plugins={[
                     headingsPlugin(),
                     listsPlugin(),

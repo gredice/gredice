@@ -6,7 +6,7 @@ import { cx } from "@signalco/ui-primitives/cx";
 
 export function PageHeader({ children, padded, visual, header, alternativeName, subHeader, headerChildren }: PropsWithChildren<{ visual?: ReactNode, header: string, alternativeName?: string | null, subHeader?: string | null, headerChildren?: ReactNode, padded?: boolean }>) {
     return (
-        <div className={cx("flex flex-col md:flex-row gap-4 justify-between", padded && "py-12 md:py-24")}>
+        <div className={cx("grid grid-cols-1 md:grid-cols-2 gap-4 justify-between", padded && "py-12 md:py-24")}>
             <div className="flex flex-col md:flex-row gap-4">
                 {visual && (
                     <Card className="min-w-48 min-h-48 size-48">
