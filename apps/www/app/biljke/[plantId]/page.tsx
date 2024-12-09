@@ -59,7 +59,7 @@ function InformationSection({ header, content, instructions }: { header: string,
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
-            <Typography level="h4" className="col-span-2">{header}</Typography>
+            <Typography level="h4" className="md:col-span-2">{header}</Typography>
             <Markdown className="prose prose-p:my-2 max-w-none">{content}</Markdown>
             <Stack className={cx("border rounded-lg p-2 h-fit", !instructions?.length && 'justify-center')}>
                 {(instructions?.length ?? 0) <= 0 && (
@@ -241,13 +241,13 @@ function PlantingInstructions({ instructions }: { instructions?: PlantInstructio
     return (
             <div className="space-y-4">
                 {instructions?.map((instruction) => (
-                    <div key={instruction.id} className="flex items-center group">
-                        <div className="w-16 text-center font-semibold text-muted-foreground relative">
+                    <div key={instruction.id} className="flex flex-col md:flex-row md:items-center group gap-x-4">
+                        <div className="w-16 font-semibold text-muted-foreground relative">
                             <span>Dan {instruction.relativeDays}</span>
                             <div className="group-first:hidden absolute top-0 left-1/2 w-0.5 h-[54px] bg-muted-foreground/20 transform -translate-y-full" />
                         </div>
                         {/* TODO: Extract insutrction card */}
-                        <Card className="flex-grow ml-4">
+                        <Card className="flex-grow">
                             <CardContent className="py-0 pl-3 pr-0 flex items-center justify-between">
                                 <div className="flex items-center space-x-4">
                                     <Image src={instruction.iconUrl} width={32} height={32} alt={instruction.label} />
@@ -258,7 +258,9 @@ function PlantingInstructions({ instructions }: { instructions?: PlantInstructio
                                         )}
                                     </div>
                                 </div>
-                                <Modal trigger={(
+                                <Modal
+                                    title={instruction.label}
+                                    trigger={(
                                     <IconButton
                                         size="lg"
                                         variant="plain"
