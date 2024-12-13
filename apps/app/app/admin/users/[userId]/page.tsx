@@ -161,7 +161,7 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                                             </Link>
                                         </Table.Cell>
                                         <Table.Cell>
-                                            {userLogin.blockedUntil
+                                            {userLogin.blockedUntil && userLogin.blockedUntil > new Date()
                                                 ? (
                                                     <Row spacing={1}>
                                                         <Disabled className="text-red-500" />
