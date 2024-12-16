@@ -16,7 +16,7 @@
   "dependencies": {
     "@scalar/nextjs-api-reference": "0.4.104",
     "hypertune": "2.5.7",
-    "next": "15.0.4",
+    "next": "15.1.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "server-only": "0.0.1"
