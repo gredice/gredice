@@ -27,8 +27,8 @@
   "devDependencies": {
     "@gredice/game": "workspace:*",
     "@gredice/storage": "workspace:*",
-    "@playwright/experimental-ct-react": "1.49.0",
-    "@playwright/test": "1.49.0",
+    "@playwright/experimental-ct-react": "1.49.1",
+    "@playwright/test": "1.49.1",
     "@signalco/cms-components-marketing": "0.1.1",
     "@signalco/cms-core": "0.1.1",
     "@signalco/hooks": "0.2.1",
