@@ -6,8 +6,8 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@signalco/ui-primitives/Tooltip";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Info, Bookmark, BookA } from "lucide-react";
-import { NoDataPlaceholder } from "../../../../../../components/shared/placeholders/NoDataPlaceholder";
-import { KnownPages } from "../../../../../../src/KnownPages";
+import { NoDataPlaceholder } from "../../../../../components/shared/placeholders/NoDataPlaceholder";
+import { KnownPages } from "../../../../../src/KnownPages";
 import Link from "next/link";
 
 function AttributeDefinitionCard({ attributeDefinition }: { attributeDefinition: ExtendedAttributeDefinition }) {
@@ -75,29 +75,27 @@ export async function AttributeDefinitionsList({ entityTypeName }: { entityTypeN
     const attributeDefinitionCategories = await getAttributeDefinitionCategories(entityTypeName);
 
     return (
-        <CardContent>
-            <Stack spacing={2}>
-                <Row spacing={1}>
-                    <Bookmark className="size-5 text-tertiary-foreground" />
-                    <Typography level="body2" className="">Kategorije</Typography>
-                </Row>
-                <Stack spacing={1}>
-                    {attributeDefinitionCategories.length <= 0 && <NoDataPlaceholder />}
-                    {attributeDefinitionCategories.map(c => (
-                        <AttributeDefinitionCategoryCard key={c.id} attributeDefinitionCategory={c} />
-                    ))}
-                </Stack>
-                <Row spacing={1}>
-                    <BookA className="size-5 text-tertiary-foreground" />
-                    <Typography level="body2" className="">Atributi</Typography>
-                </Row>
-                <Stack spacing={1}>
-                    {attributeDefinitions.length <= 0 && <NoDataPlaceholder />}
-                    {attributeDefinitions.map(a => (
-                        <AttributeDefinitionCard key={a.id} attributeDefinition={a} />
-                    ))}
-                </Stack>
+        <Stack spacing={2}>
+            <Row spacing={1}>
+                <Bookmark className="size-5 text-tertiary-foreground" />
+                <Typography level="body2" className="">Kategorije</Typography>
+            </Row>
+            <Stack spacing={1}>
+                {attributeDefinitionCategories.length <= 0 && <NoDataPlaceholder />}
+                {attributeDefinitionCategories.map(c => (
+                    <AttributeDefinitionCategoryCard key={c.id} attributeDefinitionCategory={c} />
+                ))}
             </Stack>
-        </CardContent>
+            <Row spacing={1}>
+                <BookA className="size-5 text-tertiary-foreground" />
+                <Typography level="body2" className="">Atributi</Typography>
+            </Row>
+            <Stack spacing={1}>
+                {attributeDefinitions.length <= 0 && <NoDataPlaceholder />}
+                {attributeDefinitions.map(a => (
+                    <AttributeDefinitionCard key={a.id} attributeDefinition={a} />
+                ))}
+            </Stack>
+        </Stack>
     );
 }

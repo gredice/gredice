@@ -1,4 +1,5 @@
 import { getAttributeDefinitions, getEntitiesRaw } from '@gredice/storage';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@signalco/ui-primitives/Tooltip';
 import { Typography } from '@signalco/ui-primitives/Typography';
@@ -18,11 +19,14 @@ export async function EntityAttributeProgress({ entityTypeName, entity }: { enti
     return (
         <Tooltip delayDuration={250}>
             <TooltipTrigger asChild>
-                <div className='h-1 bg-primary/10 rounded-full overflow-hidden'>
-                    <div
-                        className={cx('h-full', progress <= 99.99 ? 'bg-red-400' : 'bg-green-500')}
-                        style={{ width: `${progress}%` }} />
-                </div>
+                <Row spacing={1}>
+                    <div className='h-1 bg-primary/10 rounded-full overflow-hidden grow'>
+                        <div
+                            className={cx('h-full', progress <= 99.99 ? 'bg-red-400' : 'bg-green-500')}
+                            style={{ width: `${progress}%` }} />
+                    </div>
+                    <Typography level='body2'>{progress.toFixed(0)}%</Typography>
+                </Row>
             </TooltipTrigger>
             <TooltipContent className='min-w-60'>
                 {notPopulatedRequiredAttributes.length === 0

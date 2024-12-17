@@ -1,23 +1,32 @@
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { CreateAttributeDefinitionButton } from "./CreateAttributeDefinitionButton";
-import { CreateAttributeDefinitionCategoryButton } from "./CreateAttributeDefinitionCategoryButton";
-import { Divider } from "@signalco/ui-primitives/Divider";
+import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
+import { AttributeDefinitionsList } from "./AttributeDefinitionsList";
+import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
+import { getEntityTypeByName } from "@gredice/storage";
+import { KnownPages } from "../../../../../src/KnownPages";
+import { notFound } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 
 export default async function AttributesPage({ params }: { params: Promise<{ entityType: string }> }) {
-    const { entityType } = await params;
+    const { entityType: entityTypeName } = await params;
+    const entityType = await getEntityTypeByName(entityTypeName);
+    if (!entityType) {
+        return notFound();
+    }
+
     return (
-        <Stack spacing={2} alignItems="center" className="py-8">
-            <Typography level="body2" center>
-                Odaberite atribut iz liste ili kreirajte novi.
-            </Typography>
-            <Stack spacing={2} className="max-w-40">
-                <CreateAttributeDefinitionButton entityTypeName={entityType} />
-                <Divider className="max-w-8 self-center" />
-                <CreateAttributeDefinitionCategoryButton entityTypeName={entityType} />
-            </Stack>
-        </Stack>
+        <Card>
+            <CardHeader>
+                <CardTitle>
+                    <Breadcrumbs items={[
+                        { label: entityType.label, href: KnownPages.DirectoryEntityType(entityTypeName) },
+                        { label: "Atributi" },
+                    ]} />
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <AttributeDefinitionsList entityTypeName={entityTypeName} />
+            </CardContent>
+        </Card>
     );
 }
