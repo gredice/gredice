@@ -1,22 +1,21 @@
 import { Add } from "@signalco/ui-icons";
 import { Input } from "@signalco/ui-primitives/Input";
-import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Button } from "@signalco/ui-primitives/Button";
 import { submitCreateForm } from "../(actions)/entityFormActions";
+import { IconButton } from "@signalco/ui-primitives/IconButton";
 
 export function EntityTypeCreateModal() {
     return (
         <Modal
             trigger={(
-                <ListItem
-                    label="Dodaj novi tip zapisa"
-                    startDecorator={<Add className="size-5" />}
-                    className="ml-8 w-[calc(100%-2rem)]"
-                />
-            )}>
+                <IconButton title="Dodaj novi tip zapisa" variant="plain">
+                    <Add className="size-5" />
+                </IconButton>
+            )}
+            title={"Novi tip zapisa"}>
             <Stack spacing={2}>
                 <Stack spacing={1}>
                     <Typography level="h5">

@@ -1,36 +1,28 @@
-'use client';
-
-import { type getEntityTypes } from "@gredice/storage";
-import { FileText } from "@signalco/ui-icons";
+import { getEntityTypes } from "@gredice/storage";
 import { EntityTypesListItem } from "./EntityTypesListItem";
-import { ListTreeItem } from "@signalco/ui-primitives/ListTreeItem";
-import { usePathname } from "next/navigation";
-import { KnownPages } from "../../src/KnownPages";
 import { EntityTypeCreateModal } from "./EntityTypeCreateModal";
+import { Stack } from "@signalco/ui-primitives/Stack";
+import { List, ListHeader } from "@signalco/ui-primitives/List";
 
-export type EntityTypesListProps = {
-    entityTypes: Awaited<ReturnType<typeof getEntityTypes>>;
-};
-
-export function EntityTypesList({ entityTypes }: EntityTypesListProps) {
-    const pathname = usePathname();
-    const isDirectoriesSelected = pathname.startsWith(KnownPages.Directories);
-
+export async function EntityTypesList() {
+    const entityTypes = await getEntityTypes();
     return (
         <>
-            <ListTreeItem
-                label="Zapisi"
-                side="end"
-                disablePadding
-                startDecorator={<FileText className="size-5" />}
-                defaultOpen={isDirectoriesSelected}>
-                {entityTypes.map(entityType => (
-                    <EntityTypesListItem
-                        key={entityType.id}
-                        entityType={entityType} />
-                ))}
-                <EntityTypeCreateModal />
-            </ListTreeItem>
+            <Stack spacing={1}>
+                <ListHeader
+                    header="Zapisi"
+                    actions={[
+                        <EntityTypeCreateModal />
+                    ]}
+                />
+                <List>
+                    {entityTypes.map(entityType => (
+                        <EntityTypesListItem
+                            key={entityType.id}
+                            entityType={entityType} />
+                    ))}
+                </List>
+            </Stack>
         </>
     );
 }
