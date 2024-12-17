@@ -8,6 +8,9 @@ import { notFound } from 'next/navigation';
 import { EntityStateSelect } from './EntityStateSelect';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Card, CardContent, CardHeader, CardTitle } from '@signalco/ui-primitives/Card';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
+import { KnownPages } from '../../../../../src/KnownPages';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,34 +31,41 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
     return (
         <Tabs defaultValue={attributeCategories.at(0)?.name}>
             <Card>
-                <CardHeader className='flex flex-row justify-between items-center'>
-                    <CardTitle>{name}</CardTitle>
-                    <TabsList>
-                        {attributeCategories.map((category) => (
-                            <TabsTrigger key={category.name} value={category.name}>
-                                {category.label}
-                            </TabsTrigger>
-                        ))}
-                    </TabsList>
-                    <Row className='self-end' spacing={1}>
-                        <EntityStateSelect entity={entity} />
-                        <ServerActionIconButton
-                            onClick={entityDeleteBound}
-                            variant='plain'>
-                            <Delete />
-                        </ServerActionIconButton>
-                    </Row>
+                <CardHeader>
+                    <div className='flex flex-row justify-between items-center'>
+                        <CardTitle>
+                            <Breadcrumbs items={[
+                                { label: entity.entityType.label, href: KnownPages.DirectoryEntityType(params.entityType) },
+                                { label: name },
+                            ]} />
+                        </CardTitle>
+                        <TabsList>
+                            {attributeCategories.map((category) => (
+                                <TabsTrigger key={category.name} value={category.name}>
+                                    {category.label}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                        <Row className='self-end' spacing={1}>
+                            <EntityStateSelect entity={entity} />
+                            <ServerActionIconButton
+                                onClick={entityDeleteBound}
+                                variant='plain'>
+                                <Delete />
+                            </ServerActionIconButton>
+                        </Row>
+                    </div>
                 </CardHeader>
                 <CardContent>
-                {attributeCategories.map((category) => (
-                    <TabsContent value={category.name} key={category.name}>
-                        <AttributeCategoryDetails
-                            entity={entity}
-                            category={category}
-                            attributeDefinitions={attributeDefinitions}
-                        />
-                    </TabsContent>
-                ))}
+                    {attributeCategories.map((category) => (
+                        <TabsContent value={category.name} key={category.name}>
+                            <AttributeCategoryDetails
+                                entity={entity}
+                                category={category}
+                                attributeDefinitions={attributeDefinitions}
+                            />
+                        </TabsContent>
+                    ))}
                 </CardContent>
             </Card>
         </Tabs>

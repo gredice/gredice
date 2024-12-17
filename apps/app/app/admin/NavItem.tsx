@@ -5,13 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactElement } from "react";
 
-export function NavItem({ href, label, icon }: { href: string, label: string, icon: ReactElement }) {
+export function NavItem({ href, label, icon, strictMatch }: { href: string, label: string, icon: ReactElement, strictMatch?: boolean }) {
     const pathname = usePathname();
     return (
         <Link href={href} passHref legacyBehavior>
             <ListItem
                 nodeId={href}
-                selected={pathname === href}
+                selected={strictMatch ? pathname === href : pathname.startsWith(href)}
                 onSelected={() => { }}
                 label={label}
                 startDecorator={icon} />
