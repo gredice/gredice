@@ -92,6 +92,7 @@ export function HypertuneSourceProvider({
     const newProps = {
       ...hypertuneSource.props,
       stateHash,
+      initDataHash: context?.initData?.hash ?? null,
       expression: context?.initData?.reducedExpression ?? null,
     };
     return new hypertune.SourceNode(newProps);
@@ -136,6 +137,7 @@ const HypertuneRootContext = React.createContext(
     parent: null,
     step: null,
     expression: null,
+    initDataHash: null,
   })
 );
 
