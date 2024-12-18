@@ -212,6 +212,7 @@ export const emptySource = new SourceNode({
   parent: null,
   step: null,
   expression: null,
+  initDataHash: null,
 });
 
 export function createSourceForServerOnly({
