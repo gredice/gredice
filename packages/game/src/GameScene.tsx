@@ -7,7 +7,6 @@ import { Environment } from './scene/Environment';
 import { useGameState } from './useGameState';
 import type { Stack } from './types/Stack';
 import type { Garden } from './types/Garden';
-import { RotatableGroup } from './controls/RotatableGroup';
 import { Scene } from './scene/Scene';
 import { EntityFactory } from './entities/EntityFactory';
 import { DayNightCycleHud } from './hud/DayNightCycleHud';
@@ -107,17 +106,13 @@ export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
                 {stacks.map((stack) =>
                     stack.blocks?.map((block, i) => {
                         return (
-                            <RotatableGroup
+                            <EntityFactory
                                 key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.name}-${i}`}
+                                name={block.name}
                                 stack={stack}
-                                block={block}>
-                                <EntityFactory
-                                    name={block.name}
-                                    stack={stack}
-                                    block={block}
-                                    rotation={block.rotation}
-                                    variant={block.variant} />
-                            </RotatableGroup>
+                                block={block}
+                                rotation={block.rotation}
+                                variant={block.variant} />
                         );
                     })
                 )}

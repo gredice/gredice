@@ -9,6 +9,7 @@ import { Shade } from "./Shade";
 import { Fence } from "./Fence";
 import { Stool } from "./Stool";
 import { Bucket } from "./Bucket";
+import { RotatableGroup } from "../controls/RotatableGroup";
 
 const entityNameMap: Record<string, any> = {
     ["Block_Ground"]: BlockGround,
@@ -39,10 +40,14 @@ export function EntityFactory({ name, stack, block, noControl, ...rest }: { name
             block={block}
             onPositionChanged={handlePositionChanged}
             noControl={noControl}>
-            <EntityComponent
+            <RotatableGroup
                 stack={stack}
-                block={block}
-                {...rest} />
+                block={block}>
+                <EntityComponent
+                    stack={stack}
+                    block={block}
+                    {...rest} />
+            </RotatableGroup>
         </PickableGroup>
     );
 }
