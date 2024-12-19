@@ -22,10 +22,7 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
         doubleClickDownTimeStamp.current = Date.now();
         if (doubleClickDownTimeStamp.current - firstClickTimeStamp.current > 1000) {
             firstClickTimeStamp.current = 0;
-            console.log('reset first cliek')
         }
-
-        console.log('down', doubleClickDownTimeStamp.current, firstClickTimeStamp.current);
     }
 
     const handleRotateCancel = () => {
