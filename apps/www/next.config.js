@@ -20,7 +20,8 @@ const nextConfig = {
                 pathname: '/assets/**',
             },
         ]
-    }
+    },
+    productionBrowserSourceMaps: true,
 };
 
 export default withAxiom(nextConfig);

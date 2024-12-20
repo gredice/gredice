@@ -10,7 +10,8 @@ const nextConfig: NextConfig = {
     },
     experimental: {
         reactCompiler: true,
-    }
+    },
+    productionBrowserSourceMaps: true,
 };
 
 export default withAxiom(nextConfig);
