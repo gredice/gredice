@@ -13,7 +13,8 @@ const nextConfig: NextConfig = {
     },
     images: {
         domains: ['www.gredice.com'],
-    }
+    },
+    productionBrowserSourceMaps: true,
 };
 
 export default withAxiom(nextConfig);
