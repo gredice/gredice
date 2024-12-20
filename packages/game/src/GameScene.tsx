@@ -169,6 +169,8 @@ export function GameScene({
                 <GardenDisplay noBackground={noBackground} />
                 <OrbitControls
                     enableRotate={false}
+                    onStart={() => useGameState.getState().setIsDragging(true)}
+                    onEnd={() => useGameState.getState().setIsDragging(false)}
                     minZoom={50}
                     maxZoom={200} />
             </Scene>

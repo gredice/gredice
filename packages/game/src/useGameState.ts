@@ -13,6 +13,8 @@ export type GameState = {
     data: {
         blocks: BlockData[]
     },
+    isDragging: boolean,
+    setIsDragging: (isDragging: boolean) => void,
     setInitial: (appBaseUrl: string, data: { blocks: BlockData[] }, freezeTime?: Date | null) => void,
     setCurrentTime: (currentTime: Date) => void,
     setStacks: (stacks: Stack[]) => void,
@@ -29,6 +31,8 @@ export const useGameState = create<GameState>((set) => ({
     data: {
         blocks: []
     },
+    isDragging: false,
+    setIsDragging: (isDragging) => set({ isDragging }),
     setInitial: (appBaseUrl, data, freezeTime) => set({ appBaseUrl, freezeTime, data }),
     setCurrentTime: (currentTime) => set({ currentTime }),
     setStacks: (stacks) => set({ stacks }),
