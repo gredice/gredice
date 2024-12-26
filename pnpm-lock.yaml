@@ -18,8 +18,8 @@ importers:
   apps/app:
     dependencies:
       '@scalar/nextjs-api-reference':
-        specifier: 0.4.108
-        version: 0.4.108
+        specifier: 0.5.0
+        version: 0.5.0(next@15.1.1(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
       hypertune:
         specifier: 2.5.7
         version: 2.5.7
@@ -2938,9 +2938,12 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@scalar/nextjs-api-reference@0.4.108':
-    resolution: {integrity: sha512-azSkiFXnum35jZx6z3ttZ/1BwJLp1n7uU0QLF3JOD2Ktu1fEXsSSzigg8kdU61nXYu3Dw5LLcNaMDD0nZJVcuw==}
+  '@scalar/nextjs-api-reference@0.5.0':
+    resolution: {integrity: sha512-xWgzFvl8+eEDoZSnOcbfHz8P8mR764cOj5AkxHsL6xujl8HadgEHN8pg+QzdgLtVBgOWdDLT8wKfHdIx9kSb1w==}
     engines: {node: '>=18'}
+    peerDependencies:
+      next: ^15.0.0
+      react: ^19.0.0
 
   '@scalar/openapi-types@0.1.5':
     resolution: {integrity: sha512-6geH9ehvQ/sG/xUyy3e0lyOw3BaY5s6nn22wHjEJhcobdmWyFER0O6m7AU0ZN4QTjle/gYvFJOjj552l/rsNSw==}
@@ -8804,9 +8807,11 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.28.1':
     optional: true
 
-  '@scalar/nextjs-api-reference@0.4.108':
+  '@scalar/nextjs-api-reference@0.5.0(next@15.1.1(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@scalar/types': 0.0.25
+      next: 15.1.1(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      react: 19.0.0
 
   '@scalar/openapi-types@0.1.5': {}
 
