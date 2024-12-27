@@ -3,7 +3,7 @@
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Ghost } from "lucide-react";
 
-export function ButtonImpersonateUser({ userId, hideText }: { userId: string, hideText?: boolean }) {
+export function ButtonImpersonateUser({ userId }: { userId: string }) {
     const handleImpersonate = async () => {
         const response = await fetch(`/api/users/${userId}/impersonate`, { method: 'POST' });
         if (response.status === 201) {

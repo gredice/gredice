@@ -1,9 +1,10 @@
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { PropsWithChildren } from "react";
+import { Typography, TypographyProps } from "@signalco/ui-primitives/Typography";
 
-export function NoDataPlaceholder({ children }: PropsWithChildren) {
+export type NoDataPlaceholder = TypographyProps;
+
+export function NoDataPlaceholder({ children, ...rest }: NoDataPlaceholder) {
     return (
-        <Typography level="body2" center>
+        <Typography level="body2" center {...rest}>
             {children || 'Nema podataka'}
         </Typography>
     )

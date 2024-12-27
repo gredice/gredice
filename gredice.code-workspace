@@ -21,7 +21,7 @@
 			"path": "apps/www"
 		},
 		{
-			"name": "📦 apidocs",
+			"name": "📦 @gredice/apidocs",
 			"path": "packages/apidocs"
 		},
 		{

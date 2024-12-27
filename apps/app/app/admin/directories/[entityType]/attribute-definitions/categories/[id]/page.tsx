@@ -1,11 +1,8 @@
 import { getAttributeDefinitionCategories, getEntityTypeByName } from "@gredice/storage";
 import { Row } from "@signalco/ui-primitives/Row";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Typography } from "@signalco/ui-primitives/Typography";
 import { notFound } from "next/navigation";
 import { FormInput } from "./Form";
 import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
-import { ServerActionIconButton } from "../../../../../../../components/shared/ServerActionIconButton";
 import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
 import { KnownPages } from "../../../../../../../src/KnownPages";
 

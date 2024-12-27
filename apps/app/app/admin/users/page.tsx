@@ -55,7 +55,7 @@ export default async function UsersPage() {
                                 </Table.Cell>
                                 <Table.Cell title={user.createdAt.toISOString()}>{user.createdAt.toLocaleDateString()}</Table.Cell>
                                 <Table.Cell>
-                                    <ButtonImpersonateUser userId={user.id} hideText />
+                                    <ButtonImpersonateUser userId={user.id} />
                                 </Table.Cell>
                             </Table.Row>
                         ))}

@@ -12,6 +12,7 @@ export function BlockGround({ stack, block, rotation, variant }: EntityInstanceP
     const variantResolved = (variant ?? 1) % 2;
 
     return (
+        /* @ts-ignore */
         <animated.group
             position={stack.position.clone().setY(stackHeight(stack, block) + 1)}
             rotation={animatedRotation as unknown as [number, number, number]}>
@@ -27,6 +28,7 @@ export function BlockGround({ stack, block, rotation, variant }: EntityInstanceP
                 geometry={nodes[`Block_Ground_${variantResolved}_2`].geometry}
                 material={materials['Material.Stone']}
             />
+            {/* @ts-ignore */}
         </animated.group>
     );
 }

@@ -4,13 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitive
 import { Input } from "@signalco/ui-primitives/Input";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Stack } from "@signalco/ui-primitives/Stack";
-import { Container } from "@signalco/ui-primitives/Container";
 import { Alert } from "@signalco/ui/Alert";
 import { authCurrentUserQueryKeys } from "@signalco/auth-client";
 import { queryClient } from "../../components/providers/ClientAppProvider";
 import { useActionState } from "react";
 import { AlertTriangle } from "lucide-react";
-import { Typography } from "@signalco/ui-primitives/Typography";
 
 export function LoginDialog() {
     const [error, submitAction, isPending] = useActionState(async (_previousState: unknown, formData: FormData) => {

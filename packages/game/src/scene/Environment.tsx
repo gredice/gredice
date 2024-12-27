@@ -146,7 +146,7 @@ export function Environment({ location, noBackground }: { location: Garden['loca
 
     return (
         <>
-            {!noBackground && <color ref={backgroundRef} attach="background" />}
+            {!noBackground && <color ref={backgroundRef} attach="background" args={[0, 0, 0]} />}
             <ambientLight ref={ambientRef} intensity={3} />
             <hemisphereLight ref={hemisphereRef} position={[0, 1, 0]} intensity={2} />
             <directionalLight

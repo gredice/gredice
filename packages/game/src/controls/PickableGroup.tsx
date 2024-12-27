@@ -109,10 +109,12 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
     };
 
     return (
+        /* @ts-ignore */
         <animated.group
             position={springs.internalPosition as unknown as [number, number, number]}
             {...customBindProps}>
             {children}
+            {/* @ts-ignore */}
         </animated.group>
     )
 }

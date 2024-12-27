@@ -10,6 +10,7 @@ export function Bucket({ stack, block, rotation }: EntityInstanceProps) {
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
 
     return (
+        /* @ts-ignore */
         <animated.group
             position={stack.position.clone().setY(stackHeight(stack, block) + 0.33)}
             scale={[0.4, 0.33, 0.4]}
@@ -26,6 +27,7 @@ export function Bucket({ stack, block, rotation }: EntityInstanceProps) {
                 geometry={nodes[`Bucket_2`].geometry}
                 material={materials['Material.Metal']}
             />
+            {/* @ts-ignore */}
         </animated.group>
     );
 }
