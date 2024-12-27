@@ -19,7 +19,7 @@ export async function Nav() {
                 <ListHeader
                     header="Zapisi"
                     actions={[
-                        <EntityTypeCreateModal />
+                        <EntityTypeCreateModal key="modal" />
                     ]}
                 />
                 <List>

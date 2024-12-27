@@ -1,6 +1,6 @@
 'use client';
 
-import { MDXEditor, UndoRedo, BoldItalicUnderlineToggles, toolbarPlugin, markdownShortcutPlugin, headingsPlugin, listsPlugin, quotePlugin, thematicBreakPlugin, BlockTypeSelect, ChangeAdmonitionType, CreateLink, InsertAdmonition, InsertTable, InsertThematicBreak, ListsToggle, Separator, tablePlugin, linkPlugin } from "@mdxeditor/editor";
+import { MDXEditor, UndoRedo, BoldItalicUnderlineToggles, toolbarPlugin, markdownShortcutPlugin, headingsPlugin, listsPlugin, quotePlugin, thematicBreakPlugin, BlockTypeSelect, InsertThematicBreak, ListsToggle, Separator } from "@mdxeditor/editor";
 import { useState } from "react";
 import { AttributeInputProps } from '../AttributeInputProps';
 import '@mdxeditor/editor/style.css'

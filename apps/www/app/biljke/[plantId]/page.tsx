@@ -1,11 +1,10 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
+import { Card, CardContent } from "@signalco/ui-primitives/Card";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { Row } from "@signalco/ui-primitives/Row";
-import { ReactNode } from "react";
 import { Sun, Droplet, Sprout, Leaf, Ruler, ArrowDownToLine, BadgeCheck, Info } from "lucide-react"
 import { notFound } from "next/navigation";
 import { getEntityFormatted } from "@gredice/storage";
@@ -174,7 +173,7 @@ export default async function PlantPage(props: { params: Promise<{ plantId: stri
                                     <Stack spacing={2}>
                                         <Row spacing={2}>
                                             <BadgeCheck className="size-10 text-secondary-foreground" />
-                                            <Typography level="body2" semiBold>"Odobreno" označava da su informacije provjerene.</Typography>
+                                            <Typography level="body2" semiBold>&quot;Odobreno&quot; označava da su informacije provjerene.</Typography>
                                         </Row>
                                         <Stack spacing={1}>
                                             <Typography>

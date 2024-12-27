@@ -10,6 +10,8 @@ import { BooleanInput } from './typed/BooleanInput';
 import { NumberInput } from './typed/NumberInput';
 import { JsonInput } from './typed/JsonInput';
 import { handleValueSave, handleValueDelete } from '../../../app/(actions)/entityActions';
+import { ComponentType } from 'react';
+import { AttributeInputProps } from './AttributeInputProps';
 
 const MarkdownInput = dynamic(() => import('./typed/MarkdownInput').then(mod => ({
     default: mod.MarkdownInput
@@ -50,7 +52,7 @@ export function AttributeInput({
         await handleValueDelete(attributeValue);
     }
 
-    let AttributeInputComponent: any = TextInput;
+    let AttributeInputComponent: ComponentType<AttributeInputProps> = TextInput;
     let schema: string | null = null;
     if (attributeDefinition.dataType === 'boolean') {
         AttributeInputComponent = BooleanInput;

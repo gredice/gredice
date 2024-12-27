@@ -12,11 +12,10 @@ export function FormInput({ definition, name, label, value }: { definition: GetA
     const [internalValue, setValue] = useState(value);
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => setValue(e.target.value);
     const handleBlur = async () => {
-        const changed = {
+        await upsertAttributeDefinition({
             id: definition.id,
             [name]: internalValue
-        };
-        await upsertAttributeDefinition(changed as any);
+        });
     }
     return (
         <Input name={name} value={internalValue} label={label} onChange={handleChange} onBlur={handleBlur} />
@@ -27,11 +26,10 @@ export function FormCheckbox({ definition, name, label, value }: { definition: G
     const [internalValue, setValue] = useState(value === 'true');
     const handleOnCheckedChange = async (checked: boolean) => {
         setValue(checked ? true : false);
-        const changed = {
+        await upsertAttributeDefinition({
             id: definition.id,
             [name]: checked
-        };
-        await upsertAttributeDefinition(changed as any);
+        });
     }
     return (
         <Checkbox name={name} checked={internalValue} label={label}

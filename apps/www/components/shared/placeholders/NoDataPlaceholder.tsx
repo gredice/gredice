@@ -1,5 +1,4 @@
 import { Typography, TypographyProps } from "@signalco/ui-primitives/Typography";
-import { PropsWithChildren } from "react";
 
 export type NoDataPlaceholder = TypographyProps;
 

@@ -13,6 +13,7 @@ export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
     const variantResolved = 1;
 
     return (
+        /* @ts-ignore */
         <animated.group
             position={stack.position.clone().setY(stackHeight(stack, block) + 0.2)}
             rotation={animatedRotation as unknown as [number, number, number]}>
@@ -30,6 +31,7 @@ export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
                 geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}
                 material={materials[`Material.Grass`]}
             />
+            {/* @ts-ignore */}
         </animated.group>
     );
 }

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { AxiomWebVitals } from 'next-axiom';
 import "./globals.css";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@signalco/ui-primitives/Tooltip";
 import Head from "next/head";
 import { Container } from "@signalco/ui-primitives/Container";
 import { Stack } from "@signalco/ui-primitives/Stack";
@@ -18,8 +17,6 @@ import { sectionsComponentRegistry } from "../components/shared/sectionsComponen
 import { ClientAppProvider } from "../components/providers/ClientAppProvider";
 import { getFlags } from "../lib/flags/getFlags";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Presentation } from "lucide-react";
-import { Button } from "@signalco/ui-primitives/Button";
 import { Popper } from "@signalco/ui-primitives/Popper";
 
 export const metadata: Metadata = {
