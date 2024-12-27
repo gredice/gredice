@@ -31,7 +31,7 @@
     "@playwright/experimental-ct-react": "1.49.1",
     "@playwright/test": "1.49.1",
     "@signalco/auth-client": "0.3.0",
-    "@signalco/auth-server": "0.4.0",
+    "@signalco/auth-server": "0.4.1",
     "@signalco/hooks": "0.2.1",
     "@signalco/js": "0.1.0",
     "@signalco/ui": "0.2.4",

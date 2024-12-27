@@ -9,10 +9,12 @@ import Link from "next/link";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { BookA } from "lucide-react";
 import { KnownPages } from "../../../../src/KnownPages";
+import { auth } from "../../../../lib/auth/auth";
 
 export const dynamic = 'force-dynamic';
 
 export default async function EntitiesPage({ params }: { params: Promise<{ entityType: string }> }) {
+    await auth(['admin']);
     const { entityType: entityTypeName } = await params;
     const entityType = await getEntityTypeByName(entityTypeName);
     const createEntityBound = createEntity.bind(null, entityTypeName);
