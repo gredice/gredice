@@ -19,13 +19,13 @@ importers:
     dependencies:
       '@scalar/nextjs-api-reference':
         specifier: 0.5.0
-        version: 0.5.0(next@15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
+        version: 0.5.0(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
       hypertune:
         specifier: 2.5.7
         version: 2.5.7
       next:
         specifier: 15.1.3
-        version: 15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react:
         specifier: 19.0.0
         version: 19.0.0
@@ -37,10 +37,10 @@ importers:
         version: 0.0.1
     devDependencies:
       '@eslint/eslintrc':
-        specifier: ^3.2.0
+        specifier: 3.2.0
         version: 3.2.0
       '@eslint/js':
-        specifier: ^9.17.0
+        specifier: 9.17.0
         version: 9.17.0
       '@gredice/apidocs':
         specifier: workspace:*
@@ -59,13 +59,13 @@ importers:
         version: 1.49.1
       '@signalco/auth-client':
         specifier: 0.3.0
-        version: 0.3.0(@signalco/ui-primitives@0.3.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.62.8(react@19.0.0))(next@15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 0.3.0(@signalco/ui-primitives@0.3.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.62.8(react@19.0.0))(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/auth-server':
         specifier: 0.4.0
-        version: 0.4.0(jose@5.9.4)(next@15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 0.4.0(jose@5.9.4)(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@15.1.3(@playwright/test@1.49.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 0.2.1(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -98,7 +98,7 @@ importers:
         version: 19.0.2(@types/react@19.0.2)
       '@vercel/analytics':
         specifier: 1.4.1
-        version: 1.4.1(next@15.1.3(@playwright/test@1.49.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
+        version: 1.4.1(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
       babel-plugin-react-compiler:
         specifier: 19.0.0-beta-df7b47d-20241124
         version: 19.0.0-beta-df7b47d-20241124
@@ -113,7 +113,7 @@ importers:
         version: 0.469.0(react@19.0.0)
       next-axiom:
         specifier: 1.9.1
-        version: 1.9.1(next@15.1.3(@playwright/test@1.49.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
+        version: 1.9.1(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
       postcss:
         specifier: 8.4.49
         version: 8.4.49
@@ -143,10 +143,10 @@ importers:
         version: 0.0.1
     devDependencies:
       '@eslint/eslintrc':
-        specifier: ^3.2.0
+        specifier: 3.2.0
         version: 3.2.0
       '@eslint/js':
-        specifier: ^9.17.0
+        specifier: 9.17.0
         version: 9.17.0
       '@gredice/storage':
         specifier: workspace:*
@@ -168,7 +168,7 @@ importers:
         version: 0.4.0(jose@5.9.4)(next@15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@15.1.3(@playwright/test@1.49.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 0.2.1(next@15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -234,7 +234,7 @@ importers:
         version: 2.5.7
       next:
         specifier: 15.1.3
-        version: 15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react:
         specifier: 19.0.0
         version: 19.0.0
@@ -246,10 +246,10 @@ importers:
         version: 0.0.1
     devDependencies:
       '@eslint/eslintrc':
-        specifier: ^3.2.0
+        specifier: 3.2.0
         version: 3.2.0
       '@eslint/js':
-        specifier: ^9.17.0
+        specifier: 9.17.0
         version: 9.17.0
       '@gredice/game':
         specifier: workspace:*
@@ -265,13 +265,13 @@ importers:
         version: 1.49.1
       '@signalco/auth-client':
         specifier: 0.3.0
-        version: 0.3.0(@signalco/ui-primitives@0.3.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.62.8(react@19.0.0))(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 0.3.0(@signalco/ui-primitives@0.3.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.62.8(react@19.0.0))(next@15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/auth-server':
         specifier: 0.4.0
-        version: 0.4.0(jose@5.9.4)(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 0.4.0(jose@5.9.4)(next@15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 0.2.1(next@15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -304,7 +304,7 @@ importers:
         version: 19.0.2(@types/react@19.0.2)
       '@vercel/analytics':
         specifier: 1.4.1
-        version: 1.4.1(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
+        version: 1.4.1(next@15.1.3(@playwright/test@1.49.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
       babel-plugin-react-compiler:
         specifier: 19.0.0-beta-df7b47d-20241124
         version: 19.0.0-beta-df7b47d-20241124
@@ -319,7 +319,7 @@ importers:
         version: 0.469.0(react@19.0.0)
       next-axiom:
         specifier: 1.9.1
-        version: 1.9.1(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
+        version: 1.9.1(next@15.1.3(@playwright/test@1.49.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
       postcss:
         specifier: 8.4.49
         version: 8.4.49
@@ -358,10 +358,10 @@ importers:
         version: 0.0.1
     devDependencies:
       '@eslint/eslintrc':
-        specifier: ^3.2.0
+        specifier: 3.2.0
         version: 3.2.0
       '@eslint/js':
-        specifier: ^9.17.0
+        specifier: 9.17.0
         version: 9.17.0
       '@gredice/game':
         specifier: workspace:*
@@ -383,7 +383,7 @@ importers:
         version: 0.1.1(@signalco/ui-primitives@0.3.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@15.1.3(@playwright/test@1.49.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 0.2.1(next@15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -482,7 +482,7 @@ importers:
         version: 9.0.0-rc.1(@types/react@19.0.2)(react-dom@19.0.0(react@19.0.0))(react-native@0.76.1(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(@types/react@19.0.2)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)(three@0.171.0)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 0.2.1(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -9698,10 +9698,10 @@ snapshots:
 
   '@rushstack/eslint-patch@1.10.4': {}
 
-  '@scalar/nextjs-api-reference@0.5.0(next@15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)':
+  '@scalar/nextjs-api-reference@0.5.0(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@scalar/types': 0.0.25
-      next: 15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      next: 15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react: 19.0.0
 
   '@scalar/openapi-types@0.1.5': {}
@@ -9754,13 +9754,13 @@ snapshots:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
-  '@signalco/hooks@0.2.1(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@signalco/hooks@0.2.1(next@15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       next: 15.1.3(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
-  '@signalco/hooks@0.2.1(next@15.1.3(@playwright/test@1.49.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@signalco/hooks@0.2.1(next@15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       next: 15.1.3(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-df7b47d-20241124)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react: 19.0.0

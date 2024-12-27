@@ -23,8 +23,8 @@
     "server-only": "0.0.1"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.2.0",
-    "@eslint/js": "^9.17.0",
+    "@eslint/eslintrc": "3.2.0",
+    "@eslint/js": "9.17.0",
     "@gredice/apidocs": "workspace:*",
     "@gredice/storage": "workspace:*",
     "@mdxeditor/editor": "3.20.0",
