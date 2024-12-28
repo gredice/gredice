@@ -6,6 +6,7 @@ import { KnownPages } from '../../../../src/KnownPages';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { EntityAttributeProgress } from './EntityAttributeProgress';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
+import { entityDisplayName } from '../../../../src/entities/entityAttributes';
 
 export async function EntitiesTable({ entityTypeName }: { entityTypeName: string }) {
     const entities = await getEntitiesRaw(entityTypeName);
@@ -33,7 +34,7 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                         <Table.Row key={entity.id}>
                             <Table.Cell>
                                 <Link href={KnownPages.DirectoryEntity(entityTypeName, entity.id)}>
-                                    <Typography>{entity.attributes.find(a => a.attributeDefinition.name === 'name')?.value ?? `${entity.entityType.label} ${entity.id}`}</Typography>
+                                    <Typography>{entityDisplayName(entity)}</Typography>
                                 </Link>
                             </Table.Cell>
                             <Table.Cell>

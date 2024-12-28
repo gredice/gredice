@@ -1,6 +1,7 @@
 import { createAttributeDefinitionCategory } from "@gredice/storage";
 import { Add } from "@signalco/ui-icons";
 import { Button } from "@signalco/ui-primitives/Button";
+import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Input } from "@signalco/ui-primitives/Input";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Stack } from "@signalco/ui-primitives/Stack";
@@ -23,12 +24,9 @@ export function CreateAttributeDefinitionCategoryButton({ entityTypeName }: { en
     return (
         <Modal
             trigger={(
-                <Button
-                    variant="solid"
-                    startDecorator={<Add className="size-5" />}
-                    fullWidth>
-                    Nova kategorija
-                </Button>
+                <IconButton variant="plain">
+                    <Add className="size-5" />
+                </IconButton>
             )}
             title="Nova definicija">
             <Stack spacing={2}>
