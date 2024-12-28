@@ -6,6 +6,7 @@ import { NavItem } from "./NavItem";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { EntityTypeCreateModal } from "./EntityTypeCreateModal";
 import { getEntityTypes } from "@gredice/storage";
+import { ProfileNavItem } from "./ProfileNavItem";
 
 export async function Nav() {
     const entityTypes = await getEntityTypes();
@@ -13,6 +14,7 @@ export async function Nav() {
     return (
         <Stack spacing={2}>
             <List>
+                <ProfileNavItem />
                 <NavItem href={KnownPages.Dashboard} label="Početna" icon={<Home className="size-5" />} strictMatch />
             </List>
             <Stack spacing={1}>
