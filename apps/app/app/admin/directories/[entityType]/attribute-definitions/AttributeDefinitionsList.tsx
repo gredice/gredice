@@ -9,6 +9,8 @@ import { KnownPages } from "../../../../../src/KnownPages";
 import { SplitView } from "@signalco/ui/SplitView";
 import Link from "next/link";
 import { HTMLAttributes } from "react";
+import { CreateAttributeDefinitionCategoryButton } from "./CreateAttributeDefinitionCategoryButton";
+import { CreateAttributeDefinitionButton } from "./CreateAttributeDefinitionButton";
 
 function AttributeDataTypeIcon({ dataType, ...rest }: { dataType: string } & HTMLAttributes<SVGElement>) {
     switch (dataType) {
@@ -23,9 +25,9 @@ function AttributeDataTypeIcon({ dataType, ...rest }: { dataType: string } & HTM
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 {...rest}
             >
                 <path d="M2 16V8l4 4 4-4v8" />
@@ -48,7 +50,7 @@ function AttributeDefinitionCard({ attributeDefinition }: { attributeDefinition:
                 <Row spacing={1}>
                     <AttributeDataTypeIcon dataType={attributeDefinition.dataType} className="size-5 text-muted-foreground" />
                     <Stack>
-                        <Typography>
+                        <Typography level="body1">
                             {attributeDefinition.label}
                             {attributeDefinition.required && <span className="text-red-600/60 ml-1">*</span>}
                         </Typography>
@@ -86,9 +88,12 @@ export async function AttributeDefinitionsList({ entityTypeName }: { entityTypeN
     return (
         <SplitView minSize={220}>
             <Stack spacing={2} className="mr-4">
-                <Row spacing={1}>
-                    <Bookmark className="size-5 text-tertiary-foreground" />
-                    <Typography level="body2" className="">Kategorije</Typography>
+                <Row spacing={1} justifyContent="space-between">
+                    <Row spacing={1}>
+                        <Bookmark className="size-5 text-tertiary-foreground" />
+                        <Typography level="body2" className="">Kategorije</Typography>
+                    </Row>
+                    <CreateAttributeDefinitionCategoryButton entityTypeName={entityTypeName} />
                 </Row>
                 <Stack spacing={1}>
                     {attributeDefinitionCategories.length <= 0 && <NoDataPlaceholder />}
@@ -101,12 +106,17 @@ export async function AttributeDefinitionsList({ entityTypeName }: { entityTypeN
                 {attributeDefinitions.length <= 0 && <NoDataPlaceholder />}
                 {attributeDefinitionCategories.map(category => (
                     <Stack spacing={1} key={category.id}>
-                        <Row spacing={1}>
-                            <BookA className="size-5 text-tertiary-foreground" />
-                            <Typography level="body2" className="">{category.label}</Typography>
+                        <Row spacing={1} justifyContent="space-between">
+                            <Row spacing={1}>
+                                <BookA className="size-5 text-tertiary-foreground" />
+                                <Typography level="body2" className="">{category.label}</Typography>
+                            </Row>
+                            <CreateAttributeDefinitionButton
+                                entityTypeName={entityTypeName}
+                                categoryName={category.name} />
                         </Row>
                         {attributeDefinitions
-                            .filter(attribute => attribute.categoryDefinition.id === category.id)
+                            .filter(attribute => attribute.category === category.name)
                             .map(attribute => (
                                 <AttributeDefinitionCard key={attribute.id} attributeDefinition={attribute} />
                             ))}

@@ -18,33 +18,20 @@ import { KnownPages } from "../../../src/KnownPages";
 import { Popper } from "@signalco/ui-primitives/Popper";
 import { cx } from "@signalco/ui-primitives/cx";
 import { Accordion } from "@signalco/ui/Accordion";
-
-function DetailCard({ icon, header, value }: { icon: React.ReactNode; header: string; value: string | null | undefined }) {
-    return (
-        <Card className="flex items-center">
-            <Row spacing={2}>
-                <div className="flex-shrink-0 ml-2 text-primary">{icon}</div>
-                <div>
-                    <Typography level="body2" component="h4">{header}</Typography>
-                    <Typography semiBold>{value ?? '-'}</Typography>
-                </div>
-            </Row>
-        </Card>
-    )
-}
+import { AttributeCard } from "../../../components/attributes/DetailCard";
 
 function PlantAttributes({ attributes }: { attributes: PlantAttributes | undefined }) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <DetailCard
+            <AttributeCard
                 icon={<Sun className="w-6 h-6" />}
                 header="Svijetlost"
                 value={attributes?.light == null || Number.isNaN(attributes?.light) ? '-' : (attributes?.light > 0.3 ? 'Polu-sjena' : (attributes?.light > 0.7 ? 'Sunce' : 'Hlad'))} />
-            <DetailCard icon={<Droplet className="w-6 h-6" />} header="Voda" value={attributes?.water} />
-            <DetailCard icon={<Sprout className="w-6 h-6" />} header="Zemlja" value={attributes?.soil} />
-            <DetailCard icon={<Leaf className="w-6 h-6" />} header="Nutrijenti" value={attributes?.nutrients} />
-            <DetailCard icon={<Ruler className="w-6 h-6" />} header="Razmak sijanja/sadnje" value={`${attributes?.seedingDistance || '-'} cm`} />
-            <DetailCard icon={<ArrowDownToLine className="w-6 h-6" />} header="Dubina sijanja" value={`${attributes?.seedingDepth || '-'} cm`} />
+            <AttributeCard icon={<Droplet className="w-6 h-6" />} header="Voda" value={attributes?.water} />
+            <AttributeCard icon={<Sprout className="w-6 h-6" />} header="Zemlja" value={attributes?.soil} />
+            <AttributeCard icon={<Leaf className="w-6 h-6" />} header="Nutrijenti" value={attributes?.nutrients} />
+            <AttributeCard icon={<Ruler className="w-6 h-6" />} header="Razmak sijanja/sadnje" value={`${attributes?.seedingDistance || '-'} cm`} />
+            <AttributeCard icon={<ArrowDownToLine className="w-6 h-6" />} header="Dubina sijanja" value={`${attributes?.seedingDepth || '-'} cm`} />
         </div>
     )
 }

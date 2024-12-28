@@ -10,6 +10,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Card, CardContent, CardHeader, CardTitle } from '@signalco/ui-primitives/Card';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { KnownPages } from '../../../../../src/KnownPages';
+import { entityDisplayName } from '../../../../../src/entities/entityAttributes';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,6 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
         notFound();
     }
 
-    const name = entity.attributes.find(pa => pa.attributeDefinition.category === 'information' && pa.attributeDefinition.name === 'name')?.value ?? `${entity.entityType.label} ${entity.id}`;
     const entityDeleteBound = handleEntityDelete.bind(null, params.entityType, parseInt(params.entityId));
 
     return (
@@ -35,7 +35,7 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
                         <CardTitle>
                             <Breadcrumbs items={[
                                 { label: entity.entityType.label, href: KnownPages.DirectoryEntityType(params.entityType) },
-                                { label: name },
+                                { label: entityDisplayName(entity) },
                             ]} />
                         </CardTitle>
                         <TabsList>
