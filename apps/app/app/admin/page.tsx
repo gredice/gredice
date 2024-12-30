@@ -1,7 +1,5 @@
 import { getAccounts, getEntitiesRaw, getEntityTypes, getUsers } from "@gredice/storage";
 import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
-import { Divider } from "@signalco/ui-primitives/Divider";
-import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { PropsWithChildren } from "react";
@@ -25,15 +23,15 @@ function FactCard({ header, value, href }: { header: string, value: string | num
 
 function DashboardDivider({ children }: PropsWithChildren) {
     return (
-        <Row spacing={2}>
-            <Typography level="body3" className="min-w-fit">{children}</Typography>
-            <Divider />
-        </Row>
+        <div className="relative text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
+            <span className="relative z-10 bg-muted px-2 text-muted-foreground">
+                {children}
+            </span>
+        </div>
     );
 }
 
-export default async function AdminPage() {
-    await auth(['admin']);
+async function Dashboard() {
     const entityTypes = await getEntityTypes();
     const entitiesCounts = await Promise.all(entityTypes.map(async entityType => {
         const entities = await getEntitiesRaw(entityType.name);
@@ -66,5 +64,13 @@ export default async function AdminPage() {
                 </div>
             </Stack>
         </Stack>
+    );
+}
+
+export default async function AdminPage() {
+    await auth(['admin']);
+
+    return (
+        <Dashboard />
     );
 }
