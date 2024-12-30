@@ -33,28 +33,30 @@ export function LoginDialog() {
     }, null);
 
     return (
-        <div className="h-[calc(100vh-48px)] grid md:grid-cols-2 p-4 items-center">
+        <div className="h-[calc(100vh)] grid md:grid-cols-2 p-4">
             <div className="h-full hidden md:flex flex-col text-white"></div>
-            <Card className="p-12">
-                <CardHeader>
-                    <CardTitle>Prijava</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <form action={submitAction}>
-                        <Stack spacing={4}>
-                            <Stack spacing={1}>
-                                <Input name="email" label="Email" placeholder="email@email.com" type="email" autoComplete="email" />
-                                <Input name="password" label="Zaporka" type="password" autoComplete="current-password" />
+            <Card>
+                <Stack className="h-full items-center justify-center">
+                    <CardHeader>
+                        <CardTitle>Prijava</CardTitle>
+                    </CardHeader>
+                    <CardContent className="min-w-96">
+                        <form action={submitAction}>
+                            <Stack spacing={4}>
+                                <Stack spacing={1}>
+                                    <Input name="email" label="Email" placeholder="email@email.com" type="email" autoComplete="email" />
+                                    <Input name="password" label="Zaporka" type="password" autoComplete="current-password" />
+                                </Stack>
+                                <Button type="submit" loading={isPending} variant="solid">Prijavi se</Button>
+                                {error && (
+                                    <Alert color="danger" startDecorator={<AlertTriangle />}>
+                                        Greška prilikom prijave. Pokušajte ponovo.
+                                    </Alert>
+                                )}
                             </Stack>
-                            <Button type="submit" loading={isPending} variant="solid">Prijavi se</Button>
-                            {error && (
-                                <Alert color="danger" startDecorator={<AlertTriangle />}>
-                                    Greška prilikom prijave. Pokušajte ponovo.
-                                </Alert>
-                            )}
-                        </Stack>
-                    </form>
-                </CardContent>
+                        </form>
+                    </CardContent>
+                </Stack>
             </Card>
         </div>
     )
