@@ -1,5 +1,3 @@
-'use client';
-
 import { MDXEditor, UndoRedo, BoldItalicUnderlineToggles, toolbarPlugin, markdownShortcutPlugin, headingsPlugin, listsPlugin, quotePlugin, thematicBreakPlugin, BlockTypeSelect, InsertThematicBreak, ListsToggle, Separator } from "@mdxeditor/editor";
 import { useState } from "react";
 import { AttributeInputProps } from '../AttributeInputProps';

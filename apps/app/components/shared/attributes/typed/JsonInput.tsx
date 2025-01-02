@@ -1,5 +1,3 @@
-'use client';
-
 import { ComponentType, useState } from 'react';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { camelToSentenceCase } from '@signalco/js';

@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { AttributeInputProps } from '../AttributeInputProps';
