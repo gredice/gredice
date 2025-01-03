@@ -35,6 +35,14 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
     const currentStackHeight = useMemo(() => stackHeight(stack, block), [stack, block]);
     const didDrag = useRef(false);
 
+    const effectsAudioMixer = useGameState((state) => state.audio.effects);
+    const pickupSound = effectsAudioMixer.useSoundEffect('/assets/sounds/effects/Pick Grass 01.mp3');
+    const dropSound = effectsAudioMixer.useSoundEffect(
+        block.name === 'Block_Grass'
+            ? '/assets/sounds/effects/Drop Grass 01.mp3'
+            : '/assets/sounds/effects/Drop Grass 01.mp3'
+    );
+
     // Reset position animation when block is moved
     useEffect(() => {
         api.set({ internalPosition: [0, 0, 0] });
@@ -89,7 +97,11 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
             api.start({ internalPosition: [relative.x, hoveredStackHeight, relative.z] })[0].then(() => {
                 onPositionChanged(relative);
             });
+            dropSound.play();
         } else {
+            if (!didDrag.current) {
+                pickupSound.play();
+            }
             didDrag.current = true;
             api.start({ internalPosition: [relative.x, hoveredStackHeight + 0.1, relative.z] });
         }

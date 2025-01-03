@@ -6,18 +6,37 @@ import { useGameState } from "../useGameState";
 
 export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ stack: Stack; block: Block; }>) {
     const rotateBlock = useGameState(state => state.rotateBlock);
+    const effectsAudioMixer = useGameState((state) => state.audio.effects);
+    const swipeSound = effectsAudioMixer.useSoundEffect('/assets/sounds/effects/Swipe Generic 01.mp3');
+
+    function doRotate(event: ThreeEvent<globalThis.PointerEvent> | ThreeEvent<MouseEvent>) {
+        if (!rotateInitiated.current)
+            return;
+
+        if (event.nativeEvent.cancelable)
+            event.nativeEvent.preventDefault();
+        event.stopPropagation();
+        rotateBlock(stack.position, block);
+        rotateInitiated.current = false;
+        // TODO: Don't play sound if rotation is not possible
+        swipeSound.play();
+    }
 
     const rotateInitiated = useRef(false);
     const handleContextMenu = (event: ThreeEvent<MouseEvent>) => {
-        event.nativeEvent.preventDefault();
-        event.stopPropagation();
-        rotateInitiated.current = true;
+        doRotate(event);
     };
 
     const doubleClickDownTimeStamp = useRef(0);
     const firstClickTimeStamp = useRef(0);
     const handlePointerDown = (event: ThreeEvent<globalThis.PointerEvent>) => {
-        if (event.pointerType !== 'touch') return;
+        if (event.pointerType !== 'touch') {
+            if (event.button === 2) {
+                rotateInitiated.current = true;
+            }
+
+            return;
+        }
 
         doubleClickDownTimeStamp.current = Date.now();
         if (doubleClickDownTimeStamp.current - firstClickTimeStamp.current > 1000) {
@@ -44,11 +63,7 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
         if (!rotateInitiated.current)
             return;
 
-        if (event.nativeEvent.cancelable)
-            event.nativeEvent.preventDefault();
-        event.stopPropagation();
-        rotateBlock(stack.position, block);
-        rotateInitiated.current = false;
+        doRotate(event);
     };
 
     return (

@@ -9,7 +9,8 @@ import { audioMixer } from "./audio/audioMixer";
 export type GameState = {
     appBaseUrl: string,
     audio: {
-        ambient: ReturnType<typeof audioMixer>
+        ambient: ReturnType<typeof audioMixer>,
+        effects: ReturnType<typeof audioMixer>
     },
     freezeTime?: Date | null,
     currentTime: Date,
@@ -30,7 +31,8 @@ export type GameState = {
 export const useGameState = create<GameState>((set) => ({
     appBaseUrl: '',
     audio: {
-        ambient: audioMixer()
+        ambient: audioMixer(),
+        effects: audioMixer()
     },
     freezeTime: null,
     currentTime: new Date(),
