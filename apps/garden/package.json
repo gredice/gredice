@@ -13,7 +13,7 @@
     "test-ui": "playwright test --ui",
     "regenerate": "pnpm run /^regenerate:.*/",
     "regenerate:feature-flags": "hypertune",
-    "regenerate:sound-effects": "node --experimental-strip-types ./scripts/regenerate-sound-effects.ts"
+    "regenerate:sounds": "node --experimental-strip-types ./scripts/regenerate-sounds.ts"
   },
   "dependencies": {
     "hypertune": "2.5.7",
