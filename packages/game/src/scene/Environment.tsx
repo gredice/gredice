@@ -6,6 +6,7 @@ import { getTimes, getPosition } from 'suncalc';
 import { useGameState } from '../useGameState';
 import { AmbientLight, Color, DirectionalLight, HemisphereLight, Quaternion, Vector3 } from 'three';
 import { Garden } from '../types/Garden';
+import { audioMixer } from '../audio/audioMixer';
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
@@ -93,6 +94,8 @@ export function environmentState({ lat, lon }: Garden['location'], currentTime: 
     return { sunrise, sunset, timeOfDay, sunPosition, colors, intensities };
 }
 
+const mixer = audioMixer();
+
 export function Environment({ location, noBackground }: { location: Garden['location'], noBackground?: boolean }) {
     const cameraShadowSize = 20;
     const shadowMapSize = 8;
@@ -103,6 +106,16 @@ export function Environment({ location, noBackground }: { location: Garden['loca
     const directionalLightRef = useRef<DirectionalLight>(null);
 
     const currentTime = useGameState((state) => state.currentTime);
+
+    const { sunrise, sunset } = getSunriseSunset(location, currentTime)
+    const baseAmbient = mixer.useMusic(
+        currentTime > sunrise && currentTime < sunset ?
+            '/assets/sounds/ambient/Day Birds 01.mp3' :
+            '/assets/sounds/ambient/Night 01.mp3',
+        0.2);
+    useEffect(() => {
+        baseAmbient.play();
+    }, []);
 
     useEffect(() => {
         const {
