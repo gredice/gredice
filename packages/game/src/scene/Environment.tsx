@@ -94,8 +94,6 @@ export function environmentState({ lat, lon }: Garden['location'], currentTime: 
     return { sunrise, sunset, timeOfDay, sunPosition, colors, intensities };
 }
 
-const mixer = audioMixer();
-
 export function Environment({ location, noBackground }: { location: Garden['location'], noBackground?: boolean }) {
     const cameraShadowSize = 20;
     const shadowMapSize = 8;
@@ -106,9 +104,10 @@ export function Environment({ location, noBackground }: { location: Garden['loca
     const directionalLightRef = useRef<DirectionalLight>(null);
 
     const currentTime = useGameState((state) => state.currentTime);
+    const ambientAudioMixer = useGameState((state) => state.audio.ambient);
 
-    const { sunrise, sunset } = getSunriseSunset(location, currentTime)
-    const baseAmbient = mixer.useMusic(
+    const { sunrise, sunset } = getSunriseSunset(location, currentTime);
+    const baseAmbient = ambientAudioMixer.useMusic(
         currentTime > sunrise && currentTime < sunset ?
             '/assets/sounds/ambient/Day Birds 01.mp3' :
             '/assets/sounds/ambient/Night 01.mp3',

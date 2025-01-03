@@ -4,9 +4,13 @@ import type { Block } from "./types/Block";
 import type { Vector3 } from "three";
 import { getStack } from "./utils/getStack";
 import { BlockData } from "../@types/BlockData";
+import { audioMixer } from "./audio/audioMixer";
 
 export type GameState = {
     appBaseUrl: string,
+    audio: {
+        ambient: ReturnType<typeof audioMixer>
+    },
     freezeTime?: Date | null,
     currentTime: Date,
     stacks: Stack[],
@@ -25,6 +29,9 @@ export type GameState = {
 
 export const useGameState = create<GameState>((set) => ({
     appBaseUrl: '',
+    audio: {
+        ambient: audioMixer()
+    },
     freezeTime: null,
     currentTime: new Date(),
     stacks: [],

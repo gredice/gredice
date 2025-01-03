@@ -7,6 +7,7 @@ function fromAudio(context: AudioContext, buffer: AudioBuffer) {
 }
 
 // TODO: Option to overlap multiple play calls, queue or play one at a time
+// TODO: Preload effect data to reduce latency
 function useSoundEffect(context: AudioContext, src: string) {
     const node = useRef<AudioBufferSourceNode>(null);
     const audioCache = useRef<AudioBuffer>(null);
