@@ -42,7 +42,7 @@ interface ParsedXmlData {
     };
 }
 
-async function getBjelovarForecast(): Promise<DayForecast[]> {
+export async function getBjelovarForecast(): Promise<DayForecast[]> {
     try {
         console.log('Fetching data from URL...');
         const response = await fetch('https://prognoza.hr/sedam/hrvatska/7d_meteogrami.xml');
@@ -56,7 +56,6 @@ async function getBjelovarForecast(): Promise<DayForecast[]> {
         console.log('XML parsing completed.');
 
         const bjelovarForecast = data.sedmodnevna_aliec.grad.find(city => city.$.ime === 'Bjelovar');
-
         if (!bjelovarForecast) {
             console.log('Bjelovar forecast not found.');
             throw new Error('Bjelovar forecast not found.');
