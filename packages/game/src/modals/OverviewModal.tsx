@@ -15,6 +15,7 @@ import { cx } from "@signalco/ui-primitives/cx";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { ProfileInfo } from "../shared-ui/ProfileInfo";
 import { NoSunflowersPlaceholder } from "../shared-ui/NoSunflowersPlaceholder";
+import { SoundSettingsCard } from "./components/SoundSettingsCard";
 
 function CardActions({ children, className, ...rest }: RowProps) {
     return (
@@ -60,10 +61,10 @@ export function OverviewModal() {
                             onSelected={() => setProfileModalOpen('generalno')}
                         />
                         <ListItem
-                            nodeId="profile-security"
-                            label="Sigurnost"
-                            selected={settingsMode === 'sigurnost'}
-                            onSelected={() => setProfileModalOpen('sigurnost')}
+                            nodeId="profile-sunflowers"
+                            label="Suncokreti"
+                            selected={settingsMode === 'suncokreti'}
+                            onSelected={() => setProfileModalOpen('suncokreti')}
                         />
                         <ListItem
                             nodeId="profile-notifications"
@@ -71,11 +72,18 @@ export function OverviewModal() {
                             selected={settingsMode === 'obavijesti'}
                             onSelected={() => setProfileModalOpen('obavijesti')}
                         />
+                        <Typography level="body3" uppercase bold className="py-4">Postavke</Typography>
                         <ListItem
-                            nodeId="profile-sunflowers"
-                            label="Suncokreti"
-                            selected={settingsMode === 'suncokreti'}
-                            onSelected={() => setProfileModalOpen('suncokreti')}
+                            nodeId="profile-security"
+                            label="Sigurnost"
+                            selected={settingsMode === 'sigurnost'}
+                            onSelected={() => setProfileModalOpen('sigurnost')}
+                        />
+                        <ListItem
+                            nodeId="profile-sound"
+                            label="Zvuk"
+                            selected={settingsMode === 'zvuk'}
+                            onSelected={() => setProfileModalOpen('zvuk')}
                         />
                     </List>
                 </Stack>
@@ -152,6 +160,12 @@ export function OverviewModal() {
                                     </CardContent>
                                 </form>
                             </Card>
+                        </Stack>
+                    )}
+                    {settingsMode === 'zvuk' && (
+                        <Stack spacing={4}>
+                            <Typography level="h4">Zvuk</Typography>
+                            <SoundSettingsCard />
                         </Stack>
                     )}
                     {settingsMode === 'obavijesti' && (
