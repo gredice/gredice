@@ -16,6 +16,7 @@ interface DayForecast {
     symbol: number;
     windDirection: string | null;
     windStrength: number;
+    rain: number;
     entries: WeatherEntry[];
 }
 
@@ -93,7 +94,8 @@ async function getBjelovarForecast(): Promise<DayForecast[]> {
                     windDirection: windDirection,
                     windStrength: windStrength,
                     entries: [],
-                    symbol
+                    symbol,
+                    rain
                 };
                 fiveDayForecast.push(currentDay);
             }
@@ -116,6 +118,11 @@ async function getBjelovarForecast(): Promise<DayForecast[]> {
             }, {} as Record<number, number>);
 
             day.symbol = Object.entries(symbolCounts).reduce((a, b) => a[1] > b[1] ? a : b)[0] as unknown as number;
+        });
+
+        // Calculate rain max for each day
+        fiveDayForecast.forEach(day => {
+            day.rain = day.entries.reduce((acc, entry) => Math.max(acc, entry.rain), 0);
         });
 
         return fiveDayForecast;

@@ -14,6 +14,7 @@ import { DebugHud } from './hud/DebugHud';
 import { AccountHud } from './hud/AccountHud';
 import { SunflowersHud } from './hud/SunflowersHud';
 import { OverviewModal } from './modals/OverviewModal';
+import { WeatherHud } from './hud/WeatherHud';
 
 // function serializeGarden(garden: Garden) {
 //     return JSON.stringify(garden);
@@ -179,6 +180,7 @@ export function GameScene({
                     <AccountHud />
                     <DayNightCycleHud lat={45.739} lon={16.572} />
                     <SunflowersHud />
+                    <WeatherHud />
                 </>
             )}
             <OverviewModal />

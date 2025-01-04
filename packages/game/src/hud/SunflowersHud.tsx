@@ -43,9 +43,9 @@ function SunflowersAmount() {
             trigger={(
                 <Button
                     variant="plain"
-                    startDecorator={<Typography className="text-xl">🌻</Typography>}
-                    className="rounded-full px-2 min-w-20 justify-between pr-4" size="sm">
-                    <Typography level="body2" className="text-xl">{sunflowerCount}</Typography>
+                    startDecorator={<Typography className="text-base md:text-xl">🌻</Typography>}
+                    className="rounded-full px-2 md:min-w-20 justify-between pr-4" size="sm">
+                    <Typography level="body2" className="text-base md:text-xl">{sunflowerCount}</Typography>
                 </Button>
             )}>
             <SunflowersCard />
