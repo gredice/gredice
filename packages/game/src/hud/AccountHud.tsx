@@ -1,7 +1,7 @@
 import { HudCard } from "./components/HudCard";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Check, CheckCheck, Inbox, LogOut, User } from 'lucide-react';
+import { Check, CheckCheck, Cog, Inbox, LogOut, Settings, Settings2, User } from 'lucide-react';
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Popper } from "@signalco/ui-primitives/Popper";
@@ -72,6 +72,10 @@ function ProfileCard() {
             <DropdownMenuItem className="gap-3" onClick={() => setProfileModalOpen('obavijesti')}>
                 <Inbox className="h-4 w-4" />
                 <span>Obavijesti</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-3" onClick={() => setProfileModalOpen('generalno')}>
+                <Settings2 className="h-4 w-4" />
+                <span>Postavke</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-4" />
             <DropdownMenuItem className="gap-3" href="/odjava">

@@ -10,6 +10,7 @@
   },
   "devDependencies": {
     "@gredice/storage": "workspace:*",
+    "@radix-ui/react-slider": "1.2.2",
     "@react-spring/three": "9.7.5",
     "@react-spring/web": "9.7.5",
     "@react-three/drei": "9.120.4",
