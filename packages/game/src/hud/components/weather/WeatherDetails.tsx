@@ -1,17 +1,12 @@
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, LucideIcon, Circle, Wind } from 'lucide-react'
-import { DayForecast } from '../../WeatherHud';
 import { RainIcon } from './icons/RainIcon'
 import { weatherIcons } from './WeatherIcons';
-import { cx } from '@signalco/ui-primitives/cx';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { Link } from '@signalco/ui-primitives/Link';
-
-type WeatherDetailsProps = {
-    data: DayForecast[]
-}
+import { useWeatherForecast } from '../../../hooks/useWeatherForecast';
 
 export const windDirectionIcons: Record<string, LucideIcon> = {
     N: ArrowUp,
@@ -24,7 +19,12 @@ export const windDirectionIcons: Record<string, LucideIcon> = {
     NW: ArrowUpLeft
 }
 
-export function WeatherDetails({ data }: WeatherDetailsProps) {
+export function WeatherDetails() {
+    const { data } = useWeatherForecast();
+    if (!data) return null;
+    // TODO: Add loading indicator
+    // TODO: Add error message
+
     return (
         <Stack>
             <Row className="bg-background px-4 py-2" justifyContent="space-between">

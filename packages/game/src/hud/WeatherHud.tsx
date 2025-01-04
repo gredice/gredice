@@ -9,6 +9,9 @@ import { useWeatherForecast } from "../hooks/useWeatherForecast";
 
 export function WeatherHud() {
     const { data: weatherData } = useWeatherForecast();
+    if (!weatherData) return null;
+    // TODO: Add loading indicator    
+    // TODO: Add error message
 
     return (
         <HudCard
@@ -37,10 +40,7 @@ export function WeatherHud() {
                             </div>
                         </Button>
                     )}>
-                    {/* TODO Loading indicator */}
-                    {weatherData && (
-                        <WeatherDetails data={weatherData} />
-                    )}
+                    <WeatherDetails />
                 </Popper>
             )}
         </HudCard>
