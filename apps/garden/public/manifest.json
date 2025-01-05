@@ -1,0 +1,38 @@
+{
+    "name": "Gredice Vrt",
+    "short_name": "Vrt",
+    "start_url": "/",
+    "display": "standalone",
+    "description": "",
+    "lang": "hr",
+    "dir": "ltr",
+    "theme_color": "#2e6f40",
+    "background_color": "#f0e9e2",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "/android-chrome-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/Screenshot-20250105-vrt-gredice-com.png",
+            "sizes": "1024x768",
+            "type": "image/png"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Postavke",
+            "url": "/?pregled=generalno",
+            "description": "Pregled postavki"
+        }
+    ]
+}
