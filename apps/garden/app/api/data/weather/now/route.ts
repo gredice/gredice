@@ -8,10 +8,7 @@ export async function GET() {
     const forecast = await getBjelovarForecast();
     const current = forecast.at(0)?.entries.at(0);
     if (!current) {
-        return {
-            status: 500,
-            body: 'No current weather data available.',
-        };
+        return new Response(null, { status: 500, statusText: 'Forecast not available' });
     }
 
     const weather = {
