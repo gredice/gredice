@@ -22,7 +22,7 @@ export interface DayForecast {
 
 export function useWeatherForecast() {
     return useQuery({
-        queryKey: ['weather'],
+        queryKey: ['weather', 'forecast'],
         queryFn: async () => {
             const response = await fetch('/api/data/weather')
             const data = await response.json();

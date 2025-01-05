@@ -12,13 +12,13 @@ export type WeatherNow = {
     thundery: number;
 };
 
-export function useWeatherForecast() {
+export function useWeatherNow() {
     return useQuery({
-        queryKey: ['weather'],
+        queryKey: ['weather', 'now'],
         queryFn: async () => {
             const response = await fetch('/api/data/weather/now')
             const data = await response.json();
-            return data as WeatherNow[];
+            return data as WeatherNow;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
