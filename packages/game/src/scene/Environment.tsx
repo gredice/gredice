@@ -7,7 +7,9 @@ import { useGameState } from '../useGameState';
 import { AmbientLight, Color, DirectionalLight, HemisphereLight, Quaternion, Vector3 } from 'three';
 import { Garden } from '../types/Garden';
 import { audioMixer } from '../audio/audioMixer';
+import { filterFuncObjectStringProps } from '@signalco/hooks/_tsup-dts-rollup';
 import { useWeatherNow } from '../hooks/useWeatherNow';
+import { Snow } from './weather/Snow';
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
@@ -200,6 +202,7 @@ export function Environment({ location, noBackground }: { location: Garden['loca
             {fog > 0 && (
                 <fog attach="fog" args={['#aaaaaa', fogNear, 190]} />
             )}
+            <Snow />
         </>
     );
 }
