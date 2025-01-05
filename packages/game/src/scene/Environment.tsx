@@ -7,6 +7,7 @@ import { useGameState } from '../useGameState';
 import { AmbientLight, Color, DirectionalLight, HemisphereLight, Quaternion, Vector3 } from 'three';
 import { Garden } from '../types/Garden';
 import { audioMixer } from '../audio/audioMixer';
+import { useWeatherNow } from '../hooks/useWeatherNow';
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
@@ -156,6 +157,26 @@ export function Environment({ location, noBackground }: { location: Garden['loca
             'srgb');
     }, [currentTime]);
 
+    const { data: weather } = useWeatherNow();
+
+    // Handle fog
+    const fog = weather?.foggy ?? 0;
+    const fogNear = 170 - fog * 30;
+    // TODO: Apply fog to background (make a gradient)
+
+    // TODO: Handle rain
+    const rain = weather?.rainy ?? 0;
+
+    // TODO: Handle snow
+    const snow = weather?.snowy ?? 0;
+
+    // TODO: Handle wind
+    const windSpeed = weather?.windSpeed ?? 0;
+    const windDirection = weather?.windDirection;
+
+    // TODO: Handle clouds
+    const clouds = weather?.cloudy ?? 0;
+
     return (
         <>
             {!noBackground && <color ref={backgroundRef} attach="background" args={[0, 0, 0]} />}
@@ -176,6 +197,9 @@ export function Environment({ location, noBackground }: { location: Garden['loca
                 castShadow>
                 <orthographicCamera attach="shadow-camera" args={[-cameraShadowSize, cameraShadowSize, cameraShadowSize, -cameraShadowSize]} />
             </directionalLight>
+            {fog > 0 && (
+                <fog attach="fog" args={['#aaaaaa', fogNear, 190]} />
+            )}
         </>
     );
 }
