@@ -148,6 +148,22 @@ function CurrentTimeManager({ freezeTime }: { freezeTime?: Date }) {
     return null;
 }
 
+function beginPanCamera(direction: [number, number]) {
+    const orbitControls = useGameState.getState().orbitControls;
+    if (!orbitControls) return;
+
+    // TODO: Use frame loop instead of setInterval
+    const pan = new Vector3(direction[0], 0, direction[1]).divideScalar(5);
+    const intervalToken = setInterval(() => {
+        orbitControls.target.add(pan);
+    }, 1000 / 60);
+    return intervalToken;
+}
+
+function endPanCamera(intervalToken: NodeJS.Timeout) {
+    clearInterval(intervalToken);
+}
+
 function rotateCamera(direction: 'ccw' | 'cw' = 'cw') {
     const orbitControls = useGameState.getState().orbitControls;
     if (!orbitControls) return;
@@ -162,24 +178,52 @@ function rotateCamera(direction: 'ccw' | 'cw' = 'cw') {
 const useKeyboardControls = () => {
     // TODO: Disable rotation when modal is open
 
-    const keys: Record<string, 'cw' | 'ccw'> = {
+    const rotateKeys: Record<string, 'cw' | 'ccw'> = {
         KeyQ: 'cw',
         KeyW: 'ccw',
     }
 
-    const valueByKey = (key: string) => keys[key];
+    const panKeys: Record<string, [number, number]> = {
+        ArrowUp: [-1, -1],
+        ArrowDown: [1, 1],
+        ArrowLeft: [-1, 1],
+        ArrowRight: [1, -1],
+    }
+
+    const rotateValueByKey = (key: string) => rotateKeys[key];
+    const currentPanIntervalToken = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
-            const value = valueByKey(e.code);
-            if (value) rotateCamera(value);
+
+            const rotateValue = rotateValueByKey(e.code);
+            if (rotateValue) rotateCamera(rotateValue);
+
+            const panValue = panKeys[e.code];
+            if (panValue) {
+                if (currentPanIntervalToken.current.has(e.code)) return;
+                const token = beginPanCamera(panValue);
+                if (token) {
+                    currentPanIntervalToken.current.set(e.code, token);
+                }
+            }
+        }
+        const handleKeyUp = (e: KeyboardEvent) => {
+            const panValue = panKeys[e.code];
+            if (panValue) {
+                const token = currentPanIntervalToken.current.get(e.code);
+                if (token) {
+                    endPanCamera(token);
+                    currentPanIntervalToken.current.delete(e.code);
+                }
+            }
         }
         document.addEventListener('keydown', handleKeyDown)
-        // document.addEventListener('keyup', handleKeyUp)
+        document.addEventListener('keyup', handleKeyUp)
         return () => {
             document.removeEventListener('keydown', handleKeyDown)
-            // document.removeEventListener('keyup', handleKeyUp)
+            document.removeEventListener('keyup', handleKeyUp)
         }
     }, []);
 }
