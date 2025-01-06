@@ -84,7 +84,7 @@ export async function getBjelovarForecast(): Promise<DayForecast[]> {
             const rain = parseFloat(entry.oborina[0]);
 
             if (currentDay === null || currentDay.date !== date) {
-                if (fiveDayForecast.length >= 5) break;
+                if (fiveDayForecast.length >= 6) break;
 
                 currentDay = {
                     date,
