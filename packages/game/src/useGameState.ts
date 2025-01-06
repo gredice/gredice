@@ -5,6 +5,7 @@ import type { Vector3 } from "three";
 import { getStack } from "./utils/getStack";
 import { BlockData } from "../@types/BlockData";
 import { audioMixer } from "./audio/audioMixer";
+import { OrbitControls } from 'three-stdlib';
 
 export type GameState = {
     appBaseUrl: string,
@@ -18,6 +19,8 @@ export type GameState = {
     data: {
         blocks: BlockData[]
     },
+    orbitControls: OrbitControls | null,
+    setOrbitControls: (ref: OrbitControls | null) => void,
     isDragging: boolean,
     setIsDragging: (isDragging: boolean) => void,
     setInitial: (appBaseUrl: string, data: { blocks: BlockData[] }, freezeTime?: Date | null) => void,
@@ -40,7 +43,9 @@ export const useGameState = create<GameState>((set) => ({
     data: {
         blocks: []
     },
+    orbitControls: null,
     isDragging: false,
+    setOrbitControls: (ref) => set({ orbitControls: ref }),
     setIsDragging: (isDragging) => set({ isDragging }),
     setInitial: (appBaseUrl, data, freezeTime) => set({ appBaseUrl, freezeTime, data }),
     setCurrentTime: (currentTime) => set({ currentTime }),

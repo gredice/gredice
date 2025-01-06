@@ -2,7 +2,7 @@
 
 import { Vector3 } from 'three';
 import { OrbitControls } from '@react-three/drei';
-import { HTMLAttributes, useEffect } from 'react';
+import { HTMLAttributes, useEffect, useRef, useState } from 'react';
 import { Environment } from './scene/Environment';
 import { useGameState } from './useGameState';
 import type { Stack } from './types/Stack';
@@ -15,6 +15,9 @@ import { AccountHud } from './hud/AccountHud';
 import { SunflowersHud } from './hud/SunflowersHud';
 import { OverviewModal } from './modals/OverviewModal';
 import { WeatherHud } from './hud/WeatherHud';
+import { Row } from '@signalco/ui-primitives/Row';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Redo, RotateCcw, RotateCw, Undo } from 'lucide-react';
 
 // function serializeGarden(garden: Garden) {
 //     return JSON.stringify(garden);
@@ -145,6 +148,59 @@ function CurrentTimeManager({ freezeTime }: { freezeTime?: Date }) {
     return null;
 }
 
+function rotateCamera(direction: 'ccw' | 'cw' = 'cw') {
+    const orbitControls = useGameState.getState().orbitControls;
+    if (!orbitControls) return;
+
+    // Rotate by 90 degrees
+    orbitControls.setAzimuthalAngle(
+        orbitControls.getAzimuthalAngle() +
+        (direction === 'cw' ? -Math.PI / 2 : Math.PI / 2)
+    );
+}
+
+const useKeyboardControls = () => {
+    // TODO: Disable rotation when modal is open
+
+    const keys: Record<string, 'cw' | 'ccw'> = {
+        KeyQ: 'cw',
+        KeyW: 'ccw',
+    }
+
+    const valueByKey = (key: string) => keys[key];
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
+            const value = valueByKey(e.code);
+            if (value) rotateCamera(value);
+        }
+        document.addEventListener('keydown', handleKeyDown)
+        // document.addEventListener('keyup', handleKeyUp)
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown)
+            // document.removeEventListener('keyup', handleKeyUp)
+        }
+    }, []);
+}
+
+function RotateIcons() {
+    const isNight = useGameState(state => state.currentTime.getHours() < 6 || state.currentTime.getHours() >= 18);
+
+    return (
+        <div className='absolute bottom-2 left-2'>
+            <Row>
+                <IconButton variant='plain' onClick={rotateCamera.bind(null, 'cw')}>
+                    <Undo className='size-5' />
+                </IconButton>
+                <IconButton variant='plain' onClick={rotateCamera.bind(null, 'ccw')}>
+                    <Redo className='size-5' />
+                </IconButton>
+            </Row>
+        </div>
+    )
+}
+
 export function GameScene({
     appBaseUrl,
     isDevelopment,
@@ -155,6 +211,7 @@ export function GameScene({
     ...rest
 }: GameSceneProps) {
     const cameraPosition = 100;
+    useKeyboardControls();
 
     return (
         <div {...rest}>
@@ -169,6 +226,7 @@ export function GameScene({
                 {/* {isDevelopment && <DebugHud />} */}
                 <GardenDisplay noBackground={noBackground} />
                 <OrbitControls
+                    ref={useGameState.getState().setOrbitControls}
                     enableRotate={false}
                     onStart={() => useGameState.getState().setIsDragging(true)}
                     onEnd={() => useGameState.getState().setIsDragging(false)}
@@ -184,6 +242,7 @@ export function GameScene({
                 </>
             )}
             <OverviewModal />
+            <RotateIcons />
         </div>
     );
 }

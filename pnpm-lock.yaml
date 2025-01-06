@@ -561,6 +561,9 @@ importers:
       three:
         specifier: 0.172.0
         version: 0.172.0
+      three-stdlib:
+        specifier: 2.35.2
+        version: 2.35.2(three@0.172.0)
       tsx:
         specifier: 4.19.2
         version: 4.19.2
