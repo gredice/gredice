@@ -109,27 +109,12 @@ export async function getBjelovarForecast(): Promise<DayForecast[]> {
             currentDay.entries.push({ time, temperature, symbol, windDirection, windStrength, rain });
         }
 
-        // Calculate the most frequent symbol for each day
-        fiveDayForecast.forEach(day => {
-            const symbolCounts = day.entries.reduce((acc, entry) => {
-                acc[entry.symbol] = (acc[entry.symbol] || 0) + 1;
-                return acc;
-            }, {} as Record<number, number>);
-
-            day.symbol = Object.entries(symbolCounts).reduce((a, b) => a[1] > b[1] ? a : b)[0] as unknown as number;
-        });
-
-        // Calculate rain max for each day
-        fiveDayForecast.forEach(day => {
-            day.rain = day.entries.reduce((acc, entry) => Math.max(acc, entry.rain), 0);
-        });
+        // Sort the forecasts by date
+        fiveDayForecast.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
         return fiveDayForecast;
     } catch (error) {
-        console.error('Detailed error:', error);
-        if (error instanceof Error) {
-            console.error('Error stack:', error.stack);
-        }
+        console.error('Error fetching or parsing weather data:', error);
         throw error;
     }
 }
