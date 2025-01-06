@@ -65,7 +65,7 @@ export async function getBjelovarForecast(): Promise<DayForecast[]> {
         let currentDay: DayForecast | null = null;
 
         for (const entry of bjelovarForecast.dan) {
-            const date = entry.$.datum;
+            const date = entry.$.datum.replace(/(\d+)\.(\d+)\.(\d+)\./, '$3-$2-$1');
             const time = parseInt(entry.$.sat, 10);
             const temperature = parseInt(entry.t_2m[0], 10);
             const symbol = parseInt(entry.simbol[0].replace('n', ''), 10);
