@@ -12,6 +12,7 @@ export async function GET() {
     }
 
     const weather = {
+        symbol: current.symbol,
         temperature: current?.temperature,
         rain: current.rain,
         windDirection: current.windDirection,

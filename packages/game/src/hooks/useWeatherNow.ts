@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 export type WeatherNow = {
+    symbol: number;
     temperature: number;
     rain: number;
     windDirection: string;

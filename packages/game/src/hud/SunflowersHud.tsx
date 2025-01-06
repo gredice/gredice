@@ -45,7 +45,7 @@ function SunflowersAmount() {
                     variant="plain"
                     startDecorator={<Typography className="text-base md:text-xl">🌻</Typography>}
                     className="rounded-full px-2 md:min-w-20 justify-between pr-4" size="sm">
-                    <Typography level="body2" className="text-base md:text-xl">{sunflowerCount}</Typography>
+                    <Typography level="body2" className="text-base">{sunflowerCount}</Typography>
                 </Button>
             )}>
             <SunflowersCard />
