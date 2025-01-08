@@ -17,9 +17,10 @@ export const Sunny = createDayNightIcon(
     ),
     (props) => (
         <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-            <path d="M16 2C8.27 2 2 8.27 2 16C2 23.73 8.27 30 16 30C19.32 30 22.37 28.84 24.76 26.93C17.41 26.5 11.5 20.59 11.07 13.24C9.16 15.63 8 18.68 8 22C8 29.73 14.27 36 22 36" stroke="#C0C0C0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-    )
+          <path d="M22 16C22 19.3137 19.3137 22 16 22C12.6863 22 10 19.3137 10 16C10 12.6863 12.6863 10 16 10C19.3137 10 22 12.6863 22 16Z" fill="#C0C0C0" />
+          <path d="M20 8C17.7909 8 16 6.20914 16 4C16 6.20914 14.2091 8 12 8C14.2091 8 16 9.79086 16 12C16 9.79086 17.7909 8 20 8Z" fill="#C0C0C0" />
+      </svg>
+  )
 )
 
 export const SunnyLightClouds = createDayNightIcon(
@@ -32,10 +33,10 @@ export const SunnyLightClouds = createDayNightIcon(
     ),
     (props) => (
         <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-            <path d="M16 2C8.27 2 2 8.27 2 16C2 23.73 8.27 30 16 30C19.32 30 22.37 28.84 24.76 26.93C17.41 26.5 11.5 20.59 11.07 13.24C9.16 15.63 8 18.68 8 22C8 29.73 14.27 36 22 36" stroke="#C0C0C0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M24 20.5C24 22.9853 21.9853 25 19.5 25H10.5C8.01472 25 6 22.9853 6 20.5C6 18.0147 8.01472 16 10.5 16H19.5C21.9853 16 24 18.0147 24 20.5Z" fill="#A9A9A9" />
-        </svg>
-    )
+          <path d="M18 8C15.7909 8 14 6.20914 14 4C14 6.20914 12.2091 8 10 8C12.2091 8 14 9.79086 14 12C14 9.79086 15.7909 8 18 8Z" fill="#C0C0C0" />
+          <path d="M24 20.5C24 22.9853 21.9853 25 19.5 25H10.5C8.01472 25 6 22.9853 6 20.5C6 18.0147 8.01472 16 10.5 16H19.5C21.9853 16 24 18.0147 24 20.5Z" fill="#A9A9A9" />
+      </svg>
+  )
 )
 
 export const SunnyMediumClouds = createDayNightIcon(
@@ -48,10 +49,10 @@ export const SunnyMediumClouds = createDayNightIcon(
     ),
     (props) => (
         <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-            <path d="M14 2C6.27 2 0 8.27 0 16C0 23.73 6.27 30 14 30C17.32 30 20.37 28.84 22.76 26.93C15.41 26.5 9.5 20.59 9.07 13.24C7.16 15.63 6 18.68 6 22C6 29.73 12.27 36 20 36" stroke="#C0C0C0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M26 20.5C26 23.5376 23.5376 26 20.5 26H9.5C6.46243 26 4 23.5376 4 20.5C4 17.4624 6.46243 15 9.5 15H20.5C23.5376 15 26 17.4624 26 20.5Z" fill="#A9A9A9" />
-        </svg>
-    )
+          <path d="M16 8C13.7909 8 12 6.20914 12 4C12 6.20914 10.2091 8 8 8C10.2091 8 12 9.79086 12 12C12 9.79086 13.7909 8 16 8Z" fill="#C0C0C0" />
+          <path d="M26 20.5C26 23.5376 23.5376 26 20.5 26H9.5C6.46243 26 4 23.5376 4 20.5C4 17.4624 6.46243 15 9.5 15H20.5C23.5376 15 26 17.4624 26 20.5Z" fill="#A9A9A9" />
+      </svg>
+  )
 )
 
 export const SunnyHeavyClouds = createDayNightIcon(
@@ -64,9 +65,8 @@ export const SunnyHeavyClouds = createDayNightIcon(
     ),
     (props) => (
         <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-            <path d="M12 2C4.27 2 -2 8.27 -2 16C-2 23.73 4.27 30 12 30C15.32 30 18.37 28.84 20.76 26.93C13.41 26.5 7.5 20.59 7.07 13.24C5.16 15.63 4 18.68 4 22C4 29.73 10.27 36 18 36" stroke="#C0C0C0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M28 20.5C28 24.6421 24.6421 28 20.5 28H7.5C3.35786 28 0 24.6421 0 20.5C0 16.3579 3.35786 13 7.5 13H20.5C24.6421 13 28 16.3579 28 20.5Z" fill="#A9A9A9" />
-        </svg>
-    )
+          <path d="M14 6C11.7909 6 10 4.20914 10 2C10 4.20914 8.20914 6 6 6C8.20914 6 10 7.79086 10 10C10 7.79086 11.7909 6 14 6Z" fill="#C0C0C0" />
+          <path d="M28 20.5C28 24.6421 24.6421 28 20.5 28H7.5C3.35786 28 0 24.6421 0 20.5C0 16.3579 3.35786 13 7.5 13H20.5C24.6421 13 28 16.3579 28 20.5Z" fill="#A9A9A9" />
+      </svg>
+  )
 )
-

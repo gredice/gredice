@@ -280,9 +280,9 @@ export function GameScene({
             {!hideHud && (
                 <>
                     <AccountHud />
-                    <DayNightCycleHud lat={45.739} lon={16.572} />
                     <SunflowersHud />
                     <WeatherHud />
+                    <DayNightCycleHud lat={45.739} lon={16.572} />
                 </>
             )}
             <OverviewModal />
