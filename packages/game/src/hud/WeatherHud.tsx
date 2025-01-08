@@ -8,16 +8,15 @@ import { Button } from '@signalco/ui-primitives/Button';
 import { useWeatherForecast } from "../hooks/useWeatherForecast";
 import { useWeatherNow } from "../hooks/useWeatherNow";
 import { Row } from "@signalco/ui-primitives/Row";
-import { Divide } from "lucide-react";
-import { Divider } from "@signalco/ui-primitives/Divider";
 import { Typography } from "@signalco/ui-primitives/Typography";
 
 export function WeatherHud() {
     const { data: weatherData } = useWeatherNow();
     const { data: forecastData } = useWeatherForecast();
-    if (!forecastData) return null;
+    if (!forecastData || !weatherData) return null;
     // TODO: Add loading indicator    
     // TODO: Add error message
+    // TODO: Show night icons when it's night for weather
 
     const WeatherIcon = weatherData ? weatherIcons[weatherData.symbol] : null;
 
@@ -25,32 +24,35 @@ export function WeatherHud() {
         <HudCard
             open
             position="floating"
-            className="right-[68px] md:right-24 top-2">
-            {/* TODO Loading indicator */}
+            className="right-2 md:right-[104px] top-14 md:top-2 md:px-1">
             {forecastData && (
                 <Popper
                     side="bottom"
                     sideOffset={12}
                     className="overflow-hidden"
                     trigger={(
+                        <Row spacing={1}>
                         <Button
                             variant="plain"
-                            className="rounded-full px-2 justify-between pr-4 md:pr-2" size="sm">
-                            <Row spacing={1}>
+                                className="rounded-full px-2 justify-between pr-4 md:pr-2" size="sm">
                                 <Row>
-                                    {WeatherIcon && <WeatherIcon.day className="w-6 h-6 text-gray-800" />}
+                                    {WeatherIcon && <WeatherIcon.day className="size-6" />}
                                     <Typography level="body2">{weatherData?.temperature}°C</Typography>
                                 </Row>
-                                <div className="w-[1px] h-4 border-r hidden md:inline" />
+                            </Button>
+                            <div className="w-[1px] h-4 border-r hidden md:inline" />
+                            <Button
+                                variant="plain"
+                                className="rounded-full px-2 justify-between pr-4 md:pr-2" size="sm">
                                 <Row spacing={1} className="hidden md:flex">
                                     {forecastData.slice(0, 3).map((day) => {
                                         const ForecastIcon = weatherIcons[day.symbol];
                                         if (!ForecastIcon) return null;
-                                        return <ForecastIcon.day key={day.date} className="w-6 h-6 text-gray-800" />;
+                                        return <ForecastIcon.day key={day.date} className="size-6" />;
                                     })}
-                                </Row>
                             </Row>
                         </Button>
+                        </Row>
                     )}>
                     <WeatherDetails />
                 </Popper>
