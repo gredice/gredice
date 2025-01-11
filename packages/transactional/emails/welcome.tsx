@@ -10,21 +10,20 @@ import {
 import { PrimaryButton } from '../components/PrimaryButton';
 import { Paragraph } from '../components/Paragraph';
 import { Link } from '../components/Link';
-import { Header } from '../components/Header';
 import { Divider } from '../components/Divider';
 import { Disclaimer } from '../components/Disclaimer';
 import { ContentCard } from '../components/ContentCard';
 
 interface VercelInviteUserEmailProps {
     email: string;
-    confirmLink: string;
+    ctaUrl: string;
     appName: string;
     appDomain: string;
 }
 
 export default function UserLoginRequestEmail({
     email = 'login@example.com',
-    confirmLink = 'https://vrt.gredice.com/prijava/potvrda-emaila',
+    ctaUrl = 'https://vrt.gredice.com',
 
     appName = 'Gredice',
     appDomain = 'gredice.com'
@@ -45,22 +44,26 @@ export default function UserLoginRequestEmail({
                             alt="Gredice Logo"
                         />
                     </Section>
-                    <Header>Potvrda email adrese</Header>
-                    <Paragraph>Primili smo zahtjev za potvrdu email adrese: <strong>{email}</strong></Paragraph>
-                    <Paragraph>Ako navedeni email odgovara traženom, klikni na gumb ispod za potvrdu.
-                    </Paragraph>
-                    <Section className="my-[32px] text-center">
-                        <PrimaryButton href={confirmLink}>Potvrdi email</PrimaryButton>
-                    </Section>
+                    <Paragraph>Pozdrav,</Paragraph>
+                    <Paragraph>Tvoje Gredice te čekaju! 🥕🍅 Mi smo tu da ti omogućimo da uživaš u svježem povrću i okusima domaćih vrtova - čak i ako nemaš vlastiti vrt ili vremena za sadnju.</Paragraph>
                     <Paragraph>
-                        ili kopiraj i zalijepi ovaj URL u svoj preglednik:{' '}
-                        <Link href={confirmLink}>{confirmLink}</Link>
+                        Uz Gredice možeš:<br />
+                        🌿 Saditi i pratiti kako tvoje povrće raste.<br />
+                        📦 Dobiti ubrane plodove direktno na svoju adresu.<br />
+                        🌎 Podržavati lokalne uzgajivače i održivu poljoprivredu.<br />
                     </Paragraph>
+                    <Paragraph>Sad kad si dio naše zajednice, vrijeme je da krenemo! Istraži ponudu i odaberi što želiš posaditi. Prvi korak prema zelenijem i ukusnijem svijetu je samo nekoliko klikova udaljen.</Paragraph>
+                    <Section className="my-[32px] text-center">
+                        <PrimaryButton href={ctaUrl}>Posjeti svoj vrt</PrimaryButton>
+                    </Section>
+                    <Paragraph>Ako imaš pitanja ili trebaš pomoć, slobodno nam se javi - ovdje smo za tebe!</Paragraph>
+                    <Paragraph>Sretno vrtlarenje! 🌻</Paragraph>
+                    <Paragraph>Zeleni pozdrav,<br />Gredice tim</Paragraph>
+                    <Paragraph>P.S. Pratite nas i na društvenim mrežama za savjete, trikove i priče iz vrtova. 🌍</Paragraph>
                     <Divider className="my-[26px]" />
                     <Disclaimer>
                         Ovaj email je namjenjen za{' '}
-                        <span className="text-black">{email}</span>. Ako ne očekuješ
-                        ovu potvrdu, možeš zanemariti ovaj email. U slučaju da misliš da je tvoj račun ugrožen,
+                        <span className="text-black">{email}</span>. U slučaju da misliš da je tvoj račun ugrožen,
                         molimo kontaktiraj nas na{' '}
                         <Link href={`mailto:security@${appDomain}`}>security@{appDomain}</Link>
                     </Disclaimer>

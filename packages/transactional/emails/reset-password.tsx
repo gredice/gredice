@@ -45,12 +45,12 @@ export default function UserLoginRequestEmail({
                             alt="Gredice Logo"
                         />
                     </Section>
-                    <Header>Potvrda email adrese</Header>
-                    <Paragraph>Primili smo zahtjev za potvrdu email adrese: <strong>{email}</strong></Paragraph>
-                    <Paragraph>Ako navedeni email odgovara traženom, klikni na gumb ispod za potvrdu.
+                    <Header>Promjena zaporke</Header>
+                    <Paragraph>Primili smo zahtjev za promjenu zaporke za: <strong>{email}</strong></Paragraph>
+                    <Paragraph>Ako navedeni email odgovara traženom, klikni na gumb ispod za nastavak promjene zaporke.
                     </Paragraph>
                     <Section className="my-[32px] text-center">
-                        <PrimaryButton href={confirmLink}>Potvrdi email</PrimaryButton>
+                        <PrimaryButton href={confirmLink}>Promjeni zaporku</PrimaryButton>
                     </Section>
                     <Paragraph>
                         ili kopiraj i zalijepi ovaj URL u svoj preglednik:{' '}
@@ -60,7 +60,7 @@ export default function UserLoginRequestEmail({
                     <Disclaimer>
                         Ovaj email je namjenjen za{' '}
                         <span className="text-black">{email}</span>. Ako ne očekuješ
-                        ovu potvrdu, možeš zanemariti ovaj email. U slučaju da misliš da je tvoj račun ugrožen,
+                        ovaj zahtjev, možeš zanemariti ovaj email. U slučaju da misliš da je tvoj račun ugrožen,
                         molimo kontaktiraj nas na{' '}
                         <Link href={`mailto:security@${appDomain}`}>security@{appDomain}</Link>
                     </Disclaimer>

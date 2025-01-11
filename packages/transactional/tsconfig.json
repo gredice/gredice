@@ -22,7 +22,8 @@
         "jsx": "react-jsx"
     },
     "include": [
-        "."
+        "./emails/**/*",
+        "./components/**/*"
     ],
     "exclude": [
         "dist",
