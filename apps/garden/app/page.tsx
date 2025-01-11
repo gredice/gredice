@@ -11,9 +11,7 @@ export default async function Home() {
     <div className="grid grid-cols-1 h-screen relative">
       <GameSceneDynamic isDevelopment={enableDebugHud} />
       <SignedOut>
-        <div className="z-50">
-          <LoginModal />
-        </div>
+        <LoginModal />
       </SignedOut>
     </div>
   );

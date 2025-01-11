@@ -9,7 +9,7 @@ interface EmailPasswordFormProps {
     registration?: boolean
 }
 
-export default function EmailPasswordForm({
+export function EmailPasswordForm({
     onSubmit,
     submitText,
     registration: registration = false

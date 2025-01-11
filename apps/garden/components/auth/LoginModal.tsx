@@ -3,9 +3,8 @@
 import Image from 'next/image'
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@signalco/ui-primitives/Tabs";
-import EmailPasswordForm from './EmailPasswordForm'
-import FacebookLoginButton from './FacebookLoginButton'
-import { Button } from '@signalco/ui-primitives/Button';
+import { EmailPasswordForm } from './EmailPasswordForm'
+import { FacebookLoginButton } from './FacebookLoginButton'
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -43,18 +42,27 @@ export default function LoginModal() {
     }
 
     const handleRegister = async (email: string, password: string) => {
-        // TODO: Implement registration logic here
-        console.log('Register:', email, password)
+        setError(undefined);
+        const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+        });
+        if (response.status !== 201) {
+            console.error('Registration failed with status', response.status);
+            setError('Registracija nije uspjela. Pokušaj ponovno.');
+            return;
+        }
+
         router.push('/prijava/registracija-uspijesna');
     }
 
     return (
         <Modal
             open
-            title="Prijava"
-            trigger={(
-                <Button variant="outlined">Prijava</Button>
-            )}>
+            title="Prijava">
             <Stack spacing={2}>
                 <Row spacing={2}>
                     <Image
@@ -64,7 +72,7 @@ export default function LoginModal() {
                         height={48}
                         priority
                     />
-                    <Typography level='h3' className='text-[#2f6e40]'>Prijava</Typography>
+                    <Typography level='h3' className='text-[#2f6e40] mt-2'>Prijava</Typography>
                 </Row>
                 <Tabs defaultValue="login" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">

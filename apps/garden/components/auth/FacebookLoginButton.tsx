@@ -1,6 +1,6 @@
 import { Button, ButtonProps } from '@signalco/ui-primitives/Button'
 
-export default function FacebookLoginButton({ ...props }: ButtonProps) {
+export function FacebookLoginButton({ ...props }: ButtonProps) {
     return (
         <Button
             type="button"

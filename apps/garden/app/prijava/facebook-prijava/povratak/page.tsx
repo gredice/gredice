@@ -26,7 +26,7 @@ export default function FacebookCallbackPage() {
     }, [router])
 
     return (
-        <div className="container flex items-center justify-center min-h-screen">
+        <div className="flex items-center justify-center min-h-screen">
             <Card className="w-[350px]">
                 <CardHeader>
                     <svg

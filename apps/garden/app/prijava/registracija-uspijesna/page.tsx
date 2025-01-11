@@ -7,7 +7,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 
 export default function RegistrationSuccessfulPage() {
     return (
-        <div className="container flex items-center justify-center min-h-screen">
+        <div className="flex items-center justify-center min-h-screen">
             <Card className="w-[350px]">
                 <CardHeader>
                     <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#2f6e40] mx-auto mb-4">
@@ -23,9 +23,11 @@ export default function RegistrationSuccessfulPage() {
                         <Typography level="body3" center>
                             Poslali smo ti poveznicu za potvrdu registracije na tvoju email adresu. Molimo te provjeri svoj inbox i klikni na poveznicu kako bi potvrdili tvoj email.
                         </Typography>
+                        <Link href="/" passHref legacyBehavior>
                         <Button fullWidth variant='soft'>
-                            <Link href="/">Povratak</Link>
+                                Povratak
                         </Button>
+                        </Link>
                     </Stack>
                 </CardContent>
             </Card>

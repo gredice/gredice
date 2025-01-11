@@ -14,11 +14,6 @@ export async function POST(request: Request) {
         return new Response('User name and password are required', { status: 400 });
     }
 
-    // TODO: Enable to create user
-    // const createPasswordSalt = randomBytes(128).toString('base64');
-    // const hash = pbkdf2Sync(password, createPasswordSalt, 10000, 512, 'sha512').toString('hex');
-    // await createUserWithPassword(email, hash, createPasswordSalt);
-
     const user = await getUserWithLogins(email);
     if (!user) {
         console.debug('User not found', email);
