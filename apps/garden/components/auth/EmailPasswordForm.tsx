@@ -4,7 +4,7 @@ import { Button } from '@signalco/ui-primitives/Button';
 import { Stack } from '@signalco/ui-primitives/Stack';
 
 interface EmailPasswordFormProps {
-    onSubmit: (email: string, password: string) => void
+    onSubmit: (email: string, password: string) => Promise<void>
     submitText: string
     registration?: boolean
 }
@@ -18,6 +18,7 @@ export default function EmailPasswordForm({
     const [password, setPassword] = useState('')
     const [repeatPassword, setRepeatPassword] = useState('')
     const [passwordsMatch, setPasswordsMatch] = useState(true)
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (registration) {
@@ -28,7 +29,8 @@ export default function EmailPasswordForm({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         if (!registration || passwordsMatch) {
-            onSubmit(email, password)
+            setIsLoading(true);
+            onSubmit(email, password).then(() => setIsLoading(false));
         }
     }
 
@@ -73,6 +75,7 @@ export default function EmailPasswordForm({
                     fullWidth
                     variant='soft'
                     disabled={registration && !passwordsMatch}
+                    loading={isLoading}
                 >
                     {submitText}
                 </Button>
