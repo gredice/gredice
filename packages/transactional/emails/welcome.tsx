@@ -13,6 +13,7 @@ import { Link } from '../components/Link';
 import { Divider } from '../components/Divider';
 import { Disclaimer } from '../components/Disclaimer';
 import { ContentCard } from '../components/ContentCard';
+import { GrediceLogotype } from '../components/GrediceLogotype';
 
 interface VercelInviteUserEmailProps {
     email: string;
@@ -36,13 +37,8 @@ export default function UserLoginRequestEmail({
             <Preview>{previewText}</Preview>
             <Tailwind>
                 <ContentCard>
-                    <Section className='flex flex-col items-center'>
-                        <Img
-                            src={`https://www.gredice.com/Logotype - gredice@2x.svg`}
-                            width="189"
-                            height="50"
-                            alt="Gredice Logo"
-                        />
+                    <Section className='text-center'>
+                        <GrediceLogotype />
                     </Section>
                     <Paragraph>Pozdrav,</Paragraph>
                     <Paragraph>Tvoje Gredice te čekaju! 🥕🍅 Mi smo tu da ti omogućimo da uživaš u svježem povrću i okusima domaćih vrtova - čak i ako nemaš vlastiti vrt ili vremena za sadnju.</Paragraph>
