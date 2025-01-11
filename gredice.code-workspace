@@ -31,6 +31,10 @@
 		{
 			"name": "📦 @gredice/storage",
 			"path": "packages/storage"
+		},
+		{
+			"name": "📦 @gredice/transactional",
+			"path": "packages/transactional"
 		}
 	],
 	"settings": {
