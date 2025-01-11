@@ -26,7 +26,7 @@
     "@types/react": "19.0.2",
     "@types/react-dom": "19.0.2",
     "@types/suncalc": "1.9.2",
-    "@types/three": "0.171.0",
+    "@types/three": "0.172.0",
     "@use-gesture/react": "10.3.1",
     "chroma-js": "3.1.2",
     "lucide-react": "0.469.0",
