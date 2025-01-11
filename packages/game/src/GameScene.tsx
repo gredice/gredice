@@ -171,7 +171,7 @@ function rotateCamera(direction: 'ccw' | 'cw' = 'cw') {
     // Rotate by 90 degrees
     orbitControls.setAzimuthalAngle(
         orbitControls.getAzimuthalAngle() +
-        (direction === 'cw' ? -Math.PI / 2 : Math.PI / 2)
+        (direction === 'cw' ? Math.PI / 2 : -Math.PI / 2)
     );
 }
 
@@ -234,10 +234,10 @@ function RotateIcons() {
     return (
         <div className='absolute bottom-2 left-2'>
             <Row>
-                <IconButton variant='plain' onClick={rotateCamera.bind(null, 'cw')}>
+                <IconButton title="Okreni lijevo" variant='plain' onClick={rotateCamera.bind(null, 'ccw')}>
                     <Undo className='size-5' />
                 </IconButton>
-                <IconButton variant='plain' onClick={rotateCamera.bind(null, 'ccw')}>
+                <IconButton title="Okreni desno" variant='plain' onClick={rotateCamera.bind(null, 'cw')}>
                     <Redo className='size-5' />
                 </IconButton>
             </Row>

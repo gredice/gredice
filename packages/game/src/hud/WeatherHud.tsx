@@ -32,8 +32,9 @@ export function WeatherHud() {
                     className="overflow-hidden"
                     trigger={(
                         <Row spacing={1}>
-                        <Button
-                            variant="plain"
+                            <Button
+                                aria-label="Trenutno vrijeme"
+                                variant="plain"
                                 className="rounded-full px-2 justify-between pr-4 md:pr-2" size="sm">
                                 <Row>
                                     {WeatherIcon && <WeatherIcon.day className="size-6" />}
@@ -42,6 +43,7 @@ export function WeatherHud() {
                             </Button>
                             <div className="w-[1px] h-4 border-r hidden md:inline" />
                             <Button
+                                aria-label="Prognoza vremena"
                                 variant="plain"
                                 className="rounded-full px-2 justify-between pr-4 md:pr-2 hidden md:flex" size="sm">
                                 <Row spacing={1}>
@@ -50,8 +52,8 @@ export function WeatherHud() {
                                         if (!ForecastIcon) return null;
                                         return <ForecastIcon.day key={day.date} className="size-6" />;
                                     })}
-                            </Row>
-                        </Button>
+                                </Row>
+                            </Button>
                         </Row>
                     )}>
                     <WeatherDetails />
