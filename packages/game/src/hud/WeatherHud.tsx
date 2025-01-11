@@ -43,8 +43,8 @@ export function WeatherHud() {
                             <div className="w-[1px] h-4 border-r hidden md:inline" />
                             <Button
                                 variant="plain"
-                                className="rounded-full px-2 justify-between pr-4 md:pr-2" size="sm">
-                                <Row spacing={1} className="hidden md:flex">
+                                className="rounded-full px-2 justify-between pr-4 md:pr-2 hidden md:flex" size="sm">
+                                <Row spacing={1}>
                                     {forecastData.slice(0, 3).map((day) => {
                                         const ForecastIcon = weatherIcons[day.symbol];
                                         if (!ForecastIcon) return null;
