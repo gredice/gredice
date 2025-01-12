@@ -1,6 +1,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card"
 import { MailCheck } from 'lucide-react'
 import { VerifyEmail } from "./VerifyEmail"
+import { Suspense } from "react"
 
 export default function EmailVerificationPage() {
     return (
@@ -13,7 +14,9 @@ export default function EmailVerificationPage() {
                     <CardTitle className='text-center'>Potvrda email adrese</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <VerifyEmail />
+                    <Suspense>
+                        <VerifyEmail />
+                    </Suspense>
                 </CardContent>
             </Card>
         </div>
