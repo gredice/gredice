@@ -127,3 +127,11 @@ export async function updateLoginData(loginId: number, data: Record<string, any>
         loginData: JSON.stringify(data)
     }).where(eq(userLogins.id, loginId));
 }
+
+export async function changePassword(loginId: number, newPassword: string) {
+    const salt = cryptoRandomBytes(128).toString('base64');
+    const passwordHash = pbkdf2Sync(newPassword, salt, 10000, 512, 'sha512').toString('hex');
+    await storage.update(userLogins).set({
+        loginData: JSON.stringify({ salt, password: passwordHash, isVerified: true })
+    }).where(eq(userLogins.id, loginId));
+}

@@ -16,7 +16,7 @@ export function ForgotPasswordForm() {
         e.preventDefault()
         // TODO: Implement forgot password logic here
         console.log('Forgot password request for:', email)
-        router.push('/prijava/zaboravljena-zaporka/email-poslan')
+        router.push('/prijava/zaboravljena-zaporka/poslano')
     }
 
     return (

@@ -1,4 +1,6 @@
 import { Resend } from 'resend';
+import ResetPasswordEmailTemplate from '@gredice/transactional/emails/reset-password';
+import { ResetPasswordEmailTemplateProps } from '@gredice/transactional/emails/reset-password';
 import WelcomeEmailTemplate from '@gredice/transactional/emails/welcome';
 import { WelcomeEmailTemplateProps } from '@gredice/transactional/emails/welcome';
 import EmailVerifyEmailTemplate from '@gredice/transactional/emails/email-verify';
@@ -12,6 +14,15 @@ export async function sendEmailVerify(to: string, config: EmailVerifyEmailTempla
         to: [to],
         subject: 'Gredice - potvrda email adrese',
         react: EmailVerifyEmailTemplate(config),
+    });
+}
+
+export async function sendResetPassword(to: string, config: ResetPasswordEmailTemplateProps) {
+    return await resend.emails.send({
+        from: 'Gredice <suncokret@obavijesti.gredice.com>',
+        to: [to],
+        subject: 'Dobrodošli u Gredice',
+        react: ResetPasswordEmailTemplate(config),
     });
 }
 

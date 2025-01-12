@@ -3,7 +3,6 @@
 import {
     Head,
     Html,
-    Img,
     Preview,
     Section, Tailwind,
 } from '@react-email/components';
@@ -16,11 +15,11 @@ import { Disclaimer } from '../components/Disclaimer';
 import { ContentCard } from '../components/ContentCard';
 import { GrediceLogotype } from '../components/GrediceLogotype';
 
-interface ResetPasswordEmailTemplateProps {
+export interface ResetPasswordEmailTemplateProps {
     email: string;
     confirmLink: string;
-    appName: string;
-    appDomain: string;
+    appName?: string;
+    appDomain?: string;
 }
 
 export default function ResetPasswordEmailTemplate({
