@@ -1,4 +1,5 @@
 import { createUserWithPassword, getUserWithLogins } from "@gredice/storage";
+import { sendEmailVerification } from "../send-verify-email/route";
 
 export async function POST(request: Request) {
     const body = await request.json();
@@ -18,5 +19,7 @@ export async function POST(request: Request) {
     await createUserWithPassword(email, password);
 
     // TODO: Implement email verification
+    await sendEmailVerification(email);
+
     return new Response(null, { status: 201 });
 }

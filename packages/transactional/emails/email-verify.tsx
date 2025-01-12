@@ -16,20 +16,20 @@ import { Disclaimer } from '../components/Disclaimer';
 import { ContentCard } from '../components/ContentCard';
 import { GrediceLogotype } from '../components/GrediceLogotype';
 
-interface VercelInviteUserEmailProps {
+interface EmailVerifyEmailTemplateProps {
     email: string;
     confirmLink: string;
-    appName: string;
-    appDomain: string;
+    appName?: string;
+    appDomain?: string;
 }
 
-export default function UserLoginRequestEmail({
+export default function EmailVerifyEmailTemplate({
     email = 'login@example.com',
     confirmLink = 'https://vrt.gredice.com/prijava/potvrda-emaila',
 
     appName = 'Gredice',
     appDomain = 'gredice.com'
-}: VercelInviteUserEmailProps) {
+}: EmailVerifyEmailTemplateProps) {
     const previewText = `Login request for ${appName}`;
 
     return (
@@ -49,8 +49,7 @@ export default function UserLoginRequestEmail({
                         <PrimaryButton href={confirmLink}>Potvrdi email</PrimaryButton>
                     </Section>
                     <Paragraph>
-                        ili kopiraj i zalijepi ovaj URL u svoj preglednik:{' '}
-                        <Link href={confirmLink}>{confirmLink}</Link>
+                        Ukoliko ne očekuješ ovu potvrdu, možeš zanemariti ovaj email.
                     </Paragraph>
                     <Divider className="my-[26px]" />
                     <Disclaimer>

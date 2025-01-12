@@ -20,9 +20,11 @@ export default function RegistrationSuccessfulPage() {
                         <Typography level="body2" center>
                             Možeš se prijaviti s novom zaporkom.
                         </Typography>
-                        <Button fullWidth variant='soft'>
-                            <Link href="/">Prijava</Link>
-                        </Button>
+                        <Link href="/" passHref legacyBehavior>
+                            <Button fullWidth variant='soft'>
+                                Prijava
+                            </Button>
+                        </Link>
                     </Stack>
                 </CardContent>
             </Card>

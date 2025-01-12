@@ -31,6 +31,13 @@ export default function LoginModal() {
             },
             body: JSON.stringify({ email, password })
         });
+        if (response.status === 403) {
+            const { error } = await response.json();
+            if (error === 'verify_email') {
+                router.push(`/prijava/potvrda-emaila/posalji?email=${email}`);
+                return;
+            }
+        }
         if (response.status !== 204) {
             console.error('Login failed with status', response.status);
             setError('Prijava nije uspjela. Pokušaj ponovno.');

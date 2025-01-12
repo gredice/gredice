@@ -16,20 +16,20 @@ import { Disclaimer } from '../components/Disclaimer';
 import { ContentCard } from '../components/ContentCard';
 import { GrediceLogotype } from '../components/GrediceLogotype';
 
-interface VercelInviteUserEmailProps {
+interface ResetPasswordEmailTemplateProps {
     email: string;
     confirmLink: string;
     appName: string;
     appDomain: string;
 }
 
-export default function UserLoginRequestEmail({
+export default function ResetPasswordEmailTemplate({
     email = 'login@example.com',
     confirmLink = 'https://vrt.gredice.com/prijava/potvrda-emaila',
 
     appName = 'Gredice',
     appDomain = 'gredice.com'
-}: VercelInviteUserEmailProps) {
+}: ResetPasswordEmailTemplateProps) {
     const previewText = `Login request for ${appName}`;
 
     return (

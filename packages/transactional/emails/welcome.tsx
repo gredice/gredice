@@ -15,20 +15,20 @@ import { Disclaimer } from '../components/Disclaimer';
 import { ContentCard } from '../components/ContentCard';
 import { GrediceLogotype } from '../components/GrediceLogotype';
 
-interface VercelInviteUserEmailProps {
+interface WelcomeEmailTemplateProps {
     email: string;
     ctaUrl: string;
     appName: string;
     appDomain: string;
 }
 
-export default function UserLoginRequestEmail({
+export default function WelcomeEmailTemplate({
     email = 'login@example.com',
     ctaUrl = 'https://vrt.gredice.com',
 
     appName = 'Gredice',
     appDomain = 'gredice.com'
-}: VercelInviteUserEmailProps) {
+}: WelcomeEmailTemplateProps) {
     const previewText = `Login request for ${appName}`;
 
     return (

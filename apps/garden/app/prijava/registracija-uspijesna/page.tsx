@@ -24,9 +24,9 @@ export default function RegistrationSuccessfulPage() {
                             Poslali smo ti poveznicu za potvrdu registracije na tvoju email adresu. Molimo te provjeri svoj inbox i klikni na poveznicu kako bi potvrdili tvoj email.
                         </Typography>
                         <Link href="/" passHref legacyBehavior>
-                        <Button fullWidth variant='soft'>
+                            <Button fullWidth variant='soft'>
                                 Povratak
-                        </Button>
+                            </Button>
                         </Link>
                     </Stack>
                 </CardContent>

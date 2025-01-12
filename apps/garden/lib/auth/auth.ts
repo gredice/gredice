@@ -1,7 +1,7 @@
 import { getUser as storageGetUser } from '@gredice/storage';
 import { initAuth } from '@signalco/auth-server';
 
-function jwtSecretFactory() {
+export function jwtSecretFactory() {
     const signSecret = process.env.GREDICE_JWT_SIGN_SECRET as string;
     return Buffer.from(signSecret, 'base64');
 }

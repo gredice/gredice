@@ -64,6 +64,18 @@ export async function POST(request: Request) {
         await clearLoginFailedAttempts(login.id);
     }
 
+    // Check email verified
+    const { isVerified } = JSON.parse(login.loginData)
+    if (isVerified !== true) {
+        console.log('User email not verified', email);
+        return new Response(JSON.stringify({
+            error: 'verify_email'
+        }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
     await setCookie(createJwt(user.id));
 
     return new Response(null, { status: 204 });

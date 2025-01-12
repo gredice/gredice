@@ -91,7 +91,7 @@ export async function createUserWithPassword(userName: string, password: string)
         userId,
         loginType: 'password',
         loginId: userName,
-        loginData: JSON.stringify({ salt, password: passwordHash })
+        loginData: JSON.stringify({ salt, password: passwordHash, isVerified: false }),
     });
 
     return userId;
@@ -119,5 +119,11 @@ export async function clearLoginFailedAttempts(loginId: number) {
         failedAttempts: 0,
         lastFailedAttempt: null,
         blockedUntil: null
+    }).where(eq(userLogins.id, loginId));
+}
+
+export async function updateLoginData(loginId: number, data: Record<string, any>) {
+    await storage.update(userLogins).set({
+        loginData: JSON.stringify(data)
     }).where(eq(userLogins.id, loginId));
 }
