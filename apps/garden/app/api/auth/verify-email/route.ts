@@ -1,6 +1,7 @@
 import { jwtVerify } from 'jose';
 import { jwtSecretFactory } from '../../../../lib/auth/auth';
 import { getUserWithLogins, updateLoginData } from '@gredice/storage';
+import { sendWelcome } from '../../../../lib/email/transactional';
 
 export async function POST(request: Request) {
     const body = await request.json();
@@ -33,6 +34,12 @@ export async function POST(request: Request) {
         ...JSON.parse(userLogin.loginData),
         isVerified: true
     });
+
+    // Send welcome message
+    await sendWelcome(email, {
+        email,
+        ctaUrl: 'https://vrt.gredice.com'
+    })
 
     return new Response(null, { status: 204 });
 }

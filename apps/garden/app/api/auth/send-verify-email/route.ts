@@ -1,10 +1,7 @@
 import { getUserWithLogins } from "@gredice/storage";
 import { SignJWT } from 'jose';
-import { Resend } from 'resend';
-import EmailVerifyEmailTemplate from '@gredice/transactional/emails/email-verify';
 import { jwtSecretFactory } from "../../../../lib/auth/auth";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { sendEmailVerify } from "../../../../lib/email/transactional";
 
 // TODO: Move to Auth lib
 export async function sendEmailVerification(email: string) {
@@ -15,16 +12,10 @@ export async function sendEmailVerification(email: string) {
         .sign(jwtSecretFactory());
     const url = `https://vrt.gredice.com/prijava/potvrda-emaila?token=${jwt}`;
 
-    const { error } = await resend.emails.send({
-        from: 'Gredice <suncokret@obavijesti.gredice.com>',
-        to: [email],
-        subject: 'Gredice - potvrda email adrese',
-        react: EmailVerifyEmailTemplate({
-            confirmLink: url,
-            email,
-        }),
+    const { error } = await sendEmailVerify(email, {
+        email,
+        confirmLink: url,
     });
-
     if (error) {
         console.error('Failed to send email', error);
         throw new Error('Failed to send email');

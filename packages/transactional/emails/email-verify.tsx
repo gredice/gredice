@@ -16,7 +16,7 @@ import { Disclaimer } from '../components/Disclaimer';
 import { ContentCard } from '../components/ContentCard';
 import { GrediceLogotype } from '../components/GrediceLogotype';
 
-interface EmailVerifyEmailTemplateProps {
+export interface EmailVerifyEmailTemplateProps {
     email: string;
     confirmLink: string;
     appName?: string;
