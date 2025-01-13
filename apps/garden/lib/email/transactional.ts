@@ -28,7 +28,7 @@ export async function sendResetPassword(to: string, config: ResetPasswordEmailTe
     return await getResend().emails.send({
         from: 'Gredice <suncokret@obavijesti.gredice.com>',
         to: [to],
-        subject: 'Dobrodošli u Gredice',
+        subject: 'Gredice - promjena zaporke',
         react: ResetPasswordEmailTemplate(config),
     });
 }

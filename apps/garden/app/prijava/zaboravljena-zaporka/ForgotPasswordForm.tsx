@@ -11,11 +11,23 @@ export function ForgotPasswordForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [email, setEmail] = useState(searchParams.get('email') || '')
+    const [error, setError] = useState('');
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        // TODO: Implement forgot password logic here
-        console.log('Forgot password request for:', email)
+
+        setError('');
+        const response = await fetch('/api/auth/send-change-password-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        if (!response.ok) {
+            console.error(response.statusText);
+            setError('Došlo je do greške prilikom slanja emaila. Pokušaj ponovno.');
+            return;
+        }
+
         router.push('/prijava/zaboravljena-zaporka/poslano')
     }
 
@@ -31,6 +43,7 @@ export function ForgotPasswordForm() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                 />
+                {error && <Typography level='body1' color='danger'>{error}</Typography>}
                 <Button type="submit" variant="soft" fullWidth>
                     Pošalji email
                 </Button>
