@@ -1,0 +1,21 @@
+{
+    "name": "@gredice/transactional",
+    "version": "1.0.0",
+    "private": true,
+    "workspaces": [
+        ".react-email"
+    ],
+    "scripts": {
+        "dev": "email dev -p 4001"
+    },
+    "devDependencies": {
+        "@types/node": "22.10.5",
+        "@types/react": "19.0.4"
+    },
+    "dependencies": {
+        "@react-email/components": "0.0.32",
+        "react-email": "3.0.6",
+        "react": "19.0.0",
+        "typescript": "5.7.2"
+    }
+}

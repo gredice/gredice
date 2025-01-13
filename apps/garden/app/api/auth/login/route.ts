@@ -1,6 +1,6 @@
 import { blockLogin, clearLoginFailedAttempts, getUserWithLogins, incLoginFailedAttempts } from "@gredice/storage";
 import { pbkdf2Sync } from 'crypto';
-import { createJwt, setCookie } from "../../../lib/auth/auth";
+import { createJwt, setCookie } from "../../../../lib/auth/auth";
 
 // TODO: Move to Auth configuration
 const failedAttemptClearTime = 1000 * 60; // 1 minute
@@ -16,27 +16,27 @@ export async function POST(request: Request) {
 
     const user = await getUserWithLogins(email);
     if (!user) {
-        console.debug('User not found', email);
+        console.log('User not found', email);
         return new Response('User name and password incorrect', { status: 404 });
     }
 
     const login = user.usersLogins.find(login => login.loginType === 'password');
     if (!login) {
-        console.debug('User login not found', email);
+        console.log('User login not found', email);
         return new Response('User name and password incorrect', { status: 404 });
     }
 
     // TODO: Move to Auth library
     // Check if user is blocked
     if (login.blockedUntil && login.blockedUntil.getTime() > Date.now()) {
-        console.debug('User blocked', email);
+        console.log('User blocked', email);
         return new Response('User name and password incorrect', { status: 404 });
     }
 
     // Extract salt and password hash from login
     const { salt, password: storedHash } = JSON.parse(login.loginData);
     if (!salt || !storedHash) {
-        console.debug('User password login data corrupted', email, login.id);
+        console.log('User password login data corrupted', email, login.id);
         return new Response('User name and password incorrect', { status: 404 });
     }
 
@@ -62,6 +62,18 @@ export async function POST(request: Request) {
     // Clear failed attempts on successful login
     if (login.failedAttempts > 0) {
         await clearLoginFailedAttempts(login.id);
+    }
+
+    // Check email verified
+    const { isVerified } = JSON.parse(login.loginData)
+    if (isVerified !== true) {
+        console.log('User email not verified', email);
+        return new Response(JSON.stringify({
+            error: 'verify_email'
+        }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 
     await setCookie(createJwt(user.id));
