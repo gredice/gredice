@@ -56,3 +56,21 @@ You can then proceed with pulling the environment variables.
 ```bash
 pnpm dev
 ```
+
+## Assets
+
+Make sure you are the only one editing the game assets file. If you are not, please contact the person who is currently editing the file so you can coordinate the changes after they are done and changes are merged.
+
+### Regenerating the game assets GLB file
+
+Run the following command in the project `/assets` directory:
+
+```bash
+./export.sh
+```
+
+This will generate a new `game-assets.glb` file in the `/apps/garden/public/assets/models` directory.
+
+### Adding new entity
+
+Use [https://gltf.pmnd.rs/](https://gltf.pmnd.rs/) to convert the GLTF file assets to a Three.js compatible components.

@@ -55,8 +55,7 @@ function getDefaultGarden(): Garden {
             });
         }
     }
-    stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ name: "Raised_Bed", rotation: 0 });
-    stacks.find(stack => stack.position.x === 1 && stack.position.z === 0)?.blocks.push({ name: "Raised_Bed", rotation: 0 });
+    stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ name: "Raised_Bed_Construction", rotation: 1 });
 
     return {
         name: 'Moj vrt',
@@ -229,8 +228,6 @@ const useKeyboardControls = () => {
 }
 
 function RotateIcons() {
-    const isNight = useGameState(state => state.currentTime.getHours() < 6 || state.currentTime.getHours() >= 18);
-
     return (
         <div className='absolute bottom-2 left-2'>
             <Row>
