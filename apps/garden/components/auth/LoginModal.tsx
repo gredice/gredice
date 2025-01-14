@@ -45,7 +45,6 @@ export default function LoginModal() {
         }
 
         queryClient.invalidateQueries({ queryKey: authCurrentUserQueryKeys });
-        window.location.reload();
     }
 
     const handleRegister = async (email: string, password: string) => {
