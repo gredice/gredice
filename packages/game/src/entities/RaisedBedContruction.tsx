@@ -5,7 +5,7 @@ import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
 import { Outlines } from "@react-three/drei";
-import { useBearStore } from "../controls/SelectableGroup";
+import { useHoveredBlockStore } from "../controls/SelectableGroup";
 
 function HoverOutline({ hovered }: { hovered?: boolean }) {
     if (!hovered) return null;
@@ -22,7 +22,7 @@ function HoverOutline({ hovered }: { hovered?: boolean }) {
 export function RaisedBedContruction({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
-    const hovered = useBearStore(state => state.hoveredBlock) === block;
+    const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
 
     return (
         /* @ts-ignore */

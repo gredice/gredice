@@ -5,19 +5,19 @@ import { BlockInfo } from "./components/BlockInfo";
 import { create } from "zustand";
 import { Block } from "../types/Block";
 
-type useBearStoreType = {
+type useHoveredBlockStore = {
     hoveredBlock: Block | null,
     setHoveredBlock: (block: Block | null) => void
 }
 
-export const useBearStore = create<useBearStoreType>((set) => ({
+export const useHoveredBlockStore = create<useHoveredBlockStore>((set) => ({
     hoveredBlock: null,
     setHoveredBlock: (block: Block | null) => set({ hoveredBlock: block }),
 }))
 
 export function SelectableGroup({ children, block }: PropsWithChildren<{ block: Block }>) {
     const [selected, setSelected] = useState(false);
-    const hovered = useBearStore();
+    const hovered = useHoveredBlockStore();
 
     if (block.name !== 'Raised_Bed_Construction')
         return children;
