@@ -502,8 +502,8 @@ importers:
         specifier: 9.7.5
         version: 9.7.5(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@react-three/drei':
-        specifier: 9.120.7
-        version: 9.120.7(@react-three/fiber@9.0.0-rc.4(@types/react@19.0.4)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(three@0.172.0))(@types/react@19.0.4)(@types/three@0.172.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(three@0.172.0)(use-sync-external-store@1.2.2(react@19.0.0))
+        specifier: 9.121.2
+        version: 9.121.2(@react-three/fiber@9.0.0-rc.4(@types/react@19.0.4)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(three@0.172.0))(@types/react@19.0.4)(@types/three@0.172.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(three@0.172.0)(use-sync-external-store@1.2.2(react@19.0.0))
       '@react-three/fiber':
         specifier: rc
         version: 9.0.0-rc.4(@types/react@19.0.4)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(three@0.172.0)
@@ -2740,10 +2740,10 @@ packages:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
 
-  '@react-three/drei@9.120.7':
-    resolution: {integrity: sha512-WtyXHblezoT3tzVY9qJG6jWc1PBK+7uiMEASVfqM4hk/Hpw7vl9VeZp+I98pTbS9LAQR3wHrpTlvd/0/oLKukg==}
+  '@react-three/drei@9.121.2':
+    resolution: {integrity: sha512-0oyd26wn8NAHrlqrr7oZJMq/x2wikJfMz59R/tGRaqLLI16rFP5M8sU/NFFgSiPuyV09b4NqMuo9oimToA9dgA==}
     peerDependencies:
-      '@react-three/fiber': ^8 || ^9.0.0-0
+      '@react-three/fiber': ^8
       react: ^18
       react-dom: ^18
       three: '>=0.137'
@@ -5867,10 +5867,6 @@ packages:
     resolution: {integrity: sha512-6Z7Ma2aVEWisaL6TvBCy7P8rm2LQoPv6dJ7ecIaIixHcwfbJ0x7mWdbcwlIM5IGQxPZSFYeqRCqlOOeKoJYMkw==}
     engines: {node: '>= 4'}
 
-  uuid@9.0.1:
-    resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
-    hasBin: true
-
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
@@ -8169,7 +8165,7 @@ snapshots:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
-  '@react-three/drei@9.120.7(@react-three/fiber@9.0.0-rc.4(@types/react@19.0.4)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(three@0.172.0))(@types/react@19.0.4)(@types/three@0.172.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(three@0.172.0)(use-sync-external-store@1.2.2(react@19.0.0))':
+  '@react-three/drei@9.121.2(@react-three/fiber@9.0.0-rc.4(@types/react@19.0.4)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(three@0.172.0))(@types/react@19.0.4)(@types/three@0.172.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(three@0.172.0)(use-sync-external-store@1.2.2(react@19.0.0))':
     dependencies:
       '@babel/runtime': 7.26.0
       '@mediapipe/tasks-vision': 0.10.17
@@ -8195,7 +8191,6 @@ snapshots:
       troika-three-text: 0.52.3(three@0.172.0)
       tunnel-rat: 0.1.2(@types/react@19.0.4)(react@19.0.0)
       utility-types: 3.11.0
-      uuid: 9.0.1
       zustand: 5.0.3(@types/react@19.0.4)(react@19.0.0)(use-sync-external-store@1.2.2(react@19.0.0))
     optionalDependencies:
       react-dom: 19.0.0(react@19.0.0)
@@ -12067,8 +12062,6 @@ snapshots:
   util-deprecate@1.0.2: {}
 
   utility-types@3.11.0: {}
-
-  uuid@9.0.1: {}
 
   vary@1.1.2: {}
 
