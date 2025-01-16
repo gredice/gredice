@@ -13,7 +13,7 @@
     "@radix-ui/react-slider": "1.2.2",
     "@react-spring/three": "9.7.5",
     "@react-spring/web": "9.7.5",
-    "@react-three/drei": "9.120.7",
+    "@react-three/drei": "9.121.2",
     "@react-three/fiber": "rc",
     "@signalco/hooks": "0.2.1",
     "@signalco/js": "0.1.0",
