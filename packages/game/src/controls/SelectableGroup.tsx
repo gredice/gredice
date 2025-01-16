@@ -1,24 +1,41 @@
-import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
 import { PropsWithChildren, useState } from "react";
 import { Html } from "@react-three/drei"
 import { Popper } from "@signalco/ui-primitives/Popper";
 import { BlockInfo } from "./components/BlockInfo";
+import { create } from "zustand";
+import { Block } from "../types/Block";
 
-export function SelectableGroup({ children, block }: PropsWithChildren<Pick<EntityInstanceProps, 'block'>>) {
-    const [hovered, setHovered] = useState(false);
+type useBearStoreType = {
+    hoveredBlock: Block | null,
+    setHoveredBlock: (block: Block | null) => void
+}
+
+export const useBearStore = create<useBearStoreType>((set) => ({
+    hoveredBlock: null,
+    setHoveredBlock: (block: Block | null) => set({ hoveredBlock: block }),
+}))
+
+export function SelectableGroup({ children, block }: PropsWithChildren<{ block: Block }>) {
+    const [selected, setSelected] = useState(false);
+    const hovered = useBearStore();
 
     if (block.name !== 'Raised_Bed_Construction')
         return children;
 
     return (
         <group
-            onClick={(e) => {
-                setHovered(!hovered);
+            onPointerEnter={() => hovered.setHoveredBlock(block)}
+            onPointerLeave={() => {
+                if (hovered.hoveredBlock === block)
+                    return hovered.setHoveredBlock(null);
+            }}
+            onClick={() => {
+                setSelected(!selected);
             }}>
             {children}
-            {hovered && (
+            {selected && (
                 <Html>
-                    <Popper open onOpenChange={setHovered} anchor={(<div />)}>
+                    <Popper open onOpenChange={setSelected} anchor={(<div />)}>
                         <BlockInfo block={block} />
                     </Popper>
                 </Html>

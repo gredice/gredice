@@ -264,7 +264,7 @@ export function GameScene({
                 zoom={zoom === 'far' ? 75 : 100}
                 className='!absolute'
             >
-                {/* {isDevelopment && <DebugHud />} */}
+                {isDevelopment && <DebugHud />}
                 <GardenDisplay noBackground={noBackground} />
                 <OrbitControls
                     ref={useGameState.getState().setOrbitControls}
