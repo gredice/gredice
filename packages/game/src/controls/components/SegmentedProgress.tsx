@@ -4,7 +4,7 @@ import { HTMLAttributes } from "react";
 import { Check } from "lucide-react";
 
 export type SegmentedProgressProps = {
-    segments: { value: number, indeterminate?: boolean }[]
+    segments: { value: number, indeterminate?: boolean, label?: string }[]
 } & HTMLAttributes<HTMLDivElement>;
 
 export function SegmentedProgress({ className, segments, ...rest }: SegmentedProgressProps) {
@@ -23,12 +23,21 @@ export function SegmentedProgress({ className, segments, ...rest }: SegmentedPro
                             index === segments.length - 1 && 'rounded-l-none'
                         )} />
                     <div className={cx(
-                        "size-4 rounded-full -ml-1 -mt-1 bg-white shrink-0 z-10",
-                        segment.value >= 100 && 'bg-green-900',
-                        segment.indeterminate && 'animate-pulse bg-green-300'
+                        "relative size-4 rounded-full -ml-1 -mt-1 bg-white border-2 border-tertiary shrink-0 z-10",
+                        segment.value >= 100 && 'bg-green-500',
+                        segment.value >= 100 && 'border-green-600',
+                        segment.indeterminate && 'border-none'
                     )}>
-                        <Check className={cx("size-4 text-white", segment.value < 100 && 'hidden')} />
-                    </div>
+                        <div className={cx(
+                            "absolute inset-0 flex items-center justify-center",
+                            segment.indeterminate && 'border-green-500 border-2 rounded-full animate-pulse'
+                        )}>
+                            <Check className={cx("size-3 text-white", segment.value < 100 && 'hidden')} />
+                        </div>
+                        <div className="text-xs absolute left-1/2 top-full transform -translate-x-1/2 pt-1">
+                            {segment.label}
+                        </div>
+                    </div>    
                 </>
             ))}
         </div>
