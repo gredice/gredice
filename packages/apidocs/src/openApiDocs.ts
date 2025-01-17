@@ -135,10 +135,11 @@ export async function openApiDocs(config?: OpenApiDocsConfig): Promise<OpenAPIV3
         },
         servers: config?.servers ?? [
             {
-                url: 'https://app.gredice.com/api/directories',
+                url: 'https://api.gredice.com/api/directories',
                 description: 'Production API'
             }
         ],
+        security: [],
         paths: {},
         components: {
             schemas: {}

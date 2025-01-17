@@ -21,6 +21,10 @@
 			"path": "apps/www"
 		},
 		{
+			"name": "⚡ api",
+			"path": "apps/api"
+		},
+		{
 			"name": "📦 @gredice/apidocs",
 			"path": "packages/apidocs"
 		},

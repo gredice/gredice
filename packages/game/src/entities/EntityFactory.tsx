@@ -11,6 +11,7 @@ import { Stool } from "./Stool";
 import { Bucket } from "./Bucket";
 import { RotatableGroup } from "../controls/RotatableGroup";
 import { RaisedBedContruction } from "./RaisedBedContruction";
+import { SelectableGroup } from "../controls/SelectableGroup";
 
 const entityNameMap: Record<string, any> = {
     "Block_Ground": BlockGround,
@@ -37,19 +38,22 @@ export function EntityFactory({ name, stack, block, noControl, ...rest }: { name
     }
 
     return (
-        <PickableGroup
-            stack={stack}
-            block={block}
-            onPositionChanged={handlePositionChanged}
-            noControl={noControl}>
-            <RotatableGroup
+        <SelectableGroup
+            block={block}>
+            <PickableGroup
                 stack={stack}
-                block={block}>
-                <EntityComponent
+                block={block}
+                onPositionChanged={handlePositionChanged}
+                noControl={noControl}>
+                <RotatableGroup
                     stack={stack}
-                    block={block}
-                    {...rest} />
-            </RotatableGroup>
-        </PickableGroup>
+                    block={block}>
+                    <EntityComponent
+                        stack={stack}
+                        block={block}
+                        {...rest} />
+                </RotatableGroup>
+            </PickableGroup>
+        </SelectableGroup>
     );
 }
