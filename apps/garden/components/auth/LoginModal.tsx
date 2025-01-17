@@ -45,7 +45,6 @@ export default function LoginModal() {
         }
 
         queryClient.invalidateQueries({ queryKey: authCurrentUserQueryKeys });
-        window.location.reload();
     }
 
     const handleRegister = async (email: string, password: string) => {
@@ -101,7 +100,7 @@ export default function LoginModal() {
                                     )}
                                 </Stack>
                             </Card>
-                            <div className="relative">
+                            {/* <div className="relative">
                                 <div className="absolute inset-0 flex items-center">
                                     <Divider />
                                 </div>
@@ -113,7 +112,7 @@ export default function LoginModal() {
                             </div>
                             <Link href="/prijava/facebook-prijava" legacyBehavior passHref>
                                 <FacebookLoginButton />
-                            </Link>
+                            </Link> */}
                         </div>
                     </TabsContent>
                     <TabsContent value="register" className="mt-4">
