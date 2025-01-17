@@ -35,7 +35,11 @@ export function SelectableGroup({ children, block }: PropsWithChildren<{ block: 
             {children}
             {selected && (
                 <Html>
-                    <Popper open onOpenChange={setSelected} anchor={(<div />)}>
+                    <Popper
+                        open
+                        onOpenChange={setSelected}
+                        anchor={(<div />)}
+                        className="w-auto">
                         <BlockInfo block={block} />
                     </Popper>
                 </Html>
