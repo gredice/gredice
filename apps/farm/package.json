@@ -47,7 +47,7 @@
     "eslint-config-next": "15.1.4",
     "lucide-react": "0.471.0",
     "next-axiom": "1.9.1",
-    "postcss": "8.5.0",
+    "postcss": "8.5.1",
     "tailwindcss": "3.4.17",
     "typescript": "5.7.3"
   }
