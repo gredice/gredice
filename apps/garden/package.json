@@ -20,7 +20,7 @@
     "next": "15.1.4",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "resend": "4.0.1",
+    "resend": "4.1.1",
     "server-only": "0.0.1",
     "jose": "5.9.6",
     "xml2js": "0.6.2"
