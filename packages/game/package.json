@@ -30,7 +30,7 @@
     "@types/three": "0.172.0",
     "@use-gesture/react": "10.3.1",
     "chroma-js": "3.1.2",
-    "lucide-react": "0.471.1",
+    "lucide-react": "0.473.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "suncalc": "1.9.0",
