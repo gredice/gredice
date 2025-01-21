@@ -21,8 +21,8 @@ importers:
         specifier: 0.4.14
         version: 0.4.14(@hyperjump/browser@1.2.0)(react@19.0.0)(tailwindcss@3.4.17)(typescript@5.7.3)
       '@scalar/nextjs-api-reference':
-        specifier: 0.5.0
-        version: 0.5.0(next@15.1.4(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
+        specifier: 0.5.1
+        version: 0.5.1(next@15.1.4(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
       next:
         specifier: 15.1.4
         version: 15.1.4(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -112,8 +112,8 @@ importers:
   apps/app:
     dependencies:
       '@scalar/nextjs-api-reference':
-        specifier: 0.5.0
-        version: 0.5.0(next@15.1.4(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
+        specifier: 0.5.1
+        version: 0.5.1(next@15.1.4(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
       hypertune:
         specifier: 2.5.7
         version: 2.5.7
@@ -3084,8 +3084,8 @@ packages:
     resolution: {integrity: sha512-wQQLTXNHU0PtsbhMawPxqLVjAH+dzzh89QuIrtJQjodtfYguTQ6QYKuDOQHR+G6E7wknkg09eSqxfppcf9eCTQ==}
     engines: {node: '>=18'}
 
-  '@scalar/nextjs-api-reference@0.5.0':
-    resolution: {integrity: sha512-xWgzFvl8+eEDoZSnOcbfHz8P8mR764cOj5AkxHsL6xujl8HadgEHN8pg+QzdgLtVBgOWdDLT8wKfHdIx9kSb1w==}
+  '@scalar/nextjs-api-reference@0.5.1':
+    resolution: {integrity: sha512-1zbVmFQn90z9Y/qzWj1a0xJZF/aLSpL/SUWa7ilRXndSknBoG6vJiKflRdZkjWUBNoMFhmwxiTGu8KHmxjs6lQ==}
     engines: {node: '>=18'}
     peerDependencies:
       next: ^15.0.0
@@ -3103,10 +3103,6 @@ packages:
     resolution: {integrity: sha512-t0+PQcLWCRYtvkfhZf74uRsN/5FmwjxWjMEuj32aM1iseUmEHMirYFyyZMIkQpfO0DblEgHQZcmzj+v8O4aOjw==}
     engines: {node: '>=18'}
 
-  '@scalar/openapi-types@0.1.5':
-    resolution: {integrity: sha512-6geH9ehvQ/sG/xUyy3e0lyOw3BaY5s6nn22wHjEJhcobdmWyFER0O6m7AU0ZN4QTjle/gYvFJOjj552l/rsNSw==}
-    engines: {node: '>=18'}
-
   '@scalar/openapi-types@0.1.6':
     resolution: {integrity: sha512-V+KnESyVJqorJzEN0QFlu3tAImCHjnvPov6QcQvjfY7s0+CjrI3rRO3oVIRlXURTQrQGrnhxvK0SkXGAZ+dxvw==}
     engines: {node: '>=18'}
@@ -3121,10 +3117,6 @@ packages:
 
   '@scalar/themes@0.9.60':
     resolution: {integrity: sha512-L8m/3SwVqZnnZJH4UFOsO89TM406TePUZd5qHsylGl50QOmM1OtdrUMNvJJJqWRDcOO/u3S9Vn41o+yymIQMkw==}
-    engines: {node: '>=18'}
-
-  '@scalar/types@0.0.25':
-    resolution: {integrity: sha512-sGnOFnfiSn4o23rklU/jrg81hO+630bsFIdHg8MZ/w2Nc6IoUwARA2hbe4d4Fg+D0KBu40Tan/L+WAYDXkTJQg==}
     engines: {node: '>=18'}
 
   '@scalar/types@0.0.26':
@@ -3425,9 +3417,6 @@ packages:
 
   '@unhead/dom@1.11.18':
     resolution: {integrity: sha512-zQuJUw/et9zYEV0SZWTDX23IgurwMaXycAuxt4L6OgNL0T4TWP3a0J/Vm3Q02hmdNo/cPKeVBrwBdnFUXjGU4w==}
-
-  '@unhead/schema@1.11.14':
-    resolution: {integrity: sha512-V9W9u5tF1/+TiLqxu+Qvh1ShoMDkPEwHoEo4DKdDG6ko7YlbzFfDxV6el9JwCren45U/4Vy/4Xi7j8OH02wsiA==}
 
   '@unhead/schema@1.11.18':
     resolution: {integrity: sha512-a3TA/OJCRdfbFhcA3Hq24k1ZU1o9szicESrw8DZcGyQFacHnh84mVgnyqSkMnwgCmfN4kvjSiTBlLEHS6+wATw==}
@@ -9342,15 +9331,15 @@ snapshots:
     transitivePeerDependencies:
       - '@hyperjump/browser'
 
-  '@scalar/nextjs-api-reference@0.5.0(next@15.1.4(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)':
+  '@scalar/nextjs-api-reference@0.5.1(next@15.1.4(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@scalar/types': 0.0.25
+      '@scalar/types': 0.0.26
       next: 15.1.4(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react: 19.0.0
 
-  '@scalar/nextjs-api-reference@0.5.0(next@15.1.4(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)':
+  '@scalar/nextjs-api-reference@0.5.1(next@15.1.4(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@scalar/types': 0.0.25
+      '@scalar/types': 0.0.26
       next: 15.1.4(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react: 19.0.0
 
@@ -9384,8 +9373,6 @@ snapshots:
       leven: 4.0.0
       yaml: 2.6.1
 
-  '@scalar/openapi-types@0.1.5': {}
-
   '@scalar/openapi-types@0.1.6': {}
 
   '@scalar/postman-to-openapi@0.1.20(@hyperjump/browser@1.2.0)':
@@ -9403,15 +9390,10 @@ snapshots:
     dependencies:
       '@scalar/types': 0.0.26
 
-  '@scalar/types@0.0.25':
-    dependencies:
-      '@scalar/openapi-types': 0.1.5
-      '@unhead/schema': 1.11.14
-
   '@scalar/types@0.0.26':
     dependencies:
       '@scalar/openapi-types': 0.1.6
-      '@unhead/schema': 1.11.14
+      '@unhead/schema': 1.11.18
 
   '@scalar/use-codemirror@0.11.59(typescript@5.7.3)':
     dependencies:
@@ -9803,11 +9785,6 @@ snapshots:
     dependencies:
       '@unhead/schema': 1.11.18
       '@unhead/shared': 1.11.18
-
-  '@unhead/schema@1.11.14':
-    dependencies:
-      hookable: 5.5.3
-      zhead: 2.2.4
 
   '@unhead/schema@1.11.18':
     dependencies:
