@@ -21,8 +21,8 @@ importers:
         specifier: 0.4.14
         version: 0.4.14(@hyperjump/browser@1.2.0)(react@19.0.0)(tailwindcss@3.4.17)(typescript@5.7.3)
       '@scalar/nextjs-api-reference':
-        specifier: 0.5.1
-        version: 0.5.1(next@15.1.4(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
+        specifier: 0.5.2
+        version: 0.5.2(next@15.1.4(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
       next:
         specifier: 15.1.4
         version: 15.1.4(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -112,8 +112,8 @@ importers:
   apps/app:
     dependencies:
       '@scalar/nextjs-api-reference':
-        specifier: 0.5.1
-        version: 0.5.1(next@15.1.4(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
+        specifier: 0.5.2
+        version: 0.5.2(next@15.1.4(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
       hypertune:
         specifier: 2.5.7
         version: 2.5.7
@@ -3084,8 +3084,8 @@ packages:
     resolution: {integrity: sha512-wQQLTXNHU0PtsbhMawPxqLVjAH+dzzh89QuIrtJQjodtfYguTQ6QYKuDOQHR+G6E7wknkg09eSqxfppcf9eCTQ==}
     engines: {node: '>=18'}
 
-  '@scalar/nextjs-api-reference@0.5.1':
-    resolution: {integrity: sha512-1zbVmFQn90z9Y/qzWj1a0xJZF/aLSpL/SUWa7ilRXndSknBoG6vJiKflRdZkjWUBNoMFhmwxiTGu8KHmxjs6lQ==}
+  '@scalar/nextjs-api-reference@0.5.2':
+    resolution: {integrity: sha512-cLBivhojkybMWUDoNVZXs3ivscraGA8SQYayof3vapOzJYzbGtHDi94pe5CVS5rWrB6stF0nyUX+jqXOg3/Kxg==}
     engines: {node: '>=18'}
     peerDependencies:
       next: ^15.0.0
@@ -3121,6 +3121,10 @@ packages:
 
   '@scalar/types@0.0.26':
     resolution: {integrity: sha512-32RvTVh/tpOD8unnVG+41/hBoPCsTr1YmcLaEC3LIgYZxAFE8OeCO25JkQRFNBZEaid5FfRt9/qBlx5HqH1PAg==}
+    engines: {node: '>=18'}
+
+  '@scalar/types@0.0.27':
+    resolution: {integrity: sha512-5f293PX78gwE3NwcBNXf7+qc9OIB6lYsRpzGZts7eaN3aN9i23ysWewF76DOs74oARRP5LgNBMC7JCo9dIxM1Q==}
     engines: {node: '>=18'}
 
   '@scalar/use-codemirror@0.11.59':
@@ -9331,15 +9335,15 @@ snapshots:
     transitivePeerDependencies:
       - '@hyperjump/browser'
 
-  '@scalar/nextjs-api-reference@0.5.1(next@15.1.4(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)':
+  '@scalar/nextjs-api-reference@0.5.2(next@15.1.4(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@scalar/types': 0.0.26
+      '@scalar/types': 0.0.27
       next: 15.1.4(@babel/core@7.26.0)(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react: 19.0.0
 
-  '@scalar/nextjs-api-reference@0.5.1(next@15.1.4(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)':
+  '@scalar/nextjs-api-reference@0.5.2(next@15.1.4(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@scalar/types': 0.0.26
+      '@scalar/types': 0.0.27
       next: 15.1.4(@playwright/test@1.49.1)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react: 19.0.0
 
@@ -9391,6 +9395,11 @@ snapshots:
       '@scalar/types': 0.0.26
 
   '@scalar/types@0.0.26':
+    dependencies:
+      '@scalar/openapi-types': 0.1.6
+      '@unhead/schema': 1.11.18
+
+  '@scalar/types@0.0.27':
     dependencies:
       '@scalar/openapi-types': 0.1.6
       '@unhead/schema': 1.11.18

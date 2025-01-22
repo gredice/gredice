@@ -15,7 +15,7 @@
     "regenerate:feature-flags": "hypertune"
   },
   "dependencies": {
-    "@scalar/nextjs-api-reference": "0.5.1",
+    "@scalar/nextjs-api-reference": "0.5.2",
     "hypertune": "2.5.7",
     "next": "15.1.4",
     "react": "19.0.0",
