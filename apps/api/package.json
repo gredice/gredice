@@ -14,7 +14,7 @@
   "dependencies": {
     "@scalar/nextjs-api-reference": "0.5.2",
     "@scalar/api-reference-react": "0.4.14",
-    "next": "15.1.5",
+    "next": "15.1.6",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "server-only": "0.0.1"
@@ -38,7 +38,7 @@
     "@vercel/analytics": "1.4.1",
     "babel-plugin-react-compiler": "19.0.0-beta-e552027-20250112",
     "eslint": "9.18.0",
-    "eslint-config-next": "15.1.5",
+    "eslint-config-next": "15.1.6",
     "lucide-react": "0.473.0",
     "next-axiom": "1.9.1",
     "postcss": "8.5.1",
