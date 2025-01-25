@@ -10,7 +10,7 @@ export default function PolitikaPrivatnostiPage() {
                 <PageHeader
                     padded
                     header="Politika Privatnosti"
-                    subHeader="Ova politika privatnosti objašnjava kako prikupljamo, koristimo i štitimo vaše osobne podatke prilikom korištenja naše web stranice."
+                    subHeader="Kako prikupljamo, koristimo i štitimo tvoje osobne podatke prilikom korištenja naše web stranice."
                 />
                 <div className="prose">
                     <h2>Uvod</h2>

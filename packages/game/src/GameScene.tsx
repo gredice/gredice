@@ -283,7 +283,9 @@ export function GameScene({
                 </>
             )}
             <OverviewModal />
-            <RotateIcons />
+            {!hideHud && (
+                <RotateIcons />
+            )}
         </div>
     );
 }

@@ -10,7 +10,7 @@ export default function PolitikaKolacicaPage() {
                 <PageHeader
                     padded
                     header="Politika kolačića"
-                    subHeader="Ova politika kolačića objašnjava koje kolačiće koristimo na našoj web stranici, kako ih koristimo, te koja su vaša prava vezana uz njih." />
+                    subHeader="Koje kolačiće koristimo na našoj web stranici, kako ih koristimo, te koja su tvoja prava vezana uz njih." />
                 <div className="prose">
                     <h2>Što su kolačići?</h2>
                     <p>

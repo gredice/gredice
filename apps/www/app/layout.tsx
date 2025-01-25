@@ -53,6 +53,7 @@ const sectionsData: SectionData[] = [
                     { label: 'Politika privatnosti', href: KnownPages.LegalPrivacy },
                     { label: 'Uvjeti korištenja', href: KnownPages.LegalTerms },
                     { label: 'Politika kolačića', href: KnownPages.LegalCookies },
+                    { label: 'Licenca izvnornog koda', href: KnownPages.LegalLicense },
                 ]
             }
         ],

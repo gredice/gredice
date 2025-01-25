@@ -10,7 +10,7 @@ export default function PolitikaPrivatnostiPage() {
                 <PageHeader
                     padded
                     header="Licenca izvornog koda"
-                    subHeader="Ova licenca objašnjava uvjete korištenja izvornog koda aplikacije Gredice."
+                    subHeader="Uvjeti korištenja izvornog koda aplikacije Gredice."
                 />
                 <div className="prose">
                     <p>Izvorni kod aplikacije Gredice dostupan je pod licencom <a href="https://github.com/gredice/gredice/blob/main/LICENSE">AGPL-3.0</a>. To znači da možete pregledati, preuzeti, mijenjati i distribuirati izvorni kod aplikacije pod uvjetima ove licence.</p>

@@ -4,10 +4,25 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { PropsWithChildren, ReactNode } from "react";
 import { cx } from "@signalco/ui-primitives/cx";
 
-export function PageHeader({ children, padded, visual, header, alternativeName, subHeader, headerChildren }: PropsWithChildren<{ visual?: ReactNode, header: string, alternativeName?: string | null, subHeader?: string | null, headerChildren?: ReactNode, padded?: boolean }>) {
+export type PageHeaderProps = {
+    padded?: boolean;
+    visual?: ReactNode;
+    header: string;
+    alternativeName?: string | null;
+    subHeader?: string | null;
+    headerChildren?: ReactNode;
+};
+
+export function PageHeader({
+    children, padded, visual, header, alternativeName, subHeader, headerChildren
+}: PropsWithChildren<PageHeaderProps>) {
     return (
-        <div className={cx("grid grid-cols-1 md:grid-cols-2 gap-4 justify-between", padded && "py-12 md:py-24")}>
-            <div className="flex flex-col md:flex-row gap-4">
+        <div className={cx(
+            "grid grid-cols-1 justify-between gap-4",
+            visual ? "md:grid-cols-2" : "md:grid-cols-3",
+            padded && "py-12 md:py-24"
+        )}>
+            <div className={cx("flex flex-col md:flex-row gap-4", !visual && "md:col-span-2")}>
                 {visual && (
                     <Card className="min-w-48 min-h-48 size-48">
                         <CardOverflow className="p-6">

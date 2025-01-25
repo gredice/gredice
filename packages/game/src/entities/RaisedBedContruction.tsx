@@ -11,11 +11,7 @@ function HoverOutline({ hovered }: { hovered?: boolean }) {
     if (!hovered) return null;
 
     return (
-        <>
-            <Outlines thickness={2} color="white" angle={0} />
-            <Outlines thickness={3} color="white" opacity={0.5} transparent />
-            <Outlines thickness={5} color="white" opacity={0.1} transparent />
-        </>
+        <Outlines thickness={3} color="white" />
     );
 }
 
