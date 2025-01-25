@@ -8,8 +8,6 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NewsletterSignUp } from "./NewsletterSignUp";
 import { GameSceneDynamic } from "./GameSceneDynamic";
-import { BlocksIcon } from "lucide-react";
-import { EntityViewer } from "@gredice/game";
 import { BlockImage } from "../components/blocks/BlockImage";
 
 const sectionsData: SectionData[] = [
@@ -33,17 +31,24 @@ const sectionsData: SectionData[] = [
     },
     {
         component: 'Feature1',
-        tagline: 'Expertise on Demand',
-        header: 'Workers Marketplace',
-        description: 'Hire expert workers to help you with your projects. From software development to personal trainers and chefs, we have you covered.',
+        tagline: 'Vrt po tvom',
+        header: 'Par koraka do svježeg povrća',
+        description: 'Zasadi, održavaj i uberi. Mi ćemo ti pomoći u svakom koraku i dostaviti ti svježe povrće iz tvojih gredica.',
         features: [
             {
-                header: `heading`,
-                description: 'Experts available to help you with your projects',
+                header: 'Zasadi',
+                description: 'Odaberi svoju kombinaciju povrća i zasadi svoje gredice. Mi postavljamo pravu gredicu na polju jednog od naših partnera i sadimo ili sijemo tvoje povrće.',
                 asset: <BlockImage blockName="Raised_Bed" width={128} height={128} />
             },
             {
-                // asset: <DemoMarketplace />,
+                header: 'Održavaj',
+                description: 'Prati stanje svojih gredica i brini se o svojim biljkama. Mi ćemo ti slati obavijesti i savjete kako bi tvoje povrće bilo zdravo i ukusno.',
+                asset: <BlockImage blockName="Bucket" width={128} height={128} />
+            },
+            {
+                header: 'Uberi',
+                description: 'Uberi svoje povrće kad hod želiš. Mi ćemo ti pomoći u berbi i dostaviti ti svježe povrće na kućnu adresu.',
+                asset: <BlockImage blockName="Shade" width={128} height={128} />
             }
         ]
     }
