@@ -15,17 +15,17 @@ export default function UvjetiKoristenjaPage() {
                 <div className="prose">
                     <h2>Uvod</h2>
                     <p>
-                        Ovi uvjeti korištenja ("<strong>Uvjeti</strong>") reguliraju pristup i korištenje web stranice
-                        (<a href="https://www.gredice.com">www.gredice.com</a>, uključujući sve podstranice) ("<strong>Platforma</strong>") koju posluje [ime tvrtke],
+                        Ovi uvjeti korištenja (&quot;<strong>Uvjeti</strong>&quot;) reguliraju pristup i korištenje web stranice
+                        (<a href="https://www.gredice.com">www.gredice.com</a>, uključujući sve podstranice) (&quot;<strong>Platforma</strong>&quot;) koju posluje [ime tvrtke],
                         sa sjedištem na [adresa], OIB: [OIB]. Korištenje Platforme podrazumijeva suglasnost s
                         ovim Uvjetima. Ukoliko se ne slažete s Uvjetima, molimo vas da ne koristite Platformu.
                     </p>
                     <h2>Definicije</h2>
                     <p>U smislu ovih Uvjeta, izrazi koji su označeni velikim slovom imaju sljedeća značenja:</p>
                     <ul>
-                        <li>"<strong>Korisnik</strong>" označava svaku fizičku ili pravnu osobu koja koristi Platformu.</li>
-                        <li>"<strong>Sadržaj</strong>" odnosi se na sve informacije, tekst, slike, videozapise i druge materijale koji se nalaze na Platformi.</li>
-                        <li>"<strong>Usluge</strong>" obuhvaćaju sve usluge dostupne putem Platforme, uključujući, ali ne ograničavajući se na, pretraživanje, interakcije s drugim korisnicima i dijeljenje sadržaja.</li>
+                        <li>&quot;<strong>Korisnik</strong>&quot; označava svaku fizičku ili pravnu osobu koja koristi Platformu.</li>
+                        <li>&quot;<strong>Sadržaj</strong>&quot; odnosi se na sve informacije, tekst, slike, videozapise i druge materijale koji se nalaze na Platformi.</li>
+                        <li>&quot;<strong>Usluge</strong>&quot; obuhvaćaju sve usluge dostupne putem Platforme, uključujući, ali ne ograničavajući se na, pretraživanje, interakcije s drugim korisnicima i dijeljenje sadržaja.</li>
                     </ul>
                     <h2>Prava i obveze Korisnika</h2>
                     <p>Korisnik se obvezuje:</p>

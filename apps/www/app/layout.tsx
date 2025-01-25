@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { AxiomWebVitals } from 'next-axiom';
 import "./globals.css";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@signalco/ui-primitives/Tooltip";
 import Head from "next/head";
 import { Container } from "@signalco/ui-primitives/Container";
 import { Stack } from "@signalco/ui-primitives/Stack";
@@ -18,8 +17,7 @@ import { sectionsComponentRegistry } from "../components/shared/sectionsComponen
 import { ClientAppProvider } from "../components/providers/ClientAppProvider";
 import { getFlags } from "../lib/flags/getFlags";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Presentation } from "lucide-react";
-import { Button } from "@signalco/ui-primitives/Button";
+import { Popper } from "@signalco/ui-primitives/Popper";
 
 export const metadata: Metadata = {
     title: "Gredice",
@@ -129,23 +127,21 @@ export default async function RootLayout({
                                 { href: KnownPages.FAQ, text: 'Česta pitanja' },
                             ]}>
                             {preSeason ? (
-                                <Tooltip delayDuration={0}>
-                                    <TooltipTrigger asChild>
-                                        <NavigatingButton className="bg-green-800/30 hover:bg-green-800/30">
-                                            Vrt
-                                        </NavigatingButton>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <Stack>
-                                            <Typography level="body1" semiBold>
-                                                Dostupno uskoro
-                                            </Typography>
-                                            <Typography level="body2">
-                                                Vrt je trenutno zatvoren.<br />Prijavi se i osiguraj svoje mjesto u vrtu.
-                                            </Typography>
-                                        </Stack>
-                                    </TooltipContent>
-                                </Tooltip>
+                                <Popper trigger={(
+                                    <NavigatingButton className="bg-green-800/30 hover:bg-green-800/30">
+                                        Vrt
+                                    </NavigatingButton>
+                                )}
+                                    className="p-4">
+                                    <Stack spacing={2}>
+                                        <Typography level="body2" semiBold>
+                                            Dostupno uskoro
+                                        </Typography>
+                                        <Typography>
+                                            Vrt je trenutno zatvoren.
+                                        </Typography>
+                                    </Stack>
+                                </Popper>
                             ) : (
                                     <Link href={KnownPages.GardenApp}>
                                         <NavigatingButton className="bg-green-800 hover:bg-green-700">

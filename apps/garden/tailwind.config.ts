@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 import { config } from '@signalco/ui-themes-minimal/config';
 import tailwindcssTypography from '@tailwindcss/typography';
+import tailwindcssAnimate from "tailwindcss-animate";
 
 const tailwindConfig: Config = {
   content: [
@@ -14,7 +15,22 @@ const tailwindConfig: Config = {
   ],
   presets: [config],
   plugins: [
+    tailwindcssAnimate,
     tailwindcssTypography
   ],
+  theme: {
+    extend: {
+      keyframes: {
+        progress: {
+          "0%": { transform: "translateX(0) scaleX(0)" },
+          "40%": { transform: "translateX(0) scaleX(0.4)" },
+          "100%": { transform: "translateX(100%) scaleX(0.5)" },
+        },
+      },
+      animation: {
+        progress: "progress 1s infinite linear",
+      },
+    }
+  }
 };
 export default tailwindConfig;

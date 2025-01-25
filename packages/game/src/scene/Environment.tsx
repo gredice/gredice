@@ -6,6 +6,8 @@ import { getTimes, getPosition } from 'suncalc';
 import { useGameState } from '../useGameState';
 import { AmbientLight, Color, DirectionalLight, HemisphereLight, Quaternion, Vector3 } from 'three';
 import { Garden } from '../types/Garden';
+import { audioMixer } from '../audio/audioMixer';
+import { useWeatherNow } from '../hooks/useWeatherNow';
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
@@ -17,7 +19,7 @@ const sunTemperatureScale = chroma
     .domain([0.2, 0.3, 0.75, 0.85]);
 const sunIntensityTimeScale = chroma
     .scale(['black', 'white', 'white', 'black'])
-    .domain([0.2, 0.225, 0.75, 0.85]);
+    .domain([0.2, 0.225, 0.75, 0.8]);
 const hemisphereSkyColorScale = chroma
     .scale([chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000), chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000)])
     .domain([0.2, 0.25, 0.3, 0.75, 0.8, 0.85]);
@@ -103,6 +105,17 @@ export function Environment({ location, noBackground }: { location: Garden['loca
     const directionalLightRef = useRef<DirectionalLight>(null);
 
     const currentTime = useGameState((state) => state.currentTime);
+    const ambientAudioMixer = useGameState((state) => state.audio.ambient);
+
+    const { sunrise, sunset } = getSunriseSunset(location, currentTime);
+    const baseAmbient = ambientAudioMixer.useMusic(
+        currentTime > sunrise && currentTime < sunset ?
+            '/assets/sounds/ambient/Day Birds 01.mp3' :
+            '/assets/sounds/ambient/Night 01.mp3',
+        0.2);
+    useEffect(() => {
+        baseAmbient.play();
+    }, []);
 
     useEffect(() => {
         const {
@@ -144,9 +157,29 @@ export function Environment({ location, noBackground }: { location: Garden['loca
             'srgb');
     }, [currentTime]);
 
+    const { data: weather } = useWeatherNow();
+
+    // Handle fog
+    const fog = weather?.foggy ?? 0;
+    const fogNear = 170 - fog * 30;
+    // TODO: Apply fog to background (make a gradient)
+
+    // TODO: Handle rain
+    const rain = weather?.rainy ?? 0;
+
+    // TODO: Handle snow
+    const snow = weather?.snowy ?? 0;
+
+    // TODO: Handle wind
+    const windSpeed = weather?.windSpeed ?? 0;
+    const windDirection = weather?.windDirection;
+
+    // TODO: Handle clouds
+    const clouds = weather?.cloudy ?? 0;
+
     return (
         <>
-            {!noBackground && <color ref={backgroundRef} attach="background" />}
+            {!noBackground && <color ref={backgroundRef} attach="background" args={[0, 0, 0]} />}
             <ambientLight ref={ambientRef} intensity={3} />
             <hemisphereLight ref={hemisphereRef} position={[0, 1, 0]} intensity={2} />
             <directionalLight
@@ -164,6 +197,9 @@ export function Environment({ location, noBackground }: { location: Garden['loca
                 castShadow>
                 <orthographicCamera attach="shadow-camera" args={[-cameraShadowSize, cameraShadowSize, cameraShadowSize, -cameraShadowSize]} />
             </directionalLight>
+            {fog > 0 && (
+                <fog attach="fog" args={['#aaaaaa', fogNear, 190]} />
+            )}
         </>
     );
 }

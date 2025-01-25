@@ -2,16 +2,22 @@
 
 import { Vector3 } from 'three';
 import { OrbitControls } from '@react-three/drei';
-import { HTMLAttributes, useEffect } from 'react';
+import { HTMLAttributes, useEffect, useRef, useState } from 'react';
 import { Environment } from './scene/Environment';
 import { useGameState } from './useGameState';
 import type { Stack } from './types/Stack';
 import type { Garden } from './types/Garden';
-import { RotatableGroup } from './controls/RotatableGroup';
 import { Scene } from './scene/Scene';
 import { EntityFactory } from './entities/EntityFactory';
 import { DayNightCycleHud } from './hud/DayNightCycleHud';
 import { DebugHud } from './hud/DebugHud';
+import { AccountHud } from './hud/AccountHud';
+import { SunflowersHud } from './hud/SunflowersHud';
+import { OverviewModal } from './modals/OverviewModal';
+import { WeatherHud } from './hud/WeatherHud';
+import { Row } from '@signalco/ui-primitives/Row';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Redo, RotateCcw, RotateCw, Undo } from 'lucide-react';
 
 // function serializeGarden(garden: Garden) {
 //     return JSON.stringify(garden);
@@ -49,8 +55,7 @@ function getDefaultGarden(): Garden {
             });
         }
     }
-    stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ name: "Raised_Bed", rotation: 0 });
-    stacks.find(stack => stack.position.x === 1 && stack.position.z === 0)?.blocks.push({ name: "Raised_Bed", rotation: 0 });
+    stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ name: "Raised_Bed_Construction", rotation: 1 });
 
     return {
         name: 'Moj vrt',
@@ -78,7 +83,7 @@ export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
     const stacks = useGameState(state => state.stacks);
     const setStacks = useGameState(state => state.setStacks);
 
-    // Load garden from remote
+    // TODO: Load garden from remote
     const garden = getDefaultGarden();
     const isLoadingGarden = false;
     useEffect(() => {
@@ -104,17 +109,13 @@ export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
                 {stacks.map((stack) =>
                     stack.blocks?.map((block, i) => {
                         return (
-                            <RotatableGroup
+                            <EntityFactory
                                 key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.name}-${i}`}
+                                name={block.name}
                                 stack={stack}
-                                block={block}>
-                                <EntityFactory
-                                    name={block.name}
-                                    stack={stack}
-                                    block={block}
-                                    rotation={block.rotation}
-                                    variant={block.variant} />
-                            </RotatableGroup>
+                                block={block}
+                                rotation={block.rotation}
+                                variant={block.variant} />
                         );
                     })
                 )}
@@ -132,17 +133,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     hideHud?: boolean
 }
 
-export function GameScene({
-    appBaseUrl,
-    isDevelopment,
-    zoom = 'normal',
-    freezeTime,
-    noBackground,
-    hideHud,
-    ...rest
-}: GameSceneProps) {
-    const cameraPosition = 100;
-
+function CurrentTimeManager({ freezeTime }: { freezeTime?: Date }) {
     // Update current time every second
     const setCurrentTime = useGameState((state) => state.setCurrentTime);
     useEffect(() => {
@@ -153,8 +144,119 @@ export function GameScene({
         return () => clearInterval(interval);
     }, []);
 
+    return null;
+}
+
+function beginPanCamera(direction: [number, number]) {
+    const orbitControls = useGameState.getState().orbitControls;
+    if (!orbitControls) return;
+
+    // TODO: Use frame loop instead of setInterval
+    const pan = new Vector3(direction[0], 0, direction[1]).divideScalar(5);
+    const intervalToken = setInterval(() => {
+        orbitControls.target.add(pan);
+    }, 1000 / 60);
+    return intervalToken;
+}
+
+function endPanCamera(intervalToken: NodeJS.Timeout) {
+    clearInterval(intervalToken);
+}
+
+function rotateCamera(direction: 'ccw' | 'cw' = 'cw') {
+    const orbitControls = useGameState.getState().orbitControls;
+    if (!orbitControls) return;
+
+    // Rotate by 90 degrees
+    orbitControls.setAzimuthalAngle(
+        orbitControls.getAzimuthalAngle() +
+        (direction === 'cw' ? Math.PI / 2 : -Math.PI / 2)
+    );
+}
+
+const useKeyboardControls = () => {
+    // TODO: Disable rotation when modal is open
+
+    const rotateKeys: Record<string, 'cw' | 'ccw'> = {
+        KeyQ: 'cw',
+        KeyW: 'ccw',
+    }
+
+    const panKeys: Record<string, [number, number]> = {
+        ArrowUp: [-1, -1],
+        ArrowDown: [1, 1],
+        ArrowLeft: [-1, 1],
+        ArrowRight: [1, -1],
+    }
+
+    const rotateValueByKey = (key: string) => rotateKeys[key];
+    const currentPanIntervalToken = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
+
+            const rotateValue = rotateValueByKey(e.code);
+            if (rotateValue) rotateCamera(rotateValue);
+
+            const panValue = panKeys[e.code];
+            if (panValue) {
+                if (currentPanIntervalToken.current.has(e.code)) return;
+                const token = beginPanCamera(panValue);
+                if (token) {
+                    currentPanIntervalToken.current.set(e.code, token);
+                }
+            }
+        }
+        const handleKeyUp = (e: KeyboardEvent) => {
+            const panValue = panKeys[e.code];
+            if (panValue) {
+                const token = currentPanIntervalToken.current.get(e.code);
+                if (token) {
+                    endPanCamera(token);
+                    currentPanIntervalToken.current.delete(e.code);
+                }
+            }
+        }
+        document.addEventListener('keydown', handleKeyDown)
+        document.addEventListener('keyup', handleKeyUp)
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown)
+            document.removeEventListener('keyup', handleKeyUp)
+        }
+    }, []);
+}
+
+function RotateIcons() {
+    return (
+        <div className='absolute bottom-2 left-2'>
+            <Row>
+                <IconButton title="Okreni lijevo" variant='plain' onClick={rotateCamera.bind(null, 'ccw')}>
+                    <Undo className='size-5' />
+                </IconButton>
+                <IconButton title="Okreni desno" variant='plain' onClick={rotateCamera.bind(null, 'cw')}>
+                    <Redo className='size-5' />
+                </IconButton>
+            </Row>
+        </div>
+    )
+}
+
+export function GameScene({
+    appBaseUrl,
+    isDevelopment,
+    zoom = 'normal',
+    freezeTime,
+    noBackground,
+    hideHud,
+    ...rest
+}: GameSceneProps) {
+    const cameraPosition = 100;
+    useKeyboardControls();
+
     return (
         <div {...rest}>
+            <CurrentTimeManager freezeTime={freezeTime} />
             <Scene
                 appBaseUrl={appBaseUrl}
                 freezeTime={freezeTime}
@@ -165,13 +267,23 @@ export function GameScene({
                 {isDevelopment && <DebugHud />}
                 <GardenDisplay noBackground={noBackground} />
                 <OrbitControls
+                    ref={useGameState.getState().setOrbitControls}
                     enableRotate={false}
+                    onStart={() => useGameState.getState().setIsDragging(true)}
+                    onEnd={() => useGameState.getState().setIsDragging(false)}
                     minZoom={50}
                     maxZoom={200} />
             </Scene>
             {!hideHud && (
-                <DayNightCycleHud lat={45.739} lon={16.572} currentTime={useGameState((state) => state.currentTime)} />
+                <>
+                    <AccountHud />
+                    <SunflowersHud />
+                    <WeatherHud />
+                    <DayNightCycleHud lat={45.739} lon={16.572} />
+                </>
             )}
+            <OverviewModal />
+            <RotateIcons />
         </div>
     );
 }

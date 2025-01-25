@@ -1,11 +1,10 @@
-import { getEntitiesRaw, getEntityTypes, getUsers } from "@gredice/storage";
+import { getAccounts, getEntitiesRaw, getEntityTypes, getUsers } from "@gredice/storage";
 import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
-import { Divider } from "@signalco/ui-primitives/Divider";
-import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { PropsWithChildren } from "react";
 import { KnownPages } from "../../src/KnownPages";
+import { auth } from "../../lib/auth/auth";
 
 export const dynamic = 'force-dynamic';
 
@@ -24,14 +23,15 @@ function FactCard({ header, value, href }: { header: string, value: string | num
 
 function DashboardDivider({ children }: PropsWithChildren) {
     return (
-        <Row spacing={2}>
-            <Typography level="body3">{children}</Typography>
-            <Divider />
-        </Row>
+        <div className="relative text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
+            <span className="relative z-10 bg-muted px-2 text-muted-foreground">
+                {children}
+            </span>
+        </div>
     );
 }
 
-export default async function AdminPage() {
+async function Dashboard() {
     const entityTypes = await getEntityTypes();
     const entitiesCounts = await Promise.all(entityTypes.map(async entityType => {
         const entities = await getEntitiesRaw(entityType.name);
@@ -43,9 +43,11 @@ export default async function AdminPage() {
     }));
     const users = await getUsers();
     const usersCount = users.length;
+    const accounts = await getAccounts();
+    const accountsCount = accounts.length;
 
     return (
-        <Stack className="p-4" spacing={1}>
+        <Stack spacing={1}>
             <Stack spacing={1}>
                 <DashboardDivider>Zapisi</DashboardDivider>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -55,11 +57,20 @@ export default async function AdminPage() {
                 </div>
             </Stack>
             <Stack spacing={1}>
-                <DashboardDivider>Korisnici</DashboardDivider>
+                <DashboardDivider>Računi i korisnici</DashboardDivider>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     <FactCard header="Korisnici" value={usersCount} href={KnownPages.Users} />
+                    <FactCard header="Računi" value={accountsCount} href={KnownPages.Accounts} />
                 </div>
             </Stack>
         </Stack>
+    );
+}
+
+export default async function AdminPage() {
+    await auth(['admin']);
+
+    return (
+        <Dashboard />
     );
 }

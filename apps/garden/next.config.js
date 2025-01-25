@@ -4,12 +4,10 @@ import { withAxiom } from 'next-axiom';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    eslint: {
-        ignoreDuringBuilds: true,
+    experimental: {
+        reactCompiler: true,
     },
-    typescript: {
-        ignoreBuildErrors: true,
-    }
+    productionBrowserSourceMaps: true,
 };
 
 export default withAxiom(nextConfig);

@@ -9,15 +9,19 @@ import { Shade } from "./Shade";
 import { Fence } from "./Fence";
 import { Stool } from "./Stool";
 import { Bucket } from "./Bucket";
+import { RotatableGroup } from "../controls/RotatableGroup";
+import { RaisedBedContruction } from "./RaisedBedContruction";
+import { SelectableGroup } from "../controls/SelectableGroup";
 
 const entityNameMap: Record<string, any> = {
-    ["Block_Ground"]: BlockGround,
-    ["Block_Grass"]: BlockGrass,
-    ["Raised_Bed"]: RaisedBed,
-    ["Shade"]: Shade,
-    ["Fence"]: Fence,
-    ["Stool"]: Stool,
-    ["Bucket"]: Bucket
+    "Block_Ground": BlockGround,
+    "Block_Grass": BlockGrass,
+    "Raised_Bed": RaisedBed,
+    "Shade": Shade,
+    "Fence": Fence,
+    "Stool": Stool,
+    "Bucket": Bucket,
+    "Raised_Bed_Construction": RaisedBedContruction,
 };
 
 export function EntityFactory({ name, stack, block, noControl, ...rest }: { name: string, noControl?: boolean } & EntityInstanceProps) {
@@ -34,15 +38,22 @@ export function EntityFactory({ name, stack, block, noControl, ...rest }: { name
     }
 
     return (
-        <PickableGroup
-            stack={stack}
-            block={block}
-            onPositionChanged={handlePositionChanged}
-            noControl={noControl}>
-            <EntityComponent
+        <SelectableGroup
+            block={block}>
+            <PickableGroup
                 stack={stack}
                 block={block}
-                {...rest} />
-        </PickableGroup>
+                onPositionChanged={handlePositionChanged}
+                noControl={noControl}>
+                <RotatableGroup
+                    stack={stack}
+                    block={block}>
+                    <EntityComponent
+                        stack={stack}
+                        block={block}
+                        {...rest} />
+                </RotatableGroup>
+            </PickableGroup>
+        </SelectableGroup>
     );
 }

@@ -1,4 +1,4 @@
-import { desc, relations } from 'drizzle-orm';
+import { relations } from 'drizzle-orm';
 import { integer, pgTable, serial, text, timestamp, boolean } from 'drizzle-orm/pg-core';
 
 export const attributeDefinitionCategories = pgTable('attribute_definition_categories', {

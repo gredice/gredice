@@ -17,7 +17,7 @@ const sectionsData: SectionData[] = [
         component: 'Heading1',
         tagline: 'Gredice',
         header: 'Vrt po tvom',
-        description: 'Dobiješ povrćeg iz svojih gredica - nit oro, nit kopo!',
+        description: 'Dobiješ povrće iz svojih gredica - nit oro, nit kopo!',
         asset: (
             <div className="min-h-96 relative rounded-xl overflow-hidden">
                 <GameSceneDynamic
@@ -56,7 +56,7 @@ const preSeasonSectionsData: SectionData[] = [
         header: 'Vrt po tvom',
         description: (
             <Stack spacing={6}>
-                <Typography>Dobiješ povrćeg iz svojih gredica - nit oro, nit kopo!</Typography>
+                <Typography>Dobiješ povrće iz svojih gredica - nit oro, nit kopo!</Typography>
                 <NewsletterSignUp />
             </Stack>
         ),

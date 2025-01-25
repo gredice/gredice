@@ -1,5 +1,7 @@
+import 'server-only';
 import { and, eq } from "drizzle-orm";
-import { entityTypes, InsertEntityType, storage, UpdateEntityType } from "..";
+import { storage } from "../storage";
+import { entityTypes, InsertEntityType, UpdateEntityType } from '../schema';
 
 export function getEntityTypes() {
     return storage.select().from(entityTypes).orderBy(entityTypes.order);

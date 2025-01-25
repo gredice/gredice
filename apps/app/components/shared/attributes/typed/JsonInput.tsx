@@ -1,6 +1,4 @@
-'use client';
-
-import { useState } from 'react';
+import { ComponentType, useState } from 'react';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { camelToSentenceCase } from '@signalco/js';
 import { Typography } from '@signalco/ui-primitives/Typography';
@@ -79,8 +77,7 @@ export function JsonInput({ value, onChange, schema }: AttributeInputProps) {
         <Card>
             <Stack spacing={1}>
                 {Object.keys(schemaUnwrapped).map((key) => {
-                    let InputComponent: any = TextInput;
-                    let inputSchema: AttributeInputSchema | null = null;
+                    let InputComponent: ComponentType<AttributeInputProps> = TextInput;
                     if (schemaUnwrapped[key] === 'string') {
                         InputComponent = TextInput;
                     } else if (schemaUnwrapped[key] === 'number') {
@@ -111,7 +108,6 @@ export function JsonInput({ value, onChange, schema }: AttributeInputProps) {
                                 onChange={(newValue: string | null) => {
                                     handleOnChange({ ...inputValue, [key]: newValue });
                                 }}
-                                schema={inputSchema}
                             />
                         </Stack>
                     );

@@ -17,7 +17,7 @@ import { auth } from "../../lib/auth/auth";
 import { KnownPages } from "../../src/KnownPages";
 
 export async function createEntityType(entityTypeName: string, label: string) {
-    await auth();
+    await auth(['admin']);
 
     await upsertEntityType({ name: entityTypeName, label: label });
     revalidatePath(KnownPages.Directories);
@@ -25,7 +25,7 @@ export async function createEntityType(entityTypeName: string, label: string) {
 }
 
 export async function createEntity(entityTypeName: string) {
-    await auth();
+    await auth(['admin']);
 
     const entityId = await storageCreateEntity(entityTypeName);
     revalidatePath(KnownPages.Directories);
@@ -35,7 +35,7 @@ export async function createEntity(entityTypeName: string) {
 }
 
 export async function updateEntity(entity: UpdateEntity) {
-    await auth();
+    await auth(['admin']);
 
     await storageUpdateEntity(entity);
     revalidatePath(KnownPages.Directories);
@@ -49,7 +49,7 @@ export async function handleValueSave(
     attributeDefinition: SelectAttributeDefinition,
     attributeValueId?: number,
     newValue?: string | null) {
-    await auth();
+    await auth(['admin']);
 
     const newAttributeValueValue = (newValue?.length ?? 0) <= 0 ? null : newValue;
     await upsertAttributeValue({
@@ -63,7 +63,7 @@ export async function handleValueSave(
 }
 
 export async function handleValueDelete(attributeValue: SelectAttributeValue) {
-    await auth();
+    await auth(['admin']);
 
     await deleteAttributeValue(attributeValue.id);
     revalidatePath(`/admin/directories/${attributeValue.entityTypeName}/${attributeValue.entityId}`);
@@ -71,7 +71,7 @@ export async function handleValueDelete(attributeValue: SelectAttributeValue) {
 }
 
 export async function handleEntityDelete(entityTypeName: string, entityId: number) {
-    await auth();
+    await auth(['admin']);
 
     await deleteEntity(entityId);
     revalidatePath(KnownPages.Directories);

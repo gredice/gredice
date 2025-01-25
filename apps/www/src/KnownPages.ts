@@ -10,6 +10,7 @@ export const KnownPages = {
     LegalPrivacy: '/legalno/politika-privatnosti',
     LegalTerms: '/legalno/uvjeti-koristenja',
     LegalCookies: '/legalno/politika-kolacica',
+    LegalLicense: '/legalno/licenca',
 
     GardenApp: 'https://vrt.gredice.com',
 }

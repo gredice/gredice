@@ -4,15 +4,25 @@ import type { Block } from "./types/Block";
 import type { Vector3 } from "three";
 import { getStack } from "./utils/getStack";
 import { BlockData } from "../@types/BlockData";
+import { audioMixer } from "./audio/audioMixer";
+import { OrbitControls } from 'three-stdlib';
 
 export type GameState = {
     appBaseUrl: string,
+    audio: {
+        ambient: ReturnType<typeof audioMixer>,
+        effects: ReturnType<typeof audioMixer>
+    },
     freezeTime?: Date | null,
     currentTime: Date,
     stacks: Stack[],
     data: {
         blocks: BlockData[]
     },
+    orbitControls: OrbitControls | null,
+    setOrbitControls: (ref: OrbitControls | null) => void,
+    isDragging: boolean,
+    setIsDragging: (isDragging: boolean) => void,
     setInitial: (appBaseUrl: string, data: { blocks: BlockData[] }, freezeTime?: Date | null) => void,
     setCurrentTime: (currentTime: Date) => void,
     setStacks: (stacks: Stack[]) => void,
@@ -23,12 +33,20 @@ export type GameState = {
 
 export const useGameState = create<GameState>((set) => ({
     appBaseUrl: '',
+    audio: {
+        ambient: audioMixer(),
+        effects: audioMixer()
+    },
     freezeTime: null,
     currentTime: new Date(),
     stacks: [],
     data: {
         blocks: []
     },
+    orbitControls: null,
+    isDragging: false,
+    setOrbitControls: (ref) => set({ orbitControls: ref }),
+    setIsDragging: (isDragging) => set({ isDragging }),
     setInitial: (appBaseUrl, data, freezeTime) => set({ appBaseUrl, freezeTime, data }),
     setCurrentTime: (currentTime) => set({ currentTime }),
     setStacks: (stacks) => set({ stacks }),

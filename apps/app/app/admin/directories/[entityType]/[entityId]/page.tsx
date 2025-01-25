@@ -1,14 +1,16 @@
 import { getAttributeDefinitionCategories, getAttributeDefinitions, getEntityRaw } from '@gredice/storage';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { AttributeCategoryDetails } from './AttributeCategoryDetails';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@signalco/ui-primitives/Tabs';
 import { Delete } from '@signalco/ui-icons';
 import { ServerActionIconButton } from '../../../../../components/shared/ServerActionIconButton';
 import { handleEntityDelete } from '../../../../(actions)/entityActions';
 import { notFound } from 'next/navigation';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { EntityStateSelect } from './EntityStateSelect';
 import { Row } from '@signalco/ui-primitives/Row';
+import { Card, CardContent, CardHeader, CardTitle } from '@signalco/ui-primitives/Card';
+import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
+import { KnownPages } from '../../../../../src/KnownPages';
+import { entityDisplayName } from '../../../../../src/entities/entityAttributes';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,40 +25,48 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
         notFound();
     }
 
-    const name = entity.attributes.find(pa => pa.attributeDefinition.category === 'information' && pa.attributeDefinition.name === 'name')?.value ?? 'Nepoznato';
     const entityDeleteBound = handleEntityDelete.bind(null, params.entityType, parseInt(params.entityId));
 
     return (
-        <div>
-            <Tabs defaultValue={attributeCategories.at(0)?.name}> 
-                <div className='flex justify-between items-center'>
-                    <Typography level='h5'>{name}</Typography>
-                    <TabsList>
-                        {attributeCategories.map((category) => (
-                            <TabsTrigger key={category.name} value={category.name}>
-                                {category.label}
-                            </TabsTrigger>
-                        ))}
-                    </TabsList>
-                    <Row className='self-end' spacing={1}>
-                        <EntityStateSelect entity={entity} />
-                        <ServerActionIconButton
-                            onClick={entityDeleteBound}
-                            variant='plain'>
-                            <Delete />
-                        </ServerActionIconButton>
-                    </Row>
-                </div>
-                {attributeCategories.map((category) => (
-                    <TabsContent value={category.name} key={category.name}>
-                        <AttributeCategoryDetails
-                            entity={entity}
-                            category={category}
-                            attributeDefinitions={attributeDefinitions}
-                        />
-                    </TabsContent>
-                ))}
-            </Tabs>
-        </div>
+        <Tabs defaultValue={attributeCategories.at(0)?.name}>
+            <Card>
+                <CardHeader>
+                    <div className='flex flex-row justify-between items-center'>
+                        <CardTitle>
+                            <Breadcrumbs items={[
+                                { label: entity.entityType.label, href: KnownPages.DirectoryEntityType(params.entityType) },
+                                { label: entityDisplayName(entity) },
+                            ]} />
+                        </CardTitle>
+                        <TabsList>
+                            {attributeCategories.map((category) => (
+                                <TabsTrigger key={category.name} value={category.name}>
+                                    {category.label}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                        <Row className='self-end' spacing={1}>
+                            <EntityStateSelect entity={entity} />
+                            <ServerActionIconButton
+                                onClick={entityDeleteBound}
+                                variant='plain'>
+                                <Delete />
+                            </ServerActionIconButton>
+                        </Row>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {attributeCategories.map((category) => (
+                        <TabsContent value={category.name} key={category.name}>
+                            <AttributeCategoryDetails
+                                entity={entity}
+                                category={category}
+                                attributeDefinitions={attributeDefinitions}
+                            />
+                        </TabsContent>
+                    ))}
+                </CardContent>
+            </Card>
+        </Tabs>
     );
 }

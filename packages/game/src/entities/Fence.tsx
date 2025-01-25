@@ -26,6 +26,7 @@ export function Fence({ stack, block, rotation }: EntityInstanceProps) {
     const [animatedRotation] = useAnimatedEntityRotation(realizedRotation);
 
     return (
+        /* @ts-ignore */
         <animated.group
             position={stack.position.clone().setY(stackHeight(stack, block) + 1)}
             rotation={animatedRotation as unknown as [number, number, number]}>
@@ -35,6 +36,7 @@ export function Fence({ stack, block, rotation }: EntityInstanceProps) {
                 geometry={nodes[`Fence_${variant}`].geometry}
                 material={materials['Material.Planks']}
             />
+            {/* @ts-ignore */}
         </animated.group>
     );
 }

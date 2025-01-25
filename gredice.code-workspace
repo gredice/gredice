@@ -21,7 +21,11 @@
 			"path": "apps/www"
 		},
 		{
-			"name": "📦 apidocs",
+			"name": "⚡ api",
+			"path": "apps/api"
+		},
+		{
+			"name": "📦 @gredice/apidocs",
 			"path": "packages/apidocs"
 		},
 		{
@@ -31,6 +35,10 @@
 		{
 			"name": "📦 @gredice/storage",
 			"path": "packages/storage"
+		},
+		{
+			"name": "📦 @gredice/transactional",
+			"path": "packages/transactional"
 		}
 	],
 	"settings": {

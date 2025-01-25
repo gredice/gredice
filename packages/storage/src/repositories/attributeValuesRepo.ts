@@ -1,3 +1,4 @@
+import 'server-only';
 import { eq } from "drizzle-orm";
 import { getAttributeDefinition, storage } from "..";
 import { attributeValues, InsertAttributeValue } from "../schema/cmsSchema";

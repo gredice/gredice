@@ -3,11 +3,10 @@
 import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { KnownPages } from "../../src/KnownPages";
 import { List } from "@signalco/ui-primitives/List";
-import { useParams, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 export function LegalFilesMenu() {
     const pathname = usePathname();
-
 
     return (
         <List variant="outlined" className="bg-card">
@@ -25,6 +24,11 @@ export function LegalFilesMenu() {
                 selected={pathname === KnownPages.LegalCookies}
                 href={KnownPages.LegalCookies}
                 label={"Politika kolačića"}
+                variant="outlined" />
+            <ListItem
+                selected={pathname === KnownPages.LegalLicense}
+                href={KnownPages.LegalLicense}
+                label={"Licenca izvnorog koda"}
                 variant="outlined" />
         </List>
     );

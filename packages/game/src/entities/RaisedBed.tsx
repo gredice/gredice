@@ -52,6 +52,7 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
     }
 
     return (
+        /* @ts-ignore */
         <animated.group
             position={stack.position.clone().setY(stackHeight(stack, block) + 1)}
             rotation={[0, shapeRotation * (Math.PI / 2), 0]}>
@@ -67,6 +68,7 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                 geometry={nodes[`Raised_Bed_${shape}_1`].geometry}
                 material={materials['Material.Dirt']}
             />
+            {/* @ts-ignore */}
         </animated.group>
     );
 }

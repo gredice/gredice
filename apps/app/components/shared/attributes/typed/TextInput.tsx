@@ -1,5 +1,3 @@
-'use client';
-
 import { Input } from '@signalco/ui-primitives/Input';
 import { useState } from 'react';
 import { AttributeInputProps } from '../AttributeInputProps';
