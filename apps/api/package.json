@@ -12,7 +12,7 @@
     "test:run": "playwright test"
   },
   "dependencies": {
-    "@scalar/nextjs-api-reference": "0.5.3",
+    "@scalar/nextjs-api-reference": "0.5.4",
     "@scalar/api-reference-react": "0.4.17",
     "next": "15.1.6",
     "react": "19.0.0",
