@@ -5,6 +5,7 @@ import WelcomeEmailTemplate from '@gredice/transactional/emails/welcome';
 import { WelcomeEmailTemplateProps } from '@gredice/transactional/emails/welcome';
 import EmailVerifyEmailTemplate from '@gredice/transactional/emails/email-verify';
 import { EmailVerifyEmailTemplateProps } from '@gredice/transactional/emails/email-verify';
+import { ReactNode } from 'react';
 
 let resend: Resend | null = null;
 
@@ -13,6 +14,27 @@ function getResend() {
         resend = new Resend(process.env.RESEND_API_KEY);
     }
     return resend;
+}
+
+export async function sendEmail(options: {
+    from: string,
+    to: string | string[],
+    cc?: string | string[],
+    subject: string,
+    text?: string,
+    html?: string,
+    react?: ReactNode,
+}) {
+    const { from, to, cc, subject, text, html, react } = options;
+    return await getResend().emails.send({
+        from: from,
+        to: Array.isArray(to) ? to : [to],
+        cc: !cc || Array.isArray(cc) ? cc : [cc],
+        subject,
+        text,
+        html,
+        react,
+    });
 }
 
 export async function sendEmailVerify(to: string, config: EmailVerifyEmailTemplateProps) {
