@@ -24,7 +24,7 @@
     "@eslint/js": "9.18.0",
     "@gredice/apidocs": "workspace:*",
     "@gredice/storage": "workspace:*",
-    "@playwright/test": "1.49.1",
+    "@playwright/test": "1.50.0",
     "@signalco/auth-server": "0.4.1",
     "@signalco/hooks": "0.2.1",
     "@signalco/js": "0.1.0",
