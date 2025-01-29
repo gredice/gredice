@@ -28,7 +28,7 @@ export default function WelcomeEmailTemplate({
     appName = 'Gredice',
     appDomain = 'gredice.com'
 }: WelcomeEmailTemplateProps) {
-    const previewText = `Login request for ${appName}`;
+    const previewText = `Pozdrav od ${appName}`;
 
     return (
         <Html>

@@ -30,7 +30,7 @@ export default function EmailVerifyEmailTemplate({
     appName = 'Gredice',
     appDomain = 'gredice.com'
 }: EmailVerifyEmailTemplateProps) {
-    const previewText = `Login request for ${appName}`;
+    const previewText = `Potvrda email adrese za ${appName}`;
 
     return (
         <Html>

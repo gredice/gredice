@@ -29,7 +29,7 @@ export default function ResetPasswordEmailTemplate({
     appName = 'Gredice',
     appDomain = 'gredice.com'
 }: ResetPasswordEmailTemplateProps) {
-    const previewText = `Login request for ${appName}`;
+    const previewText = `Promjena zaporke za ${appName}`;
 
     return (
         <Html>

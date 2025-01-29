@@ -1,19 +1,15 @@
-// let resend: Resend | null = null;
-
-// function getResend() {
-//     if (!resend) {
-//         resend = new Resend(process.env.RESEND_API_KEY);
-//     }
-//     return resend;
-// }
+import { auth } from "../../../../lib/auth/auth";
+import { EmailSendForm } from "./EmailSendForm";
 
 export async function EmailsList() {
-    // const resendClient = getResend();
-    // resendClient.emails.
+    const { user } = await auth(['admin']);
+    const userName = user.userName;
 
     return (
         <div>
-            EmailsList
+            <div className="max-w-fit">
+                <EmailSendForm from={userName} />
+            </div>
         </div>
     )
 }
