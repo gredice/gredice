@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.2.0",
-    "@eslint/js": "9.18.0",
+    "@eslint/js": "9.19.0",
     "@gredice/apidocs": "workspace:*",
     "@gredice/storage": "workspace:*",
     "@playwright/test": "1.50.0",
@@ -37,7 +37,7 @@
     "@types/react-dom": "19.0.3",
     "@vercel/analytics": "1.4.1",
     "babel-plugin-react-compiler": "19.0.0-beta-e552027-20250112",
-    "eslint": "9.18.0",
+    "eslint": "9.19.0",
     "eslint-config-next": "15.1.6",
     "lucide-react": "0.474.0",
     "next-axiom": "1.9.1",
