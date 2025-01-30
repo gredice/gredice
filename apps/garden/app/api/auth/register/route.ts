@@ -18,7 +18,6 @@ export async function POST(request: Request) {
     // Create user with password
     await createUserWithPassword(email, password);
 
-    // TODO: Implement email verification
     await sendEmailVerification(email);
 
     return new Response(null, { status: 201 });
