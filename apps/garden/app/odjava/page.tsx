@@ -7,11 +7,12 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import Image from "next/image";
 import { useTimeout } from '@signalco/hooks/useTimeout';
-import { signOut } from "./actions";
+import { apiFetch } from "../../lib/apiFetch";
 
 export default function LogoutPage() {
     useTimeout(async () => {
-        await signOut();
+        await apiFetch('/api/auth/logout', { method: 'POST' });
+        localStorage.removeItem('gredice_session');
         window.location.href = 'https://www.gredice.com';
     }, 1300);
 
