@@ -4,6 +4,7 @@ import { storage } from "..";
 import { accounts, accountUsers, userLogins, users } from "../schema";
 import { createGarden } from "./gardensRepo";
 import { randomUUID, randomBytes as cryptoRandomBytes, pbkdf2Sync } from 'node:crypto';
+import { createEvent, knownEvents } from './eventsRepo';
 
 export function getUsers() {
     return storage.query.users.findMany();
@@ -47,6 +48,7 @@ export async function createUserWithPassword(userName: string, password: string)
     }
 
     // Create account
+    // TODO: Move to accountsRepo
     const account = storage
         .insert(accounts)
         .values({
@@ -57,6 +59,7 @@ export async function createUserWithPassword(userName: string, password: string)
     if (!accountId) {
         throw new Error('Failed to create account');
     }
+    await createEvent(knownEvents.accounts.createdV1(accountId));
 
     // Create default garden
     await createGarden({
@@ -77,12 +80,14 @@ export async function createUserWithPassword(userName: string, password: string)
     if (!userId) {
         throw new Error('Failed to create user');
     }
+    await createEvent(knownEvents.users.createdV1(userId));
 
     // Link user to account
     await storage.insert(accountUsers).values({
         accountId,
         userId
     });
+    await createEvent(knownEvents.accounts.assignedUserV1(accountId, { userId }));
 
     // Insert the password login
     const salt = cryptoRandomBytes(128).toString('base64');
