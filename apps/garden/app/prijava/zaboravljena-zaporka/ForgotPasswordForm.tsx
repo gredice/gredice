@@ -6,6 +6,7 @@ import { Button } from "@signalco/ui-primitives/Button"
 import { Input } from "@signalco/ui-primitives/Input"
 import { Stack } from '@signalco/ui-primitives/Stack'
 import { Typography } from '@signalco/ui-primitives/Typography'
+import { apiFetch } from '../../../lib/apiFetch'
 
 export function ForgotPasswordForm() {
     const router = useRouter()
@@ -17,7 +18,7 @@ export function ForgotPasswordForm() {
         e.preventDefault()
 
         setError('');
-        const response = await fetch('/api/auth/send-change-password-email', {
+        const response = await apiFetch('/api/auth/send-change-password-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email }),

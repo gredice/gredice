@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "../utils/apiFetch";
 
 export interface WeatherEntry {
     time: number;
@@ -24,7 +25,7 @@ export function useWeatherForecast() {
     return useQuery({
         queryKey: ['weather', 'forecast'],
         queryFn: async () => {
-            const response = await fetch('/api/data/weather')
+            const response = await apiFetch('/api/data/weather')
             const data = await response.json();
             return data as DayForecast[];
         },

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "../utils/apiFetch";
 
 export type WeatherNow = {
     symbol: number;
@@ -17,7 +18,7 @@ export function useWeatherNow() {
     return useQuery({
         queryKey: ['weather', 'now'],
         queryFn: async () => {
-            const response = await fetch('/api/data/weather/now')
+            const response = await apiFetch('/api/data/weather/now')
             const data = await response.json();
             return data as WeatherNow;
         },

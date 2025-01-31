@@ -20,10 +20,7 @@
     "next": "15.1.6",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "resend": "4.1.1",
-    "server-only": "0.0.1",
-    "jose": "5.9.6",
-    "xml2js": "0.6.2"
+    "server-only": "0.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.2.0",
@@ -31,11 +28,9 @@
     "@ffmpeg-installer/ffmpeg": "1.1.0",
     "@gredice/game": "workspace:*",
     "@gredice/storage": "workspace:*",
-    "@gredice/transactional": "workspace:*",
     "@playwright/experimental-ct-react": "1.50.0",
     "@playwright/test": "1.50.0",
     "@signalco/auth-client": "0.3.0",
-    "@signalco/auth-server": "0.4.1",
     "@signalco/hooks": "0.2.1",
     "@signalco/js": "0.1.0",
     "@signalco/ui": "0.2.4",
@@ -48,7 +43,6 @@
     "@types/node": "22.12.0",
     "@types/react": "19.0.8",
     "@types/react-dom": "19.0.3",
-    "@types/xml2js": "0.4.14",
     "@vercel/analytics": "1.4.1",
     "babel-plugin-react-compiler": "19.0.0-beta-e552027-20250112",
     "eslint": "9.19.0",

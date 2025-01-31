@@ -17,12 +17,21 @@ importers:
 
   apps/api:
     dependencies:
+      '@hono/zod-validator':
+        specifier: 0.4.2
+        version: 0.4.2(hono@4.6.20)(zod@3.24.1)
       '@scalar/api-reference-react':
         specifier: 0.4.17
         version: 0.4.17(@hyperjump/browser@1.2.0)(jwt-decode@4.0.0)(react@19.0.0)(tailwindcss@3.4.17)(typescript@5.7.3)
       '@scalar/nextjs-api-reference':
         specifier: 0.5.4
         version: 0.5.4(next@15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
+      hono:
+        specifier: 4.6.20
+        version: 4.6.20
+      jose:
+        specifier: 5.9.6
+        version: 5.9.6
       next:
         specifier: 15.1.6
         version: 15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -32,9 +41,18 @@ importers:
       react-dom:
         specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
+      resend:
+        specifier: 4.1.1
+        version: 4.1.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       server-only:
         specifier: 0.0.1
         version: 0.0.1
+      xml2js:
+        specifier: 0.6.2
+        version: 0.6.2
+      zod:
+        specifier: 3.24.1
+        version: 3.24.1
     devDependencies:
       '@eslint/eslintrc':
         specifier: 3.2.0
@@ -48,12 +66,15 @@ importers:
       '@gredice/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@gredice/transactional':
+        specifier: workspace:*
+        version: link:../../packages/transactional
       '@playwright/test':
         specifier: 1.50.0
         version: 1.50.0
       '@signalco/auth-server':
-        specifier: 0.4.1
-        version: 0.4.1(jose@5.9.6)(next@15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        specifier: 0.4.2
+        version: 0.4.2(jose@5.9.6)(next@15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/hooks':
         specifier: 0.2.1
         version: 0.2.1(next@15.1.6(@playwright/test@1.50.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -81,6 +102,9 @@ importers:
       '@types/react-dom':
         specifier: 19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      '@types/xml2js':
+        specifier: 0.4.14
+        version: 0.4.14
       '@vercel/analytics':
         specifier: 1.4.1
         version: 1.4.1(next@15.1.6(@playwright/test@1.50.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)(vue-router@4.5.0(vue@3.5.13(typescript@5.7.3)))(vue@3.5.13(typescript@5.7.3))
@@ -170,8 +194,8 @@ importers:
         specifier: 0.3.0
         version: 0.3.0(@signalco/ui-primitives@0.3.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.64.2(react@19.0.0))(next@15.1.6(@babel/core@7.24.5)(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/auth-server':
-        specifier: 0.4.1
-        version: 0.4.1(jose@5.9.6)(next@15.1.6(@babel/core@7.24.5)(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        specifier: 0.4.2
+        version: 0.4.2(jose@5.9.6)(next@15.1.6(@babel/core@7.24.5)(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/hooks':
         specifier: 0.2.1
         version: 0.2.1(next@15.1.6(@babel/core@7.24.5)(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -273,8 +297,8 @@ importers:
         specifier: 0.3.0
         version: 0.3.0(@signalco/ui-primitives@0.3.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.64.2(react@19.0.0))(next@15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/auth-server':
-        specifier: 0.4.1
-        version: 0.4.1(jose@5.9.6)(next@15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        specifier: 0.4.2
+        version: 0.4.2(jose@5.9.6)(next@15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/hooks':
         specifier: 0.2.1
         version: 0.2.1(next@15.1.6(@playwright/test@1.50.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -341,9 +365,6 @@ importers:
       hypertune:
         specifier: 2.5.7
         version: 2.5.7
-      jose:
-        specifier: 5.9.6
-        version: 5.9.6
       next:
         specifier: 15.1.6
         version: 15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -353,15 +374,9 @@ importers:
       react-dom:
         specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
-      resend:
-        specifier: 4.1.1
-        version: 4.1.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       server-only:
         specifier: 0.0.1
         version: 0.0.1
-      xml2js:
-        specifier: 0.6.2
-        version: 0.6.2
     devDependencies:
       '@eslint/eslintrc':
         specifier: 3.2.0
@@ -378,9 +393,6 @@ importers:
       '@gredice/storage':
         specifier: workspace:*
         version: link:../../packages/storage
-      '@gredice/transactional':
-        specifier: workspace:*
-        version: link:../../packages/transactional
       '@playwright/experimental-ct-react':
         specifier: 1.50.0
         version: 1.50.0(@types/node@22.12.0)(terser@5.37.0)(vite@5.4.11(@types/node@22.12.0)(terser@5.37.0))
@@ -390,9 +402,6 @@ importers:
       '@signalco/auth-client':
         specifier: 0.3.0
         version: 0.3.0(@signalco/ui-primitives@0.3.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.64.2(react@19.0.0))(next@15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@signalco/auth-server':
-        specifier: 0.4.1
-        version: 0.4.1(jose@5.9.6)(next@15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/hooks':
         specifier: 0.2.1
         version: 0.2.1(next@15.1.6(@playwright/test@1.50.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -429,9 +438,6 @@ importers:
       '@types/react-dom':
         specifier: 19.0.3
         version: 19.0.3(@types/react@19.0.8)
-      '@types/xml2js':
-        specifier: 0.4.14
-        version: 0.4.14
       '@vercel/analytics':
         specifier: 1.4.1
         version: 1.4.1(next@15.1.6(@playwright/test@1.50.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)(vue-router@4.5.0(vue@3.5.13(typescript@5.7.3)))(vue@3.5.13(typescript@5.7.3))
@@ -1817,6 +1823,12 @@ packages:
     peerDependencies:
       vue: ^3.2.0
 
+  '@hono/zod-validator@0.4.2':
+    resolution: {integrity: sha512-1rrlBg+EpDPhzOV4hT9pxr5+xDVmKuz6YJl+la7VCwK6ass5ldyKm5fD+umJdV2zhHD6jROoCCv8NbTwyfhT0g==}
+    peerDependencies:
+      hono: '>=3.9.0'
+      zod: ^3.19.1
+
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
     engines: {node: '>=18.18.0'}
@@ -3178,8 +3190,8 @@ packages:
       react: '>=19.0.0-rc-65a56d0e-20241020'
       react-dom: '>=19.0.0-rc-65a56d0e-20241020'
 
-  '@signalco/auth-server@0.4.1':
-    resolution: {integrity: sha512-4Ea8ZQkcqhiPI8NB1ZqCgHwz2sP1ATmnGRRSCpFH3F7e8E5kdKSA1wI8FH3u0WwT89mtPgUQLXiOdVIO/UCcAg==}
+  '@signalco/auth-server@0.4.2':
+    resolution: {integrity: sha512-UrdJEqwEbEZf4g/zXY/HfShH8dV52SDev9UiqX8ietOCcRpndw9XT91STOzV+dtXwlBKPkeO4Y0MZm2tqaN42g==}
     peerDependencies:
       jose: '>=5'
       next: '>=15'
@@ -4761,6 +4773,10 @@ packages:
 
   hls.js@1.5.19:
     resolution: {integrity: sha512-C020dKWEJcyvLnrqsFKW4q6D/6IEzKWdhktIS5bgoyEFE8lHgrFBq4RIngdy113abJOlIruhv8qjg7UX8hwxOw==}
+
+  hono@4.6.20:
+    resolution: {integrity: sha512-5qfNQeaIptMaJKyoJ6N/q4gIq0DBp2FCRaLNuUI3LlJKL4S37DY/rLL1uAxA4wrPB39tJ3s+f7kgI79O4ScSug==}
+    engines: {node: '>=16.9.0'}
 
   hookable@5.5.3:
     resolution: {integrity: sha512-Yc+BQe8SvoXH1643Qez1zqLRmbA5rCL+sSmk6TVos0LWVfNIB7PGncdlId77WzLGSIB5KaWgTaNTs2lNVEI6VQ==}
@@ -7787,6 +7803,11 @@ snapshots:
       '@tanstack/vue-virtual': 3.11.2(vue@3.5.13(typescript@5.7.3))
       vue: 3.5.13(typescript@5.7.3)
 
+  '@hono/zod-validator@0.4.2(hono@4.6.20)(zod@3.24.1)':
+    dependencies:
+      hono: 4.6.20
+      zod: 3.24.1
+
   '@humanfs/core@0.19.1': {}
 
   '@humanfs/node@0.16.6':
@@ -9438,14 +9459,14 @@ snapshots:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
-  '@signalco/auth-server@0.4.1(jose@5.9.6)(next@15.1.6(@babel/core@7.24.5)(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@signalco/auth-server@0.4.2(jose@5.9.6)(next@15.1.6(@babel/core@7.24.5)(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       jose: 5.9.6
       next: 15.1.6(@babel/core@7.24.5)(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
-  '@signalco/auth-server@0.4.1(jose@5.9.6)(next@15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@signalco/auth-server@0.4.2(jose@5.9.6)(next@15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       jose: 5.9.6
       next: 15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -11391,6 +11412,8 @@ snapshots:
   highlightjs-vue@1.0.0: {}
 
   hls.js@1.5.19: {}
+
+  hono@4.6.20: {}
 
   hookable@5.5.3: {}
 

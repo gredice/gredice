@@ -55,7 +55,7 @@ function getDefaultGarden(): Garden {
             });
         }
     }
-    stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ name: "Raised_Bed_Construction", rotation: 1 });
+    stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ name: "Raised_Bed", rotation: 1 });
 
     return {
         name: 'Moj vrt',

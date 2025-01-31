@@ -3,6 +3,7 @@
 import { AuthProvider } from '@signalco/auth-client/components';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PropsWithChildren } from 'react';
+import { apiFetch } from '../../lib/apiFetch';
 
 export type User = {
     id: string;
@@ -10,7 +11,7 @@ export type User = {
 };
 
 async function currentUserFactory() {
-    const response = await fetch('/api/users/current');
+    const response = await apiFetch('/api/users/current');
     if (response.status < 200 || response.status > 299) {
         return null;
     }

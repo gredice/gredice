@@ -8,6 +8,14 @@ const nextConfig = {
         reactCompiler: true,
     },
     productionBrowserSourceMaps: true,
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'www.gredice.com',
+            },
+        ],
+    },
 };
 
 export default withAxiom(nextConfig);

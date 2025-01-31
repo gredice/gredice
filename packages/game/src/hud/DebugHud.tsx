@@ -9,7 +9,7 @@ import { useGameState } from "../useGameState";
 import { getStack } from "../utils/getStack";
 
 export function DebugHud() {
-    const stats = true;
+    const stats = false;
     // const [stats, setStats] = useState(false);
     // const [grid, setGrid] = useState(false);
     // useTweaks('Debug', {

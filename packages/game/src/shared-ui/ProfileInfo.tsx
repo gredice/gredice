@@ -8,15 +8,17 @@ export function ProfileInfo() {
     const currentUser = useCurrentUser();
 
     return (
-        <Row spacing={2}>
+        <Row spacing={2} justifyContent="start" className="pr-4">
             <ProfileAvatar />
             <Stack spacing={0.5}>
-                <Typography level="body2" semiBold className="leading-none">
-                    {currentUser.data?.user?.displayName}
+                <Typography level="body2" semiBold noWrap>
+                    {currentUser.data?.displayName}
                 </Typography>
-                <Typography level="body3" className="leading-none">
-                    {currentUser.data?.user?.email}
-                </Typography>
+                {currentUser.data?.userName !== currentUser.data?.displayName && (
+                    <Typography level="body3" noWrap>
+                        {currentUser.data?.userName}
+                    </Typography>
+                )}
             </Stack>
         </Row>
     )

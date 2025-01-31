@@ -1,8 +1,10 @@
 import 'server-only';
 import { getUser as storageGetUser } from '@gredice/storage';
 import { initAuth, initRbac } from '@signalco/auth-server';
+import { setCookie as honoSetCookie, deleteCookie } from 'hono/cookie';
+import { Context } from 'hono';
 
-function jwtSecretFactory() {
+export function jwtSecretFactory() {
     const signSecret = process.env.GREDICE_JWT_SIGN_SECRET as string;
     return Buffer.from(signSecret, 'base64');
 }
@@ -26,7 +28,22 @@ async function getUser(id: string): Promise<User | null> {
     }
 }
 
-export const { withAuth, createJwt, setCookie, auth, clearCookie } = initRbac(initAuth({
+// TODO: Move to signalco/auth-server/hono
+export async function setCookie(context: Context, value: Promise<string> | string) {
+    honoSetCookie(context, 'gredice_session', await Promise.resolve(value), {
+        secure: true,
+        httpOnly: true,
+        sameSite: 'Strict',
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000)
+    });
+}
+
+// TODO: Move to signalco/auth-server/hono
+export async function clearCookie(context: Context) {
+    deleteCookie(context, 'gredice_session');
+}
+
+export const { withAuth, createJwt, auth } = initRbac(initAuth({
     jwt: {
         namespace: 'gredice',
         issuer: 'app',
