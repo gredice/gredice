@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@scalar/nextjs-api-reference": "0.5.4",
-    "@scalar/api-reference-react": "0.4.17",
+    "@scalar/api-reference-react": "0.4.18",
     "next": "15.1.6",
     "react": "19.0.0",
     "react-dom": "19.0.0",
