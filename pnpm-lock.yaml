@@ -124,8 +124,8 @@ importers:
         specifier: 0.5.4
         version: 0.5.4(next@15.1.6(@babel/core@7.24.5)(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
       hypertune:
-        specifier: 2.5.7
-        version: 2.5.7
+        specifier: 2.6.0
+        version: 2.6.0
       next:
         specifier: 15.1.6
         version: 15.1.6(@babel/core@7.24.5)(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -236,8 +236,8 @@ importers:
   apps/farm:
     dependencies:
       hypertune:
-        specifier: 2.5.7
-        version: 2.5.7
+        specifier: 2.6.0
+        version: 2.6.0
       next:
         specifier: 15.1.6
         version: 15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -339,8 +339,8 @@ importers:
   apps/garden:
     dependencies:
       hypertune:
-        specifier: 2.5.7
-        version: 2.5.7
+        specifier: 2.6.0
+        version: 2.6.0
       jose:
         specifier: 5.9.6
         version: 5.9.6
@@ -475,8 +475,8 @@ importers:
         specifier: 0.10.0
         version: 0.10.0
       hypertune:
-        specifier: 2.5.7
-        version: 2.5.7
+        specifier: 2.6.0
+        version: 2.6.0
       next:
         specifier: 15.1.6
         version: 15.1.6(@playwright/test@1.50.0)(babel-plugin-react-compiler@19.0.0-beta-e552027-20250112)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -4785,8 +4785,8 @@ packages:
     resolution: {integrity: sha512-vK9P5/iUfdl95AI+JVyUuIcVtd4ofvtrOr3HNtM2yxC9bnMbEdp3x01OhQNnjb8IJYi38VlTE3mBXwcfvywuSw==}
     engines: {node: '>= 14'}
 
-  hypertune@2.5.7:
-    resolution: {integrity: sha512-ynCrXgIbjvppfuXAnR4wzLqJJXGYP8YzhtuWcUf8/LfNbl1h3UoBNsFRR8jUnl81Rk6hnUPzFsWG0KdritFr4g==}
+  hypertune@2.6.0:
+    resolution: {integrity: sha512-pEMPRAnfxQgMf81MrR11B50MD/S0TxI9bNCyS3+IPBzIeus29aXlLnYnbPXcdH6QtX2ENmMvw7vADqDRlvsxlw==}
     hasBin: true
 
   ieee754@1.2.1:
@@ -11420,7 +11420,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  hypertune@2.5.7:
+  hypertune@2.6.0:
     dependencies:
       cac: 6.7.14
       core-js: 3.39.0
