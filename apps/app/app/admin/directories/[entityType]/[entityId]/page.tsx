@@ -48,6 +48,7 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
                         <Row className='self-end' spacing={1}>
                             <EntityStateSelect entity={entity} />
                             <ServerActionIconButton
+                                title='Obriši'
                                 onClick={entityDeleteBound}
                                 variant='plain'>
                                 <Delete />
