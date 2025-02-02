@@ -166,6 +166,7 @@ export function EmailSendForm({ from }: { from: string }) {
                                                     <Typography>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</Typography>
                                                 </Row>
                                                 <IconButton
+                                                    title="Ukloni prilog"
                                                     type='button'
                                                     variant="plain"
                                                     size="sm"

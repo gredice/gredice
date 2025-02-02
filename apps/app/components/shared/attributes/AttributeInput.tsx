@@ -74,7 +74,7 @@ export function AttributeInput({
                 schema={schema}
             />
             {attributeValue && attributeDefinition.multiple && (
-                <IconButton onClick={handleDelete} variant='plain'>
+                <IconButton onClick={handleDelete} variant='plain' title='Obriši'>
                     <Delete className='size-4' />
                 </IconButton>
             )}
