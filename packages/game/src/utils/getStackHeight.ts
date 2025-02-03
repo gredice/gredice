@@ -2,8 +2,12 @@ import type { Block } from "../types/Block";
 import type { Stack } from "../types/Stack";
 import { useGameState } from "../useGameState";
 
-function getBlockDataByName(name: string) {
-    return useGameState.getState().data.blocks.find(entity => entity.information.name === name);
+export function getBlockDataByName(name: string) {
+    const blockData = useGameState.getState().data.blocks.find(entity => entity.information.name === name);
+    if (!blockData) {
+        console.error(`Block data not found for block with name: ${name}`);
+    }
+    return blockData;
 }
 
 export function stackHeight(stack: Stack | undefined, stopBlock?: Block) {
