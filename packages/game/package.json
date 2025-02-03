@@ -30,6 +30,7 @@
     "@types/three": "0.173.0",
     "@use-gesture/react": "10.3.1",
     "chroma-js": "3.1.2",
+    "leva": "0.10.0",
     "lucide-react": "0.474.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
@@ -39,9 +40,7 @@
     "three": "0.173.0",
     "three-stdlib": "2.35.13",
     "tsx": "4.19.2",
-    "tweakpane": "4.0.5",
     "typescript": "5.7.3",
-    "use-tweaks": "0.3.2-alpha.0",
     "zustand": "5.0.3"
   },
   "peerDependencies": {
