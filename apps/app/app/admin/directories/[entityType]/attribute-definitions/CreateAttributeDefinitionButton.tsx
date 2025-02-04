@@ -27,7 +27,7 @@ export function CreateAttributeDefinitionButton({ entityTypeName, categoryName }
     return (
         <Modal
             trigger={(
-                <IconButton variant="plain">
+                <IconButton variant="plain" title="Dodaj atribut">
                     <Add className="size-5" />
                 </IconButton>
             )}

@@ -4,14 +4,19 @@ import { stackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
-import { Outlines } from "@react-three/drei";
+import { Edges } from "@react-three/drei";
 import { useHoveredBlockStore } from "../controls/SelectableGroup";
 
 function HoverOutline({ hovered }: { hovered?: boolean }) {
     if (!hovered) return null;
 
     return (
-        <Outlines thickness={3} color="white" />
+        // <Outlines thickness={3} color="white" />
+        <Edges
+            linewidth={2}
+            threshold={60} // Display edges only when the angle between two faces exceeds this value (default=15 degrees)
+            color="white"
+        />
     );
 }
 

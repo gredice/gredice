@@ -5,7 +5,15 @@ import { startTransition, useState } from "react";
 
 export type ServerActionIconButtonProps = Omit<IconButtonProps, 'onClick'> & {
     onClick?: () => Promise<void>;
-};
+} & (
+        {
+            'aria-label': string;
+        } | {
+            title: string;
+        } | {
+            'aria-labelledby': string;
+        }
+    );
 
 export function ServerActionIconButton({ onClick, loading, ...props }: ServerActionIconButtonProps) {
     const [isLoading, setIsLoading] = useState(false);
@@ -15,12 +23,11 @@ export function ServerActionIconButton({ onClick, loading, ...props }: ServerAct
             startTransition(onClick);
     }
 
-
     return (
         <IconButton
-            {...props}
             onClick={handleClick}
             loading={loading || isLoading}
-            type="submit" />
+            type="submit"
+            {...props} />
     );
 }
