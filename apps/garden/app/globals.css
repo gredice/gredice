@@ -46,6 +46,53 @@
         --text-selection: #fff;
     }
 
+    .dark {
+        --hue: 225;
+        --hue-primary: 30;
+        --hue-foreground: 30;
+
+        --background: var(--hue) 7% 15%;
+        --foreground: var(--hue-foreground) 47.4% 89%;
+
+        --muted: var(--hue-primary) 7% 10%;
+        --muted-foreground: var(--hue-foreground) 16.3% 98%;
+
+        --popover: var(--hue) 7% 15%;
+        --popover-foreground: var(--hue-foreground) 47.4% 89%;
+
+        --card: var(--hue) 7% 10%;
+        --card-transparent: var(--hue) 0% 0%;
+        --card-foreground: var(--hue-foreground) 17.4% 89%;
+
+        --border: var(--hue) 7% 25%;
+        --input: var(--hue) 31.8% 9%;
+
+        --primary: var(--hue-primary) 7% 89%;
+        --primary-foreground: var(--hue-foreground) 40% 89%;
+
+        --secondary: var(--hue) 40% 25%;
+        --secondary-foreground: var(--hue-foreground) 35.4% 70%;
+
+        --tertiary: var(--hue) 7% 10%;
+        --tertiary-foreground: var(--hue-foreground) 20% 60%;
+
+        --accent: var(--hue-primary) 20% 25%;
+        --accent-foreground: var(--hue-foreground) 47.4% 89%;
+
+        --destructive: 0 100% 50%;
+        --destructive-foreground: 210 40% 98%;
+
+        --ring: var(--hue) 20.2% 65.1%;
+
+        --radius: 0.5rem;
+
+        --light-display: visible;
+        --dark-display: none;
+
+        --bg-selection: #fff;
+        --text-selection: #211100;
+    }
+
     * {
         @apply border-border;
     }
