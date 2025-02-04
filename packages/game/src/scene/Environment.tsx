@@ -9,8 +9,6 @@ import { Garden } from '../types/Garden';
 import { audioMixer } from '../audio/audioMixer';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 
-const sunriseValue = 0.2;
-const sunsetValue = 0.8;
 const backgroundColorScale = chroma
     .scale(['#2D3947', '#BADDf6', '#E7E2CC', '#E7E2CC', '#f8b195', '#6c5b7b', '#2D3947'])
     .domain([0.2, 0.225, 0.25, 0.75, 0.775, 0.8, 0.85]);
@@ -23,40 +21,6 @@ const sunIntensityTimeScale = chroma
 const hemisphereSkyColorScale = chroma
     .scale([chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000), chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000)])
     .domain([0.2, 0.25, 0.3, 0.75, 0.8, 0.85]);
-
-function getSunriseSunset({ lat, lon }: Garden['location'], currentTime: Date) {
-    const { sunrise: sunriseStart, sunset: sunsetStart } = getTimes(currentTime, lat, lon);
-    return { sunrise: sunriseStart, sunset: sunsetStart };
-}
-
-/**
- * Get the current time of day based on the current date and location
- * 
- * Uses suncalc to get `sunrise` and sunset times and map them to 0-1 range
- * 
- * 0.2 - 0.8 is daytime (sunrise start to sunset start)
- * 
- * @returns A number between 0 and 1 representing the current time of day
- */
-function getTimeOfDay({ lat, lon }: Garden['location'], currentTime: Date) {
-    const { sunrise: sunriseStart, sunset: sunsetStart } = getSunriseSunset({ lat, lon }, currentTime);
-
-    const sunrise = sunriseStart.getHours() * 60 + sunriseStart.getMinutes();
-    const sunset = sunsetStart.getHours() * 60 + sunsetStart.getMinutes();
-
-    // 00 - 0
-    // 7:00 - 0.2 (sunriseValue)
-    // 19:00 - 0.8 (sunsetValue)
-    // 23:59 - 1
-    const time = currentTime.getHours() * 60 + currentTime.getMinutes();
-    if (time < sunrise) {
-        return time / sunrise * sunriseValue;
-    } else if (time < sunset) {
-        return sunriseValue + (time - sunrise) / (sunset - sunrise) * (sunsetValue - sunriseValue);
-    } else {
-        return sunsetValue + (time - sunset) / (24 * 60 - sunset) * (1 - sunsetValue);
-    }
-}
 
 function getSunPosition({ lat, lon }: Garden['location'], currentTime: Date, timeOfDay: number) {
     const date = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
@@ -80,9 +44,7 @@ function getSunPosition({ lat, lon }: Garden['location'], currentTime: Date, tim
     return pos;
 }
 
-export function environmentState({ lat, lon }: Garden['location'], currentTime: Date) {
-    const { sunrise, sunset } = getSunriseSunset({ lat, lon }, currentTime);
-    const timeOfDay = getTimeOfDay({ lat, lon }, currentTime);
+export function environmentState({ lat, lon }: Garden['location'], currentTime: Date, timeOfDay: number) {
     const sunPosition = getSunPosition({ lat, lon }, currentTime, timeOfDay);
     const colors = {
         background: backgroundColorScale(timeOfDay).rgb(),
@@ -92,7 +54,7 @@ export function environmentState({ lat, lon }: Garden['location'], currentTime: 
     const intensities = {
         sun: sunIntensityTimeScale(timeOfDay).get('rgb.r') / 255,
     };
-    return { sunrise, sunset, timeOfDay, sunPosition, colors, intensities };
+    return { timeOfDay, sunPosition, colors, intensities };
 }
 
 export function Environment({ location, noBackground }: { location: Garden['location'], noBackground?: boolean }) {
@@ -105,11 +67,11 @@ export function Environment({ location, noBackground }: { location: Garden['loca
     const directionalLightRef = useRef<DirectionalLight>(null);
 
     const currentTime = useGameState((state) => state.currentTime);
+    const timeOfDay = useGameState((state) => state.timeOfDay);
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
 
-    const { sunrise, sunset } = getSunriseSunset(location, currentTime);
     const baseAmbient = ambientAudioMixer.useMusic(
-        currentTime > sunrise && currentTime < sunset ?
+        timeOfDay > 0.2 && timeOfDay < 0.8 ?
             '/assets/sounds/ambient/Day Birds 01.mp3' :
             '/assets/sounds/ambient/Night 01.mp3',
         0.2);
@@ -124,7 +86,7 @@ export function Environment({ location, noBackground }: { location: Garden['loca
             colors: { sunTemperature },
             colors: { hemisphereSkyColor },
             intensities: { sun: sunIntensity },
-        } = environmentState(location, currentTime);
+        } = environmentState(location, currentTime, timeOfDay);
 
         if (directionalLightRef.current) {
             directionalLightRef.current.intensity = sunIntensity * 5;

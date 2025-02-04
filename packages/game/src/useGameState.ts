@@ -6,6 +6,44 @@ import { getStack } from "./utils/getStack";
 import { BlockData } from "../@types/BlockData";
 import { audioMixer } from "./audio/audioMixer";
 import { OrbitControls } from 'three-stdlib';
+import { getTimes } from "suncalc";
+import { Garden } from "./types/Garden";
+
+const sunriseValue = 0.2;
+const sunsetValue = 0.8;
+function getSunriseSunset({ lat, lon }: Garden['location'], currentTime: Date) {
+    const { sunrise: sunriseStart, sunset: sunsetStart } = getTimes(currentTime, lat, lon);
+    return { sunrise: sunriseStart, sunset: sunsetStart };
+}
+
+/**
+ * Get the current time of day based on the current date and location
+ * 
+ * Uses suncalc to get `sunrise` and sunset times and map them to 0-1 range
+ * 
+ * 0.2 - 0.8 is daytime (sunrise start to sunset start)
+ * 
+ * @returns A number between 0 and 1 representing the current time of day
+ */
+export function getTimeOfDay({ lat, lon }: Garden['location'], currentTime: Date) {
+    const { sunrise: sunriseStart, sunset: sunsetStart } = getSunriseSunset({ lat, lon }, currentTime);
+
+    const sunrise = sunriseStart.getHours() * 60 + sunriseStart.getMinutes();
+    const sunset = sunsetStart.getHours() * 60 + sunsetStart.getMinutes();
+
+    // 00 - 0
+    // example: 7:00 - 0.2 (sunriseValue)
+    // example: 19:00 - 0.8 (sunsetValue)
+    // 23:59 - 1
+    const time = currentTime.getHours() * 60 + currentTime.getMinutes();
+    if (time < sunrise) {
+        return time / sunrise * sunriseValue;
+    } else if (time < sunset) {
+        return sunriseValue + (time - sunrise) / (sunset - sunrise) * (sunsetValue - sunriseValue);
+    } else {
+        return sunsetValue + (time - sunset) / (24 * 60 - sunset) * (1 - sunsetValue);
+    }
+}
 
 export type GameState = {
     appBaseUrl: string,
@@ -15,6 +53,9 @@ export type GameState = {
     },
     freezeTime?: Date | null,
     currentTime: Date,
+    timeOfDay: number,
+    sunsetTime: Date | null,
+    sunriseTime: Date | null,
     stacks: Stack[],
     data: {
         blocks: BlockData[]
@@ -39,6 +80,9 @@ export const useGameState = create<GameState>((set) => ({
     },
     freezeTime: null,
     currentTime: new Date(),
+    timeOfDay: 0,
+    sunsetTime: null,
+    sunriseTime: null,
     stacks: [],
     data: {
         blocks: []
@@ -48,7 +92,21 @@ export const useGameState = create<GameState>((set) => ({
     setOrbitControls: (ref) => set({ orbitControls: ref }),
     setIsDragging: (isDragging) => set({ isDragging }),
     setInitial: (appBaseUrl, data, freezeTime) => set({ appBaseUrl, freezeTime, data }),
-    setCurrentTime: (currentTime) => set({ currentTime }),
+    setCurrentTime: (currentTime) => set(() => ({
+        currentTime,
+        timeOfDay: getTimeOfDay({
+            lat: 45.739,
+            lon: 16.572
+        }, currentTime),
+        sunriseTime: getSunriseSunset({
+            lat: 45.739,
+            lon: 16.572
+        }, currentTime).sunrise,
+        sunsetTime: getSunriseSunset({
+            lat: 45.739,
+            lon: 16.572
+        }, currentTime).sunset
+    })),
     setStacks: (stacks) => set({ stacks }),
     placeBlock: (to, block) => set((state) => {
         let stack = getStack(to);

@@ -11,9 +11,11 @@ import { useGameState } from '../useGameState';
 export function DayNightCycleHud({ lat, lon }: { lat: number, lon: number }) {
     const [isHovered, setIsHovered] = useState(false);
 
-    const time = useGameState((state) => state.currentTime);
+    const currentTime = useGameState((state) => state.currentTime);
+    const timeOfDay = useGameState((state) => state.timeOfDay);
+    const sunset = useGameState((state) => state.sunsetTime);
+    const sunrise = useGameState((state) => state.sunriseTime);
 
-    const { timeOfDay, sunrise, sunset } = environmentState({ lat, lon }, time);
     const isDaytime = timeOfDay > 0.2 && timeOfDay < 0.8
 
     const startPoint = { x: 0, y: 20 }
@@ -47,9 +49,9 @@ export function DayNightCycleHud({ lat, lon }: { lat: number, lon: number }) {
             <HudCard open={isHovered} className='w-64 -left-8 top-0' position='top'>
                 <Stack className='pt-10 pb-2 px-4'>
                     <Row justifyContent='space-between'>
-                        <Typography level='body3'>{(isDaytime ? sunrise : sunset).toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}</Typography>
-                        <Typography center className='font-[Arial,sans-serif]'>{time?.toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}</Typography>
-                        <Typography level='body3'>{(isDaytime ? sunset : sunrise).toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}</Typography>
+                        <Typography level='body3'>{(isDaytime ? sunrise : sunset)?.toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}</Typography>
+                        <Typography center className='font-[Arial,sans-serif]'>{currentTime?.toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}</Typography>
+                        <Typography level='body3'>{(isDaytime ? sunset : sunrise)?.toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}</Typography>
                     </Row>
                     <Typography level='body2' center>{new Date().toLocaleDateString("hr-HR", { day: "numeric", month: 'long', year: 'numeric' })}</Typography>
                 </Stack>
@@ -61,7 +63,7 @@ export function DayNightCycleHud({ lat, lon }: { lat: number, lon: number }) {
                 role="img"
             >
                 <defs>
-                    <linearGradient id="curveGradient" x1="0%" y1="0%" x2="100%" y2="0%" className='[&>stop]:[stopColor:white] group-hover:[&>stop]:[stopColor:var(--foreground)]'>
+                    <linearGradient id="curveGradient" x1="0%" y1="0%" x2="100%" y2="0%" className='[&>stop]:[stopColor:white] group-hover:[&>stop]:[stopColor:var(--foreground)] dark:group-hover:[&>stop]:[stopColor:white]'>
                         <stop offset="0%" stopOpacity="0" />
                         <stop offset="20%" stopOpacity="1" />
                         <stop offset="80%" stopOpacity="1" />
