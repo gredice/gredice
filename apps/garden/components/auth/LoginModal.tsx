@@ -72,7 +72,7 @@ export default function LoginModal() {
         <Modal
             open
             title="Prijava"
-            className='bg-white max-w-md'>
+            className='bg-card max-w-md'>
             <Stack spacing={2}>
                 <Row spacing={2} justifyContent='start'>
                     <Image
@@ -81,8 +81,9 @@ export default function LoginModal() {
                         width={48}
                         height={48}
                         priority
+                        className='dark:mix-blend-plus-lighter'
                     />
-                    <Typography level='h3' className='text-[#2f6e40]'>Prijava</Typography>
+                    <Typography level='h3' className='text-[#2f6e40] dark:mix-blend-plus-lighter'>Prijava</Typography>
                 </Row>
                 <Tabs defaultValue="login" className="w-full">
                     <TabsList className="grid w-full grid-cols-2 border">

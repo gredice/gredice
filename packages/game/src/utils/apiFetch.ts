@@ -16,12 +16,12 @@ export function apiFetch(
 
     if (window.location.hostname === 'localhost') {
         if (typeof input === 'string') {
-            input = `${window.location.protocol}://localhost:3005${input}`;
+            input = `${window.location.protocol}//localhost:3005${input}`;
         } else if (input instanceof URL) {
-            input = new URL(`${window.location.protocol}://localhost:3005${input.pathname}`, input);
+            input = new URL(`${window.location.protocol}//localhost:3005${input.pathname}`, input);
         } else {
             input = new globalThis.Request(
-                `${window.location.protocol}://localhost:3005${input.url}`,
+                `${window.location.protocol}//localhost:3005${input.url}`,
                 input,
             );
         }

@@ -11,8 +11,8 @@ import { apiFetch } from "../../lib/apiFetch";
 
 export default function LogoutPage() {
     useTimeout(async () => {
+        localStorage.removeItem('gredice-token');
         await apiFetch('/api/auth/logout', { method: 'POST' });
-        localStorage.removeItem('gredice_session');
         window.location.href = 'https://www.gredice.com';
     }, 1300);
 
