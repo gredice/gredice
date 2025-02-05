@@ -8,6 +8,7 @@ import { Button } from '@signalco/ui-primitives/Button'
 import { Input } from '@signalco/ui-primitives/Input'
 import { Alert } from '@signalco/ui/Alert'
 import Link from 'next/link'
+import { apiFetch } from '../../../lib/apiFetch'
 
 export function ChangePasswordForm() {
     const router = useRouter()
@@ -24,7 +25,7 @@ export function ChangePasswordForm() {
             return
         }
 
-        const response = await fetch('/api/auth/change-password', {
+        const response = await apiFetch('/api/auth/change-password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ password, token }),

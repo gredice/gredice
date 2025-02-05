@@ -9,6 +9,7 @@ import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { apiFetch } from "../../../lib/apiFetch";
 
 export function VerifyEmail() {
     const router = useRouter();
@@ -23,7 +24,7 @@ export function VerifyEmail() {
                 return;
             }
 
-            const response = await fetch('/api/auth/verify-email', {
+            const response = await apiFetch('/api/auth/verify-email', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

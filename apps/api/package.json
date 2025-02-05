@@ -12,18 +12,25 @@
     "test:run": "playwright test"
   },
   "dependencies": {
+    "hono": "4.6.20",
+    "@hono/zod-validator": "0.4.2",
+    "jose": "5.9.6",
     "@scalar/api-reference-react": "0.4.22",
     "@scalar/nextjs-api-reference": "0.5.5",
     "next": "15.1.6",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "server-only": "0.0.1"
+    "resend": "4.1.1",
+    "server-only": "0.0.1",
+    "xml2js": "0.6.2",
+    "zod": "3.24.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.2.0",
     "@eslint/js": "9.19.0",
     "@gredice/apidocs": "workspace:*",
     "@gredice/storage": "workspace:*",
+    "@gredice/transactional": "workspace:*",
     "@playwright/test": "1.50.1",
     "@signalco/auth-server": "0.4.2",
     "@signalco/hooks": "0.2.1",
@@ -35,6 +42,7 @@
     "@types/node": "22.13.0",
     "@types/react": "19.0.8",
     "@types/react-dom": "19.0.3",
+    "@types/xml2js": "0.4.14",
     "@vercel/analytics": "1.4.1",
     "babel-plugin-react-compiler": "19.0.0-beta-e552027-20250112",
     "eslint": "9.19.0",

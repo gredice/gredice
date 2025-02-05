@@ -7,7 +7,7 @@ export function ProfileAvatar() {
 
     return (
         <Avatar>
-            {initials(currentUser.data?.user?.displayName)}
+            {initials(currentUser.data?.displayName ?? '')}
         </Avatar>
     );
 }

@@ -4,6 +4,7 @@ import { Button } from "@signalco/ui-primitives/Button";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { apiFetch } from "../../lib/apiFetch";
 
 export function SendVerifyEmailButton() {
     const router = useRouter();
@@ -12,7 +13,7 @@ export function SendVerifyEmailButton() {
     const [isLoading, setIsLoading] = useState(false);
     const handleSend = async () => {
         setIsLoading(true);
-        const response = await fetch('/api/auth/send-verify-email', {
+        const response = await apiFetch('/api/auth/send-verify-email', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -39,8 +39,8 @@ export function OverviewModal() {
 
     const currentUser = useCurrentUser();
     const dateFormatter = new Intl.DateTimeFormat('hr-HR', { month: 'long', year: 'numeric' });
-    const memberSinceDisplay = currentUser.data?.user?.createdAt
-        ? dateFormatter.format(currentUser.data?.user?.createdAt)
+    const memberSinceDisplay = currentUser.data?.createdAt
+        ? dateFormatter.format(currentUser.data?.createdAt)
         : undefined;
 
     return (
@@ -101,7 +101,7 @@ export function OverviewModal() {
                                             <Typography level="body2">Ime koje će biti prikazano drugim korisnicima.</Typography>
                                             <Input
                                                 name="displayName"
-                                                defaultValue={currentUser.data?.user?.displayName}
+                                                defaultValue={currentUser.data?.displayName}
                                                 type="text"
                                                 placeholder="Unesite ime..."
                                                 required />
@@ -123,7 +123,7 @@ export function OverviewModal() {
                                     <CardTitle>Prijava</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <Typography level="body1">Prijavljeni ste putem email adrese <strong>{currentUser.data?.user?.email}</strong>.</Typography>
+                                    <Typography level="body1">Prijavljeni ste putem email adrese: <strong>{currentUser.data?.userName}</strong>.</Typography>
                                 </CardContent>
                             </Card>
                             <Card>
@@ -139,17 +139,20 @@ export function OverviewModal() {
                                                     name="currentPassword"
                                                     label="Trenutna lozinka"
                                                     type="password"
+                                                    autoComplete="current-password"
                                                     placeholder="Unesite trenutnu lozinku..."
                                                     required />
                                                 <Input
                                                     name="password"
                                                     label="Nova lozinka"
                                                     type="password"
+                                                    autoComplete="new-password"
                                                     placeholder="Unesite novu lozinku..."
                                                     required />
                                                 <Input
                                                     name="passwordConfirm"
                                                     type="password"
+                                                    autoComplete="new-password"
                                                     placeholder="Potvrdite novu lozinku..."
                                                     required />
                                             </Stack>
