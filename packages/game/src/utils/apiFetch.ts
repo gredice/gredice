@@ -14,20 +14,18 @@ export function apiFetch(
         (init.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
     }
 
-    console.log('window.location.hostname', window.location.hostname, typeof input, `http://localhost:3005${input}`);
     if (window.location.hostname === 'localhost') {
         if (typeof input === 'string') {
-            input = `http://localhost:3005${input}`;
+            input = `${window.location.protocol}://localhost:3005${input}`;
         } else if (input instanceof URL) {
-            input = new URL(`http://localhost:3005${input.pathname}`, input);
+            input = new URL(`${window.location.protocol}://localhost:3005${input.pathname}`, input);
         } else {
             input = new globalThis.Request(
-                `http://localhost:3005${input.url}`,
+                `${window.location.protocol}://localhost:3005${input.url}`,
                 input,
             );
         }
-    }
-    else if (window.location.hostname === 'gredice.com') {
+    } else if (window.location.hostname === 'gredice.com') {
         if (typeof input === 'string') {
             input = `https://api.gredice.com${input}`;
         } else if (input instanceof URL) {
