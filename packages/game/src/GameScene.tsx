@@ -19,6 +19,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Redo, Undo } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { ItemsHud } from './hud/ItemsHud';
 
 // function serializeGarden(garden: Garden) {
 //     return JSON.stringify(garden);
@@ -301,6 +302,7 @@ export function GameScene({
                     <SunflowersHud />
                     <WeatherHud />
                     <DayNightCycleHud lat={45.739} lon={16.572} />
+                    <ItemsHud />
                 </>
             )}
             <OverviewModal />
