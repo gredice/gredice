@@ -2,7 +2,7 @@
 
 import { Vector3 } from 'three';
 import { OrbitControls } from '@react-three/drei';
-import { HTMLAttributes, useEffect, useRef, useState } from 'react';
+import { HTMLAttributes, useEffect, useRef } from 'react';
 import { Environment } from './scene/Environment';
 import { useGameState } from './useGameState';
 import type { Stack } from './types/Stack';
@@ -17,7 +17,8 @@ import { OverviewModal } from './modals/OverviewModal';
 import { WeatherHud } from './hud/WeatherHud';
 import { Row } from '@signalco/ui-primitives/Row';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Redo, RotateCcw, RotateCw, Undo } from 'lucide-react';
+import { Redo, Undo } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 // function serializeGarden(garden: Garden) {
 //     return JSON.stringify(garden);
@@ -134,6 +135,23 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     hideHud?: boolean
 }
 
+function ThemeChanger() {
+    const { resolvedTheme, setTheme } = useTheme();
+
+    const currentTime = useGameState(state => state.currentTime);
+    const isDay = currentTime.getHours() > 6 && currentTime.getHours() < 18;
+
+    useEffect(() => {
+        if (isDay && resolvedTheme !== 'light') {
+            setTheme('light');
+        } else if (!isDay && resolvedTheme !== 'dark') {
+            setTheme('dark');
+        }
+    }, [isDay, resolvedTheme]);
+
+    return null;
+}
+
 function CurrentTimeManager({ freezeTime }: { freezeTime?: Date }) {
     // Update current time every second
     const setCurrentTime = useGameState((state) => state.setCurrentTime);
@@ -142,6 +160,7 @@ function CurrentTimeManager({ freezeTime }: { freezeTime?: Date }) {
         const interval = setInterval(() => {
             setCurrentTime(useGameState.getState().freezeTime ?? new Date());
         }, 1000);
+
         return () => clearInterval(interval);
     }, []);
 
@@ -258,6 +277,7 @@ export function GameScene({
     return (
         <div {...rest}>
             <CurrentTimeManager freezeTime={freezeTime} />
+            <ThemeChanger />
             <Scene
                 appBaseUrl={appBaseUrl}
                 freezeTime={freezeTime}

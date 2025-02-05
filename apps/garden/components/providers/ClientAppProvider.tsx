@@ -4,6 +4,7 @@ import { AuthProvider } from '@signalco/auth-client/components';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PropsWithChildren } from 'react';
 import { apiFetch } from '../../lib/apiFetch';
+import { ThemeProvider } from 'next-themes';
 
 export type User = {
     id: string;
@@ -24,9 +25,11 @@ const queryClient = new QueryClient();
 export function ClientAppProvider({ children }: PropsWithChildren) {
     return (
         <QueryClientProvider client={queryClient}>
-            <AuthProvider currentUserFactory={currentUserFactory}>
-                {children}
-            </AuthProvider>
+            <ThemeProvider attribute="class">
+                <AuthProvider currentUserFactory={currentUserFactory}>
+                    {children}
+                </AuthProvider>
+            </ThemeProvider>
         </QueryClientProvider>
     );
 }
