@@ -62,6 +62,8 @@ export type GameState = {
     },
     orbitControls: OrbitControls | null,
     setOrbitControls: (ref: OrbitControls | null) => void,
+    worldRotation: number,
+    setWorldRotation: (worldRotation: number) => void,
     isDragging: boolean,
     setIsDragging: (isDragging: boolean) => void,
     setInitial: (appBaseUrl: string, data: { blocks: BlockData[] }, freezeTime?: Date | null) => void,
@@ -90,6 +92,13 @@ export const useGameState = create<GameState>((set) => ({
     orbitControls: null,
     isDragging: false,
     setOrbitControls: (ref) => set({ orbitControls: ref }),
+    worldRotation: 0,
+    setWorldRotation: (worldRotation) => {
+        return set((state) => {
+            state.orbitControls?.setAzimuthalAngle(worldRotation * (Math.PI / 2) + Math.PI / 4);
+            return ({ worldRotation });
+        });
+    },
     setIsDragging: (isDragging) => set({ isDragging }),
     setInitial: (appBaseUrl, data, freezeTime) => set({ appBaseUrl, freezeTime, data }),
     setCurrentTime: (currentTime) => set(() => ({

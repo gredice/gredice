@@ -22,7 +22,7 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
         from: { internalPosition: [0, 0, 0] },
         config: {
             mass: 0.1,
-            tension: 200,
+            tension: 100,
             friction: 10
         }
     }));
@@ -147,6 +147,7 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
     // Handle blocking drop when stack is not stackable
     const blockedScaleSprings = useSpring({
         scale: isBlocked ? 1 : 0,
+        opacity: isBlocked ? 1 : 0,
         config: {
             tension: 350,
         },

@@ -19,6 +19,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Redo, Undo } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { ItemsHud } from './hud/ItemsHud';
 
 // function serializeGarden(garden: Garden) {
 //     return JSON.stringify(garden);
@@ -167,7 +168,7 @@ function CurrentTimeManager({ freezeTime }: { freezeTime?: Date }) {
     return null;
 }
 
-function beginPanCamera(direction: [number, number]) {
+function beginPanCamera(direction: [number, number]): ReturnType<typeof setInterval> | undefined {
     const orbitControls = useGameState.getState().orbitControls;
     if (!orbitControls) return;
 
@@ -179,19 +180,14 @@ function beginPanCamera(direction: [number, number]) {
     return intervalToken;
 }
 
-function endPanCamera(intervalToken: NodeJS.Timeout) {
+function endPanCamera(intervalToken: ReturnType<typeof setInterval> | undefined) {
     clearInterval(intervalToken);
 }
 
 function rotateCamera(direction: 'ccw' | 'cw' = 'cw') {
-    const orbitControls = useGameState.getState().orbitControls;
-    if (!orbitControls) return;
-
-    // Rotate by 90 degrees
-    orbitControls.setAzimuthalAngle(
-        orbitControls.getAzimuthalAngle() +
-        (direction === 'cw' ? Math.PI / 2 : -Math.PI / 2)
-    );
+    const gameState = useGameState.getState();
+    const currentRotation = gameState.worldRotation;
+    gameState.setWorldRotation(currentRotation + (direction === 'cw' ? 1 : -1));
 }
 
 const useKeyboardControls = () => {
@@ -210,7 +206,7 @@ const useKeyboardControls = () => {
     }
 
     const rotateValueByKey = (key: string) => rotateKeys[key];
-    const currentPanIntervalToken = useRef<Map<string, NodeJS.Timeout>>(new Map());
+    const currentPanIntervalToken = useRef<Map<string, ReturnType<typeof setInterval> | undefined>>(new Map());
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -249,12 +245,12 @@ const useKeyboardControls = () => {
 
 function RotateIcons() {
     return (
-        <div className='absolute bottom-2 left-2'>
+        <div className='absolute bottom-16 md:bottom-2 left-2'>
             <Row>
-                <IconButton title="Okreni lijevo" variant='plain' onClick={rotateCamera.bind(null, 'ccw')}>
+                <IconButton title="Okreni lijevo" variant='plain' className='hover:bg-muted' onClick={rotateCamera.bind(null, 'ccw')}>
                     <Undo className='size-5' />
                 </IconButton>
-                <IconButton title="Okreni desno" variant='plain' onClick={rotateCamera.bind(null, 'cw')}>
+                <IconButton title="Okreni desno" variant='plain' className='hover:bg-muted' onClick={rotateCamera.bind(null, 'cw')}>
                     <Redo className='size-5' />
                 </IconButton>
             </Row>
@@ -301,6 +297,7 @@ export function GameScene({
                     <SunflowersHud />
                     <WeatherHud />
                     <DayNightCycleHud lat={45.739} lon={16.572} />
+                    <ItemsHud />
                 </>
             )}
             <OverviewModal />
