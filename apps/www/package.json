@@ -14,7 +14,7 @@
     "test-ui": "playwright test --ui",
     "regenerate": "pnpm run /^regenerate:.*/",
     "regenerate:feature-flags": "hypertune",
-    "regenerate:playwright": "playwright test --config playwright-generate.config.ts"
+    "regenerate:playwright": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts"
   },
   "dependencies": {
     "@vercel/kv": "3.0.0",

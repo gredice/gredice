@@ -25,7 +25,7 @@ export function apiFetch(
                 input,
             );
         }
-    } else if (window.location.hostname === 'gredice.com') {
+    } else {
         if (typeof input === 'string') {
             input = `https://api.gredice.com${input}`;
         } else if (input instanceof URL) {
