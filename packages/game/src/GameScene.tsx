@@ -168,7 +168,7 @@ function CurrentTimeManager({ freezeTime }: { freezeTime?: Date }) {
     return null;
 }
 
-function beginPanCamera(direction: [number, number]) {
+function beginPanCamera(direction: [number, number]): ReturnType<typeof setInterval> | undefined {
     const orbitControls = useGameState.getState().orbitControls;
     if (!orbitControls) return;
 
@@ -180,7 +180,7 @@ function beginPanCamera(direction: [number, number]) {
     return intervalToken;
 }
 
-function endPanCamera(intervalToken: number) {
+function endPanCamera(intervalToken: ReturnType<typeof setInterval> | undefined) {
     clearInterval(intervalToken);
 }
 
@@ -206,7 +206,7 @@ const useKeyboardControls = () => {
     }
 
     const rotateValueByKey = (key: string) => rotateKeys[key];
-    const currentPanIntervalToken = useRef<Map<string, number>>(new Map());
+    const currentPanIntervalToken = useRef<Map<string, ReturnType<typeof setInterval> | undefined>>(new Map());
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
