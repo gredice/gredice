@@ -141,6 +141,27 @@
       "when": 1738194291052,
       "tag": "0019_cloudy_centennial",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1738937870429,
+      "tag": "0020_warm_mulholland_black",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1738938000300,
+      "tag": "0021_adorable_surge",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1738938411457,
+      "tag": "0022_flashy_khan",
+      "breakpoints": true
     }
   ]
 }

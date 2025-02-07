@@ -74,7 +74,7 @@ export function ChangePasswordForm() {
                                 required
                             />
                         </Stack>
-                        {error && <Typography level='body1' color='danger'>{error}</Typography>}
+                            {error && <Typography level='body2' color='danger' semiBold>{error}</Typography>}
                         <Button type="submit" fullWidth variant='soft'>
                             Spremi
                         </Button>
