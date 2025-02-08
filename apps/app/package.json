@@ -24,7 +24,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-email": "3.0.6",
-    "resend": "4.1.1",
+    "resend": "4.1.2",
     "server-only": "0.0.1"
   },
   "devDependencies": {
