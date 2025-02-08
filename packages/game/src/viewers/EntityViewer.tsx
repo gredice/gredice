@@ -7,6 +7,7 @@ import { Scene } from "../scene/Scene";
 import { HTMLAttributes, useEffect } from "react";
 import { useGameState } from "../useGameState";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { v4 as uuidv4 } from 'uuid';
 
 const position = new Vector3(0.5, 0, 0.5);
 
@@ -34,6 +35,7 @@ export function EntityViewer({ entityName, ...rest }: EntityViewerProps) {
                         blocks: []
                     }}
                     block={{
+                        id: uuidv4(),
                         name: entityName,
                         rotation: 0,
                         variant: undefined

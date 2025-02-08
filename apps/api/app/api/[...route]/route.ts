@@ -6,6 +6,7 @@ import auth from './auth';
 import data from './data';
 import directories from './directories';
 import users from './users';
+import gardens from './gardens';
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +23,8 @@ app.use('*', cors({
 app.route('/auth', auth)
     .route('/directories', directories)
     .route('/users', users)
-    .route('/data', data);
+    .route('/data', data)
+    .route('/gardens', gardens);
 
 export const GET = handle(app);
 export const POST = handle(app);

@@ -1,6 +1,6 @@
 import 'server-only';
 import { eq, sql } from "drizzle-orm";
-import { storage } from "..";
+import { getFarms, storage } from "..";
 import { accounts, accountUsers, userLogins, users } from "../schema";
 import { createGarden } from "./gardensRepo";
 import { randomUUID, randomBytes as cryptoRandomBytes, pbkdf2Sync } from 'node:crypto';
@@ -62,7 +62,12 @@ export async function createUserWithPassword(userName: string, password: string)
     await createEvent(knownEvents.accounts.createdV1(accountId));
 
     // Create default garden
+    const farm = (await getFarms())[0];
+    if (!farm) {
+        throw new Error('No farm found');
+    }
     await createGarden({
+        farmId: farm.id,
         accountId,
         name: 'Vrt od ' + userName
     });

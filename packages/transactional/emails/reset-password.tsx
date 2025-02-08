@@ -47,10 +47,6 @@ export default function ResetPasswordEmailTemplate({
                     <Section className="my-[32px] text-center">
                         <PrimaryButton href={confirmLink}>Promjeni zaporku</PrimaryButton>
                     </Section>
-                    <Paragraph>
-                        ili kopiraj i zalijepi ovaj URL u svoj preglednik:{' '}
-                        <Link href={confirmLink}>{confirmLink}</Link>
-                    </Paragraph>
                     <Divider className="my-[26px]" />
                     <Disclaimer>
                         Ovaj email je namjenjen za{' '}

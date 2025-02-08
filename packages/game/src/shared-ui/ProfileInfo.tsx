@@ -8,7 +8,7 @@ export function ProfileInfo() {
     const currentUser = useCurrentUser();
 
     return (
-        <Row spacing={2} justifyContent="start" className="pr-4">
+        <Row spacing={2} className="pr-4">
             <ProfileAvatar />
             <Stack spacing={0.5}>
                 <Typography level="body2" semiBold noWrap>

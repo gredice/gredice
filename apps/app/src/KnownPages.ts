@@ -11,6 +11,8 @@ export const KnownPages = {
     User: (userId: string) => `/admin/users/${userId}`,
     Accounts: '/admin/accounts',
     Account: (accountId: string) => `/admin/accounts/${accountId}`,
+    Gardens: '/admin/gardens',
+    Garden: (gardenId: number) => `/admin/gardens/${gardenId}`,
     CommunicationInbox: '/admin/communication/inbox',
     Logout: '/admin/logout',
 }

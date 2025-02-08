@@ -13,6 +13,8 @@ import { ButtonImpersonateUser } from "../ButtonImpersonateUser";
 import { Disabled, Warning } from "@signalco/ui-icons";
 import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
 import { auth } from "../../../../lib/auth/auth";
+import { FieldSet } from "../../../../components/shared/fields/FieldSet";
+import { Field } from "../../../../components/shared/fields/Field";
 
 export default async function UserPage({ params }: { params: Promise<{ userId: string; }> }) {
     const { userId } = await params;
@@ -49,38 +51,15 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                 </CardHeader>
                 <CardContent>
                     <Stack spacing={2}>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                            <Stack>
-                                <Typography level="body2" semiBold>ID korisnika</Typography>
-                                <Typography level="body1" mono>
-                                    {id}
-                                </Typography>
-                            </Stack>
-                            <Stack>
-                                <Typography level="body2" semiBold>Korisničko ime</Typography>
-                                <Typography level="body1">
-                                    {userName}
-                                </Typography>
-                            </Stack>
-                            <Stack>
-                                <Typography level="body2" semiBold>Uloga</Typography>
-                                <SelectUserRole user={user} />
-                            </Stack>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                            <Stack>
-                                <Typography level="body2" semiBold>Datum kreiranja</Typography>
-                                <Typography level="body1">
-                                    {createdAt.toLocaleString('hr-HR')}
-                                </Typography>
-                            </Stack>
-                            <Stack>
-                                <Typography level="body2" semiBold>Datum ažuriranja</Typography>
-                                <Typography level="body1">
-                                    {updatedAt.toLocaleString('hr-HR')}
-                                </Typography>
-                            </Stack>
-                        </div>
+                        <FieldSet>
+                            <Field name="ID korisnika" value={id} mono />
+                            <Field name="Korisničko ime" value={userName} />
+                            <Field name="Uloga" value={<SelectUserRole user={user} />} />
+                        </FieldSet>
+                        <FieldSet>
+                            <Field name="Datum kreiranja" value={createdAt.toLocaleString('hr-HR')} />
+                            <Field name="Datum ažuriranja" value={updatedAt.toLocaleString('hr-HR')} />
+                        </FieldSet>
                     </Stack>
                 </CardContent>
             </Card>
