@@ -2,11 +2,12 @@
 
 import { StatsGl } from "@react-three/drei";
 import { orderBy } from "@signalco/js";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Vector3 } from "three";
 import { useGameState } from "../useGameState";
 import { getStack } from "../utils/getStack";
 import { button, useControls } from 'leva';
+import { v4 as uuidv4 } from 'uuid';
 
 export function DebugHud() {
     const { stats, grid } = useControls({
@@ -31,7 +32,7 @@ export function DebugHud() {
             }
         }
 
-        gameState.placeBlock(new Vector3(x, 0, z), { name, rotation: 0 });
+        gameState.placeBlock(new Vector3(x, 0, z), { id: uuidv4(), name, rotation: 0 });
     };
 
     let entitiesButtons = {};

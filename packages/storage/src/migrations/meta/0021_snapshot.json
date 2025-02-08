@@ -1,5 +1,5 @@
 {
-  "id": "12315724-7215-47f2-ba08-5b667b9eb322",
+  "id": "63ae8ea3-2472-4268-90b6-d1c68c44b1bd",
   "prevId": "e76e0563-0f4e-4cb8-aa74-142d458d1d7c",
   "version": "7",
   "dialect": "postgresql",
@@ -565,7 +565,7 @@
         },
         "farm_id": {
           "name": "farm_id",
-          "type": "text",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -617,6 +617,18 @@
         "name": {
           "name": "name",
           "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "latitude": {
+          "name": "latitude",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "longitude": {
+          "name": "longitude",
+          "type": "real",
           "primaryKey": false,
           "notNull": true
         },

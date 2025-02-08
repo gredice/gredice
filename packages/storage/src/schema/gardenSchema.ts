@@ -1,12 +1,12 @@
 import { relations } from "drizzle-orm";
-import { boolean, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { accounts } from "./usersSchema";
 import { farms } from "./farmsSchema";
 
 export const gardens = pgTable('gardens', {
     id: serial('id').primaryKey(),
     accountId: text('account_id').notNull(),
-    farmId: text('farm_id').notNull(),
+    farmId: integer('farm_id').notNull(),
     name: text('name').notNull(),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
