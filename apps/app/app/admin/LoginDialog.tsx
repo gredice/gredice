@@ -23,20 +23,22 @@ export function LoginDialog() {
             },
             body: JSON.stringify({ email, password })
         });
-        if (response.status !== 204) {
+        if (response.status !== 200) {
             console.error('Login failed with status', response.status);
             return { error: true }
         }
+
+        const { token } = await response.json();
+        localStorage.setItem('gredice-token', token);
 
         queryClient.invalidateQueries({ queryKey: authCurrentUserQueryKeys });
         window.location.reload();
     }, null);
 
     return (
-        <div className="h-[calc(100vh)] grid md:grid-cols-2 p-4">
-            <div className="h-full hidden md:flex flex-col text-white"></div>
+        <div className="h-[calc(100vh)] flex items-center justify-center">
             <Card>
-                <Stack className="h-full items-center justify-center">
+                <Stack>
                     <CardHeader>
                         <CardTitle>Prijava</CardTitle>
                     </CardHeader>

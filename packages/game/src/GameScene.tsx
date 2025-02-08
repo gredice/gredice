@@ -20,6 +20,7 @@ import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Redo, Undo } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { ItemsHud } from './hud/ItemsHud';
+import { v4 as uuidv4 } from 'uuid';
 
 // function serializeGarden(garden: Garden) {
 //     return JSON.stringify(garden);
@@ -52,20 +53,20 @@ function getDefaultGarden(): Garden {
             stacks.push({
                 position: new Vector3(x, 0, z),
                 blocks: [
-                    { name: "Block_Grass", rotation: Math.floor(Math.random() * 4) },
+                    { id: uuidv4(), name: "Block_Grass", rotation: Math.floor(Math.random() * 4) },
                 ]
             });
         }
     }
-    stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ name: "Raised_Bed", rotation: 1 });
-    stacks.find(stack => stack.position.x === 1 && stack.position.z === 0)?.blocks.push({ name: "Raised_Bed", rotation: 1 });
+    stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ id: uuidv4(), name: "Raised_Bed", rotation: 1 });
+    stacks.find(stack => stack.position.x === 1 && stack.position.z === 0)?.blocks.push({ id: uuidv4(), name: "Raised_Bed", rotation: 1 });
 
     return {
         name: 'Moj vrt',
         stacks,
         location: {
-            lat: 45.739,
-            lon: 16.572
+            lat: 45.74,
+            lon: 16.57
         }
     };
 }
@@ -113,7 +114,7 @@ export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
                     stack.blocks?.map((block, i) => {
                         return (
                             <EntityFactory
-                                key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.name}-${i}`}
+                                key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
                                 name={block.name}
                                 stack={stack}
                                 block={block}

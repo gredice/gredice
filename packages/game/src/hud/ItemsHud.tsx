@@ -6,12 +6,13 @@ import { useGameState } from "../useGameState";
 import { Vector3 } from "three";
 import { ChevronUp, Info } from "lucide-react";
 import { Popper } from "@signalco/ui-primitives/Popper";
-import { HTMLAttributes, ImgHTMLAttributes, useState } from "react";
+import { HTMLAttributes, useState } from "react";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Link } from "@signalco/ui-primitives/Link";
 import { cx } from "@signalco/ui-primitives/cx";
+import { v4 as uuidv4 } from 'uuid';
 
 type HudItemEntity = {
     type: 'entity',
@@ -64,7 +65,7 @@ function EntityItem({ name }: HudItemEntity) {
         //     }
         // }
 
-        placeBlock(location, { name: name, rotation: 0 })
+        placeBlock(location, { id: uuidv4(), name: name, rotation: Math.floor(Math.random() * 4) })
     }
 
     const block = blockData.find(block => block.information.name === name);

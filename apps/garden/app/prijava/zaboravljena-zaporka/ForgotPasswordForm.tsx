@@ -44,7 +44,7 @@ export function ForgotPasswordForm() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                 />
-                {error && <Typography level='body1' color='danger'>{error}</Typography>}
+                {error && <Typography level='body2' color='danger' semiBold>{error}</Typography>}
                 <Button type="submit" variant="soft" fullWidth>
                     Pošalji email
                 </Button>

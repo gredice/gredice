@@ -23,9 +23,22 @@ export async function createGarden(garden: InsertGarden) {
     return createdGarden;
 }
 
+export async function getGardens() {
+    return await storage.query.gardens.findMany();
+}
+
 export async function getAccountGardens(accountId: string) {
-    await storage.query.gardens.findMany({
+    return await storage.query.gardens.findMany({
         where: and(eq(gardens.accountId, accountId), eq(gardens.isDeleted, false))
+    });
+}
+
+export async function getGarden(gardenId: number) {
+    return await storage.query.gardens.findFirst({
+        where: and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)),
+        with: {
+            farm: true
+        }
     });
 }
 
