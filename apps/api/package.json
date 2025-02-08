@@ -12,18 +12,20 @@
     "test:run": "playwright test"
   },
   "dependencies": {
-    "hono": "4.6.20",
     "@hono/zod-validator": "0.4.2",
-    "jose": "5.9.6",
     "@scalar/api-reference-react": "0.4.22",
     "@scalar/nextjs-api-reference": "0.5.5",
+    "hono": "4.6.20",
+    "hono-openapi": "0.4.4",
+    "jose": "5.9.6",
     "next": "15.1.6",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "resend": "4.1.2",
     "server-only": "0.0.1",
     "xml2js": "0.6.2",
-    "zod": "3.24.1"
+    "zod": "3.24.1",
+    "zod-openapi": "4.2.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.2.0",

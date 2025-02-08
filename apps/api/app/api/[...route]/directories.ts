@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { zValidator } from "@hono/zod-validator";
+import { validator as zValidator } from "hono-openapi/zod";
 import { z } from "zod";
 import { getEntitiesFormatted } from '@gredice/storage';
 import { openApiDocs } from '@gredice/apidocs/openApiDocs';

@@ -17,7 +17,7 @@ app.use('*', cors({
     allowHeaders: ["Origin", "Content-Type", "Authorization"],
     allowMethods: ["OPTIONS", "GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
-}))
+}));
 
 app.route('/auth', auth)
     .route('/directories', directories)

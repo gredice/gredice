@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { zValidator } from "@hono/zod-validator";
+import { validator as zValidator } from "hono-openapi/zod";
 import { z } from "zod";
 import { blockLogin, changePassword, clearLoginFailedAttempts, createUserWithPassword, getUserWithLogins, incLoginFailedAttempts, updateLoginData } from '@gredice/storage';
 import { pbkdf2Sync } from 'node:crypto';
@@ -7,6 +7,7 @@ import { clearCookie, createJwt, jwtSecretFactory, setCookie } from '../../../li
 import { jwtVerify, SignJWT } from 'jose';
 import { sendEmailVerification } from '../../../lib/auth/email';
 import { sendResetPassword, sendWelcome } from '../../../lib/email/transactional';
+import { apiDocs } from '../../../lib/docs/apiDocs';
 
 const failedAttemptClearTime = 1000 * 60; // 1 minute
 const failedAttemptsBlock = 5;
@@ -264,5 +265,12 @@ const app = new Hono()
 
             return context.newResponse(null, { status: 204 });
         });
+
+apiDocs(app, 'auth', {
+    info: {
+        title: 'Authentication API',
+        version: '0.1.0',
+    }
+});
 
 export default app;
