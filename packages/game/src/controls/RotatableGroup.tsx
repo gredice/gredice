@@ -7,7 +7,7 @@ import { useGameState } from "../useGameState";
 export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ stack: Stack; block: Block; }>) {
     const rotateBlock = useGameState(state => state.rotateBlock);
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
-    const swipeSound = effectsAudioMixer.useSoundEffect('/assets/sounds/effects/Swipe Generic 01.mp3');
+    const swipeSound = effectsAudioMixer.useSoundEffect('https://cdn.gredice.com/sounds/effects/Swipe Generic 01.mp3');
 
     function doRotate(event: ThreeEvent<globalThis.PointerEvent> | ThreeEvent<MouseEvent>) {
         if (!rotateInitiated.current)

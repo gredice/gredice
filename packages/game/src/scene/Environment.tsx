@@ -72,8 +72,8 @@ export function Environment({ location, noBackground }: { location: Garden['loca
 
     const baseAmbient = ambientAudioMixer.useMusic(
         timeOfDay > 0.2 && timeOfDay < 0.8 ?
-            '/assets/sounds/ambient/Day Birds 01.mp3' :
-            '/assets/sounds/ambient/Night 01.mp3',
+            'https://cdn.gredice.com/sounds/ambient/Day Birds 01.mp3' :
+            'https://cdn.gredice.com/sounds/ambient/Night 01.mp3',
         0.2);
     useEffect(() => {
         baseAmbient.play();
