@@ -77,7 +77,7 @@ async function openApiEntitiesDoc(entityType: Awaited<ReturnType<typeof getEntit
         paths: {
             [`/entities/${entityType.name}`]: {
                 get: {
-                    summary: `Get ${entityType.name} entities`,
+                    summary: `/entities/${entityType.name}`,
                     description: `Get all entities of type ${entityType.name}.`,
                     responses: {
                         200: {

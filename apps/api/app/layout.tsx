@@ -29,7 +29,8 @@ export default function RootLayout({
       </Head>
       <body className="antialiased min-h-screen flex">
         <Stack className='w-full'>
-          <div className='border-b px-4 py-2'>
+          <div className="h-[62px]" />
+          <div className='border-b px-4 py-2 fixed top-0 left-0 w-full z-10' style={{ backgroundColor: '#000' }}>
             <Link href="/">
               <Image alt='Logo' src="/Logo - gredice@2x.svg" width={44} height={44} />
             </Link>
