@@ -2,17 +2,39 @@ import { and, desc, eq } from "drizzle-orm";
 import { storage } from "../storage";
 import { events } from "../schema";
 
-export const knownEvents = {
+export const knownEventTypes = {
     accounts: {
-        createdV1: (aggregateId: string) => ({ type: "account.create", version: 1, aggregateId }),
-        assignedUserV1: (aggregateId: string, data: { userId: string }) => ({ type: "account.assignUser", version: 1, aggregateId, data }),
+        create: "account.create",
+        assignUser: "account.assignUser",
+        earnSunflowers: "account.earnSunflowers",
+        spendSunflowers: "account.spendSunflowers",
     },
     users: {
-        createdV1: (aggregateId: string) => ({ type: "user.create", version: 1, aggregateId }),
+        create: "user.create",
     },
     gardens: {
-        createdV1: (aggregateId: string, data: { name: string, accountId: string }) => ({ type: "garden.create", version: 1, aggregateId, data }),
-        renamedV1: (aggregateId: string, data: { name: string }) => ({ type: "garden.rename", version: 1, aggregateId, data }),
+        create: "garden.create",
+        rename: "garden.rename",
+        delete: "garden.delete",
+        blokcPlace: "garden.blockPlace",
+    },
+}
+
+export const knownEvents = {
+    accounts: {
+        createdV1: (aggregateId: string) => ({ type: knownEventTypes.accounts.create, version: 1, aggregateId }),
+        assignedUserV1: (aggregateId: string, data: { userId: string }) => ({ type: knownEventTypes.accounts.assignUser, version: 1, aggregateId, data }),
+        sunflowersEarnedV1: (aggregateId: string, data: { amount: number }) => ({ type: knownEventTypes.accounts.earnSunflowers, version: 1, aggregateId, data }),
+        sunflowersSpentV1: (aggregateId: string, data: { amount: number }) => ({ type: knownEventTypes.accounts.spendSunflowers, version: 1, aggregateId, data }),
+    },
+    users: {
+        createdV1: (aggregateId: string) => ({ type: knownEventTypes.users.create, version: 1, aggregateId }),
+    },
+    gardens: {
+        createdV1: (aggregateId: string, data: { name: string, accountId: string }) => ({ type: knownEventTypes.gardens.create, version: 1, aggregateId, data }),
+        renamedV1: (aggregateId: string, data: { name: string }) => ({ type: knownEventTypes.gardens.rename, version: 1, aggregateId, data }),
+        deletedV1: (aggregateId: string) => ({ type: knownEventTypes.gardens.delete, version: 1, aggregateId }),
+        blockPlacedV1: (aggregateId: string, data: { id: string, name: string }) => ({ type: knownEventTypes.gardens.blokcPlace, version: 1, aggregateId, data }),
     },
 }
 

@@ -8,12 +8,10 @@ import { apiDocs } from '../../../lib/docs/apiDocs';
 const app = new Hono()
     .get(
         '/current',
-        async (context) => {
-            return await withAuth(['user', 'admin'], async (user) => {
-                const dbUser = await getUser(user.userId);
-                return context.json(dbUser);
-            });
-        })
+        async (context) => await withAuth(['user', 'admin'], async (user) => {
+            const dbUser = await getUser(user.userId);
+            return context.json(dbUser);
+        }))
     .post(
         '/:userId/impersonate',
         zValidator(

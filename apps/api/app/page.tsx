@@ -10,6 +10,8 @@ const apis = [
   { label: '/api/auth', href: '/docs/auth' },
   { label: '/api/users', href: '/docs/users' },
   { label: '/api/directories', href: '/docs/directories' },
+  { label: '/api/data', href: '/docs/data' },
+  { label: '/api/gardens', href: '/docs/gardens' },
 ];
 
 export default function Home() {

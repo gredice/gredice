@@ -155,6 +155,13 @@
       "when": 1739040160464,
       "tag": "0021_slim_felicia_hardy",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1739059776572,
+      "tag": "0022_concerned_raider",
+      "breakpoints": true
     }
   ]
 }

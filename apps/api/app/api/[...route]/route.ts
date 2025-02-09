@@ -2,11 +2,11 @@ import { Hono } from 'hono'
 import { handle } from 'hono/vercel'
 import { cors } from 'hono/cors'
 
-import auth from './auth';
+import auth from './authRoutes';
 import data from './data';
-import directories from './directories';
-import users from './users';
-import gardens from './gardens';
+import directories from './directoriesRoutes';
+import users from './usersRoutes';
+import gardens from './gardensRoutes';
 
 export const dynamic = 'force-dynamic'
 
