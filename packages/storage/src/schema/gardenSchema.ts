@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { boolean, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { accounts } from "./usersSchema";
 import { farms } from "./farmsSchema";
@@ -13,7 +13,7 @@ export const gardens = pgTable('gardens', {
     isDeleted: boolean('is_deleted').notNull().default(false),
 });
 
-export const gardenRelations = relations(gardens, ({ one }) => ({
+export const gardenRelations = relations(gardens, ({ one, many }) => ({
     account: one(accounts, {
         fields: [gardens.accountId],
         references: [accounts.id],
@@ -24,6 +24,9 @@ export const gardenRelations = relations(gardens, ({ one }) => ({
         references: [farms.id],
         relationName: 'gardenFarm',
     }),
+    stacks: many(gardenStacks, {
+        relationName: 'gardenStacks',
+    })
 }));
 
 export type InsertGarden = typeof gardens.$inferInsert;
@@ -31,3 +34,28 @@ export type UpdateGarden =
     Partial<Omit<typeof gardens.$inferInsert, 'id' | 'farmId' | 'accountId' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
     Pick<typeof gardens.$inferSelect, 'id'>;
 export type SelectGarden = typeof gardens.$inferSelect;
+
+export const gardenStacks = pgTable('garden_stacks', {
+    id: serial('id').primaryKey(),
+    gardenId: integer('garden_id').notNull(),
+    positionX: integer('position_x').notNull(),
+    positionY: integer('position_y').notNull(),
+    blocks: text('blocks').array().notNull().default(sql`'{}'::text[]`),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
+    isDeleted: boolean('is_deleted').notNull().default(false),
+});
+
+export const gardenStackRelations = relations(gardenStacks, ({ one }) => ({
+    garden: one(gardens, {
+        fields: [gardenStacks.gardenId],
+        references: [gardens.id],
+        relationName: 'gardenStacks',
+    }),
+}));
+
+export type InsertGardenStack = typeof gardenStacks.$inferInsert;
+export type UpdateGardenStack =
+    Partial<Omit<typeof gardenStacks.$inferInsert, 'id' | 'gardenId' | 'positionX' | 'positionY' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
+    Pick<typeof gardenStacks.$inferSelect, 'id'>;
+export type SelectGardenStack = typeof gardenStacks.$inferSelect;

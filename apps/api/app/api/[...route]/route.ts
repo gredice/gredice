@@ -2,11 +2,11 @@ import { Hono } from 'hono'
 import { handle } from 'hono/vercel'
 import { cors } from 'hono/cors'
 
-import auth from './auth';
+import auth from './authRoutes';
 import data from './data';
-import directories from './directories';
-import users from './users';
-import gardens from './gardens';
+import directories from './directoriesRoutes';
+import users from './usersRoutes';
+import gardens from './gardensRoutes';
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +18,7 @@ app.use('*', cors({
     allowHeaders: ["Origin", "Content-Type", "Authorization"],
     allowMethods: ["OPTIONS", "GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
-}))
+}));
 
 app.route('/auth', auth)
     .route('/directories', directories)
