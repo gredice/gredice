@@ -37,11 +37,11 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
     const didDrag = useRef(false);
 
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
-    const pickupSound = effectsAudioMixer.useSoundEffect('/assets/sounds/effects/Pick Grass 01.mp3');
+    const pickupSound = effectsAudioMixer.useSoundEffect('https://cdn.gredice.com/sounds/effects/Pick Grass 01.mp3');
     const dropSound = effectsAudioMixer.useSoundEffect(
         block.name === 'Block_Grass'
-            ? '/assets/sounds/effects/Drop Grass 01.mp3'
-            : '/assets/sounds/effects/Drop Grass 01.mp3'
+            ? 'https://cdn.gredice.com/sounds/effects/Drop Grass 01.mp3'
+            : 'https://cdn.gredice.com/sounds/effects/Drop Grass 01.mp3'
     );
 
     const [isBlocked, setIsBlocked] = useState(false);
