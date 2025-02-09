@@ -29,6 +29,10 @@
 			"path": "packages/apidocs"
 		},
 		{
+			"name": "📦 @gredice/cdn",
+			"path": "packages/cdn"
+		},
+		{
 			"name": "📦 @gredice/game",
 			"path": "packages/game"
 		},

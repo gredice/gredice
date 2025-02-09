@@ -1,0 +1,18 @@
+{
+    "name": "@gredice/cdn",
+    "version": "0.0.0",
+    "private": true,
+    "sideEffects": false,
+    "type": "module",
+    "license": "MIT",
+    "scripts": {
+        "regenerate": "pnpm run /^regenerate:.*/",
+        "regenerate:sounds": "node --env-file=.env --experimental-strip-types ./scripts/regenerate-sounds.ts"
+    },
+    "devDependencies": {
+        "@aws-sdk/client-s3": "3.744.0",
+        "@ffmpeg-installer/ffmpeg": "1.1.0",
+        "@types/fluent-ffmpeg": "2.1.27",
+        "fluent-ffmpeg": "2.1.3"
+    }
+  }
