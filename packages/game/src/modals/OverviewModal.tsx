@@ -16,6 +16,7 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { ProfileInfo } from "../shared-ui/ProfileInfo";
 import { NoSunflowersPlaceholder } from "../shared-ui/NoSunflowersPlaceholder";
 import { SoundSettingsCard } from "./components/SoundSettingsCard";
+import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 
 function CardActions({ children, className, ...rest }: RowProps) {
     return (
@@ -47,12 +48,24 @@ export function OverviewModal() {
         <Modal
             open={Boolean(settingsMode)}
             onOpenChange={handleOpenChange}
-            className="min-w-full lg:min-w-[80%] xl:min-w-[60%] min-h-[70%]"
+            className="min-w-full lg:min-w-[80%] xl:min-w-[60%] min-h-[70%] max-h-full overflow-y-auto h-full md:h-auto p-0"
             title="Profil">
-            <div className="grid grid-cols-[minmax(230px,auto)_1fr]">
-                <Stack spacing={2} className="border-r">
+            <div className="grid grid-rows-[auto_1fr] md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr]">
+                <Stack spacing={2} className="md:border-r p-6 md:pr-0">
                     <ProfileInfo />
-                    <List className="pr-6">
+                    <SelectItems
+                        className="md:hidden"
+                        value={settingsMode}
+                        onValueChange={setProfileModalOpen}
+                        items={[
+                            { label: 'Generalno', value: 'generalno' },
+                            { label: 'Suncokreti', value: 'suncokreti' },
+                            { label: 'Obavijesti', value: 'obavijesti' },
+                            { label: 'Sigurnost', value: 'sigurnost' },
+                            { label: 'Zvuk', value: 'zvuk' },
+                        ]}
+                    />
+                    <List className="md:pr-6 hidden md:flex">
                         <Typography level="body3" uppercase bold className="py-4">Profil</Typography>
                         <ListItem
                             nodeId="profile-general"
@@ -87,10 +100,10 @@ export function OverviewModal() {
                         />
                     </List>
                 </Stack>
-                <Container className="pl-6" maxWidth="sm">
+                <div className="pt-0 md:pt-6 md:pl-6 p-6">
                     {settingsMode === 'generalno' && (
                         <Stack spacing={4}>
-                            <Typography level="h4">Profil</Typography>
+                            <Typography level="h4" className="hidden md:block">Profil</Typography>
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Prikazano ime</CardTitle>
@@ -117,7 +130,7 @@ export function OverviewModal() {
                     )}
                     {settingsMode === 'sigurnost' && (
                         <Stack spacing={4}>
-                            <Typography level="h4">Sigurnost</Typography>
+                            <Typography level="h4" className="hidden md:block">Sigurnost</Typography>
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Prijava</CardTitle>
@@ -167,13 +180,13 @@ export function OverviewModal() {
                     )}
                     {settingsMode === 'zvuk' && (
                         <Stack spacing={4}>
-                            <Typography level="h4">Zvuk</Typography>
+                            <Typography level="h4" className="hidden md:block">Zvuk</Typography>
                             <SoundSettingsCard />
                         </Stack>
                     )}
                     {settingsMode === 'obavijesti' && (
                         <Stack spacing={4}>
-                            <Typography level="h4">Obavijesti</Typography>
+                            <Typography level="h4" className="hidden md:block">Obavijesti</Typography>
                             <Card className="p-4">
                                 <NoNotificationsPlaceholder />
                             </Card>
@@ -181,13 +194,13 @@ export function OverviewModal() {
                     )}
                     {settingsMode === 'suncokreti' && (
                         <Stack spacing={4}>
-                            <Typography level="h4">Suncokreti</Typography>
+                            <Typography level="h4" className="hidden md:block">Suncokreti</Typography>
                             <Card className="p-4">
                                 <NoSunflowersPlaceholder />
                             </Card>
                         </Stack>
                     )}
-                </Container>
+                </div>
             </div>
         </Modal>
     )
