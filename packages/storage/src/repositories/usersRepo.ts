@@ -1,6 +1,6 @@
 import 'server-only';
 import { eq, sql } from "drizzle-orm";
-import { getFarms, storage } from "..";
+import { earnSunflowers, getFarms, storage } from "..";
 import { accounts, accountUsers, userLogins, users } from "../schema";
 import { createGarden } from "./gardensRepo";
 import { randomUUID, randomBytes as cryptoRandomBytes, pbkdf2Sync } from 'node:crypto';
@@ -60,6 +60,7 @@ export async function createUserWithPassword(userName: string, password: string)
         throw new Error('Failed to create account');
     }
     await createEvent(knownEvents.accounts.createdV1(accountId));
+    await earnSunflowers(accountId, 1000, 'registration');
 
     // Create default garden
     const farm = (await getFarms())[0];

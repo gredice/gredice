@@ -260,7 +260,7 @@ const app = new Hono()
             await sendWelcome(email, {
                 email,
                 ctaUrl: 'https://vrt.gredice.com'
-            })
+            });
 
             return context.newResponse(null, { status: 204 });
         });
