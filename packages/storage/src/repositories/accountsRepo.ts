@@ -43,15 +43,15 @@ export async function getSunflowers(accountId: string) {
     return currentSunflowers;
 }
 
-export async function earnSunflowers(accountId: string, amount: number) {
-    await createEvent(knownEvents.accounts.sunflowersEarnedV1(accountId, { amount }));
+export async function earnSunflowers(accountId: string, amount: number, reason: string) {
+    await createEvent(knownEvents.accounts.sunflowersEarnedV1(accountId, { amount, reason }));
 }
 
-export async function spendSunflowers(accountId: string, amount: number) {
+export async function spendSunflowers(accountId: string, amount: number, reason: string) {
     const currentSunflowers = await getSunflowers(accountId);
     if (currentSunflowers < amount) {
         throw new Error('Insufficient sunflowers');
     }
 
-    await createEvent(knownEvents.accounts.sunflowersSpentV1(accountId, { amount }));
+    await createEvent(knownEvents.accounts.sunflowersSpentV1(accountId, { amount, reason }));
 }

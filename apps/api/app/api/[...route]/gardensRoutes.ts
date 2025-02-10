@@ -410,7 +410,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Spend sunflowers
-            await spendSunflowers(accountId, cost);
+            await spendSunflowers(accountId, cost, 'block:' + block.information.name);
 
             // Create block
             const blockId = randomUUID();

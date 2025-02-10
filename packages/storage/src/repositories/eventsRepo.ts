@@ -24,8 +24,8 @@ export const knownEvents = {
     accounts: {
         createdV1: (aggregateId: string) => ({ type: knownEventTypes.accounts.create, version: 1, aggregateId }),
         assignedUserV1: (aggregateId: string, data: { userId: string }) => ({ type: knownEventTypes.accounts.assignUser, version: 1, aggregateId, data }),
-        sunflowersEarnedV1: (aggregateId: string, data: { amount: number }) => ({ type: knownEventTypes.accounts.earnSunflowers, version: 1, aggregateId, data }),
-        sunflowersSpentV1: (aggregateId: string, data: { amount: number }) => ({ type: knownEventTypes.accounts.spendSunflowers, version: 1, aggregateId, data }),
+        sunflowersEarnedV1: (aggregateId: string, data: { amount: number, reason: string }) => ({ type: knownEventTypes.accounts.earnSunflowers, version: 1, aggregateId, data }),
+        sunflowersSpentV1: (aggregateId: string, data: { amount: number, reason: string }) => ({ type: knownEventTypes.accounts.spendSunflowers, version: 1, aggregateId, data }),
     },
     users: {
         createdV1: (aggregateId: string) => ({ type: knownEventTypes.users.create, version: 1, aggregateId }),
