@@ -4,7 +4,6 @@ import { useCallback, useState } from 'react'
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Row } from '@signalco/ui-primitives/Row';
-import { environmentState } from '@gredice/game';
 import { HudCard } from './components/HudCard';
 import { useGameState } from '../useGameState';
 

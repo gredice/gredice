@@ -140,8 +140,8 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
 function ThemeChanger() {
     const { resolvedTheme, setTheme } = useTheme();
 
-    const currentTime = useGameState(state => state.currentTime);
-    const isDay = currentTime.getHours() > 6 && currentTime.getHours() < 18;
+    const timeOfDay = useGameState(state => state.timeOfDay);
+    const isDay = timeOfDay > 0.2 && timeOfDay < 0.8;
 
     useEffect(() => {
         if (isDay && resolvedTheme !== 'light') {

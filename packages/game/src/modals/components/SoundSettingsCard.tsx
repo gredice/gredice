@@ -1,7 +1,7 @@
 import { Button } from "@signalco/ui-primitives/Button"
 import { SoundSlider } from "./SoundSlider"
 import { useEffect, useState } from "react"
-import { Card } from "@signalco/ui-primitives/Card"
+import { Card, CardContent } from "@signalco/ui-primitives/Card"
 import { Stack } from "@signalco/ui-primitives/Stack"
 import { RotateCcw } from "lucide-react"
 
@@ -63,7 +63,8 @@ export function SoundSettingsCard() {
     }, [masterMuted, masterVolume])
 
     return (
-        <Card className="p-4">
+        <Card>
+            <CardContent className="pt-6">
             <Stack spacing={4}>
                 <SoundSlider
                     value={masterVolume}
@@ -102,6 +103,7 @@ export function SoundSettingsCard() {
                     Vrati zadani
                 </Button>
             </Stack>
+            </CardContent>
         </Card>
     )
 }
