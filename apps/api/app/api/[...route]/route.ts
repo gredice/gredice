@@ -92,4 +92,4 @@ export const DELETE = handle(app);
 export const PATCH = handle(app);
 export const OPTIONS = handle(app);
 
-export type AppType = typeof app.routes;
+export type AppType = typeof app;

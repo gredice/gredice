@@ -9,6 +9,7 @@
     ".": "./src/index.ts"
   },
   "devDependencies": {
+    "@gredice/client": "workspace:*",
     "@radix-ui/react-progress": "1.1.2",
     "@radix-ui/react-slider": "1.2.3",
     "@react-spring/three": "9.7.5",

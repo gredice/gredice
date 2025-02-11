@@ -1,20 +1,21 @@
 import { HudCard } from "./components/HudCard";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Check, CheckCheck, Cog, Inbox, LogOut, Settings, Settings2, User } from 'lucide-react';
+import { Check, CheckCheck, Cog, HousePlus, Inbox, LogOut, Plus, Settings, Settings2, User } from 'lucide-react';
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Popper } from "@signalco/ui-primitives/Popper";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Divider } from "@signalco/ui-primitives/Divider";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@signalco/ui-primitives/Menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@signalco/ui-primitives/Menu';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { NoNotificationsPlaceholder } from "../shared-ui/NoNotificationsPlaceholder";
 import { useCurrentGarden } from "../hooks/useCurrentGarden";
 import { ProfileInfo } from "../shared-ui/ProfileInfo";
 import { ProfileAvatar } from "../shared-ui/ProfileAvatar";
 import { useNotifications } from "../hooks/useNotifications";
+import { Skeleton } from "@signalco/ui-primitives/Skeleton";
 
 function NotificationsCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
@@ -54,16 +55,20 @@ function NotificationsCard() {
 
 function ProfileCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
-    const currentGarden = useCurrentGarden();
+    const { data: currentGarden } = useCurrentGarden();
 
     return (
         <DropdownMenuContent className="w-80 p-4" align="end" sideOffset={12}>
             <ProfileInfo />
             <DropdownMenuSeparator className="my-4" />
-            <DropdownMenuItem className="gap-3 bg-muted">
-                <Check className="h-4 w-4" />
-                <span>{currentGarden.data?.name}</span>
-            </DropdownMenuItem>
+            {currentGarden ? (
+                <DropdownMenuItem className="gap-3 bg-muted">
+                    <Check className="h-4 w-4" />
+                    <span>{currentGarden.name}</span>
+                </DropdownMenuItem>
+            ) : (
+                <DropdownMenuLabel className="bg-muted">Nemate vrt</DropdownMenuLabel>
+            )}
             <DropdownMenuSeparator className="my-4" />
             <DropdownMenuItem className="gap-3" onClick={() => setProfileModalOpen('generalno')}>
                 <User className="h-4 w-4" />
@@ -87,7 +92,7 @@ function ProfileCard() {
 }
 
 export function AccountHud() {
-    const currentGarden = useCurrentGarden();
+    const { data: currentGarden, isLoading } = useCurrentGarden();
 
     return (
         <HudCard
@@ -107,13 +112,18 @@ export function AccountHud() {
                     <ProfileCard />
                 </DropdownMenu>
                 <div className="hidden md:block">
-                    <SelectItems
-                        className="min-w-32"
-                        variant="plain"
-                        value="1"
-                        items={[
-                            { value: currentGarden.data?.id, label: currentGarden.data?.name },
-                        ]} />
+                    {isLoading ? (
+                        <Skeleton className="w-32 h-7" />
+                    ) : (currentGarden && (
+                            <SelectItems
+                                className="w-32"
+                                variant="plain"
+                                value="1"
+                                items={[
+                                    { value: currentGarden.id.toString(), label: currentGarden.name },
+                                ]} />
+                    )
+                    )}
                 </div>
                 <div className="hidden md:block">
                     <Popper
