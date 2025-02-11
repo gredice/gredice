@@ -14,9 +14,10 @@ import { Row, RowProps } from "@signalco/ui-primitives/Row";
 import { cx } from "@signalco/ui-primitives/cx";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { ProfileInfo } from "../shared-ui/ProfileInfo";
-import { NoSunflowersPlaceholder } from "../shared-ui/NoSunflowersPlaceholder";
+import { NoSunflowersPlaceholder } from "../shared-ui/sunflowers/NoSunflowersPlaceholder";
 import { SoundSettingsCard } from "./components/SoundSettingsCard";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
+import { SunflowersList } from "../shared-ui/sunflowers/SunflowersList";
 
 function CardActions({ children, className, ...rest }: RowProps) {
     return (
@@ -196,7 +197,7 @@ export function OverviewModal() {
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">Suncokreti</Typography>
                             <Card className="p-4">
-                                <NoSunflowersPlaceholder />
+                                <SunflowersList />
                             </Card>
                         </Stack>
                     )}

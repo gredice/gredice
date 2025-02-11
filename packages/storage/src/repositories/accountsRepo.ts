@@ -10,13 +10,6 @@ export function getAccounts() {
 export function getAccount(accountId: string) {
     return storage.query.accounts.findFirst({
         where: eq(accounts.id, accountId),
-        with: {
-            accounts: {
-                with: {
-                    account: true
-                }
-            }
-        }
     });
 }
 
@@ -41,6 +34,15 @@ export async function getSunflowers(accountId: string) {
         currentSunflowers -= (event.data as any).amount ?? 0;
     }
     return currentSunflowers;
+}
+
+export async function getSunflowersHistory(accountId: string, offset: number = 0, limit: number = 10) {
+    const events = await getEvents(knownEventTypes.accounts.earnSunflowers, accountId, offset, limit);
+    return events.map((event) => ({
+        ...event,
+        amount: Number((event.data as any).amount),
+        reason: (event.data as any).reason,
+    }));
 }
 
 export async function earnSunflowers(accountId: string, amount: number, reason: string) {

@@ -38,7 +38,7 @@ export function WeatherHud() {
                                 className="rounded-full px-2 justify-between pr-4 md:pr-2" size="sm">
                                 <Row>
                                     {WeatherIcon && <WeatherIcon.day className="size-6" />}
-                                    <Typography level="body2">{weatherData?.temperature}°C</Typography>
+                                    <Typography level="body2" className="pl-0.5">{weatherData?.temperature}°C</Typography>
                                 </Row>
                             </Button>
                             <div className="w-[1px] h-4 border-r hidden md:inline" />

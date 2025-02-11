@@ -2,11 +2,12 @@ import { Hono } from 'hono'
 import { handle } from 'hono/vercel'
 import { cors } from 'hono/cors'
 
-import auth from './authRoutes';
-import data from './data';
-import directories from './directoriesRoutes';
-import users from './usersRoutes';
-import gardens from './gardensRoutes';
+import authRoutes from './authRoutes';
+import dataRoutes from './data';
+import directoriesRoutes from './directoriesRoutes';
+import accountsRoutes from './accountsRoutes';
+import usersRoutes from './usersRoutes';
+import gardensRoutes from './gardensRoutes';
 import { openApiDocs } from '@gredice/apidocs/openApiDocs';
 import { openAPISpecs } from 'hono-openapi';
 
@@ -20,14 +21,15 @@ const app = new Hono()
         allowMethods: ["OPTIONS", "GET", "POST", "PUT", "DELETE", "PATCH"],
         credentials: true,
     }))
-    .route('/auth', auth)
-    .route('/directories', directories)
-    .route('/users', users)
-    .route('/gardens', gardens)
-    .route('/data', data);
+    .route('/auth', authRoutes)
+    .route('/directories', directoriesRoutes)
+    .route('/accounts', accountsRoutes)
+    .route('/users', usersRoutes)
+    .route('/gardens', gardensRoutes)
+    .route('/data', dataRoutes);
 
 app
-    .get(`/docs/auth`, openAPISpecs(auth, {
+    .get(`/docs/auth`, openAPISpecs(authRoutes, {
         documentation: {
             info: {
                 title: 'Auth API',
@@ -35,13 +37,35 @@ app
             },
             servers: [
                 {
+                    url: 'http://localhost:3005/api/auth',
+                    description: 'Local development server'
+                },
+                {
                     url: 'https://api.gredice.com/api/auth',
                     description: 'Production server'
                 }
             ]
         }
     }))
-    .get(`/docs/users`, openAPISpecs(users, {
+    .get(`/docs/accounts`, openAPISpecs(accountsRoutes, {
+        documentation: {
+            info: {
+                title: 'Accounts API',
+                version: '0.1.0',
+            },
+            servers: [
+                {
+                    url: 'http://localhost:3005/api/accounts',
+                    description: 'Local development server'
+                },
+                {
+                    url: 'https://api.gredice.com/api/accounts',
+                    description: 'Production server'
+                }
+            ]
+        }
+    }))
+    .get(`/docs/users`, openAPISpecs(usersRoutes, {
         documentation: {
             info: {
                 title: 'Users API',
@@ -49,19 +73,27 @@ app
             },
             servers: [
                 {
+                    url: 'http://localhost:3005/api/users',
+                    description: 'Local development server'
+                },
+                {
                     url: 'https://api.gredice.com/api/users',
                     description: 'Production server'
                 }
             ]
         }
     }))
-    .get(`/docs/gardens`, openAPISpecs(gardens, {
+    .get(`/docs/gardens`, openAPISpecs(gardensRoutes, {
         documentation: {
             info: {
                 title: 'Gardens API',
                 version: '0.1.0',
             },
             servers: [
+                {
+                    url: 'http://localhost:3005/api/gardens',
+                    description: 'Local development server'
+                },
                 {
                     url: 'https://api.gredice.com/api/gardens',
                     description: 'Production server'
@@ -70,13 +102,17 @@ app
         }
     }))
     .get('/docs/directories', async (context) => context.json(await openApiDocs()))
-    .get(`/docs/data`, openAPISpecs(data, {
+    .get(`/docs/data`, openAPISpecs(dataRoutes, {
         documentation: {
             info: {
                 title: 'Data API',
                 version: '0.1.0',
             },
             servers: [
+                {
+                    url: 'http://localhost:3005/api/data',
+                    description: 'Local development server'
+                },
                 {
                     url: 'https://api.gredice.com/api/data',
                     description: 'Production server'
