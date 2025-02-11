@@ -8,6 +8,7 @@ import Link from 'next/link';
 
 const apis = [
   { label: '/api/auth', href: '/docs/auth' },
+  { label: '/api/accounts', href: '/docs/accounts' },
   { label: '/api/users', href: '/docs/users' },
   { label: '/api/directories', href: '/docs/directories' },
   { label: '/api/data', href: '/docs/data' },

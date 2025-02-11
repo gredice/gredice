@@ -14,9 +14,11 @@ import { Row, RowProps } from "@signalco/ui-primitives/Row";
 import { cx } from "@signalco/ui-primitives/cx";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { ProfileInfo } from "../shared-ui/ProfileInfo";
-import { NoSunflowersPlaceholder } from "../shared-ui/NoSunflowersPlaceholder";
+import { NoSunflowersPlaceholder } from "../shared-ui/sunflowers/NoSunflowersPlaceholder";
 import { SoundSettingsCard } from "./components/SoundSettingsCard";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
+import { SunflowersList } from "../shared-ui/sunflowers/SunflowersList";
+import { useCurrentAccount } from "../hooks/useCurrentAccount";
 
 function CardActions({ children, className, ...rest }: RowProps) {
     return (
@@ -43,6 +45,8 @@ export function OverviewModal() {
     const memberSinceDisplay = currentUser.data?.createdAt
         ? dateFormatter.format(currentUser.data?.createdAt)
         : undefined;
+
+    const { data: currentAccount } = useCurrentAccount();
 
     return (
         <Modal
@@ -105,15 +109,12 @@ export function OverviewModal() {
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">Profil</Typography>
                             <Card>
-                                <CardHeader>
-                                    <CardTitle>Prikazano ime</CardTitle>
-                                </CardHeader>
                                 <form>
-                                    <CardContent>
+                                    <CardContent className="p-6">
                                         <Stack spacing={4}>
-                                            <Typography level="body2">Ime koje će biti prikazano drugim korisnicima.</Typography>
                                             <Input
                                                 name="displayName"
+                                                label="Ime koje će biti prikazano drugim korisnicima"
                                                 defaultValue={currentUser.data?.displayName}
                                                 type="text"
                                                 placeholder="Unesite ime..."
@@ -131,51 +132,52 @@ export function OverviewModal() {
                     {settingsMode === 'sigurnost' && (
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">Sigurnost</Typography>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Prijava</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <Typography level="body1">Prijavljeni ste putem email adrese: <strong>{currentUser.data?.userName}</strong>.</Typography>
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Lozinka</CardTitle>
-                                </CardHeader>
-                                <form>
-                                    <CardContent>
-                                        <Stack spacing={4}>
-                                            <Typography level="body2">Promijenite lozinku za svoj račun.</Typography>
-                                            <Stack spacing={1}>
-                                                <Input
-                                                    name="currentPassword"
-                                                    label="Trenutna lozinka"
-                                                    type="password"
-                                                    autoComplete="current-password"
-                                                    placeholder="Unesite trenutnu lozinku..."
-                                                    required />
-                                                <Input
-                                                    name="password"
-                                                    label="Nova lozinka"
-                                                    type="password"
-                                                    autoComplete="new-password"
-                                                    placeholder="Unesite novu lozinku..."
-                                                    required />
-                                                <Input
-                                                    name="passwordConfirm"
-                                                    type="password"
-                                                    autoComplete="new-password"
-                                                    placeholder="Potvrdite novu lozinku..."
-                                                    required />
-                                            </Stack>
-                                            <CardActions className="justify-end">
-                                                <Button size="sm" variant="solid" type="submit">Spremi</Button>
-                                            </CardActions>
-                                        </Stack>
+                            <Stack spacing={2}>
+                                <Card>
+                                    <CardContent className="p-6">
+                                        <Typography level="body2">Prijavljeni ste putem email adrese: <strong>{currentUser.data?.userName}</strong>.</Typography>
                                     </CardContent>
-                                </form>
-                            </Card>
+                                </Card>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Lozinka</CardTitle>
+                                    </CardHeader>
+                                    <form>
+                                        <CardContent>
+                                            <Stack spacing={4}>
+                                                <Stack spacing={2}>
+                                                    <Typography level="body2">Promijenite lozinku za svoj račun.</Typography>
+                                                    <Stack spacing={1}>
+                                                        <Input
+                                                            name="currentPassword"
+                                                            label="Trenutna lozinka"
+                                                            type="password"
+                                                            autoComplete="current-password"
+                                                            placeholder="Unesite trenutnu lozinku..."
+                                                            required />
+                                                        <Input
+                                                            name="password"
+                                                            label="Nova lozinka"
+                                                            type="password"
+                                                            autoComplete="new-password"
+                                                            placeholder="Unesite novu lozinku..."
+                                                            required />
+                                                        <Input
+                                                            name="passwordConfirm"
+                                                            type="password"
+                                                            autoComplete="new-password"
+                                                            placeholder="Potvrdite novu lozinku..."
+                                                            required />
+                                                    </Stack>
+                                                </Stack>
+                                                <CardActions className="justify-end">
+                                                    <Button size="sm" variant="solid" type="submit">Spremi</Button>
+                                                </CardActions>
+                                            </Stack>
+                                        </CardContent>
+                                    </form>
+                                </Card>
+                            </Stack>
                         </Stack>
                     )}
                     {settingsMode === 'zvuk' && (
@@ -195,9 +197,19 @@ export function OverviewModal() {
                     {settingsMode === 'suncokreti' && (
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">Suncokreti</Typography>
-                            <Card className="p-4">
-                                <NoSunflowersPlaceholder />
-                            </Card>
+                            <Stack spacing={2}>
+                                <div className="relative mt-12 md:mt-0">
+                                    <span className="absolute text-5xl -top-12 right-6">🌻</span>
+                                    <Card className="relative z-10">
+                                        <CardContent className="p-6">
+                                            <Typography level="body2">Trenutno imaš <strong>{currentAccount?.sunflowers.amount}</strong> suncokreta za korištenje u svom vrtu.</Typography>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                                <Card className="p-6">
+                                    <SunflowersList />
+                                </Card>
+                            </Stack>
                         </Stack>
                     )}
                 </div>

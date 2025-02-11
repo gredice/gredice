@@ -1,10 +1,10 @@
-import { Context, Hono } from 'hono';
-import { auth } from '../../../lib/auth/auth';
+import { Hono } from 'hono';
 import { createGardenBlock, createGardenStack, deleteGardenStack, getAccountGardens, getEntitiesFormatted, getGarden, getGardenStack, spendSunflowers, updateGardenStack } from '@gredice/storage';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { describeRoute } from 'hono-openapi';
+import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 
 export type BlockData = {
     id: string,
@@ -21,23 +21,6 @@ export type BlockData = {
     prices: {
         sunflowers: number
     }
-}
-
-type AuthVariables = {
-    authContext: Awaited<ReturnType<typeof auth>>;
-};
-
-function authValidator(roles: string[]) {
-    return async (context: Context, next: () => Promise<void>) => {
-        try {
-            const authContext = await auth(roles);
-            context.set('authContext', authContext);
-            return await next();
-        } catch (error) {
-            console.warn('Unauthorized:', error);
-            return context.newResponse('Unauthorized', { status: 401 });
-        }
-    };
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
