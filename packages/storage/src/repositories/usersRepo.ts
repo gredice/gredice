@@ -70,7 +70,7 @@ export async function createUserWithPassword(userName: string, password: string)
     await createGarden({
         farmId: farm.id,
         accountId,
-        name: 'Vrt od ' + userName
+        name: 'Moj vrt'
     });
 
     // Create user
