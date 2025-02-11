@@ -162,6 +162,13 @@
       "when": 1739059776572,
       "tag": "0022_concerned_raider",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1739297839624,
+      "tag": "0023_curly_blue_marvel",
+      "breakpoints": true
     }
   ]
 }

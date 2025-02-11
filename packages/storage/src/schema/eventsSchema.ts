@@ -16,6 +16,6 @@ export const events = pgTable('events', {
     type: text('type').notNull(),
     version: integer('version').notNull(),
     aggregateId: text('aggregate_id').notNull(),
-    data: jsonb('data').notNull(),
+    data: jsonb('data'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
 });
