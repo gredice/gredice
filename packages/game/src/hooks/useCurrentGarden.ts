@@ -5,11 +5,7 @@ export function useCurrentGarden() {
     return useQuery({
         queryKey: ['gardens', 'current'],
         queryFn: async () => {
-            const response = await client.api.gardens.$get({}, {
-                headers: {
-                    authorization: `Bearer ${localStorage.getItem('gredice-token')}`
-                }
-            });
+            const response = await client.api.gardens.$get();
             const gardens = await response.json();
             return gardens[0];
         }

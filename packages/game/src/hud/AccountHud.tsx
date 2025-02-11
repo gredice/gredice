@@ -1,7 +1,7 @@
 import { HudCard } from "./components/HudCard";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Check, CheckCheck, Cog, HousePlus, Inbox, LogOut, Plus, Settings, Settings2, User } from 'lucide-react';
+import { Check, CheckCheck, Inbox, LogOut, Settings2, User } from 'lucide-react';
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Popper } from "@signalco/ui-primitives/Popper";
