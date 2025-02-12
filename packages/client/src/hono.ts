@@ -10,7 +10,7 @@ const getAppUrl = () => {
     }
 }
 
-export function clientAuth() {
+function clientAuth() {
     return {
         headers: {
             authorization: `Bearer ${localStorage.getItem('gredice-token')}`

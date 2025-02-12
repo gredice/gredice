@@ -21,6 +21,7 @@ import { Redo, Undo } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { ItemsHud } from './hud/ItemsHud';
 import { v4 as uuidv4 } from 'uuid';
+import { useCurrentGarden } from './hooks/useCurrentGarden';
 
 // function serializeGarden(garden: Garden) {
 //     return JSON.stringify(garden);
@@ -45,31 +46,31 @@ import { v4 as uuidv4 } from 'uuid';
 //     return garden as Garden;
 // }
 
-function getDefaultGarden(): Garden {
-    const size = 1;
-    const stacks: Stack[] = [];
-    for (let x = -size; x <= size + 1; x++) {
-        for (let z = -size; z <= size; z++) {
-            stacks.push({
-                position: new Vector3(x, 0, z),
-                blocks: [
-                    { id: uuidv4(), name: "Block_Grass", rotation: Math.floor(Math.random() * 4) },
-                ]
-            });
-        }
-    }
-    stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ id: uuidv4(), name: "Raised_Bed", rotation: 1 });
-    stacks.find(stack => stack.position.x === 1 && stack.position.z === 0)?.blocks.push({ id: uuidv4(), name: "Raised_Bed", rotation: 1 });
+// function getDefaultGarden(): Garden {
+//     const size = 1;
+//     const stacks: Stack[] = [];
+//     for (let x = -size; x <= size + 1; x++) {
+//         for (let z = -size; z <= size; z++) {
+//             stacks.push({
+//                 position: new Vector3(x, 0, z),
+//                 blocks: [
+//                     { id: uuidv4(), name: "Block_Grass", rotation: Math.floor(Math.random() * 4) },
+//                 ]
+//             });
+//         }
+//     }
+//     stacks.find(stack => stack.position.x === 0 && stack.position.z === 0)?.blocks.push({ id: uuidv4(), name: "Raised_Bed", rotation: 1 });
+//     stacks.find(stack => stack.position.x === 1 && stack.position.z === 0)?.blocks.push({ id: uuidv4(), name: "Raised_Bed", rotation: 1 });
 
-    return {
-        name: 'Moj vrt',
-        stacks,
-        location: {
-            lat: 45.74,
-            lon: 16.57
-        }
-    };
-}
+//     return {
+//         name: 'Moj vrt',
+//         stacks,
+//         location: {
+//             lat: 45.74,
+//             lon: 16.57
+//         }
+//     };
+// }
 
 // TODO: Use to deserialize
 // async function getGarden() {
@@ -86,14 +87,45 @@ function getDefaultGarden(): Garden {
 export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
     const stacks = useGameState(state => state.stacks);
     const setStacks = useGameState(state => state.setStacks);
+    const setGarden = useGameState(state => state.setGarden);
 
     // TODO: Load garden from remote
-    const garden = getDefaultGarden();
-    const isLoadingGarden = false;
+    const { data: garden, isLoading: isLoadingGarden } = useCurrentGarden();
     useEffect(() => {
         // Only update local state if we don't have any local state (first load or no stacks)
-        if (garden && !isLoadingGarden && stacks.length <= 0) {
-            setStacks(garden.stacks);
+        if (garden && !isLoadingGarden) {
+            const rootStacks = garden.stacks ?? [];
+            const stacks: Stack[] = [];
+
+            const xPositions = Object.keys(rootStacks);
+            for (const x of xPositions) {
+                const yPositions = Object.keys(rootStacks[x]);
+                for (const y of yPositions) {
+                    const blocks = rootStacks[x][y];
+                    stacks.push({
+                        position: new Vector3(Number(x), 0, Number(y)),
+                        blocks: blocks ? blocks.map((block) => {
+                            return {
+                                id: block.id,
+                                name: block.name,
+                                rotation: 0, // TODO: Retrieve block rotation
+                                variant: 1 // TODO: Retrieve block variant
+                            }
+                        }) : []
+                    });
+                }
+            }
+
+            console.log('Setting garden', garden);
+            setGarden({
+                id: garden.id.toString(),
+                name: garden.name,
+                stacks: stacks,
+                location: {
+                    lat: garden.latitude,
+                    lon: garden.longitude
+                }
+            });
         }
 
         // TODO: Check if we are ou-of-sync with remote state and
@@ -108,7 +140,7 @@ export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
 
     return (
         <>
-            <Environment noBackground={noBackground} location={garden.location} />
+            <Environment noBackground={noBackground} location={{ lat: garden.latitude, lon: garden.longitude }} />
             <group>
                 {stacks.map((stack) =>
                     stack.blocks?.map((block, i) => {
@@ -246,16 +278,14 @@ const useKeyboardControls = () => {
 
 function RotateIcons() {
     return (
-        <div className='absolute bottom-16 md:bottom-2 left-2'>
-            <Row>
-                <IconButton title="Okreni lijevo" variant='plain' className='hover:bg-muted' onClick={rotateCamera.bind(null, 'ccw')}>
-                    <Undo className='size-5' />
-                </IconButton>
-                <IconButton title="Okreni desno" variant='plain' className='hover:bg-muted' onClick={rotateCamera.bind(null, 'cw')}>
-                    <Redo className='size-5' />
-                </IconButton>
-            </Row>
-        </div>
+        <Row>
+            <IconButton title="Okreni lijevo" variant='plain' className='hover:bg-muted' onClick={rotateCamera.bind(null, 'ccw')}>
+                <Undo className='size-5' />
+            </IconButton>
+            <IconButton title="Okreni desno" variant='plain' className='hover:bg-muted' onClick={rotateCamera.bind(null, 'cw')}>
+                <Redo className='size-5' />
+            </IconButton>
+        </Row>
     )
 }
 
@@ -268,7 +298,7 @@ export function GameScene({
     hideHud,
     ...rest
 }: GameSceneProps) {
-    const cameraPosition = 100;
+    const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
     useKeyboardControls();
 
     return (
@@ -295,16 +325,21 @@ export function GameScene({
             {!hideHud && (
                 <>
                     <AccountHud />
-                    <SunflowersHud />
-                    <WeatherHud />
+                    <div className='absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2'>
+                        <WeatherHud />
+                        <SunflowersHud />
+                    </div>
                     <DayNightCycleHud lat={45.739} lon={16.572} />
-                    <ItemsHud />
+                    <div className='absolute bottom-0 flex flex-col left-0 right-0 md:flex-row md:justify-between md:items-end'>
+                        <div className='p-2'>
+                            <RotateIcons />
+                        </div>
+                        <ItemsHud />
+                        <div className='hidden md:block' />
+                    </div>
                 </>
             )}
             <OverviewModal />
-            {!hideHud && (
-                <RotateIcons />
-            )}
         </div>
     );
 }

@@ -36,7 +36,7 @@ export function LoginDialog() {
     }, null);
 
     return (
-        <div className="h-[calc(100vh)] flex items-center justify-center">
+        <div className="h-[100vh] flex items-center justify-center">
             <Card>
                 <Stack>
                     <CardHeader>

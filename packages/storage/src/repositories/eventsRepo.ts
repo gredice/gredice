@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { storage } from "../storage";
 import { events } from "../schema";
 
@@ -16,7 +16,7 @@ export const knownEventTypes = {
         create: "garden.create",
         rename: "garden.rename",
         delete: "garden.delete",
-        blokcPlace: "garden.blockPlace",
+        blockPlace: "garden.blockPlace",
     },
 }
 
@@ -34,13 +34,17 @@ export const knownEvents = {
         createdV1: (aggregateId: string, data: { name: string, accountId: string }) => ({ type: knownEventTypes.gardens.create, version: 1, aggregateId, data }),
         renamedV1: (aggregateId: string, data: { name: string }) => ({ type: knownEventTypes.gardens.rename, version: 1, aggregateId, data }),
         deletedV1: (aggregateId: string) => ({ type: knownEventTypes.gardens.delete, version: 1, aggregateId }),
-        blockPlacedV1: (aggregateId: string, data: { id: string, name: string }) => ({ type: knownEventTypes.gardens.blokcPlace, version: 1, aggregateId, data }),
+        blockPlacedV1: (aggregateId: string, data: { id: string, name: string }) => ({ type: knownEventTypes.gardens.blockPlace, version: 1, aggregateId, data }),
     },
 }
 
-export function getEvents(type: string, aggregateId: string, offset: number = 0, limit: number = 100) {
+export function getEvents(type: string | string[], aggregateId: string, offset: number = 0, limit: number = 100) {
     return storage.query.events.findMany({
-        where: and(eq(events.type, type), eq(events.aggregateId, aggregateId)),
+        where: and(
+            eq(events.aggregateId, aggregateId),
+            Array.isArray(type)
+                ? inArray(events.type, type)
+                : eq(events.type, type)),
         orderBy: [desc(events.createdAt)],
         offset,
         limit

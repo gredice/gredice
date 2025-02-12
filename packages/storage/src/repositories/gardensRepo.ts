@@ -105,9 +105,8 @@ export async function updateGardenStack(gardenId: number, stacks: Omit<UpdateGar
     }
 
     await storage.update(gardenStacks).set({
-        id: stackId,
         blocks: stacks.blocks,
-    }).where(eq(gardenStacks.gardenId, gardenId));
+    }).where(and(eq(gardenStacks.gardenId, gardenId), eq(gardenStacks.id, stackId)));
 }
 
 export async function deleteGardenStack(gardenId: number, { x, y }: { x: number, y: number }) {

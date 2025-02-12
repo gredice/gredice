@@ -24,7 +24,7 @@ export function WeatherHud() {
         <HudCard
             open
             position="floating"
-            className="right-2 md:right-[104px] top-14 md:top-2 md:px-1">
+            className="static md:px-1">
             {forecastData && (
                 <Popper
                     side="bottom"

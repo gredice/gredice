@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { client } from '@gredice/client';
 
+export const currentAccountKeys = ['accounts', 'current'];
+
 export function useCurrentAccount() {
     return useQuery({
-        queryKey: ['accounts', 'current'],
+        queryKey: currentAccountKeys,
         queryFn: async () => {
             const accountResponse = await client.api.accounts.current.$get();
             if (accountResponse.status === 404) {

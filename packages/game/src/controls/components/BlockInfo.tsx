@@ -5,20 +5,8 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Divider } from "@signalco/ui-primitives/Divider";
 import { EntityInstanceProps } from "../../types/runtime/EntityInstanceProps";
 import { SegmentedProgress } from "./SegmentedProgress";
-import { Card } from "@signalco/ui-primitives/Card";
-import { Button } from "@signalco/ui-primitives/Button";
 import { NavigatingButton } from "@signalco/ui/NavigatingButton";
-import { MoreHorizontal } from "lucide-react";
-
-function BlockImage({ blockName, ...rest }: Omit<HTMLAttributes<HTMLImageElement>, 'src' | 'alt'> & { blockName: string }) {
-    return (
-        <img
-            src={`https://www.gredice.com/assets/blocks/${blockName}.png`}
-            alt={blockName}
-            {...rest}
-        />
-    );
-}
+import { BlockImage } from "../../shared-ui/BlockImage";
 
 export function BlockInfo({ block }: { block: EntityInstanceProps['block'] }) {
     return (

@@ -9,5 +9,8 @@ export type BlockData = {
     attributes: {
         height: number,
         stackable?: boolean
+    },
+    prices: {
+        sunflowers: number
     }
 }

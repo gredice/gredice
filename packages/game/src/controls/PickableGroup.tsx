@@ -22,8 +22,8 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
         from: { internalPosition: [0, 0, 0] },
         config: {
             mass: 0.1,
-            tension: 100,
-            friction: 10
+            tension: 1000,
+            friction: 0
         }
     }));
     const camera = useThree(state => state.camera);
@@ -86,7 +86,7 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
             return;
         }
 
-        dest.set(pt.x, 0, pt.z).ceil();
+        dest.set(pt.x, 0, pt.z).round();
         relative.set(dest.x - stack.position.x, 0, dest.z - stack.position.z);
 
         const hoveredStack = getStack(dest);
@@ -163,9 +163,9 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
             {/* @ts-ignore */}
             <animated.group scale={blockedScaleSprings.scale} position={blockedPosition}>
                 <Shadow
-                    color={0xff0907}
-                    opacity={0.8}
-                    colorStop={0.2}
+                    color={0xff0000}
+                    opacity={1}
+                    colorStop={0.5}
                     scale={2}
                 />
                 {/* @ts-ignore */}

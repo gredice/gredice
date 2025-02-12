@@ -8,6 +8,7 @@ import { audioMixer } from "./audio/audioMixer";
 import { OrbitControls } from 'three-stdlib';
 import { getTimes } from "suncalc";
 import { Garden } from "./types/Garden";
+import { client } from "@gredice/client";
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
@@ -56,6 +57,7 @@ export type GameState = {
     timeOfDay: number,
     sunsetTime: Date | null,
     sunriseTime: Date | null,
+    gardenId: string | null,
     stacks: Stack[],
     data: {
         blocks: BlockData[]
@@ -65,12 +67,13 @@ export type GameState = {
     worldRotation: number,
     setWorldRotation: (worldRotation: number) => void,
     isDragging: boolean,
+    setGarden: (garden: Garden) => void,
     setIsDragging: (isDragging: boolean) => void,
     setInitial: (appBaseUrl: string, data: { blocks: BlockData[] }, freezeTime?: Date | null) => void,
     setCurrentTime: (currentTime: Date) => void,
     setStacks: (stacks: Stack[]) => void,
     placeBlock: (to: Vector3, block: Block) => void,
-    moveBlock: (from: Vector3, blockIndex: number, to: Vector3) => void,
+    moveBlock: (from: Vector3, blockIndex: number, to: Vector3) => Promise<void>,
     rotateBlock: (stackPosition: Vector3, blockOrIndex: Block | number, rotation?: number) => void
 };
 
@@ -85,7 +88,14 @@ export const useGameState = create<GameState>((set) => ({
     timeOfDay: 0,
     sunsetTime: null,
     sunriseTime: null,
+    gardenId: null,
     stacks: [],
+    setGarden: (garden) => {
+        set(() => ({
+            gardenId: garden.id,
+            stacks: garden.stacks
+        }));
+    },
     data: {
         blocks: []
     },
@@ -95,7 +105,7 @@ export const useGameState = create<GameState>((set) => ({
     worldRotation: 0,
     setWorldRotation: (worldRotation) => {
         return set((state) => {
-            state.orbitControls?.setAzimuthalAngle(worldRotation * (Math.PI / 2) + Math.PI / 4);
+            state.orbitControls?.setAzimuthalAngle(worldRotation * (Math.PI / 2) + Math.PI / 4 + Math.PI);
             return ({ worldRotation });
         });
     },
@@ -127,35 +137,57 @@ export const useGameState = create<GameState>((set) => ({
         stack.blocks.push(block);
         return { stacks: [...state.stacks] };
     }),
-    moveBlock: (from, blockIndex, to) => set((state) => {
+    moveBlock: async (from, blockIndex, to) => {
         if (from.x === to.x && from.z === to.z) {
-            return state;
+            return;
         }
 
         // Determine source stack and block
         const sourceStack = getStack(from);
         const block = sourceStack?.blocks[blockIndex];
         if (!block) {
-            return state;
+            return;
         }
 
         // Determine destination stack or create new one if it doesn't exist
         let destStack = getStack(to);
+        let didCreateDestStack = false;
         if (!destStack) {
             destStack = { position: to, blocks: [] };
-            state.stacks.push(destStack);
+            didCreateDestStack = true;
         }
 
-        sourceStack?.blocks.splice(blockIndex, 1);
-        destStack?.blocks.push(block);
-        return { stacks: [...state.stacks] };
-    }),
+        set((state) => {
+            if (didCreateDestStack) {
+                state.stacks.push(destStack);
+            }
+            sourceStack?.blocks.splice(blockIndex, 1);
+            destStack?.blocks.push(block);
+            return { stacks: [...state.stacks] };
+        });
+
+        // Persist block move
+        await client.api.gardens[":gardenId"].stacks.$patch({
+            param: {
+                gardenId: useGameState.getState().gardenId ?? ''
+            },
+            json: [
+                {
+                    op: 'move',
+                    from: `/${sourceStack.position.x}/${sourceStack.position.z}/${blockIndex}`,
+                    path: `/${destStack.position.x}/${destStack.position.z}/-`
+                }
+            ]
+        });
+    },
     rotateBlock: (stackPosition, blockOrIndex, rotation) => set((state) => {
         const stack = getStack(stackPosition);
         const block = typeof blockOrIndex === 'number' ? stack?.blocks[blockOrIndex] : blockOrIndex;
         if (!block) {
             return state;
         }
+
+        // TODO: Persist block rotation
 
         block.rotation = rotation ?? (block.rotation + 1);
         return { stacks: [...state.stacks] };
