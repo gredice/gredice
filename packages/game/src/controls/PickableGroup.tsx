@@ -2,7 +2,7 @@
 
 import { Vector3, Plane, Raycaster, Vector2 } from 'three';
 import { useThree } from '@react-three/fiber';
-import { PointerEvent, PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react';
+import { PointerEvent, PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Handler, useDrag } from '@use-gesture/react';
 import { useSpring, animated } from '@react-spring/three';
 import { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -18,21 +18,21 @@ type PickableGroupProps = PropsWithChildren<
     { onPositionChanged: (movement: Vector3) => void, noControl?: boolean }>;
 
 export function PickableGroup({ children, stack, block, noControl, onPositionChanged }: PickableGroupProps) {
-    const [springs, api] = useSpring(() => ({
+    const [dragSprings, dragSpringsApi] = useSpring(() => ({
         from: { internalPosition: [0, 0, 0] },
         config: {
             mass: 0.1,
-            tension: 1000,
-            friction: 0
+            tension: 200,
+            friction: 10
         }
     }));
     const camera = useThree(state => state.camera);
     const domElement = useThree(state => state.gl.domElement);
-    const dragState = useMemo(() => ({
+    const dragState = useRef(({
         pt: new Vector3(),
         dest: new Vector3(),
         relative: new Vector3()
-    }), []);
+    }));
     const currentStackHeight = useMemo(() => stackHeight(stack, block), [stack, block]);
     const didDrag = useRef(false);
 
@@ -48,7 +48,7 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
 
     // Reset position animation when block is moved
     useEffect(() => {
-        api.set({ internalPosition: [0, 0, 0] });
+        dragSpringsApi.set({ internalPosition: [0, 0, 0] });
         setIsBlocked(false);
     }, [stack.position]);
 
@@ -59,20 +59,21 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
     const isDraggingWorld = useGameState(state => state.isDragging);
     useEffect(() => {
         if (isDraggingWorld) {
-            api.start({ internalPosition: [0, 0, 0] });
+            dragSpringsApi.start({ internalPosition: [0, 0, 0] });
             setIsBlocked(false);
         }
     }, [isDraggingWorld]);
 
-    const dragHandler: Handler<"drag", any> = ({ pressed, event, xy: [x, y] }) => {
-        event.stopPropagation();
+    const rect = domElement.getClientRects()[0];
 
+    const dragHandler: Handler<"drag", any> = ({ pressed, event, xy: [x, y] }) => {
         if (isDraggingWorld) {
             return;
         }
 
-        const rect = domElement.getClientRects()[0];
-        const { pt, dest, relative } = dragState;
+        event.stopPropagation();
+
+        const { pt, dest, relative } = dragState.current;
         pt.set(
             ((x - rect.left) / rect.width) * 2 - 1,
             ((rect.top - y) / rect.height) * 2 + 1,
@@ -113,10 +114,10 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
 
             if (isBlocked) {
                 // Revert to start position if released above blocked stack
-                api.start({ internalPosition: [0, 0, 0] });
+                dragSpringsApi.start({ internalPosition: [0, 0, 0] });
                 setIsBlocked(false);
             } else {
-                api.start({ internalPosition: [relative.x, hoveredStackHeight, relative.z] })[0].then(() => {
+                dragSpringsApi.start({ internalPosition: [relative.x, hoveredStackHeight, relative.z] })[0].then(() => {
                     onPositionChanged(relative);
                     setIsBlocked(false);
                 });
@@ -127,7 +128,7 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
                 pickupSound.play();
             }
             didDrag.current = true;
-            api.start({ internalPosition: [relative.x, hoveredStackHeight + 0.1, relative.z] });
+            dragSpringsApi.start({ internalPosition: [relative.x, hoveredStackHeight + 0.1, relative.z] });
         }
     };
 
@@ -158,7 +159,7 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
     return (
         /* @ts-ignore */
         <animated.group
-            position={springs.internalPosition as unknown as [number, number, number]}
+            position={dragSprings.internalPosition as unknown as [number, number, number]}
             {...customBindProps}>
             {/* @ts-ignore */}
             <animated.group scale={blockedScaleSprings.scale} position={blockedPosition}>
