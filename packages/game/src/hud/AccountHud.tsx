@@ -67,7 +67,7 @@ function ProfileCard() {
                     <span>{currentGarden.name}</span>
                 </DropdownMenuItem>
             ) : (
-                <DropdownMenuLabel className="bg-muted">Nemate vrt</DropdownMenuLabel>
+                    <DropdownMenuLabel className="bg-muted">Još nemaš svoj vrt</DropdownMenuLabel>
             )}
             <DropdownMenuSeparator className="my-4" />
             <DropdownMenuItem className="gap-3" onClick={() => setProfileModalOpen('generalno')}>
@@ -118,7 +118,7 @@ export function AccountHud() {
                             <SelectItems
                                 className="w-32"
                                 variant="plain"
-                                value="1"
+                                value={currentGarden.id.toString()}
                                 items={[
                                     { value: currentGarden.id.toString(), label: currentGarden.name },
                                 ]} />

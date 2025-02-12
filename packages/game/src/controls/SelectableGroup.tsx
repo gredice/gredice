@@ -19,19 +19,26 @@ export function SelectableGroup({ children, block }: PropsWithChildren<{ block: 
     const [selected, setSelected] = useState(false);
     const hovered = useHoveredBlockStore();
 
-    if (block.name !== 'Raised_Bed_Construction')
-        return children;
+    const handleSelected = () => {
+        if (block.name !== 'Raised_Bed_Construction')
+            return children;
+
+        setSelected(!selected);
+    }
 
     return (
         <group
-            onPointerEnter={() => hovered.setHoveredBlock(block)}
-            onPointerLeave={() => {
-                if (hovered.hoveredBlock === block)
-                    return hovered.setHoveredBlock(null);
+            onPointerEnter={(e) => {
+                e.stopPropagation();
+                hovered.setHoveredBlock(block);
             }}
-            onClick={() => {
-                setSelected(!selected);
-            }}>
+            onPointerLeave={(e) => {
+                if (hovered.hoveredBlock === block) {
+                    e.stopPropagation();
+                    hovered.setHoveredBlock(null);
+                }
+            }}
+            onClick={handleSelected}>
             {children}
             {selected && (
                 <Html>

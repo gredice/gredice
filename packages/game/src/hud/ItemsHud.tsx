@@ -13,6 +13,7 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { Link } from "@signalco/ui-primitives/Link";
 import { cx } from "@signalco/ui-primitives/cx";
 import { v4 as uuidv4 } from 'uuid';
+import { useNewBlock } from "../hooks/useNewBlock";
 
 type HudItemEntity = {
     type: 'entity',
@@ -40,18 +41,19 @@ function BlockImage({ name, label, ...rest }: HTMLAttributes<HTMLImageElement> &
 
 function EntityItem({ name }: HudItemEntity) {
     const [open, setOpen] = useState(false);
-    const placeBlock = useGameState(state => state.placeBlock);
+    // const placeBlock = useGameState(state => state.placeBlock);
     const blockData = useGameState(state => state.data.blocks);
-    const stacks = useGameState(state => state.stacks);
+    // const stacks = useGameState(state => state.stacks);
+    const newBlock = useNewBlock();
 
-    function placeEntity() {
+    async function placeEntity() {
         // TODO: Place ground-like blocks on empty stack positions near 0,0,0
         // TODO: Find first empty/stackable space near 0,0,0
         let location = new Vector3(0, 0, 0);
-        if (stacks.length <= 0) {
-            // TODO: Only allow placing ground-like blocks in empty garden
-            return;
-        }
+        // if (stacks.length <= 0) {
+        //     // TODO: Only allow placing ground-like blocks in empty garden
+        //     return;
+        // }
 
         // let validPosition = false;
         // while (!validPosition) {
@@ -65,15 +67,17 @@ function EntityItem({ name }: HudItemEntity) {
         //     }
         // }
 
-        placeBlock(location, { id: uuidv4(), name: name, rotation: Math.floor(Math.random() * 4) })
+        // Buy block and get id
+        await newBlock.mutateAsync({
+            blockName: name,
+            position: [0, 0]
+        });
+
+        // placeBlock(location, { id, name: name, rotation: Math.floor(Math.random() * 4) })
     }
 
     const block = blockData.find(block => block.information.name === name);
     if (!block) return null;
-
-    const price = (block as any)['price'] as {
-        sunflower: number
-    } | undefined;
 
     return (
         <Popper
@@ -86,11 +90,11 @@ function EntityItem({ name }: HudItemEntity) {
                     aria-label={block.information.label}
                     size='lg'
                     className="size-14"
-                    onMouseEnter={() => setOpen(true)}>
+                    variant="plain">
                     <BlockImage name={name} label={block.information.label} />
                 </IconButton>
             )}>
-            <div className="absolute size-0 -bottom-[11px] left-0 right-0 mx-auto [border-left:8px_solid_transparent] [border-right:8px_solid_transparent] [border-bottom:0] [border-top:12px_solid_hsl(var(--card))]" />
+            <div className="hidden md:block absolute size-0 -bottom-[11px] left-0 right-0 mx-auto [border-left:8px_solid_transparent] [border-right:8px_solid_transparent] [border-bottom:0] [border-top:12px_solid_hsl(var(--border))]" />
             <Stack>
                 <Row spacing={2} alignItems="start">
                     <BlockImage name={name} label={block.information.label} className="size-24 border rounded-lg" />
@@ -102,9 +106,10 @@ function EntityItem({ name }: HudItemEntity) {
                         <Button
                             className="justify-between"
                             onClick={placeEntity}
+                            disabled={!block.prices.sunflowers}
                             endDecorator={(
-                                <Row className={cx("rounded-full p-0.5 gap border bg-muted w-fit pr-2", !price && "pl-2")}>
-                                    {price ? `🌻 ${price.sunflower}` : 'Besplatno'}
+                                <Row className={cx("rounded-full p-0.5 gap border bg-muted w-fit pr-2", !block.prices.sunflowers && "pl-2")}>
+                                    {block.prices.sunflowers ? `🌻 ${block.prices.sunflowers}` : 'Nedostupno'}
                                 </Row>
                             )}>
                             <span className="self-center">Postavi</span>
@@ -127,7 +132,7 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
             className="w-fit overflow-hidden"
             sideOffset={12}
             trigger={(
-                <IconButton aria-label={label} size='lg' className="size-14">
+                <IconButton aria-label={label} size='lg' className="size-14" variant="plain">
                     <img
                         src={imageSrc}
                         alt={label}
@@ -136,7 +141,7 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                     <ChevronUp className="absolute top-0.5 text-muted-foreground" />
                 </IconButton>
             )}>
-            <div className="absolute transition-all size-0 -bottom-[11px] left-0 right-0 mx-auto [border-left:8px_solid_transparent] [border-right:8px_solid_transparent] [border-bottom:0] [border-top:12px_solid_hsl(var(--card))]" />
+            <div className="hidden md:block absolute transition-all size-0 -bottom-[11px] left-0 right-0 mx-auto [border-left:8px_solid_transparent] [border-right:8px_solid_transparent] [border-bottom:0] [border-top:12px_solid_hsl(var(--border))]" />
             <Stack spacing={1}>
                 <div className="bg-muted p-2 border-b">
                     <Typography semiBold level="body2">
@@ -187,8 +192,8 @@ export function ItemsHud() {
         <HudCard
             open
             position="bottom"
-            className="bottom-0 left-0 right-0 mx-auto md:px-1 w-min">
-            <Row spacing={0.5} className="md:mx-1">
+            className="static md:px-1">
+            <Row spacing={0.5} className="md:px-1" justifyContent="center">
                 {items.map((item, index) => {
                     if (item.type === 'separator') {
                         return <Divider orientation="vertical" className="h-8 mx-2" key={index} />

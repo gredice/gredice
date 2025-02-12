@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { describeRoute } from 'hono-openapi';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
+import { getEvents, knownEventTypes } from '../../../../../packages/storage/src/repositories/eventsRepo';
 
 export type BlockData = {
     id: string,
@@ -55,23 +56,30 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { gardenId } = context.req.valid('param');
             const gardenIdNumber = parseInt(gardenId);
             if (isNaN(gardenIdNumber)) {
-                return context.newResponse('Invalid garden ID', { status: 400 });
+                return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
             const { accountId } = context.get('authContext');
             const garden = await getGarden(gardenIdNumber);
             if (!garden || garden.accountId !== accountId) {
-                return context.notFound();
+                return context.json({ error: 'Garden not found' }, 404);
             }
 
             // Stacks: group by x then by y
-            const stacks: Record<string, Record<string, string[]>> = garden.stacks.reduce((acc, stack) => {
+            const blockPlacements = (await getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 1000)).map(event => ({
+                ...event,
+                data: event.data as { id: string, name: string }
+            }));
+            const stacks: Record<string, Record<string, { id: string, name: string }[]>> = garden.stacks.reduce((acc, stack) => {
                 if (!acc[stack.positionX]) {
                     acc[stack.positionX] = {};
                 }
-                acc[stack.positionX][stack.positionY] = stack.blocks;
+                acc[stack.positionX][stack.positionY] = stack.blocks.map(blockId => ({
+                    id: blockId,
+                    name: blockPlacements.find(event => event.data.id === blockId)?.data.name ?? 'unknown'
+                }));
                 return acc;
-            }, {} as Record<string, Record<string, string[]>>);
+            }, {} as Record<string, Record<string, { id: string, name: string }[]>>);
 
             return context.json({
                 id: garden.id,
@@ -148,12 +156,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { accountId } = context.get('authContext');
             const garden = await getGarden(gardenIdNumber);
             if (!garden || garden.accountId !== accountId) {
-                return context.notFound();
+                return context.json({ error: 'Garden not found' }, 404);
             }
 
             const operations = context.req.valid('json');
             if (operations.length === 0) {
-                return context.newResponse('No operations provided', { status: 400 });
+                return context.json({ error: 'No operations provided' }, 400);
             }
 
             /**
@@ -177,14 +185,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
 
                 let index: number | undefined;
+                let append = false;
                 if (pathParts.length === 4) {
-                    index = parseInt(pathParts[3], 10);
-                    if (Number.isNaN(index)) {
-                        throw new Error('Invalid path: ' + path);
+                    if (pathParts[3] === '-') {
+                        append = true;
+                    } else {
+                        index = parseInt(pathParts[3], 10);
+                        if (Number.isNaN(index)) {
+                            throw new Error('Invalid path: ' + path);
+                        }
                     }
                 }
 
-                return { x, y, index };
+                return { x, y, index, append };
             }
 
             async function getStack(path: string) {
@@ -201,26 +214,51 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
 
                 if (stackPosition.index === undefined) {
-                    if (!Array.isArray(value)) {
-                        return context.newResponse('Value must be an array', { status: 400 });
-                    }
-                    if (value.length > 0) {
+                    if (Array.isArray(value)) {
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: value
+                            blocks: stackPosition.append
+                                ? [...existing?.blocks ?? [], ...value]
+                                : value
+                        });
+                    } else {
+                        await updateGardenStack(gardenIdNumber, {
+                            x: stackPosition.x,
+                            y: stackPosition.y,
+                            blocks: stackPosition.append
+                                ? [...existing?.blocks ?? [], value]
+                                : [value]
                         });
                     }
                 } else {
-                    if (Array.isArray(value) || typeof value !== 'string') {
-                        return context.newResponse('Value must be a string', { status: 400 });
+                    if (!existing ||
+                        (existing?.blocks.length ?? 0) < stackPosition.index ||
+                        stackPosition.index < 0) {
+                        return context.json({ error: `Index out of bounds: ${stackPosition.index} in collection of ${existing?.blocks.length ?? 0}` }, 400);
                     }
 
-                    await updateGardenStack(gardenIdNumber, {
-                        x: stackPosition.x,
-                        y: stackPosition.y,
-                        blocks: [value]
-                    });
+                    if (Array.isArray(value)) {
+                        await updateGardenStack(gardenIdNumber, {
+                            x: stackPosition.x,
+                            y: stackPosition.y,
+                            blocks: [
+                                ...existing.blocks.slice(0, stackPosition.index),
+                                ...value,
+                                ...existing.blocks.slice(stackPosition.index)
+                            ]
+                        });
+                    } else {
+                        await updateGardenStack(gardenIdNumber, {
+                            x: stackPosition.x,
+                            y: stackPosition.y,
+                            blocks: [
+                                ...existing.blocks.slice(0, stackPosition.index),
+                                value,
+                                ...existing.blocks.slice(stackPosition.index)
+                            ]
+                        });
+                    }
                 }
             }
 
@@ -231,7 +269,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 } else {
                     const stack = await getStack(path);
                     if (!stack) {
-                        return context.newResponse(`Stack ${path} not found`, { status: 400 });
+                        return context.json({ error: `Stack ${path} not found` }, 400);
                     }
 
                     stack.blocks.splice(stackPosition.index, 1);
@@ -248,25 +286,25 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     const { path, value } = operation;
                     const stack = await getStack(path);
                     if (!stack) {
-                        return context.newResponse(`Stack ${path} not found`, { status: 400 });
+                        return context.json({ error: `Stack ${path} not found` }, 400);
                     }
 
                     const stackPosition = parsePath(path);
                     if (stackPosition.index === undefined) {
                         if (!Array.isArray(value)) {
-                            return context.newResponse('Test value must be an array', { status: 400 });
+                            return context.json({ error: 'Test value must be an array' }, 400);
                         }
 
                         if (JSON.stringify(stack.blocks) !== JSON.stringify(value)) {
-                            return context.newResponse(`Test failed: ${path} = ${JSON.stringify(value)}`, { status: 400 });
+                            return context.json({ error: `Test failed: ${path} = ${JSON.stringify(value)}` }, 400);
                         }
                     } else {
                         if (Array.isArray(value)) {
-                            return context.newResponse('Test value must be a string', { status: 400 });
+                            return context.json({ error: 'Test value must be a string' }, 400);
                         }
 
                         if (stack.blocks[stackPosition.index] !== value) {
-                            return context.newResponse(`Test failed: ${path} = ${JSON.stringify(value)}`, { status: 400 });
+                            return context.json({ error: `Test failed: ${path} = ${JSON.stringify(value)}` }, 400);
                         }
                     }
                 } else if (operation.op === 'add') {
@@ -287,7 +325,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
                     if (stackPosition.index === undefined) {
                         if (!Array.isArray(value)) {
-                            return context.newResponse('Test value must be an array', { status: 400 });
+                            return context.json({ error: 'Test value must be an array' }, 400);
                         }
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
@@ -296,12 +334,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         });
                     } else {
                         if (Array.isArray(value) || typeof value !== 'string') {
-                            return context.newResponse('Test value must be a string', { status: 400 });
+                            return context.json({ error: 'Test value must be a string' }, 400);
                         }
 
                         const stack = await getStack(path);
                         if (!stack) {
-                            return context.newResponse(`Stack ${path} not found`, { status: 400 });
+                            return context.json({ error: `Stack ${path} not found` }, 400);
                         }
 
                         stack.blocks[stackPosition.index] = value;
@@ -316,7 +354,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     const fromPosition = parsePath(from);
                     const fromStack = await getStack(from);
                     if (!fromStack) {
-                        return context.newResponse(`Stack ${from} not found`, { status: 400 });
+                        return context.json({ error: `Stack ${from} not found` }, 400);
                     }
                     const fromValue = fromPosition.index === undefined
                         ? fromStack.blocks
@@ -334,7 +372,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     const { path, from } = operation;
                     const fromStack = await getStack(from);
                     if (!fromStack) {
-                        return context.newResponse(`Stack ${from} not found`, { status: 400 });
+                        return context.json({ error: `Stack ${from} not found` }, 400);
                     }
                     const fromValue = fromStack.blocks;
 
@@ -343,11 +381,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         return resp;
                     }
                 } else {
-                    return context.newResponse('Operation not implemented', { status: 501 });
+                    return context.json({ error: 'Operation not implemented' }, 501);
                 }
             }
 
-            return context.newResponse(null, { status: 200 });
+            return context.json(null, 200);
         })
     .post(
         '/:gardenId/blocks',
@@ -371,25 +409,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { gardenId } = context.req.valid('param');
             const gardenIdNumber = parseInt(gardenId);
             if (isNaN(gardenIdNumber)) {
-                return context.newResponse('Invalid garden ID', { status: 400 });
+                return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
             // Check garden exists and is owned by user
             const { accountId } = context.get('authContext');
             const garden = await getGarden(gardenIdNumber);
             if (!garden || garden.accountId !== accountId) {
-                return context.notFound();
+                return context.json({
+                    error: 'Garden not found'
+                }, 404);
             }
+
+            const { blockName } = context.req.valid('json');
 
             // Retrieve block information (cost)
             const entities = await getEntitiesFormatted('block') as BlockData[];
-            const block = entities.find(block => block.id === 'block');
+            const block = entities.find(block => block.information.name === blockName);
             if (!block) {
-                return context.newResponse('Requested block not found', { status: 400 });
+                return context.json({ error: 'Requested block not found' }, 400);
             }
             const cost = block.prices.sunflowers ?? 0;
             if (cost <= 0) {
-                return context.newResponse('Requested block not for sale', { status: 400 });
+                return context.json({ error: 'Requested block not for sale' }, 400);
             }
 
             // Spend sunflowers

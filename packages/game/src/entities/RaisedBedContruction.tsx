@@ -7,7 +7,7 @@ import { models } from "../data/models";
 import { Edges } from "@react-three/drei";
 import { useHoveredBlockStore } from "../controls/SelectableGroup";
 
-function HoverOutline({ hovered }: { hovered?: boolean }) {
+export function HoverOutline({ hovered }: { hovered?: boolean }) {
     if (!hovered) return null;
 
     return (

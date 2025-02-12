@@ -43,7 +43,6 @@ export function DebugHud() {
         }
     }
     useControls('Entities', entitiesButtons);
-
     const { timeOfDay } = useControls('Environment', {
         timeOfDay: { value: (gameState.currentTime.getHours() * 60 * 60 + gameState.currentTime.getMinutes() * 60 + gameState.currentTime.getSeconds()) / (24 * 60 * 60), min: 0, max: 1 },
     });

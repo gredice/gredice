@@ -2,6 +2,7 @@ import 'server-only';
 import { accounts, accountUsers, storage } from "..";
 import { eq } from 'drizzle-orm';
 import { createEvent, getEvents, knownEvents, knownEventTypes } from './eventsRepo';
+import { orderBy } from '@signalco/js';
 
 export function getAccounts() {
     return storage.query.accounts.findMany();
@@ -25,20 +26,22 @@ export function getAccountUsers(accountId: string) {
 export async function getSunflowers(accountId: string) {
     // Calculate sunflowers based on events
     let currentSunflowers = 0;
-    const earnEvents = await getEvents(knownEventTypes.accounts.earnSunflowers, accountId);
-    const spendEvents = await getEvents(knownEventTypes.accounts.spendSunflowers, accountId);
-    for (const event of earnEvents) {
-        currentSunflowers += (event.data as any).amount ?? 0;
-    }
-    for (const event of spendEvents) {
-        currentSunflowers -= (event.data as any).amount ?? 0;
+    const events = await getEvents(
+        [knownEventTypes.accounts.earnSunflowers, knownEventTypes.accounts.spendSunflowers],
+        accountId);
+    for (const event of events) {
+        currentSunflowers += event.type === knownEventTypes.accounts.spendSunflowers
+            ? -Number((event.data as any).amount ?? 0)
+            : Number((event.data as any).amount ?? 0);
     }
     return currentSunflowers;
 }
 
 export async function getSunflowersHistory(accountId: string, offset: number = 0, limit: number = 10) {
-    const events = await getEvents(knownEventTypes.accounts.earnSunflowers, accountId, offset, limit);
-    return events.map((event) => ({
+    const earnEvents = await getEvents(
+        [knownEventTypes.accounts.earnSunflowers, knownEventTypes.accounts.spendSunflowers],
+        accountId, offset, limit);
+    return earnEvents.map((event) => ({
         ...event,
         amount: Number((event.data as any).amount),
         reason: (event.data as any).reason,

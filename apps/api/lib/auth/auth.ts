@@ -50,7 +50,8 @@ export const { withAuth, createJwt, auth } = initRbac(initAuth({
         jwtSecretFactory,
     },
     cookie: {
-        name: 'gredice_session'
+        name: 'gredice_session',
+        expiry: 24 * 60 * 60 * 1000,
     },
     getUser
 }));

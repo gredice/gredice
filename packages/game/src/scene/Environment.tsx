@@ -126,18 +126,18 @@ export function Environment({ location, noBackground }: { location: Garden['loca
     const fogNear = 170 - fog * 30;
     // TODO: Apply fog to background (make a gradient)
 
-    // TODO: Handle rain
-    const rain = weather?.rainy ?? 0;
+    // // TODO: Handle rain
+    // const rain = weather?.rainy ?? 0;
 
-    // TODO: Handle snow
-    const snow = weather?.snowy ?? 0;
+    // // TODO: Handle snow
+    // const snow = weather?.snowy ?? 0;
 
-    // TODO: Handle wind
-    const windSpeed = weather?.windSpeed ?? 0;
-    const windDirection = weather?.windDirection;
+    // // TODO: Handle wind
+    // const windSpeed = weather?.windSpeed ?? 0;
+    // const windDirection = weather?.windDirection;
 
-    // TODO: Handle clouds
-    const clouds = weather?.cloudy ?? 0;
+    // // TODO: Handle clouds
+    // const clouds = weather?.cloudy ?? 0;
 
     return (
         <>

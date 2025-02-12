@@ -9,6 +9,7 @@ import { models } from "../data/models";
 export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
+    // const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
 
     const variantResolved = 1;
 
@@ -30,7 +31,9 @@ export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
                 receiveShadow
                 geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}
                 material={materials[`Material.Grass`]}
-            />
+            >
+                {/* <HoverOutline hovered={hovered} /> */}
+            </mesh>
             {/* @ts-ignore */}
         </animated.group>
     );
