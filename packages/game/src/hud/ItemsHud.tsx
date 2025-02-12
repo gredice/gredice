@@ -12,8 +12,9 @@ import { Button } from "@signalco/ui-primitives/Button";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Link } from "@signalco/ui-primitives/Link";
 import { cx } from "@signalco/ui-primitives/cx";
-import { v4 as uuidv4 } from 'uuid';
 import { useNewBlock } from "../hooks/useNewBlock";
+import { Stack as GardenStack } from "../types/Stack";
+import { BlockData } from "../../@types/BlockData";
 
 type HudItemEntity = {
     type: 'entity',
@@ -39,41 +40,100 @@ function BlockImage({ name, label, ...rest }: HTMLAttributes<HTMLImageElement> &
     )
 }
 
+/**
+ * Get the position in a spiral
+ * @param step The step in the spiral
+ * @returns The position in the spiral
+ * @see https://stackoverflow.com/a/19287714/563228
+ */
+function spiral(step: number): [number, number] {
+    // given n an index in the squared spiral
+    // p the sum of point in inner square
+    // a the position on the current square
+    // n = p + a
+
+    var r = Math.floor((Math.sqrt(step + 1) - 1) / 2) + 1;
+
+    // compute radius : inverse arithmetic sum of 8+16+24+...=
+    var p = (8 * r * (r - 1)) / 2;
+    // compute total point on radius -1 : arithmetic sum of 8+16+24+...
+
+    var en = r * 2;
+    // points by face
+
+    var a = (1 + step - p) % (r * 8);
+    // compute de position and shift it so the first is (-r,-r) but (-r+1,-r)
+    // so square can connect
+
+    var pos = [0, 0, r];
+    switch (Math.floor(a / (r * 2))) {
+        // find the face : 0 top, 1 right, 2, bottom, 3 left
+        case 0:
+            {
+                pos[0] = a - r;
+                pos[1] = -r;
+            }
+            break;
+        case 1:
+            {
+                pos[0] = r;
+                pos[1] = (a % en) - r;
+
+            }
+            break;
+        case 2:
+            {
+                pos[0] = r - (a % en);
+                pos[1] = r;
+            }
+            break;
+        case 3:
+            {
+                pos[0] = -r;
+                pos[1] = r - (a % en);
+            }
+            break;
+    }
+
+    return [pos[0], pos[1]];
+}
+
+function isValidPosition(blockData: BlockData[], stacks: GardenStack[], position: [number, number]) {
+    const stack = stacks.find(stack => stack.position.x === position[0] && stack.position.z === position[1]);
+    if (!stack) return true;
+
+    const lastBlock = stack.blocks.at(-1);
+    if (!lastBlock) return true;
+
+    const data = blockData.find(data => data.information.name === lastBlock.name);
+    if (!data) return false;
+
+    return data.attributes.stackable ?? false;
+}
+
+function findEmptyPosition(blockData: BlockData[], stacks: GardenStack[]) {
+    let current: [number, number] = [0, 0];
+    let spiralStep = 0;
+    while (!isValidPosition(blockData, stacks, current)) {
+        current = spiral(spiralStep++);
+    }
+    return current;
+}
+
 function EntityItem({ name }: HudItemEntity) {
     const [open, setOpen] = useState(false);
-    // const placeBlock = useGameState(state => state.placeBlock);
     const blockData = useGameState(state => state.data.blocks);
-    // const stacks = useGameState(state => state.stacks);
+    const stacks = useGameState(state => state.stacks);
     const newBlock = useNewBlock();
 
     async function placeEntity() {
-        // TODO: Place ground-like blocks on empty stack positions near 0,0,0
-        // TODO: Find first empty/stackable space near 0,0,0
-        let location = new Vector3(0, 0, 0);
-        // if (stacks.length <= 0) {
-        //     // TODO: Only allow placing ground-like blocks in empty garden
-        //     return;
-        // }
-
-        // let validPosition = false;
-        // while (!validPosition) {
-        //     const stack = stacks[Math.floor(Math.random() * stacks.length)];
-        //     if (stack.blocks.length <= 0) {
-        //         location = stack.position;
-        //         validPosition = true;
-        //     } else {
-        //         location = stack.position.clone().add(new Vector3(Math.random() * 2 - 1, 0, Math.random() * 2 - 1));
-        //         validPosition = true;
-        //     }
-        // }
+        const position = findEmptyPosition(blockData, stacks);
 
         // Buy block and get id
         await newBlock.mutateAsync({
             blockName: name,
-            position: [0, 0]
+            position
         });
-
-        // placeBlock(location, { id, name: name, rotation: Math.floor(Math.random() * 4) })
     }
 
     const block = blockData.find(block => block.information.name === name);
