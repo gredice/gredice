@@ -4,9 +4,10 @@ import { withAxiom } from 'next-axiom';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    // experimental: {
-    //     reactCompiler: true,
-    // },
+    reactStrictMode: true,
+    experimental: {
+        reactCompiler: true,
+    },
     productionBrowserSourceMaps: true,
     images: {
         remotePatterns: [
