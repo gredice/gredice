@@ -107,7 +107,7 @@ async function AccountGardensCard({ accountId }: { accountId: string }) {
     );
 }
 
-export async function AccountSunflowersCard({ accountId }: { accountId: string }) {
+async function AccountSunflowersCard({ accountId }: { accountId: string }) {
     const currentSunflowers = await getSunflowers(accountId);
     const history = await getSunflowersHistory(accountId, 0, 10000);
 
