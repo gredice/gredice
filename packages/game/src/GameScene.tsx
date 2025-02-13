@@ -1,6 +1,6 @@
 'use client';
 
-import { Vector3 } from 'three';
+import { Camera, Matrix4, Quaternion, Vector3 } from 'three';
 import { OrbitControls } from '@react-three/drei';
 import { HTMLAttributes, useEffect, useRef } from 'react';
 import { Environment } from './scene/Environment';
@@ -203,13 +203,25 @@ function CurrentTimeManager({ freezeTime }: { freezeTime?: Date }) {
 
 function beginPanCamera(direction: [number, number]): ReturnType<typeof setInterval> | undefined {
     const orbitControls = useGameState.getState().orbitControls;
-    if (!orbitControls) return;
+    const camera = useGameState.getState().camera;
+    if (!orbitControls || !camera) return;
 
     // TODO: Use frame loop instead of setInterval
-    const pan = new Vector3(direction[0], 0, direction[1]).divideScalar(5);
+    const dir = new Vector3();
+    const up = new Vector3(0, 1, 0);
     const intervalToken = setInterval(() => {
-        orbitControls.target.add(pan);
+        camera.getWorldDirection(dir);
+        const vel = dir
+            .projectOnPlane(up)
+            .applyAxisAngle(up, Math.atan2(direction[0], direction[1]))
+            .normalize()
+            .multiplyScalar(0.2);
+
+        camera.position.add(vel);
+        orbitControls.target.add(vel);
+        orbitControls.update();
     }, 1000 / 60);
+
     return intervalToken;
 }
 
@@ -232,10 +244,10 @@ const useKeyboardControls = () => {
     }
 
     const panKeys: Record<string, [number, number]> = {
-        ArrowUp: [-1, -1],
-        ArrowDown: [1, 1],
-        ArrowLeft: [-1, 1],
-        ArrowRight: [1, -1],
+        ArrowUp: [0, 1],
+        ArrowDown: [0, -1],
+        ArrowLeft: [1, 0],
+        ArrowRight: [-1, 0],
     }
 
     const rotateValueByKey = (key: string) => rotateKeys[key];

@@ -38,8 +38,8 @@ export async function Nav() {
             <Stack spacing={1}>
                 <ListHeader header="Administracija" />
                 <List>
-                    <NavItem href={KnownPages.Users} label="Korisnici" icon={<User className="size-5" />} />
                     <NavItem href={KnownPages.Accounts} label="Računi" icon={<Landmark className="size-5" />} />
+                    <NavItem href={KnownPages.Users} label="Korisnici" icon={<User className="size-5" />} />
                     <NavItem href={KnownPages.Gardens} label="Vrtovi" icon={<Fence className="size-5" />} />
                 </List>
             </Stack>

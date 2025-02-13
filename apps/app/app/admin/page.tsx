@@ -1,4 +1,4 @@
-import { getAccounts, getEntitiesRaw, getEntityTypes, getGardens, getUsers } from "@gredice/storage";
+import { getAnalyticsTotals, getEntitiesRaw, getEntityTypes } from "@gredice/storage";
 import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
@@ -41,12 +41,14 @@ async function Dashboard() {
             count: entities.length
         };
     }));
-    const users = await getUsers();
-    const usersCount = users.length;
-    const accounts = await getAccounts();
-    const accountsCount = accounts.length;
-    const gardens = await getGardens();
-    const gardensCount = gardens.length
+    const {
+        users: usersCount,
+        accounts: accountsCount,
+        gardens: gardensCount,
+        blocks: blocksCount,
+        events: eventsCount,
+        farms: farmsCount
+    } = await getAnalyticsTotals();
 
     return (
         <Stack spacing={1}>
@@ -61,9 +63,12 @@ async function Dashboard() {
             <Stack spacing={1}>
                 <DashboardDivider>Računi i korisnici</DashboardDivider>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    <FactCard header="Korisnici" value={usersCount} href={KnownPages.Users} />
                     <FactCard header="Računi" value={accountsCount} href={KnownPages.Accounts} />
+                    <FactCard header="Korisnici" value={usersCount} href={KnownPages.Users} />
+                    <FactCard header="Farme" value={farmsCount} />
                     <FactCard header="Vrtovi" value={gardensCount} href={KnownPages.Gardens} />
+                    <FactCard header="Blokovi" value={blocksCount} />
+                    <FactCard header="Događaji" value={eventsCount} />
                 </div>
             </Stack>
         </Stack>
