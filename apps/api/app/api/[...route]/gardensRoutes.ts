@@ -1,8 +1,7 @@
 import { Hono } from 'hono';
-import { createGardenBlock, createGardenStack, deleteGardenStack, getAccountGardens, getEntitiesFormatted, getGarden, getGardenStack, spendSunflowers, updateGardenStack } from '@gredice/storage';
+import { createGardenBlock, createGardenStack, deleteGardenStack, getAccountGardens, getEntitiesFormatted, getGarden, getGardenBlocks, getGardenStack, spendSunflowers, updateGardenBlock, updateGardenStack } from '@gredice/storage';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from 'zod';
-import { randomUUID } from 'crypto';
 import { describeRoute } from 'hono-openapi';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import { getEvents, knownEventTypes } from '../../../../../packages/storage/src/repositories/eventsRepo';
@@ -66,20 +65,23 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Stacks: group by x then by y
-            const blockPlacements = (await getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 1000)).map(event => ({
+            const blockPlaceEvents = (await getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 1000)).map(event => ({
                 ...event,
                 data: event.data as { id: string, name: string }
             }));
-            const stacks: Record<string, Record<string, { id: string, name: string }[]>> = garden.stacks.reduce((acc, stack) => {
+            const blocks = await getGardenBlocks(garden.id);
+            const stacks = garden.stacks.reduce((acc, stack) => {
                 if (!acc[stack.positionX]) {
                     acc[stack.positionX] = {};
                 }
                 acc[stack.positionX][stack.positionY] = stack.blocks.map(blockId => ({
                     id: blockId,
-                    name: blockPlacements.find(event => event.data.id === blockId)?.data.name ?? 'unknown'
+                    name: blockPlaceEvents.find(event => event.data.id === blockId)?.data.name ?? 'unknown',
+                    rotation: blocks.find(block => block.id === blockId)?.rotation ?? 0,
+                    variant: blocks.find(block => block.id === blockId)?.variant
                 }));
                 return acc;
-            }, {} as Record<string, Record<string, { id: string, name: string }[]>>);
+            }, {} as Record<string, Record<string, { id: string, name: string, rotation?: number | null, variant?: number | null }[]>>);
 
             return context.json({
                 id: garden.id,
@@ -438,10 +440,55 @@ const app = new Hono<{ Variables: AuthVariables }>()
             await spendSunflowers(accountId, cost, 'block:' + block.information.name);
 
             // Create block
-            const blockId = randomUUID();
-            await createGardenBlock(gardenIdNumber, blockId, block.information.name);
+            const blockId = await createGardenBlock(gardenIdNumber, block.information.name);
 
             return context.json({ id: blockId });
+        })
+    .put(
+        '/:gardenId/blocks/:blockId',
+        describeRoute({
+            description: 'Update a block in a garden',
+        }),
+        zValidator(
+            "param",
+            z.object({
+                gardenId: z.string(),
+                blockId: z.string(),
+            }),
+        ),
+        zValidator(
+            "json",
+            z.object({
+                rotation: z.number().nullable().optional(),
+                variant: z.number().nullable().optional(),
+            })
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, blockId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId);
+            if (isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            // Check garden exists and is owned by user
+            const { accountId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({
+                    error: 'Garden not found'
+                }, 404);
+            }
+
+            const { rotation, variant } = context.req.valid('json');
+
+            await updateGardenBlock({
+                id: blockId,
+                rotation,
+                variant
+            });
+
+            return context.json(null, 200);
         });
 
 export default app;

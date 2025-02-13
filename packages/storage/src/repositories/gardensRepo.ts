@@ -1,8 +1,9 @@
 import 'server-only';
 import { and, eq } from "drizzle-orm";
 import { storage } from "..";
-import { gardens, gardenStacks, InsertGarden, UpdateGarden, UpdateGardenStack } from "../schema/gardenSchema";
+import { gardenBlocks, gardens, gardenStacks, InsertGarden, UpdateGarden, UpdateGardenBlock, UpdateGardenStack } from "../schema/gardenSchema";
 import { createEvent, knownEvents } from './eventsRepo';
+import { v4 as uuidV4 } from 'uuid';
 
 export async function createGarden(garden: InsertGarden) {
     const createdGarden = (await storage
@@ -56,13 +57,38 @@ export async function deleteGarden(gardenId: number) {
     await createEvent(knownEvents.gardens.deletedV1(gardenId.toString()));
 }
 
-export async function createGardenBlock(gardenId: number, blockId: string, blockName: string) {
+export async function getGardenBlocks(gardenId: number) {
+    return await storage.query.gardenBlocks.findMany({
+        where: and(eq(gardenBlocks.gardenId, gardenId), eq(gardenBlocks.isDeleted, false))
+    });
+}
+
+export async function updateGardenBlock({ id, ...values }: UpdateGardenBlock) {
+    await storage
+        .update(gardenBlocks)
+        .set({
+            ...values
+        })
+        .where(eq(gardenBlocks.id, id));
+}
+
+export async function createGardenBlock(gardenId: number, blockName: string) {
     const garden = await getGarden(gardenId);
     if (!garden) {
         throw new Error('Garden not found');
     }
 
+    const blockId = uuidV4();
+
+    await storage.insert(gardenBlocks).values({
+        id: blockId,
+        gardenId,
+        name: blockName
+    });
+
     await createEvent(knownEvents.gardens.blockPlacedV1(gardenId.toString(), { id: blockId, name: blockName }));
+
+    return blockId;
 }
 
 export async function getGardenStacks(gardenId: number) {

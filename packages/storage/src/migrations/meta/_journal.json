@@ -169,6 +169,13 @@
       "when": 1739297839624,
       "tag": "0023_curly_blue_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1739465398296,
+      "tag": "0024_flaky_rick_jones",
+      "breakpoints": true
     }
   ]
 }

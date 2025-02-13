@@ -5,5 +5,5 @@ export type EntityInstanceProps = {
     stack: Stack,
     block: Block,
     rotation: number
-    variant?: number
+    variant?: number | null
 }
