@@ -12,8 +12,8 @@ export function Bucket({ stack, block, rotation }: EntityInstanceProps) {
     return (
         /* @ts-ignore */
         <animated.group
-            position={stack.position.clone().setY(stackHeight(stack, block) + 0.33)}
-            scale={[0.4, 0.33, 0.4]}
+            position={stack.position.clone().setY(stackHeight(stack, block))}
+            scale={[0.3, 0.25, 0.3]}
             rotation={animatedRotation as unknown as [number, number, number]}>
             <mesh
                 castShadow

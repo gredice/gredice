@@ -31,7 +31,7 @@ async function getUser(id: string): Promise<User | null> {
 export const { withAuth, createJwt, setCookie, auth, clearCookie } = initRbac(initAuth({
     jwt: {
         namespace: 'gredice',
-        issuer: 'app',
+        issuer: 'api',
         jwtSecretFactory,
     },
     cookie: {

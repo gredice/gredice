@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { Stack } from "./types/Stack";
 import type { Block } from "./types/Block";
-import type { Vector3 } from "three";
+import type { Camera, Vector3 } from "three";
 import { getStack } from "./utils/getStack";
 import { BlockData } from "../@types/BlockData";
 import { audioMixer } from "./audio/audioMixer";
@@ -64,6 +64,8 @@ export type GameState = {
     },
     orbitControls: OrbitControls | null,
     setOrbitControls: (ref: OrbitControls | null) => void,
+    camera: Camera | null,
+    setCamera: (camera: Camera) => void,
     worldRotation: number,
     setWorldRotation: (worldRotation: number) => void,
     isDragging: boolean,
@@ -102,6 +104,8 @@ export const useGameState = create<GameState>((set) => ({
     orbitControls: null,
     isDragging: false,
     setOrbitControls: (ref) => set({ orbitControls: ref }),
+    camera: null,
+    setCamera: (camera) => set({ camera }),
     worldRotation: 0,
     setWorldRotation: (worldRotation) => {
         return set((state) => {
