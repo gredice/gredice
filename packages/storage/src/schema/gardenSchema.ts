@@ -59,3 +59,28 @@ export type UpdateGardenStack =
     Partial<Omit<typeof gardenStacks.$inferInsert, 'id' | 'gardenId' | 'positionX' | 'positionY' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
     Pick<typeof gardenStacks.$inferSelect, 'id'>;
 export type SelectGardenStack = typeof gardenStacks.$inferSelect;
+
+export const gardenBlocks = pgTable('garden_blocks', {
+    id: text('id').primaryKey(),
+    gardenId: integer('garden_id').notNull(),
+    name: text('name').notNull(),
+    rotation: integer('rotation'),
+    variant: integer('variant'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
+    isDeleted: boolean('is_deleted').notNull().default(false),
+});
+
+export const gardenBlockRelations = relations(gardenBlocks, ({ one }) => ({
+    garden: one(gardens, {
+        fields: [gardenBlocks.gardenId],
+        references: [gardens.id],
+        relationName: 'gardenBlocks',
+    }),
+}));
+
+export type InsertGardenBlock = typeof gardenBlocks.$inferInsert;
+export type UpdateGardenBlock =
+    Partial<Omit<typeof gardenBlocks.$inferInsert, 'id' | 'gardenId' | 'name' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
+    Pick<typeof gardenBlocks.$inferSelect, 'id'>;
+export type SelectGardenBlock = typeof gardenBlocks.$inferSelect;

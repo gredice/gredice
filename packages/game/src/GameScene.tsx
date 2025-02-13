@@ -108,8 +108,8 @@ export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
                             return {
                                 id: block.id,
                                 name: block.name,
-                                rotation: 0, // TODO: Retrieve block rotation
-                                variant: 1 // TODO: Retrieve block variant
+                                rotation: block.rotation ?? 0,
+                                variant: block.variant
                             }
                         }) : []
                     });

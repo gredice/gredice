@@ -180,16 +180,27 @@ export const useGameState = create<GameState>((set) => ({
             ]
         });
     },
-    rotateBlock: (stackPosition, blockOrIndex, rotation) => set((state) => {
+    rotateBlock: async (stackPosition, blockOrIndex, rotation) => {
         const stack = getStack(stackPosition);
         const block = typeof blockOrIndex === 'number' ? stack?.blocks[blockOrIndex] : blockOrIndex;
         if (!block) {
-            return state;
+            return;
         }
 
-        // TODO: Persist block rotation
+        const newRotation = rotation ?? (block.rotation + 1);
+        set((state) => {
+            block.rotation = newRotation;
+            return { stacks: [...state.stacks] };
+        });
 
-        block.rotation = rotation ?? (block.rotation + 1);
-        return { stacks: [...state.stacks] };
-    })
+        await client.api.gardens[":gardenId"].blocks[":blockId"].$put({
+            param: {
+                gardenId: useGameState.getState().gardenId ?? '',
+                blockId: block.id
+            },
+            json: {
+                rotation: newRotation
+            }
+        });
+    }
 }));
