@@ -44,14 +44,16 @@ export async function clearCookie(context: Context) {
 }
 
 export const { withAuth, createJwt, auth } = initRbac(initAuth({
+    security: {
+        expiry: 7 * 24 * 60 * 60 * 1000,
+    },
     jwt: {
         namespace: 'gredice',
-        issuer: 'app',
+        issuer: 'api',
         jwtSecretFactory,
     },
     cookie: {
         name: 'gredice_session',
-        expiry: 24 * 60 * 60 * 1000,
     },
     getUser
 }));
