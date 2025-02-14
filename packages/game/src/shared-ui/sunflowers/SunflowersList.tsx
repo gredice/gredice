@@ -10,11 +10,14 @@ import { BlockImage } from "../BlockImage";
 
 function sunflowerReasonToDescription(reason: string) {
     if (reason === 'registration') {
-        return { icon: <span className="text-2xl size-10">🎉</span>, label: 'Nagrada za registraciju' };
+        return { icon: <span className="text-4xl size-10">🎉</span>, label: 'Nagrada za registraciju' };
     }
 
     if (reason.startsWith('block')) {
         return { icon: <BlockImage blockName={reason.split(':')[1]} className="size-10" />, label: 'Postavljanje bloka' };
+    }
+    if (reason === 'gift') {
+        return { icon: <span className="text-4xl size-10">🎁</span>, label: 'Poklon' };
     }
 
     console.warn('Unknown sunflower reason:', reason);

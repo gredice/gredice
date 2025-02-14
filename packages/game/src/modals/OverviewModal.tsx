@@ -199,7 +199,13 @@ export function OverviewModal() {
                             <Typography level="h4" className="hidden md:block">Suncokreti</Typography>
                             <Stack spacing={2}>
                                 <div className="relative mt-12 md:mt-0">
-                                    <span className="absolute text-5xl -top-12 right-6">🌻</span>
+                                    <span className="absolute text-5xl -top-12 right-6">
+                                        <img
+                                            src="https://cdn.gredice.com/sunflower-large.svg"
+                                            alt="Suncokret"
+                                            className="size-12"
+                                        />
+                                    </span>
                                     <Card className="relative z-10">
                                         <CardContent className="p-6">
                                             <Typography level="body2">Trenutno imaš <strong>{currentAccount?.sunflowers.amount}</strong> suncokreta za korištenje u svom vrtu.</Typography>

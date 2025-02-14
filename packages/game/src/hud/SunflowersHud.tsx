@@ -45,7 +45,7 @@ function SunflowersAmount() {
             trigger={(
                 <Button
                     variant="plain"
-                    startDecorator={<Typography className="text-base md:text-xl">🌻</Typography>}
+                    startDecorator={<img src="https://cdn.gredice.com/sunflower-large.svg" alt="Suncokret" className="size-6" />}
                     className="rounded-full px-2 md:min-w-20 justify-between pr-4" size="sm">
                     <Typography level="body2" className="text-base pl-0.5">{sunflowerCount}</Typography>
                 </Button>
