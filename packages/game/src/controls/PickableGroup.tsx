@@ -44,7 +44,7 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
             : 'https://cdn.gredice.com/sounds/effects/Drop Grass 01.mp3'
     );
 
-    const [isBlocked, setIsBlocked] = useState(false);
+    const [isBlocked, setIsBlocked] = useState<boolean | null>(null);
 
     // Reset position animation when block is moved
     useEffect(() => {
@@ -102,13 +102,16 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
         const lastBlockDataBlocked = lastBlock
             ? !(getBlockDataByName(lastBlock.name)?.attributes.stackable ?? false)
             : false;
+        if (lastBlockDataBlocked !== isBlocked && isBlocked !== null) {
+            setIsBlocked(lastBlockDataBlocked);
+        }
 
         if (!pressed) {
             if (!didDrag.current) {
                 return;
             }
             didDrag.current = false;
-            setIsBlocked(false);
+            setIsBlocked(null);
 
             if (isBlocked) {
                 // Revert to start position if released above blocked stack
