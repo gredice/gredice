@@ -2,7 +2,6 @@ import 'server-only';
 import { accounts, accountUsers, storage } from "..";
 import { eq } from 'drizzle-orm';
 import { createEvent, getEvents, knownEvents, knownEventTypes } from './eventsRepo';
-import { orderBy } from '@signalco/js';
 
 export function getAccounts() {
     return storage.query.accounts.findMany();
