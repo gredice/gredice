@@ -6,6 +6,7 @@ import Head from "next/head";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import Link from "next/link";
 import Image from "next/image";
+import {ReactNode} from "react";
 
 export const metadata: Metadata = {
   title: "API | Gredice",
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
   return (
     <html lang="en" className="dark">

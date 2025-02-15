@@ -30,7 +30,7 @@ async function getUser(id: string): Promise<User | null> {
 
 // TODO: Move to signalco/auth-server/hono
 export async function setCookie(context: Context, value: Promise<string> | string) {
-    honoSetCookie(context, 'gredice_session', await Promise.resolve(value), {
+    honoSetCookie(context, 'gredice_session', await value, {
         secure: true,
         httpOnly: true,
         sameSite: 'Strict',

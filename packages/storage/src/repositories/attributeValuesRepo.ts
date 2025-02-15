@@ -1,7 +1,7 @@
 import 'server-only';
 import { eq } from "drizzle-orm";
 import { getAttributeDefinition, storage } from "..";
-import { attributeValues, InsertAttributeValue } from "../schema/cmsSchema";
+import { attributeValues, InsertAttributeValue } from "../schema";
 
 export async function upsertAttributeValue(value: InsertAttributeValue) {
     let attributeValue = value.value;

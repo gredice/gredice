@@ -29,7 +29,7 @@ export function LogoutForm() {
             return { error: true }
         }
 
-        queryClient.invalidateQueries({ queryKey: authCurrentUserQueryKeys });
+        await queryClient.invalidateQueries({ queryKey: authCurrentUserQueryKeys });
         window.location.href = KnownPages.Dashboard;
     }, null);
 

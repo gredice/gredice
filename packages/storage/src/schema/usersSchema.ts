@@ -36,7 +36,7 @@ export const users = pgTable('users', {
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
 });
 
-export const usersRelations = relations(users, ({ one, many }) => ({
+export const usersRelations = relations(users, ({ many }) => ({
     usersLogins: many(userLogins, {
         relationName: 'usersLogins',
     }),

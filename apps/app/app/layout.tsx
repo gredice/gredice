@@ -4,6 +4,7 @@ import { AxiomWebVitals } from 'next-axiom';
 import "./globals.css";
 import Head from "next/head";
 import { ClientAppProvider } from "../components/providers/ClientAppProvider";
+import {ReactNode} from "react";
 
 export const metadata: Metadata = {
   title: "Admin | Gredice",
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
   return (
     <html lang="en">

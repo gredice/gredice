@@ -18,6 +18,7 @@ import { ClientAppProvider } from "../components/providers/ClientAppProvider";
 import { getFlags } from "../lib/flags/getFlags";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Popper } from "@signalco/ui-primitives/Popper";
+import {ReactNode} from "react";
 
 export const metadata: Metadata = {
     title: "Gredice",
@@ -98,7 +99,7 @@ const preSeasonSectionsData: SectionData[] = [
 export default async function RootLayout({
     children,
 }: Readonly<{
-    children: React.ReactNode;
+    children: ReactNode;
 }>) {
     const flags = await getFlags();
     const preSeason = flags.preSeason({ fallback: true });

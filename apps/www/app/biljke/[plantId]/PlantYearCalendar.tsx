@@ -23,7 +23,7 @@ const calendarActivityTypes = {
     }
 } as const;
 
-export function PlantYearCalendar({ activities, now }: { activities: { [key: string]: { start: number, end: number }[] }, now?: Date }) {
+export function PlantYearCalendar({ activities, now }: { activities: { [_: string]: { start: number, end: number }[] }, now?: Date }) {
     const currentDate = now ?? new Date();
     const currentMonth = currentDate.getMonth() // 0-indexed
     const currentMonthProgress = currentDate.getDate() / new Date(currentDate.getFullYear(), currentMonth, 0).getDate();

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import {FormEvent, useState} from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Stack } from '@signalco/ui-primitives/Stack'
 import { Typography } from '@signalco/ui-primitives/Typography'
@@ -18,7 +18,7 @@ export function ChangePasswordForm() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
         if (password !== confirmPassword) {
             setError('Zaporke se ne podudaraju')

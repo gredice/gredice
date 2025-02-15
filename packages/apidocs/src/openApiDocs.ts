@@ -107,7 +107,7 @@ async function openApiEntitiesDoc(entityType: Awaited<ReturnType<typeof getEntit
             }
         }
     }
-};
+}
 
 export type OpenApiDocsConfig = Partial<Omit<OpenAPIV3_1.Document, 'openapi' | 'paths' | 'components'>>;
 

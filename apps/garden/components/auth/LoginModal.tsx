@@ -47,7 +47,7 @@ export default function LoginModal() {
         const { token } = await response.json();
         localStorage.setItem('gredice-token', token);
 
-        queryClient.invalidateQueries({ queryKey: authCurrentUserQueryKeys });
+        await queryClient.invalidateQueries({ queryKey: authCurrentUserQueryKeys });
     }
 
     const handleRegister = async (email: string, password: string) => {

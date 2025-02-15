@@ -2,7 +2,7 @@
 
 import { Vector3, Plane, Raycaster, Vector2 } from 'three';
 import { useThree } from '@react-three/fiber';
-import { PointerEvent, PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PointerEvent, PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react';
 import { Handler, useDrag } from '@use-gesture/react';
 import { useSpring, animated } from '@react-spring/three';
 import { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';

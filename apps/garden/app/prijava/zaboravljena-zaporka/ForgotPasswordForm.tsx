@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import {FormEvent, useState} from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from "@signalco/ui-primitives/Button"
 import { Input } from "@signalco/ui-primitives/Input"
@@ -14,7 +14,7 @@ export function ForgotPasswordForm() {
     const [email, setEmail] = useState(searchParams.get('email') || '')
     const [error, setError] = useState('');
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
 
         setError('');

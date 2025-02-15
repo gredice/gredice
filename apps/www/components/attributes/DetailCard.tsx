@@ -1,8 +1,9 @@
 import { Card } from "@signalco/ui-primitives/Card";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
+import {ReactNode} from "react";
 
-export function AttributeCard({ icon, header, value }: { icon: React.ReactNode; header: string; value: string | null | undefined }) {
+export function AttributeCard({ icon, header, value }: { icon: ReactNode; header: string; value: string | null | undefined }) {
     return (
         <Card className="flex items-center">
             <Row spacing={2}>
