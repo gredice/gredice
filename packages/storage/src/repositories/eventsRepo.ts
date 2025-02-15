@@ -38,7 +38,7 @@ export const knownEvents = {
     },
 }
 
-export function getEvents(type: string | string[], aggregateId: string, offset: number = 0, limit: number = 100) {
+export function getEvents(type: string | string[], aggregateId: string, offset: number = 0, limit: number = 1000) {
     return storage.query.events.findMany({
         where: and(
             eq(events.aggregateId, aggregateId),

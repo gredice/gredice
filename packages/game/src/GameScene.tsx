@@ -337,11 +337,11 @@ export function GameScene({
             {!hideHud && (
                 <>
                     <AccountHud />
+                    <DayNightCycleHud lat={45.739} lon={16.572} />
                     <div className='absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2'>
                         <WeatherHud />
                         <SunflowersHud />
                     </div>
-                    <DayNightCycleHud lat={45.739} lon={16.572} />
                     <div className='absolute bottom-0 flex flex-col left-0 right-0 md:flex-row md:justify-between md:items-end'>
                         <div className='p-2'>
                             <RotateIcons />
