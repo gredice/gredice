@@ -1,12 +1,11 @@
 'use client';
 
-import { Camera, Matrix4, Quaternion, Vector3 } from 'three';
+import { Vector3 } from 'three';
 import { OrbitControls } from '@react-three/drei';
 import { HTMLAttributes, useEffect, useRef } from 'react';
 import { Environment } from './scene/Environment';
 import { useGameState } from './useGameState';
 import type { Stack } from './types/Stack';
-import type { Garden } from './types/Garden';
 import { Scene } from './scene/Scene';
 import { EntityFactory } from './entities/EntityFactory';
 import { DayNightCycleHud } from './hud/DayNightCycleHud';
@@ -20,7 +19,6 @@ import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Redo, Undo } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { ItemsHud } from './hud/ItemsHud';
-import { v4 as uuidv4 } from 'uuid';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 
 // function serializeGarden(garden: Garden) {
@@ -329,6 +327,7 @@ export function GameScene({
                 <OrbitControls
                     ref={useGameState.getState().setOrbitControls}
                     enableRotate={false}
+                    screenSpacePanning={false}
                     onStart={() => useGameState.getState().setIsDragging(true)}
                     onEnd={() => useGameState.getState().setIsDragging(false)}
                     minZoom={50}
