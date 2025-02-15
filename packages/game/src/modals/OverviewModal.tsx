@@ -1,7 +1,6 @@
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
-import { Container } from "@signalco/ui-primitives/Container";
 import { Input } from "@signalco/ui-primitives/Input";
 import { List } from "@signalco/ui-primitives/List";
 import { ListItem } from "@signalco/ui-primitives/ListItem";
@@ -14,7 +13,6 @@ import { Row, RowProps } from "@signalco/ui-primitives/Row";
 import { cx } from "@signalco/ui-primitives/cx";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { ProfileInfo } from "../shared-ui/ProfileInfo";
-import { NoSunflowersPlaceholder } from "../shared-ui/sunflowers/NoSunflowersPlaceholder";
 import { SoundSettingsCard } from "./components/SoundSettingsCard";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import { SunflowersList } from "../shared-ui/sunflowers/SunflowersList";
