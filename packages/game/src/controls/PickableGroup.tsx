@@ -102,30 +102,29 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
         const lastBlockDataBlocked = lastBlock
             ? !(getBlockDataByName(lastBlock.name)?.attributes.stackable ?? false)
             : false;
-        if (lastBlockDataBlocked !== isBlocked) {
-            setIsBlocked(lastBlockDataBlocked);
-        }
 
         if (!pressed) {
             if (!didDrag.current) {
                 return;
             }
             didDrag.current = false;
+            setIsBlocked(false);
 
             if (isBlocked) {
                 // Revert to start position if released above blocked stack
                 dragSpringsApi.start({ internalPosition: [0, 0, 0] });
-                setIsBlocked(false);
             } else {
                 dragSpringsApi.start({ internalPosition: [relative.x, hoveredStackHeight, relative.z] })[0].then(() => {
                     onPositionChanged(relative);
-                    setIsBlocked(false);
                 });
                 dropSound.play();
             }
         } else {
             if (!didDrag.current) {
                 pickupSound.play();
+                if (lastBlockDataBlocked !== isBlocked) {
+                    setIsBlocked(lastBlockDataBlocked);
+                }
             }
             didDrag.current = true;
             dragSpringsApi.start({ internalPosition: [relative.x, hoveredStackHeight + 0.1, relative.z] });
@@ -151,8 +150,7 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
         opacity: isBlocked ? 1 : 0,
         config: {
             tension: 350,
-        },
-
+        }
     });
     const blockedPosition = [stack.position.x, stackHeight(stack, block), stack.position.z];
 

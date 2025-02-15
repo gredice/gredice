@@ -13,8 +13,11 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
         if (!rotateInitiated.current)
             return;
 
-        if (event.nativeEvent.cancelable)
-            event.nativeEvent.preventDefault();
+        if (useGameState.getState().isDragging)
+            return;
+
+        // if (event.nativeEvent.cancelable)
+        //     event.nativeEvent.preventDefault();
         event.stopPropagation();
         rotateBlock(stack.position, block);
         rotateInitiated.current = false;
@@ -24,19 +27,19 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
 
     const rotateInitiated = useRef(false);
     const handleContextMenu = (event: ThreeEvent<MouseEvent>) => {
-        doRotate(event);
+        // doRotate(event);
     };
 
     const doubleClickDownTimeStamp = useRef(0);
     const firstClickTimeStamp = useRef(0);
     const handlePointerDown = (event: ThreeEvent<globalThis.PointerEvent>) => {
-        if (event.pointerType !== 'touch') {
+        // if (event.pointerType !== 'touch' || false) {
             if (event.button === 2) {
                 rotateInitiated.current = true;
             }
 
-            return;
-        }
+        // return;
+        // }
 
         doubleClickDownTimeStamp.current = Date.now();
         if (doubleClickDownTimeStamp.current - firstClickTimeStamp.current > 1000) {
@@ -50,15 +53,16 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
 
     const handlePointerUp = (event: ThreeEvent<globalThis.PointerEvent>, stack: Stack, block: Block) => {
         // Handle touch double-click rotation
-        if (event.pointerType === 'touch') {
+        // if (event.pointerType === 'touch' || true) {
             // If we have first click and second click is within 600ms, we have double click
-            if (Date.now() - firstClickTimeStamp.current < 600) {
+        const now = Date.now();
+        if (now - firstClickTimeStamp.current < 600) {
                 rotateInitiated.current = true;
                 firstClickTimeStamp.current = 0;
-            } else if (Date.now() - doubleClickDownTimeStamp.current < 300) {
-                firstClickTimeStamp.current = Date.now();
+        } else if (now - doubleClickDownTimeStamp.current < 300) {
+            firstClickTimeStamp.current = now;
             }
-        }
+        // }
 
         if (!rotateInitiated.current)
             return;
