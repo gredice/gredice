@@ -15,6 +15,8 @@ import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Plus } from "lucide-react";
 
+export const dynamic = 'force-dynamic';
+
 async function AccountUsersCard({ accountId }: { accountId: string }) {
     const users = await getAccountUsers(accountId);
 
@@ -113,6 +115,7 @@ async function AccountSunflowersCard({ accountId }: { accountId: string }) {
 
     async function submitGiftSunflowers(formData: FormData) {
         'use server';
+        auth(['admin']);
         const amount = formData.get('amount') as string;
         const reason = formData.get('reason') as string;
         await earnSunflowers(accountId, parseInt(amount), reason);

@@ -1,7 +1,6 @@
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
-import { Container } from "@signalco/ui-primitives/Container";
 import { Input } from "@signalco/ui-primitives/Input";
 import { List } from "@signalco/ui-primitives/List";
 import { ListItem } from "@signalco/ui-primitives/ListItem";
@@ -14,11 +13,11 @@ import { Row, RowProps } from "@signalco/ui-primitives/Row";
 import { cx } from "@signalco/ui-primitives/cx";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { ProfileInfo } from "../shared-ui/ProfileInfo";
-import { NoSunflowersPlaceholder } from "../shared-ui/sunflowers/NoSunflowersPlaceholder";
 import { SoundSettingsCard } from "./components/SoundSettingsCard";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import { SunflowersList } from "../shared-ui/sunflowers/SunflowersList";
 import { useCurrentAccount } from "../hooks/useCurrentAccount";
+import { ScrollArea } from "@signalco/ui-primitives/ScrollArea";
 
 function CardActions({ children, className, ...rest }: RowProps) {
     return (
@@ -199,16 +198,22 @@ export function OverviewModal() {
                             <Typography level="h4" className="hidden md:block">Suncokreti</Typography>
                             <Stack spacing={2}>
                                 <div className="relative mt-12 md:mt-0">
-                                    <span className="absolute text-5xl -top-12 right-6">🌻</span>
+                                    <span className="absolute text-5xl -top-12 right-6">
+                                        <img
+                                            src="https://cdn.gredice.com/sunflower-large.svg"
+                                            alt="Suncokret"
+                                            className="size-12"
+                                        />
+                                    </span>
                                     <Card className="relative z-10">
                                         <CardContent className="p-6">
                                             <Typography level="body2">Trenutno imaš <strong>{currentAccount?.sunflowers.amount}</strong> suncokreta za korištenje u svom vrtu.</Typography>
                                         </CardContent>
                                     </Card>
                                 </div>
-                                <Card className="p-6">
+                                <ScrollArea className="h-96 rounded-lg text-card-foreground bg-card border shadow-sm p-6">
                                     <SunflowersList />
-                                </Card>
+                                </ScrollArea>
                             </Stack>
                         </Stack>
                     )}

@@ -15,6 +15,10 @@ const nextConfig = {
                 protocol: 'https',
                 hostname: 'www.gredice.com',
             },
+            {
+                protocol: 'https',
+                hostname: 'cdn.gredice.com',
+            }
         ],
     },
 };
