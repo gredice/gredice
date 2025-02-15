@@ -35,7 +35,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { accountId } = context.get('authContext');
             const accountSunflowers = await getSunflowers(accountId);
-            const accountSunflowersHistory = await getSunflowersHistory(accountId);
+            const accountSunflowersHistory = await getSunflowersHistory(accountId, 0, 1000);
             return context.json({
                 amount: accountSunflowers,
                 history: accountSunflowersHistory.map((event) => ({

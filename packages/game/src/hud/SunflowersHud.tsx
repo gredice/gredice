@@ -18,7 +18,7 @@ function SunflowersCard() {
                 <Typography level="body3" bold>Suncokreti</Typography>
             </Row>
             <Divider />
-            <SunflowersList />
+            <SunflowersList limit={5} />
             <Divider />
             <Stack>
                 <Button variant="plain" size="sm" fullWidth className="rounded-t-none" onClick={() => setProfileModalOpen('suncokreti')}>

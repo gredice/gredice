@@ -19,6 +19,7 @@ import { SoundSettingsCard } from "./components/SoundSettingsCard";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import { SunflowersList } from "../shared-ui/sunflowers/SunflowersList";
 import { useCurrentAccount } from "../hooks/useCurrentAccount";
+import { ScrollArea } from "@signalco/ui-primitives/ScrollArea";
 
 function CardActions({ children, className, ...rest }: RowProps) {
     return (
@@ -212,9 +213,9 @@ export function OverviewModal() {
                                         </CardContent>
                                     </Card>
                                 </div>
-                                <Card className="p-6">
+                                <ScrollArea className="h-96 rounded-lg text-card-foreground bg-card border shadow-sm p-6">
                                     <SunflowersList />
-                                </Card>
+                                </ScrollArea>
                             </Stack>
                         </Stack>
                     )}
