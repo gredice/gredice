@@ -1,7 +1,7 @@
 import 'server-only';
 import { and, eq } from "drizzle-orm";
 import { storage } from "..";
-import { gardenBlocks, gardens, gardenStacks, InsertGarden, UpdateGarden, UpdateGardenBlock, UpdateGardenStack } from "../schema/gardenSchema";
+import { gardenBlocks, gardens, gardenStacks, InsertGarden, UpdateGarden, UpdateGardenBlock, UpdateGardenStack } from "../schema";
 import { createEvent, knownEvents } from './eventsRepo';
 import { v4 as uuidV4 } from 'uuid';
 
@@ -25,17 +25,17 @@ export async function createGarden(garden: InsertGarden) {
 }
 
 export async function getGardens() {
-    return await storage.query.gardens.findMany();
+    return storage.query.gardens.findMany();
 }
 
 export async function getAccountGardens(accountId: string) {
-    return await storage.query.gardens.findMany({
+    return storage.query.gardens.findMany({
         where: and(eq(gardens.accountId, accountId), eq(gardens.isDeleted, false))
     });
 }
 
 export async function getGarden(gardenId: number) {
-    return await storage.query.gardens.findFirst({
+    return storage.query.gardens.findFirst({
         where: and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)),
         with: {
             farm: true,
@@ -58,7 +58,7 @@ export async function deleteGarden(gardenId: number) {
 }
 
 export async function getGardenBlocks(gardenId: number) {
-    return await storage.query.gardenBlocks.findMany({
+    return storage.query.gardenBlocks.findMany({
         where: and(eq(gardenBlocks.gardenId, gardenId), eq(gardenBlocks.isDeleted, false))
     });
 }
@@ -92,13 +92,13 @@ export async function createGardenBlock(gardenId: number, blockName: string) {
 }
 
 export async function getGardenStacks(gardenId: number) {
-    return await storage.query.gardenStacks.findMany({
+    return storage.query.gardenStacks.findMany({
         where: and(eq(gardenStacks.gardenId, gardenId), eq(gardenStacks.isDeleted, false))
     });
 }
 
 export async function getGardenStack(gardenId: number, { x, y }: { x: number, y: number }) {
-    return await storage.query.gardenStacks.findFirst({
+    return storage.query.gardenStacks.findFirst({
         where: and(
             eq(gardenStacks.gardenId, gardenId),
             eq(gardenStacks.positionX, x),

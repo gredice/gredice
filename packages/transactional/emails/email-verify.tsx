@@ -3,7 +3,6 @@
 import {
     Head,
     Html,
-    Img,
     Preview,
     Section, Tailwind,
 } from '@react-email/components';

@@ -2,18 +2,18 @@
 
 import { Input } from "@signalco/ui-primitives/Input";
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
-import { useState } from "react";
+import {ChangeEvent, FormEvent, useState} from "react";
 import { Search } from "lucide-react";
 
 export function PlantsFilter() {
     const [, setSearch] = useSearchParam('pretraga');
     const [searchInput, setSearchInput] = useState('');
 
-    const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleSearchInputChange = (e: ChangeEvent<HTMLInputElement>) => {
         setSearchInput(e.target.value);
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         setSearch(searchInput);
     }

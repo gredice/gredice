@@ -31,7 +31,7 @@ export function LoginDialog() {
         const { token } = await response.json();
         localStorage.setItem('gredice-token', token);
 
-        queryClient.invalidateQueries({ queryKey: authCurrentUserQueryKeys });
+        await queryClient.invalidateQueries({ queryKey: authCurrentUserQueryKeys });
         window.location.reload();
     }, null);
 

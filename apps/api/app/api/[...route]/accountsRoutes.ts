@@ -3,7 +3,7 @@ import { getAccount, getSunflowers, getSunflowersHistory } from '@gredice/storag
 import { describeRoute } from 'hono-openapi';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import "zod-openapi/extend";
-import { knownEventTypes } from '../../../../../packages/storage/src/repositories/eventsRepo';
+import { knownEventTypes } from '@gredice/storage';
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(

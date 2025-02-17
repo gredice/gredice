@@ -31,10 +31,10 @@ export function EntityFactory({ name, stack, block, noControl, ...rest }: { name
     }
 
     const moveBlock = useGameState(state => state.moveBlock);
-    const handlePositionChanged = (movement: Vector3) => {
+    const handlePositionChanged = async (movement: Vector3) => {
         const dest = stack.position.clone().add(movement);
         const blockIndex = stack.blocks.indexOf(block);
-        moveBlock(stack.position, blockIndex, dest);
+        await moveBlock(stack.position, blockIndex, dest);
     }
 
     return (

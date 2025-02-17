@@ -2,11 +2,10 @@
 
 import { useEffect, useRef } from 'react';
 import chroma from 'chroma-js';
-import { getTimes, getPosition } from 'suncalc';
+import { getPosition } from 'suncalc';
 import { useGameState } from '../useGameState';
 import { AmbientLight, Color, DirectionalLight, HemisphereLight, Quaternion, Vector3 } from 'three';
 import { Garden } from '../types/Garden';
-import { audioMixer } from '../audio/audioMixer';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 
 const backgroundColorScale = chroma
@@ -82,9 +81,7 @@ export function Environment({ location, noBackground }: { location: Garden['loca
     useEffect(() => {
         const {
             sunPosition,
-            colors: { background: backgroundColor },
-            colors: { sunTemperature },
-            colors: { hemisphereSkyColor },
+            colors: {background: backgroundColor, sunTemperature, hemisphereSkyColor},
             intensities: { sun: sunIntensity },
         } = environmentState(location, currentTime, timeOfDay);
 

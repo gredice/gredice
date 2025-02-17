@@ -39,10 +39,10 @@ export function useNewBlock() {
 
             return id;
         },
-        onSuccess: () => {
+        onSuccess: async () => {
             // Invalidate queries
-            queryClient.invalidateQueries({ queryKey: currentAccountKeys });
-            queryClient.invalidateQueries({ queryKey: currentGardenKeys });
+            await queryClient.invalidateQueries({ queryKey: currentAccountKeys });
+            await queryClient.invalidateQueries({ queryKey: currentGardenKeys });
         }
     })
 }

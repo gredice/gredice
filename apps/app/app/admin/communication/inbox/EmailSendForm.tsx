@@ -11,7 +11,7 @@ import '@mdxeditor/editor/style.css'
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Row } from '@signalco/ui-primitives/Row';
 import { submitEmailForm } from './actions';
-import { useActionState, useCallback, useEffect, useRef, useState } from 'react';
+import {ChangeEvent, useActionState, useCallback, useEffect, useRef, useState} from 'react';
 import { cx } from '@signalco/ui-primitives/cx';
 import { File, Paperclip, X } from 'lucide-react';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
@@ -38,7 +38,7 @@ export function EmailSendForm({ from }: { from: string }) {
         }
     }, [state?.success]);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const newFiles = Array.from(e.target.files)
             const newTotalSize = totalSize + newFiles.reduce((acc, file) => acc + file.size, 0)

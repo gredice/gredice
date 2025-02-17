@@ -8,4 +8,5 @@ export * from './repositories/usersRepo';
 export * from './repositories/accountsRepo';
 export * from './repositories/gardensRepo';
 export * from './repositories/farmsRepo';
+export * from './repositories/eventsRepo';
 export * from './repositories/analyticsRepo';

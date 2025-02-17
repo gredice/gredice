@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import {useState, useEffect, FormEvent} from 'react'
 import { Input } from '@signalco/ui-primitives/Input';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -26,7 +26,7 @@ export function EmailPasswordForm({
         }
     }, [password, repeatPassword, registration])
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = (e: FormEvent) => {
         e.preventDefault()
         if (!registration || passwordsMatch) {
             setIsLoading(true);

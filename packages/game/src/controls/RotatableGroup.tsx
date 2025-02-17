@@ -13,8 +13,9 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
         if (!rotateInitiated.current)
             return;
 
-        if (event.nativeEvent.cancelable)
-            event.nativeEvent.preventDefault();
+        if (useGameState.getState().isDragging)
+            return;
+
         event.stopPropagation();
         rotateBlock(stack.position, block);
         rotateInitiated.current = false;
@@ -23,19 +24,12 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
     }
 
     const rotateInitiated = useRef(false);
-    const handleContextMenu = (event: ThreeEvent<MouseEvent>) => {
-        doRotate(event);
-    };
 
     const doubleClickDownTimeStamp = useRef(0);
     const firstClickTimeStamp = useRef(0);
     const handlePointerDown = (event: ThreeEvent<globalThis.PointerEvent>) => {
-        if (event.pointerType !== 'touch') {
-            if (event.button === 2) {
-                rotateInitiated.current = true;
-            }
-
-            return;
+        if (event.button === 2) {
+            rotateInitiated.current = true;
         }
 
         doubleClickDownTimeStamp.current = Date.now();
@@ -49,15 +43,12 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
     };
 
     const handlePointerUp = (event: ThreeEvent<globalThis.PointerEvent>, stack: Stack, block: Block) => {
-        // Handle touch double-click rotation
-        if (event.pointerType === 'touch') {
-            // If we have first click and second click is within 600ms, we have double click
-            if (Date.now() - firstClickTimeStamp.current < 600) {
-                rotateInitiated.current = true;
-                firstClickTimeStamp.current = 0;
-            } else if (Date.now() - doubleClickDownTimeStamp.current < 300) {
-                firstClickTimeStamp.current = Date.now();
-            }
+        const now = Date.now();
+        if (now - firstClickTimeStamp.current < 600) {
+            rotateInitiated.current = true;
+            firstClickTimeStamp.current = 0;
+        } else if (now - doubleClickDownTimeStamp.current < 300) {
+            firstClickTimeStamp.current = now;
         }
 
         if (!rotateInitiated.current)
@@ -68,7 +59,6 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
 
     return (
         <group
-            onContextMenu={handleContextMenu}
             onPointerDown={handlePointerDown}
             onPointerMove={handleRotateCancel}
             onPointerLeave={handleRotateCancel}

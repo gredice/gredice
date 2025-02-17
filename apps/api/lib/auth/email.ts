@@ -1,5 +1,5 @@
 import { SignJWT } from 'jose';
-import { jwtSecretFactory } from '../../lib/auth/auth';
+import { jwtSecretFactory } from './auth';
 import { sendEmailVerify } from '../email/transactional';
 
 // TODO: Move to Auth lib

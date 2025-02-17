@@ -115,7 +115,7 @@ async function AccountSunflowersCard({ accountId }: { accountId: string }) {
 
     async function submitGiftSunflowers(formData: FormData) {
         'use server';
-        auth(['admin']);
+        await auth(['admin']);
         const amount = formData.get('amount') as string;
         const reason = formData.get('reason') as string;
         await earnSunflowers(accountId, parseInt(amount), reason);

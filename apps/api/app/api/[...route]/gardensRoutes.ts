@@ -4,7 +4,7 @@ import { validator as zValidator } from "hono-openapi/zod";
 import { z } from 'zod';
 import { describeRoute } from 'hono-openapi';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
-import { getEvents, knownEventTypes } from '../../../../../packages/storage/src/repositories/eventsRepo';
+import { getEvents, knownEventTypes } from '@gredice/storage';
 
 export type BlockData = {
     id: string,
@@ -335,7 +335,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             blocks: value
                         });
                     } else {
-                        if (Array.isArray(value) || typeof value !== 'string') {
+                        if (Array.isArray(value)) {
                             return context.json({ error: 'Test value must be a string' }, 400);
                         }
 

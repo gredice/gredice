@@ -1,7 +1,7 @@
 'use client';
 
 import { Modal } from "@signalco/ui-primitives/Modal";
-import { useGameState } from "../../../packages/game/src/useGameState";
+import { useGameState } from "@gredice/game";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import Image from "next/image";
 import { useMemo, useState } from "react";
@@ -75,7 +75,7 @@ export function WelcomeMessage() {
     const isMorning = timeOfDay < 0.5;
     const title = isDay ? (isMorning ? "Dobro jutro" : "Dobar dan!") : "Dobra večer!";
 
-    let messageType: keyof typeof messageTypes = "newDayAfternoon";
+    let messageType: keyof typeof messageTypes;
     if (isDay) {
         messageType = isMorning ? "newDayMorning" : "newDayAfternoon";
     } else {

@@ -3,7 +3,6 @@ import { HudCard } from "./components/HudCard";
 import { Divider } from "@signalco/ui-primitives/Divider";
 import { Row } from "@signalco/ui-primitives/Row";
 import { useGameState } from "../useGameState";
-import { Vector3 } from "three";
 import { ChevronUp, Info } from "lucide-react";
 import { Popper } from "@signalco/ui-primitives/Popper";
 import { HTMLAttributes, useState } from "react";

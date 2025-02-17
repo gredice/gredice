@@ -6,7 +6,16 @@ const nextConfig: NextConfig = {
         reactCompiler: true,
     },
     images: {
-        domains: ['www.gredice.com'],
+        remotePatterns: [
+            {
+                hostname: 'cdn.gredice.com',
+                protocol: 'https',
+            },
+            {
+                hostname: 'www.gredice.com',
+                protocol: 'https'
+            }
+        ]
     },
     productionBrowserSourceMaps: true,
 };

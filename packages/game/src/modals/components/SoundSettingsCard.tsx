@@ -1,6 +1,6 @@
 import { Button } from "@signalco/ui-primitives/Button"
 import { SoundSlider } from "./SoundSlider"
-import { useEffect, useState } from "react"
+import {Dispatch, SetStateAction, useEffect, useState} from "react"
 import { Card, CardContent } from "@signalco/ui-primitives/Card"
 import { Stack } from "@signalco/ui-primitives/Stack"
 import { RotateCcw } from "lucide-react"
@@ -32,7 +32,7 @@ export function SoundSettingsCard() {
     }
 
     const handleSliderMuteToggle = (
-        setMutedFunc: React.Dispatch<React.SetStateAction<boolean>>
+        setMutedFunc: Dispatch<SetStateAction<boolean>>
     ) => {
         if (!masterMuted && masterVolume > 0) {
             setMutedFunc((prev) => !prev)

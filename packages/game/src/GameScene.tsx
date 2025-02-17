@@ -84,7 +84,6 @@ import { useCurrentGarden } from './hooks/useCurrentGarden';
 
 export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
     const stacks = useGameState(state => state.stacks);
-    const setStacks = useGameState(state => state.setStacks);
     const setGarden = useGameState(state => state.setGarden);
 
     // TODO: Load garden from remote

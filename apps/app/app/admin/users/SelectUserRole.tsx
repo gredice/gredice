@@ -15,9 +15,9 @@ export function SelectUserRole({ user }: { user: Awaited<ReturnType<typeof getUs
         await updateUserRole(userId, newRole);
     }
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
         if (confirmOpen)
-            handleUserRoleChange(user.id, confirmOpen);
+            await handleUserRoleChange(user.id, confirmOpen);
     }
 
     const handleConfirmOpenChange = (newOpen: boolean) => {
