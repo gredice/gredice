@@ -4,24 +4,52 @@ import { stackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
+import { getEntityNeighbors } from "./helpers/getEntityNeighbors";
 
 export function Fence({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
 
     let variant = "Solo";
-    let realizedRotation = rotation % 2;
-    // const neighbors = getEntityNeighbors(stack, block);
-    // const nInline = neighbors.n && realizedRotation === 0 && (neighbors.nr % 2) === 0;
-    // const eInline = neighbors.e && realizedRotation === 1 && (neighbors.er % 2) === 1;
-    // const wInline = neighbors.w && realizedRotation === 1 && (neighbors.wr % 2) === 1;
-    // const sInline = neighbors.s && realizedRotation === 0 && (neighbors.sr % 2) === 0;
-    // if (neighbors.total >= 2 && ((nInline && sInline) || (eInline && wInline))) {
-    //     variant = "Middle";
-    // } else if (nInline || eInline) {
-    //     variant = "End_Left";
-    // } else if (wInline || sInline) {
-    //     variant = "End_Right";
-    // }
+    let realizedRotation = rotation % 4;
+    const neighbors = getEntityNeighbors(stack, block);
+
+    // Variant: Solor, Single, Middle, Corner, T, Cross
+    if (neighbors.total === 1) {
+        variant = "Single";
+        realizedRotation = neighbors.n ? 3 : (neighbors.s ? 1 : (neighbors.e ? 0 : 2));
+    } else if (neighbors.total === 2) {
+        if (neighbors.n && neighbors.s) {
+            variant = "Middle";
+            realizedRotation = 1;
+        } else if (neighbors.e && neighbors.w) {
+            variant = "Middle";
+            realizedRotation = 0;
+        } else {
+            variant = "Corner";
+            if (neighbors.n && neighbors.e) {
+                realizedRotation = 0;
+            } else if (neighbors.e && neighbors.s) {
+                realizedRotation = 1;
+            } else if (neighbors.s && neighbors.w) {
+                realizedRotation = 2;
+            } else if (neighbors.w && neighbors.n) {
+                realizedRotation = 3;
+            }
+        }
+    } else if (neighbors.total === 3) {
+        variant = "T";
+        if (neighbors.n && neighbors.e && neighbors.s) {
+            realizedRotation = 0;
+        } else if (neighbors.e && neighbors.s && neighbors.w) {
+            realizedRotation = 1;
+        } else if (neighbors.s && neighbors.w && neighbors.n) {
+            realizedRotation = 2;
+        } else if (neighbors.w && neighbors.n && neighbors.e) {
+            realizedRotation = 3;
+        }
+    } else if (neighbors.total === 4) {
+        variant = "Cross";
+    }
 
     const [animatedRotation] = useAnimatedEntityRotation(realizedRotation);
 

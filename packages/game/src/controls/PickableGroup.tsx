@@ -49,7 +49,7 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
     // Reset position animation when block is moved
     useEffect(() => {
         dragSpringsApi.set({ internalPosition: [0, 0, 0] });
-        setIsBlocked(false);
+        setIsBlocked(null);
     }, [stack.position]);
 
     if (noControl) {
@@ -60,7 +60,7 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
     useEffect(() => {
         if (isDraggingWorld) {
             dragSpringsApi.start({ internalPosition: [0, 0, 0] });
-            setIsBlocked(false);
+            setIsBlocked(null);
         }
     }, [isDraggingWorld]);
 
