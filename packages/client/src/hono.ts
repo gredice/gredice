@@ -18,6 +18,6 @@ function clientAuth() {
     };
 }
 
-export const client = hc<AppType>(getAppUrl(), {
+export const client = () => hc<AppType>(getAppUrl(), {
     ...clientAuth()
 });
