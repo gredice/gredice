@@ -79,6 +79,8 @@ export type GameState = {
     rotateBlock: (stackPosition: Vector3, blockOrIndex: Block | number, rotation?: number) => void
 };
 
+const now = new Date();
+const defaultPosition = { lat: 45.739, lon: 16.572 };
 export const useGameState = create<GameState>((set) => ({
     appBaseUrl: '',
     audio: {
@@ -86,10 +88,10 @@ export const useGameState = create<GameState>((set) => ({
         effects: audioMixer()
     },
     freezeTime: null,
-    currentTime: new Date(),
-    timeOfDay: 0,
-    sunsetTime: null,
-    sunriseTime: null,
+    currentTime: now,
+    timeOfDay: getTimeOfDay(defaultPosition, now),
+    sunriseTime: getSunriseSunset(defaultPosition, now).sunrise,
+    sunsetTime: getSunriseSunset(defaultPosition, now).sunset,
     gardenId: null,
     stacks: [],
     setGarden: (garden) => {
@@ -117,18 +119,9 @@ export const useGameState = create<GameState>((set) => ({
     setInitial: (appBaseUrl, data, freezeTime) => set({ appBaseUrl, freezeTime, data }),
     setCurrentTime: (currentTime) => set(() => ({
         currentTime,
-        timeOfDay: getTimeOfDay({
-            lat: 45.739,
-            lon: 16.572
-        }, currentTime),
-        sunriseTime: getSunriseSunset({
-            lat: 45.739,
-            lon: 16.572
-        }, currentTime).sunrise,
-        sunsetTime: getSunriseSunset({
-            lat: 45.739,
-            lon: 16.572
-        }, currentTime).sunset
+        timeOfDay: getTimeOfDay(defaultPosition, currentTime),
+        sunriseTime: getSunriseSunset(defaultPosition, currentTime).sunrise,
+        sunsetTime: getSunriseSunset(defaultPosition, currentTime).sunset
     })),
     setStacks: (stacks) => set({ stacks }),
     placeBlock: (to, block) => set((state) => {
