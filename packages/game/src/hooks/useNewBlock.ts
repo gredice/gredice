@@ -13,7 +13,7 @@ export function useNewBlock() {
             }
 
             // Generate block
-            const response = await client.api.gardens[":gardenId"].blocks.$post({
+            const response = await client().api.gardens[":gardenId"].blocks.$post({
                 param: {
                     gardenId: garden?.id.toString()
                 },
@@ -28,7 +28,7 @@ export function useNewBlock() {
             const { id } = await response.json();
 
             // Place block
-            await client.api.gardens[":gardenId"].stacks.$patch({
+            await client().api.gardens[":gardenId"].stacks.$patch({
                 param: {
                     gardenId: garden?.id.toString()
                 },

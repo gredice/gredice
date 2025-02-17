@@ -7,10 +7,10 @@ export function useCurrentGarden() {
     return useQuery({
         queryKey: currentGardenKeys,
         queryFn: async () => {
-            const response = await client.api.gardens.$get();
+            const response = await client().api.gardens.$get();
             const gardens = await response.json();
             const currentGardenId = gardens[0].id;
-            const currentGardenResponse = await client.api.gardens[":gardenId"].$get({
+            const currentGardenResponse = await client().api.gardens[":gardenId"].$get({
                 param: {
                     gardenId: currentGardenId.toString()
                 }

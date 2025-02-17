@@ -171,7 +171,7 @@ export const useGameState = create<GameState>((set) => ({
         });
 
         // Persist block move
-        await client.api.gardens[":gardenId"].stacks.$patch({
+        await client().api.gardens[":gardenId"].stacks.$patch({
             param: {
                 gardenId: useGameState.getState().gardenId ?? ''
             },
@@ -197,7 +197,7 @@ export const useGameState = create<GameState>((set) => ({
             return { stacks: [...state.stacks] };
         });
 
-        await client.api.gardens[":gardenId"].blocks[":blockId"].$put({
+        await client().api.gardens[":gardenId"].blocks[":blockId"].$put({
             param: {
                 gardenId: useGameState.getState().gardenId ?? '',
                 blockId: block.id
