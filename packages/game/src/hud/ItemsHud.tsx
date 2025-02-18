@@ -225,7 +225,7 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                         {label}
                     </Typography>
                 </div>
-                <Row spacing={0.5} className="p-2 pt-0">
+                <Row spacing={1} className="p-2 pt-0">
                     {items.map((item, index) => {
                         if (item.type === 'entity') {
                             return <EntityItem key={index} {...item} />
