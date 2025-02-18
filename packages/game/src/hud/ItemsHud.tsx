@@ -119,11 +119,13 @@ function findEmptyPosition(blockData: BlockData[], stacks: GardenStack[]) {
     return current;
 }
 
-function EntityItem({ name }: HudItemEntity) {
-    const [open, setOpen] = useState(false);
+function PlaceEntityButton({ name, simple }: { name: string, simple?: boolean }) {
     const blockData = useGameState(state => state.data.blocks);
     const stacks = useGameState(state => state.stacks);
     const newBlock = useNewBlock();
+
+    const block = blockData.find(block => block.information.name === name);
+    if (!block) return null;
 
     async function placeEntity() {
         const position = findEmptyPosition(blockData, stacks);
@@ -135,53 +137,69 @@ function EntityItem({ name }: HudItemEntity) {
         });
     }
 
+    if (!block.prices.sunflowers && simple)
+        return null;
+
+    return (
+        <Button
+            className={cx("justify-between", simple && 'py-0 h-8')}
+            onClick={placeEntity}
+            size={simple ? 'sm' : 'md'}
+            disabled={!block.prices.sunflowers}
+            endDecorator={(
+                <Row className={cx(!simple && "rounded-full p-1 gap border bg-muted w-fit pr-2", !block.prices.sunflowers && "pl-2")}>
+                    {block.prices.sunflowers ? `🌻 ${block.prices.sunflowers}` : 'Nedostupno'}
+                </Row>
+            )}>
+            {!simple && <span className="self-center">Postavi</span>}
+        </Button>
+    );
+}
+
+function EntityItem({ name }: HudItemEntity) {
+    const [open, setOpen] = useState(false);
+    const blockData = useGameState(state => state.data.blocks);
+
     const block = blockData.find(block => block.information.name === name);
     if (!block) return null;
 
     return (
-        <Popper
-            open={open}
-            sideOffset={12}
-            onOpenChange={(open) => setOpen(open)}
-            className="w-fit p-2 max-w-80"
-            trigger={(
-                <IconButton
-                    aria-label={block.information.label}
-                    size='lg'
-                    className="size-14"
-                    variant="plain">
-                    <BlockImage name={name} label={block.information.label} />
-                </IconButton>
-            )}>
-            <div className="hidden md:block absolute size-0 -bottom-[11px] left-0 right-0 mx-auto [border-left:8px_solid_transparent] [border-right:8px_solid_transparent] [border-bottom:0] [border-top:12px_solid_hsl(var(--border))]" />
-            <Stack>
-                <Row spacing={2} alignItems="start">
-                    <BlockImage name={name} label={block.information.label} className="size-24 border rounded-lg" />
-                    <Stack spacing={1}>
-                        <Typography semiBold>{block.information.label}</Typography>
-                        <Typography level="body2">
-                            {block.information.shortDescription}
-                        </Typography>
-                        <Button
-                            className="justify-between"
-                            onClick={placeEntity}
-                            disabled={!block.prices.sunflowers}
-                            endDecorator={(
-                                <Row className={cx("rounded-full p-0.5 gap border bg-muted w-fit pr-2", !block.prices.sunflowers && "pl-2")}>
-                                    {block.prices.sunflowers ? `🌻 ${block.prices.sunflowers}` : 'Nedostupno'}
-                                </Row>
-                            )}>
-                            <span className="self-center">Postavi</span>
-                        </Button>
-                        <Link href={`https://www.gredice.com/blokovi/${block.information.label}`} target="_blank" className="self-center">
-                            <Button variant="link" className="text-primary" startDecorator={(<Info className="size-4" />)}>
-                                Više informacija
-                            </Button>
-                        </Link>
-                    </Stack>
-                </Row>
-            </Stack>
-        </Popper>
+        <Stack spacing={1}>
+            <Popper
+                open={open}
+                sideOffset={12}
+                onOpenChange={(open) => setOpen(open)}
+                className="w-fit p-2 max-w-80"
+                trigger={(
+                    <IconButton
+                        aria-label={block.information.label}
+                        size='lg'
+                        className="size-16"
+                        variant="plain">
+                        <BlockImage name={name} label={block.information.label} />
+                    </IconButton>
+                )}>
+                <div className="hidden md:block absolute size-0 -bottom-[11px] left-0 right-0 mx-auto [border-left:8px_solid_transparent] [border-right:8px_solid_transparent] [border-bottom:0] [border-top:12px_solid_hsl(var(--border))]" />
+                <Stack>
+                    <Row spacing={2} alignItems="start">
+                        <BlockImage name={name} label={block.information.label} className="size-24 border rounded-lg" />
+                        <Stack spacing={1}>
+                            <Typography semiBold>{block.information.label}</Typography>
+                            <Typography level="body2">
+                                {block.information.shortDescription}
+                            </Typography>
+                            <PlaceEntityButton name={name} />
+                            <Link href={`https://www.gredice.com/blokovi/${block.information.label}`} target="_blank" className="self-center">
+                                <Button variant="link" className="text-primary" startDecorator={(<Info className="size-4" />)}>
+                                    Više informacija
+                                </Button>
+                            </Link>
+                        </Stack>
+                    </Row>
+                </Stack>
+            </Popper>
+            <PlaceEntityButton name={name} simple />
+        </Stack>
     )
 }
 
@@ -191,7 +209,7 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
             className="w-fit overflow-hidden"
             sideOffset={12}
             trigger={(
-                <IconButton aria-label={label} size='lg' className="size-14" variant="plain">
+                <IconButton aria-label={label} size='lg' className="size-16" variant="plain">
                     <img
                         src={imageSrc}
                         alt={label}
@@ -225,7 +243,14 @@ export function ItemsHud() {
     const items: HudItem[] = [
         { type: 'entity', name: 'Raised_Bed' },
         { type: 'separator' },
-        { type: 'entity', name: "Bucket" },
+        {
+            type: 'picker',
+            label: 'Alat',
+            imageSrc: 'https://www.gredice.com/assets/blocks/Bucket.png',
+            items: [
+                { type: 'entity', name: "Bucket" }
+            ]
+        },
         {
             type: 'picker',
             label: 'Drvena dekoracija',
