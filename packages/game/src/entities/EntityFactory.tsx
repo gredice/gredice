@@ -12,6 +12,9 @@ import { Bucket } from "./Bucket";
 import { RotatableGroup } from "../controls/RotatableGroup";
 import { RaisedBedContruction } from "./RaisedBedContruction";
 import { SelectableGroup } from "../controls/SelectableGroup";
+import { StoneSmall } from "./StoneSmall";
+import { StoneMedium } from "./StoneMedium";
+import { StoneLarge } from "./StoneLarge";
 
 const entityNameMap: Record<string, any> = {
     "Block_Ground": BlockGround,
@@ -21,6 +24,9 @@ const entityNameMap: Record<string, any> = {
     "Fence": Fence,
     "Stool": Stool,
     "Bucket": Bucket,
+    "StoneSmall": StoneSmall,
+    "StoneMedium": StoneMedium,
+    "StoneLarge": StoneLarge,
     "Raised_Bed_Construction": RaisedBedContruction,
 };
 
