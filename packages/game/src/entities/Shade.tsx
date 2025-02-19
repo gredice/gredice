@@ -60,20 +60,31 @@ export function Shade({ stack, block, rotation }: EntityInstanceProps) {
             }
         }
     } else if (neighbors.total >= 2) {
-        middle = true;
+        let sides = 0;
 
         if (neighbors.n) {
             s = true;
+            sides++;
         }
         if (neighbors.w) {
             w = true;
+            sides++;
         }
         if (neighbors.e) {
             e = true;
+            sides++;
         }
         if (neighbors.s) {
             n = true;
+            sides++;
         }
+
+        if (sides === 2 && (s && e || n && w || n && e || s && w)) {
+            middle = true;
+        } else if (sides >= 3) {
+            middle = true;
+        } 
+
         realizedRotation = 0;
     }
 
