@@ -18,14 +18,27 @@ export function Bucket({ stack, block, rotation }: EntityInstanceProps) {
             <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes[`Bucket_1`].geometry}
+                geometry={nodes.Bucket_1.geometry}
                 material={materials['Material.Water']}
             />
             <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes[`Bucket_2`].geometry}
+                geometry={nodes.Bucket_2.geometry}
                 material={materials['Material.Metal']}
+            />
+            <mesh
+                castShadow
+                receiveShadow
+                geometry={nodes.Bucket_3.geometry}
+                material={materials['Material.Planks']}
+            />
+            <mesh
+                castShadow
+                receiveShadow
+                geometry={nodes['Bucket_-_Handle'].geometry}
+                material={nodes['Bucket_-_Handle'].material}
+                scale={[3.333, 4, 3.333]}
             />
             {/* @ts-ignore */}
         </animated.group>
