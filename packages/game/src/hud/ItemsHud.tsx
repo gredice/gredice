@@ -253,12 +253,15 @@ export function ItemsHud() {
         },
         {
             type: 'picker',
-            label: 'Drvena dekoracija',
+            label: 'Dekoracija',
             imageSrc: 'https://www.gredice.com/assets/blocks/Shade.png',
             items: [
                 { type: 'entity', name: "Shade" },
                 { type: 'entity', name: "Stool" },
                 { type: 'entity', name: "Fence" },
+                { type: 'entity', name: "StoneSmall" },
+                { type: 'entity', name: "StoneMedium" },
+                { type: 'entity', name: "StoneLarge" }
             ]
         },
         {

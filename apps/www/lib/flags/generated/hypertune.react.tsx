@@ -21,7 +21,12 @@ export function HypertuneProvider({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <HypertuneSourceProvider createSourceOptions={createSourceOptions}>
+    <HypertuneSourceProvider
+      createSourceOptions={{
+        ...createSourceOptions,
+        ...(dehydratedState ?? {}),
+      }}
+    >
       <HypertuneHydrator dehydratedState={dehydratedState}>
         <HypertuneRootProvider rootArgs={rootArgs}>
           {children}
