@@ -445,7 +445,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Spend sunflowers and create block in parallel
-            const [_, blockId] = await Promise.all([
+            const [, blockId] = await Promise.all([
                 spendSunflowers(accountId, cost, 'block:' + block.information.name),
                 createGardenBlock(gardenIdNumber, block.information.name)
             ]);
