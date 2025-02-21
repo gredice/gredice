@@ -27,7 +27,8 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
         }
     }));
     const camera = useThree(state => state.camera);
-    const domElement = useThree(state => state.gl.domElement);
+    const gl = useThree(state => state.gl);
+    const { domElement } = gl;
     const dragState = useRef(({
         pt: new Vector3(),
         dest: new Vector3(),

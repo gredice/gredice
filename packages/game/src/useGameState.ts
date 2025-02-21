@@ -47,6 +47,7 @@ export function getTimeOfDay({ lat, lon }: Garden['location'], currentTime: Date
 }
 
 export type GameState = {
+    // General
     appBaseUrl: string,
     audio: {
         ambient: ReturnType<typeof audioMixer>,
@@ -57,32 +58,35 @@ export type GameState = {
     timeOfDay: number,
     sunsetTime: Date | null,
     sunriseTime: Date | null,
-    gardenId: string | null,
-    stacks: Stack[],
     data: {
         blocks: BlockData[]
     },
-    orbitControls: OrbitControls | null,
-    setOrbitControls: (ref: OrbitControls | null) => void,
-    camera: Camera | null,
-    setCamera: (camera: Camera) => void,
-    worldRotation: number,
-    setWorldRotation: (worldRotation: number) => void,
-    isDragging: boolean,
-    setGarden: (garden: Garden) => void,
-    setIsDragging: (isDragging: boolean) => void,
     setInitial: (appBaseUrl: string, data: { blocks: BlockData[] }, freezeTime?: Date | null) => void,
     setCurrentTime: (currentTime: Date) => void,
+
+    // Garden
+    gardenId: string | null,
+    stacks: Stack[],
+    setGarden: (garden: Garden) => void,
     setStacks: (stacks: Stack[]) => void,
     placeBlock: (to: Vector3, block: Block) => void,
     moveBlock: (from: Vector3, blockIndex: number, to: Vector3) => Promise<void>,
     rotateBlock: (stackPosition: Vector3, blockOrIndex: Block | number, rotation?: number) => void,
     removeBlock: (blockId: string) => void
+
+    // World
+    orbitControls: OrbitControls | null,
+    setOrbitControls: (ref: OrbitControls | null) => void,
+    worldRotation: number,
+    worldRotate: (direction: 'cw' | 'ccw') => void,
+    setWorldRotation: (worldRotation: number) => void,
+    isDragging: boolean,
+    setIsDragging: (isDragging: boolean) => void,
 };
 
 const now = new Date();
 const defaultPosition = { lat: 45.739, lon: 16.572 };
-export const useGameState = create<GameState>((set) => ({
+export const useGameState = create<GameState>((set, get) => ({
     appBaseUrl: '',
     audio: {
         ambient: audioMixer(),
@@ -95,30 +99,22 @@ export const useGameState = create<GameState>((set) => ({
     sunsetTime: getSunriseSunset(defaultPosition, now).sunset,
     gardenId: null,
     stacks: [],
-    setGarden: (garden) => {
-        set(() => ({
-            gardenId: garden.id,
-            stacks: garden.stacks
-        }));
-    },
+    setGarden: (garden) => set(({
+        gardenId: garden.id,
+        stacks: garden.stacks
+    })),
     data: {
         blocks: []
     },
-    orbitControls: null,
     isDragging: false,
+    orbitControls: null,
     setOrbitControls: (ref) => set({ orbitControls: ref }),
-    camera: null,
-    setCamera: (camera) => set({ camera }),
     worldRotation: 0,
-    setWorldRotation: (worldRotation) => {
-        return set((state) => {
-            state.orbitControls?.setAzimuthalAngle(worldRotation * (Math.PI / 2) + Math.PI / 4 + Math.PI);
-            return ({ worldRotation });
-        });
-    },
+    worldRotate: (direction) => set((state) => ({ worldRotation: state.worldRotation + (direction === 'cw' ? 1 : -1) })),
+    setWorldRotation: (worldRotation) => set(({ worldRotation })),
     setIsDragging: (isDragging) => set({ isDragging }),
     setInitial: (appBaseUrl, data, freezeTime) => set({ appBaseUrl, freezeTime, data }),
-    setCurrentTime: (currentTime) => set(() => ({
+    setCurrentTime: (currentTime) => set(({
         currentTime,
         timeOfDay: getTimeOfDay(defaultPosition, currentTime),
         sunriseTime: getSunriseSunset(defaultPosition, currentTime).sunrise,
@@ -167,7 +163,7 @@ export const useGameState = create<GameState>((set) => ({
         // Persist block move
         await client().api.gardens[":gardenId"].stacks.$patch({
             param: {
-                gardenId: useGameState.getState().gardenId ?? ''
+                gardenId: get().gardenId ?? ''
             },
             json: [
                 {
@@ -193,7 +189,7 @@ export const useGameState = create<GameState>((set) => ({
 
         await client().api.gardens[":gardenId"].blocks[":blockId"].$put({
             param: {
-                gardenId: useGameState.getState().gardenId ?? '',
+                gardenId: get().gardenId ?? '',
                 blockId: block.id
             },
             json: {
@@ -201,15 +197,13 @@ export const useGameState = create<GameState>((set) => ({
             }
         });
     },
-    removeBlock: (blockId) => {
-        set((state) => {
-            state.stacks.forEach((stack) => {
-                const index = stack.blocks.findIndex((block) => block.id === blockId);
-                if (index !== -1) {
-                    stack.blocks.splice(index, 1);
-                }
-            });
-            return { stacks: [...state.stacks] };
+    removeBlock: (blockId) => set((state) => {
+        state.stacks.forEach((stack) => {
+            const index = stack.blocks.findIndex((block) => block.id === blockId);
+            if (index !== -1) {
+                stack.blocks.splice(index, 1);
+            }
         });
-    }
+        return { stacks: [...state.stacks] };
+    })
 }));
