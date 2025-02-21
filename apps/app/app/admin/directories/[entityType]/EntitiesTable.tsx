@@ -7,6 +7,9 @@ import { Chip } from '@signalco/ui-primitives/Chip';
 import { EntityAttributeProgress } from './EntityAttributeProgress';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { entityDisplayName } from '../../../../src/entities/entityAttributes';
+import { ServerActionIconButton } from '../../../../components/shared/ServerActionIconButton';
+import { Duplicate } from '@signalco/ui-icons';
+import { duplicateEntity } from '../../../(actions)/entityActions';
 
 export async function EntitiesTable({ entityTypeName }: { entityTypeName: string }) {
     const entities = await getEntitiesRaw(entityTypeName);
@@ -19,6 +22,7 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                     <Table.Head>Zadnja izmjena</Table.Head>
                     <Table.Head>Status</Table.Head>
                     <Table.Head>Ispunjenost</Table.Head>
+                    <Table.Head></Table.Head>
                 </Table.Row>
             </Table.Header>
             <Table.Body>
@@ -31,7 +35,7 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                 )}
                 {entities.map(entity => {
                     return (
-                        <Table.Row key={entity.id}>
+                        <Table.Row key={entity.id} className='group'>
                             <Table.Cell>
                                 <Link href={KnownPages.DirectoryEntity(entityTypeName, entity.id)}>
                                     <Typography>{entityDisplayName(entity)}</Typography>
@@ -53,6 +57,15 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                                         entityTypeName={entityTypeName}
                                         entity={entity} />
                                 </div>
+                            </Table.Cell>
+                            <Table.Cell>
+                                <ServerActionIconButton
+                                    variant="plain"
+                                    title="Dupliciraj zapis"
+                                    className='group-hover:opacity-100 opacity-0 transition-opacity'
+                                    onClick={duplicateEntity.bind(null, entityTypeName, entity.id)}>
+                                    <Duplicate className='size-5' />
+                                </ServerActionIconButton>
                             </Table.Cell>
                         </Table.Row>
                     );
