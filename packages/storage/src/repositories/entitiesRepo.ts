@@ -1,6 +1,7 @@
 import 'server-only';
 import { and, eq } from "drizzle-orm";
 import {
+    attributeValues,
     entities,
     type SelectAttributeDefinition,
     type SelectAttributeValue,
@@ -126,6 +127,28 @@ export async function createEntity(entityTypeName: string) {
         .values({ entityTypeName })
         .returning({ id: entities.id });
     return result[0].id;
+}
+
+export async function duplicateEntity(id: number) {
+    const entity = await getEntityRaw(id);
+    if (!entity) {
+        throw new Error(`Entity with id ${id} not found`);
+    }
+
+    const newEntityId = await createEntity(entity.entityTypeName);
+    const newAttributes = entity.attributes.map(attr => ({
+        entityId: newEntityId,
+        entityTypeName: entity.entityTypeName,
+        attributeDefinitionId: attr.attributeDefinition.id,
+        value: attr.value,
+        order: attr.order,
+    }));
+
+    await storage
+        .insert(attributeValues)
+        .values(newAttributes);
+
+    return newEntityId;
 }
 
 export async function updateEntity(entity: UpdateEntity) {

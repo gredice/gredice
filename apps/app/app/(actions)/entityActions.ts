@@ -7,6 +7,7 @@ import {
     SelectAttributeValue,
     createEntity as storageCreateEntity,
     updateEntity as storageUpdateEntity,
+    duplicateEntity as storageDuplicateEntity,
     UpdateEntity,
     upsertAttributeValue,
     upsertEntityType
@@ -41,6 +42,15 @@ export async function updateEntity(entity: UpdateEntity) {
     revalidatePath(KnownPages.Directories);
     revalidatePath(KnownPages.DirectoryEntityPath, 'page');
     revalidatePath(KnownPages.DirectoryEntityPath, 'layout');
+}
+
+export async function duplicateEntity(entityTypeName: string, entityId: number) {
+    await auth(['admin']);
+
+    const newEntityId = await storageDuplicateEntity(entityId);
+    revalidatePath(KnownPages.Directories);
+    revalidatePath(KnownPages.DirectoryEntityType(entityTypeName));
+    redirect(KnownPages.DirectoryEntity(entityTypeName, newEntityId));
 }
 
 export async function handleValueSave(
