@@ -7,6 +7,7 @@ import { useGameState } from '../useGameState';
 import { AmbientLight, Color, DirectionalLight, HemisphereLight, Quaternion, Vector3 } from 'three';
 import { Garden } from '../types/Garden';
 import { useWeatherNow } from '../hooks/useWeatherNow';
+import { Clouds } from './Clouds';
 
 const backgroundColorScale = chroma
     .scale(['#2D3947', '#BADDf6', '#E7E2CC', '#E7E2CC', '#f8b195', '#6c5b7b', '#2D3947'])
@@ -138,6 +139,7 @@ export function Environment({ location, noBackground }: { location: Garden['loca
 
     return (
         <>
+            <Clouds />
             {!noBackground && <color ref={backgroundRef} attach="background" args={[0, 0, 0]} />}
             <ambientLight ref={ambientRef} />
             <hemisphereLight ref={hemisphereRef} position={[0, 1, 0]} intensity={2} />
