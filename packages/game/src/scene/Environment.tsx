@@ -89,7 +89,7 @@ export function Environment({ location, noBackground }: { location: Garden['loca
             directionalLightRef.current.intensity = sunIntensity * 5;
         }
         if (ambientRef.current)
-            ambientRef.current.intensity = sunIntensity * 2 + 1;
+            ambientRef.current.intensity = sunIntensity * 2 + 1.3;
 
         directionalLightRef.current?.color.setRGB(
             sunTemperature[0] / 255,
@@ -139,7 +139,7 @@ export function Environment({ location, noBackground }: { location: Garden['loca
     return (
         <>
             {!noBackground && <color ref={backgroundRef} attach="background" args={[0, 0, 0]} />}
-            <ambientLight ref={ambientRef} intensity={3} />
+            <ambientLight ref={ambientRef} />
             <hemisphereLight ref={hemisphereRef} position={[0, 1, 0]} intensity={2} />
             <directionalLight
                 intensity={1.5}
