@@ -6,6 +6,10 @@ import { describeRoute } from 'hono-openapi';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import { getEvents, knownEventTypes } from '@gredice/storage';
 
+export const getBlockData = async () => {
+    return await getEntitiesFormatted('block') as BlockData[]
+};
+
 export type BlockData = {
     id: string,
     information: {
@@ -416,7 +420,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Check garden exists and is owned by user
             const { accountId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
+
+            const [garden, entities] = await Promise.all([
+                getGarden(gardenIdNumber),
+                getBlockData()
+            ]);
+
             if (!garden || garden.accountId !== accountId) {
                 return context.json({
                     error: 'Garden not found'
@@ -426,7 +435,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { blockName } = context.req.valid('json');
 
             // Retrieve block information (cost)
-            const entities = await getEntitiesFormatted('block') as BlockData[];
             const block = entities.find(block => block.information.name === blockName);
             if (!block) {
                 return context.json({ error: 'Requested block not found' }, 400);
@@ -436,11 +444,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Requested block not for sale' }, 400);
             }
 
-            // Spend sunflowers
-            await spendSunflowers(accountId, cost, 'block:' + block.information.name);
-
-            // Create block
-            const blockId = await createGardenBlock(gardenIdNumber, block.information.name);
+            // Spend sunflowers and create block in parallel
+            const [, blockId] = await Promise.all([
+                spendSunflowers(accountId, cost, 'block:' + block.information.name),
+                createGardenBlock(gardenIdNumber, block.information.name)
+            ]);
 
             return context.json({ id: blockId });
         })

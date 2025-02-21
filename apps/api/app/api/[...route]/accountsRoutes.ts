@@ -34,8 +34,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId } = context.get('authContext');
-            const accountSunflowers = await getSunflowers(accountId);
-            const accountSunflowersHistory = await getSunflowersHistory(accountId, 0, 1000);
+            const [accountSunflowers, accountSunflowersHistory] = await Promise.all([
+                getSunflowers(accountId),
+                getSunflowersHistory(accountId, 0, 1000)
+            ]);
             return context.json({
                 amount: accountSunflowers,
                 history: accountSunflowersHistory.map((event) => ({

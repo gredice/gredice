@@ -73,20 +73,16 @@ export async function updateGardenBlock({ id, ...values }: UpdateGardenBlock) {
 }
 
 export async function createGardenBlock(gardenId: number, blockName: string) {
-    const garden = await getGarden(gardenId);
-    if (!garden) {
-        throw new Error('Garden not found');
-    }
-
     const blockId = uuidV4();
 
-    await storage.insert(gardenBlocks).values({
-        id: blockId,
-        gardenId,
-        name: blockName
-    });
-
-    await createEvent(knownEvents.gardens.blockPlacedV1(gardenId.toString(), { id: blockId, name: blockName }));
+    await Promise.all([
+        storage.insert(gardenBlocks).values({
+            id: blockId,
+            gardenId,
+            name: blockName
+        }),
+        await createEvent(knownEvents.gardens.blockPlacedV1(gardenId.toString(), { id: blockId, name: blockName }))
+    ]);
 
     return blockId;
 }
