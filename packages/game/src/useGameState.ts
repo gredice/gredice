@@ -76,7 +76,8 @@ export type GameState = {
     setStacks: (stacks: Stack[]) => void,
     placeBlock: (to: Vector3, block: Block) => void,
     moveBlock: (from: Vector3, blockIndex: number, to: Vector3) => Promise<void>,
-    rotateBlock: (stackPosition: Vector3, blockOrIndex: Block | number, rotation?: number) => void
+    rotateBlock: (stackPosition: Vector3, blockOrIndex: Block | number, rotation?: number) => void,
+    removeBlock: (blockId: string) => void
 };
 
 const now = new Date();
@@ -198,6 +199,17 @@ export const useGameState = create<GameState>((set) => ({
             json: {
                 rotation: newRotation
             }
+        });
+    },
+    removeBlock: (blockId) => {
+        set((state) => {
+            state.stacks.forEach((stack) => {
+                const index = stack.blocks.findIndex((block) => block.id === blockId);
+                if (index !== -1) {
+                    stack.blocks.splice(index, 1);
+                }
+            });
+            return { stacks: [...state.stacks] };
         });
     }
 }));

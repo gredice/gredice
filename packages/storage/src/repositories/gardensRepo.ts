@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { storage } from "..";
 import { gardenBlocks, gardens, gardenStacks, InsertGarden, UpdateGarden, UpdateGardenBlock, UpdateGardenStack } from "../schema";
 import { createEvent, knownEvents } from './eventsRepo';
@@ -106,16 +106,23 @@ export async function getGardenStack(gardenId: number, { x, y }: { x: number, y:
 
 export async function createGardenStack(gardenId: number, { x, y }: { x: number, y: number }) {
     // Check if stack at location already exists
-    const existingStacks = await storage.query.gardenStacks.findMany({
-        where: and(eq(gardenStacks.gardenId, gardenId), eq(gardenStacks.positionX, x), eq(gardenStacks.positionY, y), eq(gardenStacks.isDeleted, false))
-    });
-    if (existingStacks.length > 0) {
-        throw new Error('Stack already exists');
+    const [{ count: existingStacksCount }] = await storage
+        .select({ count: count() })
+        .from(gardenStacks)
+        .where(
+            and(
+                eq(gardenStacks.gardenId, gardenId),
+                eq(gardenStacks.positionX, x),
+                eq(gardenStacks.positionY, y),
+                eq(gardenStacks.isDeleted, false)));
+    if (existingStacksCount > 0) {
+        return false;
     }
 
     await storage
         .insert(gardenStacks)
         .values({ gardenId, positionX: x, positionY: y });
+    return true;
 }
 
 export async function updateGardenStack(gardenId: number, stacks: Omit<UpdateGardenStack, 'id'> & { x: number, y: number }) {
