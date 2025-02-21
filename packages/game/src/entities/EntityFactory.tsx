@@ -18,6 +18,7 @@ import { StoneLarge } from "./StoneLarge";
 import { BlockSand } from "./BlockSand";
 import { Composter } from "./Composter";
 import { Bush } from "./Bush";
+import { Tree } from "./Tree";
 
 const entityNameMap: Record<string, any> = {
     "Block_Ground": BlockGround,
@@ -30,6 +31,7 @@ const entityNameMap: Record<string, any> = {
     "Stool": Stool,
     "Bucket": Bucket,
     "Bush": Bush,
+    "Tree": Tree,
     "StoneSmall": StoneSmall,
     "StoneMedium": StoneMedium,
     "StoneLarge": StoneLarge,
