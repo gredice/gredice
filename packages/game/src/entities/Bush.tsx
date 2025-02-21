@@ -4,6 +4,7 @@ import { stackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
+import { MeshDistortMaterial, MeshWobbleMaterial } from "@react-three/drei";
 
 export function Bush({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
@@ -19,14 +20,16 @@ export function Bush({ stack, block, rotation }: EntityInstanceProps) {
                 castShadow
                 receiveShadow
                 geometry={nodes.Bush_1_1.geometry}
-                material={materials['Material.Leaves']}
-            />
+            >
+                <MeshDistortMaterial {...materials['Material.Leaves']} distort={0.1} speed={2} />
+            </mesh>
             <mesh
                 castShadow
                 receiveShadow
                 geometry={nodes.Bush_1_2.geometry}
-                material={materials['Material.GrassPart']}
-            />
+            >
+                <MeshWobbleMaterial {...materials['Material.GrassPart']} factor={0.02} speed={3} />
+            </mesh>
             {/* @ts-ignore */}
         </animated.group>
     );

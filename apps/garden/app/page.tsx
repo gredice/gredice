@@ -5,7 +5,7 @@ import { GameSceneDynamic } from "./GameSceneDynamic";
 import { WelcomeMessage } from "../components/WelcomeMessage";
 
 export default async function Home() {
-  const enableDebugHud = false//(await getHypertune()).enableDebugHud({ fallback: false });
+  const enableDebugHud = true//(await getHypertune()).enableDebugHud({ fallback: false });
 
   return (
     <div className="grid grid-cols-1 h-[100dvh] relative">
