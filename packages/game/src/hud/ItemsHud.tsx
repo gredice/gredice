@@ -97,9 +97,13 @@ function spiral(step: number): [number, number] {
     return [pos[0], pos[1]];
 }
 
-function isValidPosition(blockData: BlockData[], stacks: GardenStack[], position: [number, number]) {
+function isValidPosition(blockData: BlockData[], stacks: GardenStack[], position: [number, number], type: 'block' | 'any' = 'any') {
     const stack = stacks.find(stack => stack.position.x === position[0] && stack.position.z === position[1]);
     if (!stack) return true;
+
+    // Place block only on non-block stacks
+    if (type === 'block' && stack.blocks.length > 0)
+        return false;
 
     const lastBlock = stack.blocks.at(-1);
     if (!lastBlock) return true;
@@ -110,10 +114,10 @@ function isValidPosition(blockData: BlockData[], stacks: GardenStack[], position
     return data.attributes.stackable ?? false;
 }
 
-function findEmptyPosition(blockData: BlockData[], stacks: GardenStack[]) {
+function findEmptyPosition(blockData: BlockData[], stacks: GardenStack[], type: 'block' | 'any' = 'any') {
     let current: [number, number] = [0, 0];
     let spiralStep = 0;
-    while (!isValidPosition(blockData, stacks, current)) {
+    while (!isValidPosition(blockData, stacks, current, type)) {
         current = spiral(spiralStep++);
     }
     return current;
@@ -128,7 +132,10 @@ function PlaceEntityButton({ name, simple }: { name: string, simple?: boolean })
     if (!block) return null;
 
     async function placeEntity() {
-        const position = findEmptyPosition(blockData, stacks);
+        const position = findEmptyPosition(
+            blockData,
+            stacks,
+            name.startsWith('Block') ? 'block' : 'any');
 
         // Buy block and get id
         await newBlock.mutateAsync({
@@ -142,7 +149,7 @@ function PlaceEntityButton({ name, simple }: { name: string, simple?: boolean })
 
     return (
         <Button
-            className={cx("justify-between", simple && 'py-0 h-8')}
+            className={cx(!simple && "justify-between", simple && 'py-0 h-8')}
             onClick={placeEntity}
             size={simple ? 'sm' : 'md'}
             disabled={!block.prices.sunflowers}
@@ -169,7 +176,7 @@ function EntityItem({ name }: HudItemEntity) {
                 open={open}
                 sideOffset={12}
                 onOpenChange={(open) => setOpen(open)}
-                className="w-fit p-2 max-w-80"
+                className="w-fit p-2 max-w-xs md:w-80"
                 trigger={(
                     <IconButton
                         aria-label={block.information.label}
@@ -179,11 +186,10 @@ function EntityItem({ name }: HudItemEntity) {
                         <BlockImage name={name} label={block.information.label} />
                     </IconButton>
                 )}>
-                <div className="hidden md:block absolute size-0 -bottom-[11px] left-0 right-0 mx-auto [border-left:8px_solid_transparent] [border-right:8px_solid_transparent] [border-bottom:0] [border-top:12px_solid_hsl(var(--border))]" />
                 <Stack>
                     <Row spacing={2} alignItems="start">
-                        <BlockImage name={name} label={block.information.label} className="size-24 border rounded-lg" />
-                        <Stack spacing={1}>
+                        <BlockImage name={name} label={block.information.label} className="size-24 z-10 border rounded-lg" />
+                        <Stack spacing={1} className="w-full">
                             <Typography semiBold>{block.information.label}</Typography>
                             <Typography level="body2">
                                 {block.information.shortDescription}
@@ -218,14 +224,13 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                     <ChevronUp className="absolute top-0.5 text-muted-foreground" />
                 </IconButton>
             )}>
-            <div className="hidden md:block absolute transition-all size-0 -bottom-[11px] left-0 right-0 mx-auto [border-left:8px_solid_transparent] [border-right:8px_solid_transparent] [border-bottom:0] [border-top:12px_solid_hsl(var(--border))]" />
             <Stack spacing={1}>
                 <div className="bg-muted p-2 border-b">
                     <Typography semiBold level="body2">
                         {label}
                     </Typography>
                 </div>
-                <Row spacing={1} className="p-2 pt-0">
+                <div className="grid gap-1 p-2 pt-0 grid-cols-4 md:grid-cols-6">
                     {items.map((item, index) => {
                         if (item.type === 'entity') {
                             return <EntityItem key={index} {...item} />
@@ -233,7 +238,7 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                             return null
                         }
                     })}
-                </Row>
+                </div>
             </Stack>
         </Popper>
     )
