@@ -7,27 +7,29 @@ import { useGameState } from "../useGameState";
 export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ stack: Stack; block: Block; }>) {
     const rotateBlock = useGameState(state => state.rotateBlock);
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
+    const isDragging = useGameState(state => state.isDragging);
     const swipeSound = effectsAudioMixer.useSoundEffect('https://cdn.gredice.com/sounds/effects/Swipe Generic 01.mp3');
+
+    const rotateInitiated = useRef(false);
 
     function doRotate(event: ThreeEvent<globalThis.PointerEvent> | ThreeEvent<MouseEvent>) {
         if (!rotateInitiated.current)
             return;
 
-        if (useGameState.getState().isDragging)
+        if (isDragging)
             return;
 
         event.stopPropagation();
         rotateBlock(stack.position, block);
         rotateInitiated.current = false;
+
         // TODO: Don't play sound if rotation is not possible
         swipeSound.play();
     }
 
-    const rotateInitiated = useRef(false);
-
     const doubleClickDownTimeStamp = useRef(0);
     const firstClickTimeStamp = useRef(0);
-    const handlePointerDown = (event: ThreeEvent<globalThis.PointerEvent>) => {
+    function handlePointerDown(event: ThreeEvent<globalThis.PointerEvent>) {
         if (event.button === 2) {
             rotateInitiated.current = true;
         }
@@ -38,11 +40,11 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
         }
     }
 
-    const handleRotateCancel = () => {
+    function handleRotateCancel() {
         rotateInitiated.current = false;
-    };
+    }
 
-    const handlePointerUp = (event: ThreeEvent<globalThis.PointerEvent>, stack: Stack, block: Block) => {
+    function handlePointerUp(event: ThreeEvent<globalThis.PointerEvent>, stack: Stack, block: Block) {
         const now = Date.now();
         if (now - firstClickTimeStamp.current < 600) {
             rotateInitiated.current = true;
@@ -55,7 +57,7 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
             return;
 
         doRotate(event);
-    };
+    }
 
     return (
         <group

@@ -12,7 +12,7 @@ function fromAudio(context: AudioContext, buffer: AudioBuffer) {
 function useSoundEffect(context: AudioContext, src: string, volume: number = 0.5) {
     const audioCache = useRef<AudioBuffer>(null);
 
-    // TODO: Use shared cache for audio data
+    // TODO: Use shared cache for audio data (if measured browser disk cache is slower)
 
     return {
         async play() {
@@ -20,7 +20,10 @@ function useSoundEffect(context: AudioContext, src: string, volume: number = 0.5
             if (!audioCache.current) {
                 audioCache.current = await fetch(src).then(r => r.arrayBuffer()).then(b => context.decodeAudioData(b))
             }
+
+            // Ignore if unable to load
             if (!audioCache.current) {
+                console.warn('Failed to load sound effect', src);
                 return;
             }
 
