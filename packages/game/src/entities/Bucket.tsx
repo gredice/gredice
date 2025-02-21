@@ -4,6 +4,7 @@ import { stackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
+import { MeshDistortMaterial } from "@react-three/drei";
 
 export function Bucket({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
@@ -20,7 +21,9 @@ export function Bucket({ stack, block, rotation }: EntityInstanceProps) {
                 receiveShadow
                 geometry={nodes.Bucket_1.geometry}
                 material={materials['Material.Water']}
-            />
+            >
+                <MeshDistortMaterial {...materials['Material.Water']} distort={0.2} speed={2} />
+            </mesh>
             <mesh
                 castShadow
                 receiveShadow
