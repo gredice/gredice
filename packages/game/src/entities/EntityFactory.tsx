@@ -15,15 +15,21 @@ import { SelectableGroup } from "../controls/SelectableGroup";
 import { StoneSmall } from "./StoneSmall";
 import { StoneMedium } from "./StoneMedium";
 import { StoneLarge } from "./StoneLarge";
+import { BlockSand } from "./BlockSand";
+import { Composter } from "./Composter";
+import { Bush } from "./Bush";
 
 const entityNameMap: Record<string, any> = {
     "Block_Ground": BlockGround,
     "Block_Grass": BlockGrass,
+    "Block_Sand": BlockSand,
+    "Composter": Composter,
     "Raised_Bed": RaisedBed,
     "Shade": Shade,
     "Fence": Fence,
     "Stool": Stool,
     "Bucket": Bucket,
+    "Bush": Bush,
     "StoneSmall": StoneSmall,
     "StoneMedium": StoneMedium,
     "StoneLarge": StoneLarge,

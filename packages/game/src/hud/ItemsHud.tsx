@@ -29,6 +29,44 @@ type HudItemPicker = {
 
 type HudItem = HudItemEntity | HudItemPicker | { type: 'separator' };
 
+const items: HudItem[] = [
+    { type: 'entity', name: 'Raised_Bed' },
+    { type: 'separator' },
+    {
+        type: 'picker',
+        label: 'Alat',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Bucket.png',
+        items: [
+            { type: 'entity', name: "Bucket" },
+            { type: 'entity', name: "Composter" }
+        ]
+    },
+    {
+        type: 'picker',
+        label: 'Dekoracija',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Shade.png',
+        items: [
+            { type: 'entity', name: "Shade" },
+            { type: 'entity', name: "Stool" },
+            { type: 'entity', name: "Fence" },
+            { type: 'entity', name: "StoneSmall" },
+            { type: 'entity', name: "StoneMedium" },
+            { type: 'entity', name: "StoneLarge" },
+            { type: 'entity', name: "Bush" }
+        ]
+    },
+    {
+        type: 'picker',
+        label: 'Blokovi',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Icon_GroundOverGrass.png',
+        items: [
+            { type: 'entity', name: 'Block_Grass' },
+            { type: 'entity', name: 'Block_Ground' },
+            { type: 'entity', name: 'Block_Sand' }
+        ]
+    },
+];
+
 function BlockImage({ name, label, ...rest }: HTMLAttributes<HTMLImageElement> & { name: string, label: string }) {
     return (
         <img
@@ -245,41 +283,6 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
 }
 
 export function ItemsHud() {
-    const items: HudItem[] = [
-        { type: 'entity', name: 'Raised_Bed' },
-        { type: 'separator' },
-        {
-            type: 'picker',
-            label: 'Alat',
-            imageSrc: 'https://www.gredice.com/assets/blocks/Bucket.png',
-            items: [
-                { type: 'entity', name: "Bucket" }
-            ]
-        },
-        {
-            type: 'picker',
-            label: 'Dekoracija',
-            imageSrc: 'https://www.gredice.com/assets/blocks/Shade.png',
-            items: [
-                { type: 'entity', name: "Shade" },
-                { type: 'entity', name: "Stool" },
-                { type: 'entity', name: "Fence" },
-                { type: 'entity', name: "StoneSmall" },
-                { type: 'entity', name: "StoneMedium" },
-                { type: 'entity', name: "StoneLarge" }
-            ]
-        },
-        {
-            type: 'picker',
-            label: 'Blokovi',
-            imageSrc: 'https://www.gredice.com/assets/blocks/Block_Icon_GroundOverGrass.png',
-            items: [
-                { type: 'entity', name: 'Block_Grass' },
-                { type: 'entity', name: 'Block_Ground' },
-            ]
-        },
-    ]
-
     return (
         <HudCard
             open
