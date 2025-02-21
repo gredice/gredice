@@ -63,17 +63,21 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const { accountId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
+            const [garden, blockPlaceEventsRaw, blocks] = await Promise.all([
+                getGarden(gardenIdNumber),
+                getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 1000),
+                getGardenBlocks(gardenIdNumber)
+            ]);
             if (!garden || garden.accountId !== accountId) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            // Stacks: group by x then by y
-            const blockPlaceEvents = (await getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 1000)).map(event => ({
+            const blockPlaceEvents = blockPlaceEventsRaw.map(event => ({
                 ...event,
                 data: event.data as { id: string, name: string }
             }));
-            const blocks = await getGardenBlocks(garden.id);
+
+            // Stacks: group by x then by y
             const stacks = garden.stacks.reduce((acc, stack) => {
                 if (!acc[stack.positionX]) {
                     acc[stack.positionX] = {};

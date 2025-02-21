@@ -3,12 +3,21 @@ import { accounts, events, farms, gardenBlocks, gardens, users } from "../schema
 import { storage } from "../storage";
 
 export async function getAnalyticsTotals() {
+    const [usersCount, accountsCount, farmsCount, gardensCount, blocksCount, eventsCount] = await Promise.all([
+        storage.select({ count: count() }).from(users),
+        storage.select({ count: count() }).from(accounts),
+        storage.select({ count: count() }).from(farms),
+        storage.select({ count: count() }).from(gardens),
+        storage.select({ count: count() }).from(gardenBlocks),
+        storage.select({ count: count() }).from(events)
+    ]);
+
     return {
-        users: (await storage.select({ count: count() }).from(users))[0].count,
-        accounts: (await storage.select({ count: count() }).from(accounts))[0].count,
-        farms: (await storage.select({ count: count() }).from(farms))[0].count,
-        gardens: (await storage.select({ count: count() }).from(gardens))[0].count,
-        blocks: (await storage.select({ count: count() }).from(gardenBlocks))[0].count,
-        events: (await storage.select({ count: count() }).from(events))[0].count
+        users: usersCount[0].count,
+        accounts: accountsCount[0].count,
+        farms: farmsCount[0].count,
+        gardens: gardensCount[0].count,
+        blocks: blocksCount[0].count,
+        events: eventsCount[0].count
     };
 }
