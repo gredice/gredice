@@ -10,9 +10,12 @@ test.describe('block screenshots', async () => {
     const entities = JSON.parse(readFileSync('./generate/test-cases.json', 'utf8')) as BlockData[];
     for (const entity of entities) {
         test(entity.information.name, async ({ mount }) => {
+            console.log('Taking screenshot of', entity.information.name);
             const component = await mount(
                 <EntityViewer
                     className='size-80'
+                    zoom={entity.attributes.height > 1.5 ? 60 : undefined}
+                    itemPosition={entity.attributes.height > 1.5 ? [1.25, 0, 1.25] : undefined}
                     entityName={entity.information.name}
                     appBaseUrl='https://vrt.gredice.com' />
             );
