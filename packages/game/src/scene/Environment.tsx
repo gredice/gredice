@@ -56,7 +56,7 @@ export function environmentState({ lat, lon }: Garden['location'], currentTime: 
     return { timeOfDay, sunPosition, colors, intensities };
 }
 
-export function Environment({ location, noBackground }: { location: Garden['location'], noBackground?: boolean }) {
+export function Environment({ location, noBackground, noSound }: { location: Garden['location'], noBackground?: boolean, noSound?: boolean }) {
     const cameraShadowSize = 20;
     const shadowMapSize = 8;
 
@@ -75,7 +75,9 @@ export function Environment({ location, noBackground }: { location: Garden['loca
             'https://cdn.gredice.com/sounds/ambient/Night 01.mp3',
         0.2);
     useEffect(() => {
-        baseAmbient.play();
+        if (!noSound) {
+            baseAmbient.play();
+        }
     }, []);
 
     useEffect(() => {
