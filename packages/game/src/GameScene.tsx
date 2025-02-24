@@ -17,19 +17,28 @@ import { useGameTimeManager } from './hooks/useGameTimeManager';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string,
-    isDevelopment?: boolean,
     zoom?: 'far' | 'normal',
+
+    // Demo purposes only
     freezeTime?: Date,
     noBackground?: boolean,
-    hideHud?: boolean
+    hideHud?: boolean,
+    noWeather?: boolean,
+    noSound?: boolean,
+    mockGarden?: boolean,
+
+    isDevelopment?: boolean,
 }
 
 export function GameScene({
     appBaseUrl,
     isDevelopment,
     zoom = 'normal',
+    mockGarden,
     freezeTime,
+    noWeather,
     noBackground,
+    noSound,
     hideHud,
     ...rest
 }: GameSceneProps) {
@@ -48,7 +57,12 @@ export function GameScene({
                 className='!absolute'
             >
                 {isDevelopment && <DebugHud />}
-                <GardenDisplay noBackground={noBackground} />
+                <GardenDisplay
+                    noBackground={noBackground}
+                    mockGarden={mockGarden}
+                    noWeather={noWeather}
+                    noSound={noSound}
+                />
                 <Controls />
             </Scene>
             {!hideHud && (
@@ -66,9 +80,9 @@ export function GameScene({
                         <ItemsHud />
                         <div className='hidden md:block' />
                     </div>
+                    <OverviewModal />
                 </>
-            )}
-            <OverviewModal />
+            )}            
         </div>
     );
 }
