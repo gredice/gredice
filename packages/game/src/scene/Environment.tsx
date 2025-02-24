@@ -56,7 +56,14 @@ export function environmentState({ lat, lon }: Garden['location'], currentTime: 
     return { timeOfDay, sunPosition, colors, intensities };
 }
 
-export function Environment({ location, noBackground, noSound }: { location: Garden['location'], noBackground?: boolean, noSound?: boolean }) {
+export type EnvironmentProps = {
+    location: Garden['location'],
+    noBackground?: boolean,
+    noSound?: boolean,
+    noWeather?: boolean,
+}
+
+export function Environment({ location, noBackground, noSound, noWeather }: EnvironmentProps) {
     const cameraShadowSize = 20;
     const shadowMapSize = 8;
 
@@ -158,8 +165,7 @@ export function Environment({ location, noBackground, noSound }: { location: Gar
                 castShadow>
                 <orthographicCamera attach="shadow-camera" args={[-cameraShadowSize, cameraShadowSize, cameraShadowSize, -cameraShadowSize]} />
             </directionalLight>
-            {fog > 0 && (
-                <fog attach="fog" args={['#aaaaaa', fogNear, 190]} />
+            {(!noWeather && fog > 0) && (
             )}
         </>
     );

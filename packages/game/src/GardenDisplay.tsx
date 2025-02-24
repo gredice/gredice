@@ -3,52 +3,27 @@ import { useGameState } from "./useGameState";
 import { useCurrentGarden } from "./hooks/useCurrentGarden";
 import { Environment } from "./scene/Environment";
 import { EntityFactory } from "./entities/EntityFactory";
-import { Vector3 } from "three";
-import { Stack } from "./types/Stack";
 
-export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
+export type GardenDisplayProps = {
+    noBackground?: boolean,
+    noWeather?: boolean,
+    noSound?: boolean,
+    mockGarden?: boolean,
+}
+
+export function GardenDisplay({ noBackground, noWeather, noSound, mockGarden }: GardenDisplayProps) {
     const stacks = useGameState(state => state.stacks);
     const setGarden = useGameState(state => state.setGarden);
 
     // TODO: Load garden from remote
-    const { data: garden, isLoading: isLoadingGarden } = useCurrentGarden();
+    const { data: garden } = useCurrentGarden(mockGarden);
     useEffect(() => {
         // Only update local state if we don't have any local state (first load or no stacks)
-        if (garden && !isLoadingGarden) {
-            const rootStacks = garden.stacks ?? [];
-            const stacks: Stack[] = [];
-
-            const xPositions = Object.keys(rootStacks);
-            for (const x of xPositions) {
-                const yPositions = Object.keys(rootStacks[x]);
-                for (const y of yPositions) {
-                    const blocks = rootStacks[x][y];
-                    stacks.push({
-                        position: new Vector3(Number(x), 0, Number(y)),
-                        blocks: blocks ? blocks.map((block) => {
-                            return {
-                                id: block.id,
-                                name: block.name,
-                                rotation: block.rotation ?? 0,
-                                variant: block.variant
-                            }
-                        }) : []
-                    });
-                }
-            }
-
+        if (garden) {
             console.log('Setting garden', garden);
-            setGarden({
-                id: garden.id.toString(),
-                name: garden.name,
-                stacks: stacks,
-                location: {
-                    lat: garden.latitude,
-                    lon: garden.longitude
-                }
-            });
+            setGarden(garden);
         }
-    }, [garden, isLoadingGarden]);
+    }, [garden]);
 
     if (!garden) {
         return null;
@@ -56,7 +31,11 @@ export function GardenDisplay({ noBackground }: { noBackground?: boolean }) {
 
     return (
         <>
-            <Environment noBackground={noBackground} location={{ lat: garden.latitude, lon: garden.longitude }} />
+            <Environment
+                noBackground={noBackground}
+                noWeather={noWeather}
+                noSound={noSound}
+                location={{ lat: garden.location.lat, lon: garden.location.lon }} />
             <group>
                 {stacks.map((stack) =>
                     stack.blocks?.map((block, i) => {
