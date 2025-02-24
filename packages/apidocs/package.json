@@ -12,7 +12,7 @@
   "devDependencies": {
     "@gredice/storage": "workspace:*",
     "openapi-types": "12.1.3",
-    "tsx": "4.19.2",
+    "tsx": "4.19.3",
     "typescript": "5.7.3"
   }
 }
