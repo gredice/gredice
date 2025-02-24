@@ -12,7 +12,7 @@
   "devDependencies": {
     "@gredice/api": "workspace:*",
     "@types/node": "22.13.4",
-    "hono": "4.7.1",
+    "hono": "4.7.2",
     "typescript": "5.7.3"
   }
 }

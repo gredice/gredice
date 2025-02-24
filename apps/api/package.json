@@ -18,7 +18,7 @@
     "@hono/zod-validator": "0.4.3",
     "@scalar/api-reference-react": "0.4.31",
     "@scalar/nextjs-api-reference": "0.5.10",
-    "hono": "4.7.1",
+    "hono": "4.7.2",
     "hono-openapi": "0.4.4",
     "jose": "5.10.0",
     "next": "15.1.7",
