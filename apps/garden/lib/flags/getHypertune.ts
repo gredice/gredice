@@ -1,7 +1,6 @@
 import "server-only";
 import { unstable_noStore as noStore } from "next/cache";
 import { createSource } from "./generated/hypertune";
-import { auth } from "../../../api/lib/auth/auth";
 
 const hypertuneSource = createSource({
     token: process.env.NEXT_PUBLIC_HYPERTUNE_TOKEN!,
