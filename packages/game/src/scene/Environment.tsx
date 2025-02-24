@@ -130,6 +130,7 @@ export function Environment({ location, noBackground, noSound, noWeather }: Envi
     // Handle fog
     const fog = weather?.foggy ?? 0;
     const fogNear = 170 - fog * 30;
+    const fogColor = timeOfDay > 0.2 && timeOfDay < 0.8 ? new Color(0xaaaaaa) : new Color(0x55556a);
     // TODO: Apply fog to background (make a gradient)
 
     // // TODO: Handle rain
@@ -166,6 +167,7 @@ export function Environment({ location, noBackground, noSound, noWeather }: Envi
                 <orthographicCamera attach="shadow-camera" args={[-cameraShadowSize, cameraShadowSize, cameraShadowSize, -cameraShadowSize]} />
             </directionalLight>
             {(!noWeather && fog > 0) && (
+                <fog attach="fog" args={[fogColor, fogNear, 190]} />
             )}
         </>
     );
