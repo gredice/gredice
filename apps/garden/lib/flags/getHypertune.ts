@@ -14,7 +14,7 @@ export default async function getHypertune() {
         args: {
             context: {
                 environment: process.env.NODE_ENV,
-                user: { id: "1", name: "Test", email: "hi@test.com" },
+                user: { id: "1", name: "Fake user", email: "fake@test.com" },
             },
         },
     });
