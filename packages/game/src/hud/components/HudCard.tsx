@@ -19,6 +19,7 @@ export function HudCard({ open, position, className, style, ...rest }: HudCardPr
     return (
         /* @ts-ignore TODO: Fix when react-spring is updated for React 19 */
         <animated.div
+            // @ts-ignore
             className={cx(
                 "absolute md:p-1",
                 'bg-background border-tertiary',

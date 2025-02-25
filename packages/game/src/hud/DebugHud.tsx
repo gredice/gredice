@@ -1,6 +1,5 @@
 'use client';
 
-import { StatsGl } from "@react-three/drei";
 import { orderBy } from "@signalco/js";
 import { useEffect } from "react";
 import { Vector3 } from "three";
@@ -8,6 +7,7 @@ import { useGameState } from "../useGameState";
 import { getStack } from "../utils/getStack";
 import { button, useControls } from 'leva';
 import { v4 as uuidv4 } from 'uuid';
+import { Perf } from 'r3f-perf'
 
 export function DebugHud() {
     const { stats, grid } = useControls({
@@ -59,7 +59,7 @@ export function DebugHud() {
     return (
         <>
             {grid && <gridHelper args={[100, 100, '#B8B4A3', '#CFCBB7']} position={[0.5, 0, 0.5]} />}
-            {stats && <StatsGl className='absolute top-0 left-0' />}
+            {stats && <Perf />}
         </>
     );
 }
