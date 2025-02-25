@@ -24,8 +24,8 @@ export default async function FaqPage() {
                 {faq.map((item) => (
                     <Accordion key={item.information.name}>
                         <Typography className="px-3" semiBold>{item.information.header}</Typography>
-                        <div className="px-3">
-                            <Markdown className="prose max-w-none">{item.information.content}</Markdown>
+                        <div className="px-3 prose max-w-none">
+                            <Markdown>{item.information.content}</Markdown>
                         </div>
                     </Accordion>
                 ))}
