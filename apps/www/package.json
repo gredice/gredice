@@ -20,7 +20,7 @@
     "@vercel/kv": "3.0.0",
     "@vercel/postgres": "0.10.0",
     "hypertune": "2.7.1",
-    "next": "15.1.7",
+    "next": "canary",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "server-only": "0.0.1"
@@ -48,7 +48,7 @@
     "@vercel/analytics": "1.5.0",
     "dotenv": "16.4.7",
     "eslint": "9.20.1",
-    "eslint-config-next": "15.1.7",
+    "eslint-config-next": "canary",
     "lucide-react": "0.475.0",
     "next-axiom": "1.9.1",
     "next-sitemap": "4.2.3",

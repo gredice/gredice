@@ -36,7 +36,8 @@ export function useNewBlock() {
             });
             if (response.status !== 200) {
                 gameRemoveBlock(tempId);
-                const body = await response.json();
+                const body = await response.text();
+                // TODO: Display error message (insuficient funds, etc)
                 throw new Error(`Failed to create block: ${body}`);
             }
             const { id } = await response.json();
