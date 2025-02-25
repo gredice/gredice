@@ -4,13 +4,10 @@ import Image from 'next/image'
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@signalco/ui-primitives/Tabs";
 import { EmailPasswordForm } from './EmailPasswordForm'
-import { FacebookLoginButton } from './FacebookLoginButton'
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { Divider } from '@signalco/ui-primitives/Divider';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import { authCurrentUserQueryKeys } from "@signalco/auth-client";
 import { useState } from 'react';
@@ -132,7 +129,7 @@ export default function LoginModal() {
                                     </Alert>
                                 )}
                             </Stack>
-                            <div className="relative">
+                            {/* <div className="relative">
                                 <div className="absolute inset-0 flex items-center">
                                     <Divider />
                                 </div>
@@ -144,7 +141,7 @@ export default function LoginModal() {
                             </div>
                             <Link href="/prijava/facebook-prijava" legacyBehavior passHref>
                                 <FacebookLoginButton />
-                            </Link>
+                            </Link> */}
                         </div>
                     </TabsContent>
                 </Tabs>

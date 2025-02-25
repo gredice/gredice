@@ -3,33 +3,13 @@ import { validator as zValidator } from "hono-openapi/zod";
 import { z } from "zod";
 import { blockLogin, changePassword, clearLoginFailedAttempts, createUserWithPassword, getUserWithLogins, incLoginFailedAttempts, updateLoginData } from '@gredice/storage';
 import { pbkdf2Sync } from 'node:crypto';
-import { clearCookie, createJwt, jwtSecretFactory, setCookie } from '../../../lib/auth/auth';
-import { jwtVerify, SignJWT } from 'jose';
-import { sendEmailVerification } from '../../../lib/auth/email';
-import { sendResetPassword, sendWelcome } from '../../../lib/email/transactional';
+import { clearCookie, createJwt, verifyJwt, setCookie } from '../../../lib/auth/auth';
+import { sendChangePassword, sendEmailVerification } from '../../../lib/auth/email';
+import { sendWelcome } from '../../../lib/email/transactional';
 
 const failedAttemptClearTime = 1000 * 60; // 1 minute
 const failedAttemptsBlock = 5;
 const failedAttemptsBlockTime = 1000 * 60 * 60; // 1 hour
-
-// TODO: Move to lib
-async function sendChangePassword(email: string) {
-    const jwt = await new SignJWT()
-        .setProtectedHeader({ alg: 'HS256' })
-        .setSubject(email)
-        .setExpirationTime('1h')
-        .sign(jwtSecretFactory());
-    const url = `https://vrt.gredice.com/prijava/promjena-zaporke?token=${jwt}`;
-
-    const { error } = await sendResetPassword(email, {
-        email,
-        confirmLink: url
-    });
-    if (error) {
-        console.error('Failed to send email', error);
-        throw new Error('Failed to send email');
-    }
-}
 
 const app = new Hono()
     .post(
@@ -122,9 +102,12 @@ const app = new Hono()
             const { password, token } = context.req.valid('json');
 
             // Read email from JWT token and verify it
-            const data = await jwtVerify(token, jwtSecretFactory());
-            const email = data.payload.sub;
+            const { result, error } = await verifyJwt(token, {
+                expiry: '1h'
+            });
+            const email = result?.payload.sub;
             if (!email) {
+                console.warn('Token is invalid', error);
                 return context.newResponse('Token is invalid', { status: 400 });
             }
 
@@ -232,9 +215,12 @@ const app = new Hono()
             const { token } = context.req.valid('json');
 
             // Read email from JWT token and verify it
-            const data = await jwtVerify(token, jwtSecretFactory());
-            const email = data.payload.sub;
+            const { result, error } = await verifyJwt(token, {
+                expiry: '1h'
+            });
+            const email = result?.payload.sub;
             if (!email) {
+                console.warn('Token is invalid', error);
                 return context.newResponse('Token is invalid', { status: 400 });
             }
 
