@@ -46,7 +46,9 @@ function InformationSection({ header, content, instructions }: { header: string,
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
             <Typography level="h4" className="md:col-span-2">{header}</Typography>
-            <Markdown className="prose prose-p:my-2 max-w-none">{content}</Markdown>
+            <div className="prose prose-p:my-2 max-w-none">
+                <Markdown>{content}</Markdown>
+            </div>
             <Stack className={cx("border rounded-lg p-2 h-fit", !instructions?.length && 'justify-center')}>
                 {(instructions?.length ?? 0) <= 0 && (
                     <NoDataPlaceholder className="self-center py-4">

@@ -48,7 +48,9 @@ export default async function BlockPage({ params }: { params: Promise<{ alias: s
                         header={entity.information.label}
                         subHeader={entity.information.shortDescription}
                     />
-                    <Markdown className="prose prose-p:my-2 max-w-none">{entity.information.fullDescription}</Markdown>
+                    <div className="prose prose-p:my-2 max-w-none">
+                        <Markdown>{entity.information.fullDescription}</Markdown>
+                    </div>
                     <Stack spacing={1}>
                         <Typography level="h5">Svojstva</Typography>
                         <BlockAttributes attributes={entity.attributes} />
