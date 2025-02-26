@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { integer, pgTable, serial, text, timestamp, boolean } from 'drizzle-orm/pg-core';
+import { integer, pgTable, serial, text, timestamp, boolean, index } from 'drizzle-orm/pg-core';
 
 export const attributeDefinitionCategories = pgTable('attribute_definition_categories', {
     id: serial('id').primaryKey(),
@@ -10,7 +10,11 @@ export const attributeDefinitionCategories = pgTable('attribute_definition_categ
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
-});
+}, (table) => [
+    index('cms_adc_entity_type_name_idx').on(table.entityTypeName),
+    index('cms_adc_order_idx').on(table.order),
+    index('cms_adc_is_deleted_idx').on(table.isDeleted),
+]);
 
 export const attributeDefinitionCategoriesRelation = relations(attributeDefinitionCategories, ({ one }) => ({
     entityType: one(entityTypes, {
@@ -41,7 +45,12 @@ export const attributeDefinitions = pgTable('attribute_definitions', {
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
-});
+}, (table) => [
+    index('cms_ad_category_idx').on(table.category),
+    index('cms_ad_entity_type_name_idx').on(table.entityTypeName),
+    index('cms_ad_order_idx').on(table.order),
+    index('cms_ad_is_deleted_idx').on(table.isDeleted),
+]);
 
 export const attributeDefinitionRelation = relations(attributeDefinitions, ({ one }) => ({
     categoryDefinition: one(attributeDefinitionCategories, {
@@ -68,15 +77,21 @@ export type ExtendedAttributeDefinition = SelectAttributeDefinition & {
 
 export const attributeValues = pgTable('attribute_values', {
     id: serial('id').primaryKey(),
-    attributeDefinitionId: integer('attribute_definition_id').notNull(),
+    attributeDefinitionId: integer('attribute_definition_id').notNull().references(() => attributeDefinitions.id),
     entityTypeName: text('entity_type').notNull(),
-    entityId: integer('entity_id').notNull(),
+    entityId: integer('entity_id').notNull().references(() => entities.id),
     value: text('value'),
     order: text('order'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
-});
+}, (table) => [
+    index('cms_av_attribute_definition_id_idx').on(table.attributeDefinitionId),
+    index('cms_av_entity_type_name_idx').on(table.entityTypeName),
+    index('cms_av_entity_id_idx').on(table.entityId),
+    index('cms_av_order_idx').on(table.order),
+    index('cms_av_is_deleted_idx').on(table.isDeleted),
+]);
 
 export const attributeValuesDefinitionRelation = relations(attributeValues, ({ one }) => ({
     attributeDefinition: one(attributeDefinitions, {
@@ -107,7 +122,10 @@ export const entityTypes = pgTable('entity_types', {
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
-});
+}, (table) => [
+    index('cms_et_order_idx').on(table.order),
+    index('cms_et_is_deleted_idx').on(table.isDeleted),
+]);
 
 export type InsertEntityType = typeof entityTypes.$inferInsert;
 export type UpdateEntityType =
@@ -123,7 +141,11 @@ export const entities = pgTable('entities', {
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
-});
+}, (table) => [
+    index('cms_e_entity_type_name_idx').on(table.entityTypeName),
+    index('cms_e_state_idx').on(table.state),
+    index('cms_e_is_deleted_idx').on(table.isDeleted),
+]);
 
 export const entityRelation = relations(entities, ({ one, many }) => ({
     attributes: many(attributeValues),

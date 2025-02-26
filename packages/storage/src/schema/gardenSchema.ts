@@ -1,17 +1,21 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { accounts } from "./usersSchema";
 import { farms } from "./farmsSchema";
 
 export const gardens = pgTable('gardens', {
     id: serial('id').primaryKey(),
-    accountId: text('account_id').notNull(),
-    farmId: integer('farm_id').notNull(),
+    accountId: text('account_id').notNull().references(() => accounts.id),
+    farmId: integer('farm_id').notNull().references(() => farms.id),
     name: text('name').notNull(),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
-});
+}, (table) => [
+    index('garden_g_account_id_idx').on(table.accountId),
+    index('garden_g_farm_id_idx').on(table.farmId),
+    index('garden_g_is_deleted_idx').on(table.isDeleted),
+]);
 
 export const gardenRelations = relations(gardens, ({ one, many }) => ({
     account: one(accounts, {
@@ -37,14 +41,17 @@ export type SelectGarden = typeof gardens.$inferSelect;
 
 export const gardenStacks = pgTable('garden_stacks', {
     id: serial('id').primaryKey(),
-    gardenId: integer('garden_id').notNull(),
+    gardenId: integer('garden_id').notNull().references(() => gardens.id),
     positionX: integer('position_x').notNull(),
     positionY: integer('position_y').notNull(),
     blocks: text('blocks').array().notNull().default(sql`'{}'::text[]`),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
-});
+}, (table) => [
+    index('garden_gs_garden_id_idx').on(table.gardenId),
+    index('garden_gs_is_deleted_idx').on(table.isDeleted),
+]);
 
 export const gardenStackRelations = relations(gardenStacks, ({ one }) => ({
     garden: one(gardens, {
@@ -62,14 +69,17 @@ export type SelectGardenStack = typeof gardenStacks.$inferSelect;
 
 export const gardenBlocks = pgTable('garden_blocks', {
     id: text('id').primaryKey(),
-    gardenId: integer('garden_id').notNull(),
+    gardenId: integer('garden_id').notNull().references(() => gardens.id),
     name: text('name').notNull(),
     rotation: integer('rotation'),
     variant: integer('variant'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
-});
+}, (table) => [
+    index('garden_gb_garden_id_idx').on(table.gardenId),
+    index('garden_gb_is_deleted_idx').on(table.isDeleted),
+]);
 
 export const gardenBlockRelations = relations(gardenBlocks, ({ one }) => ({
     garden: one(gardens, {
