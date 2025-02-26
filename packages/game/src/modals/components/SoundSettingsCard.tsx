@@ -1,108 +1,119 @@
 import { Button } from "@signalco/ui-primitives/Button"
 import { SoundSlider } from "./SoundSlider"
-import {Dispatch, SetStateAction, useEffect, useState} from "react"
+import { useEffect } from "react"
 import { Card, CardContent } from "@signalco/ui-primitives/Card"
 import { Stack } from "@signalco/ui-primitives/Stack"
-import { RotateCcw } from "lucide-react"
+import { Leaf, Play, RotateCcw } from "lucide-react"
+import { useGameAudio } from "../../hooks/useGameAudio"
+import { Alert } from "@signalco/ui/Alert"
+import { Typography } from "@signalco/ui-primitives/Typography"
 
 const DEFAULT_VOLUMES = {
-    master: 50,
-    ambient: 50,
-    sfx: 100,
-    music: 100,
+    master: 0.5,
+    ambient: 0.5,
+    sfx: 0.5
 }
 
 export function SoundSettingsCard() {
-    const [masterVolume, setMasterVolume] = useState(DEFAULT_VOLUMES.master)
-    const [masterMuted, setMasterMuted] = useState(false)
-    const [ambientVolume, setAmbientVolume] = useState(DEFAULT_VOLUMES.ambient)
-    const [ambientMuted, setAmbientMuted] = useState(false)
-    const [sfxVolume, setSfxVolume] = useState(DEFAULT_VOLUMES.sfx)
-    const [sfxMuted, setSfxMuted] = useState(false)
-    const [musicVolume, setMusicVolume] = useState(DEFAULT_VOLUMES.music)
-    const [musicMuted, setMusicMuted] = useState(false)
+    const {
+        isSuspended,
+        resumeIfNeeded,
+        isMuted: isMasterMuted,
+        setMuted: setMasterMuted,
+        volume: masterVolume,
+        setVolume: setMasterVolume,
+        ambient: { isMuted: ambientMuted, volume: ambientVolume, setMuted: setAmbientMuted, setVolume: setAmbientVolume },
+        effects: { isMuted: sfxMuted, volume: sfxVolume, setMuted: setSfxMuted, setVolume: setSfxVolume },
+    } = useGameAudio();
 
     const handleMasterVolumeChange = (newVolume: number) => {
-        setMasterVolume(newVolume)
-        setMasterMuted(newVolume === 0)
-    }
+        if (newVolume === masterVolume)
+            return;
 
-    const handleMasterMuteToggle = () => {
-        setMasterMuted(!masterMuted)
-    }
-
-    const handleSliderMuteToggle = (
-        setMutedFunc: Dispatch<SetStateAction<boolean>>
-    ) => {
-        if (!masterMuted && masterVolume > 0) {
-            setMutedFunc((prev) => !prev)
-        }
+        setMasterVolume(newVolume);
+        const newMuted = newVolume === 0;
+        if (newMuted !== isMasterMuted)
+            setMasterMuted(newMuted);
     }
 
     const handleReset = () => {
-        setMasterVolume(DEFAULT_VOLUMES.master)
-        setAmbientVolume(DEFAULT_VOLUMES.ambient)
-        setSfxVolume(DEFAULT_VOLUMES.sfx)
-        setMusicVolume(DEFAULT_VOLUMES.music)
-        setMasterMuted(false)
-        setAmbientMuted(false)
-        setSfxMuted(false)
-        setMusicMuted(false)
+        setMasterVolume(DEFAULT_VOLUMES.master);
+        setSfxVolume(DEFAULT_VOLUMES.sfx);
+        setAmbientVolume(DEFAULT_VOLUMES.ambient);
+        setMasterMuted(false);
+        setSfxMuted(false);
+        setAmbientMuted(false);
+    }
+
+    function handleAmbientSetMuted(newMuted: boolean) {
+        if (!newMuted && ambientVolume === 0) {
+            setAmbientVolume(DEFAULT_VOLUMES.ambient);
+        }
+        setAmbientMuted(newMuted);
+    }
+
+    function handleSfxSetMuted(newMuted: boolean) {
+        if (!newMuted && sfxVolume === 0) {
+            setSfxVolume(DEFAULT_VOLUMES.sfx);
+        }
+        setSfxMuted(newMuted);
     }
 
     useEffect(() => {
-        if (masterMuted || masterVolume === 0) {
-            setAmbientMuted(true)
+        if (isMasterMuted || masterVolume === 0) {
             setSfxMuted(true)
-            setMusicMuted(true)
+            setAmbientMuted(true)
         } else {
-            setAmbientMuted(false)
             setSfxMuted(false)
-            setMusicMuted(false)
+            setAmbientMuted(false)
         }
-    }, [masterMuted, masterVolume])
+    }, [isMasterMuted, masterVolume]);
 
     return (
         <Card>
             <CardContent className="pt-6">
-            <Stack spacing={4}>
-                <SoundSlider
-                    value={masterVolume}
-                    muted={masterMuted}
-                    onChange={handleMasterVolumeChange}
-                    onMuteToggle={handleMasterMuteToggle}
-                    label="Glavno"
-                />
-                <SoundSlider
-                    value={musicVolume}
-                    muted={masterMuted || masterVolume === 0 || musicMuted}
-                    onChange={setMusicVolume}
-                    onMuteToggle={() => handleSliderMuteToggle(setMusicMuted)}
-                    label="Muzika"
-                />
-                <SoundSlider
-                    value={sfxVolume}
-                    muted={masterMuted || masterVolume === 0 || sfxMuted}
-                    onChange={setSfxVolume}
-                    onMuteToggle={() => handleSliderMuteToggle(setSfxMuted)}
-                    label="Efekti"
-                />
-                <SoundSlider
-                    value={ambientVolume}
-                    muted={masterMuted || masterVolume === 0 || ambientMuted}
-                    onChange={setAmbientVolume}
-                    onMuteToggle={() => handleSliderMuteToggle(setAmbientMuted)}
-                    label="Ambientalno"
-                />
+                <Stack spacing={6}>
+                    {isSuspended && (
+                        <Alert
+                            color="success"
+                            className="text-green-950"
+                            startDecorator={<Leaf />}
+                            endDecorator={<Button onClick={resumeIfNeeded} variant="soft" size="sm" className="!p-4" startDecorator={<Play className="size-5" />}>Nastavi</Button>}>
+                            <Typography>Zvuk je privremeno isključen jer tvoj uređaj uštedi energiju. Pritisnite gumb ispod da nastavite s reprodukcijom zvuka.</Typography>
+                        </Alert>
+                    )}
+                    <Stack spacing={4}>
+                        <SoundSlider
+                            value={Math.round(masterVolume * 100)}
+                            muted={isMasterMuted}
+                            onChange={(value) => handleMasterVolumeChange(value / 100)}
+                            onMuteToggle={() => setMasterMuted(!isMasterMuted)}
+                            label="Glavno"
+                        />
+                        <SoundSlider
+                            value={Math.round(ambientVolume * 100)}
+                            muted={isMasterMuted || masterVolume === 0 || ambientMuted}
+                            onChange={(value) => setAmbientVolume(value / 100)}
+                            onMuteToggle={() => handleAmbientSetMuted(!ambientMuted)}
+                            label="Ambientalno"
+                        />
+                        <SoundSlider
+                            value={Math.round(sfxVolume * 100)}
+                            muted={isMasterMuted || masterVolume === 0 || sfxMuted}
+                            onChange={(value) => setSfxVolume(value / 100)}
+                            onMuteToggle={() => handleSfxSetMuted(!sfxMuted)}
+                            label="Efekti"
+                        />
+                    </Stack>
                 <Button
-                    onClick={handleReset}
-                    variant="outlined"
-                    startDecorator={<RotateCcw className="size-4" />}
-                    size="sm"
-                    className="self-end">
-                    Vrati zadani
-                </Button>
-            </Stack>
+                        onClick={handleReset}
+                        variant="outlined"
+                        startDecorator={<RotateCcw className="size-4" />}
+                        size="sm"
+                        className="self-end">
+                        Vrati zadani
+                    </Button>
+                </Stack>
             </CardContent>
         </Card>
     )

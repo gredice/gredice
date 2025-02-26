@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Button } from "@signalco/ui-primitives/Button";
 import { ChevronRight } from "lucide-react";
+import { useGameAudio } from "../../../packages/game/src/hooks/useGameAudio";
 
 const messageTypes = {
     welcome: {
@@ -69,6 +70,11 @@ export function WelcomeMessage() {
     }, []);
 
     const [open, setOpen] = useState(show);
+    const { resumeIfNeeded } = useGameAudio();
+    function handleOpenChange(newOpen: boolean) {
+        setOpen(newOpen);
+        resumeIfNeeded();
+    }
 
     const timeOfDay = useGameState(state => state.timeOfDay);
     const isDay = timeOfDay > 0.2 && timeOfDay < 0.8;
@@ -84,7 +90,7 @@ export function WelcomeMessage() {
     const messages = messageTypes[messageType];
 
     return (
-        <Modal title={title} open={open} onOpenChange={setOpen} className="max-w-screen-md">
+        <Modal title={title} open={open} onOpenChange={handleOpenChange} className="max-w-screen-md">
             <div className="grid md:grid-cols-2 [grid-template-areas:'sunflower'_'content'] md:[grid-template-areas:'content_sunflower'] md:p-4 gap-4">
                 <Stack spacing={3} className="[grid-area:content]">
                     <Stack spacing={1.5}>
@@ -93,7 +99,7 @@ export function WelcomeMessage() {
                             <Typography key={index} level="body1">{text}</Typography>
                         ))}
                     </Stack>
-                    <Button variant="solid" endDecorator={<ChevronRight className="size-5 animate-pulse" />} onClick={() => setOpen(false)}>Kreni u avanturu</Button>
+                    <Button variant="solid" endDecorator={<ChevronRight className="size-5 animate-pulse" />} onClick={() => handleOpenChange(false)}>Kreni u avanturu</Button>
                 </Stack>
                 <div className="w-full h-full rounded-3xl bg-card flex flex-row items-end justify-center [grid-area:sunflower]">
                     <div className="size-40 relative">

@@ -76,11 +76,11 @@ export function Environment({ location, noBackground, noSound, noWeather }: Envi
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
 
+
     const baseAmbient = ambientAudioMixer.useMusic(
         timeOfDay > 0.2 && timeOfDay < 0.8 ?
             'https://cdn.gredice.com/sounds/ambient/Day Birds 01.mp3' :
-            'https://cdn.gredice.com/sounds/ambient/Night 01.mp3',
-        0.2);
+            'https://cdn.gredice.com/sounds/ambient/Night 01.mp3');
     useEffect(() => {
         if (!noSound) {
             baseAmbient.play();
