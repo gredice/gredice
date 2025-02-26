@@ -3,6 +3,7 @@ export const KnownPages = {
 
     Plants: '/biljke',
     Blocks: '/blokovi',
+    Sunflowers: '/suncokreti',
     Block: (alias: string) => `/blokovi/${alias}`,
     AboutUs: '/o-nama',
     FAQ: '/cesta-pitanja',

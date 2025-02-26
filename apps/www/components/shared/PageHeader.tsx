@@ -24,7 +24,7 @@ export function PageHeader({
         )}>
             <div className={cx("flex flex-col md:flex-row gap-4", !visual && "md:col-span-2")}>
                 {visual && (
-                    <Card className="min-w-48 min-h-48 size-48">
+                    <Card className="min-w-48 min-h-48 size-48 shadow-lg">
                         <CardOverflow className="p-6">
                             {visual}
                         </CardOverflow>
