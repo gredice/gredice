@@ -14,6 +14,7 @@ import { CameraHud } from './hud/CameraHud';
 import { GardenDisplay } from './GardenDisplay';
 import { useThemeManager } from './hooks/useThemeManager';
 import { useGameTimeManager } from './hooks/useGameTimeManager';
+import { AudioHud } from './hud/AudioHud';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string,
@@ -73,9 +74,10 @@ export function GameScene({
                         <WeatherHud />
                         <SunflowersHud />
                     </div>
-                    <div className='absolute bottom-0 flex flex-col left-0 right-0 md:flex-row md:justify-between md:items-end'>
-                        <div className='p-2'>
+                    <div className='absolute bottom-0 flex flex-col left-0 right-0 md:flex-row md:justify-between md:items-end pointer-events-none'>
+                        <div className='p-2 flex flex-row'>
                             <CameraHud />
+                            <AudioHud />
                         </div>
                         <ItemsHud />
                         <div className='hidden md:block' />

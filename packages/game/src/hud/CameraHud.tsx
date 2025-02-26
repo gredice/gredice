@@ -6,7 +6,7 @@ import { Redo, Undo } from "lucide-react";
 export function CameraHud() {
     const worldRotate = useGameState(state => state.worldRotate);
     return (
-        <Row>
+        <Row className="pointer-events-auto">
             <IconButton title="Okreni lijevo" variant='plain' className='hover:bg-muted' onClick={worldRotate.bind(null, 'ccw')}>
                 <Undo className='size-5' />
             </IconButton>

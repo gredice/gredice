@@ -9,6 +9,7 @@ import { OrbitControls } from 'three-stdlib';
 import { getTimes } from "suncalc";
 import { Garden } from "./types/Garden";
 import { client } from "@gredice/client";
+import { audioConfig } from "./utils/audioConfig";
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
@@ -89,8 +90,8 @@ const defaultPosition = { lat: 45.739, lon: 16.572 };
 export const useGameState = create<GameState>((set, get) => ({
     appBaseUrl: '',
     audio: {
-        ambient: audioMixer(),
-        effects: audioMixer()
+        ambient: audioMixer(audioConfig().config.ambientVolume * audioConfig().config.masterVolume, audioConfig().config.ambientIsMuted),
+        effects: audioMixer(audioConfig().config.effectsVolume * audioConfig().config.masterVolume, audioConfig().config.effectsIsMuted),
     },
     freezeTime: null,
     currentTime: now,
