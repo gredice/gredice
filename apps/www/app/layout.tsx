@@ -37,6 +37,7 @@ const sectionsData: SectionData[] = [
                 ctas: [
                     { label: 'Biljke', href: KnownPages.Plants },
                     { label: 'Blokovi', href: KnownPages.Blocks },
+                    { label: 'Suncokreti', href: KnownPages.Sunflowers },
                     { label: 'Česta pitanja', href: KnownPages.FAQ },
                     { label: 'O nama', href: KnownPages.AboutUs },
                 ]
@@ -75,9 +76,10 @@ const preSeasonSectionsData: SectionData[] = [
             {
                 header: 'Informacije',
                 ctas: [
-                    // { label: 'Biljke', href: KnownPages.Plants },
-                    // { label: 'Česta pitanja', href: KnownPages.FAQ },
-                    // { label: 'O nama', href: KnownPages.AboutUs },
+                    { label: 'Biljke', href: KnownPages.Plants },
+                    { label: 'Blokovi', href: KnownPages.Blocks },
+                    { label: 'Suncokreti', href: KnownPages.Sunflowers },
+                    { label: 'Česta pitanja', href: KnownPages.FAQ },
                 ]
             },
             {

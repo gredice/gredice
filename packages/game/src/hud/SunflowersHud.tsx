@@ -8,14 +8,33 @@ import { HudCard } from "./components/HudCard";
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import { useCurrentAccount } from "../hooks/useCurrentAccount";
 import { SunflowersList } from "../shared-ui/sunflowers/SunflowersList";
+import { IconButton } from "@signalco/ui-primitives/IconButton";
+import { ChevronRight, Info } from "lucide-react";
 
 function SunflowersCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
 
     return (
         <Stack>
-            <Row className="bg-background px-4 py-2" justifyContent="space-between">
+            <Row className="bg-background px-4 py-1" justifyContent="space-between">
                 <Typography level="body3" bold>Suncokreti</Typography>
+                <Popper
+                    className="min-w-80"
+                    trigger={(
+                        <IconButton title="Šta su suncokreti?" variant="plain" size="sm">
+                            <Info className="size-4" />
+                        </IconButton>
+                    )}>
+                    <Row className="p-4" spacing={2}>
+                        <img src="https://cdn.gredice.com/sunflower-large.svg" alt="Suncokret" className="size-20" />
+                        <Stack spacing={2}>
+                            <Typography level="body2">Suncokreti su vrsta bodova na tvom Gredice racunu koje dobiva za razne radnje i pomocu kojih mozes uciniti svoj vrt sto lijepsim i zdravijim.</Typography>
+                            <Button variant="solid" size="sm" href="https://www.gredice.com/suncokreti" target="_blank" endDecorator={(<ChevronRight className="size-5" />)}>
+                                Saznaj više
+                            </Button>
+                        </Stack>
+                    </Row>
+                </Popper>
             </Row>
             <Divider />
             <SunflowersList limit={5} />
