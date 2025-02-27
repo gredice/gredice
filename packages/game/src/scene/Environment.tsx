@@ -7,6 +7,7 @@ import { useGameState } from '../useGameState';
 import { AmbientLight, Color, DirectionalLight, HemisphereLight, Quaternion, Vector3 } from 'three';
 import { Garden } from '../types/Garden';
 import { useWeatherNow } from '../hooks/useWeatherNow';
+import { Drops } from './Rain/Drops';
 
 const backgroundColorScale = chroma
     .scale(['#2D3947', '#BADDf6', '#E7E2CC', '#E7E2CC', '#f8b195', '#6c5b7b', '#2D3947'])
@@ -61,9 +62,15 @@ export type EnvironmentProps = {
     noBackground?: boolean,
     noSound?: boolean,
     noWeather?: boolean,
+    overrideWeather?: {
+        rainy: number,
+        foggy: number,
+        cloudy: number,
+        snowy: number,
+    }
 }
 
-export function Environment({ location, noBackground, noSound, noWeather }: EnvironmentProps) {
+export function Environment({ location, noBackground, noSound, noWeather, overrideWeather }: EnvironmentProps) {
     const cameraShadowSize = 20;
     const shadowMapSize = 8;
 
@@ -76,29 +83,74 @@ export function Environment({ location, noBackground, noSound, noWeather }: Envi
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
 
+    const { data: weather } = useWeatherNow();
+    if (weather) {
+        weather.rainy = overrideWeather?.rainy ?? weather.rainy;
+        weather.foggy = overrideWeather?.foggy ?? weather.foggy;
+        weather.cloudy = overrideWeather?.cloudy ?? weather.cloudy;
+        weather.snowy = overrideWeather?.snowy ?? weather.snowy;
+    }
 
-    const baseAmbient = ambientAudioMixer.useMusic(
-        timeOfDay > 0.2 && timeOfDay < 0.8 ?
-            'https://cdn.gredice.com/sounds/ambient/Day Birds 01.mp3' :
-            'https://cdn.gredice.com/sounds/ambient/Night 01.mp3');
+    // Sound
+    const morningAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Morning 01.mp3');
+    const dayAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Day Birds 01.mp3');
+    const nightAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Night 01.mp3');
+    const dayRainAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Day Rain 01.mp3');
+    const rainHeavyAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Rain Heavy 01.mp3');
+    const rainLightModAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Mod Rain Light 01.mp3');
+    const rainMediumModAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Mod Rain Medium 01.mp3');
     useEffect(() => {
-        if (!noSound) {
-            baseAmbient.play();
+        if (noSound) {
+            return;
         }
-    }, []);
+
+        // TODO: Stop other ambient playing
+        if (weather && (weather.rainy ?? 0) > 0.9) {
+            rainHeavyAmbient.play();
+        } else {
+            if (timeOfDay > 0.15 && timeOfDay < 0.3) {
+                morningAmbient.play();
+            } else if (timeOfDay > 0.3 && timeOfDay < 0.8) {
+                if (weather && (weather.rainy ?? 0) > 0) {
+                    dayRainAmbient.play();
+                } else {
+                    dayAmbient.play();
+                }
+            } else {
+                nightAmbient.play();
+            }
+
+            if (weather) {
+                if ((weather.rainy ?? 0) > 0.9) {
+                    rainMediumModAmbient.play();
+                } else if ((weather.rainy ?? 0) > 0.4) {
+                    rainLightModAmbient.play();
+                }
+            }
+        }
+    }, [timeOfDay, weather, overrideWeather]);
 
     useEffect(() => {
         const {
             sunPosition,
-            colors: {background: backgroundColor, sunTemperature, hemisphereSkyColor},
+            colors: { background: backgroundColor, sunTemperature, hemisphereSkyColor },
             intensities: { sun: sunIntensity },
         } = environmentState(location, currentTime, timeOfDay);
 
         if (directionalLightRef.current) {
             directionalLightRef.current.intensity = sunIntensity * 5;
+            if (weather && ((weather?.cloudy ?? 0) > 0 || (weather?.foggy ?? 0) > 0)) {
+                directionalLightRef.current.intensity = weather.cloudy > 0.5 || weather.foggy > 0.5
+                    ? sunIntensity * 0.2
+                    : sunIntensity * 3;
+            }
         }
-        if (ambientRef.current)
+        if (ambientRef.current) {
             ambientRef.current.intensity = sunIntensity * 2 + 1.3;
+            if (weather && ((weather?.cloudy ?? 0) > 0 || (weather?.foggy ?? 0) > 0)) {
+                ambientRef.current.intensity = sunIntensity * 2 + 2;
+            }
+        }
 
         directionalLightRef.current?.color.setRGB(
             sunTemperature[0] / 255,
@@ -113,6 +165,16 @@ export function Environment({ location, noBackground, noSound, noWeather }: Envi
             backgroundColor[2] / 255,
             'srgb');
 
+        // Set background color based on weather
+        if (weather && ((weather?.cloudy ?? 0) > 0 || (weather?.foggy ?? 0) > 0)) {
+            const rainyBackground = { h: 0, s: 0, l: 0 };
+            backgroundRef.current?.getHSL(rainyBackground);
+            backgroundRef.current?.setHSL(
+                rainyBackground.h,
+                rainyBackground.s * (weather.cloudy > 0.5 || weather.foggy > 0.5 ? 0.3 : 0.8),
+                rainyBackground.l * (weather.cloudy > 0.9 ? 0.8 : (weather.cloudy > 0.4 ? 0.9 : 0.95)));
+        }
+
         hemisphereRef.current?.color.setRGB(
             hemisphereSkyColor[0] / 255 * -0,
             hemisphereSkyColor[1] / 255,
@@ -125,16 +187,13 @@ export function Environment({ location, noBackground, noSound, noWeather }: Envi
             'srgb');
     }, [currentTime]);
 
-    const { data: weather } = useWeatherNow();
-
     // Handle fog
     const fog = weather?.foggy ?? 0;
     const fogNear = 170 - fog * 30;
     const fogColor = timeOfDay > 0.2 && timeOfDay < 0.8 ? new Color(0xaaaaaa) : new Color(0x55556a);
-    // TODO: Apply fog to background (make a gradient)
 
-    // // TODO: Handle rain
-    // const rain = weather?.rainy ?? 0;
+    // Handle rain
+    const rain = weather?.rainy ?? 0;
 
     // // TODO: Handle snow
     // const snow = weather?.snowy ?? 0;
@@ -142,9 +201,6 @@ export function Environment({ location, noBackground, noSound, noWeather }: Envi
     // // TODO: Handle wind
     // const windSpeed = weather?.windSpeed ?? 0;
     // const windDirection = weather?.windDirection;
-
-    // // TODO: Handle clouds
-    // const clouds = weather?.cloudy ?? 0;
 
     return (
         <>
@@ -168,6 +224,9 @@ export function Environment({ location, noBackground, noSound, noWeather }: Envi
             </directionalLight>
             {(!noWeather && fog > 0) && (
                 <fog attach="fog" args={[fogColor, fogNear, 190]} />
+            )}
+            {(!noWeather && rain > 0) && (
+                <Drops count={rain < 0.4 ? 200 : (rain > 0.9 ? 2000 : 600)} />
             )}
         </>
     );
