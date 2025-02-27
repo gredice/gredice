@@ -92,27 +92,48 @@ export function Environment({ location, noBackground, noSound, noWeather, overri
     }
 
     // Sound
+    const morningAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Morning 01.mp3');
     const dayAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Day Birds 01.mp3');
     const nightAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Night 01.mp3');
+    const dayRainAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Day Rain 01.mp3');
+    const rainHeavyAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Rain Heavy 01.mp3');
+    const rainLightModAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Mod Rain Light 01.mp3');
+    const rainMediumModAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Mod Rain Medium 01.mp3');
     useEffect(() => {
         if (noSound) {
             return;
         }
 
-        if (timeOfDay > 0.2 && timeOfDay < 0.8) {
-            dayAmbient.play();
-            // TODO: Stop night ambient if playing
+        // TODO: Stop other ambient playing
+        if (weather && (weather.rainy ?? 0) > 0.9) {
+            rainHeavyAmbient.play();
+        } else {
+            if (timeOfDay > 0.15 && timeOfDay < 0.3) {
+                morningAmbient.play();
+            } else if (timeOfDay > 0.3 && timeOfDay < 0.8) {
+                if (weather && (weather.rainy ?? 0) > 0) {
+                    dayRainAmbient.play();
+                } else {
+                    dayAmbient.play();
+                }
+            } else {
+                nightAmbient.play();
+            }
+
+            if (weather) {
+                if ((weather.rainy ?? 0) > 0.9) {
+                    rainMediumModAmbient.play();
+                } else if ((weather.rainy ?? 0) > 0.4) {
+                    rainLightModAmbient.play();
+                }
+            }
         }
-        else {
-            nightAmbient.play();
-            // TODO: Stop day ambient if playing
-        }
-    }, [timeOfDay, weather]);
+    }, [timeOfDay, weather, overrideWeather]);
 
     useEffect(() => {
         const {
             sunPosition,
-            colors: {background: backgroundColor, sunTemperature, hemisphereSkyColor},
+            colors: { background: backgroundColor, sunTemperature, hemisphereSkyColor },
             intensities: { sun: sunIntensity },
         } = environmentState(location, currentTime, timeOfDay);
 
