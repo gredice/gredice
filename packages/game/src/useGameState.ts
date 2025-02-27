@@ -57,6 +57,7 @@ export type GameState = {
     freezeTime?: Date | null,
     currentTime: Date,
     timeOfDay: number,
+    weather?: { cloudy: number, rainy: number, snowy: number, foggy: number },
     sunsetTime: Date | null,
     sunriseTime: Date | null,
     data: {
@@ -64,6 +65,7 @@ export type GameState = {
     },
     setInitial: (appBaseUrl: string, data: { blocks: BlockData[] }, freezeTime?: Date | null) => void,
     setCurrentTime: (currentTime: Date) => void,
+    setWeather: (weather: { cloudy: number, rainy: number, snowy: number, foggy: number }) => void,
 
     // Garden
     gardenId: string | null,
@@ -121,6 +123,7 @@ export const useGameState = create<GameState>((set, get) => ({
         sunriseTime: getSunriseSunset(defaultPosition, currentTime).sunrise,
         sunsetTime: getSunriseSunset(defaultPosition, currentTime).sunset
     })),
+    setWeather: (weather) => set(({ weather })),
     setStacks: (stacks) => set({ stacks }),
     placeBlock: (to, block) => set((state) => {
         let stack = getStack(to);

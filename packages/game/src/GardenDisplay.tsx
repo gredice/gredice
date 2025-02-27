@@ -14,6 +14,7 @@ export type GardenDisplayProps = {
 export function GardenDisplay({ noBackground, noWeather, noSound, mockGarden }: GardenDisplayProps) {
     const stacks = useGameState(state => state.stacks);
     const setGarden = useGameState(state => state.setGarden);
+    const weather = useGameState(state => state.weather);
 
     // TODO: Load garden from remote
     const { data: garden } = useCurrentGarden(mockGarden);
@@ -34,6 +35,7 @@ export function GardenDisplay({ noBackground, noWeather, noSound, mockGarden }: 
             <Environment
                 noBackground={noBackground}
                 noWeather={noWeather}
+                overrideWeather={weather}
                 noSound={noSound}
                 location={{ lat: garden.location.lat, lon: garden.location.lon }} />
             <group>
