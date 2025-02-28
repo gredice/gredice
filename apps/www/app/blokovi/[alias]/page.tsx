@@ -23,6 +23,7 @@ function BlockAttributes({ attributes }: { attributes: BlockData['attributes'] }
 
 export default async function BlockPage({ params }: { params: Promise<{ alias: string }> }) {
     const { alias } = await params;
+    // TODO: Query API for single entities with filter on 'label' attribute
     const blockData = await (await client().api.directories.entities[":entityType"].$get({
         param: {
             entityType: "block"
