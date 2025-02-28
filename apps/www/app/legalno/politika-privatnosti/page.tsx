@@ -6,7 +6,7 @@ import { Container } from "@signalco/ui-primitives/Container";
 export default function PolitikaPrivatnostiPage() {
     return (
         <Container maxWidth="sm">
-            <Stack spacing={4}>
+            <Stack>
                 <PageHeader
                     padded
                     header="Politika Privatnosti"
@@ -15,7 +15,7 @@ export default function PolitikaPrivatnostiPage() {
                 <div className="prose">
                     <h2>Uvod</h2>
                     <p>
-                        Dobrodošli na Gredice! Naša web stranica (<a href="https://www.gredice.com">www.gredice.com</a>, uključujući sve podstranice) pruža usluge upravljanja i dostave povrća i vrtnih proizvoda. Vaša privatnost nam je važna, stoga smo izradili ovu Politiku privatnosti kako bismo vam objasnili kako prikupljamo, koristimo i štitimo vaše osobne podatke.
+                        Naša web stranica (<a href="https://www.gredice.com">www.gredice.com</a>, uključujući sve podstranice) pruža usluge upravljanja i dostave povrća i vrtnih proizvoda. Vaša privatnost nam je važna, stoga smo izradili ovu Politiku privatnosti kako bismo vam objasnili kako prikupljamo, koristimo i štitimo vaše osobne podatke.
                     </p>
                     <h2>Prikupljanje Podataka</h2>
                     <p>
@@ -71,8 +71,8 @@ export default function PolitikaPrivatnostiPage() {
                         Zahvaljujemo vam na povjerenju i što koristite Gredice!
                     </p>
                 </div>
-                <Typography level="body2" secondary>
-                    Zadnja izmjena: 2. Studeni 2024.
+                <Typography level="body2" secondary className="mt-8">
+                    Zadnja izmjena: 28. Veljača 2025.
                 </Typography>
             </Stack>
         </Container>

@@ -4,13 +4,28 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { ListHeader } from "@signalco/ui-primitives/List";
 import { SplitView } from "@signalco/ui/SplitView";
 import { BlocksList } from "./BlocksList";
-import { getEntitiesFormatted } from "@gredice/storage";
 import { BlockData } from "../@types/BlockData";
 import Markdown from "react-markdown";
 import { BlockImage } from "../../../components/blocks/BlockImage";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { Layers2, Ruler } from "lucide-react";
+import { client } from "@gredice/client";
+
+export const revalidate = 3600; // 1 hour
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+    const entities = await (await client().api.directories.entities[":entityType"].$get({
+        param: {
+            entityType: "block"
+        }
+    })).json() as BlockData[];
+
+    return entities.map((entity) => ({
+        alias: String(entity.information.label),
+    }));
+}
 
 function BlockAttributes({ attributes }: { attributes: BlockData['attributes'] }) {
     return (
@@ -22,8 +37,18 @@ function BlockAttributes({ attributes }: { attributes: BlockData['attributes'] }
 }
 
 export default async function BlockPage({ params }: { params: Promise<{ alias: string }> }) {
-    const { alias } = await params;
-    const blockData = await getEntitiesFormatted<BlockData>('block');
+    const { alias: aliasUnescaped } = await params;
+    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    if (!alias) {
+        notFound();
+    }
+
+    // TODO: Query API for single entities with filter on 'label' attribute
+    const blockData = await (await client().api.directories.entities[":entityType"].$get({
+        param: {
+            entityType: "block"
+        }
+    })).json() as BlockData[];
     const entity = blockData.find((block) => block.information.label === alias);
     if (!entity) {
         notFound();

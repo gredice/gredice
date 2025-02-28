@@ -2,7 +2,7 @@
 
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
-import { PlantData } from "./[plantId]/page";
+import { PlantData } from "./[alias]/page";
 import { Gallery } from "@signalco/ui/Gallery";
 import { PlantsGalleryItem } from "./PlantsGalleryItem";
 

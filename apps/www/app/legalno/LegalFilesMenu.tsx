@@ -28,7 +28,17 @@ export function LegalFilesMenu() {
             <ListItem
                 selected={pathname === KnownPages.LegalLicense}
                 href={KnownPages.LegalLicense}
-                label={"Licenca izvnorog koda"}
+                label={"Licenca izvornog koda"}
+                variant="outlined" />
+            <ListItem
+                selected={pathname === KnownPages.LegalThirdParty}
+                href={KnownPages.LegalThirdParty}
+                label={"Treće strane"}
+                variant="outlined" />
+            <ListItem
+                selected={pathname === KnownPages.LegalCompany}
+                href={KnownPages.LegalCompany}
+                label={"Tvrtka"}
                 variant="outlined" />
         </List>
     );

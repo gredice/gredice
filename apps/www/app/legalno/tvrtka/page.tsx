@@ -1,0 +1,58 @@
+import { Stack } from "@signalco/ui-primitives/Stack";
+import { PageHeader } from "../../../components/shared/PageHeader";
+import { Container } from "@signalco/ui-primitives/Container";
+import { Typography } from "@signalco/ui-primitives/Typography";
+
+export default function UvjetiKoristenjaPage() {
+    return (
+        <Container maxWidth="sm">
+            <Stack>
+                <PageHeader
+                    padded
+                    header="Tvrtka"
+                    subHeader="Službeni podaci o društvu Gredice d.o.o."
+                />
+                <div className="prose">
+                    <h2>Podaci o društvu</h2>
+                    <p>
+                        <strong>Gredice d.o.o.</strong><br />
+                        <small>Gredice društvo s ograničenom odgovornošću za proizvodnju, trgovinu i usluge</small><br />
+                        OIB: <code>86171547809</code><br />
+                        Ulica Julija Knifera 3,<br />
+                        Zagreb (Grad Zagreb)
+                    </p>
+
+                    <h3>Nadležni sud</h3>
+                    <p>
+                        Trgovački sud u Zagrebu, pod brojem: Tt-25/2168-2 (23.01.2025.)<br />
+                        MBS: <code>081628528</code><br />
+                        EUID: <code>HRSR.081628528</code><br />
+                        Temeljni kapital u iznosu od 2.500,00 euro je uplaćen u cijelosti.<br/>
+                        <a href="https://sudreg.pravosudje.hr/registar/f?p=150:28:0::NO:28:P28_SBT_MBS:081628528">Sudski registar - Podaci o poslovnom subjektu</a>
+                    </p>
+
+                    <h3>Poslovni računi</h3>
+                    <p>
+                        Privredna banka Zagreb d.d., Radnička cesta 50, 10000 Zagreb, Hrvatska<br />
+                        IBAN: <code>HR5223400091111312385</code><br />
+                        <small>Molimo vas da ne uplaćujete na gore navedeni račun bez prethodne najave i dogovora s našim prodajnim timom. Ovaj podatak je ovdje isključivo u zakonske svrhe.</small>
+                    </p>
+
+                    <h3>Članovi uprave</h3>
+                    <p>Toplek, Aleksandar</p>
+
+
+                    <h3>Adresa elektroničke pošte</h3>
+                    <p><a href="mailto:kontakt@gredice.com">kontakt@gredice.com</a></p>
+
+                    <p>
+                        <small>Informacije navedene prema članku 21. Zakona o trgovačkim društvima Republike Hrvatske</small>
+                    </p>
+                </div>
+                <Typography level="body2" secondary className="mt-8">
+                    Zadnja izmjena: 28. Veljača 2025.
+                </Typography>
+            </Stack>
+        </Container>
+    );
+}

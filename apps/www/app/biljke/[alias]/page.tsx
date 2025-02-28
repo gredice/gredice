@@ -7,7 +7,6 @@ import { Chip } from "@signalco/ui-primitives/Chip";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Sun, Droplet, Sprout, Leaf, Ruler, ArrowDownToLine, BadgeCheck, Info } from "lucide-react"
 import { notFound } from "next/navigation";
-import { getEntityFormatted } from "@gredice/storage";
 import Image from "next/image";
 import Markdown from 'react-markdown'
 import { PageHeader } from "../../../components/shared/PageHeader";
@@ -19,6 +18,7 @@ import { Popper } from "@signalco/ui-primitives/Popper";
 import { cx } from "@signalco/ui-primitives/cx";
 import { Accordion } from "@signalco/ui/Accordion";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
+import { client } from "@gredice/client";
 
 function PlantAttributes({ attributes }: { attributes: PlantAttributes | undefined }) {
     return (
@@ -36,7 +36,20 @@ function PlantAttributes({ attributes }: { attributes: PlantAttributes | undefin
     )
 }
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600; // 1 hour
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+    const entities = await (await client().api.directories.entities[":entityType"].$get({
+        param: {
+            entityType: "plant"
+        }
+    })).json() as PlantData[];
+
+    return entities.map((entity) => ({
+        alias: String(entity.information.name),
+    }));
+}
 
 function InformationSection({ header, content, instructions }: { header: string, content: string | null | undefined, instructions?: PlantInstruction[] }) {
     if (!content) {
@@ -115,12 +128,22 @@ export type PlantData = {
     // pests?: number[],
 };
 
-export default async function PlantPage(props: { params: Promise<{ plantId: string }> }) {
-    const params = await props.params;
-    const plantId = params.plantId;
-    const plant = await getEntityFormatted(parseInt(plantId)) as unknown as PlantData;
-    if (!plant)
+export default async function PlantPage(props: { params: Promise<{ alias: string }> }) {
+    const {alias: aliasUnescaped} = await props.params;
+    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    if (!alias) {
         return notFound();
+    }
+
+    const plants = await (await client().api.directories.entities[":entityType"].$get({
+        param: {
+            entityType: "plant"
+        }
+    })).json() as PlantData[];
+    const plant = plants.find((plant) => plant.information.name === alias);
+    if (!plant) {
+        return notFound();
+    }
 
     return (
         <div className="py-8">

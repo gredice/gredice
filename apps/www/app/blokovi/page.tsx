@@ -3,9 +3,12 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { ItemCard } from "../../components/shared/ItemCard";
 import { orderBy } from "@signalco/js";
-import { getEntitiesFormatted } from "@gredice/storage";
 import { BlockData } from "./@types/BlockData";
 import { BlockImage } from "../../components/blocks/BlockImage";
+import { client } from "@gredice/client";
+
+export const revalidate = 3600; // 1 hour
+export const dynamicParams = true;
 
 function BlockGalleryItem(props: BlockData) {
     const entity = props;
@@ -17,7 +20,11 @@ function BlockGalleryItem(props: BlockData) {
 }
 
 export default async function BlocksPage() {
-    const entities = await getEntitiesFormatted<BlockData>('block');
+    const entities = await (await client().api.directories.entities[":entityType"].$get({
+        param: {
+            entityType: "block"
+        }
+    })).json() as BlockData[];
     const blocksArray = orderBy(entities, (a, b) => a.information.label.localeCompare(b.information.label));
     return (
         <Stack>

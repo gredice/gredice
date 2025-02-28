@@ -1,16 +1,21 @@
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../components/shared/PageHeader";
-import { getEntitiesFormatted } from "@gredice/storage";
 import { FaqData } from "./@types/FaqData";
 import { Accordion } from "@signalco/ui/Accordion";
 import Markdown from "react-markdown";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NoDataPlaceholder } from "../../components/shared/placeholders/NoDataPlaceholder";
+import { client } from "@gredice/client";
 
 export const dynamic = 'force-dynamic';
 
 export default async function FaqPage() {
-    const faq = await getEntitiesFormatted<FaqData>("faq");
+    const faq = await (await client().api.directories.entities[":entityType"].$get({
+        param: {
+            entityType: "faq"
+        }
+    })).json() as FaqData[];
+
     return (
         <Stack>
             <PageHeader
