@@ -47,7 +47,7 @@ export async function generateStaticParams() {
     })).json() as PlantData[];
 
     return entities.map((entity) => ({
-        plantId: String(entity.id),
+        alias: String(entity.information.name),
     }));
 }
 
@@ -128,19 +128,19 @@ export type PlantData = {
     // pests?: number[],
 };
 
-export default async function PlantPage(props: { params: Promise<{ plantId: string }> }) {
-    const params = await props.params;
-    const plantId = params.plantId;
-    const plantResponse = await client().api.directories.entities[":entityType"][":entityId"].$get({
-        param: {
-            entityType: "plant",
-            entityId: plantId
-        }
-    });
-    if (!plantResponse.ok) {
+export default async function PlantPage(props: { params: Promise<{ alias: string }> }) {
+    const {alias: aliasUnescaped} = await props.params;
+    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    if (!alias) {
         return notFound();
     }
-    const plant = await plantResponse.json() as PlantData;
+
+    const plants = await (await client().api.directories.entities[":entityType"].$get({
+        param: {
+            entityType: "plant"
+        }
+    })).json() as PlantData[];
+    const plant = plants.find((plant) => plant.information.name === alias);
     if (!plant) {
         return notFound();
     }

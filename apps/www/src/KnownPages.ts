@@ -2,6 +2,7 @@ export const KnownPages = {
     Landing: '/',
 
     Plants: '/biljke',
+    Plant: (alias: string) => `/biljke/${alias}`,
     Blocks: '/blokovi',
     Sunflowers: '/suncokreti',
     Block: (alias: string) => `/blokovi/${alias}`,

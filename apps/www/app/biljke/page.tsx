@@ -1,7 +1,7 @@
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PlantsFilter } from "./PlantsFilter";
 import { PlantsGallery } from "./PlantsGallery";
-import { PlantData } from "./[plantId]/page";
+import { PlantData } from "./[alias]/page";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { client } from "@gredice/client";
 import { Suspense } from "react";
