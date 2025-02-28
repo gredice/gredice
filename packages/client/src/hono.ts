@@ -11,6 +11,10 @@ const getAppUrl = () => {
 }
 
 function clientAuth() {
+    if (typeof localStorage === 'undefined') {
+        return {};
+    }
+
     return {
         headers: {
             authorization: `Bearer ${localStorage.getItem('gredice-token')}`
