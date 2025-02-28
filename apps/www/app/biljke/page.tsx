@@ -1,14 +1,18 @@
 import { Stack } from "@signalco/ui-primitives/Stack";
-import { getEntitiesFormatted } from "@gredice/storage";
 import { PlantsFilter } from "./PlantsFilter";
 import { PlantsGallery } from "./PlantsGallery";
 import { PlantData } from "./[plantId]/page";
 import { PageHeader } from "../../components/shared/PageHeader";
+import { client } from "@gredice/client";
 
 export const dynamic = 'force-dynamic';
 
 export default async function PlantsPage() {
-    const entities = await getEntitiesFormatted<PlantData>('plant');
+    const entities = await (await client().api.directories.entities[":entityType"].$get({
+        param: {
+            entityType: "plant"
+        }
+    })).json() as PlantData[];
     return (
         <Stack>
             <PageHeader

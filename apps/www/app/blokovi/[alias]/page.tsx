@@ -4,13 +4,13 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { ListHeader } from "@signalco/ui-primitives/List";
 import { SplitView } from "@signalco/ui/SplitView";
 import { BlocksList } from "./BlocksList";
-import { getEntitiesFormatted } from "@gredice/storage";
 import { BlockData } from "../@types/BlockData";
 import Markdown from "react-markdown";
 import { BlockImage } from "../../../components/blocks/BlockImage";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { Layers2, Ruler } from "lucide-react";
+import { client } from "@gredice/client";
 
 function BlockAttributes({ attributes }: { attributes: BlockData['attributes'] }) {
     return (
@@ -23,7 +23,11 @@ function BlockAttributes({ attributes }: { attributes: BlockData['attributes'] }
 
 export default async function BlockPage({ params }: { params: Promise<{ alias: string }> }) {
     const { alias } = await params;
-    const blockData = await getEntitiesFormatted<BlockData>('block');
+    const blockData = await (await client().api.directories.entities[":entityType"].$get({
+        param: {
+            entityType: "block"
+        }
+    })).json() as BlockData[];
     const entity = blockData.find((block) => block.information.label === alias);
     if (!entity) {
         notFound();

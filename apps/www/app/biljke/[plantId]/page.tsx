@@ -7,7 +7,6 @@ import { Chip } from "@signalco/ui-primitives/Chip";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Sun, Droplet, Sprout, Leaf, Ruler, ArrowDownToLine, BadgeCheck, Info } from "lucide-react"
 import { notFound } from "next/navigation";
-import { getEntityFormatted } from "@gredice/storage";
 import Image from "next/image";
 import Markdown from 'react-markdown'
 import { PageHeader } from "../../../components/shared/PageHeader";
@@ -19,6 +18,7 @@ import { Popper } from "@signalco/ui-primitives/Popper";
 import { cx } from "@signalco/ui-primitives/cx";
 import { Accordion } from "@signalco/ui/Accordion";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
+import { client } from "@gredice/client";
 
 function PlantAttributes({ attributes }: { attributes: PlantAttributes | undefined }) {
     return (
@@ -118,9 +118,19 @@ export type PlantData = {
 export default async function PlantPage(props: { params: Promise<{ plantId: string }> }) {
     const params = await props.params;
     const plantId = params.plantId;
-    const plant = await getEntityFormatted(parseInt(plantId)) as unknown as PlantData;
-    if (!plant)
+    const plantResponse = await client().api.directories.entities[":entityType"][":entityId"].$get({
+        param: {
+            entityType: "plant",
+            entityId: plantId
+        }
+    });
+    if (!plantResponse.ok) {
         return notFound();
+    }
+    const plant = await plantResponse.json() as PlantData;
+    if (!plant) {
+        return notFound();
+    }
 
     return (
         <div className="py-8">
