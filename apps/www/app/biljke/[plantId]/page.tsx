@@ -36,7 +36,20 @@ function PlantAttributes({ attributes }: { attributes: PlantAttributes | undefin
     )
 }
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600; // 1 hour
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+    const entities = await (await client().api.directories.entities[":entityType"].$get({
+        param: {
+            entityType: "plant"
+        }
+    })).json() as PlantData[];
+
+    return entities.map((entity) => ({
+        plantId: String(entity.id),
+    }));
+}
 
 function InformationSection({ header, content, instructions }: { header: string, content: string | null | undefined, instructions?: PlantInstruction[] }) {
     if (!content) {

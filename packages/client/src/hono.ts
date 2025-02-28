@@ -3,10 +3,10 @@ import { hc } from "hono/client";
 import { AppType } from "@gredice/api/routes";
 
 const getAppUrl = () => {
-    if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'production' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview') {
-        return `https://api.gredice.com`;
-    } else {
+    if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'development') {
         return `http://localhost:3005`;
+    } else {
+        return `https://api.gredice.com`;
     }
 }
 

@@ -7,6 +7,9 @@ import { BlockData } from "./@types/BlockData";
 import { BlockImage } from "../../components/blocks/BlockImage";
 import { client } from "@gredice/client";
 
+export const revalidate = 3600; // 1 hour
+export const dynamicParams = true;
+
 function BlockGalleryItem(props: BlockData) {
     const entity = props;
     return (

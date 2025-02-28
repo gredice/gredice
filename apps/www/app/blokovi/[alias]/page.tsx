@@ -12,6 +12,21 @@ import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { Layers2, Ruler } from "lucide-react";
 import { client } from "@gredice/client";
 
+export const revalidate = 3600; // 1 hour
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+    const entities = await (await client().api.directories.entities[":entityType"].$get({
+        param: {
+            entityType: "block"
+        }
+    })).json() as BlockData[];
+
+    return entities.map((entity) => ({
+        alias: String(entity.information.label),
+    }));
+}
+
 function BlockAttributes({ attributes }: { attributes: BlockData['attributes'] }) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -22,7 +37,12 @@ function BlockAttributes({ attributes }: { attributes: BlockData['attributes'] }
 }
 
 export default async function BlockPage({ params }: { params: Promise<{ alias: string }> }) {
-    const { alias } = await params;
+    const { alias: aliasUnescaped } = await params;
+    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    if (!alias) {
+        notFound();
+    }
+
     // TODO: Query API for single entities with filter on 'label' attribute
     const blockData = await (await client().api.directories.entities[":entityType"].$get({
         param: {

@@ -3,6 +3,7 @@ import { SectionsView } from "@signalco/cms-core/SectionsView";
 import { sectionsComponentRegistry } from "../../components/shared/sectionsComponentRegistry";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../components/shared/PageHeader";
+import Image from "next/image";
 
 const sectionsData: SectionData[] = [
     {
@@ -34,11 +35,12 @@ export default function SunflowersPage() {
             subHeader={`Sakupljanje suncokrete i koristi ih u svom vrtu za uređenje i dekoraciju.`}
             padded 
             visual={(
-                <img
+                <Image
                     src="https://cdn.gredice.com/sunflower-large.svg"
                     alt="Suncokret"
                     width={192}
-                    height={192} />
+                    height={192}
+                    priority />
             )} />
             <SectionsView
                 sectionsData={sectionsData}
