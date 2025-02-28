@@ -6,7 +6,7 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 export default function PolitikaKolacicaPage() {
     return (
         <Container maxWidth="sm">
-            <Stack spacing={4}>
+            <Stack>
                 <PageHeader
                     padded
                     header="Politika kolačića"
@@ -43,7 +43,7 @@ export default function PolitikaKolacicaPage() {
                     <h2>Promjene u Politici Kolačića</h2>
                     <p>Zadržavamo pravo izmjene ove Politike Kolačića u bilo kojem trenutku. Sve izmjene bit će objavljene na ovoj stranici, uz datum ažuriranja.</p>
                 </div>
-                <Stack spacing={1}>
+                <Stack spacing={1} className="mt-8">
                     <Typography level="body2" secondary>
                         Zadnja izmjena: 11. Studeni 2024.
                     </Typography>

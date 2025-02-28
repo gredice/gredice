@@ -6,12 +6,12 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Input } from "@signalco/ui-primitives/Input";
 import { Button } from "@signalco/ui-primitives/Button";
 import { AlertTriangle, MailCheck } from "lucide-react";
-import { useFormState } from "react-dom";
 import { preSeasonNewsletterSubscribe } from "./actions";
 import { GentleSlide } from "@signalco/ui/GentleSlide";
+import { useActionState } from "react";
 
 export function NewsletterSignUp() {
-    const [state, submitAction, isPending] = useFormState(preSeasonNewsletterSubscribe, null);
+    const [state, submitAction, isPending] = useActionState(preSeasonNewsletterSubscribe, null);
 
     return (
         <div className="grid grid-cols-[auto_1fr] gap-y-1">
@@ -45,7 +45,7 @@ export function NewsletterSignUp() {
                     )}
                     {state?.success && (
                         <Alert color="success" className="bg-green-700/5 border-green-950/20 text-green-950" startDecorator={<MailCheck />}>
-                            Uspješno si prijavljen.
+                            Uspješna prijava. Javit ćemo ti se uskoro. ☺️
                         </Alert>
                     )}
                 </GentleSlide>

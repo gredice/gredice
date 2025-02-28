@@ -3,7 +3,6 @@ import { sectionsComponentRegistry } from "../components/shared/sectionsComponen
 import { Navigate } from "@signalco/ui-icons";
 import { KnownPages } from "../src/KnownPages";
 import { SectionData } from "@signalco/cms-core/SectionData";
-import { getFlags } from "../lib/flags/getFlags";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NewsletterSignUp } from "./NewsletterSignUp";
@@ -87,8 +86,8 @@ const preSeasonSectionsData: SectionData[] = [
 ];
 
 export default async function Home() {
-    const flags = await getFlags();
-    const preSeason = flags.preSeason({ fallback: true });
+    // const flags = await getFlags();
+    const preSeason = true;//flags.preSeason({ fallback: true });
 
     return (
         <SectionsView

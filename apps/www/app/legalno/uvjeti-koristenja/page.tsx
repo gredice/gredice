@@ -6,7 +6,7 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 export default function UvjetiKoristenjaPage() {
     return (
         <Container maxWidth="sm">
-            <Stack spacing={4}>
+            <Stack>
                 <PageHeader
                     padded
                     header="Uvjeti Korištenja"
@@ -16,8 +16,8 @@ export default function UvjetiKoristenjaPage() {
                     <h2>Uvod</h2>
                     <p>
                         Ovi uvjeti korištenja (&quot;<strong>Uvjeti</strong>&quot;) reguliraju pristup i korištenje web stranice
-                        (<a href="https://www.gredice.com">www.gredice.com</a>, uključujući sve podstranice) (&quot;<strong>Platforma</strong>&quot;) koju posluje [ime tvrtke],
-                        sa sjedištem na [adresa], OIB: [OIB]. Korištenje Platforme podrazumijeva suglasnost s
+                        (<a href="https://www.gredice.com">www.gredice.com</a>, uključujući sve podstranice) (&quot;<strong>Platforma</strong>&quot;) koju posluje Gredice društvo s ograničenom odgovornošću za proizvodnju, trgovinu i usluge,
+                        sa sjedištem na Ulica Julija Knifera 3, Zagreb, Hrvatska, OIB: 86171547809. Korištenje Platforme podrazumijeva suglasnost s
                         ovim Uvjetima. Ukoliko se ne slažete s Uvjetima, molimo vas da ne koristite Platformu.
                     </p>
                     <h2>Definicije</h2>
@@ -55,8 +55,8 @@ export default function UvjetiKoristenjaPage() {
                     <p>Ovi Uvjeti predstavljaju cjelokupni sporazum između Korisnika i Platforme u vezi s korištenjem Platforme. Platforma zadržava pravo izmjene ovih Uvjeta, a Korisnici će biti obaviješteni o svim promjenama.</p>
                     <p>Za sve dodatne informacije ili upite, molimo kontaktirajte nas putem e-pošte na <a href="mailto:kontakt@gredice.com">kontakt@gredice.com</a>.</p>
                 </div>
-                <Typography level="body2" secondary>
-                    Zadnja izmjena: 11. Studeni 2024.
+                <Typography level="body2" secondary className="mt-8">
+                    Zadnja izmjena: 28. Veljača 2025.
                 </Typography>
             </Stack>
         </Container>

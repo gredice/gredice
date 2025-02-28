@@ -15,10 +15,7 @@ import { SectionData } from "@signalco/cms-core/SectionData";
 import { CompanyGitHub, CompanyReddit, CompanyX } from "@signalco/ui-icons";
 import { sectionsComponentRegistry } from "../components/shared/sectionsComponentRegistry";
 import { ClientAppProvider } from "../components/providers/ClientAppProvider";
-import { getFlags } from "../lib/flags/getFlags";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Popper } from "@signalco/ui-primitives/Popper";
-import {ReactNode} from "react";
+import { ReactNode } from "react";
 
 export const metadata: Metadata = {
     title: "Gredice",
@@ -67,45 +64,11 @@ const sectionsData: SectionData[] = [
     }
 ];
 
-const preSeasonSectionsData: SectionData[] = [
-    {
-        component: 'Footer1',
-        tagline: 'Gredice',
-        asset: <Image src="/Logotype - gredice@2x.svg" width={320} height={87} alt="Gredice" quality={100} />,
-        features: [
-            {
-                header: 'Informacije',
-                ctas: [
-                    { label: 'Biljke', href: KnownPages.Plants },
-                    { label: 'Blokovi', href: KnownPages.Blocks },
-                    { label: 'Suncokreti', href: KnownPages.Sunflowers },
-                    { label: 'Česta pitanja', href: KnownPages.FAQ },
-                ]
-            },
-            {
-                header: 'Zajednice',
-                ctas: [
-                    { label: 'r/gredice', href: 'https://www.reddit.com/r/gredice/' },
-                    { label: 'Razgovori na GitHub-u', href: 'https://github.com/gredice/gredice/discussions' },
-                ]
-            },
-        ],
-        ctas: [
-            // { label: 'X', href: 'https://x.com/gredicecom', icon: <CompanyX /> },
-            { label: 'reddit', href: 'https://www.reddit.com/r/gredice/', icon: <CompanyReddit /> },
-            { label: 'GitHub', href: 'https://github.com/gredice', icon: <CompanyGitHub /> },
-        ]
-    }
-];
-
 export default async function RootLayout({
     children,
 }: Readonly<{
     children: ReactNode;
 }>) {
-    const flags = await getFlags();
-    const preSeason = flags.preSeason({ fallback: true });
-
     return (
         <html lang="en">
             <Head>
@@ -125,34 +88,17 @@ export default async function RootLayout({
                             logo={(
                                 <Image src="/Logotype - gredice@2x.svg" width={140} height={38} alt="Gredice" quality={100} priority />
                             )}
-                            links={preSeason ? [] : [
+                            links={[
                                 { href: KnownPages.Plants, text: 'Biljke' },
                                 { href: KnownPages.Blocks, text: 'Blokovi' },
                                 { href: KnownPages.FAQ, text: 'Česta pitanja' },
                             ]}>
-                            {preSeason ? (
-                                <Popper trigger={(
-                                    <NavigatingButton className="bg-green-800/30 hover:bg-green-800/30">
-                                        Vrt
-                                    </NavigatingButton>
-                                )}
-                                    className="p-4">
-                                    <Stack spacing={2}>
-                                        <Typography level="body2" semiBold>
-                                            Dostupno uskoro
-                                        </Typography>
-                                        <Typography>
-                                            Vrt je trenutno zatvoren.
-                                        </Typography>
-                                    </Stack>
-                                </Popper>
-                            ) : (
-                                    <Link href={KnownPages.GardenApp}>
-                                        <NavigatingButton className="bg-green-800 hover:bg-green-700">
-                                            Vrt
-                                        </NavigatingButton>
-                                    </Link>
-                            )}
+
+                            <Link href={KnownPages.GardenApp}>
+                                <NavigatingButton className="bg-green-800 hover:bg-green-700">
+                                    Vrt
+                                </NavigatingButton>
+                            </Link>
                         </PageNav>
                         <main className="mt-16 relative">
                             <Container>
@@ -161,7 +107,7 @@ export default async function RootLayout({
                         </main>
                         <footer>
                             <SectionsView
-                                sectionsData={preSeason ? preSeasonSectionsData : sectionsData}
+                                sectionsData={sectionsData}
                                 componentsRegistry={sectionsComponentRegistry} />
                         </footer>
                     </Stack>

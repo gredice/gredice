@@ -6,7 +6,7 @@ import { Container } from "@signalco/ui-primitives/Container";
 export default function PolitikaPrivatnostiPage() {
     return (
         <Container maxWidth="sm">
-            <Stack spacing={4}>
+            <Stack>
                 <PageHeader
                     padded
                     header="Licenca izvornog koda"
@@ -17,7 +17,7 @@ export default function PolitikaPrivatnostiPage() {
                     <p>Izvorni kod dostupan je na <a href="https://github.com/gredice/gredice">GitHub</a> repozitoriju.</p>
                     <p>Ukoliko imate bilo kakvih pitanja o licenci ili korištenju izvornog koda, slobodno nas kontaktirajte na <a href="mailto:kontakt@gredice.com">kontakt@gredice.com</a>.</p>
                 </div>
-                <Typography level="body2" secondary>
+                <Typography level="body2" secondary className="mt-8">
                     Zadnja izmjena: 20. Studeni 2024.
                 </Typography>
             </Stack>
