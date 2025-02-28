@@ -1,4 +1,4 @@
-import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, LucideIcon, Circle, Wind } from 'lucide-react'
+import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, LucideIcon, Circle, Wind, ChevronRight } from 'lucide-react'
 import { RainIcon } from './icons/RainIcon'
 import { weatherIcons } from './WeatherIcons';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -6,7 +6,10 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { Link } from '@signalco/ui-primitives/Link';
-import { useWeatherForecast } from '../../../hooks/useWeatherForecast';
+import { useWeatherNow } from '../../../hooks/useWeatherNow';
+import { WeatherForecastDays } from './WeatherForecastDetails';
+import { useState } from 'react';
+import { Button } from '@signalco/ui-primitives/Button';
 
 export const windDirectionIcons: Record<string, LucideIcon> = {
     N: ArrowUp,
@@ -19,64 +22,70 @@ export const windDirectionIcons: Record<string, LucideIcon> = {
     NW: ArrowUpLeft
 }
 
-export function WeatherDetails() {
-    const { data } = useWeatherForecast();
+export function WeatherNowDetails() {
+    const { data } = useWeatherNow();
     if (!data) return null;
     // TODO: Add loading indicator
     // TODO: Add error message
 
+    const [showForecast, setShowForecast] = useState(false);
+
+    const WeatherIcon = weatherIcons[data.symbol]
+    const WindIcon = data.windDirection ? windDirectionIcons[data.windDirection] : Circle;
+
+    // Chance of rain is a number between 0 and 1,
+    // chance is 100 when there is 10 or more mm of rain
+    const rainChance = data.rain > 10 ? 1 : (10 / data.rain);
+
     return (
         <Stack>
             <Row className="bg-background px-4 py-2" justifyContent="space-between">
-                <Typography level="body3" bold>Prognoza</Typography>
+                <Typography level="body3" bold>Aktualno vrijeme</Typography>
             </Row>
             <Divider />
-            <div className="grid grid-cols-3">
-                {data.map((day, index) => {
-                    const WeatherIcon = weatherIcons[day.symbol]
-                    const WindIcon = day.windDirection ? windDirectionIcons[day.windDirection] : Circle;
-
-                    // Write "Danas" for today, name of the day for other days (Ponedjeljak, Utorak, etc.)
-                    const dateName = index === 0
-                        ? 'danas'
-                        : new Date(day.date).toLocaleDateString('hr-HR', { weekday: 'long' });
-
-                    // Chance of rain is a number between 0 and 1,
-                    // chance is 100 when there is 10 or more mm of rain
-                    const rainChance = day.rain > 10 ? 1 : (10 / day.rain);
-
-                    return (
-                        <div key={day.date} className="text-center p-4">
-                            <Typography level='body3' semiBold className="capitalize">{dateName}</Typography>
-                            <div className="flex justify-center my-1">
-                                {WeatherIcon && <WeatherIcon.day className="w-8 h-8" />}
-                            </div>
-                            <div className="text-sm mb-1 whitespace-nowrap">
-                                <span className="font-medium">{day.maxTemp}°</span>
-                                <span className="text-muted-foreground text-xs"> / {day.minTemp}°</span>
-                            </div>
-                            <div className="flex gap-1 flex-col text-xs">
-                                {day.rain > 0 && (
+            {showForecast && <WeatherForecastDays />}
+            {!showForecast && (
+                <div className='grid grid-cols-[1fr_auto] gap-2'>
+                    <Row spacing={1} className='p-4'>
+                        <div className="my-1 mr-2">
+                            {WeatherIcon && <WeatherIcon.day className="size-12" />}
+                        </div>
+                        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                            <Stack>
+                                <Typography level='body3'>Temperatura</Typography>
+                                <Typography semiBold>{data.temperature}°C</Typography>
+                            </Stack>
+                            {data.rain > 0 && (
+                                <Stack spacing={0.5}>
+                                    <Typography level='body3'>Padaline</Typography>
                                     <div className="flex items-center space-x-1">
                                         <RainIcon chance={rainChance} />
-                                        <span>{day.rain} mm</span>
+                                        <Typography level="body2">{data.rain} mm</Typography>
                                     </div>
-                                )}
-                                {day.windStrength > 0 && (
+                                </Stack>
+                            )}
+                            {data.windSpeed > 0 && (
+                                <Stack spacing={0.5}>
+                                    <Typography level='body3'>Vjetar</Typography>
                                     <div className="flex items-center space-x-1 relative">
                                         <Wind className="w-4 h-4 opacity-40" />
                                         <Row>
-                                            {Array(day.windStrength).fill(0).map((_, i) => (
+                                            {Array(data.windSpeed).fill(0).map((_, i) => (
                                                 <WindIcon key={i} className="w-4 h-4 first:ml-0 -ml-1.5" />
                                             ))}
                                         </Row>
                                     </div>
-                                )}
-                            </div>
+                                </Stack>
+                            )}
                         </div>
-                    )
-                })}
-            </div>
+                    </Row>
+                    <div className='border-l block md:hidden'>
+                        <Button variant='plain' className='h-full rounded-none' endDecorator={<ChevronRight />} onClick={() => setShowForecast(true)}>
+                            Prognoza                            
+                        </Button>
+                    </div>
+                </div>
+            )}
             <Divider />
             <Row className="px-4 py-2" justifyContent="space-between">
                 <Link href={"https://meteo.hr/proizvodi.php?section=podaci&param=xml_korisnici"} target='_blank'>
