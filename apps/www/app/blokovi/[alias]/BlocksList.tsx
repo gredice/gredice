@@ -1,7 +1,7 @@
 'use client';
 
 import { KnownPages } from "../../../src/KnownPages";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { orderBy } from "@signalco/js";
 import { BlockData } from "../@types/BlockData";
 import { BlockImage } from "../../../components/blocks/BlockImage";
