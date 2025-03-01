@@ -29,10 +29,10 @@ export function PlantYearCalendar({ activities, now }: { activities: { [_: strin
     const currentMonthProgress = currentDate.getDate() / new Date(currentDate.getFullYear(), currentMonth, 0).getDate();
 
     return (
-        <div className="grid grid-cols-[min-content_repeat(12,1fr)] text-sm rounded-lg overflow-x-auto relative">
+        <div className="grid grid-cols-[100px_repeat(12,1fr)] text-sm rounded-lg overflow-x-auto relative">
             <div></div>
             {calendarMonths.map((month, monthIndex) => (
-                <Typography level="body2" center key={monthIndex} className="p-2 border-l">
+                <Typography level="body2" center key={monthIndex} className="py-2 text-center min-w-8 border-l">
                     {month}
                 </Typography>
             ))}
@@ -47,7 +47,7 @@ export function PlantYearCalendar({ activities, now }: { activities: { [_: strin
                             <Typography level="body2">
                                 {activityType.name}
                             </Typography>
-                            <div className={`w-4 h-4 rounded-full inline-block ml-2 ${activityType.color}`}></div>
+                            <div className={`size-4 rounded-full inline-block ml-2 ${activityType.color}`}></div>
                         </Row>
                         {calendarMonths.map((_, index) => {
                             const month = index + 1;
@@ -76,10 +76,15 @@ export function PlantYearCalendar({ activities, now }: { activities: { [_: strin
                     </Fragment>
                 );
             })}
-            <div
-                className="absolute top-0 bottom-0 w-0.5 bg-red-600"
-                style={{ left: `${((currentMonth + currentMonthProgress) / 12) * 100}%` }}
-            />
+            <div className="grid grid-cols-subgrid [grid-column:2/-1] relative">
+                <div
+                    className="absolute bottom-0 w-0.5 bg-red-600"
+                    style={{
+                        top: `${-(Object.keys(calendarActivityTypes).length + 1) * 20}px`,
+                        left: `${((currentMonth + currentMonthProgress) / 12) * 100}%`
+                    }}
+                />
+            </div>
         </div>
     )
 }

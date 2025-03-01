@@ -1,40 +1,31 @@
 'use client';
 
-import { List } from "@signalco/ui-primitives/List";
-import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { KnownPages } from "../../../src/KnownPages";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { orderBy } from "@signalco/js";
 import { BlockData } from "../@types/BlockData";
 import { BlockImage } from "../../../components/blocks/BlockImage";
+import { ListCollapsable } from "../../../components/shared/ListCollapsable";
 
 export function BlocksList({ blockData }: { blockData: BlockData[] }) {
-    const params = useParams<{ alias: string }>();
-    const { alias } = params;
+    const { alias: aliasUnescaped } = useParams<{ alias: string }>();
+    const alias = decodeURIComponent(aliasUnescaped);
+
     const entitiesArray = orderBy(blockData, (a, b) => a.information.label.localeCompare(b.information.label));
-    return (
-        <List>
-            {entitiesArray.map((entity) => {
-                return (
-                    <Link
-                        key={entity.information.name}
-                        href={KnownPages.Block(entity.information.label)}>
-                        <ListItem
-                            nodeId={entity.information.name}
-                            selected={entity.information.label === alias}
-                            onSelected={() => { }}
-                            label={entity.information.label}
-                            startDecorator={(
-                                <BlockImage
-                                    blockName={entity.information.name}
-                                    width={32}
-                                    height={32}
-                                />
-                            )} />
-                    </Link>
-                );
-            })}
-        </List>
-    );
+
+    const items = entitiesArray.map((entity) => ({
+        value: entity.information.label,
+        label: entity.information.label,
+        href: KnownPages.Block(entity.information.label),
+        icon: (
+            <BlockImage
+                blockName={entity.information.name}
+                className="size-6 md:size-8"
+                width={32}
+                height={32}
+            />
+        )
+    }));
+
+    return <ListCollapsable value={alias} items={items} />;
 }
