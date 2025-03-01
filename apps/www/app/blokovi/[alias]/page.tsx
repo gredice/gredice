@@ -57,11 +57,11 @@ export default async function BlockPage({ params }: { params: Promise<{ alias: s
     return (
         <div className="border-b">
             <SplitView>
-                <Stack spacing={1} className="p-4 py-10">
+                <Stack spacing={1} className="p-2 md:p-4 py-2 md:py-10">
                     <ListHeader header="Blokovi" />
                     <BlocksList blockData={blockData} />
                 </Stack>
-                <Stack spacing={4} className="p-4 py-10">
+                <Stack spacing={4} className="p-2 md:p-4 py-2 md:py-10">
                     <PageHeader
                         visual={(
                             <BlockImage

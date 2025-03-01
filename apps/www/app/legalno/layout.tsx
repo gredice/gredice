@@ -7,7 +7,7 @@ import { LegalFilesMenu } from "./LegalFilesMenu";
 export default function LegalLayout({ children }: { children: ReactNode }) {
     return (
         <SplitView minSize={212}>
-            <Stack spacing={1} className="px-4 my-12 md:my-24">
+            <Stack spacing={1} className="px-2 my-2 md:my-24">
                 <ListHeader header="Legalno" />
                 <LegalFilesMenu />
             </Stack>
