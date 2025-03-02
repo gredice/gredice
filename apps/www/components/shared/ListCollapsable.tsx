@@ -2,10 +2,11 @@ import { List } from "@signalco/ui-primitives/List";
 import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import Link from "next/link";
-import router from "next/router";
+import { useRouter } from "next/navigation";
 import { ReactElement } from "react";
 
 export function ListCollapsable({items, value}: {items: {value: string, label: string, icon: ReactElement, href: string}[], value: string}) {
+    const router = useRouter();
     return (
         <>
             <SelectItems
