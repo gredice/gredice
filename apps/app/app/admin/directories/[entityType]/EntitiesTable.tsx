@@ -10,6 +10,7 @@ import { entityDisplayName } from '../../../../src/entities/entityAttributes';
 import { ServerActionIconButton } from '../../../../components/shared/ServerActionIconButton';
 import { Duplicate } from '@signalco/ui-icons';
 import { duplicateEntity } from '../../../(actions)/entityActions';
+import { LocaleDateTime } from '../../../../components/shared/LocaleDateTime';
 
 export async function EntitiesTable({ entityTypeName }: { entityTypeName: string }) {
     const entities = await getEntitiesRaw(entityTypeName);
@@ -42,7 +43,11 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                                 </Link>
                             </Table.Cell>
                             <Table.Cell>
-                                <Typography secondary title={entity.updatedAt.toISOString()}>{entity.updatedAt.toLocaleDateString()}</Typography>
+                                <Typography secondary title={entity.updatedAt.toISOString()}>
+                                    <LocaleDateTime time={false}>
+                                        {entity.updatedAt}
+                                    </LocaleDateTime>
+                                </Typography>
                             </Table.Cell>
                             <Table.Cell>
                                 <div className='flex'>

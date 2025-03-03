@@ -1,10 +1,12 @@
 import 'server-only';
 import { accounts, accountUsers, storage } from "..";
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { createEvent, getEvents, knownEvents, knownEventTypes } from './eventsRepo';
 
 export function getAccounts() {
-    return storage.query.accounts.findMany();
+    return storage.query.accounts.findMany({
+        orderBy: desc(accounts.createdAt),
+    });
 }
 
 export function getAccount(accountId: string) {

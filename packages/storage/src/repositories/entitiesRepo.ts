@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import {
     attributeValues,
     entities,
@@ -16,6 +16,7 @@ export function getEntitiesRaw(entityTypeName: string, state?: string) {
         where: state
             ? and(eq(entities.entityTypeName, entityTypeName), eq(entities.state, state), eq(entities.isDeleted, false))
             : and(eq(entities.entityTypeName, entityTypeName), eq(entities.isDeleted, false)),
+        orderBy: desc(entities.updatedAt),
         with: {
             attributes: {
                 where: eq(entities.isDeleted, false),

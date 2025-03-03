@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from "zod";
-import { blockLogin, changePassword, clearLoginFailedAttempts, createUserWithPassword, getUserWithLogins, incLoginFailedAttempts, updateLoginData } from '@gredice/storage';
+import { blockLogin, changePassword, clearLoginFailedAttempts, createUserWithPassword, getUserWithLogins, incLoginFailedAttempts, loginSuccessful, updateLoginData } from '@gredice/storage';
 import { pbkdf2Sync } from 'node:crypto';
 import { clearCookie, createJwt, verifyJwt, setCookie } from '../../../lib/auth/auth';
 import { sendChangePassword, sendEmailVerification } from '../../../lib/auth/email';
@@ -83,7 +83,10 @@ const app = new Hono()
             }
 
             const token = await createJwt(user.id);
-            await setCookie(context, token);
+            await Promise.all([
+                setCookie(context, token),
+                loginSuccessful(login.id)
+            ]);
 
             return context.json({
                 token

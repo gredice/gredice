@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, count, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { storage } from "..";
 import { gardenBlocks, gardens, gardenStacks, InsertGarden, UpdateGarden, UpdateGardenBlock, UpdateGardenStack } from "../schema";
 import { createEvent, knownEvents } from './eventsRepo';
@@ -25,7 +25,9 @@ export async function createGarden(garden: InsertGarden) {
 }
 
 export async function getGardens() {
-    return storage.query.gardens.findMany();
+    return storage.query.gardens.findMany({
+        orderBy: desc(gardens.createdAt)
+    });
 }
 
 export async function getAccountGardens(accountId: string) {

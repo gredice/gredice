@@ -14,6 +14,7 @@ import { Input } from "@signalco/ui-primitives/Input";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Plus } from "lucide-react";
+import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
 
 export const dynamic = 'force-dynamic';
 
@@ -52,10 +53,14 @@ async function AccountUsersCard({ accountId }: { accountId: string }) {
                                     </Link>
                                 </Table.Cell>
                                 <Table.Cell>
-                                    {user.createdAt.toLocaleString('hr-HR')}
+                                    <LocaleDateTime>
+                                        {user.createdAt}
+                                    </LocaleDateTime>
                                 </Table.Cell>
                                 <Table.Cell>
-                                    {user.updatedAt.toLocaleString('hr-HR')}
+                                    <LocaleDateTime>
+                                        {user.updatedAt}
+                                    </LocaleDateTime>
                                 </Table.Cell>
                             </Table.Row>
                         ))}
@@ -99,7 +104,11 @@ async function AccountGardensCard({ accountId }: { accountId: string }) {
                                         {garden.name}
                                     </Link>
                                 </Table.Cell>
-                                <Table.Cell title={garden.createdAt.toISOString()}>{garden.createdAt.toLocaleString('hr-HR')}</Table.Cell>
+                                <Table.Cell title={garden.createdAt.toISOString()}>
+                                    <LocaleDateTime>
+                                        {garden.createdAt}
+                                    </LocaleDateTime>
+                                </Table.Cell>
                             </Table.Row>
                         ))}
                     </Table.Body>
@@ -177,7 +186,11 @@ async function AccountSunflowersCard({ accountId }: { accountId: string }) {
                                 <Table.Cell>
                                     {sunflower.amount}
                                 </Table.Cell>
-                                <Table.Cell title={sunflower.createdAt.toISOString()}>{sunflower.createdAt.toLocaleString('hr-HR')}</Table.Cell>
+                                <Table.Cell title={sunflower.createdAt.toISOString()}>
+                                    <LocaleDateTime>
+                                        {sunflower.createdAt}
+                                    </LocaleDateTime>
+                                </Table.Cell>
                             </Table.Row>
                         ))}
                     </Table.Body>
