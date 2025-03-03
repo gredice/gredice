@@ -6,6 +6,7 @@ import { auth } from "../../../lib/auth/auth";
 import { KnownPages } from "../../../src/KnownPages";
 import Link from "next/link";
 import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
+import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +53,11 @@ export default async function GardensPage() {
                                         {garden.accountId}
                                     </Link>
                                 </Table.Cell>
-                                <Table.Cell title={garden.createdAt.toISOString()}>{garden.createdAt.toLocaleDateString()}</Table.Cell>
+                                <Table.Cell title={garden.createdAt.toISOString()}>
+                                    <LocaleDateTime time={false}>
+                                        {garden.createdAt}
+                                    </LocaleDateTime>
+                                </Table.Cell>
                             </Table.Row>
                         ))}
                     </Table.Body>

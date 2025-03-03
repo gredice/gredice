@@ -1,5 +1,5 @@
 import 'server-only';
-import { eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { earnSunflowers, getFarms, storage } from "..";
 import { accounts, accountUsers, userLogins, users } from "../schema";
 import { createGarden } from "./gardensRepo";
@@ -7,7 +7,9 @@ import { randomUUID, randomBytes as cryptoRandomBytes, pbkdf2Sync } from 'node:c
 import { createEvent, knownEvents } from './eventsRepo';
 
 export function getUsers() {
-    return storage.query.users.findMany();
+    return storage.query.users.findMany({
+        orderBy: desc(users.createdAt)
+    });
 }
 
 export function getUser(userId: string) {
@@ -30,6 +32,12 @@ export function getUserWithLogins(userName: string) {
             usersLogins: true
         }
     });
+}
+
+export function loginSuccessful(userLoginId: number) {
+    return storage.update(userLogins).set({
+        lastLogin: new Date()
+    }).where(eq(userLogins.id, userLoginId));
 }
 
 /**

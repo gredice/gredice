@@ -8,6 +8,7 @@ import { ButtonImpersonateUser } from "./ButtonImpersonateUser";
 import Link from "next/link";
 import { KnownPages } from "../../../src/KnownPages";
 import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
+import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +54,11 @@ export default async function UsersPage() {
                                 <Table.Cell title={user.role}>
                                     <SelectUserRole user={user} />
                                 </Table.Cell>
-                                <Table.Cell title={user.createdAt.toISOString()}>{user.createdAt.toLocaleDateString()}</Table.Cell>
+                                <Table.Cell title={user.createdAt.toISOString()}>
+                                    <LocaleDateTime time={false}>
+                                        {user.createdAt}
+                                    </LocaleDateTime>
+                                </Table.Cell>
                                 <Table.Cell>
                                     <ButtonImpersonateUser userId={user.id} />
                                 </Table.Cell>

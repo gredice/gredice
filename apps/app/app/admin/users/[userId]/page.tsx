@@ -15,6 +15,7 @@ import { NoDataPlaceholder } from "../../../../components/shared/placeholders/No
 import { auth } from "../../../../lib/auth/auth";
 import { FieldSet } from "../../../../components/shared/fields/FieldSet";
 import { Field } from "../../../../components/shared/fields/Field";
+import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
 
 export default async function UserPage({ params }: { params: Promise<{ userId: string; }> }) {
     const { userId } = await params;
@@ -57,8 +58,8 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                             <Field name="Uloga" value={<SelectUserRole user={user} />} />
                         </FieldSet>
                         <FieldSet>
-                            <Field name="Datum kreiranja" value={createdAt.toLocaleString('hr-HR')} />
-                            <Field name="Datum ažuriranja" value={updatedAt.toLocaleString('hr-HR')} />
+                            <Field name="Datum kreiranja" value={<LocaleDateTime>{createdAt}</LocaleDateTime>} />
+                            <Field name="Datum ažuriranja" value={<LocaleDateTime>{updatedAt}</LocaleDateTime>} />
                         </FieldSet>
                     </Stack>
                 </CardContent>
@@ -97,10 +98,10 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                                             </Link>
                                         </Table.Cell>
                                         <Table.Cell>
-                                            {account.createdAt.toLocaleString('hr-HR')}
+                                            <LocaleDateTime>{account.createdAt}</LocaleDateTime>
                                         </Table.Cell>
                                         <Table.Cell>
-                                            {account.updatedAt.toLocaleString('hr-HR')}
+                                            <LocaleDateTime>{account.updatedAt}</LocaleDateTime>
                                         </Table.Cell>
                                     </Table.Row>
                                 ))}
@@ -118,6 +119,7 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                                 <Table.Row>
                                     <Table.Head>Vrsta</Table.Head>
                                     <Table.Head>Blokiran</Table.Head>
+                                    <Table.Head>Zadnja prijava</Table.Head>
                                     <Table.Head>Datum kreiranja</Table.Head>
                                     <Table.Head>Datum ažuriranja</Table.Head>
                                 </Table.Row>
@@ -145,7 +147,8 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                                                     <Row spacing={1}>
                                                         <Disabled className="text-red-500" />
                                                         <Typography>
-                                                            {'Blokiran do ' + userLogin.blockedUntil.toLocaleString('hr-HR')}
+                                                            {'Blokiran do '}
+                                                            <LocaleDateTime>{userLogin.blockedUntil}</LocaleDateTime>
                                                         </Typography>
                                                     </Row>
                                                 ) : userLogin.failedAttempts > 0 ? (
@@ -156,17 +159,29 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                                                                 {userLogin.failedAttempts + ' neuspjelih pokušaja'}
                                                             </Typography>
                                                             <Typography>
-                                                                {'Zadnji ' + userLogin.lastFailedAttempt?.toLocaleString('hr-HR')}
+                                                                {'Zadnji '}
+                                                                <LocaleDateTime>{userLogin.lastFailedAttempt}</LocaleDateTime>
                                                             </Typography>
                                                         </Stack>
                                                     </Row>
                                                 ) : 'Ne'}
                                         </Table.Cell>
                                         <Table.Cell>
-                                            {userLogin.createdAt.toLocaleString('hr-HR')}
+                                            {userLogin.lastLogin ? (
+                                                <LocaleDateTime>
+                                                    {userLogin.lastLogin}
+                                                </LocaleDateTime>
+                                            ) : 'Nikad'}
                                         </Table.Cell>
                                         <Table.Cell>
-                                            {userLogin.updatedAt.toLocaleString('hr-HR')}
+                                            <LocaleDateTime>
+                                                {userLogin.createdAt}
+                                            </LocaleDateTime>
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <LocaleDateTime>
+                                                {userLogin.updatedAt}
+                                            </LocaleDateTime>
                                         </Table.Cell>
                                     </Table.Row>
                                 ))}

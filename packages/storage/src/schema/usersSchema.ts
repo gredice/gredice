@@ -59,6 +59,7 @@ export const userLogins = pgTable('user_logins', {
     loginType: text('login_type').notNull(),
     loginId: text('login_id').notNull(),
     loginData: text('login_data').notNull(),
+    lastLogin: timestamp('last_login'),
     failedAttempts: smallint('failed_attempts').notNull().default(0),
     lastFailedAttempt: timestamp('last_failed_attempt'),
     blockedUntil: timestamp('blocked_until'),
