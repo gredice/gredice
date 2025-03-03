@@ -84,7 +84,7 @@ export function EmailPasswordForm({
                         type="button"
                         variant="link"
                         className="w-full"
-                        href={`/prijava/zaboravljena-zaporka?email=${email}`}
+                        href={`/prijava/zaboravljena-zaporka?email=${encodeURIComponent(email)}`}
                     >
                         Zaboravljena zaporka?
                     </Button>
