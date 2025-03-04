@@ -97,8 +97,8 @@ importers:
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
       '@types/node':
-        specifier: 22.13.8
-        version: 22.13.8
+        specifier: 22.13.9
+        version: 22.13.9
       '@types/react':
         specifier: 19.0.10
         version: 19.0.10
@@ -189,7 +189,7 @@ importers:
         version: 3.25.0(@codemirror/language@6.10.8)(@lezer/highlight@1.2.1)(@types/react-dom@19.0.4(@types/react@19.0.10))(@types/react@19.0.10)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(yjs@13.6.20)
       '@playwright/experimental-ct-react':
         specifier: 1.50.1
-        version: 1.50.1(@types/node@22.13.8)(terser@5.37.0)(vite@5.4.14(@types/node@22.13.8)(terser@5.37.0))
+        version: 1.50.1(@types/node@22.13.9)(terser@5.37.0)(vite@5.4.14(@types/node@22.13.9)(terser@5.37.0))
       '@playwright/test':
         specifier: 1.50.1
         version: 1.50.1
@@ -224,8 +224,8 @@ importers:
         specifier: 5.66.11
         version: 5.66.11(react@19.0.0)
       '@types/node':
-        specifier: 22.13.8
-        version: 22.13.8
+        specifier: 22.13.9
+        version: 22.13.9
       '@types/react':
         specifier: 19.0.10
         version: 19.0.10
@@ -292,7 +292,7 @@ importers:
         version: 3.25.0(@codemirror/language@6.10.8)(@lezer/highlight@1.2.1)(@types/react-dom@19.0.4(@types/react@19.0.10))(@types/react@19.0.10)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(yjs@13.6.20)
       '@playwright/experimental-ct-react':
         specifier: 1.50.1
-        version: 1.50.1(@types/node@22.13.8)(terser@5.37.0)(vite@5.4.14(@types/node@22.13.8)(terser@5.37.0))
+        version: 1.50.1(@types/node@22.13.9)(terser@5.37.0)(vite@5.4.14(@types/node@22.13.9)(terser@5.37.0))
       '@playwright/test':
         specifier: 1.50.1
         version: 1.50.1
@@ -327,8 +327,8 @@ importers:
         specifier: 5.66.11
         version: 5.66.11(react@19.0.0)
       '@types/node':
-        specifier: 22.13.8
-        version: 22.13.8
+        specifier: 22.13.9
+        version: 22.13.9
       '@types/react':
         specifier: 19.0.10
         version: 19.0.10
@@ -395,7 +395,7 @@ importers:
         version: link:../../packages/game
       '@playwright/experimental-ct-react':
         specifier: 1.50.1
-        version: 1.50.1(@types/node@22.13.8)(terser@5.37.0)(vite@5.4.14(@types/node@22.13.8)(terser@5.37.0))
+        version: 1.50.1(@types/node@22.13.9)(terser@5.37.0)(vite@5.4.14(@types/node@22.13.9)(terser@5.37.0))
       '@playwright/test':
         specifier: 1.50.1
         version: 1.50.1
@@ -430,8 +430,8 @@ importers:
         specifier: 5.66.11
         version: 5.66.11(react@19.0.0)
       '@types/node':
-        specifier: 22.13.8
-        version: 22.13.8
+        specifier: 22.13.9
+        version: 22.13.9
       '@types/react':
         specifier: 19.0.10
         version: 19.0.10
@@ -504,7 +504,7 @@ importers:
         version: link:../../packages/game
       '@playwright/experimental-ct-react':
         specifier: 1.50.1
-        version: 1.50.1(@types/node@22.13.8)(terser@5.37.0)(vite@5.4.14(@types/node@22.13.8)(terser@5.37.0))
+        version: 1.50.1(@types/node@22.13.9)(terser@5.37.0)(vite@5.4.14(@types/node@22.13.9)(terser@5.37.0))
       '@playwright/test':
         specifier: 1.50.1
         version: 1.50.1
@@ -539,8 +539,8 @@ importers:
         specifier: 5.66.11
         version: 5.66.11(react@19.0.0)
       '@types/node':
-        specifier: 22.13.8
-        version: 22.13.8
+        specifier: 22.13.9
+        version: 22.13.9
       '@types/react':
         specifier: 19.0.10
         version: 19.0.10
@@ -617,8 +617,8 @@ importers:
         specifier: workspace:*
         version: link:../../apps/api
       '@types/node':
-        specifier: 22.13.8
-        version: 22.13.8
+        specifier: 22.13.9
+        version: 22.13.9
       hono:
         specifier: 4.7.2
         version: 4.7.2
@@ -786,8 +786,8 @@ importers:
         version: 5.8.2
     devDependencies:
       '@types/node':
-        specifier: 22.13.8
-        version: 22.13.8
+        specifier: 22.13.9
+        version: 22.13.9
       '@types/react':
         specifier: 19.0.10
         version: 19.0.10
@@ -3886,8 +3886,8 @@ packages:
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
-  '@types/node@22.13.8':
-    resolution: {integrity: sha512-G3EfaZS+iOGYWLLRCEAXdWK9my08oHNZ+FHluRiggIYJPOXzhOiDgpVCUHaUvyIC5/fj7C/p637jdzC666AOKQ==}
+  '@types/node@22.13.9':
+    resolution: {integrity: sha512-acBjXdRJ3A6Pb3tqnw9HZmyR3Fiol3aGxRCK1x3d+6CDAMjl7I649wpSd+yNURCjbOUGu9tqtLKnTGxmK6CyGw==}
 
   '@types/offscreencanvas@2019.7.3':
     resolution: {integrity: sha512-ieXiYmgSRXUDeOntE1InxjWyvEelZGP63M+cGuquuRLuIKKT1osnkXjxev9B7d1nXSug5vpunx+gNlbVxMlC9A==}
@@ -9622,11 +9622,11 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
-  '@playwright/experimental-ct-core@1.50.1(@types/node@22.13.8)(terser@5.37.0)':
+  '@playwright/experimental-ct-core@1.50.1(@types/node@22.13.9)(terser@5.37.0)':
     dependencies:
       playwright: 1.50.1
       playwright-core: 1.50.1
-      vite: 5.4.14(@types/node@22.13.8)(terser@5.37.0)
+      vite: 5.4.14(@types/node@22.13.9)(terser@5.37.0)
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -9637,10 +9637,10 @@ snapshots:
       - sugarss
       - terser
 
-  '@playwright/experimental-ct-react@1.50.1(@types/node@22.13.8)(terser@5.37.0)(vite@5.4.14(@types/node@22.13.8)(terser@5.37.0))':
+  '@playwright/experimental-ct-react@1.50.1(@types/node@22.13.9)(terser@5.37.0)(vite@5.4.14(@types/node@22.13.9)(terser@5.37.0))':
     dependencies:
-      '@playwright/experimental-ct-core': 1.50.1(@types/node@22.13.8)(terser@5.37.0)
-      '@vitejs/plugin-react': 4.3.4(vite@5.4.14(@types/node@22.13.8)(terser@5.37.0))
+      '@playwright/experimental-ct-core': 1.50.1(@types/node@22.13.9)(terser@5.37.0)
+      '@vitejs/plugin-react': 4.3.4(vite@5.4.14(@types/node@22.13.9)(terser@5.37.0))
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -11310,7 +11310,7 @@ snapshots:
 
   '@types/cors@2.8.17':
     dependencies:
-      '@types/node': 22.13.8
+      '@types/node': 22.13.9
 
   '@types/debug@4.1.12':
     dependencies:
@@ -11326,7 +11326,7 @@ snapshots:
 
   '@types/fluent-ffmpeg@2.1.27':
     dependencies:
-      '@types/node': 22.13.8
+      '@types/node': 22.13.9
 
   '@types/hast@3.0.4':
     dependencies:
@@ -11342,7 +11342,7 @@ snapshots:
 
   '@types/ms@2.1.0': {}
 
-  '@types/node@22.13.8':
+  '@types/node@22.13.9':
     dependencies:
       undici-types: 6.20.0
 
@@ -11350,14 +11350,14 @@ snapshots:
 
   '@types/pg@8.11.10':
     dependencies:
-      '@types/node': 22.13.8
+      '@types/node': 22.13.9
       pg-protocol: 1.7.1
       pg-types: 4.0.2
     optional: true
 
   '@types/pg@8.11.6':
     dependencies:
-      '@types/node': 22.13.8
+      '@types/node': 22.13.9
       pg-protocol: 1.7.1
       pg-types: 4.0.2
 
@@ -11398,7 +11398,7 @@ snapshots:
 
   '@types/xml2js@0.4.14':
     dependencies:
-      '@types/node': 22.13.8
+      '@types/node': 22.13.9
 
   '@typescript-eslint/eslint-plugin@8.25.0(@typescript-eslint/parser@8.25.0(eslint@9.21.0(jiti@1.21.7))(typescript@5.8.2))(eslint@9.21.0(jiti@1.21.7))(typescript@5.8.2)':
     dependencies:
@@ -11545,14 +11545,14 @@ snapshots:
     transitivePeerDependencies:
       - utf-8-validate
 
-  '@vitejs/plugin-react@4.3.4(vite@5.4.14(@types/node@22.13.8)(terser@5.37.0))':
+  '@vitejs/plugin-react@4.3.4(vite@5.4.14(@types/node@22.13.9)(terser@5.37.0))':
     dependencies:
       '@babel/core': 7.26.0
       '@babel/plugin-transform-react-jsx-self': 7.25.9(@babel/core@7.26.0)
       '@babel/plugin-transform-react-jsx-source': 7.25.9(@babel/core@7.26.0)
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.2
-      vite: 5.4.14(@types/node@22.13.8)(terser@5.37.0)
+      vite: 5.4.14(@types/node@22.13.9)(terser@5.37.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -12224,7 +12224,7 @@ snapshots:
   engine.io@6.6.4(bufferutil@4.0.8):
     dependencies:
       '@types/cors': 2.8.17
-      '@types/node': 22.13.8
+      '@types/node': 22.13.9
       accepts: 1.3.8
       base64id: 2.0.0
       cookie: 0.7.2
@@ -15570,13 +15570,13 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.2
 
-  vite@5.4.14(@types/node@22.13.8)(terser@5.37.0):
+  vite@5.4.14(@types/node@22.13.9)(terser@5.37.0):
     dependencies:
       esbuild: 0.21.5
       postcss: 8.5.3
       rollup: 4.28.1
     optionalDependencies:
-      '@types/node': 22.13.8
+      '@types/node': 22.13.9
       fsevents: 2.3.3
       terser: 5.37.0
 
