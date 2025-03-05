@@ -16,9 +16,9 @@
   },
   "dependencies": {
     "@hono/zod-validator": "0.4.3",
-    "@scalar/api-reference-react": "0.4.35",
+    "@scalar/api-reference-react": "0.4.36",
     "@scalar/nextjs-api-reference": "0.5.12",
-    "hono": "4.7.2",
+    "hono": "4.7.4",
     "hono-openapi": "0.4.6",
     "next": "15.2.1",
     "react": "19.0.0",
