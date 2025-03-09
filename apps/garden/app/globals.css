@@ -42,7 +42,7 @@
         --light-display: visible;
         --dark-display: none;
 
-        --bg-selection: #211100;
+        --bg-selection: hsl(137, 40%, 24%);
         --text-selection: #fff;
     }
 
@@ -89,8 +89,8 @@
         --light-display: visible;
         --dark-display: none;
 
-        --bg-selection: #fff;
-        --text-selection: #211100;
+        --bg-selection: hsl(137, 40%, 90%);
+            --text-selection: #000;
     }
 
     * {
