@@ -1,6 +1,6 @@
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import { Button } from "@signalco/ui-primitives/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
+import { Card, CardContent, CardHeader, CardTitle, CardActions } from "@signalco/ui-primitives/Card";
 import { Input } from "@signalco/ui-primitives/Input";
 import { List } from "@signalco/ui-primitives/List";
 import { ListItem } from "@signalco/ui-primitives/ListItem";
@@ -8,9 +8,7 @@ import { Modal } from "@signalco/ui-primitives/Modal";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NoNotificationsPlaceholder } from "../shared-ui/NoNotificationsPlaceholder";
-import { Divider } from "@signalco/ui-primitives/Divider";
-import { Row, RowProps } from "@signalco/ui-primitives/Row";
-import { cx } from "@signalco/ui-primitives/cx";
+import { RowProps } from "@signalco/ui-primitives/Row";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { ProfileInfo } from "../shared-ui/ProfileInfo";
 import { SoundSettingsCard } from "./components/SoundSettingsCard";
@@ -18,17 +16,6 @@ import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import { SunflowersList } from "../shared-ui/sunflowers/SunflowersList";
 import { useCurrentAccount } from "../hooks/useCurrentAccount";
 import { ScrollArea } from "@signalco/ui-primitives/ScrollArea";
-
-function CardActions({ children, className, ...rest }: RowProps) {
-    return (
-        <Stack spacing={2} className="-mx-8 -mb-8">
-            <Divider />
-            <Row className={cx('px-8 pb-4', className)} {...rest}>
-                {children}
-            </Row>
-        </Stack>
-    );
-}
 
 export function OverviewModal() {
     const [settingsMode, setProfileModalOpen] = useSearchParam('pregled');
@@ -109,8 +96,8 @@ export function OverviewModal() {
                             <Typography level="h4" className="hidden md:block">Profil</Typography>
                             <Card>
                                 <form>
-                                    <CardContent className="p-6">
-                                        <Stack spacing={4}>
+                                    <CardContent noHeader>
+                                        <Stack spacing={2}>
                                             <Input
                                                 name="displayName"
                                                 label="Ime koje će biti prikazano drugim korisnicima"
@@ -133,11 +120,11 @@ export function OverviewModal() {
                             <Typography level="h4" className="hidden md:block">Sigurnost</Typography>
                             <Stack spacing={2}>
                                 <Card>
-                                    <CardContent className="p-6">
+                                    <CardContent noHeader>
                                         <Typography level="body2">Prijavljeni ste putem email adrese: <strong>{currentUser.data?.userName}</strong>.</Typography>
                                     </CardContent>
                                 </Card>
-                                <Card>
+                                {/* <Card>
                                     <CardHeader>
                                         <CardTitle>Lozinka</CardTitle>
                                     </CardHeader>
@@ -175,7 +162,7 @@ export function OverviewModal() {
                                             </Stack>
                                         </CardContent>
                                     </form>
-                                </Card>
+                                </Card> */}
                             </Stack>
                         </Stack>
                     )}
@@ -188,8 +175,10 @@ export function OverviewModal() {
                     {settingsMode === 'obavijesti' && (
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">Obavijesti</Typography>
-                            <Card className="p-4">
-                                <NoNotificationsPlaceholder />
+                            <Card>
+                                <CardContent noHeader>
+                                    <NoNotificationsPlaceholder />
+                                </CardContent>
                             </Card>
                         </Stack>
                     )}
@@ -206,12 +195,12 @@ export function OverviewModal() {
                                         />
                                     </span>
                                     <Card className="relative z-10">
-                                        <CardContent className="p-6">
+                                        <CardContent noHeader>
                                             <Typography level="body2">Trenutno imaš <strong>{currentAccount?.sunflowers.amount}</strong> suncokreta za korištenje u svom vrtu.</Typography>
                                         </CardContent>
                                     </Card>
                                 </div>
-                                <ScrollArea className="h-96 rounded-lg text-card-foreground bg-card border shadow-sm p-6">
+                                <ScrollArea className="h-96 rounded-lg text-card-foreground bg-card border shadow-sm p-4">
                                     <SunflowersList />
                                 </ScrollArea>
                             </Stack>
