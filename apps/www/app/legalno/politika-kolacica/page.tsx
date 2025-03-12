@@ -2,6 +2,7 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../../components/shared/PageHeader";
 import { Container } from "@signalco/ui-primitives/Container";
 import { Typography } from "@signalco/ui-primitives/Typography";
+import { StyledHtml } from "../../../components/shared/StyledHtml";
 
 export default function PolitikaKolacicaPage() {
     return (
@@ -11,7 +12,7 @@ export default function PolitikaKolacicaPage() {
                     padded
                     header="Politika kolačića"
                     subHeader="Koje kolačiće koristimo na našoj web stranici, kako ih koristimo, te koja su tvoja prava vezana uz njih." />
-                <div className="prose">
+                <StyledHtml>
                     <h2>Što su kolačići?</h2>
                     <p>
                         Kolačići su male tekstualne datoteke koje se pohranjuju na vašem uređaju prilikom posjeta našoj web stranici. Oni omogućuju web stranici da prepozna vaš uređaj i prikupiti informacije o vašem posjetu.
@@ -42,7 +43,7 @@ export default function PolitikaKolacicaPage() {
                     <p>Ako imate bilo kakva pitanja ili trebate više informacija o našoj Politici Kolačića, slobodno nas kontaktirajte putem adrese e-pošte na <a href="mailto:kontakt@gredice.com">kontakt@gredice.com</a>.</p>
                     <h2>Promjene u Politici Kolačića</h2>
                     <p>Zadržavamo pravo izmjene ove Politike Kolačića u bilo kojem trenutku. Sve izmjene bit će objavljene na ovoj stranici, uz datum ažuriranja.</p>
-                </div>
+                </StyledHtml>
                 <Stack spacing={1} className="mt-8">
                     <Typography level="body2" secondary>
                         Zadnja izmjena: 11. Studeni 2024.

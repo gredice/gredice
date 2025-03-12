@@ -2,6 +2,7 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../../components/shared/PageHeader";
 import { Container } from "@signalco/ui-primitives/Container";
 import { Typography } from "@signalco/ui-primitives/Typography";
+import { StyledHtml } from "../../../components/shared/StyledHtml";
 
 export default function UvjetiKoristenjaPage() {
     return (
@@ -12,12 +13,12 @@ export default function UvjetiKoristenjaPage() {
                     header="Tvrtka"
                     subHeader="Službeni podaci o društvu Gredice d.o.o."
                 />
-                <div className="prose">
+                <StyledHtml>
                     <h2>Podaci o društvu</h2>
                     <p>
                         <strong>Gredice d.o.o.</strong><br />
                         <small>Gredice društvo s ograničenom odgovornošću za proizvodnju, trgovinu i usluge</small><br />
-                        OIB: <code>86171547809</code><br />
+                        OIB: <span>86171547809</span><br />
                         Ulica Julija Knifera 3,<br />
                         Zagreb (Grad Zagreb)
                     </p>
@@ -25,8 +26,8 @@ export default function UvjetiKoristenjaPage() {
                     <h3>Nadležni sud</h3>
                     <p>
                         Trgovački sud u Zagrebu, pod brojem: Tt-25/2168-2 (23.01.2025.)<br />
-                        MBS: <code>081628528</code><br />
-                        EUID: <code>HRSR.081628528</code><br />
+                        MBS: <span>081628528</span><br />
+                        EUID: <span>HRSR.081628528</span><br />
                         Temeljni kapital u iznosu od 2.500,00 euro je uplaćen u cijelosti.<br/>
                         <a href="https://sudreg.pravosudje.hr/registar/f?p=150:28:0::NO:28:P28_SBT_MBS:081628528">Sudski registar - Podaci o poslovnom subjektu</a>
                     </p>
@@ -34,7 +35,7 @@ export default function UvjetiKoristenjaPage() {
                     <h3>Poslovni računi</h3>
                     <p>
                         Privredna banka Zagreb d.d., Radnička cesta 50, 10000 Zagreb, Hrvatska<br />
-                        IBAN: <code>HR5223400091111312385</code><br />
+                        IBAN: <span>HR5223400091111312385</span><br />
                         <small>Molimo vas da ne uplaćujete na gore navedeni račun bez prethodne najave i dogovora s našim prodajnim timom. Ovaj podatak je ovdje isključivo u zakonske svrhe.</small>
                     </p>
 
@@ -48,7 +49,7 @@ export default function UvjetiKoristenjaPage() {
                     <p>
                         <small>Informacije navedene prema članku 21. Zakona o trgovačkim društvima Republike Hrvatske</small>
                     </p>
-                </div>
+                </StyledHtml>
                 <Typography level="body2" secondary className="mt-8">
                     Zadnja izmjena: 28. Veljača 2025.
                 </Typography>

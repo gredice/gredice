@@ -42,7 +42,7 @@
         --light-display: visible;
         --dark-display: none;
 
-        --bg-selection: #211100;
+        --bg-selection: hsl(137, 40%, 24%);
         --text-selection: #fff;
     }
 
@@ -60,6 +60,9 @@
         @apply cursor-auto;
     }
 
+                :target {
+                    scroll-margin-top: 4rem;
+                }
     ::selection {
         background: var(--bg-selection);
         color: var(--text-selection);

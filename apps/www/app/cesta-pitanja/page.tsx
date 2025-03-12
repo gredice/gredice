@@ -2,10 +2,10 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { FaqData } from "./@types/FaqData";
 import { Accordion } from "@signalco/ui/Accordion";
-import Markdown from "react-markdown";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NoDataPlaceholder } from "../../components/shared/placeholders/NoDataPlaceholder";
 import { client } from "@gredice/client";
+import { Markdown } from "../../components/shared/Markdown";
 
 export const dynamic = 'force-dynamic';
 
@@ -29,9 +29,7 @@ export default async function FaqPage() {
                 {faq.map((item) => (
                     <Accordion key={item.information.name}>
                         <Typography className="px-3" semiBold>{item.information.header}</Typography>
-                        <div className="px-3 prose max-w-none">
-                            <Markdown>{item.information.content}</Markdown>
-                        </div>
+                        <Markdown className="px-3">{item.information.content}</Markdown>
                     </Accordion>
                 ))}
             </Stack>

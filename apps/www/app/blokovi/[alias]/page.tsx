@@ -5,12 +5,12 @@ import { ListHeader } from "@signalco/ui-primitives/List";
 import { SplitView } from "@signalco/ui/SplitView";
 import { BlocksList } from "./BlocksList";
 import { BlockData } from "../@types/BlockData";
-import Markdown from "react-markdown";
 import { BlockImage } from "../../../components/blocks/BlockImage";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { Layers2, Ruler } from "lucide-react";
 import { client } from "@gredice/client";
+import { Markdown } from "../../../components/shared/Markdown";
 
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true;
@@ -73,9 +73,7 @@ export default async function BlockPage({ params }: { params: Promise<{ alias: s
                         header={entity.information.label}
                         subHeader={entity.information.shortDescription}
                     />
-                    <div className="prose prose-p:my-2 max-w-none">
-                        <Markdown>{entity.information.fullDescription}</Markdown>
-                    </div>
+                    <Markdown>{entity.information.fullDescription}</Markdown>
                     <Stack spacing={1}>
                         <Typography level="h5">Svojstva</Typography>
                         <BlockAttributes attributes={entity.attributes} />

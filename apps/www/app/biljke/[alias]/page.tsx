@@ -8,7 +8,6 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Sun, Droplet, Sprout, Leaf, Ruler, ArrowDownToLine, BadgeCheck, Info } from "lucide-react"
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import Markdown from 'react-markdown'
 import { PageHeader } from "../../../components/shared/PageHeader";
 import { PlantYearCalendar } from "./PlantYearCalendar";
 import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
@@ -19,6 +18,8 @@ import { cx } from "@signalco/ui-primitives/cx";
 import { Accordion } from "@signalco/ui/Accordion";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { client } from "@gredice/client";
+import { Markdown } from "../../../components/shared/Markdown";
+import { slug } from "@signalco/js";
 
 function PlantAttributes({ attributes }: { attributes: PlantAttributes | undefined }) {
     return (
@@ -58,10 +59,8 @@ function InformationSection({ header, content, instructions }: { header: string,
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
-            <Typography level="h4" className="md:col-span-2">{header}</Typography>
-            <div className="prose prose-p:my-2 max-w-none">
-                <Markdown>{content}</Markdown>
-            </div>
+            <Typography id={slug(header)} level="h4" className="md:col-span-2">{header}</Typography>
+            <Markdown>{content}</Markdown>
             <Stack className={cx("border rounded-lg p-2 h-fit", !instructions?.length && 'justify-center')}>
                 {(instructions?.length ?? 0) <= 0 && (
                     <NoDataPlaceholder className="self-center py-4">
@@ -129,7 +128,7 @@ export type PlantData = {
 };
 
 export default async function PlantPage(props: { params: Promise<{ alias: string }> }) {
-    const {alias: aliasUnescaped} = await props.params;
+    const { alias: aliasUnescaped } = await props.params;
     const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
     if (!alias) {
         return notFound();
@@ -144,6 +143,22 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
     if (!plant) {
         return notFound();
     }
+
+    const informationSections: {
+        header: string,
+        id: 'sowing' | 'soilPreparation' | 'planting' | 'growth' | 'maintenance' | 'watering' | 'flowering' | 'harvest' | 'storage',
+        avaialble: boolean
+    }[] = [
+            { header: "Sijanje", id: "sowing", avaialble: Boolean(plant.information.sowing) },
+            { header: "Priprema tla", id: "soilPreparation", avaialble: Boolean(plant.information.soilPreparation) },
+            { header: "Sadnja", id: "planting", avaialble: Boolean(plant.information.planting) },
+            { header: "Rast", id: "growth", avaialble: Boolean(plant.information.growth) },
+            { header: "Održavanje", id: "maintenance", avaialble: Boolean(plant.information.maintenance) },
+            { header: "Zalijevanje", id: "watering", avaialble: Boolean(plant.information.watering) },
+            { header: "Cvjetanje", id: "flowering", avaialble: Boolean(plant.information.flowering) },
+            { header: "Berba", id: "harvest", avaialble: Boolean(plant.information.harvest) },
+            { header: "Skladištenje", id: "storage", avaialble: Boolean(plant.information.storage) },
+        ];
 
     return (
         <div className="py-8">
@@ -165,7 +180,7 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                     alternativeName={plant.information.latinName ? `lat. ${plant.information.latinName}` : null}
                     subHeader={plant.information.description}
                     headerChildren={(
-                        <Stack spacing={1} alignItems="start">
+                        <Stack spacing={2} alignItems="start">
                             {plant.information.origin && (
                                 <Stack>
                                     <Typography level="body2">Porijeklo</Typography>
@@ -198,6 +213,16 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                                     </Stack>
                                 </Popper>
                             )}
+                            <Stack spacing={1}>
+                                <Typography level="body2">Sadržaj</Typography>
+                                <Row spacing={1} className="flex-wrap">
+                                    {informationSections.filter((section) => section.avaialble).map((section) => (
+                                        <Chip key={section.id} color="neutral" href={`#${slug(section.header)}`}>
+                                            {section.header}
+                                        </Chip>
+                                    ))}
+                                </Row>
+                            </Stack>
                         </Stack>
                     )}>
                     <Stack spacing={4}>
@@ -219,15 +244,13 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                         </Stack>
                     </Stack>
                 </PageHeader>
-                <InformationSection header="Sijanje" content={plant.information.sowing} instructions={plant.information.instructions?.filter(i => i.stage === 'sowing')} />
-                <InformationSection header="Priprema tla" content={plant.information.soilPreparation} instructions={plant.information.instructions?.filter(i => i.stage === 'soilPreparation')} />
-                <InformationSection header="Sadnja" content={plant.information.planting} instructions={plant.information.instructions?.filter(i => i.stage === 'planting')} />
-                <InformationSection header="Rast" content={plant.information.growth} instructions={plant.information.instructions?.filter(i => i.stage === 'growth')} />
-                <InformationSection header="Održavanje" content={plant.information.maintenance} instructions={plant.information.instructions?.filter(i => i.stage === 'maintenance')} />
-                <InformationSection header="Zalijevanje" content={plant.information.watering} instructions={plant.information.instructions?.filter(i => i.stage === 'watering')} />
-                <InformationSection header="Cvjetanje" content={plant.information.flowering} instructions={plant.information.instructions?.filter(i => i.stage === 'flowering')} />
-                <InformationSection header="Berba" content={plant.information.harvest} instructions={plant.information.instructions?.filter(i => i.stage === 'harvest')} />
-                <InformationSection header="Skladištenje" content={plant.information.storage} instructions={plant.information.instructions?.filter(i => i.stage === 'storage')} />
+                {informationSections.filter((section) => section.avaialble).map((section) => (
+                    <InformationSection
+                        key={section.id}
+                        header={section.header}
+                        content={plant.information[section.id]}
+                        instructions={plant.information.instructions?.filter(i => i.stage === section.id)} />
+                ))}
                 {((plant.information.tip?.length ?? 0) > 0) && (
                     <Stack spacing={2}>
                         <Typography level="h4">
@@ -250,28 +273,28 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
 
 function PlantingInstructions({ instructions }: { instructions?: PlantInstruction[] }) {
     return (
-            <div className="space-y-4">
-                {instructions?.map((instruction) => (
-                    <div key={instruction.id} className="flex flex-col md:flex-row md:items-center group gap-x-4">
-                        <div className="w-16 font-semibold text-muted-foreground relative">
-                            <span>Dan {instruction.relativeDays}</span>
-                            <div className="group-first:hidden absolute top-0 left-1/2 w-0.5 h-[54px] bg-muted-foreground/20 transform -translate-y-full" />
-                        </div>
-                        {/* TODO: Extract insutrction card */}
-                        <Card className="flex-grow">
-                            <CardContent className="py-0 pl-3 pr-0 flex items-center justify-between">
-                                <div className="flex items-center space-x-4">
-                                    <Image src={instruction.iconUrl} width={32} height={32} alt={instruction.label} />
-                                    <div>
-                                        <h3 className="font-semibold">{instruction.label}</h3>
-                                        {instruction.frequency && (
-                                            <p className="text-sm text-muted-foreground">{instruction.frequency}</p>
-                                        )}
-                                    </div>
+        <div className="space-y-4">
+            {instructions?.map((instruction) => (
+                <div key={instruction.id} className="flex flex-col md:flex-row md:items-center group gap-x-4">
+                    <div className="w-16 font-semibold text-muted-foreground relative">
+                        <span>Dan {instruction.relativeDays}</span>
+                        <div className="group-first:hidden absolute top-0 left-1/2 w-0.5 h-[54px] bg-muted-foreground/20 transform -translate-y-full" />
+                    </div>
+                    {/* TODO: Extract insutrction card */}
+                    <Card className="flex-grow">
+                        <CardContent className="py-0 pl-3 pr-0 flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                                <Image src={instruction.iconUrl} width={32} height={32} alt={instruction.label} />
+                                <div>
+                                    <h3 className="font-semibold">{instruction.label}</h3>
+                                    {instruction.frequency && (
+                                        <p className="text-sm text-muted-foreground">{instruction.frequency}</p>
+                                    )}
                                 </div>
-                                <Modal
-                                    title={instruction.label}
-                                    trigger={(
+                            </div>
+                            <Modal
+                                title={instruction.label}
+                                trigger={(
                                     <IconButton
                                         size="lg"
                                         variant="plain"
@@ -280,13 +303,13 @@ function PlantingInstructions({ instructions }: { instructions?: PlantInstructio
                                         <Info />
                                     </IconButton>
                                 )}>
-                                    <Typography level="h4">{instruction.label}</Typography>
-                                    <p>{instruction.info}</p>
-                                </Modal>
-                            </CardContent>
-                        </Card>
-                    </div>
-                ))}
+                                <Typography level="h4">{instruction.label}</Typography>
+                                <p>{instruction.info}</p>
+                            </Modal>
+                        </CardContent>
+                    </Card>
+                </div>
+            ))}
         </div>
     )
 }
