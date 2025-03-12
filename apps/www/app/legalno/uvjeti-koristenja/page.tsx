@@ -2,6 +2,7 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../../components/shared/PageHeader";
 import { Container } from "@signalco/ui-primitives/Container";
 import { Typography } from "@signalco/ui-primitives/Typography";
+import { StyledHtml } from "../../../components/shared/StyledHtml";
 
 export default function UvjetiKoristenjaPage() {
     return (
@@ -12,7 +13,7 @@ export default function UvjetiKoristenjaPage() {
                     header="Uvjeti Korištenja"
                     subHeader="Ovi uvjeti korištenja reguliraju pristup i korištenje web stranice."
                 />
-                <div className="prose">
+                <StyledHtml>
                     <h2>Uvod</h2>
                     <p>
                         Ovi uvjeti korištenja (&quot;<strong>Uvjeti</strong>&quot;) reguliraju pristup i korištenje web stranice
@@ -54,7 +55,7 @@ export default function UvjetiKoristenjaPage() {
                     <h2>Završne odredbe</h2>
                     <p>Ovi Uvjeti predstavljaju cjelokupni sporazum između Korisnika i Platforme u vezi s korištenjem Platforme. Platforma zadržava pravo izmjene ovih Uvjeta, a Korisnici će biti obaviješteni o svim promjenama.</p>
                     <p>Za sve dodatne informacije ili upite, molimo kontaktirajte nas putem e-pošte na <a href="mailto:kontakt@gredice.com">kontakt@gredice.com</a>.</p>
-                </div>
+                </StyledHtml>
                 <Typography level="body2" secondary className="mt-8">
                     Zadnja izmjena: 28. Veljača 2025.
                 </Typography>

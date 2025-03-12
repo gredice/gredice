@@ -2,6 +2,7 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../../components/shared/PageHeader";
 import { Container } from "@signalco/ui-primitives/Container";
 import { Typography } from "@signalco/ui-primitives/Typography";
+import { StyledHtml } from "../../../components/shared/StyledHtml";
 
 const thirdPartyPlatforms = [
     { name: "Axiom", description: "platforma za upravljanje sistemskim zapisima." },
@@ -29,7 +30,7 @@ export default function UvjetiKoristenjaPage() {
                     header="Treće strane"
                     subHeader="Informacije o korištenim izvorima podataka trećih strana."
                 />
-                <div className="prose">
+                <StyledHtml>
                     <h2>Uvod</h2>
                     <p>
                         Ovi Uvjeti korištenja (u daljnjem tekstu: &quot;Uvjeti&quot;) primjenjuju se na korištenje Platforme Gredice (<a href="https://www.gredice.com">www.gredice.com</a>) i sve njezine usluge.
@@ -46,7 +47,7 @@ export default function UvjetiKoristenjaPage() {
                         ))}
                     </ul>
                     <p>Zadržavamo pravo izmjene ovih informacija u bilo kojem trenutku, uključujući dodavanje ili uklanjanje platformi trećih strana. Ukoliko platforma nije navedena na ovoj stranici, molimo kontaktirajte nas na <a href="mailto:kontakt@gredice.com">kontakt@gredice.com</a>.</p>
-                </div>
+                </StyledHtml>
                 <Typography level="body2" secondary className="mt-8">
                     Zadnja izmjena: 28. Veljača 2025.
                 </Typography>

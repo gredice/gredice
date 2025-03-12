@@ -2,6 +2,7 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../../components/shared/PageHeader";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Container } from "@signalco/ui-primitives/Container";
+import { StyledHtml } from "../../../components/shared/StyledHtml";
 
 export default function PolitikaPrivatnostiPage() {
     return (
@@ -12,7 +13,7 @@ export default function PolitikaPrivatnostiPage() {
                     header="Politika Privatnosti"
                     subHeader="Kako prikupljamo, koristimo i štitimo tvoje osobne podatke prilikom korištenja naše web stranice."
                 />
-                <div className="prose">
+                <StyledHtml>
                     <h2>Uvod</h2>
                     <p>
                         Naša web stranica (<a href="https://www.gredice.com">www.gredice.com</a>, uključujući sve podstranice) pruža usluge upravljanja i dostave povrća i vrtnih proizvoda. Vaša privatnost nam je važna, stoga smo izradili ovu Politiku privatnosti kako bismo vam objasnili kako prikupljamo, koristimo i štitimo vaše osobne podatke.
@@ -70,7 +71,7 @@ export default function PolitikaPrivatnostiPage() {
                     <p>
                         Zahvaljujemo vam na povjerenju i što koristite Gredice!
                     </p>
-                </div>
+                </StyledHtml>
                 <Typography level="body2" secondary className="mt-8">
                     Zadnja izmjena: 28. Veljača 2025.
                 </Typography>
