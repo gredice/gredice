@@ -2,7 +2,7 @@ import { animated } from "@react-spring/three";
 import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
 import { stackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
-import { getEntityNeighbors } from "./helpers/getEntityNeighbors";
+import { useEntityNeighbors } from "./helpers/useEntityNeighbors";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
 
@@ -20,7 +20,7 @@ export function Shade({ stack, block, rotation }: EntityInstanceProps) {
     let s = false;
     let middle = false;
 
-    const neighbors = getEntityNeighbors(stack, block);
+    const neighbors = useEntityNeighbors(stack, block);
     if (neighbors.total === 1) {
         if (neighbors.n) {
             left = true;

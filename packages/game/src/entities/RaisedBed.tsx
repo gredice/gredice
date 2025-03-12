@@ -3,7 +3,7 @@ import { models } from "../data/models";
 import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
 import { stackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
-import { getEntityNeighbors } from "./helpers/getEntityNeighbors";
+import { useEntityNeighbors } from "./helpers/useEntityNeighbors";
 
 export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url)
@@ -11,7 +11,7 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
     // Switch between shapes (O, L, I, U) based on neighbors
     let shape = "O";
     let shapeRotation = 0;
-    const neighbors = getEntityNeighbors(stack, block);
+    const neighbors = useEntityNeighbors(stack, block);
     if (neighbors.total === 1) {
         shape = "U";
 

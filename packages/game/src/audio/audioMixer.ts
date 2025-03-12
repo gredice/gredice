@@ -72,6 +72,7 @@ function useMusic(handler: mixerManagerHandler, context: AudioContext, config: {
             }
         },
         async play() {
+            handler.register(id, operations);
             if (context.state === 'suspended') {
                 handler.queue(id);
                 return;
@@ -104,7 +105,6 @@ function useMusic(handler: mixerManagerHandler, context: AudioContext, config: {
     };
 
     useEffect(() => {
-        handler.register(id, operations);
         return () => {
             handler.unregister(id);
             if (gainNode.current) {
@@ -190,7 +190,7 @@ export function audioMixer(defaultVolume: number, defaultMuted: boolean) {
     return {
         // outputDevices: availableOutputDevices.map(d => ({ id: d.deviceId, label: d.label })),
         getState: () => ({ isMuted, volume, isSuspended: audioContext.state === 'suspended' }),
-        useMusic: useMusic.bind(null, { register: register, unregister, queue, getVolume }, audioContext, { allowParallel: false, loop: true }),
+        useMusic: useMusic.bind(null, { register, unregister, queue, getVolume }, audioContext, { allowParallel: false, loop: true }),
         useSoundEffect: useSoundEffect.bind(null, { getVolume }, audioContext),
         setMuted,
         setVolume,

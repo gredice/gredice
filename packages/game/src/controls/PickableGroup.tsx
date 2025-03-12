@@ -6,10 +6,10 @@ import { PointerEvent, PropsWithChildren, useEffect, useMemo, useRef, useState }
 import { Handler, useDrag } from '@use-gesture/react';
 import { useSpring, animated } from '@react-spring/three';
 import { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
-import { getStack } from '../utils/getStack';
 import { getBlockDataByName, stackHeight } from '../utils/getStackHeight';
 import { useGameState } from '../useGameState';
 import { Shadow } from '@react-three/drei';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 
@@ -26,6 +26,10 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
             friction: 10
         }
     }));
+    const { data: garden } = useCurrentGarden();
+    const getStack = ({ x, z }: { x: number, z: number }) => {
+        return garden?.stacks.find(stack => stack.position.x === x && stack.position.z === z);
+    };
     const camera = useThree(state => state.camera);
     const gl = useThree(state => state.gl);
     const { domElement } = gl;

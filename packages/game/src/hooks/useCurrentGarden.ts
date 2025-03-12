@@ -9,7 +9,13 @@ const gardensKeys = ['gardens'];
 function useGardens(disabled?: boolean) {
     return useQuery({
         queryKey: gardensKeys,
-        queryFn: async () => await client().api.gardens.$get().then((response) => response.json()),
+        queryFn: async () => {
+            const resp = await client().api.gardens.$get();
+            if (resp.status === 401)
+                return null;
+
+            return resp.json();
+        },
         enabled: !disabled
     });
 }

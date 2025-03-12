@@ -14,6 +14,7 @@ import { cx } from "@signalco/ui-primitives/cx";
 import { useNewBlock } from "../hooks/useNewBlock";
 import { Stack as GardenStack } from "../types/Stack";
 import { BlockData } from "../../@types/BlockData";
+import { useCurrentGarden } from "../hooks/useCurrentGarden";
 
 type HudItemEntity = {
     type: 'entity',
@@ -163,8 +164,8 @@ function findEmptyPosition(blockData: BlockData[], stacks: GardenStack[], type: 
 }
 
 function PlaceEntityButton({ name, simple }: { name: string, simple?: boolean }) {
+    const { data: garden } = useCurrentGarden();
     const blockData = useGameState(state => state.data.blocks);
-    const stacks = useGameState(state => state.stacks);
     const newBlock = useNewBlock();
 
     const block = blockData.find(block => block.information.name === name);
@@ -173,7 +174,7 @@ function PlaceEntityButton({ name, simple }: { name: string, simple?: boolean })
     async function placeEntity() {
         const position = findEmptyPosition(
             blockData,
-            stacks,
+            garden?.stacks ?? [],
             name.startsWith('Block') ? 'block' : 'any');
 
         // Buy block and get id

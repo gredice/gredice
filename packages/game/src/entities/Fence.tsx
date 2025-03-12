@@ -4,14 +4,14 @@ import { stackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
-import { getEntityNeighbors } from "./helpers/getEntityNeighbors";
+import { useEntityNeighbors } from "./helpers/useEntityNeighbors";
 
 export function Fence({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
 
     let variant = "Solo";
     let realizedRotation = rotation % 4;
-    const neighbors = getEntityNeighbors(stack, block);
+    const neighbors = useEntityNeighbors(stack, block);
 
     // Variant: Solor, Single, Middle, Corner, T, Cross
     if (neighbors.total === 1) {
