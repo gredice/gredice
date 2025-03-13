@@ -14,7 +14,7 @@ export type PageFilterInputProps = HTMLAttributes<HTMLFormElement> & {
 };
 
 export function PageFilterInput({ searchParamName, fieldName, ...rest }: PageFilterInputProps) {
-    const [search, setSearch] = useSearchParam('pretraga');
+    const [search, setSearch] = useSearchParam(searchParamName);
     const handleSubmit = (data: FormData) => {
         const searchInput = data.get(fieldName);
         if (typeof searchInput === 'string') {
