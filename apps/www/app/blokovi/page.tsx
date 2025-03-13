@@ -1,23 +1,13 @@
-import { Gallery } from "@signalco/ui/Gallery";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../components/shared/PageHeader";
-import { ItemCard } from "../../components/shared/ItemCard";
-import { orderBy } from "@signalco/js";
 import { BlockData } from "./@types/BlockData";
-import { BlockImage } from "../../components/blocks/BlockImage";
 import { client } from "@gredice/client";
+import { Suspense } from "react";
+import { PageFilterInput } from "../../components/shared/PageFilterInput";
+import { BlockGallery } from "./BlockGallery";
 
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true;
-
-function BlockGalleryItem(props: BlockData) {
-    const entity = props;
-    return (
-        <ItemCard label={entity.information.label} href={`/blokovi/${entity.information.label}`}>
-            <BlockImage blockName={entity.information.name} fill />
-        </ItemCard>
-    );
-}
 
 export default async function BlocksPage() {
     const entities = await (await client().api.directories.entities[":entityType"].$get({
@@ -25,17 +15,22 @@ export default async function BlocksPage() {
             entityType: "block"
         }
     })).json() as BlockData[];
-    const blocksArray = orderBy(entities, (a, b) => a.information.label.localeCompare(b.information.label));
     return (
         <Stack>
             <PageHeader
                 padded
                 header="Blokovi"
-                subHeader="Pregledaj sve blokove koje možeš koristiti u svom vrtu." />
-            <Gallery
-                gridHeader={''}
-                items={blocksArray}
-                itemComponent={BlockGalleryItem} />
+                subHeader="Pregledaj sve blokove koje možeš koristiti u svom vrtu.">
+                <Suspense>
+                    <PageFilterInput
+                        searchParamName="pretraga"
+                        fieldName="block-search"
+                        className="lg:flex items-start justify-end" />
+                </Suspense>
+            </PageHeader>
+            <Suspense>
+                <BlockGallery blocks={entities} />
+            </Suspense>
         </Stack>
     );
 }
