@@ -6,7 +6,6 @@ import Head from "next/head";
 import { Container } from "@signalco/ui-primitives/Container";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageNav } from "@signalco/ui/Nav";
-import Image from "next/image";
 import { KnownPages } from "../src/KnownPages";
 import Link from "next/link";
 import { NavigatingButton } from "@signalco/ui/NavigatingButton";
