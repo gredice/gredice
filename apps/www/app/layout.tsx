@@ -16,6 +16,7 @@ import { CompanyGitHub, CompanyReddit, CompanyX } from "@signalco/ui-icons";
 import { sectionsComponentRegistry } from "../components/shared/sectionsComponentRegistry";
 import { ClientAppProvider } from "../components/providers/ClientAppProvider";
 import { ReactNode } from "react";
+import { Logotype } from "../components/Logotype";
 
 export const metadata: Metadata = {
     title: "Gredice",
@@ -27,7 +28,7 @@ const sectionsData: SectionData[] = [
     {
         component: 'Footer1',
         tagline: 'Gredice',
-        asset: <Image src="/Logotype - gredice@2x.svg" width={320} height={87} alt="Gredice" quality={100} />,
+        asset: <Logotype className="w-[320px] h-[87px]" />,
         features: [
             {
                 header: 'Informacije',
@@ -86,7 +87,7 @@ export default async function RootLayout({
                     <Stack>
                         <PageNav
                             logo={(
-                                <Image src="/Logotype - gredice@2x.svg" width={140} height={38} alt="Gredice" quality={100} priority />
+                                <Logotype className="w-[140px] h-[38px]" aria-label="Gredice" />
                             )}
                             links={[
                                 { href: KnownPages.Plants, text: 'Biljke' },
