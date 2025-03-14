@@ -2,12 +2,12 @@
     "name": "Gredice",
     "short_name": "Gredice",
     "start_url": "/",
-    "display": "standalone",
+    "display": "fullscreen",
     "description": "",
     "lang": "hr",
     "dir": "ltr",
-    "theme_color": "#ffffff",
-    "background_color": "#ffffff",
+    "theme_color": "#2e6f40",
+    "background_color": "#2e6f40",
     "orientation": "any",
     "icons": [
         {

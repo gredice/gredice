@@ -19,7 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning={true}>
       <Head>
-        <meta name="theme-color" content="#ffffff" />
+        <meta name="theme-color" content="#2e6f40" />
         <meta name="apple-mobile-web-app-title" content="Gredice" />
       </Head>
       <body className="antialiased bg-muted">
