@@ -21,7 +21,7 @@ export default function LogoutPage() {
             <Card className="min-w-[350px]">
                 <CardHeader>
                     <Image
-                        src="https://www.gredice.com/android-chrome-192x192.png"
+                        src="https://www.gredice.com/web-app-manifest-192x192.png"
                         alt="Gredice logo"
                         width={48}
                         height={48}
