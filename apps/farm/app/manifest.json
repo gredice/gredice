@@ -1,0 +1,40 @@
+{
+    "name": "Gredice - Farma",
+    "short_name": "Farma",
+    "start_url": "/",
+    "display": "fullscreen",
+    "description": "",
+    "lang": "hr",
+    "dir": "ltr",
+    "theme_color": "#2e6f40",
+    "background_color": "#2e6f40",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "/web-app-manifest-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/web-app-manifest-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/Screenshot-20250105-vrt-gredice-com.png",
+            "sizes": "1024x768",
+            "type": "image/png"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Postavke",
+            "url": "/?pregled=generalno",
+            "description": "Pregled postavki"
+        }
+    ]
+}

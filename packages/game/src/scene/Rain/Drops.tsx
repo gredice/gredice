@@ -7,7 +7,7 @@ interface DropsProps {
   count?: number;
 }
 
-export const Drops = ({ count = 2000 }) => {
+export const Drops = ({ count = 2000 }: DropsProps) => {
     const fref = React.useRef<THREE.Group>(null);
     const dropsRef = React.useRef<THREE.InstancedMesh>(null!);
     const _dummy = React.useMemo(() => new THREE.Object3D(), []);
@@ -129,8 +129,7 @@ export const Drops = ({ count = 2000 }) => {
           float rainProgress = smoothstep(0.0, 0.5, uRainProgress);
           rainProgress = clamp(rainProgress, 0.0, 1.0);
           float circle = 1.0 - sdCircle(vInstancePosition.xz, ${(size / 2).toFixed(1)});
-          csm_DiffuseColor.a = dropletDistance * 0.1 * rainProgress * circle;
-          
+          csm_DiffuseColor.a = dropletDistance * 0.1 * rainProgress * circle; 
         }
       `,
       []
