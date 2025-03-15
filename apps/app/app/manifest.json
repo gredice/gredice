@@ -1,6 +1,14 @@
 {
     "name": "Gredice - Admin",
     "short_name": "Admin",
+    "description": "Administracija Gredica",
+    "lang": "hr",
+    "dir": "ltr",
+    "start_url": "/admin",
+    "display": "standalone",
+    "theme_color": "#2e6f40",
+    "background_color": "#2e6f40",
+    "orientation": "any",
     "icons": [
         {
             "src": "/web-app-manifest-192x192.png",
@@ -12,8 +20,5 @@
             "sizes": "512x512",
             "type": "image/png"
         }
-    ],
-    "theme_color": "#2e6f40",
-    "background_color": "#2e6f40",
-    "display": "minimal-ui"
+    ]
 }
