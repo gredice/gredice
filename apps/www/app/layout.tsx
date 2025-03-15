@@ -70,7 +70,7 @@ export default async function RootLayout({
     children: ReactNode;
 }>) {
     return (
-        <html lang="en">
+        <html lang="hr">
             <Head>
                 <title>Gredice</title>
                 <meta name="apple-mobile-web-app-title" content="Gredice" />

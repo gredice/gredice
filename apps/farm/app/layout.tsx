@@ -17,7 +17,7 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="hr">
       <Head>
         <meta name="apple-mobile-web-app-title" content="Gredice" />
         <meta name="theme-color" content="#2e6f40" />
