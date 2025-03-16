@@ -1,5 +1,5 @@
 import { List, ListHeader } from "@signalco/ui-primitives/List";
-import { Fence, File, Home, Inbox, Landmark } from "lucide-react";
+import { Fence, File, Home, Inbox, Landmark, Smile } from "lucide-react";
 import { KnownPages } from "../../src/KnownPages";
 import { User } from "@signalco/ui-icons";
 import { NavItem } from "./NavItem";
@@ -47,6 +47,7 @@ export async function Nav() {
                 <ListHeader header="Komunikacija" />
                 <List>
                     <NavItem href={KnownPages.CommunicationInbox} label="Sandučić" icon={<Inbox className="size-5" />} />
+                    <NavItem href={KnownPages.Feedback} label="Povratne informacije" icon={<Smile className="size-5" />} />
                 </List>
             </Stack>
         </Stack>
