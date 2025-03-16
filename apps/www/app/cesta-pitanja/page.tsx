@@ -6,6 +6,8 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { NoDataPlaceholder } from "../../components/shared/placeholders/NoDataPlaceholder";
 import { client } from "@gredice/client";
 import { Markdown } from "../../components/shared/Markdown";
+import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
+import { Row } from "@signalco/ui-primitives/Row";
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +34,10 @@ export default async function FaqPage() {
                         <Markdown className="px-3">{item.information.content}</Markdown>
                     </Accordion>
                 ))}
+                <Row spacing={2}>
+                    <Typography level="body1">Jesu li ti informacije bile korisne?</Typography>
+                    <FeedbackModal topic="www/faq" />
+                </Row>
             </Stack>
         </Stack>
     );

@@ -8,6 +8,7 @@ import directoriesRoutes from './directoriesRoutes';
 import accountsRoutes from './accountsRoutes';
 import usersRoutes from './usersRoutes';
 import gardensRoutes from './gardensRoutes';
+import feedbackRoutes from './feedbackRoutes';
 import { openApiDocs } from '@gredice/apidocs/openApiDocs';
 import { openAPISpecs } from 'hono-openapi';
 
@@ -26,6 +27,7 @@ const app = new Hono()
     .route('/accounts', accountsRoutes)
     .route('/users', usersRoutes)
     .route('/gardens', gardensRoutes)
+    .route('/feedback', feedbackRoutes)
     .route('/data', dataRoutes);
 
 app
