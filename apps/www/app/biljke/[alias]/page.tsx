@@ -21,7 +21,6 @@ import { client } from "@gredice/client";
 import { Markdown } from "../../../components/shared/Markdown";
 import { slug } from "@signalco/js";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
-import { FeedbackTrigger } from "../../../components/shared/feedback/FeedbackTriggerLike";
 
 function PlantAttributes({ attributes }: { attributes: PlantAttributes | undefined }) {
     return (
