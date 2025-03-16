@@ -1,11 +1,11 @@
 {
     "name": "Gredice",
     "short_name": "Gredice",
-    "description": "Tvoj vrt u jednom kliku",
+    "description": "Sve o gredicama na jednom mjestu",
     "lang": "hr",
     "dir": "ltr",
     "start_url": "/",
-    "display": "fullscreen",
+    "display": "minimal-ui",
     "theme_color": "#2e6f40",
     "background_color": "#2e6f40",
     "orientation": "any",
@@ -19,20 +19,6 @@
             "src": "/web-app-manifest-512x512.png",
             "sizes": "512x512",
             "type": "image/png"
-        }
-    ],
-    "screenshots": [
-        {
-            "src": "/Screenshot-20250105-vrt-gredice-com.png",
-            "sizes": "1024x768",
-            "type": "image/png"
-        }
-    ],
-    "shortcuts": [
-        {
-            "name": "Postavke",
-            "url": "/?pregled=generalno",
-            "description": "Pregled postavki"
         }
     ]
 }

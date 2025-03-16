@@ -1,14 +1,6 @@
 {
-    "name": "Gredice - API",
-    "short_name": "API",
-    "description": "API za Gredice",
-    "lang": "en",
-    "dir": "ltr",
-    "start_url": "/",
-    "display": "minimal-ui",
-    "theme_color": "#2e6f40",
-    "background_color": "#2e6f40",
-    "orientation": "any",
+    "name": "Gredice - Admin",
+    "short_name": "Admin",
     "icons": [
         {
             "src": "/web-app-manifest-192x192.png",
@@ -20,5 +12,8 @@
             "sizes": "512x512",
             "type": "image/png"
         }
-    ]
+    ],
+    "theme_color": "#2e6f40",
+    "background_color": "#2e6f40",
+    "display": "minimal-ui"
 }
