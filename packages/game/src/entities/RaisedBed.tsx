@@ -1,12 +1,13 @@
 import { animated } from "@react-spring/three";
 import { models } from "../data/models";
 import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
-import { stackHeight } from "../utils/getStackHeight";
+import { useStackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useEntityNeighbors } from "./helpers/useEntityNeighbors";
 
 export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url)
+    const currentStackHeight = useStackHeight(stack, block);
 
     // Switch between shapes (O, L, I, U) based on neighbors
     let shape = "O";
@@ -52,9 +53,8 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
     }
 
     return (
-        /* @ts-ignore */
         <animated.group
-            position={stack.position.clone().setY(stackHeight(stack, block) + 1)}
+            position={stack.position.clone().setY(currentStackHeight + 1)}
             rotation={[0, shapeRotation * (Math.PI / 2), 0]}>
             <mesh
                 castShadow
@@ -68,7 +68,6 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                 geometry={nodes[`Raised_Bed_${shape}_1`].geometry}
                 material={materials['Material.Dirt']}
             />
-            {/* @ts-ignore */}
         </animated.group>
     );
 }

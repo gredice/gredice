@@ -1,6 +1,6 @@
 import { animated } from "@react-spring/three";
 import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
-import { stackHeight } from "../utils/getStackHeight";
+import { useStackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
@@ -8,11 +8,11 @@ import { models } from "../data/models";
 export function StoneLarge({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
+    const currentStackHeight = useStackHeight(stack, block);
 
     return (
-        /* @ts-ignore */
         <animated.group
-            position={stack.position.clone().setY(stackHeight(stack, block))}
+            position={stack.position.clone().setY(currentStackHeight)}
             rotation={animatedRotation as unknown as [number, number, number]}>
             <mesh
                 castShadow
@@ -21,7 +21,6 @@ export function StoneLarge({ stack, block, rotation }: EntityInstanceProps) {
                 material={materials['Material.Stone']}
                 scale={[0.263, 0.426, 0.291]}
             />
-            {/* @ts-ignore */}
         </animated.group>
     );
 }

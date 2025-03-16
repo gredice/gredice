@@ -36,7 +36,7 @@ export function DebugHud() {
         date.setHours(seconds / 60 / 60);
         date.setMinutes((seconds / 60) % 60);
         date.setSeconds(seconds % 60);
-        gameState.setInitial(gameState.appBaseUrl, gameState.data, date);
+        gameState.setInitial(gameState.appBaseUrl, date);
     }, [timeOfDay]);
 
     return (

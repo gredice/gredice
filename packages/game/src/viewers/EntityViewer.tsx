@@ -29,7 +29,7 @@ export function EntityViewer({ entityName, zoom, itemPosition, ...rest }: Entity
     return (
         <QueryClientProvider client={client}>
             <Scene position={100} zoom={zoom ?? 90} {...rest}>
-                <Environment location={{ lat: 45, lon: 15 }} noBackground noSound />
+                <Environment location={{ lat: 45, lon: 15 }} noBackground noSound noWeather />
                 <EntityFactory
                     name={entityName}
                     stack={{

@@ -153,7 +153,7 @@ const app = new Hono()
             const user = await getUserWithLogins(email);
             if (user) {
                 console.debug('User already exists', email);
-                // TODO: Instead, do login flow
+                // TODO: Instead, do login flow (redirect to login url)
                 return context.newResponse('User already exists', { status: 400 });
             }
 

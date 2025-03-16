@@ -58,10 +58,7 @@ export type GameState = {
     weather?: { cloudy: number, rainy: number, snowy: number, foggy: number },
     sunsetTime: Date | null,
     sunriseTime: Date | null,
-    data: {
-        blocks: BlockData[]
-    },
-    setInitial: (appBaseUrl: string, data: { blocks: BlockData[] }, freezeTime?: Date | null) => void,
+    setInitial: (appBaseUrl: string, freezeTime?: Date | null) => void,
     setCurrentTime: (currentTime: Date) => void,
     setWeather: (weather: { cloudy: number, rainy: number, snowy: number, foggy: number }) => void,
 
@@ -92,9 +89,6 @@ export const useGameState = create<GameState>((set, get) => ({
     timeOfDay: getTimeOfDay(defaultPosition, now),
     sunriseTime: getSunriseSunset(defaultPosition, now).sunrise,
     sunsetTime: getSunriseSunset(defaultPosition, now).sunset,
-    data: {
-        blocks: []
-    },
     isDragging: false,
     orbitControls: null,
     setOrbitControls: (ref) => set({ orbitControls: ref }),
@@ -102,7 +96,7 @@ export const useGameState = create<GameState>((set, get) => ({
     worldRotate: (direction) => set((state) => ({ worldRotation: state.worldRotation + (direction === 'cw' ? 1 : -1) })),
     setWorldRotation: (worldRotation) => set(({ worldRotation })),
     setIsDragging: (isDragging) => set({ isDragging }),
-    setInitial: (appBaseUrl, data, freezeTime) => set({ appBaseUrl, freezeTime, data }),
+    setInitial: (appBaseUrl, freezeTime) => set({ appBaseUrl, freezeTime }),
     setCurrentTime: (currentTime) => set(({
         currentTime,
         timeOfDay: getTimeOfDay(defaultPosition, currentTime),

@@ -101,6 +101,14 @@ function useMusic(handler: mixerManagerHandler, context: AudioContext, config: {
             gainNode.current.gain.value = handler.getVolume();
             gainNode.current.connect(context.destination);
             node.current.start();
+        },
+        stop() {
+            const current = node.current;
+            if (current) {
+                current.stop();
+                current.disconnect();
+                node.current = null;
+            }
         }
     };
 
@@ -117,7 +125,8 @@ function useMusic(handler: mixerManagerHandler, context: AudioContext, config: {
     }, []);
 
     return {
-        play: operations.play
+        play: operations.play,
+        stop: operations.stop
     };
 }
 

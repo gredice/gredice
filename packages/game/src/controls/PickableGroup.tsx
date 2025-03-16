@@ -6,10 +6,11 @@ import { PointerEvent, PropsWithChildren, useEffect, useMemo, useRef, useState }
 import { Handler, useDrag } from '@use-gesture/react';
 import { useSpring, animated } from '@react-spring/three';
 import { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
-import { getBlockDataByName, stackHeight } from '../utils/getStackHeight';
+import { getBlockDataByName, useStackHeight } from '../utils/getStackHeight';
 import { useGameState } from '../useGameState';
 import { Shadow } from '@react-three/drei';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useBlockData } from '../hooks/useBlockData';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 
@@ -27,6 +28,7 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
         }
     }));
     const { data: garden } = useCurrentGarden();
+    const { data: blockData } = useBlockData();
     const getStack = ({ x, z }: { x: number, z: number }) => {
         return garden?.stacks.find(stack => stack.position.x === x && stack.position.z === z);
     };
@@ -38,7 +40,7 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
         dest: new Vector3(),
         relative: new Vector3()
     }));
-    const currentStackHeight = useMemo(() => stackHeight(stack, block), [stack, block]);
+    const currentStackHeight = useStackHeight(stack, block);
     const didDrag = useRef(false);
 
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
@@ -98,14 +100,16 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
         const hoveredStack = getStack(dest);
         const hoveredStackHeight = hoveredStack === stack
             ? 0
-            : stackHeight(hoveredStack) - currentStackHeight;
+            : currentStackHeight
+        // TODO: Use hovered stack height to determine the height of the block
+        // : stackHeight(hoveredStack) - (currentStackHeight ?? 0);
 
         // Check if under current hovered stack is stackable and mark as blocked or not
         const lastBlock = hoveredStack?.position === stack.position
             ? null
             : hoveredStack?.blocks.at(-1);
         const lastBlockDataBlocked = lastBlock
-            ? !(getBlockDataByName(lastBlock.name)?.attributes.stackable ?? false)
+            ? !(getBlockDataByName(blockData, lastBlock.name)?.attributes.stackable ?? false)
             : false;
         if (lastBlockDataBlocked !== isBlocked && isBlocked !== null) {
             setIsBlocked(lastBlockDataBlocked);
@@ -160,14 +164,12 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
             tension: 350,
         }
     });
-    const blockedPosition = [stack.position.x, stackHeight(stack, block), stack.position.z];
+    const blockedPosition = [stack.position.x, currentStackHeight, stack.position.z];
 
     return (
-        /* @ts-ignore */
         <animated.group
             position={dragSprings.internalPosition as unknown as [number, number, number]}
             {...customBindProps}>
-            {/* @ts-ignore */}
             <animated.group scale={blockedScaleSprings.scale} position={blockedPosition}>
                 <Shadow
                     color={0xff0000}
@@ -175,10 +177,8 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
                     colorStop={0.5}
                     scale={2}
                 />
-                {/* @ts-ignore */}
             </animated.group>
             {children}
-            {/* @ts-ignore */}
         </animated.group>
     )
 }

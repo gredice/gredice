@@ -1,6 +1,6 @@
 import { animated } from "@react-spring/three";
 import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
-import { stackHeight } from "../utils/getStackHeight";
+import { useStackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
@@ -9,11 +9,11 @@ import { MeshDistortMaterial, MeshWobbleMaterial } from "@react-three/drei";
 export function Bush({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
+    const currentStackHeight = useStackHeight(stack, block);
 
     return (
-        /* @ts-ignore */
         <animated.group
-            position={stack.position.clone().setY(stackHeight(stack, block))}
+            position={stack.position.clone().setY(currentStackHeight)}
             rotation={animatedRotation as unknown as [number, number, number]}
             scale={[0.5, 0.5, 0.5]}>
             <mesh
@@ -30,7 +30,6 @@ export function Bush({ stack, block, rotation }: EntityInstanceProps) {
             >
                 <MeshWobbleMaterial {...materials['Material.GrassPart']} factor={0.02} speed={3} />
             </mesh>
-            {/* @ts-ignore */}
         </animated.group>
     );
 }

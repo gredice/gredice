@@ -20,6 +20,7 @@ export function useWeatherNow() {
         queryFn: async () => {
             const response = await apiFetch('/api/data/weather/now')
             const data = await response.json();
+            console.debug('Weather now:', data);
             return data as WeatherNow;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes

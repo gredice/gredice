@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PropsWithChildren } from 'react';
 import { apiFetch } from '../../lib/apiFetch';
 import { ThemeProvider } from 'next-themes';
+import { NotificationsContainer } from '@signalco/ui-notifications';
 
 export type User = {
     id: string;
@@ -28,6 +29,7 @@ export function ClientAppProvider({ children }: PropsWithChildren) {
             <ThemeProvider attribute="class">
                 <AuthProvider currentUserFactory={currentUserFactory}>
                     {children}
+                    <NotificationsContainer />
                 </AuthProvider>
             </ThemeProvider>
         </QueryClientProvider>

@@ -411,6 +411,9 @@ importers:
       '@signalco/ui-icons':
         specifier: 0.2.0
         version: 0.2.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@signalco/ui-notifications':
+        specifier: 0.2.0
+        version: 0.2.0(@signalco/ui-primitives@0.5.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@signalco/ui-primitives':
         specifier: 0.5.0
         version: 0.5.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
@@ -3439,6 +3442,13 @@ packages:
     peerDependencies:
       react: '>=19.0.0-rc-65a56d0e-20241020'
       react-dom: '>=19.0.0-rc-65a56d0e-20241020'
+
+  '@signalco/ui-notifications@0.2.0':
+    resolution: {integrity: sha512-Db7H2fDRb9jWw0QzfZN70vOoAE2Xy9bYnpwxKwOvSSxQsvGppjwSpre3Nt9VY2Tq6RriBESXyZxaoiJiBGwdmw==}
+    peerDependencies:
+      '@signalco/ui-primitives': '>=0'
+      react: '>=19.0.0'
+      react-dom: '>=19.0.0'
 
   '@signalco/ui-primitives@0.5.0':
     resolution: {integrity: sha512-megaGJmdx8KWYK2GbhGBCjUTcumKcV8ca7PENSSjGZ/WrbWeeD+HkPZ1m5QbcxyKFqZt/QvTXCzAOzix7Vvm/w==}
@@ -10732,6 +10742,12 @@ snapshots:
 
   '@signalco/ui-icons@0.2.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+
+  '@signalco/ui-notifications@0.2.0(@signalco/ui-primitives@0.5.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+    dependencies:
+      '@signalco/ui-primitives': 0.5.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 

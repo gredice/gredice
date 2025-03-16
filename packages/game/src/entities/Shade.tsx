@@ -1,6 +1,6 @@
 import { animated } from "@react-spring/three";
 import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
-import { stackHeight } from "../utils/getStackHeight";
+import { useStackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useEntityNeighbors } from "./helpers/useEntityNeighbors";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
@@ -8,6 +8,7 @@ import { models } from "../data/models";
 
 export function Shade({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
+    const currentStackHeight = useStackHeight(stack, block);
 
     let realizedRotation = rotation % 2;
 
@@ -95,9 +96,8 @@ export function Shade({ stack, block, rotation }: EntityInstanceProps) {
     const [animatedRotation] = useAnimatedEntityRotation(realizedRotation);
 
     return (
-        /* @ts-ignore */
         <animated.group
-            position={stack.position.clone().setY(stackHeight(stack, block) + 1)}
+            position={stack.position.clone().setY(currentStackHeight + 1)}
             rotation={animatedRotation as unknown as [number, number, number]}>
             {solo && <mesh
                 castShadow
@@ -147,7 +147,6 @@ export function Shade({ stack, block, rotation }: EntityInstanceProps) {
                 geometry={nodes['Shade_Middle'].geometry}
                 material={materials['Material.Planks']}
             />}
-            {/* @ts-ignore */}
         </animated.group>
     );
 }

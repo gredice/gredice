@@ -84,7 +84,8 @@ export function Environment({ location, noBackground, noSound, noWeather, overri
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
 
     const { data: weather } = useWeatherNow();
-    if (weather) {
+    if (overrideWeather && weather) {
+        console.debug('Overriding weather', overrideWeather);
         weather.rainy = overrideWeather?.rainy ?? weather.rainy;
         weather.foggy = overrideWeather?.foggy ?? weather.foggy;
         weather.cloudy = overrideWeather?.cloudy ?? weather.cloudy;
@@ -104,7 +105,6 @@ export function Environment({ location, noBackground, noSound, noWeather, overri
             return;
         }
 
-        // TODO: Stop other ambient playing
         if (weather && (weather.rainy ?? 0) > 0.9) {
             rainHeavyAmbient.play();
         } else {
@@ -128,6 +128,16 @@ export function Environment({ location, noBackground, noSound, noWeather, overri
                 }
             }
         }
+
+        return () => {
+            morningAmbient.stop();
+            dayAmbient.stop();
+            nightAmbient.stop();
+            dayRainAmbient.stop();
+            rainHeavyAmbient.stop();
+            rainLightModAmbient.stop();
+            rainMediumModAmbient.stop();
+        };
     }, [timeOfDay, weather, overrideWeather]);
 
     useEffect(() => {

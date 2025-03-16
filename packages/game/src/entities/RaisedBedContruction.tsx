@@ -1,6 +1,6 @@
 import { animated } from "@react-spring/three";
 import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
-import { stackHeight } from "../utils/getStackHeight";
+import { useStackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
@@ -24,11 +24,11 @@ export function RaisedBedContruction({ stack, block, rotation }: EntityInstanceP
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
+    const currentStackHeight = useStackHeight(stack, block);
 
     return (
-        /* @ts-ignore */
         <animated.group
-            position={stack.position.clone().setY(stackHeight(stack, block))}
+            position={stack.position.clone().setY(currentStackHeight)}
             rotation={animatedRotation as unknown as [number, number, number]}>
             <mesh
                 castShadow
@@ -46,7 +46,6 @@ export function RaisedBedContruction({ stack, block, rotation }: EntityInstanceP
             >
                 <HoverOutline hovered={hovered} />
             </mesh>
-            {/* @ts-ignore */}
         </animated.group>
     );
 }

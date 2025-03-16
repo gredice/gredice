@@ -11,6 +11,8 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
     const swipeSound = effectsAudioMixer.useSoundEffect('https://cdn.gredice.com/sounds/effects/Swipe Generic 01.mp3');
 
     const rotateInitiated = useRef(false);
+    const doubleClickDownTimeStamp = useRef(0);
+    const firstClickTimeStamp = useRef(0);
 
     function doRotate(event: ThreeEvent<globalThis.PointerEvent> | ThreeEvent<MouseEvent>) {
         if (!rotateInitiated.current)
@@ -27,8 +29,6 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
         swipeSound.play();
     }
 
-    const doubleClickDownTimeStamp = useRef(0);
-    const firstClickTimeStamp = useRef(0);
     function handlePointerDown(event: ThreeEvent<globalThis.PointerEvent>) {
         if (event.button === 2) {
             rotateInitiated.current = true;

@@ -34,8 +34,7 @@ const messageTypes = {
     },
     newDayEvening: {
         text: [
-            "Danas je bio dug i naporan dan, ali još stigneš obići svoj vrt i provjeriti svoje biljke.",
-            "Laku noć! 🌙"
+            "Danas je bio dug i naporan dan, ali još stigneš obići svoj vrt i provjeriti svoje biljke."
         ]
     },
 }

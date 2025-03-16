@@ -18,6 +18,7 @@ import { AudioHud } from './hud/AudioHud';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { GardenLoadingIndicator } from './GardenLoadingIndicator';
 import { cx } from '@signalco/ui-primitives/cx';
+import { Html } from '@react-three/drei';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string,
