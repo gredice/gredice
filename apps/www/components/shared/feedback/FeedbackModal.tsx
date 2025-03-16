@@ -9,7 +9,7 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { Frown, Meh, Send, Smile } from "lucide-react";
 import { useState } from "react";
 import { FeedbackTrigger, FeedbackTriggerProps } from "./FeedbackTriggerLike";
-import { Popper, PopperProps } from "@signalco/ui-primitives/Popper";
+import { Popper } from "@signalco/ui-primitives/Popper";
 import { cx } from "@signalco/ui-primitives/cx";
 import { client } from "@gredice/client";
 
