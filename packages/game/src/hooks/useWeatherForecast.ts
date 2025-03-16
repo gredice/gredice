@@ -1,33 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "../utils/apiFetch";
-
-export interface WeatherEntry {
-    time: number;
-    temperature: number;
-    symbol: number;
-    windDirection: string | null;
-    windStrength: number;
-    rain: number;
-}
-
-export interface DayForecast {
-    date: string;
-    minTemp: number;
-    maxTemp: number;
-    symbol: number;
-    windDirection: string | null;
-    windStrength: number;
-    rain: number;
-    entries: WeatherEntry[];
-}
+import { client } from "@gredice/client";
 
 export function useWeatherForecast() {
     return useQuery({
         queryKey: ['weather', 'forecast'],
         queryFn: async () => {
-            const response = await apiFetch('/api/data/weather')
-            const data = await response.json();
-            return data as DayForecast[];
+            const response = await client().api.data.weather.$get();
+            return await response.json();
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
     });

@@ -19,6 +19,7 @@ export function useCurrentAccount() {
                 ...account,
                 sunflowers
             };
-        }
+        },
+        staleTime: 1000 * 60 * 5, // 5 min
     });
 }

@@ -1,12 +1,10 @@
 import { create } from "zustand";
 import type { Block } from "./types/Block";
 import type { Vector3 } from "three";
-import { BlockData } from "../@types/BlockData";
 import { audioMixer } from "./audio/audioMixer";
 import { OrbitControls } from 'three-stdlib';
 import { getTimes } from "suncalc";
 import { Garden } from "./types/Garden";
-import { client } from "@gredice/client";
 import { audioConfig } from "./utils/audioConfig";
 
 const sunriseValue = 0.2;
@@ -55,11 +53,13 @@ export type GameState = {
     freezeTime?: Date | null,
     currentTime: Date,
     timeOfDay: number,
-    weather?: { cloudy: number, rainy: number, snowy: number, foggy: number },
     sunsetTime: Date | null,
     sunriseTime: Date | null,
     setInitial: (appBaseUrl: string, freezeTime?: Date | null) => void,
     setCurrentTime: (currentTime: Date) => void,
+
+    // Debug (overrides)
+    weather?: { cloudy: number, rainy: number, snowy: number, foggy: number },
     setWeather: (weather: { cloudy: number, rainy: number, snowy: number, foggy: number }) => void,
 
     // Garden

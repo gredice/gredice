@@ -1,27 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "../utils/apiFetch";
-
-export type WeatherNow = {
-    symbol: number;
-    temperature: number;
-    rain: number;
-    windDirection: string;
-    windSpeed: number;
-    snowy: number;
-    rainy: number;
-    foggy: number;
-    cloudy: number;
-    thundery: number;
-};
+import { client } from "@gredice/client";
 
 export function useWeatherNow() {
     return useQuery({
         queryKey: ['weather', 'now'],
         queryFn: async () => {
-            const response = await apiFetch('/api/data/weather/now')
-            const data = await response.json();
-            console.debug('Weather now:', data);
-            return data as WeatherNow;
+            const response = await client().api.data.weather.now.$get();
+            if (response.status === 500) {
+                console.error('Failed to fetch weather data', response);
+                return null;
+            }
+            return await response.json();
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
