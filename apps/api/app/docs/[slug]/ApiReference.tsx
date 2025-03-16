@@ -6,9 +6,7 @@ export function ApiReference({ specUrl }: { specUrl: string }) {
     return (
         <ApiReferenceReact
             configuration={{
-                spec: {
-                    url: specUrl
-                },
+                url: specUrl,
                 darkMode: true
             }}
         />
