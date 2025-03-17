@@ -20,6 +20,7 @@ import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { client } from "@gredice/client";
 import { Markdown } from "../../../components/shared/Markdown";
 import { slug } from "@signalco/js";
+import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
 
 function PlantAttributes({ attributes }: { attributes: PlantAttributes | undefined }) {
     return (
@@ -52,14 +53,25 @@ export async function generateStaticParams() {
     }));
 }
 
-function InformationSection({ header, content, instructions }: { header: string, content: string | null | undefined, instructions?: PlantInstruction[] }) {
+function InformationSection({ plantId, id, header, content, instructions }: { plantId: number, id: string, header: string, content: string | null | undefined, instructions?: PlantInstruction[] }) {
     if (!content) {
         return null;
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
-            <Typography id={slug(header)} level="h4" className="md:col-span-2">{header}</Typography>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 group">
+            <div className="flex justify-between">
+                <Typography id={slug(header)} level="h4">{header}</Typography>
+                <FeedbackModal
+                    className="group-hover:opacity-100 opacity-0 transition-opacity"
+                    topic="www/plants/information"
+                    data={{
+                        plantId: plantId,
+                        sectionId: id
+                    }}
+                />
+            </div>
+            <div className="hidden md:block" />
             <Markdown>{content}</Markdown>
             <Stack className={cx("border rounded-lg p-2 h-fit", !instructions?.length && 'justify-center')}>
                 {(instructions?.length ?? 0) <= 0 && (
@@ -225,8 +237,8 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                             </Stack>
                         </Stack>
                     )}>
-                    <Stack spacing={4}>
-                        <Stack spacing={1}>
+                    <Stack>
+                        <Stack spacing={1} className="group">
                             <Typography level="h5">Kalendar</Typography>
                             {(!plant.calendar || Object.keys(plant.calendar).length <= 0) ? (
                                 <NoDataPlaceholder>
@@ -237,16 +249,32 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                                     <PlantYearCalendar activities={plant.calendar} />
                                 </Card>
                             )}
+                            <FeedbackModal
+                                topic="www/plants/calendar"
+                                data={{
+                                    plantId: plant.id,
+                                    plantAlias: alias
+                                }}
+                                className="self-end group-hover:opacity-100 opacity-0 transition-opacity" />
                         </Stack>
-                        <Stack spacing={1}>
+                        <Stack spacing={1} className="group">
                             <Typography level="h5">Svojstva</Typography>
                             <PlantAttributes attributes={plant.attributes} />
+                            <FeedbackModal
+                                topic="www/plants/attributes"
+                                data={{
+                                    plantId: plant.id,
+                                    plantAlias: alias
+                                }}
+                                className="self-end group-hover:opacity-100 opacity-0 transition-opacity" />
                         </Stack>
                     </Stack>
                 </PageHeader>
                 {informationSections.filter((section) => section.avaialble).map((section) => (
                     <InformationSection
                         key={section.id}
+                        plantId={plant.id}
+                        id={section.id}
                         header={section.header}
                         content={plant.information[section.id]}
                         instructions={plant.information.instructions?.filter(i => i.stage === section.id)} />
@@ -260,12 +288,31 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                             {plant.information.tip?.map((tip) => (
                                 <Accordion defaultOpen key={tip.header} className="h-fit">
                                     <Typography level="h6" secondary>{tip.header}</Typography>
-                                    <Typography>{tip.content}</Typography>
+                                    <Stack spacing={2}>
+                                        <Typography>{tip.content}</Typography>
+                                        <FeedbackModal
+                                            className="self-end"
+                                            topic="www/plants/advice"
+                                            data={{
+                                                plantId: plant.id,
+                                                tipHeader: tip.header
+                                            }}
+                                        />
+                                    </Stack>
                                 </Accordion>
                             ))}
                         </div>
                     </Stack>
                 )}
+                <Row spacing={2}>
+                    <Typography level="body1">Jesu li ti informacije bile korisne?</Typography>
+                    <FeedbackModal
+                        topic="www/plants/details"
+                        data={{
+                            plantId: plant.id,
+                            plantAlias: alias
+                        }} />
+                </Row>
             </Stack>
         </div>
     );

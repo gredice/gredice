@@ -11,6 +11,8 @@ import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { Layers2, Ruler } from "lucide-react";
 import { client } from "@gredice/client";
 import { Markdown } from "../../../components/shared/Markdown";
+import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
+import { Row } from "@signalco/ui-primitives/Row";
 
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true;
@@ -78,6 +80,14 @@ export default async function BlockPage({ params }: { params: Promise<{ alias: s
                         <Typography level="h5">Svojstva</Typography>
                         <BlockAttributes attributes={entity.attributes} />
                     </Stack>
+                    <Row spacing={2}>
+                        <Typography level="body1">Jesu li ti informacije bile korisne?</Typography>
+                        <FeedbackModal
+                            topic="www/blocks/details"
+                            data={{
+                                blockName: entity.information.name
+                            }} />
+                    </Row>
                 </Stack>
             </SplitView>
         </div>
