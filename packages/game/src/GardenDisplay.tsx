@@ -1,8 +1,8 @@
-import { useEffect } from "react";
 import { useGameState } from "./useGameState";
 import { useCurrentGarden } from "./hooks/useCurrentGarden";
 import { Environment } from "./scene/Environment";
 import { EntityFactory } from "./entities/EntityFactory";
+import { GardenLoadingIndicator } from "./GardenLoadingIndicator";
 
 export type GardenDisplayProps = {
     noBackground?: boolean,
@@ -12,22 +12,11 @@ export type GardenDisplayProps = {
 }
 
 export function GardenDisplay({ noBackground, noWeather, noSound, mockGarden }: GardenDisplayProps) {
-    const stacks = useGameState(state => state.stacks);
-    const setGarden = useGameState(state => state.setGarden);
     const weather = useGameState(state => state.weather);
 
-    // TODO: Load garden from remote
     const { data: garden } = useCurrentGarden(mockGarden);
-    useEffect(() => {
-        // Only update local state if we don't have any local state (first load or no stacks)
-        if (garden) {
-            console.log('Setting garden', garden);
-            setGarden(garden);
-        }
-    }, [garden]);
-
     if (!garden) {
-        return null;
+        return <GardenLoadingIndicator />;
     }
 
     return (
@@ -39,7 +28,7 @@ export function GardenDisplay({ noBackground, noWeather, noSound, mockGarden }: 
                 noSound={noSound}
                 location={{ lat: garden.location.lat, lon: garden.location.lon }} />
             <group>
-                {stacks.map((stack) =>
+                {garden.stacks.map((stack) =>
                     stack.blocks?.map((block, i) => {
                         return (
                             <EntityFactory

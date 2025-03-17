@@ -1,17 +1,23 @@
+import { BlockData } from "../../@types/BlockData";
+import { useBlockData } from "../hooks/useBlockData";
 import type { Block } from "../types/Block";
 import type { Stack } from "../types/Stack";
-import { useGameState } from "../useGameState";
 
-export function getBlockDataByName(name: string) {
-    const blockData = useGameState.getState().data.blocks.find(entity => entity.information.name === name);
-    if (!blockData) {
+export function getBlockDataByName(blockData: BlockData[] | null | undefined, name: string) {
+    const block = blockData?.find(entity => entity.information.name === name);
+    if (!block) {
         console.error(`Block data not found for block with name: ${name}`);
     }
-    return blockData;
+    return block;
 }
 
-export function stackHeight(stack: Stack | undefined, stopBlock?: Block) {
+export function useStackHeight(stack: Stack | undefined, stopBlock?: Block) {
     if (!stack || stack.blocks.length <= 0) {
+        return 0;
+    }
+
+    const { data: blockData } = useBlockData();
+    if (!blockData) {
         return 0;
     }
 
@@ -20,7 +26,7 @@ export function stackHeight(stack: Stack | undefined, stopBlock?: Block) {
         if (block === stopBlock) {
             return height;
         }
-        height += getBlockDataByName(block.name)?.attributes.height ?? 0;
+        height += getBlockDataByName(blockData, block.name)?.attributes.height ?? 0;
     }
-    return height
+    return height;
 }

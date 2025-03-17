@@ -21,7 +21,7 @@ const app = new Hono()
             const forecast = await getBjelovarForecast();
             const current = forecast.at(0)?.entries.at(0);
             if (!current) {
-                return new Response(null, { status: 500, statusText: 'Forecast not available' });
+                return context.json({ error: 'Forecast not available' }, { status: 500 });
             }
 
             const weather = {

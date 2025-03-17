@@ -1,17 +1,18 @@
 import { animated } from "@react-spring/three";
 import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
-import { stackHeight } from "../utils/getStackHeight";
+import { useStackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
-import { getEntityNeighbors } from "./helpers/getEntityNeighbors";
+import { useEntityNeighbors } from "./helpers/useEntityNeighbors";
 
 export function Fence({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
+    const currentStackHeight = useStackHeight(stack, block);
 
     let variant = "Solo";
     let realizedRotation = rotation % 4;
-    const neighbors = getEntityNeighbors(stack, block);
+    const neighbors = useEntityNeighbors(stack, block);
 
     // Variant: Solor, Single, Middle, Corner, T, Cross
     if (neighbors.total === 1) {
@@ -54,9 +55,8 @@ export function Fence({ stack, block, rotation }: EntityInstanceProps) {
     const [animatedRotation] = useAnimatedEntityRotation(realizedRotation);
 
     return (
-        /* @ts-ignore */
         <animated.group
-            position={stack.position.clone().setY(stackHeight(stack, block) + 1)}
+            position={stack.position.clone().setY(currentStackHeight + 1)}
             rotation={animatedRotation as unknown as [number, number, number]}>
             <mesh
                 castShadow
@@ -64,7 +64,6 @@ export function Fence({ stack, block, rotation }: EntityInstanceProps) {
                 geometry={nodes[`Fence_${variant}`].geometry}
                 material={materials['Material.Planks']}
             />
-            {/* @ts-ignore */}
         </animated.group>
     );
 }

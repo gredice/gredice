@@ -18,6 +18,7 @@
     },
     "pnpm": {
         "onlyBuiltDependencies": [
+            "@parcel/watcher",
             "bufferutil",
             "core-js",
             "es5-ext",

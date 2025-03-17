@@ -1,12 +1,8 @@
 'use client';
 
-import { orderBy } from "@signalco/js";
 import { useEffect } from "react";
-import { Vector3 } from "three";
 import { useGameState } from "../useGameState";
-import { getStack } from "../utils/getStack";
-import { button, useControls } from 'leva';
-import { v4 as uuidv4 } from 'uuid';
+import { useControls } from 'leva';
 import { Perf } from 'r3f-perf'
 import { useWeatherNow } from "../hooks/useWeatherNow";
 
@@ -17,33 +13,6 @@ export function DebugHud() {
     });
 
     const gameState = useGameState();
-    const handlePlaceBlock = (name: string) => {
-        let x = 0, z = 0;
-        // Search for empty stack in watter flow pattern
-        // place block in first empty stack
-        while (true) {
-            const stack = getStack({ x, z });
-            if (!stack || stack.blocks.length === 0) {
-                break;
-            }
-            x++;
-            if (x > z + 1) {
-                x = 0;
-                z++;
-            }
-        }
-
-        gameState.placeBlock(new Vector3(x, 0, z), { id: uuidv4(), name, rotation: 0 });
-    };
-
-    let entitiesButtons = {};
-    for (const entity of orderBy(gameState.data.blocks, (a, b) => a.information.label.localeCompare(b.information.label))) {
-        entitiesButtons = {
-            ...entitiesButtons,
-            [entity.information.label]: button(() => handlePlaceBlock(entity.information.name))
-        }
-    }
-    useControls('Entities', entitiesButtons);
 
     const { data: weather } = useWeatherNow();
     const { timeOfDay, cloudy, rainy, snowy, foggy, overrideWeather } = useControls('Environment', {
@@ -67,7 +36,7 @@ export function DebugHud() {
         date.setHours(seconds / 60 / 60);
         date.setMinutes((seconds / 60) % 60);
         date.setSeconds(seconds % 60);
-        gameState.setInitial(gameState.appBaseUrl, gameState.data, date);
+        gameState.setInitial(gameState.appBaseUrl, date);
     }, [timeOfDay]);
 
     return (

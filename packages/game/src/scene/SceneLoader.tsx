@@ -1,19 +1,17 @@
 'use client';
 
-import { PropsWithChildren, useEffect, useState } from "react";
+import { PropsWithChildren, useEffect } from "react";
 import { useGameState } from "../useGameState";
-import { loadBlockData } from "./sceneActions";
+import { useBlockData } from "../hooks/useBlockData";
 
 export function SceneLoader({ children, appBaseUrl, freezeTime }: PropsWithChildren<{ appBaseUrl?: string; freezeTime?: Date | null; }>) {
-    const [isLoading, setIsLoading] = useState(true);
     const setInitial = useGameState((state) => state.setInitial);
+    const { data, isLoading } = useBlockData();
     useEffect(() => {
-        (async () => {
-            const blocks = await loadBlockData();
-            setInitial(appBaseUrl ?? '', { blocks }, freezeTime);
-            setIsLoading(false);
-        })();
-    }, [appBaseUrl]);
+        if (!isLoading && data) {
+            setInitial(appBaseUrl ?? '', freezeTime);
+        }
+    }, [data, isLoading, appBaseUrl]);
 
     if (isLoading) {
         return null;

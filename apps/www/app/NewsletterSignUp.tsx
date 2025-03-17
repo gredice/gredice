@@ -24,7 +24,7 @@ export function NewsletterSignUp() {
                         name="email"
                         placeholder="Unesi svoj email"
                         variant="outlined"
-                        className="bg-primary/10 shadow-sm border-primary/15 min-w-60"
+                        className="bg-primary/10 shadow-sm border-primary/15 min-w-52"
                         autoComplete="home email"
                         type="email"
                     />

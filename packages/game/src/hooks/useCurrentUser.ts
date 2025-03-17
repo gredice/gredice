@@ -1,21 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "../utils/apiFetch";
+import { client } from "@gredice/client";
 
 async function getCurrentUser() {
-    const response = await apiFetch('/api/users/current');
-    if (response.status < 200 || response.status > 299) {
+    const response = await client().api.users.current.$get();
+    if (response.status === 404) {
+        console.error('User not found');
         return null;
     }
 
-    const currentUser = await response.json() as {
-        id: string;
-        userName: string;
-        displayName: string;
-        createdAt: string;
-    };
+    const currentUser = await response.json();
     return {
         ...currentUser,
-        displayName: currentUser.displayName || currentUser.userName,
         createdAt: new Date(currentUser.createdAt),
     };
 }
@@ -24,5 +19,6 @@ export function useCurrentUser() {
     return useQuery({
         queryKey: ['currentUser'],
         queryFn: getCurrentUser,
+        staleTime: 1000 * 60 * 60, // 1 hour
     });
 }

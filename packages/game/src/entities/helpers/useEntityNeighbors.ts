@@ -1,8 +1,14 @@
+import { useCurrentGarden } from "../../hooks/useCurrentGarden";
 import { Block } from "../../types/Block";
 import { Stack } from "../../types/Stack";
-import { getStack } from "../../utils/getStack";
 
-export function getEntityNeighbors(stack: Stack, block: Block) {
+export function useEntityNeighbors(stack: Stack, block: Block) {
+    const { data: garden } = useCurrentGarden();
+
+    function getStack({ x, z }: { x: number, z: number }) {
+        return garden?.stacks.find(stack => stack.position.x === x && stack.position.z === z);
+    }
+
     const currentInStackIndex = stack.blocks.indexOf(block);
     const neighbors = {
         w: getStack({ x: stack.position.x, z: stack.position.z + 1 })?.blocks.at(currentInStackIndex)?.name === block.name,

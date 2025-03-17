@@ -15,6 +15,10 @@ import { GardenDisplay } from './GardenDisplay';
 import { useThemeManager } from './hooks/useThemeManager';
 import { useGameTimeManager } from './hooks/useGameTimeManager';
 import { AudioHud } from './hud/AudioHud';
+import { useCurrentGarden } from './hooks/useCurrentGarden';
+import { GardenLoadingIndicator } from './GardenLoadingIndicator';
+import { cx } from '@signalco/ui-primitives/cx';
+import { Html } from '@react-three/drei';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string,
@@ -41,15 +45,22 @@ export function GameScene({
     noBackground,
     noSound,
     hideHud,
+    className,
     ...rest
 }: GameSceneProps) {
     const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
-
+    const { data: garden } = useCurrentGarden(mockGarden);
     useGameTimeManager(freezeTime);
     useThemeManager();
 
+    if (!garden) {
+        return (
+            <GardenLoadingIndicator {...rest} />
+        );
+    }
+
     return (
-        <div {...rest}>
+        <div className={cx('fade-in', className)} {...rest}>
             <Scene
                 appBaseUrl={appBaseUrl}
                 freezeTime={freezeTime}
@@ -84,7 +95,7 @@ export function GameScene({
                     </div>
                     <OverviewModal />
                 </>
-            )}            
+            )}
         </div>
     );
 }

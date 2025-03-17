@@ -1,5 +1,4 @@
 import { Vector3 } from "three";
-import { useGameState } from "../useGameState";
 import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
 import { PickableGroup } from "../controls/PickableGroup";
 import { BlockGround } from "./BlockGround";
@@ -19,6 +18,7 @@ import { BlockSand } from "./BlockSand";
 import { Composter } from "./Composter";
 import { Bush } from "./Bush";
 import { Tree } from "./Tree";
+import { useBlockMove } from "../hooks/useBlockMove";
 
 const entityNameMap: Record<string, any> = {
     "Block_Ground": BlockGround,
@@ -44,11 +44,14 @@ export function EntityFactory({ name, stack, block, noControl, ...rest }: { name
         return null;
     }
 
-    const moveBlock = useGameState(state => state.moveBlock);
+    // TODO: Move to PickableGroup
+    const moveBlock = useBlockMove();
     const handlePositionChanged = async (movement: Vector3) => {
-        const dest = stack.position.clone().add(movement);
-        const blockIndex = stack.blocks.indexOf(block);
-        await moveBlock(stack.position, blockIndex, dest);
+        await moveBlock.mutateAsync({
+            sourcePosition: stack.position,
+            destinationPosition: stack.position.clone().add(movement),
+            blockIndex: stack.blocks.indexOf(block)
+        });
     }
 
     return (
