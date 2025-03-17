@@ -2,8 +2,6 @@ import { client } from "@gredice/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { currentGardenKeys, useCurrentGarden } from "./useCurrentGarden";
 import { currentAccountKeys } from "./useCurrentAccount";
-import { Vector3 } from "three";
-import { v4 as uuidv4 } from 'uuid';
 
 export function useNewBlock() {
     const queryClient = useQueryClient();

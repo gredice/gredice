@@ -1,6 +1,4 @@
 import { create } from "zustand";
-import type { Block } from "./types/Block";
-import type { Vector3 } from "three";
 import { audioMixer } from "./audio/audioMixer";
 import { OrbitControls } from 'three-stdlib';
 import { getTimes } from "suncalc";
@@ -62,10 +60,6 @@ export type GameState = {
     weather?: { cloudy: number, rainy: number, snowy: number, foggy: number },
     setWeather: (weather: { cloudy: number, rainy: number, snowy: number, foggy: number }) => void,
 
-    // Garden
-    moveBlock: (from: Vector3, blockIndex: number, to: Vector3) => Promise<void>,
-    rotateBlock: (stackPosition: Vector3, blockOrIndex: Block | number, rotation?: number) => void,
-
     // World
     orbitControls: OrbitControls | null,
     setOrbitControls: (ref: OrbitControls | null) => void,
@@ -103,78 +97,5 @@ export const useGameState = create<GameState>((set, get) => ({
         sunriseTime: getSunriseSunset(defaultPosition, currentTime).sunrise,
         sunsetTime: getSunriseSunset(defaultPosition, currentTime).sunset
     })),
-    setWeather: (weather) => set(({ weather })),
-    moveBlock: async (from, blockIndex, to) => {
-        // TODO: Move to mutation query function
-        if (from.x === to.x && from.z === to.z) {
-            return;
-        }
-
-        // // Determine source stack and block
-        // const sourceStack = getStack(from);
-        // const block = sourceStack?.blocks[blockIndex];
-        // if (!block) {
-        //     return;
-        // }
-
-        // // Determine destination stack or create new one if it doesn't exist
-        // let destStack = getStack(to);
-        // let didCreateDestStack = false;
-        // if (!destStack) {
-        //     destStack = { position: to, blocks: [] };
-        //     didCreateDestStack = true;
-        // }
-
-        // TODO: Optimistic update
-        // set((state) => {
-        //     if (didCreateDestStack) {
-        //         state.stacks.push(destStack);
-        //     }
-        //     sourceStack?.blocks.splice(blockIndex, 1);
-        //     destStack?.blocks.push(block);
-        //     return { stacks: [...state.stacks] };
-        // });
-
-        // // Persist block move
-        // const gardenId = "CHANGEME";
-        // await client().api.gardens[":gardenId"].stacks.$patch({
-        //     param: {
-        //         gardenId: gardenId ?? ''
-        //     },
-        //     json: [
-        //         {
-        //             op: 'move',
-        //             from: `/${sourceStack.position.x}/${sourceStack.position.z}/${blockIndex}`,
-        //             path: `/${destStack.position.x}/${destStack.position.z}/-`
-        //         }
-        //     ]
-        // });
-    },
-    rotateBlock: async (stackPosition, blockOrIndex, rotation) => {
-        // TODO: Move to mutation query function
-
-        // const stack = getStack(stackPosition);
-        // const block = typeof blockOrIndex === 'number' ? stack?.blocks[blockOrIndex] : blockOrIndex;
-        // if (!block) {
-        //     return;
-        // }
-
-        // const newRotation = rotation ?? (block.rotation + 1);
-        // // Optimistic update
-        // set((state) => {
-        //     block.rotation = newRotation;
-        //     return { stacks: [...state.stacks] };
-        // });
-
-        // const gardenId = "CHANGEME";
-        // await client().api.gardens[":gardenId"].blocks[":blockId"].$put({
-        //     param: {
-        //         gardenId: gardenId ?? '',
-        //         blockId: block.id
-        //     },
-        //     json: {
-        //         rotation: newRotation
-        //     }
-        // });
-    }
+    setWeather: (weather) => set(({ weather }))
 }));

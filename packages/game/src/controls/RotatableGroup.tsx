@@ -3,9 +3,10 @@ import { PropsWithChildren, useRef } from "react";
 import type { Block } from "../types/Block";
 import type { Stack } from "../types/Stack";
 import { useGameState } from "../useGameState";
+import { useBlockRotate } from "../hooks/useBlockRotate";
 
 export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ stack: Stack; block: Block; }>) {
-    const rotateBlock = useGameState(state => state.rotateBlock);
+    const blockRotate = useBlockRotate();
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
     const isDragging = useGameState(state => state.isDragging);
     const swipeSound = effectsAudioMixer.useSoundEffect('https://cdn.gredice.com/sounds/effects/Swipe Generic 01.mp3');
@@ -14,7 +15,7 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
     const doubleClickDownTimeStamp = useRef(0);
     const firstClickTimeStamp = useRef(0);
 
-    function doRotate(event: ThreeEvent<globalThis.PointerEvent> | ThreeEvent<MouseEvent>) {
+    async function doRotate(event: ThreeEvent<globalThis.PointerEvent> | ThreeEvent<MouseEvent>) {
         if (!rotateInitiated.current)
             return;
 
@@ -22,7 +23,7 @@ export function RotatableGroup({ children, stack, block }: PropsWithChildren<{ s
             return;
 
         event.stopPropagation();
-        rotateBlock(stack.position, block);
+        blockRotate.mutate({ blockId: block.id, rotation: block.rotation + 1 });
         rotateInitiated.current = false;
 
         // TODO: Don't play sound if rotation is not possible
