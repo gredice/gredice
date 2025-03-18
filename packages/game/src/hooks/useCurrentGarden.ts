@@ -5,6 +5,7 @@ import { Vector3 } from "three";
 import { Garden } from "../types/Garden";
 
 const gardensKeys = ['gardens'];
+export const currentGardenKeys = ['gardens', 'current'];
 
 function useGardens(disabled?: boolean) {
     return useQuery({
@@ -16,11 +17,10 @@ function useGardens(disabled?: boolean) {
 
             return resp.json();
         },
-        enabled: !disabled
+        enabled: !disabled,
+        staleTime: 1000 * 60 * 60 // 1h
     });
 }
-
-export const currentGardenKeys = ['gardens', 'current'];
 
 function mockGarden(): Garden {
     return {
@@ -172,6 +172,8 @@ export function useCurrentGarden(mock?: boolean): UseQueryResult<Garden> {
     return useQuery({
         queryKey: currentGardenKeys,
         queryFn: async () => {
+            console.log('loading gardens');
+
             if (mock) {
                 console.debug("Using mock garden data");
                 return mockGarden();
@@ -224,6 +226,7 @@ export function useCurrentGarden(mock?: boolean): UseQueryResult<Garden> {
                 }
             };
         },
-        enabled: mock || Boolean(gardens)
+        enabled: mock || Boolean(gardens),
+        staleTime: 1000 * 60 // 1m
     });
 }

@@ -1,6 +1,9 @@
 import { client } from "@gredice/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { currentGardenKeys, useCurrentGarden } from "./useCurrentGarden";
+import { handleOptimisticUpdate } from "../helpers/queryHelpers";
+
+const mutationKey = ['gardens', 'current', 'blockRotate'];
 
 export function useBlockRotate() {
     const queryClient = useQueryClient();
@@ -20,12 +23,47 @@ export function useBlockRotate() {
                     rotation: rotation
                 }
             });
+        },
+        onMutate: async ({ blockId, rotation }) => {
+            if (!garden) {
+                return;
+            }
 
-            // TODO: Do optimistic local update
+            const updatedStacks = garden.stacks.map(stack => {
+                const updatedBlocks = stack.blocks.map(block => {
+                    if (block.id === blockId) {
+                        return {
+                            ...block,
+                            rotation: rotation
+                        }
+                    }
+                    return block;
+                });
+                return {
+                    ...stack,
+                    blocks: updatedBlocks
+                }
+            });
+
+            const previousItem = await handleOptimisticUpdate(queryClient, currentGardenKeys, {
+                stacks: [...updatedStacks]
+            });
+
+            return {
+                previousItem
+            };
+        },
+        onError: (error, _variables, context) => {
+            console.log('Error creating block', error);
+            if (context?.previousItem) {
+                queryClient.setQueryData(currentGardenKeys, context.previousItem);
+            }
         },
         onSettled: async () => {
             // Invalidate queries
-            await queryClient.invalidateQueries({ queryKey: currentGardenKeys });
+            if (queryClient.isMutating({ mutationKey }) === 1) {
+                await queryClient.invalidateQueries({ queryKey: currentGardenKeys });
+            }
         }
     })
 }

@@ -29,17 +29,15 @@ export function GardenDisplay({ noBackground, noWeather, noSound, mockGarden }: 
                 location={{ lat: garden.location.lat, lon: garden.location.lon }} />
             <group>
                 {garden.stacks.map((stack) =>
-                    stack.blocks?.map((block, i) => {
-                        return (
-                            <EntityFactory
-                                key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
-                                name={block.name}
-                                stack={stack}
-                                block={block}
-                                rotation={block.rotation}
-                                variant={block.variant} />
-                        );
-                    })
+                    stack.blocks?.map((block, i) => (
+                        <EntityFactory
+                            key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
+                            name={block.name}
+                            stack={stack}
+                            block={block}
+                            rotation={block.rotation}
+                            variant={block.variant} />
+                    ))
                 )}
             </group>
         </>
