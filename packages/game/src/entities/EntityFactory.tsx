@@ -41,6 +41,7 @@ const entityNameMap: Record<string, any> = {
 export function EntityFactory({ name, stack, block, noControl, ...rest }: { name: string, noControl?: boolean } & EntityInstanceProps) {
     const EntityComponent = entityNameMap[name];
     if (!EntityComponent) {
+        console.error(`Unknown entity: ${name}`);
         return null;
     }
 

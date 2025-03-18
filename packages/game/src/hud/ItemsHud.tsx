@@ -2,7 +2,6 @@ import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { HudCard } from "./components/HudCard";
 import { Divider } from "@signalco/ui-primitives/Divider";
 import { Row } from "@signalco/ui-primitives/Row";
-import { useGameState } from "../useGameState";
 import { ChevronUp, Info } from "lucide-react";
 import { Popper } from "@signalco/ui-primitives/Popper";
 import { HTMLAttributes, useState } from "react";
@@ -11,7 +10,7 @@ import { Button } from "@signalco/ui-primitives/Button";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Link } from "@signalco/ui-primitives/Link";
 import { cx } from "@signalco/ui-primitives/cx";
-import { useNewBlock } from "../hooks/useNewBlock";
+import { useBlockPlace } from "../hooks/useBlockPlace";
 import { Stack as GardenStack } from "../types/Stack";
 import { BlockData } from "../../@types/BlockData";
 import { useCurrentGarden } from "../hooks/useCurrentGarden";
@@ -167,7 +166,7 @@ function findEmptyPosition(blockData: BlockData[], stacks: GardenStack[], type: 
 function PlaceEntityButton({ name, simple }: { name: string, simple?: boolean }) {
     const { data: garden } = useCurrentGarden();
     const { data: blockData } = useBlockData();
-    const newBlock = useNewBlock();
+    const placeBlock = useBlockPlace();
 
     const block = blockData?.find(block => block.information.name === name);
     if (!block) return null;
@@ -184,7 +183,7 @@ function PlaceEntityButton({ name, simple }: { name: string, simple?: boolean })
             name.startsWith('Block') ? 'block' : 'any');
 
         // Buy block and get id
-        await newBlock.mutateAsync({
+        await placeBlock.mutateAsync({
             blockName: name,
             position
         });
