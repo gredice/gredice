@@ -18,9 +18,34 @@ import { ReactNode } from "react";
 import { Logotype } from "../components/Logotype";
 
 export const metadata: Metadata = {
-    title: "Gredice",
-    description: "Gredice - vrt po tvom",
-    keywords: ["gredice", "vrt", "opg", "vrtlarstvo", "vrtovi", "vrtlar", "vrtlarica", "vrtlarstvo", "vrtne gredice", "vrtne gredice za povrće", "vrtne gredice za cvijeće", "vrtne gredice za voće", "vrtne gredice za začinsko bilje", "vrtne gredice za povrće i cvijeće", "vrtne gredice za povrće i voće", "vrtne gredice za povrće i začinsko bilje", "vrtne gredice za cvijeće i voće", "vrtne gredice za cvijeće i začinsko bilje", "vrtne gredice za voće i začinsko bilje", "vrtne gredice za povrće, cvijeće i voće", "vrtne gredice za povrće, cvijeće i začinsko bilje", "vrtne gredice za povrće, voće i začinsko bilje", "vrtne gredice za cvijeće, voće i začinsko bilje", "vrtne gredice za povrće, cvijeće, voće i začinsko bilje"],
+    title: "Gredice - vrt po tvom",
+    description: "Tvoj digitalni vrt s pravim povrćem i beplatnom dostavom. Postavi gredice, zasadi svoje omiljeno povrće, održavaj vrt i uberi plodove a mi ćemo se pobrinuti o brzoj dostavi i besplatnoj na tvoj kućni prag.",
+    keywords: [
+        "gredice", "gredica",
+        "digitalni", "vrt",
+        "dostava", "besplatna dostava",
+        "sadnja", "sijanje", "berba",
+        "najam", "iznajmljivanje",
+        "opg", "mali proizvođači",
+        "vrtlarstvo", "vrtovi", "vrtlar", "vrtlarica", "vrtlarstvo", "vrtne gredice",
+        "povrce", "povrće",
+        "biljke", "biljka",
+        "virtualni vrt", "virtualno",
+    ],
+    openGraph: {
+        type: "website",
+        title: "Gredice - vrt po tvom",
+        url: "https://www.gredice.com",
+        siteName: "Gredice - vrt po tvom",
+        images: [
+            {
+                url: "/og",
+                width: 1200,
+                height: 630,
+                alt: "Gredice - vrt po tvom",
+            },
+        ],
+    }
 };
 
 const sectionsData: SectionData[] = [
