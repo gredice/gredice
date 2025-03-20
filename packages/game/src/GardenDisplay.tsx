@@ -2,7 +2,6 @@ import { useGameState } from "./useGameState";
 import { useCurrentGarden } from "./hooks/useCurrentGarden";
 import { Environment } from "./scene/Environment";
 import { EntityFactory } from "./entities/EntityFactory";
-import { GardenLoadingIndicator } from "./GardenLoadingIndicator";
 
 export type GardenDisplayProps = {
     noBackground?: boolean,
@@ -16,7 +15,7 @@ export function GardenDisplay({ noBackground, noWeather, noSound, mockGarden }: 
 
     const { data: garden } = useCurrentGarden(mockGarden);
     if (!garden) {
-        return <GardenLoadingIndicator />;
+        return null;
     }
 
     return (
