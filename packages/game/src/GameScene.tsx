@@ -77,7 +77,7 @@ export function GameScene({
                     noWeather={noWeather}
                     noSound={noSound}
                 />
-                <Controls />
+                <Controls isDevelopment={isDevelopment} />
             </Scene>
             {!hideHud && (
                 <>
