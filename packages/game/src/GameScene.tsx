@@ -1,6 +1,6 @@
 'use client';
 
-import { HTMLAttributes } from 'react';
+import { HTMLAttributes, useRef, useState } from 'react';
 import { Scene } from './scene/Scene';
 import { DayNightCycleHud } from './hud/DayNightCycleHud';
 import { DebugHud } from './hud/DebugHud';
@@ -19,6 +19,8 @@ import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { GardenLoadingIndicator } from './GardenLoadingIndicator';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Html } from '@react-three/drei';
+import { CameraController } from './controllers/CameraController';
+import { useControls } from 'leva';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string,

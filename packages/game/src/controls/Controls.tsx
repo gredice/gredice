@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useGameState } from '../useGameState';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Vector3 } from 'three';
+import { useControls } from 'leva';
+import { CameraController } from '../controllers/CameraController';
 
 function useCameraRotate() {
     const orbitControls = useGameState(state => state.orbitControls);
@@ -92,15 +94,31 @@ export function Controls() {
     const setOrbitControls = useGameState(state => state.setOrbitControls);
     useCameraRotate();
     useKeyboardControls();
+    const [isAnimating, setIsAnimating] = useState(false);
+
+    // Closeup
+    const { isCloseUp, targetPosition } = useControls({
+        isCloseUp: { value: false, label: "Closeup" },
+        targetPosition: { value: [0, 0, 0], label: "Target Position" },
+    });
 
     return (
-        <OrbitControls
-            ref={setOrbitControls}
-            enableRotate={false}
-            screenSpacePanning={false}
-            onStart={() => useGameState.getState().setIsDragging(true)}
-            onEnd={() => useGameState.getState().setIsDragging(false)}
-            minZoom={50}
-            maxZoom={200} />
+        <>
+            <CameraController
+                isCloseUp={isCloseUp}
+                targetPosition={targetPosition}
+                onAnimationStart={() => setIsAnimating(true)}
+                onAnimationComplete={() => setIsAnimating(false)}
+            />
+            <OrbitControls
+                ref={setOrbitControls}
+                enabled={!isCloseUp && !isAnimating}
+                enableRotate={false}
+                screenSpacePanning={false}
+                onStart={() => useGameState.getState().setIsDragging(true)}
+                onEnd={() => useGameState.getState().setIsDragging(false)}
+                minZoom={50}
+                maxZoom={200} />
+        </>
     )
 }
