@@ -19,7 +19,7 @@ import { Logotype } from "../components/Logotype";
 
 export const metadata: Metadata = {
     title: "Gredice - vrt po tvom",
-    description: "Tvoj digitalni vrt s pravim povrćem i beplatnom dostavom. Postavi i brini o svojim gredicama i uživaj u svježem povrću tokom cijele godine. Zasadi, održavaj i uberi svoje povrće a mi ćemo se pobrinuti o brzoj dostavi na tvoj kućni prag.",
+    description: "Tvoj digitalni vrt s pravim povrćem i beplatnom dostavom. Postavi gredice, zasadi svoje omiljeno povrće, održavaj vrt i uberi plodove a mi ćemo se pobrinuti o brzoj dostavi i besplatnoj na tvoj kućni prag.",
     keywords: [
         "gredice", "gredica",
         "digitalni", "vrt",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
         url: "https://www.gredice.com",
         images: [
             {
-                url: "https://www.gredice.com/og",
+                url: "/og",
                 width: 1200,
                 height: 630,
                 alt: "Gredice - vrt po tvom",
