@@ -36,6 +36,7 @@ export const metadata: Metadata = {
         type: "website",
         title: "Gredice - vrt po tvom",
         url: "https://www.gredice.com",
+        siteName: "Gredice - vrt po tvom",
         images: [
             {
                 url: "/og",
