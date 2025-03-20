@@ -90,17 +90,17 @@ const useKeyboardControls = () => {
     }, [setPanDir]);
 }
 
-export function Controls() {
+export function Controls({ isDevelopment }: { isDevelopment?: boolean }) {
     const setOrbitControls = useGameState(state => state.setOrbitControls);
     useCameraRotate();
     useKeyboardControls();
     const [isAnimating, setIsAnimating] = useState(false);
 
     // Closeup
-    const { isCloseUp, targetPosition } = useControls({
+    const { isCloseUp, targetPosition } = isDevelopment ? useControls({
         isCloseUp: { value: false, label: "Closeup" },
         targetPosition: { value: [0, 0, 0], label: "Target Position" },
-    });
+    }) : { isCloseUp: false, targetPosition: [0, 0, 0] as [number, number, number] };
 
     return (
         <>
