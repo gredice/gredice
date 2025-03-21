@@ -19,7 +19,7 @@
     "@scalar/api-reference-react": "0.6.2",
     "hono": "4.7.4",
     "hono-openapi": "0.4.6",
-    "next": "15.2.2",
+    "next": "15.2.3",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "resend": "4.1.2",
