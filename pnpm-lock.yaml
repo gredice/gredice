@@ -384,6 +384,9 @@ importers:
       '@eslint/js':
         specifier: 9.22.0
         version: 9.22.0
+      '@gredice/client':
+        specifier: workspace:*
+        version: link:../../packages/client
       '@gredice/game':
         specifier: workspace:*
         version: link:../../packages/game

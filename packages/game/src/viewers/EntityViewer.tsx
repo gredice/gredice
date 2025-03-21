@@ -14,6 +14,10 @@ const position = new Vector3(0.5, 0, 0.5);
 export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
     entityName: string;
     appBaseUrl?: string;
+    /**
+     * Zoom level of the camera 
+     * @default 90
+    */
     zoom?: number;
     itemPosition?: [number, number, number];
 };

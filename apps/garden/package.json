@@ -26,6 +26,7 @@
     "@eslint/eslintrc": "3.3.0",
     "@eslint/js": "9.22.0",
     "@gredice/game": "workspace:*",
+    "@gredice/client": "workspace:*",
     "@playwright/experimental-ct-react": "1.51.1",
     "@playwright/test": "1.51.1",
     "@signalco/auth-client": "0.3.0",

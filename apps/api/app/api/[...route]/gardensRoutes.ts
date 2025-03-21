@@ -65,7 +65,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { accountId } = context.get('authContext');
             const [garden, blockPlaceEventsRaw, blocks] = await Promise.all([
                 getGarden(gardenIdNumber),
-                getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 1000),
+                getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 10000),
                 getGardenBlocks(gardenIdNumber)
             ]);
             if (!garden || garden.accountId !== accountId) {
@@ -100,6 +100,65 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 createdAt: garden.createdAt
             });
         })
+    .get(
+        '/:gardenId/public',
+        describeRoute({
+            description: 'Get public garden information'
+        }),
+        zValidator(
+            "param",
+            z.object({
+                gardenId: z.string(),
+            })
+        ),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId);
+            if (isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            // TODO: Refactor to use a single function for public and non-public garden retrieval
+            const [garden, blockPlaceEventsRaw, blocks] = await Promise.all([
+                getGarden(gardenIdNumber),
+                getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 10000),
+                getGardenBlocks(gardenIdNumber)
+            ]);
+            if (!garden) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            // TODO: Check visibility
+
+            const blockPlaceEvents = blockPlaceEventsRaw.map(event => ({
+                ...event,
+                data: event.data as { id: string, name: string }
+            }));
+
+            // Stacks: group by x then by y
+            const stacks = garden.stacks.reduce((acc, stack) => {
+                if (!acc[stack.positionX]) {
+                    acc[stack.positionX] = {};
+                }
+                acc[stack.positionX][stack.positionY] = stack.blocks.map(blockId => ({
+                    id: blockId,
+                    name: blockPlaceEvents.find(event => event.data.id === blockId)?.data.name ?? 'unknown',
+                    rotation: blocks.find(block => block.id === blockId)?.rotation ?? 0,
+                    variant: blocks.find(block => block.id === blockId)?.variant
+                }));
+                return acc;
+            }, {} as Record<string, Record<string, { id: string, name: string, rotation?: number | null, variant?: number | null }[]>>);
+
+            return context.json({
+                id: garden.id,
+                name: garden.name,
+                latitude: garden.farm.latitude,
+                longitude: garden.farm.longitude,
+                stacks,
+                createdAt: garden.createdAt
+            });
+        }
+    )
     // See: https://datatracker.ietf.org/doc/html/rfc6902
     .patch(
         '/:gardenId/stacks',
