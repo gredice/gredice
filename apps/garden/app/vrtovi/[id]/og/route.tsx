@@ -46,7 +46,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         (
             <div
                 style={{
-                    fontSize: 32,
+                    fontSize: 36,
                     background: '#2E6F40',
                     color: 'white',
                     width: '100%',
@@ -63,16 +63,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
                     bottom: 106,
                     display: 'flex',
                     border: '1px solid #f0e9e2',
-                    background: '#FEFAF6',
-                    borderRadius: 12,
+                    background: '#E7E2CC',
+                    borderRadius: 32,
                     overflow: 'hidden',
-                    boxShadow: 'rgba(0, 0, 0, 0.25) 0px 25px 50px -12px'
+                    boxShadow: '0px 18px 32px 0px rgba(0,0,0,0.2)'
                 }}>
                     <GardenDisplay2D
                         garden={garden}
                         blockData={blockData}
                         viewportSize={1200}
-                        viewportOffset={{ x: 24*2, y: 630/2 + 24*2 + 106 / 2 }}
+                        viewportOffset={{ x: 24, y: 630 / 2 + 24 * 2 + 106 / 2 }}
                         style={{
                             marginLeft: 0,
                             display: 'flex',
@@ -87,9 +87,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
                     right: 32,
                     display: 'flex',
                     alignItems: 'center',
+                    gap: 32,
                     justifyContent: 'space-between',
                 }}>
-                    <div>
+                    <div style={{
+                        whiteSpace: 'nowrap',
+                        textOverflow: 'ellipsis',
+                        overflow: 'hidden'
+                    }}>
                         {garden.name}
                     </div>
                     <Logotype width={220} color={'white'} />
