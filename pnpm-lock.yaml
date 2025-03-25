@@ -179,8 +179,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/storage
       '@mdxeditor/editor':
-        specifier: 3.29.0
-        version: 3.29.0(@codemirror/language@6.11.0)(@lezer/highlight@1.2.1)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(yjs@13.6.20)
+        specifier: 3.29.1
+        version: 3.29.1(@codemirror/language@6.11.0)(@lezer/highlight@1.2.1)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(yjs@13.6.20)
       '@playwright/experimental-ct-react':
         specifier: 1.51.1
         version: 1.51.1(@types/node@22.13.10)(jiti@1.21.7)(sass@1.86.0)(terser@5.37.0)(tsx@4.19.3)(vite@6.2.2(@types/node@22.13.10)(jiti@1.21.7)(sass@1.86.0)(terser@5.37.0)(tsx@4.19.3)(yaml@2.7.0))(yaml@2.7.0)
@@ -282,8 +282,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/storage
       '@mdxeditor/editor':
-        specifier: 3.29.0
-        version: 3.29.0(@codemirror/language@6.11.0)(@lezer/highlight@1.2.1)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(yjs@13.6.20)
+        specifier: 3.29.1
+        version: 3.29.1(@codemirror/language@6.11.0)(@lezer/highlight@1.2.1)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(yjs@13.6.20)
       '@playwright/experimental-ct-react':
         specifier: 1.51.1
         version: 1.51.1(@types/node@22.13.10)(jiti@1.21.7)(sass@1.86.0)(terser@5.37.0)(tsx@4.19.3)(vite@6.2.2(@types/node@22.13.10)(jiti@1.21.7)(sass@1.86.0)(terser@5.37.0)(tsx@4.19.3)(yaml@2.7.0))(yaml@2.7.0)
@@ -2390,8 +2390,8 @@ packages:
   '@marijn/find-cluster-break@1.0.2':
     resolution: {integrity: sha512-l0h88YhZFyKdXIFNfSWpyjStDjGHwZ/U7iobcK1cQQD8sejsONdQtTVU+1wVN1PBw40PiiHB1vA5S7VTfQiP9g==}
 
-  '@mdxeditor/editor@3.29.0':
-    resolution: {integrity: sha512-BjcL5FcCG7Py96YqC6NnjxKR+1rljOSCvywps6UUTkBINBgIHIZDOqCDPfaOJMW4Fz/Idksw4p4PySseT1tRvw==}
+  '@mdxeditor/editor@3.29.1':
+    resolution: {integrity: sha512-Pv4J9JveVcvswcyaYs+irsrFmm+NKSuNdF3V0NPx9mWRzb8rzNtqDSK0+H4TeiPp9wroDM66DQCSnrdEM8U5Lw==}
     engines: {node: '>=16'}
     peerDependencies:
       react: '>= 18 || >= 19'
@@ -9562,7 +9562,7 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.2': {}
 
-  '@mdxeditor/editor@3.29.0(@codemirror/language@6.11.0)(@lezer/highlight@1.2.1)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(yjs@13.6.20)':
+  '@mdxeditor/editor@3.29.1(@codemirror/language@6.11.0)(@lezer/highlight@1.2.1)(@types/react-dom@19.0.4(@types/react@19.0.12))(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(yjs@13.6.20)':
     dependencies:
       '@codemirror/lang-markdown': 6.3.2
       '@codemirror/language-data': 6.5.1
@@ -9838,7 +9838,7 @@ snapshots:
 
   '@radix-ui/primitive@1.0.0':
     dependencies:
-      '@babel/runtime': 7.26.9
+      '@babel/runtime': 7.26.10
 
   '@radix-ui/primitive@1.1.1': {}
 
@@ -9872,7 +9872,7 @@ snapshots:
 
   '@radix-ui/react-compose-refs@1.0.0(react@19.0.0)':
     dependencies:
-      '@babel/runtime': 7.26.9
+      '@babel/runtime': 7.26.10
       react: 19.0.0
 
   '@radix-ui/react-compose-refs@1.1.1(@types/react@19.0.12)(react@19.0.0)':
@@ -9883,7 +9883,7 @@ snapshots:
 
   '@radix-ui/react-context@1.0.0(react@19.0.0)':
     dependencies:
-      '@babel/runtime': 7.26.9
+      '@babel/runtime': 7.26.10
       react: 19.0.0
 
   '@radix-ui/react-context@1.1.1(@types/react@19.0.12)(react@19.0.0)':
@@ -9922,7 +9922,7 @@ snapshots:
 
   '@radix-ui/react-dismissable-layer@1.0.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@babel/runtime': 7.26.9
+      '@babel/runtime': 7.26.10
       '@radix-ui/primitive': 1.0.0
       '@radix-ui/react-compose-refs': 1.0.0(react@19.0.0)
       '@radix-ui/react-primitive': 1.0.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -9967,7 +9967,7 @@ snapshots:
 
   '@radix-ui/react-id@1.0.0(react@19.0.0)':
     dependencies:
-      '@babel/runtime': 7.26.9
+      '@babel/runtime': 7.26.10
       '@radix-ui/react-use-layout-effect': 1.0.0(react@19.0.0)
       react: 19.0.0
 
@@ -10003,7 +10003,7 @@ snapshots:
 
   '@radix-ui/react-popper@1.1.1(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@babel/runtime': 7.26.9
+      '@babel/runtime': 7.26.10
       '@floating-ui/react-dom': 0.7.2(@types/react@19.0.12)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@radix-ui/react-arrow': 1.0.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@radix-ui/react-compose-refs': 1.0.0(react@19.0.0)
@@ -10056,7 +10056,7 @@ snapshots:
 
   '@radix-ui/react-presence@1.0.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@babel/runtime': 7.26.9
+      '@babel/runtime': 7.26.10
       '@radix-ui/react-compose-refs': 1.0.0(react@19.0.0)
       '@radix-ui/react-use-layout-effect': 1.0.0(react@19.0.0)
       react: 19.0.0
@@ -10074,7 +10074,7 @@ snapshots:
 
   '@radix-ui/react-primitive@1.0.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@babel/runtime': 7.26.9
+      '@babel/runtime': 7.26.10
       '@radix-ui/react-slot': 1.0.1(react@19.0.0)
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
@@ -10174,7 +10174,7 @@ snapshots:
 
   '@radix-ui/react-slot@1.0.1(react@19.0.0)':
     dependencies:
-      '@babel/runtime': 7.26.9
+      '@babel/runtime': 7.26.10
       '@radix-ui/react-compose-refs': 1.0.0(react@19.0.0)
       react: 19.0.0
 
@@ -10279,7 +10279,7 @@ snapshots:
 
   '@radix-ui/react-use-controllable-state@1.0.0(react@19.0.0)':
     dependencies:
-      '@babel/runtime': 7.26.9
+      '@babel/runtime': 7.26.10
       '@radix-ui/react-use-callback-ref': 1.0.0(react@19.0.0)
       react: 19.0.0
 
@@ -10348,7 +10348,7 @@ snapshots:
 
   '@radix-ui/react-visually-hidden@1.0.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@babel/runtime': 7.26.9
+      '@babel/runtime': 7.26.10
       '@radix-ui/react-primitive': 1.0.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
