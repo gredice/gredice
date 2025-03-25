@@ -31,7 +31,7 @@
     "@eslint/js": "9.22.0",
     "@gredice/apidocs": "workspace:*",
     "@gredice/storage": "workspace:*",
-    "@mdxeditor/editor": "3.28.0",
+    "@mdxeditor/editor": "3.29.0",
     "@playwright/experimental-ct-react": "1.51.1",
     "@playwright/test": "1.51.1",
     "@signalco/auth-client": "0.3.0",
