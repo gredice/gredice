@@ -11,7 +11,7 @@
   "scripts": {},
   "devDependencies": {
     "@gredice/api": "workspace:*",
-    "@types/node": "22.13.14",
+    "@types/node": "22.13.15",
     "hono": "4.7.5",
     "typescript": "5.8.2"
   }
