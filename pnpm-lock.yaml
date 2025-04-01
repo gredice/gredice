@@ -749,8 +749,8 @@ importers:
         specifier: 0.10.0
         version: 0.10.0
       drizzle-kit:
-        specifier: 0.30.5
-        version: 0.30.5
+        specifier: 0.30.6
+        version: 0.30.6
       drizzle-orm:
         specifier: 0.41.0
         version: 0.41.0(@libsql/client-wasm@0.14.0)(@neondatabase/serverless@0.10.1)(@types/pg@8.11.10)(@vercel/postgres@0.10.0)(gel@2.0.0)
@@ -4745,8 +4745,8 @@ packages:
   draco3d@1.5.7:
     resolution: {integrity: sha512-m6WCKt/erDXcw+70IJXnG7M3awwQPAsZvJGX5zY7beBqpELw6RDGkYVU0W43AFxye4pDZ5i2Lbyc/NNGqwjUVQ==}
 
-  drizzle-kit@0.30.5:
-    resolution: {integrity: sha512-l6dMSE100u7sDaTbLczibrQZjA35jLsHNqIV+jmhNVO3O8jzM6kywMOmV9uOz9ZVSCMPQhAZEFjL/qDPVrqpUA==}
+  drizzle-kit@0.30.6:
+    resolution: {integrity: sha512-U4wWit0fyZuGuP7iNmRleQyK2V8wCuv57vf5l3MnG4z4fzNTjY/U13M8owyQ5RavqvqxBifWORaR3wIUzlN64g==}
     hasBin: true
 
   drizzle-orm@0.41.0:
@@ -12287,7 +12287,7 @@ snapshots:
 
   draco3d@1.5.7: {}
 
-  drizzle-kit@0.30.5:
+  drizzle-kit@0.30.6:
     dependencies:
       '@drizzle-team/brocli': 0.10.2
       '@esbuild-kit/esm-loader': 2.6.5
