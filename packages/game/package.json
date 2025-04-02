@@ -27,7 +27,7 @@
     "@types/react": "19.0.12",
     "@types/react-dom": "19.0.4",
     "@types/suncalc": "1.9.2",
-    "@types/three": "0.174.0",
+    "@types/three": "0.175.0",
     "@use-gesture/react": "10.3.1",
     "chroma-js": "3.1.2",
     "leva": "0.10.0",
