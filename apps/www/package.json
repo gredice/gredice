@@ -48,7 +48,7 @@
     "dotenv": "16.4.7",
     "eslint": "9.23.0",
     "eslint-config-next": "15.2.4",
-    "lucide-react": "0.486.0",
+    "lucide-react": "0.487.0",
     "next-axiom": "1.9.1",
     "next-sitemap": "4.2.3",
     "postcss": "8.5.3",
