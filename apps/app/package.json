@@ -17,7 +17,7 @@
   "dependencies": {
     "@azure/communication-email": "1.0.0",
     "@gredice/transactional": "workspace:*",
-    "@react-email/components": "0.0.34",
+    "@react-email/components": "0.0.35",
     "hypertune": "2.7.2",
     "next": "15.2.4",
     "react": "19.1.0",
