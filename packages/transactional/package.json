@@ -9,7 +9,7 @@
         "dev": "email dev -p 4001"
     },
     "devDependencies": {
-        "@types/node": "22.13.17",
+        "@types/node": "22.14.0",
         "@types/react": "19.1.0"
     },
     "dependencies": {
