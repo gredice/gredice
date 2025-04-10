@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "next lint",
     "dev": "next dev --turbo -p 3000",
-    "build": "next build",
+    "build": "next build --turbopack",
     "postbuild": "next-sitemap --config next-sitemap.config.cjs",
     "start": "next start",
     "test": "pnpm run /^test:.*/",
@@ -19,7 +19,7 @@
   "dependencies": {
     "@vercel/kv": "3.0.0",
     "hypertune": "2.7.2",
-    "next": "15.2.4",
+    "next": "15.3.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "server-only": "0.0.1"
@@ -43,11 +43,11 @@
     "@tanstack/react-query": "5.72.2",
     "@types/node": "22.14.0",
     "@types/react": "19.1.0",
-    "@types/react-dom": "19.1.1",
+    "@types/react-dom": "19.1.2",
     "@vercel/analytics": "1.5.0",
     "dotenv": "16.4.7",
     "eslint": "9.24.0",
-    "eslint-config-next": "15.2.4",
+    "eslint-config-next": "15.3.0",
     "lucide-react": "0.487.0",
     "next-axiom": "1.9.1",
     "next-sitemap": "4.2.3",
