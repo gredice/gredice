@@ -13,6 +13,6 @@
     "@gredice/api": "workspace:*",
     "@types/node": "22.14.0",
     "hono": "4.7.5",
-    "typescript": "5.8.2"
+    "typescript": "5.8.3"
   }
 }
