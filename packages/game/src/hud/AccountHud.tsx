@@ -92,7 +92,7 @@ function ProfileCard() {
 }
 
 export function AccountHud() {
-    const { data: currentGarden, isLoading } = useCurrentGarden();
+    const { data: currentGarden, isPending } = useCurrentGarden();
 
     return (
         <HudCard
@@ -112,7 +112,7 @@ export function AccountHud() {
                     <ProfileCard />
                 </DropdownMenu>
                 <div className="hidden md:block">
-                    {isLoading ? (
+                    {isPending ? (
                         <Skeleton className="w-32 h-7" />
                     ) : (currentGarden && (
                             <SelectItems
@@ -127,7 +127,7 @@ export function AccountHud() {
                 </div>
                 <div className="hidden md:block">
                     <Popper
-                        className="overflow-hidden"
+                        className="overflow-hidden border-tertiary border-b-4"
                         side="bottom"
                         sideOffset={12}
                         trigger={(

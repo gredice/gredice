@@ -89,7 +89,11 @@ export function WelcomeMessage() {
     const messages = messageTypes[messageType];
 
     return (
-        <Modal title={title} open={open} onOpenChange={handleOpenChange} className="max-w-screen-md">
+        <Modal
+            title={title}
+            open={open}
+            onOpenChange={handleOpenChange}
+            className="max-w-screen-md border-tertiary border-b-4">
             <div className="grid md:grid-cols-2 [grid-template-areas:'sunflower'_'content'] md:[grid-template-areas:'content_sunflower'] md:p-4 gap-4">
                 <Stack spacing={3} className="[grid-area:content]">
                     <Stack spacing={1.5}>

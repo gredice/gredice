@@ -28,7 +28,11 @@ export function SunflowersList({ limit }: { limit?: number }) {
     const { data: account } = useCurrentAccount();
     const history = account?.sunflowers.history;
     if (!history?.length) {
-        return <NoSunflowersPlaceholder />;
+        return (
+            <div className="px-2 py-4">
+                <NoSunflowersPlaceholder />
+            </div>
+        );
     }
 
     // Group similar items on a daily basis

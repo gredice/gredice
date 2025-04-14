@@ -27,7 +27,7 @@ export default function FacebookCallbackPage() {
 
     return (
         <div className="flex items-center justify-center min-h-screen">
-            <Card className="w-[350px]">
+            <Card className="w-[350px] p-12">
                 <CardHeader>
                     <svg
                         className="mx-auto size-12 text-[#1877F2]  mb-4"

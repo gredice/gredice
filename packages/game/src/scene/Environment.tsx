@@ -138,7 +138,7 @@ export function Environment({ location, noBackground, noSound, noWeather, overri
             rainLightModAmbient.stop();
             rainMediumModAmbient.stop();
         };
-    }, [timeOfDay, weather, overrideWeather]);
+    }, [timeOfDay, weather, overrideWeather, noSound]);
 
     useEffect(() => {
         const {

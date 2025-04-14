@@ -19,9 +19,9 @@ function SunflowersCard() {
             <Row className="bg-background px-4 py-1" justifyContent="space-between">
                 <Typography level="body3" bold>Suncokreti</Typography>
                 <Popper
-                    className="min-w-80"
+                    className="min-w-80 border-tertiary border-b-4"
                     trigger={(
-                        <IconButton title="Šta su suncokreti?" variant="plain" size="sm">
+                        <IconButton title="Što su suncokreti?" variant="plain" size="sm">
                             <Info className="size-4" />
                         </IconButton>
                     )}>
@@ -49,21 +49,22 @@ function SunflowersCard() {
 }
 
 function SunflowersAmount() {
-    const { data: account, isLoading } = useCurrentAccount();
+    const { data: account, isPending } = useCurrentAccount();
     const sunflowerCount = account?.sunflowers.amount;
 
-    if (isLoading) {
+    if (isPending) {
         return null;
     }
 
     return (
         <Popper
-            className="overflow-hidden"
+            className="overflow-hidden border-tertiary border-b-4"
             side="bottom"
             sideOffset={12}
             trigger={(
                 <Button
                     variant="plain"
+                    title="Suncokreti"
                     startDecorator={<img src="https://cdn.gredice.com/sunflower-large.svg" alt="Suncokret" className="size-6" />}
                     className="rounded-full px-2 md:min-w-20 justify-between pr-4" size="sm">
                     <Typography level="body2" className="text-base pl-0.5">{sunflowerCount}</Typography>
