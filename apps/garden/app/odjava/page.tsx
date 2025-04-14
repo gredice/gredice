@@ -18,7 +18,7 @@ export default function LogoutPage() {
 
     return (
         <div className="flex items-center justify-center min-h-screen">
-            <Card className="min-w-[350px]">
+            <Card className="min-w-[350px] p-12">
                 <CardHeader>
                     <Image
                         src="https://www.gredice.com/web-app-manifest-192x192.png"

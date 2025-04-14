@@ -14,9 +14,13 @@ export function GardenDisplay({ noBackground, noWeather, noSound, mockGarden }: 
     const weather = useGameState(state => state.weather);
 
     const { data: garden } = useCurrentGarden(mockGarden);
-    if (!garden) {
-        return null;
-    }
+    const location = garden ? {
+        lat: garden.location.lat ?? 0,
+        lon: garden.location.lon ?? 0
+    } : {
+        lat: 45.739,
+        lon: 16.572
+    };
 
     return (
         <>
@@ -25,9 +29,9 @@ export function GardenDisplay({ noBackground, noWeather, noSound, mockGarden }: 
                 noWeather={noWeather}
                 overrideWeather={weather}
                 noSound={noSound}
-                location={{ lat: garden.location.lat, lon: garden.location.lon }} />
+                location={location} />
             <group>
-                {garden.stacks.map((stack) =>
+                {garden?.stacks.map((stack) =>
                     stack.blocks?.map((block, i) => (
                         <EntityFactory
                             key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}

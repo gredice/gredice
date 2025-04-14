@@ -51,11 +51,11 @@ export function GameScene({
     ...rest
 }: GameSceneProps) {
     const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
-    const { isLoading } = useCurrentGarden(mockGarden);
+    const { isPending } = useCurrentGarden(mockGarden);
     useGameTimeManager(freezeTime);
     useThemeManager();
 
-    if (isLoading) {
+    if (isPending) {
         return (
             <GardenLoadingIndicator {...rest} />
         );

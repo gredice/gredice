@@ -44,7 +44,7 @@ export function VerifyEmail() {
     if (error) {
         return (
             <Stack spacing={3}>
-                <Row spacing={1} justifyContent='center' className="text-red-500">
+                <Row spacing={2} justifyContent='center' className="text-red-500">
                     <TriangleAlert className="size-6 min-w-6" />
                     <Typography>Neuspješna potvrda email adrese. Pokušaj ponovno.</Typography>
                 </Row>

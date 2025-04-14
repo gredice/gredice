@@ -30,10 +30,10 @@ export function WeatherHud() {
                 <Popper
                     side="bottom"
                     sideOffset={12}
-                    className="overflow-hidden"
+                    className="overflow-hidden border-tertiary border-b-4"
                     trigger={(
                         <Button
-                            aria-label="Trenutno vrijeme"
+                            title="Trenutno vrijeme"
                             variant="plain"
                             className="rounded-full px-2 justify-between pr-4 md:pr-2" size="sm">
                             <Row>
@@ -49,10 +49,10 @@ export function WeatherHud() {
                     <Popper
                         side="bottom"
                         sideOffset={12}
-                        className="overflow-hidden"
+                        className="overflow-hidden border-tertiary border-b-4"
                         trigger={(
                             <Button
-                                aria-label="Prognoza vremena"
+                                title="Prognoza vremena"
                                 variant="plain"
                                 className="rounded-full px-2 justify-between pr-4 md:pr-2 hidden md:flex" size="sm">
                                 <Row spacing={1}>

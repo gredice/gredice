@@ -221,7 +221,7 @@ function EntityItem({ name }: HudItemEntity) {
                 open={open}
                 sideOffset={12}
                 onOpenChange={(open) => setOpen(open)}
-                className="w-fit p-2 max-w-xs md:w-80"
+                className="w-fit p-2 max-w-xs md:w-80 border-tertiary border-b-4"
                 trigger={(
                     <IconButton
                         aria-label={block.information.label}
@@ -257,7 +257,7 @@ function EntityItem({ name }: HudItemEntity) {
 function PickerItem({ label, items, imageSrc }: HudItemPicker) {
     return (
         <Popper
-            className="w-fit overflow-hidden"
+            className="w-fit overflow-hidden border-tertiary border-b-4"
             sideOffset={12}
             trigger={(
                 <IconButton aria-label={label} size='lg' className="size-16" variant="plain">

@@ -3,24 +3,9 @@ import { client } from '@gredice/client';
 import { Stack } from "../types/Stack";
 import { Vector3 } from "three";
 import { Garden } from "../types/Garden";
+import { useGardens, useGardensKeys } from "./useGardens";
 
-const gardensKeys = ['gardens'];
-export const currentGardenKeys = ['gardens', 'current'];
-
-function useGardens(disabled?: boolean) {
-    return useQuery({
-        queryKey: gardensKeys,
-        queryFn: async () => {
-            const resp = await client().api.gardens.$get();
-            if (resp.status === 401)
-                return null;
-
-            return resp.json();
-        },
-        enabled: !disabled,
-        staleTime: 1000 * 60 * 60 // 1h
-    });
-}
+export const currentGardenKeys = [...useGardensKeys, 'current'];
 
 function mockGarden(): Garden {
     return {
@@ -172,28 +157,36 @@ export function useCurrentGarden(mock?: boolean): UseQueryResult<Garden> {
     return useQuery({
         queryKey: currentGardenKeys,
         queryFn: async () => {
-            console.log('loading gardens');
-
             if (mock) {
                 console.debug("Using mock garden data");
                 return mockGarden();
             }
 
-            if (!gardens || gardens.length <= 0) {
-                throw new Error('No gardens found');
+            if (!gardens) {
+                console.error("Failed to load gardens.");
+                throw new Error('Failed to load gardens');
             }
 
-            const currentGardenId = gardens[0].id;
+            if (gardens.length <= 0) {
+                console.error("No gardens found. Number of available gardens:", gardens?.length);
+                return null;
+            }
+
+            // Make first garden the current one
+            // TODO: Change this to use stored garden ID when multiple gardens are supported
+            const currentGardenId = gardens[0].id; 
             const currentGardenResponse = await client().api.gardens[":gardenId"].$get({
                 param: {
                     gardenId: currentGardenId.toString()
                 }
             });
             if (currentGardenResponse.status !== 200) {
+                console.error("Failed to fetch current garden", currentGardenResponse.status, currentGardenResponse.statusText);
                 throw new Error('Failed to fetch current garden');
             }
             const garden = await currentGardenResponse.json();
 
+            // Transform garden stacks from flat list to nested
             const rootStacks = garden.stacks ?? [];
             const stacks: Stack[] = [];
 
