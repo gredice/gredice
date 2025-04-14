@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createGardenBlock, createGardenStack, deleteGardenStack, getAccountGardens, getEntitiesFormatted, getGarden, getGardenBlocks, getGardenStack, spendSunflowers, updateGardenBlock, updateGardenStack } from '@gredice/storage';
+import { createGardenBlock, createGardenStack, deleteGardenBlock, deleteGardenStack, earnSunflowers, getAccountGardens, getEntitiesFormatted, getGarden, getGardenBlock, getGardenBlocks, getGardenStack, spendSunflowers, updateGardenBlock, updateGardenStack } from '@gredice/storage';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from 'zod';
 import { describeRoute } from 'hono-openapi';
@@ -501,6 +501,62 @@ const app = new Hono<{ Variables: AuthVariables }>()
             });
 
             return context.json(null, 200);
-        });
+        })
+    .delete(
+        '/:gardenId/blocks/:blockId',
+        describeRoute({
+            description: 'Delete a block in a garden.',
+            summary: 'Recycles the block by default and refunds the sunflowers.'
+        }),
+        zValidator(
+            "param",
+            z.object({
+                gardenId: z.string(),
+                blockId: z.string(),
+            })
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, blockId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId);
+            if (isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            // Check garden exists and is owned by user
+            const { accountId } = context.get('authContext');
+            const [garden, block, blocksData] = await Promise.all([
+                getGarden(gardenIdNumber),
+                getGardenBlock(gardenIdNumber, blockId),
+                getBlockData()
+            ]);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({
+                    error: 'Garden not found'
+                }, 404);
+            }
+            if (!block) {
+                return context.json({ error: 'Block not found' }, 404);
+            }
+            // Retrieve block price
+            const blockData = blocksData.find(bd => bd.information.name === block.name);
+            if (!blockData) {
+                return context.json({ error: 'Requested block not found' }, 400);
+            }
+            const price = blockData.prices.sunflowers ?? 0;
+            if (price <= 0) {
+                return context.json({ error: 'Requested block not for sale' }, 400);
+            }
+
+            // Delete block and refund sunflowers
+            // TODO: Remove block from stack
+            await Promise.all([
+                deleteGardenBlock(gardenIdNumber, blockId),
+                earnSunflowers(garden.accountId, price, `block:${blockData.information.name}`)
+            ]);
+
+            return context.json(null, 200);
+        }
+    );
 
 export default app;
