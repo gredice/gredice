@@ -24,7 +24,7 @@ function FactCard({ header, value, href }: { header: string, value: string | num
 function DashboardDivider({ children }: PropsWithChildren) {
     return (
         <div className="relative text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
-            <span className="relative z-10 bg-muted px-2 text-muted-foreground">
+            <span className="relative z-10 bg-white px-2 text-muted-foreground">
                 {children}
             </span>
         </div>
