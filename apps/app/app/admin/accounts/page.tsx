@@ -1,5 +1,5 @@
 import { getAccounts } from "@gredice/storage";
-import { Card, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
+import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { Table } from "@signalco/ui-primitives/Table";
 import { auth } from "../../../lib/auth/auth";
