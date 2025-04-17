@@ -35,6 +35,7 @@ export const knownEvents = {
         renamedV1: (aggregateId: string, data: { name: string }) => ({ type: knownEventTypes.gardens.rename, version: 1, aggregateId, data }),
         deletedV1: (aggregateId: string) => ({ type: knownEventTypes.gardens.delete, version: 1, aggregateId }),
         blockPlacedV1: (aggregateId: string, data: { id: string, name: string }) => ({ type: knownEventTypes.gardens.blockPlace, version: 1, aggregateId, data }),
+        blockRemovedV1: (aggregateId: string, data: { id: string }) => ({ type: knownEventTypes.gardens.blockPlace, version: 1, aggregateId, data }),
     },
 }
 
