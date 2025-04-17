@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
-import { getAccountGardens, getAccountUsers } from "@gredice/storage";
+import { getAccountGardens } from "@gredice/storage";
 import Link from "next/link";
 import { KnownPages } from "../../../../src/KnownPages";
 import { Table } from "@signalco/ui-primitives/Table";
