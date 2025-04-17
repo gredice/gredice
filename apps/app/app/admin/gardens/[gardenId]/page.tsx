@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
+import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
 import { getGarden } from "@gredice/storage";
@@ -7,15 +7,16 @@ import { auth } from "../../../../lib/auth/auth";
 import { Field } from "../../../../components/shared/fields/Field";
 import { FieldSet } from "../../../../components/shared/fields/FieldSet";
 import { Typography } from "@signalco/ui-primitives/Typography";
+import Link from "next/link";
 
 function GardenPreviewCard({ gardenId }: { gardenId: number }) {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Pregled</CardTitle>
-            </CardHeader>
-            <CardOverflow className="pb-4">
-
+        <Card className="overflow-hidden">
+            <CardOverflow>
+                <img
+                    src={`http://vrt.gredice.com/vrtovi/${gardenId}/opengraph-image?fullscreen=true`}
+                    alt="Vrt"
+                    className="w-full h-auto" />
             </CardOverflow>
         </Card>
     );
@@ -40,7 +41,7 @@ export default async function GardenPage({ params }: { params: Promise<{ gardenI
                     <FieldSet>
                         <Field name="ID vrta" value={garden?.id} mono />
                         <Field name="Naziv" value={garden?.name} />
-                        <Field name="Račun" value={garden?.accountId} mono />
+                        <Field name="Račun" value={(<Link href={garden?.accountId ? KnownPages.Account(garden.accountId) : '#'}>{garden?.accountId}</Link>)} mono />
                         <Field name="Obrisan" value={garden?.isDeleted} />
                     </FieldSet>
                     <FieldSet>
