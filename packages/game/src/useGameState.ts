@@ -71,8 +71,8 @@ export type GameState = {
 };
 
 const now = new Date();
-const defaultPosition = { lat: 45.739, lon: 16.572 };
-export const useGameState = create<GameState>((set, get) => ({
+const defaultLocation = { lat: 45.739, lon: 16.572 };
+export const useGameState = create<GameState>((set) => ({
     appBaseUrl: '',
     audio: {
         ambient: audioMixer(audioConfig().config.ambientVolume * audioConfig().config.masterVolume, audioConfig().config.ambientIsMuted),
@@ -80,9 +80,9 @@ export const useGameState = create<GameState>((set, get) => ({
     },
     freezeTime: null,
     currentTime: now,
-    timeOfDay: getTimeOfDay(defaultPosition, now),
-    sunriseTime: getSunriseSunset(defaultPosition, now).sunrise,
-    sunsetTime: getSunriseSunset(defaultPosition, now).sunset,
+    timeOfDay: getTimeOfDay(defaultLocation, now),
+    sunriseTime: getSunriseSunset(defaultLocation, now).sunrise,
+    sunsetTime: getSunriseSunset(defaultLocation, now).sunset,
     isDragging: false,
     orbitControls: null,
     setOrbitControls: (ref) => set({ orbitControls: ref }),
@@ -93,9 +93,9 @@ export const useGameState = create<GameState>((set, get) => ({
     setInitial: (appBaseUrl, freezeTime) => set({ appBaseUrl, freezeTime }),
     setCurrentTime: (currentTime) => set(({
         currentTime,
-        timeOfDay: getTimeOfDay(defaultPosition, currentTime),
-        sunriseTime: getSunriseSunset(defaultPosition, currentTime).sunrise,
-        sunsetTime: getSunriseSunset(defaultPosition, currentTime).sunset
+        timeOfDay: getTimeOfDay(defaultLocation, currentTime),
+        sunriseTime: getSunriseSunset(defaultLocation, currentTime).sunrise,
+        sunsetTime: getSunriseSunset(defaultLocation, currentTime).sunset
     })),
     setWeather: (weather) => set(({ weather }))
 }));

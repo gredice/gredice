@@ -65,13 +65,14 @@ export async function getGardenBlocks(gardenId: number) {
     });
 }
 
-export async function updateGardenBlock({ id, ...values }: UpdateGardenBlock) {
-    await storage
-        .update(gardenBlocks)
-        .set({
-            ...values
-        })
-        .where(eq(gardenBlocks.id, id));
+export async function getGardenBlock(gardenId: number, blockId: string) {
+    return storage.query.gardenBlocks.findFirst({
+        where: and(
+            eq(gardenBlocks.gardenId, gardenId),
+            eq(gardenBlocks.id, blockId),
+            eq(gardenBlocks.isDeleted, false)
+        )
+    });
 }
 
 export async function createGardenBlock(gardenId: number, blockName: string) {
@@ -87,6 +88,28 @@ export async function createGardenBlock(gardenId: number, blockName: string) {
     ]);
 
     return blockId;
+}
+
+export async function updateGardenBlock({ id, ...values }: UpdateGardenBlock) {
+    await storage
+        .update(gardenBlocks)
+        .set({
+            ...values
+        })
+        .where(eq(gardenBlocks.id, id));
+}
+
+export async function deleteGardenBlock(gardenId: number, blockId: string) {
+    await storage
+        .update(gardenBlocks)
+        .set({ isDeleted: true })
+        .where(
+            and(
+                eq(gardenBlocks.gardenId, gardenId),
+                eq(gardenBlocks.id, blockId)
+            )
+        );
+    await createEvent(knownEvents.gardens.blockRemovedV1(gardenId.toString(), { id: blockId }));
 }
 
 export async function getGardenStacks(gardenId: number) {

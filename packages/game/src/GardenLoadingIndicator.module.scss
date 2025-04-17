@@ -1,6 +1,7 @@
+@use "sass:color";
 $color: #a4b453;
-$colorRight: #939f4a;
-$colorLeft: #9eaa4f;
+$colorRight: color.adjust($color, $lightness: -10%);
+$colorLeft: color.adjust($color, $lightness: -5%);
 $shadow: rgba(123, 159, 110, 0.154);
 
 .boxes {

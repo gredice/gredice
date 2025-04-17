@@ -38,7 +38,7 @@ export function OverviewModal() {
         <Modal
             open={Boolean(settingsMode)}
             onOpenChange={handleOpenChange}
-            className="min-w-full lg:min-w-[80%] xl:min-w-[60%] min-h-[70%] max-h-full overflow-y-auto h-full md:h-auto p-0"
+            className="min-w-full lg:min-w-[80%] xl:min-w-[60%] min-h-[70%] max-h-full overflow-y-auto h-full md:h-auto p-0 border-tertiary border-b-4"
             title="Profil">
             <div className="grid grid-rows-[auto_1fr] md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr]">
                 <Stack spacing={2} className="md:border-r p-6 md:pr-0">

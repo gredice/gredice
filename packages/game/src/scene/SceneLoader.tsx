@@ -6,14 +6,14 @@ import { useBlockData } from "../hooks/useBlockData";
 
 export function SceneLoader({ children, appBaseUrl, freezeTime }: PropsWithChildren<{ appBaseUrl?: string; freezeTime?: Date | null; }>) {
     const setInitial = useGameState((state) => state.setInitial);
-    const { data, isLoading } = useBlockData();
+    const { data, isPending } = useBlockData();
     useEffect(() => {
-        if (!isLoading && data) {
+        if (!isPending && data) {
             setInitial(appBaseUrl ?? '', freezeTime);
         }
-    }, [data, isLoading, appBaseUrl]);
+    }, [data, isPending, appBaseUrl]);
 
-    if (isLoading) {
+    if (isPending) {
         return null;
     }
 
