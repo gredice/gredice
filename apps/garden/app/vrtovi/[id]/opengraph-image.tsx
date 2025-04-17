@@ -1,9 +1,7 @@
 import { ImageResponse } from 'next/og'
-import { GardenDisplay2D } from '../../../../components/GardenDisplay2D'
-import { Logotype } from '../../../../components/Logotype';
+import { GardenDisplay2D } from '../../../components/GardenDisplay2D'
+import { Logotype } from '../../../components/Logotype';
 import { client } from '@gredice/client';
-
-export const dynamic = 'force-dynamic';
 
 type BlockData = {
     id: string,
@@ -22,7 +20,15 @@ type BlockData = {
     }
 }
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const size = {
+    width: 1200,
+    height: 630,
+};
+export const dynamic = 'force-dynamic';
+export const contentType = 'image/png';
+export const maxDuration = 10;
+
+export default async function GardenOgImage({ params }: { params: Promise<{ id: string }> }) {
     const { id: gardenId } = await params;
     if (!gardenId) {
         return new Response('Garden ID is required', { status: 400 });
