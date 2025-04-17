@@ -1,4 +1,4 @@
-import { HTMLAttributes, useLayoutEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { useTheme } from 'next-themes';
 import { useGameState } from '../useGameState';
 
