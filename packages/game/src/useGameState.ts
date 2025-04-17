@@ -41,6 +41,8 @@ export function getTimeOfDay({ lat, lon }: Garden['location'], currentTime: Date
     }
 }
 
+type GameMode = 'normal' | 'edit';
+
 export type GameState = {
     // General
     appBaseUrl: string,
@@ -55,6 +57,10 @@ export type GameState = {
     sunriseTime: Date | null,
     setInitial: (appBaseUrl: string, freezeTime?: Date | null) => void,
     setCurrentTime: (currentTime: Date) => void,
+
+    // Game
+    mode: GameMode;
+    setMode: (mode: GameMode) => void,
 
     // Debug (overrides)
     weather?: { cloudy: number, rainy: number, snowy: number, foggy: number },
@@ -83,6 +89,8 @@ export const useGameState = create<GameState>((set) => ({
     timeOfDay: getTimeOfDay(defaultLocation, now),
     sunriseTime: getSunriseSunset(defaultLocation, now).sunrise,
     sunsetTime: getSunriseSunset(defaultLocation, now).sunset,
+    mode: 'normal',
+    setMode: (mode) => set({ mode }),
     isDragging: false,
     orbitControls: null,
     setOrbitControls: (ref) => set({ orbitControls: ref }),
