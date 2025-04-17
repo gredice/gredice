@@ -1,4 +1,4 @@
-import { Card, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
+import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import { Row } from "@signalco/ui-primitives/Row";
 import { getEntityTypeByName } from "@gredice/storage";
 import { EntitiesTable } from "./EntitiesTable";
