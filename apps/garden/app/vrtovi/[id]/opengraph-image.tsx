@@ -53,7 +53,7 @@ export default async function GardenOgImage({ params }: { params: Promise<{ id: 
             <div
                 style={{
                     fontSize: 36,
-                    background: '#2E6F40',
+                    background: '#fefaf6',
                     color: 'white',
                     width: '100%',
                     height: '100%',
@@ -68,11 +68,11 @@ export default async function GardenOgImage({ params }: { params: Promise<{ id: 
                     top: 24,
                     bottom: 106,
                     display: 'flex',
-                    border: '1px solid #f0e9e2',
+                    border: '1px solid #2a1c0f26',
                     background: '#E7E2CC',
                     borderRadius: 32,
                     overflow: 'hidden',
-                    boxShadow: '0px 18px 32px 0px rgba(0,0,0,0.2)'
+                    boxShadow: '0px 10px 24px 0px rgba(0,0,0,0.1)'
                 }}>
                     <GardenDisplay2D
                         garden={garden}
@@ -99,11 +99,12 @@ export default async function GardenOgImage({ params }: { params: Promise<{ id: 
                     <div style={{
                         whiteSpace: 'nowrap',
                         textOverflow: 'ellipsis',
-                        overflow: 'hidden'
+                        overflow: 'hidden',
+                        color: '#2E6F40',
                     }}>
                         {garden.name}
                     </div>
-                    <Logotype width={220} color={'white'} />
+                    <Logotype width={220} color={'#2E6F40'} />
                 </div>
             </div>
         ),

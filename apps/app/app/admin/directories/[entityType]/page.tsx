@@ -10,6 +10,8 @@ import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { BookA } from "lucide-react";
 import { KnownPages } from "../../../../src/KnownPages";
 import { auth } from "../../../../lib/auth/auth";
+import { Typography } from "@signalco/ui-primitives/Typography";
+import { Stack } from "@signalco/ui-primitives/Stack";
 
 export const dynamic = 'force-dynamic';
 
@@ -20,10 +22,9 @@ export default async function EntitiesPage({ params }: { params: Promise<{ entit
     const createEntityBound = createEntity.bind(null, entityTypeName);
 
     return (
-        <Card>
-            <CardHeader>
+        <Stack spacing={2}>
                 <Row spacing={1} justifyContent="space-between">
-                    <CardTitle>{entityType?.label}</CardTitle>
+                <Typography level="h1" className="text-2xl" semiBold>{entityType?.label}</Typography>
                     <Row>
                         <Link href={KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName)} passHref legacyBehavior>
                             <IconButton variant="plain" title="Atributi">
@@ -38,10 +39,11 @@ export default async function EntitiesPage({ params }: { params: Promise<{ entit
                         </ServerActionIconButton>
                     </Row>
                 </Row>
-            </CardHeader>
+            <Card>
             <CardOverflow>
                 <EntitiesTable entityTypeName={entityTypeName} />
             </CardOverflow>
-        </Card>
+            </Card>
+        </Stack>
     );
 }

@@ -7,10 +7,10 @@ import { handleEntityDelete } from '../../../../(actions)/entityActions';
 import { notFound } from 'next/navigation';
 import { EntityStateSelect } from './EntityStateSelect';
 import { Row } from '@signalco/ui-primitives/Row';
-import { Card, CardContent, CardHeader, CardTitle } from '@signalco/ui-primitives/Card';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { KnownPages } from '../../../../../src/KnownPages';
 import { entityDisplayName } from '../../../../../src/entities/entityAttributes';
+import { Stack } from '@signalco/ui-primitives/Stack';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,45 +29,39 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
 
     return (
         <Tabs defaultValue={attributeCategories.at(0)?.name}>
-            <Card>
-                <CardHeader>
-                    <div className='flex flex-row justify-between items-center'>
-                        <CardTitle>
-                            <Breadcrumbs items={[
-                                { label: entity.entityType.label, href: KnownPages.DirectoryEntityType(params.entityType) },
-                                { label: entityDisplayName(entity) },
-                            ]} />
-                        </CardTitle>
-                        <TabsList>
-                            {attributeCategories.map((category) => (
-                                <TabsTrigger key={category.name} value={category.name}>
-                                    {category.label}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                        <Row className='self-end' spacing={1}>
-                            <EntityStateSelect entity={entity} />
-                            <ServerActionIconButton
-                                title='Obriši'
-                                onClick={entityDeleteBound}
-                                variant='plain'>
-                                <Delete />
-                            </ServerActionIconButton>
-                        </Row>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {attributeCategories.map((category) => (
-                        <TabsContent value={category.name} key={category.name}>
-                            <AttributeCategoryDetails
-                                entity={entity}
-                                category={category}
-                                attributeDefinitions={attributeDefinitions}
-                            />
-                        </TabsContent>
-                    ))}
-                </CardContent>
-            </Card>
+            <Stack spacing={2}>
+                <div className='flex flex-row justify-between items-center'>
+                    <Breadcrumbs items={[
+                        { label: entity.entityType.label, href: KnownPages.DirectoryEntityType(params.entityType) },
+                        { label: entityDisplayName(entity) },
+                    ]} />
+                    <TabsList>
+                        {attributeCategories.map((category) => (
+                            <TabsTrigger key={category.name} value={category.name}>
+                                {category.label}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+                    <Row className='self-end' spacing={1}>
+                        <EntityStateSelect entity={entity} />
+                        <ServerActionIconButton
+                            title='Obriši'
+                            onClick={entityDeleteBound}
+                            variant='plain'>
+                            <Delete />
+                        </ServerActionIconButton>
+                    </Row>
+                </div>
+                {attributeCategories.map((category) => (
+                    <TabsContent value={category.name} key={category.name}>
+                        <AttributeCategoryDetails
+                            entity={entity}
+                            category={category}
+                            attributeDefinitions={attributeDefinitions}
+                        />
+                    </TabsContent>
+                ))}
+            </Stack>
         </Tabs>
     );
 }
