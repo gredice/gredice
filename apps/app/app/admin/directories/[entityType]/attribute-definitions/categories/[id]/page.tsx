@@ -2,9 +2,9 @@ import { getAttributeDefinitionCategories, getEntityTypeByName } from "@gredice/
 import { Row } from "@signalco/ui-primitives/Row";
 import { notFound } from "next/navigation";
 import { FormInput } from "./Form";
-import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
 import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
 import { KnownPages } from "../../../../../../../src/KnownPages";
+import { Stack } from "@signalco/ui-primitives/Stack";
 
 export default async function AttributeDefinitionCategoryDetailsPage({ params }: { params: Promise<{ entityType: string, id: string }> }) {
     const { entityType: entityTypeName, id: idString } = await params;
@@ -26,25 +26,19 @@ export default async function AttributeDefinitionCategoryDetailsPage({ params }:
     } = category;
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>
-                    <Breadcrumbs items={[
-                        { label: entityType.label, href: KnownPages.DirectoryEntityType(entityTypeName) },
-                        { label: "Atributi", href: KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName) },
-                        { label: "Kategorije" },
-                        { label: label },
-                    ]} />
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <form>
-                    <Row spacing={2}>
-                        <FormInput category={category} name="label" label="Naziv" value={label} />
-                        <FormInput category={category} name="name" label="Oznaka" value={name} />
-                    </Row>
-                </form>
-            </CardContent>
-        </Card>
+        <Stack spacing={2}>
+            <Breadcrumbs items={[
+                { label: entityType.label, href: KnownPages.DirectoryEntityType(entityTypeName) },
+                { label: "Atributi", href: KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName) },
+                { label: "Kategorije" },
+                { label: label },
+            ]} />
+            <form>
+                <Row spacing={2}>
+                    <FormInput category={category} name="label" label="Naziv" value={label} />
+                    <FormInput category={category} name="name" label="Oznaka" value={name} />
+                </Row>
+            </form>
+        </Stack>
     );
 }

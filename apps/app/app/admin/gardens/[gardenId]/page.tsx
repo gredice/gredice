@@ -6,7 +6,6 @@ import { KnownPages } from "../../../../src/KnownPages";
 import { auth } from "../../../../lib/auth/auth";
 import { Field } from "../../../../components/shared/fields/Field";
 import { FieldSet } from "../../../../components/shared/fields/FieldSet";
-import { Typography } from "@signalco/ui-primitives/Typography";
 import Link from "next/link";
 
 function GardenPreviewCard({ gardenId }: { gardenId: number }) {
@@ -14,7 +13,7 @@ function GardenPreviewCard({ gardenId }: { gardenId: number }) {
         <Card className="overflow-hidden">
             <CardOverflow>
                 <img
-                    src={`http://vrt.gredice.com/vrtovi/${gardenId}/opengraph-image?fullscreen=true`}
+                    src={`http://localhost:3001/vrtovi/${gardenId}/opengraph-image?fullscreen=true`}
                     alt="Vrt"
                     className="w-full h-auto" />
             </CardOverflow>
@@ -30,13 +29,10 @@ export default async function GardenPage({ params }: { params: Promise<{ gardenI
     return (
         <Stack spacing={4}>
             <Stack spacing={2}>
-                <Stack spacing={2}>
-                    <Breadcrumbs items={[
-                        { label: 'Vrtovi', href: KnownPages.Gardens },
-                        { label: garden?.name }
-                    ]} />
-                    <Typography level="h1" className="text-2xl" semiBold>Vrt</Typography>
-                </Stack>
+                <Breadcrumbs items={[
+                    { label: 'Vrtovi', href: KnownPages.Gardens },
+                    { label: garden?.name }
+                ]} />
                 <Stack spacing={2}>
                     <FieldSet>
                         <Field name="ID vrta" value={garden?.id} mono />

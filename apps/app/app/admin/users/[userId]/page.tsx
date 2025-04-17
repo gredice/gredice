@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
+import { Card, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
 import { getUser, getUserWithLogins } from "@gredice/storage";
@@ -36,34 +36,27 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
     } = user;
 
     return (
-        <Stack spacing={2}>
-            <Card>
-                <CardHeader>
-                    <Stack spacing={2}>
-                        <Breadcrumbs items={[
-                            { label: 'Korisnici', href: KnownPages.Users },
-                            { label: user.userName }
-                        ]} />
-                        <Row justifyContent="space-between">
-                            <CardTitle>Korisnik {user.userName}</CardTitle>
-                            <ButtonImpersonateUser userId={user.id} />
-                        </Row>
-                    </Stack>
-                </CardHeader>
-                <CardContent>
-                    <Stack spacing={2}>
-                        <FieldSet>
-                            <Field name="ID korisnika" value={id} mono />
-                            <Field name="Korisničko ime" value={userName} />
-                            <Field name="Uloga" value={<SelectUserRole user={user} />} />
-                        </FieldSet>
-                        <FieldSet>
-                            <Field name="Datum kreiranja" value={<LocaleDateTime>{createdAt}</LocaleDateTime>} />
-                            <Field name="Datum ažuriranja" value={<LocaleDateTime>{updatedAt}</LocaleDateTime>} />
-                        </FieldSet>
-                    </Stack>
-                </CardContent>
-            </Card>
+        <Stack spacing={4}>
+            <Stack spacing={2}>
+                <Row spacing={2} justifyContent="space-between">
+                    <Breadcrumbs items={[
+                        { label: 'Korisnici', href: KnownPages.Users },
+                        { label: user.userName }
+                    ]} />
+                    <ButtonImpersonateUser userId={user.id} />
+                </Row>
+                <Stack spacing={2}>
+                    <FieldSet>
+                        <Field name="ID korisnika" value={id} mono />
+                        <Field name="Korisničko ime" value={userName} />
+                        <Field name="Uloga" value={<SelectUserRole user={user} />} />
+                    </FieldSet>
+                    <FieldSet>
+                        <Field name="Datum kreiranja" value={<LocaleDateTime>{createdAt}</LocaleDateTime>} />
+                        <Field name="Datum ažuriranja" value={<LocaleDateTime>{updatedAt}</LocaleDateTime>} />
+                    </FieldSet>
+                </Stack>
+            </Stack>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <Card>
                     <CardHeader>
