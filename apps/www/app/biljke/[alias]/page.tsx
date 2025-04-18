@@ -18,6 +18,7 @@ import { PlantInstruction } from "./PlantingInstructions";
 import { PlantAttributes } from "./PlantAttributes";
 import { InformationSection } from "./InformationSection";
 import { VerifiedInformationBadge } from "./VerifiedInformationBadge";
+import { PlantImage } from "../../../components/plants/PlantImage";
 
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true;
@@ -110,12 +111,7 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                 ]} />
                 <PageHeader
                     visual={(
-                        <Image
-                            src={plant.image?.cover?.url ?? '/assets/plants/placeholder.png'}
-                            alt={plant.information.name}
-                            width={142}
-                            height={142}
-                            priority />
+                        <PlantImage plant={plant} priority width={142} height={142} />
                     )}
                     header={plant.information.name}
                     alternativeName={plant.information.latinName ? `lat. ${plant.information.latinName}` : null}
