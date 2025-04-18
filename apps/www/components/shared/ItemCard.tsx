@@ -4,14 +4,14 @@ import { PropsWithChildren } from "react";
 
 export function ItemCard({ children, label, href }: PropsWithChildren<{ label: string, href: string }>) {
     return (
-        <Link href={href || ''} passHref legacyBehavior>
+        <Link href={href || ''} passHref prefetch>
             <Card className="overflow-hidden">
-                <CardOverflow className="p-6 aspect-square">
+                <CardOverflow className="p-2 sm:p-4 md:p-6 aspect-square">
                     <div className="relative size-full">
                         {children}
                     </div>
                 </CardOverflow>
-                <CardHeader className="bg-muted/60 border-t -m-2 px-2 py-2 text-center">{label}</CardHeader>
+                <CardHeader className="bg-muted/60 border-t -m-2 p-2 text-center">{label}</CardHeader>
             </Card>
         </Link>
     );

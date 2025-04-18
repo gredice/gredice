@@ -16,7 +16,7 @@ export function PlantsGallery({ plants }: { plants: PlantData[] }) {
     return (
         <>
             {filteredPlants.length === 0 && (
-                <Typography level="body2">Nema rezultata pretrage.</Typography>
+                <Typography level="body2" className="py-8 text-center">Nema rezultata pretrage.</Typography>
             )}
             <Gallery gridHeader="" items={filteredPlants} itemComponent={PlantsGalleryItem} />
         </>

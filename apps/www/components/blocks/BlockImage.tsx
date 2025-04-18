@@ -4,7 +4,8 @@ export function BlockImage({ blockName, ...rest }: Omit<ImageProps, 'src' | 'alt
     return (
         <Image
             src={`/assets/blocks/${blockName}.png`}
-            alt={blockName}
+            alt={`Slika ${blockName}`}
+            quality={90}
             {...rest}
         />
     );

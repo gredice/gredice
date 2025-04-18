@@ -13,7 +13,7 @@ function GardenPreviewCard({ gardenId }: { gardenId: number }) {
         <Card className="overflow-hidden">
             <CardOverflow>
                 <img
-                    src={`http://localhost:3001/vrtovi/${gardenId}/opengraph-image?fullscreen=true`}
+                    src={`https://vrt.gredice.com/vrtovi/${gardenId}/opengraph-image?fullscreen=true`}
                     alt="Vrt"
                     className="w-full h-auto" />
             </CardOverflow>
