@@ -7,9 +7,8 @@ import { Perf } from 'r3f-perf'
 import { useWeatherNow } from "../hooks/useWeatherNow";
 
 export function DebugHud() {
-    const { stats, grid } = useControls({
+    const { stats } = useControls({
         stats: { value: false, label: "Show stats" },
-        grid: { value: false, label: "Show grid" },
     });
 
     const gameState = useGameState();
@@ -41,7 +40,6 @@ export function DebugHud() {
 
     return (
         <>
-            {grid && <gridHelper args={[100, 100, '#B8B4A3', '#CFCBB7']} position={[0.5, 0, 0.5]} />}
             {stats && <Perf />}
         </>
     );

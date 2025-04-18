@@ -19,6 +19,7 @@ import { Composter } from "./Composter";
 import { Bush } from "./Bush";
 import { Tree } from "./Tree";
 import { useBlockMove } from "../hooks/useBlockMove";
+import { useIsEditMode } from "../hooks/useIsEditMode";
 
 const entityNameMap: Record<string, any> = {
     "Block_Ground": BlockGround,
@@ -39,6 +40,7 @@ const entityNameMap: Record<string, any> = {
 };
 
 export function EntityFactory({ name, stack, block, noControl, ...rest }: { name: string, noControl?: boolean } & EntityInstanceProps) {
+    const isEditMode = useIsEditMode();
     const EntityComponent = entityNameMap[name];
     if (!EntityComponent) {
         console.error(`Unknown entity: ${name}`);
@@ -53,6 +55,18 @@ export function EntityFactory({ name, stack, block, noControl, ...rest }: { name
             destinationPosition: stack.position.clone().add(movement),
             blockIndex: stack.blocks.indexOf(block)
         });
+    }
+
+    if (!isEditMode) {
+        return (
+            <SelectableGroup
+                block={block}>
+                <EntityComponent
+                    stack={stack}
+                    block={block}
+                    {...rest} />
+            </SelectableGroup>
+        );
     }
 
     return (

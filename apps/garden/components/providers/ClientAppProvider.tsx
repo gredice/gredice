@@ -26,7 +26,7 @@ const queryClient = new QueryClient();
 export function ClientAppProvider({ children }: PropsWithChildren) {
     return (
         <QueryClientProvider client={queryClient}>
-            <ThemeProvider attribute="class" defaultTheme='light' forcedTheme='light'>
+            <ThemeProvider attribute="class" defaultTheme='light'>
                 <AuthProvider currentUserFactory={currentUserFactory}>
                     {children}
                     <NotificationsContainer />

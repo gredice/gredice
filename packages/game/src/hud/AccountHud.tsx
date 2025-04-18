@@ -98,7 +98,7 @@ export function AccountHud() {
         <HudCard
             open
             position="floating"
-            className="left-2 top-2 md:px-2">
+            className="md:px-2 static">
             <Row spacing={1}>
                 <DropdownMenu
                     className="overflow-hidden"

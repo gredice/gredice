@@ -15,6 +15,7 @@ import { Stack as GardenStack } from "../types/Stack";
 import { BlockData } from "../../@types/BlockData";
 import { useCurrentGarden } from "../hooks/useCurrentGarden";
 import { useBlockData } from "../hooks/useBlockData";
+import { useIsEditMode } from "../hooks/useIsEditMode";
 
 type HudItemEntity = {
     type: 'entity',
@@ -290,11 +291,12 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
 }
 
 export function ItemsHud() {
+    const isEditMode = useIsEditMode();
     return (
         <HudCard
-            open
+            open={isEditMode}
             position="bottom"
-            className="static md:px-1 pointer-events-auto">
+            className="static md:px-1 pointer-events-auto self-center">
             <Row spacing={0.5} className="md:px-1" justifyContent="center">
                 {items.map((item, index) => {
                     if (item.type === 'separator') {

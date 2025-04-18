@@ -11,10 +11,12 @@ type HudCardProps = HTMLAttributes<HTMLDivElement> & {
 
 export function HudCard({ open, position, className, style, ...rest }: HudCardProps) {
     const transitions = useSpring({
-        opacity: open ? 1 : 0,
-        transform: open ? "translateY(0)" : "translateY(-100%)",
+        opacity: open ? 1 : 1,
+        transform: open
+            ? "translateY(0)"
+            : (position === 'bottom' ? "translateY(100%)" : "translateY(-100%)"),
         config: { duration: 150 }
-    })
+    });
 
     return (
         /* @ts-ignore TODO: Fix when react-spring is updated for React 19 */
