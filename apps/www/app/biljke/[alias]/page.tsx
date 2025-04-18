@@ -4,7 +4,6 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { Row } from "@signalco/ui-primitives/Row";
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import { PageHeader } from "../../../components/shared/PageHeader";
 import { PlantYearCalendar } from "./PlantYearCalendar";
 import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
