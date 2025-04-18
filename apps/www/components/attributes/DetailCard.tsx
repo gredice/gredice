@@ -9,7 +9,7 @@ export function AttributeCard({ icon, header, value }: { icon: ReactNode; header
             <Row spacing={2}>
                 <div className="flex-shrink-0 ml-2 text-primary">{icon}</div>
                 <div>
-                    <Typography level="body2" component="h4">{header}</Typography>
+                    <Typography level="body2" component="h3">{header}</Typography>
                     <Typography semiBold>{value ?? '-'}</Typography>
                 </div>
             </Row>

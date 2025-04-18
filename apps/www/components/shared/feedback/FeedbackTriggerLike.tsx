@@ -1,15 +1,24 @@
 import { cx } from "@signalco/ui-primitives/cx";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Row, RowProps } from "@signalco/ui-primitives/Row";
+import { Row } from "@signalco/ui-primitives/Row";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { ButtonHTMLAttributes, HTMLAttributes } from "react";
 
 export type FeedbackTriggerProps = {
     onFeedback: (feedback: 'like' | 'dislike') => void;
     onClick?: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
-    ref?: React.Ref<HTMLDivElement>;
-} & Omit<RowProps, 'children' | 'onClick'>;
+    ref?: React.Ref<HTMLButtonElement>;
+} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'onClick'>;
 
-export function FeedbackTrigger({ className, onFeedback, onClick, ...rest }: FeedbackTriggerProps) {
+export function FeedbackTrigger({
+    className,
+    onFeedback,
+    onClick,
+    "aria-haspopup": ariaHaspopup,
+    "aria-expanded": ariaExpanded,
+    "aria-controls": ariaControls,
+    ...rest
+}: FeedbackTriggerProps) {
     function handleLike(event: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
         onFeedback('like');
         onClick?.(event);
@@ -20,8 +29,12 @@ export function FeedbackTrigger({ className, onFeedback, onClick, ...rest }: Fee
     }
 
     return (
-        <Row spacing={0.5} className={cx("w-fit", className)} {...rest}>
+        <Row spacing={0.5} className={cx("w-fit", className)} {...rest as HTMLAttributes<HTMLDivElement>}>
             <IconButton
+                type="button"
+                aria-haspopup={ariaHaspopup}
+                aria-expanded={ariaExpanded}
+                aria-controls={ariaControls}
                 size="sm"
                 className="p-1 size-6"
                 variant="plain"
@@ -30,6 +43,10 @@ export function FeedbackTrigger({ className, onFeedback, onClick, ...rest }: Fee
                 <ThumbsDown />
             </IconButton>
             <IconButton
+                type="button"
+                aria-haspopup={ariaHaspopup}
+                aria-expanded={ariaExpanded}
+                aria-controls={ariaControls}
                 size="sm"
                 className="p-1 size-6"
                 variant="plain"
