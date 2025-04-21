@@ -59,62 +59,63 @@ export function PlantsCalendar({ plants }: { plants: PlantData[] }) {
             )}
             {Object.keys(calendarActivityTypes).map((activityTypeName) => {
                 const activityType = calendarActivityTypes[activityTypeName as keyof typeof calendarActivityTypes];
-                return filteredPlants.map((plant, plantIndex) => {
-                    const activities = plant.calendar;
-                    if (!activities || !Object.keys(activities).some(a => a === activityTypeName))
-                        return null;
+                return filteredPlants
+                    .filter(p => p.calendar && Object.keys(p.calendar).some(a => a === activityTypeName))
+                    .map((plant, plantIndex) => {
+                        const activities = plant.calendar;
+                        if (!activities) return null;
 
-                    return (
-                        <Fragment key={`${plant.id}-${activityTypeName}`}>
-                            <Link href={KnownPages.Plant(plant.information.name)} prefetch>
-                                <Row justifyContent="space-between" spacing={1} className="mx-2">
-                                    <Row spacing={1}>
-                                        <Image
-                                            src={plant.image?.cover?.url ?? '/assets/plants/placeholder.png'}
-                                            width={20}
-                                            height={20}
-                                            alt={`Slika ${plant.information.name}`} />
-                                        <Typography level="body2">
-                                            {plant.information.name}
-                                        </Typography>
-                                    </Row>
-                                    <Row>
-                                        {plantIndex === 0 && (
+                        return (
+                            <Fragment key={`${plant.id}-${activityTypeName}`}>
+                                <Link href={KnownPages.Plant(plant.information.name)} prefetch>
+                                    <Row justifyContent="space-between" spacing={1} className="mx-2">
+                                        <Row spacing={1}>
+                                            <Image
+                                                src={plant.image?.cover?.url ?? '/assets/plants/placeholder.png'}
+                                                width={20}
+                                                height={20}
+                                                alt={`Slika ${plant.information.name}`} />
                                             <Typography level="body2">
-                                                {activityType.name}
+                                                {plant.information.name}
                                             </Typography>
-                                        )}
-                                        <div className={`size-4 rounded-full inline-block ml-2 ${activityType.color}`}></div>
+                                        </Row>
+                                        <Row>
+                                            {plantIndex === 0 && (
+                                                <Typography level="body2">
+                                                    {activityType.name}
+                                                </Typography>
+                                            )}
+                                            <div className={`size-4 rounded-full inline-block ml-2 ${activityType.color}`}></div>
+                                        </Row>
                                     </Row>
-                                </Row>
-                            </Link>
-                            {calendarMonths.map((_, index) => {
-                                const month = index + 1;
-                                const currentActivities = activities[activityTypeName];
-                                const currentMonthActivities = currentActivities.filter(a => month >= Math.floor(a.start) && month <= Math.floor(a.end));
-                                const minStart = Math.min(...currentMonthActivities.map(a => a.start % 1));
-                                const maxEnd = Math.max(...currentMonthActivities.map(a => a.end % 1));
-                                const isActivityActive = currentMonthActivities.length > 0;
-                                const isActivityStart = currentActivities.some(a => month === Math.floor(a.start));
-                                const isActivityEnd = currentActivities.some(a => month === Math.floor(a.end));
+                                </Link>
+                                {calendarMonths.map((_, index) => {
+                                    const month = index + 1;
+                                    const currentActivities = activities[activityTypeName];
+                                    const currentMonthActivities = currentActivities.filter(a => month >= Math.floor(a.start) && month <= Math.floor(a.end));
+                                    const minStart = Math.min(...currentMonthActivities.map(a => a.start % 1));
+                                    const maxEnd = Math.max(...currentMonthActivities.map(a => a.end % 1));
+                                    const isActivityActive = currentMonthActivities.length > 0;
+                                    const isActivityStart = currentActivities.some(a => month === Math.floor(a.start));
+                                    const isActivityEnd = currentActivities.some(a => month === Math.floor(a.end));
 
-                                return (
-                                    <div key={index} className="relative border-l">
-                                        {isActivityActive && (
-                                            <div
-                                                className={`absolute inset-y-1 left-[--activity-left] -ml-[1px] right-[--activity-right] ${activityType.color} ${isActivityStart ? 'rounded-l-full' : ''} ${isActivityEnd ? 'rounded-r-full' : ''}`}
-                                                style={{
-                                                    '--activity-left': isActivityStart ? `${(minStart) * 100}%` : '0px',
-                                                    '--activity-right': isActivityEnd ? `${Math.min(75, (1 - maxEnd) * 100)}%` : '0px'
-                                                } as CSSProperties}
-                                            ></div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </Fragment>
-                    );
-                });
+                                    return (
+                                        <div key={index} className="relative border-l">
+                                            {isActivityActive && (
+                                                <div
+                                                    className={`absolute inset-y-1 left-[--activity-left] -ml-[1px] right-[--activity-right] ${activityType.color} ${isActivityStart ? 'rounded-l-full' : ''} ${isActivityEnd ? 'rounded-r-full' : ''}`}
+                                                    style={{
+                                                        '--activity-left': isActivityStart ? `${(minStart) * 100}%` : '0px',
+                                                        '--activity-right': isActivityEnd ? `${Math.min(75, (1 - maxEnd) * 100)}%` : '0px'
+                                                    } as CSSProperties}
+                                                ></div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </Fragment>
+                        );
+                    });
             })}
             <div className="grid grid-cols-subgrid [grid-column:2/-1] relative">
                 <div
