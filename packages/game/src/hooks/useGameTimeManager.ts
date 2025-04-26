@@ -1,16 +1,9 @@
-import { useLayoutEffect } from "react";
+import { useInterval } from "@signalco/hooks/useInterval";
 import { useGameState } from "../useGameState";
 
-export function useGameTimeManager(freezeTime?: Date) {
-    // Update current time every second
+export function useGameTimeManager() {
     const setCurrentTime = useGameState((state) => state.setCurrentTime);
-
-    useLayoutEffect(() => {
-        setCurrentTime(freezeTime ?? new Date());
-        const interval = setInterval(() => {
-            setCurrentTime(useGameState.getState().freezeTime ?? new Date());
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, []);
+    useInterval(() => {
+        setCurrentTime(new Date());
+    }, 1000);
 }

@@ -4,6 +4,7 @@ import { Stack } from "../types/Stack";
 import { Vector3 } from "three";
 import { Garden } from "../types/Garden";
 import { useGardens, useGardensKeys } from "./useGardens";
+import { useGameState } from "../useGameState";
 
 export const currentGardenKeys = [...useGardensKeys, 'current'];
 
@@ -152,12 +153,13 @@ function mockGarden(): Garden {
     };
 }
 
-export function useCurrentGarden(mock?: boolean): UseQueryResult<Garden> {
-    const { data: gardens } = useGardens(mock);
+export function useCurrentGarden(): UseQueryResult<Garden> {
+    const isMock = useGameState(state => state.isMock);
+    const { data: gardens } = useGardens(isMock);
     return useQuery({
         queryKey: currentGardenKeys,
         queryFn: async () => {
-            if (mock) {
+            if (isMock) {
                 console.debug("Using mock garden data");
                 return mockGarden();
             }
@@ -219,7 +221,7 @@ export function useCurrentGarden(mock?: boolean): UseQueryResult<Garden> {
                 }
             };
         },
-        enabled: mock || Boolean(gardens),
+        enabled: isMock || Boolean(gardens),
         staleTime: 1000 * 60 // 1m
     });
 }

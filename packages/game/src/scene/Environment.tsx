@@ -8,6 +8,7 @@ import { AmbientLight, Color, DirectionalLight, HemisphereLight, Quaternion, Vec
 import { Garden } from '../types/Garden';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { Drops } from './Rain/Drops';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 
 const backgroundColorScale = chroma
     .scale(['#2D3947', '#BADDf6', '#E7E2CC', '#E7E2CC', '#f8b195', '#6c5b7b', '#2D3947'])
@@ -58,19 +59,12 @@ export function environmentState({ lat, lon }: Garden['location'], currentTime: 
 }
 
 export type EnvironmentProps = {
-    location: Garden['location'],
     noBackground?: boolean,
     noSound?: boolean,
-    noWeather?: boolean,
-    overrideWeather?: {
-        rainy: number,
-        foggy: number,
-        cloudy: number,
-        snowy: number,
-    }
+    noWeather?: boolean
 }
 
-export function Environment({ location, noBackground, noSound, noWeather, overrideWeather }: EnvironmentProps) {
+export function Environment({ noBackground, noSound, noWeather }: EnvironmentProps) {
     const cameraShadowSize = 20;
     const shadowMapSize = 8;
 
@@ -83,7 +77,17 @@ export function Environment({ location, noBackground, noSound, noWeather, overri
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
 
-    const { data: weather } = useWeatherNow();
+    const { data: garden } = useCurrentGarden();
+    const location = garden ? {
+        lat: garden.location.lat ?? 0,
+        lon: garden.location.lon ?? 0
+    } : {
+        lat: 45.739,
+        lon: 16.572
+    };
+
+    const overrideWeather = useGameState(state => state.weather);
+    const { data: weather } = useWeatherNow(!noWeather);
     if (overrideWeather && weather) {
         console.debug('Overriding weather', overrideWeather);
         weather.rainy = overrideWeather?.rainy ?? weather.rainy;
@@ -195,7 +199,7 @@ export function Environment({ location, noBackground, noSound, noWeather, overri
             backgroundColor[1] / 255 * 0.5,
             backgroundColor[2] / 255 * 0.5,
             'srgb');
-    }, [currentTime]);
+    }, [currentTime, timeOfDay, weather]);
 
     // Handle fog
     const fog = weather?.foggy ?? 0;

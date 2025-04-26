@@ -3,12 +3,11 @@
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { useGameState } from "@gredice/game";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Button } from "@signalco/ui-primitives/Button";
 import { ChevronRight } from "lucide-react";
-import { useGameAudio } from "../../../packages/game/src/hooks/useGameAudio";
+import { useGameAudio } from "../hooks/useGameAudio";
 
 const messageTypes = {
     welcome: {
@@ -106,10 +105,10 @@ export function WelcomeMessage() {
                 </Stack>
                 <div className="w-full h-full rounded-3xl bg-card flex flex-row items-end justify-center [grid-area:sunflower]">
                     <div className="size-40 relative">
-                        <Image
+                        <img
                             src="https://cdn.gredice.com/sunflower-large.svg"
                             alt="Suncokret"
-                            fill />
+                             />
                     </div>
                 </div>
             </div>

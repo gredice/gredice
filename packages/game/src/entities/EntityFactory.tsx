@@ -1,4 +1,3 @@
-import { Vector3 } from "three";
 import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
 import { PickableGroup } from "../controls/PickableGroup";
 import { BlockGround } from "./BlockGround";
@@ -18,7 +17,6 @@ import { BlockSand } from "./BlockSand";
 import { Composter } from "./Composter";
 import { Bush } from "./Bush";
 import { Tree } from "./Tree";
-import { useBlockMove } from "../hooks/useBlockMove";
 import { useIsEditMode } from "../hooks/useIsEditMode";
 
 const entityNameMap: Record<string, any> = {
@@ -47,16 +45,6 @@ export function EntityFactory({ name, stack, block, noControl, ...rest }: { name
         return null;
     }
 
-    // TODO: Move to PickableGroup
-    const moveBlock = useBlockMove();
-    const handlePositionChanged = async (movement: Vector3) => {
-        await moveBlock.mutateAsync({
-            sourcePosition: stack.position,
-            destinationPosition: stack.position.clone().add(movement),
-            blockIndex: stack.blocks.indexOf(block)
-        });
-    }
-
     if (!isEditMode) {
         return (
             <SelectableGroup
@@ -75,7 +63,6 @@ export function EntityFactory({ name, stack, block, noControl, ...rest }: { name
             <PickableGroup
                 stack={stack}
                 block={block}
-                onPositionChanged={handlePositionChanged}
                 noControl={noControl}>
                 <RotatableGroup
                     stack={stack}
