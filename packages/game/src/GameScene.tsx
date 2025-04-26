@@ -1,6 +1,6 @@
 'use client';
 
-import { HTMLAttributes } from 'react';
+import { HTMLAttributes, useRef } from 'react';
 import { Scene } from './scene/Scene';
 import { DayNightCycleHud } from './hud/DayNightCycleHud';
 import { DebugHud } from './hud/DebugHud';
@@ -11,16 +11,20 @@ import { WeatherHud } from './hud/WeatherHud';
 import { ItemsHud } from './hud/ItemsHud';
 import { Controls } from './controls/Controls';
 import { CameraHud } from './hud/CameraHud';
-import { GardenDisplay } from './GardenDisplay';
 import { useThemeManager } from './hooks/useThemeManager';
 import { useGameTimeManager } from './hooks/useGameTimeManager';
 import { AudioHud } from './hud/AudioHud';
-import { useCurrentGarden } from './hooks/useCurrentGarden';
-import { GardenLoadingIndicator } from './GardenLoadingIndicator';
 import { cx } from '@signalco/ui-primitives/cx';
 import { useIsEditMode } from './hooks/useIsEditMode';
 import { GameModeHud } from './hud/GameModeHud';
-import { useGameState } from './useGameState';
+import { createGameState, GameStateContext, GameStateStore, useGameState } from './useGameState';
+import { useGLTF } from '@react-three/drei';
+import { models } from './data/models';
+import { WelcomeMessage } from './hud/WelcomeMessage';
+import { EntityFactory } from './entities/EntityFactory';
+import { useCurrentGarden } from './hooks/useCurrentGarden';
+import { GardenLoadingIndicator } from './GardenLoadingIndicator';
+import { Environment } from './scene/Environment';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string,
@@ -38,20 +42,24 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
 }
 
 function EditModeGrid() {
+    const isEditMode = useIsEditMode();
     const timeOfDay = useGameState(state => state.timeOfDay);
     const isDay = timeOfDay > 0.2 && timeOfDay < 0.8;
+
+    if (!isEditMode) {
+        return null;
+    }
 
     return (
         <gridHelper args={[100, 100, isDay ? '#fffdf2' : '#7e889e', isDay ? '#f0ebd5' : '#4f555c']} position={[0.5, 0, 0.5]} />
     );
 }
 
-export function GameScene({
-    appBaseUrl,
+const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
+
+function GameScene({
     isDevelopment,
     zoom = 'normal',
-    mockGarden,
-    freezeTime,
     noWeather,
     noBackground,
     noSound,
@@ -59,35 +67,44 @@ export function GameScene({
     className,
     ...rest
 }: GameSceneProps) {
-    const isEditMode = useIsEditMode();
-    const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
-    const { isPending } = useCurrentGarden(mockGarden);
-    useGameTimeManager(freezeTime);
+    useGameTimeManager();
     useThemeManager();
+    const { data: garden, isPending } = useCurrentGarden();
 
     if (isPending) {
         return (
-            <GardenLoadingIndicator {...rest} />
+            <GardenLoadingIndicator />
         );
     }
+
+    console.debug('Game scene render. State:', isPending ? 'loading' : 'ready', 'Garden:', garden ?? '-');
 
     return (
         <div className={cx('fade-in', className)} {...rest}>
             <Scene
-                appBaseUrl={appBaseUrl}
-                freezeTime={freezeTime}
                 position={cameraPosition}
                 zoom={zoom === 'far' ? 75 : 100}
                 className='!absolute'
             >
                 {isDevelopment && <DebugHud />}
-                {isEditMode && <EditModeGrid />}
-                <GardenDisplay
+                <EditModeGrid />
+                <Environment
                     noBackground={noBackground}
-                    mockGarden={mockGarden}
                     noWeather={noWeather}
-                    noSound={noSound}
-                />
+                    noSound={noSound} />
+                <group>
+                    {garden?.stacks.map((stack) =>
+                        stack.blocks?.map((block, i) => (
+                            <EntityFactory
+                                key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
+                                name={block.name}
+                                stack={stack}
+                                block={block}
+                                rotation={block.rotation}
+                                variant={block.variant} />
+                        ))
+                    )}
+                </group>
                 <Controls isDevelopment={isDevelopment} />
             </Scene>
             {!hideHud && (
@@ -110,8 +127,28 @@ export function GameScene({
                         <div className='hidden md:block' />
                     </div>
                     <OverviewModal />
+                    <WelcomeMessage />
                 </>
             )}
         </div>
+    );
+}
+
+export function GameSceneWrapper({ appBaseUrl, freezeTime, mockGarden, ...rest }: GameSceneProps) {
+    const storeRef = useRef<GameStateStore>(null);
+    if (!storeRef.current) {
+        storeRef.current = createGameState({
+            appBaseUrl: appBaseUrl || '',
+            freezeTime: freezeTime || null,
+            isMock: mockGarden || false,
+        });
+    }
+
+    useGLTF.preload((appBaseUrl ?? '') + models.GameAssets.url);
+
+    return (
+        <GameStateContext.Provider value={storeRef.current}>
+            <GameScene {...rest} />
+        </GameStateContext.Provider>
     );
 }

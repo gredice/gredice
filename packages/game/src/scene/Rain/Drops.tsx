@@ -1,80 +1,80 @@
-import { useFrame, useThree } from "@react-three/fiber";
-import * as React from "react";
+import { useFrame } from "@react-three/fiber";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import CSM from "three-custom-shader-material";
 
 interface DropsProps {
-  count?: number;
+    count?: number;
 }
 
 export const Drops = ({ count = 2000 }: DropsProps) => {
-    const fref = React.useRef<THREE.Group>(null);
-    const dropsRef = React.useRef<THREE.InstancedMesh>(null!);
-    const _dummy = React.useMemo(() => new THREE.Object3D(), []);
-    const initialY = React.useMemo(() => new Float32Array(count).fill(0), []);
-    const angles = React.useMemo(() => new Float32Array(count).fill(0), []);
+    const fref = useRef<THREE.Group>(null);
+    const dropsRef = useRef<THREE.InstancedMesh>(null!);
+    const _dummy = useMemo(() => new THREE.Object3D(), []);
+    const initialY = useMemo(() => new Float32Array(count).fill(0), []);
+    const angles = useMemo(() => new Float32Array(count).fill(0), []);
 
     const size = 40;
     const speed = 15;
 
-    React.useEffect(() => {
-      const dropsMesh = dropsRef.current;
-      for (let i = 0; i < count; i++) {
-        _dummy.position.set(
-          THREE.MathUtils.randFloatSpread(size),
-          THREE.MathUtils.randFloat(-0.1, size),
-          THREE.MathUtils.randFloatSpread(size)
-        );
-        _dummy.scale.set(0.7, 0.7, 0.7);
-        _dummy.updateMatrix();
-        dropsMesh.setMatrixAt(i, _dummy.matrix);
-      }
-      dropsMesh.instanceMatrix.needsUpdate = true;
+    useEffect(() => {
+        const dropsMesh = dropsRef.current;
+        for (let i = 0; i < count; i++) {
+            _dummy.position.set(
+                THREE.MathUtils.randFloatSpread(size),
+                THREE.MathUtils.randFloat(-0.1, size),
+                THREE.MathUtils.randFloatSpread(size)
+            );
+            _dummy.scale.set(0.7, 0.7, 0.7);
+            _dummy.updateMatrix();
+            dropsMesh.setMatrixAt(i, _dummy.matrix);
+        }
+        dropsMesh.instanceMatrix.needsUpdate = true;
     }, []);
 
     useFrame(({ camera }, dt) => {
-      const dropsMesh = dropsRef.current;
+        const dropsMesh = dropsRef.current;
 
-      // Calculate what is camera target on the ground in front of the camera
-      if (fref?.current) {
-        fref.current.position.set((camera.position.x + 100), 0, (camera.position.z + 100));
-      }
-
-      for (let i = 0; i < count; i++) {
-        dropsMesh.getMatrixAt(i, _dummy.matrix);
-        _dummy.matrix.decompose(
-          _dummy.position,
-          _dummy.quaternion,
-          _dummy.scale
-        );
-
-        _dummy.rotation.y = Math.atan2(
-          camera.position.x - _dummy.position.x,
-          camera.position.z - _dummy.position.z
-        );
-        _dummy.rotation.x = angles[i];
-        _dummy.position.y -= dt * speed;
-
-        if (_dummy.position.y <= 0) {
-          _dummy.position.set(
-            THREE.MathUtils.randFloatSpread(size),
-            THREE.MathUtils.randFloat(-0.1, size),
-            THREE.MathUtils.randFloatSpread(size)
-          );
-          initialY[i] = _dummy.position.y;
-          angles[i] = THREE.MathUtils.randFloatSpread(
-            THREE.MathUtils.degToRad(20)
-          );
+        // Calculate what is camera target on the ground in front of the camera
+        if (fref?.current) {
+            fref.current.position.set((camera.position.x + 100), 0, (camera.position.z + 100));
         }
 
-        _dummy.updateMatrix();
-        dropsMesh.setMatrixAt(i, _dummy.matrix);
-      }
-      dropsMesh.instanceMatrix.needsUpdate = true;
+        for (let i = 0; i < count; i++) {
+            dropsMesh.getMatrixAt(i, _dummy.matrix);
+            _dummy.matrix.decompose(
+                _dummy.position,
+                _dummy.quaternion,
+                _dummy.scale
+            );
+
+            _dummy.rotation.y = Math.atan2(
+                camera.position.x - _dummy.position.x,
+                camera.position.z - _dummy.position.z
+            );
+            _dummy.rotation.x = angles[i];
+            _dummy.position.y -= dt * speed;
+
+            if (_dummy.position.y <= 0) {
+                _dummy.position.set(
+                    THREE.MathUtils.randFloatSpread(size),
+                    THREE.MathUtils.randFloat(-0.1, size),
+                    THREE.MathUtils.randFloatSpread(size)
+                );
+                initialY[i] = _dummy.position.y;
+                angles[i] = THREE.MathUtils.randFloatSpread(
+                    THREE.MathUtils.degToRad(20)
+                );
+            }
+
+            _dummy.updateMatrix();
+            dropsMesh.setMatrixAt(i, _dummy.matrix);
+        }
+        dropsMesh.instanceMatrix.needsUpdate = true;
     });
 
-    const vertexShader = React.useMemo(
-      () => /* glsl */ `
+    const vertexShader = useMemo(
+        () => /* glsl */ `
         uniform float uTime;
   
         varying vec3 vInstancePosition;
@@ -85,11 +85,11 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
           vUv = uv;
         }
       `,
-      []
+        []
     );
 
-    const fragmentShader = React.useMemo(
-      () => /* glsl */ `
+    const fragmentShader = useMemo(
+        () => /* glsl */ `
         uniform float uRainProgress;
   
         varying vec3 vInstancePosition;
@@ -132,33 +132,33 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
           csm_DiffuseColor.a = dropletDistance * 0.1 * rainProgress * circle; 
         }
       `,
-      []
+        []
     );
 
-    const uniforms = React.useMemo(
-      () => ({
-        uRainProgress: { value: 1 },
-      }),
-      []
+    const uniforms = useMemo(
+        () => ({
+            uRainProgress: { value: 1 },
+        }),
+        []
     );
-    
+
     return (
-      <group ref={fref}>
-        <instancedMesh
-          ref={dropsRef}
-          args={[undefined, undefined, count]}
-          renderOrder={2}
-        >
-          <planeGeometry args={[0.5, 1]} />
-          <CSM
-            key={vertexShader + fragmentShader}
-            baseMaterial={THREE.MeshBasicMaterial}
-            vertexShader={vertexShader}
-            fragmentShader={fragmentShader}
-            uniforms={uniforms}
-            transparent
-          />
-        </instancedMesh>
-      </group>
+        <group ref={fref}>
+            <instancedMesh
+                ref={dropsRef}
+                args={[undefined, undefined, count]}
+                renderOrder={2}
+            >
+                <planeGeometry args={[0.5, 1]} />
+                <CSM
+                    key={vertexShader + fragmentShader}
+                    baseMaterial={THREE.MeshBasicMaterial}
+                    vertexShader={vertexShader}
+                    fragmentShader={fragmentShader}
+                    uniforms={uniforms}
+                    transparent
+                />
+            </instancedMesh>
+        </group>
     );
-  }
+}

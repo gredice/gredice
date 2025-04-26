@@ -1,9 +1,10 @@
-import { create } from "zustand";
+import { createStore, useStore } from "zustand";
 import { audioMixer } from "./audio/audioMixer";
 import { OrbitControls } from 'three-stdlib';
 import { getTimes } from "suncalc";
 import { Garden } from "./types/Garden";
 import { audioConfig } from "./utils/audioConfig";
+import { createContext, useContext } from "react";
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
@@ -21,7 +22,7 @@ function getSunriseSunset({ lat, lon }: Garden['location'], currentTime: Date) {
  * 
  * @returns A number between 0 and 1 representing the current time of day
  */
-export function getTimeOfDay({ lat, lon }: Garden['location'], currentTime: Date) {
+function getTimeOfDay({ lat, lon }: Garden['location'], currentTime: Date) {
     const { sunrise: sunriseStart, sunset: sunsetStart } = getSunriseSunset({ lat, lon }, currentTime);
 
     const sunrise = sunriseStart.getHours() * 60 + sunriseStart.getMinutes();
@@ -43,19 +44,20 @@ export function getTimeOfDay({ lat, lon }: Garden['location'], currentTime: Date
 
 type GameMode = 'normal' | 'edit';
 
-export type GameState = {
+type GameState = {
     // General
+    isMock: boolean,
     appBaseUrl: string,
     audio: {
         ambient: ReturnType<typeof audioMixer>,
         effects: ReturnType<typeof audioMixer>
     },
     freezeTime?: Date | null,
+    setFreezeTime: (freezeTime: Date | null) => void,
     currentTime: Date,
     timeOfDay: number,
     sunsetTime: Date | null,
     sunriseTime: Date | null,
-    setInitial: (appBaseUrl: string, freezeTime?: Date | null) => void,
     setCurrentTime: (currentTime: Date) => void,
 
     // Game
@@ -76,34 +78,62 @@ export type GameState = {
     setIsDragging: (isDragging: boolean) => void,
 };
 
-const now = new Date();
 const defaultLocation = { lat: 45.739, lon: 16.572 };
-export const useGameState = create<GameState>((set) => ({
-    appBaseUrl: '',
-    audio: {
-        ambient: audioMixer(audioConfig().config.ambientVolume * audioConfig().config.masterVolume, audioConfig().config.ambientIsMuted),
-        effects: audioMixer(audioConfig().config.effectsVolume * audioConfig().config.masterVolume, audioConfig().config.effectsIsMuted),
-    },
-    freezeTime: null,
-    currentTime: now,
-    timeOfDay: getTimeOfDay(defaultLocation, now),
-    sunriseTime: getSunriseSunset(defaultLocation, now).sunrise,
-    sunsetTime: getSunriseSunset(defaultLocation, now).sunset,
-    mode: 'normal',
-    setMode: (mode) => set({ mode }),
-    isDragging: false,
-    orbitControls: null,
-    setOrbitControls: (ref) => set({ orbitControls: ref }),
-    worldRotation: 0,
-    worldRotate: (direction) => set((state) => ({ worldRotation: state.worldRotation + (direction === 'cw' ? 1 : -1) })),
-    setWorldRotation: (worldRotation) => set(({ worldRotation })),
-    setIsDragging: (isDragging) => set({ isDragging }),
-    setInitial: (appBaseUrl, freezeTime) => set({ appBaseUrl, freezeTime }),
-    setCurrentTime: (currentTime) => set(({
-        currentTime,
-        timeOfDay: getTimeOfDay(defaultLocation, currentTime),
-        sunriseTime: getSunriseSunset(defaultLocation, currentTime).sunrise,
-        sunsetTime: getSunriseSunset(defaultLocation, currentTime).sunset
-    })),
-    setWeather: (weather) => set(({ weather }))
-}));
+
+export function createGameState({ appBaseUrl, freezeTime, isMock }: {
+    appBaseUrl: string,
+    freezeTime: Date | null,
+    isMock: boolean
+}) {
+    const now = freezeTime ?? new Date();
+    const timeOfDay = getTimeOfDay(defaultLocation, now);
+    return createStore<GameState>((set, get) => ({
+        isMock: isMock,
+        appBaseUrl: appBaseUrl,
+        audio: {
+            ambient: audioMixer(audioConfig().config.ambientVolume * audioConfig().config.masterVolume, audioConfig().config.ambientIsMuted),
+            effects: audioMixer(audioConfig().config.effectsVolume * audioConfig().config.masterVolume, audioConfig().config.effectsIsMuted),
+        },
+        freezeTime,
+        setFreezeTime: (freezeTime) => set({
+            freezeTime,
+            currentTime: freezeTime ? freezeTime : new Date()
+        }),
+        currentTime: now,
+        timeOfDay,
+        sunriseTime: getSunriseSunset(defaultLocation, now).sunrise,
+        sunsetTime: getSunriseSunset(defaultLocation, now).sunset,
+        mode: 'normal',
+        setMode: (mode) => set({ mode }),
+        isDragging: false,
+        orbitControls: null,
+        setOrbitControls: (ref) => set({ orbitControls: ref }),
+        worldRotation: 0,
+        worldRotate: (direction) => set((state) => ({ worldRotation: state.worldRotation + (direction === 'cw' ? 1 : -1) })),
+        setWorldRotation: (worldRotation) => set(({ worldRotation })),
+        setIsDragging: (isDragging) => set({ isDragging }),
+        setCurrentTime: (currentTime) => {
+            const freezeTime = get().freezeTime;
+            if (freezeTime) {
+                currentTime = freezeTime;
+            }
+
+            return set(({
+                currentTime,
+                timeOfDay: getTimeOfDay(defaultLocation, currentTime),
+                sunriseTime: getSunriseSunset(defaultLocation, currentTime).sunrise,
+                sunsetTime: getSunriseSunset(defaultLocation, currentTime).sunset
+            }));
+        },
+        setWeather: (weather) => set(({ weather }))
+    }));
+}
+
+export type GameStateStore = ReturnType<typeof createGameState>;
+export const GameStateContext = createContext<GameStateStore | null>(null);
+
+export function useGameState<T>(selector: (state: GameState) => T): T {
+    const store = useContext(GameStateContext);
+    if (!store) throw new Error('Missing GameStateContext.Provider in the tree')
+    return useStore(store, selector);
+}

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { client } from "@gredice/client";
 
-export function useWeatherNow() {
+export function useWeatherNow(enabled = true) {
     return useQuery({
         queryKey: ['weather', 'now'],
         queryFn: async () => {
@@ -13,5 +13,6 @@ export function useWeatherNow() {
             return await response.json();
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
+        enabled,
     });
 }

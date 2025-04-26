@@ -16,7 +16,7 @@ export function NewsletterSignUp() {
     return (
         <div className="grid grid-cols-[auto_1fr] gap-y-1">
             <Typography semiBold level="body2" className="col-span-2">
-                Prijavi se i osiguraj svoje mjesto u vrtu.
+                Prijavi se na naš newsletter i osiguraj svoje mjesto u vrtu.
             </Typography>
             <form action={submitAction}>
                 <Row spacing={1}>

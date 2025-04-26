@@ -92,6 +92,7 @@ const useKeyboardControls = () => {
 
 export function Controls({ isDevelopment }: { isDevelopment?: boolean }) {
     const setOrbitControls = useGameState(state => state.setOrbitControls);
+    const setIsDragging = useGameState(state => state.setIsDragging);
     useCameraRotate();
     useKeyboardControls();
     const [isAnimating, setIsAnimating] = useState(false);
@@ -115,8 +116,8 @@ export function Controls({ isDevelopment }: { isDevelopment?: boolean }) {
                 enabled={!isCloseUp && !isAnimating}
                 enableRotate={false}
                 screenSpacePanning={false}
-                onStart={() => useGameState.getState().setIsDragging(true)}
-                onEnd={() => useGameState.getState().setIsDragging(false)}
+                onStart={() => setIsDragging(true)}
+                onEnd={() => setIsDragging(false)}
                 minZoom={50}
                 maxZoom={200} />
         </>

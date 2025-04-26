@@ -11,14 +11,15 @@ import { useGameState } from '../useGameState';
 import { Shadow } from '@react-three/drei';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useBlockData } from '../hooks/useBlockData';
+import { useBlockMove } from '../hooks/useBlockMove';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 
 type PickableGroupProps = PropsWithChildren<
     Pick<EntityInstanceProps, 'stack' | 'block'> &
-    { onPositionChanged: (movement: Vector3) => void, noControl?: boolean }>;
+    { noControl?: boolean }>;
 
-export function PickableGroup({ children, stack, block, noControl, onPositionChanged }: PickableGroupProps) {
+export function PickableGroup({ children, stack, block, noControl }: PickableGroupProps) {
     const [dragSprings, dragSpringsApi] = useSpring(() => ({
         from: { internalPosition: [0, 0, 0] },
         config: {
@@ -52,6 +53,7 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
     );
 
     const [isBlocked, setIsBlocked] = useState<boolean | null>(null);
+    const moveBlock = useBlockMove();
 
     // Reset position animation when block is moved
     useEffect(() => {
@@ -73,7 +75,7 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
 
     const rect = domElement.getClientRects()[0];
 
-    const dragHandler: Handler<"drag", any> = ({ pressed, event, xy: [x, y] }) => {
+    const dragHandler: Handler<"drag", any> = async ({ pressed, event, xy: [x, y] }) => {
         if (isDraggingWorld) {
             return;
         }
@@ -126,10 +128,13 @@ export function PickableGroup({ children, stack, block, noControl, onPositionCha
                 // Revert to start position if released above blocked stack
                 dragSpringsApi.start({ internalPosition: [0, 0, 0] });
             } else {
-                dragSpringsApi.start({ internalPosition: [relative.x, hoveredStackHeight, relative.z] })[0].then(() => {
-                    onPositionChanged(relative);
-                });
+                dragSpringsApi.start({ internalPosition: [relative.x, hoveredStackHeight, relative.z] });
                 dropSound.play();
+                await moveBlock.mutateAsync({
+                    sourcePosition: stack.position,
+                    destinationPosition: stack.position.clone().add(relative),
+                    blockIndex: stack.blocks.indexOf(block)
+                });
             }
         } else {
             if (!didDrag.current) {
