@@ -15,11 +15,9 @@ import { useBlockMove } from '../hooks/useBlockMove';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 
-type PickableGroupProps = PropsWithChildren<
-    Pick<EntityInstanceProps, 'stack' | 'block'> &
-    { noControl?: boolean }>;
+type PickableGroupProps = PropsWithChildren<Pick<EntityInstanceProps, 'stack' | 'block'>>;
 
-export function PickableGroup({ children, stack, block, noControl }: PickableGroupProps) {
+export function PickableGroup({ children, stack, block }: PickableGroupProps) {
     const [dragSprings, dragSpringsApi] = useSpring(() => ({
         from: { internalPosition: [0, 0, 0] },
         config: {
@@ -44,6 +42,8 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
     const currentStackHeight = useStackHeight(stack, block);
     const didDrag = useRef(false);
 
+    const setMovingBlock = useGameState(state => state.setMovingBlock);
+
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
     const pickupSound = effectsAudioMixer.useSoundEffect('https://cdn.gredice.com/sounds/effects/Pick Grass 01.mp3');
     const dropSound = effectsAudioMixer.useSoundEffect(
@@ -52,6 +52,7 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
             : 'https://cdn.gredice.com/sounds/effects/Drop Grass 01.mp3'
     );
 
+    // Blocked is feature where the block is not stackable and the block is above it
     const [isBlocked, setIsBlocked] = useState<boolean | null>(null);
     const moveBlock = useBlockMove();
 
@@ -60,10 +61,6 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
         dragSpringsApi.set({ internalPosition: [0, 0, 0] });
         setIsBlocked(null);
     }, [stack.position]);
-
-    if (noControl) {
-        return <>{children}</>;
-    }
 
     const isDraggingWorld = useGameState(state => state.isDragging);
     useEffect(() => {
@@ -136,6 +133,8 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
                     blockIndex: stack.blocks.indexOf(block)
                 });
             }
+
+            setMovingBlock(null);
         } else {
             if (!didDrag.current) {
                 pickupSound.play();

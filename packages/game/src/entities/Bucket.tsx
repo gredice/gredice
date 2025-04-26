@@ -5,11 +5,14 @@ import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
 import { MeshDistortMaterial } from "@react-three/drei";
+import { useHoveredBlockStore } from "../controls/useHoveredBlockStore";
+import { HoverOutline } from "./helpers/HoverOutline";
 
 export function Bucket({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
 
     return (
         <animated.group
@@ -29,20 +32,26 @@ export function Bucket({ stack, block, rotation }: EntityInstanceProps) {
                 receiveShadow
                 geometry={nodes.Bucket_2.geometry}
                 material={materials['Material.Metal']}
-            />
+            >
+                <HoverOutline hovered={hovered} variant="outlines" />
+            </mesh>
             <mesh
                 castShadow
                 receiveShadow
                 geometry={nodes.Bucket_3.geometry}
                 material={materials['Material.Planks']}
-            />
+            >
+                <HoverOutline hovered={hovered} variant="outlines" />
+            </mesh>
             <mesh
                 castShadow
                 receiveShadow
                 geometry={nodes['Bucket_-_Handle'].geometry}
                 material={nodes['Bucket_-_Handle'].material}
                 scale={[3.333, 4, 3.333]}
-            />
+            >
+                <HoverOutline hovered={hovered} variant="outlines" />
+            </mesh>
         </animated.group>
     );
 }

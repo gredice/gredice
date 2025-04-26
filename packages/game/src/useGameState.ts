@@ -74,6 +74,8 @@ type GameState = {
     worldRotation: number,
     worldRotate: (direction: 'cw' | 'ccw') => void,
     setWorldRotation: (worldRotation: number) => void,
+    movingBlock: string | null,
+    setMovingBlock: (movingBlock: string | null) => void,
     isDragging: boolean,
     setIsDragging: (isDragging: boolean) => void,
 };
@@ -105,13 +107,15 @@ export function createGameState({ appBaseUrl, freezeTime, isMock }: {
         sunsetTime: getSunriseSunset(defaultLocation, now).sunset,
         mode: 'normal',
         setMode: (mode) => set({ mode }),
+        movingBlock: null,
+        setMovingBlock: (movingBlock) => set({ movingBlock }),
         isDragging: false,
+        setIsDragging: (isDragging) => set({ isDragging }),
         orbitControls: null,
         setOrbitControls: (ref) => set({ orbitControls: ref }),
         worldRotation: 0,
         worldRotate: (direction) => set((state) => ({ worldRotation: state.worldRotation + (direction === 'cw' ? 1 : -1) })),
         setWorldRotation: (worldRotation) => set(({ worldRotation })),
-        setIsDragging: (isDragging) => set({ isDragging }),
         setCurrentTime: (currentTime) => {
             const freezeTime = get().freezeTime;
             if (freezeTime) {

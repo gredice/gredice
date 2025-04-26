@@ -5,11 +5,14 @@ import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
 import { MeshDistortMaterial, MeshWobbleMaterial } from "@react-three/drei";
+import { useHoveredBlockStore } from "../controls/useHoveredBlockStore";
+import { HoverOutline } from "./helpers/HoverOutline";
 
 export function Bush({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
 
     return (
         <animated.group
@@ -22,6 +25,8 @@ export function Bush({ stack, block, rotation }: EntityInstanceProps) {
                 geometry={nodes.Bush_1_1.geometry}
             >
                 <MeshDistortMaterial {...materials['Material.Leaves']} distort={0.1} speed={2} />
+                <HoverOutline hovered={hovered} variant="outlines" />
+                <HoverOutline hovered={hovered} variant="edges" />
             </mesh>
             <mesh
                 castShadow

@@ -5,12 +5,14 @@ import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { MeshWobbleMaterial } from "@react-three/drei";
 import { models } from "../data/models";
+import { useHoveredBlockStore } from "../controls/useHoveredBlockStore";
+import { HoverOutline } from "./helpers/HoverOutline";
 
 export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
-    // const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
+    const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
 
     const variantResolved = 1;
 
@@ -32,7 +34,7 @@ export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
                 geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}
                 material={materials[`Material.Grass`]}
             >
-                {/* <HoverOutline hovered={hovered} /> */}
+                <HoverOutline hovered={hovered} />
             </mesh>
         </animated.group>
     );

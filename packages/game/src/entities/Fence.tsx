@@ -5,10 +5,13 @@ import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
 import { useEntityNeighbors } from "./helpers/useEntityNeighbors";
+import { useHoveredBlockStore } from "../controls/useHoveredBlockStore";
+import { HoverOutline } from "./helpers/HoverOutline";
 
 export function Fence({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const currentStackHeight = useStackHeight(stack, block);
+    const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
 
     let variant = "Solo";
     let realizedRotation = rotation % 4;
@@ -63,7 +66,9 @@ export function Fence({ stack, block, rotation }: EntityInstanceProps) {
                 receiveShadow
                 geometry={nodes[`Fence_${variant}`].geometry}
                 material={materials['Material.Planks']}
-            />
+            >
+                <HoverOutline hovered={hovered} />
+            </mesh>
         </animated.group>
     );
 }

@@ -4,21 +4,8 @@ import { useStackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
-import { Edges } from "@react-three/drei";
-import { useHoveredBlockStore } from "../controls/SelectableGroup";
-
-export function HoverOutline({ hovered }: { hovered?: boolean }) {
-    if (!hovered) return null;
-
-    return (
-        // <Outlines thickness={3} color="white" />
-        <Edges
-            linewidth={2}
-            threshold={60} // Display edges only when the angle between two faces exceeds this value (default=15 degrees)
-            color="white"
-        />
-    );
-}
+import { useHoveredBlockStore } from "../controls/useHoveredBlockStore";
+import { HoverOutline } from "./helpers/HoverOutline";
 
 export function RaisedBedContruction({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);

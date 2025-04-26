@@ -4,10 +4,13 @@ import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
 import { useStackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useEntityNeighbors } from "./helpers/useEntityNeighbors";
+import { useHoveredBlockStore } from "../controls/useHoveredBlockStore";
+import { HoverOutline } from "./helpers/HoverOutline";
 
 export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url)
     const currentStackHeight = useStackHeight(stack, block);
+    const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
 
     // Switch between shapes (O, L, I, U) based on neighbors
     let shape = "O";
@@ -61,13 +64,17 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                 receiveShadow
                 geometry={nodes[`Raised_Bed_${shape}_2`].geometry}
                 material={materials['Material.Planks']}
-            />
+            >
+                <HoverOutline hovered={hovered} />
+            </mesh>
             <mesh
                 castShadow
                 receiveShadow
                 geometry={nodes[`Raised_Bed_${shape}_1`].geometry}
                 material={materials['Material.Dirt']}
-            />
+            >
+                <HoverOutline hovered={hovered} />
+            </mesh>
         </animated.group>
     );
 }

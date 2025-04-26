@@ -5,10 +5,13 @@ import { useGameGLTF } from "../utils/useGameGLTF";
 import { useEntityNeighbors } from "./helpers/useEntityNeighbors";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
+import { useHoveredBlockStore } from "../controls/useHoveredBlockStore";
+import { HoverOutline } from "./helpers/HoverOutline";
 
 export function Shade({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const currentStackHeight = useStackHeight(stack, block);
+    const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
 
     let realizedRotation = rotation % 2;
 
@@ -95,58 +98,35 @@ export function Shade({ stack, block, rotation }: EntityInstanceProps) {
 
     const [animatedRotation] = useAnimatedEntityRotation(realizedRotation);
 
+    let nodeName = "Solo";
+    if (left) {
+        nodeName = "Single_Left";
+    } else if (right) {
+        nodeName = "Single_Right";
+    } else if (n) {
+        nodeName = "N";
+    } else if (e) {
+        nodeName = "E";
+    } else if (w) {
+        nodeName = "W";
+    } else if (s) {
+        nodeName = "S";
+    } else if (middle) {
+        nodeName = "Middle";
+    }
+
     return (
         <animated.group
             position={stack.position.clone().setY(currentStackHeight + 1)}
             rotation={animatedRotation as unknown as [number, number, number]}>
-            {solo && <mesh
+            <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes[`Shade_Solo`].geometry}
+                geometry={nodes[`Shade_${nodeName}`].geometry}
                 material={materials['Material.Planks']}
-            />}
-            {left && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes[`Shade_Single_Left`].geometry}
-                material={materials['Material.Planks']}
-            />}
-            {right && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes[`Shade_Single_Right`].geometry}
-                material={materials['Material.Planks']}
-            />}
-            {n && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes['Shade_N'].geometry}
-                material={materials['Material.Planks']}
-            />}
-            {e && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes['Shade_E'].geometry}
-                material={materials['Material.Planks']}
-            />}
-            {w && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes['Shade_W'].geometry}
-                material={materials['Material.Planks']}
-            />}
-            {s && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes['Shade_S'].geometry}
-                material={materials['Material.Planks']}
-            />}
-            {middle && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes['Shade_Middle'].geometry}
-                material={materials['Material.Planks']}
-            />}
+            >
+                <HoverOutline hovered={hovered} />
+            </mesh>
         </animated.group>
     );
 }

@@ -4,11 +4,14 @@ import { useStackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
 import { models } from "../data/models";
+import { useHoveredBlockStore } from "../controls/useHoveredBlockStore";
+import { HoverOutline } from "./helpers/HoverOutline";
 
 export function BlockGround({ stack, block, rotation, variant }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
 
     const variantResolved = (variant ?? 1) % 2;
 
@@ -21,7 +24,9 @@ export function BlockGround({ stack, block, rotation, variant }: EntityInstanceP
                 receiveShadow
                 geometry={nodes[`Block_Ground_${variantResolved}_1`].geometry}
                 material={nodes[`Block_Ground_${variantResolved}_1`].material}
-            />
+            >
+                <HoverOutline hovered={hovered} />
+            </mesh>
             <mesh
                 castShadow
                 receiveShadow
