@@ -7,7 +7,7 @@ export default async function Home() {
   const enableDebugHud = (await getHypertune()).enableDebugHud({ fallback: false });
 
   return (
-    <div className="grid grid-cols-1 h-[100dvh] relative">
+    <div className="grid grid-cols-1 h-[100dvh] relative overflow-hidden">
       <SignedIn>
         <GameSceneDynamic isDevelopment={enableDebugHud} />
       </SignedIn>
