@@ -12,7 +12,7 @@ export function Bucket({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
-    const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
+    const hovered = useHoveredBlockStore().hoveredBlock === block;
 
     return (
         <animated.group

@@ -10,7 +10,7 @@ import { HoverOutline } from "./helpers/HoverOutline";
 export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url)
     const currentStackHeight = useStackHeight(stack, block);
-    const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
+    const hovered = useHoveredBlockStore().hoveredBlock === block;
 
     // Switch between shapes (O, L, I, U) based on neighbors
     let shape = "O";

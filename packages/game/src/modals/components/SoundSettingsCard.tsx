@@ -111,7 +111,7 @@ export function SoundSettingsCard() {
                         startDecorator={<RotateCcw className="size-4" />}
                         size="sm"
                         className="self-end">
-                        Vrati zadani
+                        Vrati zadano
                     </Button>
                 </Stack>
             </CardContent>

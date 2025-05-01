@@ -11,7 +11,7 @@ export function BlockGround({ stack, block, rotation, variant }: EntityInstanceP
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
-    const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
+    const hovered = useHoveredBlockStore().hoveredBlock === block;
 
     const variantResolved = (variant ?? 1) % 2;
 

@@ -14,18 +14,27 @@ export function SelectableEditGroup({ children, block }: PropsWithChildren<{ blo
         setMovingBlock(block.id);
     }
 
+    function handlePointerEnter(e: React.PointerEvent) {
+        e.stopPropagation();
+        if (movingBlock) return;
+        console.debug("Hover: Pointer enter", block.id);
+        hovered.setHoveredBlock(block);
+        document.body.style.cursor = 'pointer';
+    }
+
+    function handlePointerLeave(e: React.PointerEvent) {
+        if (hovered.hoveredBlock === block && !movingBlock) {
+            e.stopPropagation();
+            console.debug("Hover: Pointer leave", block.id);
+            hovered.setHoveredBlock(null);
+            document.body.style.cursor = 'auto';
+        }
+    }
+
     return (
         <group
-            onPointerEnter={(e) => {
-                e.stopPropagation();
-                hovered.setHoveredBlock(block);
-            }}
-            onPointerLeave={(e) => {
-                if (hovered.hoveredBlock === block) {
-                    e.stopPropagation();
-                    hovered.setHoveredBlock(null);
-                }
-            }}
+            onPointerEnter={handlePointerEnter}
+            onPointerLeave={handlePointerLeave}
             onClick={handleSelected}>
             {children}
         </group>

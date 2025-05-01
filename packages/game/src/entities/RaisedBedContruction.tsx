@@ -10,7 +10,7 @@ import { HoverOutline } from "./helpers/HoverOutline";
 export function RaisedBedContruction({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
-    const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
+    const hovered = useHoveredBlockStore().hoveredBlock === block;
     const currentStackHeight = useStackHeight(stack, block);
 
     return (

@@ -11,7 +11,7 @@ import { HoverOutline } from "./helpers/HoverOutline";
 export function Fence({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const currentStackHeight = useStackHeight(stack, block);
-    const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
+    const hovered = useHoveredBlockStore().hoveredBlock === block;
 
     let variant = "Solo";
     let realizedRotation = rotation % 4;
