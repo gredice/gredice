@@ -29,11 +29,15 @@ export async function generateStaticParams() {
     }));
 }
 
-function BlockAttributes({ attributes }: { attributes: BlockData['attributes'] }) {
+function BlockAttributes({ prices, attributes }: BlockData) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <AttributeCard icon={<Ruler className="size-5" />} header="Visina" value={`${Math.round(attributes.height * 100)} cm`} />
             <AttributeCard icon={<Layers2 className="size-5" />} header="Slaganje" value={attributes.stackable === true ? 'Da' : 'Ne'} />
+            <AttributeCard
+                icon={<span className="text-xl">🌻</span>}
+                header="Cijena"
+                value={prices.sunflowers?.toString() ?? '-'} />
         </div>
     )
 }
@@ -78,10 +82,10 @@ export default async function BlockPage({ params }: { params: Promise<{ alias: s
                     <Markdown>{entity.information.fullDescription}</Markdown>
                     <Stack spacing={1}>
                         <Typography level="h5">Svojstva</Typography>
-                        <BlockAttributes attributes={entity.attributes} />
+                        <BlockAttributes {...entity} />
                     </Stack>
                     <Row spacing={2}>
-                        <Typography level="body1">Jesu li ti informacije bile korisne?</Typography>
+                        <Typography level="body1">Jesu li ti informacije korisne?</Typography>
                         <FeedbackModal
                             topic="www/blocks/details"
                             data={{
