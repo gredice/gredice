@@ -17,9 +17,9 @@ export async function PlantsShowcase() {
 
     return (
         <div>
-            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {plants.map((plant, plantIndex) => (
-                    <div key={plant.id} className={cx(plantIndex === 3 && "hidden lg:block", plantIndex === 2 && "hidden md:block")}>
+                    <div key={plant.id} className={cx(plantIndex === 3 && "hidden sm:block md:hidden lg:block")}>
                         <PlantsGalleryItem
                             key={plant.information.name}
                             information={plant.information}
