@@ -72,7 +72,7 @@ const sectionsData: SectionData[] = [
             {
                 asset: (
                     <Row spacing={4}>
-                        <Image alt="Sjeme i presadnice" src={SeedsAndTransplants} width={200} height={200} />
+                        <Image alt="Sjeme i presadnice" className="w-32 sm:w-[200px]" src={SeedsAndTransplants} width={200} height={200} />
                         <Stack spacing={2}>
                             <Typography level="h4" component="h3">Zasadi</Typography>
                             <Typography level="body1" className="text-balance">Odaberi svoju kombinaciju povrća i zasadi ih u gredice. Mi postavljamo gredice kod jednog od naših partnera i sadimo tvoje biljke.</Typography>
@@ -87,14 +87,14 @@ const sectionsData: SectionData[] = [
                             <Typography level="h4" component="h3">Održavaj</Typography>
                             <Typography level="body1" className="text-balance">Prati stanje svojih gredica i brini se o svojim biljkama. Dobit ćeš obavijesti i savjete kako bi tvoje biljke bile sretne i zdrave.</Typography>
                         </Stack>
-                        <Image alt="Održavanje gredice" src={RaisedBedMaintenance} width={200} height={200} />
+                        <Image alt="Održavanje gredice" className="w-32 sm:w-[200px]" src={RaisedBedMaintenance} width={200} height={200} />
                     </Row>
                 )
             },
             {
                 asset: (
                     <Row spacing={4}>
-                        <Image alt="Dostava povrća" src={DeliveryTruck} width={200} height={200} />
+                        <Image alt="Dostava povrća" className="w-32 sm:w-[200px]" src={DeliveryTruck} width={200} height={200} />
                         <Stack spacing={2}>
                             <Typography level="h4" component="h3">Uberi</Typography>
                             <Typography level="body1" className="text-balance">Zatraži branje svog povrća kad god želiš. Mi beremo i dostavljamo još svježe na kućni prag.</Typography>
