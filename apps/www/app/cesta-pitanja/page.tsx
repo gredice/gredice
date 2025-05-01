@@ -10,6 +10,10 @@ import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
 import { Row } from "@signalco/ui-primitives/Row";
 
 export const dynamic = 'force-dynamic';
+export const metadata = {
+    title: "Česta pitanja",
+    description: "Odgovaramo na sva tvoja pitanja.",
+};
 
 export default async function FaqPage() {
     const faq = await (await client().api.directories.entities[":entityType"].$get({

@@ -78,10 +78,10 @@ export function EmailSendForm({ from }: { from: string }) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className='flex gap-2'>
+                <Row spacing={1}>
                     <Mail className="size-6" />
-                    Novi email
-                </CardTitle>
+                    <CardTitle>Novi email</CardTitle>
+                </Row>
             </CardHeader>
             <form action={formAction}>
                 <CardContent>
@@ -188,6 +188,17 @@ export function EmailSendForm({ from }: { from: string }) {
                             )}
                         </Stack>
                         <CardActions>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                className="hidden"
+                                multiple
+                            />
+                            <input
+                                type="hidden"
+                                name="attachments"
+                                value={attachments.map(({ name }) => name).join(',')} />
                             <Button
                                 type='button'
                                 variant="outlined"
@@ -197,14 +208,6 @@ export function EmailSendForm({ from }: { from: string }) {
                             >
                                 Dodaj prilog
                             </Button>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
-                                className="hidden"
-                                multiple
-                            />
-                            <input type="hidden" name="attachments" value={attachments.map(({ name }) => name).join(',')} />
                             <Button variant='solid' type="submit" startDecorator={<Send className="size-4" />} loading={pending} disabled={pending}>
                                 Pošalji
                             </Button>

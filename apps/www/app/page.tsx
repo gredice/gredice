@@ -1,13 +1,18 @@
 import { SectionsView } from "@signalco/cms-core/SectionsView";
 import { sectionsComponentRegistry } from "../components/shared/sectionsComponentRegistry";
-import { Navigate } from "@signalco/ui-icons";
+import { Check, Navigate } from "@signalco/ui-icons";
 import { KnownPages } from "../src/KnownPages";
 import { SectionData } from "@signalco/cms-core/SectionData";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NewsletterSignUp } from "./NewsletterSignUp";
 import { GameSceneDynamic } from "./GameSceneDynamic";
-import { BlockImage } from "../components/blocks/BlockImage";
+import SeedsAndTransplants from '../assets/SeedsAndTransplants.png';
+import RaisedBedMaintenance from '../assets/RaisedBedMaintenance.png';
+import DeliveryTruck from '../assets/DeliveryTruck.png';
+import Image from "next/image";
+import { Row } from "@signalco/ui-primitives/Row";
+import { PlantsShowcase } from "./PlantsShowcase";
 
 const sectionsData: SectionData[] = [
     {
@@ -35,63 +40,94 @@ const sectionsData: SectionData[] = [
         component: 'Feature1',
         tagline: 'Vrt po tvom',
         header: 'Par koraka do svježeg povrća',
-        description: 'Zasadi, održavaj i uberi. Mi ćemo ti pomoći u svakom koraku i dostaviti ti svježe povrće iz tvojih gredica.',
+        description: 'Zasadi, održavaj i uberi. Pomoći ćemo ti u svakom koraku i na kraju ti dostaviti svježe povrće iz tvojih gredica.',
+        asset: (
+            <div className="h-full items-center flex flex-row mb-8 -mt-4 md:mt-4">
+                <Stack spacing={4}>
+                    <Row spacing={2}>
+                        <Check className="size-5" />
+                        <Stack>
+                            <Typography level="h6" component="span">Samo tvoj vrt</Typography>
+                            <Typography level="body2">Tvoja gredica - tvoje povrće</Typography>
+                        </Stack>
+                    </Row>
+                    <Row spacing={2}>
+                        <Check className="size-5" />
+                        <Stack>
+                            <Typography level="h6" component="span">Nema pretplate</Typography>
+                            <Typography level="body2">Plaćaš samo ono što zasadiš, odradiš ili kupiš</Typography>
+                        </Stack>
+                    </Row>
+                    <Row spacing={2}>
+                        <Check className="size-5" />
+                        <Stack>
+                            <Typography level="h6" component="span">Besplatna dostava</Typography>
+                            <Typography level="body2">Prva berba svake biljke uključuje besplatnu dostavu</Typography>
+                        </Stack>
+                    </Row>
+                </Stack>
+            </div>
+        ),
         features: [
             {
-                header: 'Zasadi',
-                description: 'Odaberi svoju kombinaciju povrća i zasadi svoje gredice. Mi postavljamo pravu gredicu na polju jednog od naših partnera i sadimo ili sijemo tvoje povrće.',
-                asset: <BlockImage blockName="Raised_Bed" width={128} height={128} />
+                asset: (
+                    <Row spacing={4}>
+                        <Image alt="Sjeme i presadnice" src={SeedsAndTransplants} width={200} height={200} />
+                        <Stack spacing={2}>
+                            <Typography level="h4" component="h3">Zasadi</Typography>
+                            <Typography level="body1" className="text-balance">Odaberi svoju kombinaciju povrća i zasadi ih u gredice. Mi postavljamo gredice kod jednog od naših partnera i sadimo tvoje biljke.</Typography>
+                        </Stack>
+                    </Row>
+                )
             },
             {
-                header: 'Održavaj',
-                description: 'Prati stanje svojih gredica i brini se o svojim biljkama. Mi ćemo ti slati obavijesti i savjete kako bi tvoje povrće bilo zdravo i ukusno.',
-                asset: <BlockImage blockName="Bucket" width={128} height={128} />
+                asset: (
+                    <Row spacing={4}>
+                        <Stack spacing={2}>
+                            <Typography level="h4" component="h3">Održavaj</Typography>
+                            <Typography level="body1" className="text-balance">Prati stanje svojih gredica i brini se o svojim biljkama. Dobit ćeš obavijesti i savjete kako bi tvoje biljke bile sretne i zdrave.</Typography>
+                        </Stack>
+                        <Image alt="Održavanje gredice" src={RaisedBedMaintenance} width={200} height={200} />
+                    </Row>
+                )
             },
             {
-                header: 'Uberi',
-                description: 'Uberi svoje povrće kad hod želiš. Mi ćemo ti pomoći u berbi i dostaviti ti svježe povrće na kućnu adresu.',
-                asset: <BlockImage blockName="Shade" width={128} height={128} />
+                asset: (
+                    <Row spacing={4}>
+                        <Image alt="Dostava povrća" src={DeliveryTruck} width={200} height={200} />
+                        <Stack spacing={2}>
+                            <Typography level="h4" component="h3">Uberi</Typography>
+                            <Typography level="body1" className="text-balance">Zatraži branje svog povrća kad god želiš. Mi beremo i dostavljamo još svježe na kućni prag.</Typography>
+                        </Stack>
+                    </Row>
+                )
             }
         ]
     }
 ];
 
-const preSeasonSectionsData: SectionData[] = [
-    {
-        component: 'Heading1',
-        tagline: 'Gredice',
-        header: 'Vrt po tvom',
-        description: (
-            <Stack spacing={6}>
-                <Typography>Dobiješ povrće iz svojih gredica - nit oro, nit kopo!</Typography>
-                <NewsletterSignUp />
-            </Stack>
-        ),
-        asset: (
-            <div className="min-h-96 relative rounded-xl overflow-hidden">
-                <GameSceneDynamic
-                    appBaseUrl="https://vrt.gredice.com"
-                    freezeTime={new Date(2024, 5, 21, 11, 30)}
-                    noBackground
-                    hideHud
-                    noWeather
-                    noSound
-                    mockGarden />
-            </div>
-        ),
-        ctas: [
-
-        ]
-    }
-];
-
-export default async function Home() {
-    // const flags = await getFlags();
-    const preSeason = true;//flags.preSeason({ fallback: true });
-
+export default function Home() {
     return (
-        <SectionsView
-            sectionsData={preSeason ? preSeasonSectionsData : sectionsData}
-            componentsRegistry={sectionsComponentRegistry} />
+        <Stack>
+            <SectionsView
+                sectionsData={sectionsData}
+                componentsRegistry={sectionsComponentRegistry} />
+            <Stack spacing={4}>
+                <Stack spacing={1}>
+                    <Typography level="body1" semiBold tertiary>Povrće iz tvog vrta</Typography>
+                    <Typography level="h2">Koje povrće možeš posaditi?</Typography>
+                </Stack>
+                <Typography level="body1" className="text-balance max-w-lg">
+                    Naša ponuda povrća je raznolika i prilagođena tvojim potrebama. Odaberi svoje omiljeno povrće, začine i cvijeće i zasadi svoje gredice.
+                </Typography>
+                <PlantsShowcase />
+            </Stack>
+            <Stack spacing={4} className="mt-20 mb-10">
+                <Typography level="h4" component="h2">Ostale zanimljivosti</Typography>
+                <div className="w-fit bg-white border shadow p-6 rounded-xl">
+                    <NewsletterSignUp />
+                </div>
+            </Stack>
+        </Stack>
     );
 }

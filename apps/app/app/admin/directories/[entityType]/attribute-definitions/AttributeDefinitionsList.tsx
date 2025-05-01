@@ -42,10 +42,7 @@ function AttributeDataTypeIcon({ dataType, ...rest }: { dataType: string } & HTM
 
 function AttributeDefinitionCard({ attributeDefinition }: { attributeDefinition: ExtendedAttributeDefinition }) {
     return (
-        <Link
-            href={KnownPages.DirectoryEntityTypeAttributeDefinition(attributeDefinition.entityTypeName, attributeDefinition.id)}
-            passHref
-            legacyBehavior>
+        <Link href={KnownPages.DirectoryEntityTypeAttributeDefinition(attributeDefinition.entityTypeName, attributeDefinition.id)}>
             <Card>
                 <Row spacing={1}>
                     <AttributeDataTypeIcon dataType={attributeDefinition.dataType} className="size-5 text-muted-foreground" />
@@ -64,10 +61,7 @@ function AttributeDefinitionCard({ attributeDefinition }: { attributeDefinition:
 
 function AttributeDefinitionCategoryCard({ attributeDefinitionCategory }: { attributeDefinitionCategory: SelectAttributeDefinitionCategory }) {
     return (
-        <Link
-            href={KnownPages.DirectoryEntityTypeAttributeDefinitionCategory(attributeDefinitionCategory.entityTypeName, attributeDefinitionCategory.id)}
-            passHref
-            legacyBehavior>
+        <Link href={KnownPages.DirectoryEntityTypeAttributeDefinitionCategory(attributeDefinitionCategory.entityTypeName, attributeDefinitionCategory.id)}>
             <Card>
                 <Row spacing={1} justifyContent="space-between">
                     <Stack>

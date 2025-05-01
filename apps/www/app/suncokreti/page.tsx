@@ -5,6 +5,11 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../components/shared/PageHeader";
 import Image from "next/image";
 
+export const metadata = {
+    title: "Suncokreti",
+    description: "Sve što trebaš znati o suncokretima.",
+};
+
 const sectionsData: SectionData[] = [
     {
         component: 'Faq1',
@@ -30,18 +35,18 @@ const sectionsData: SectionData[] = [
 export default function SunflowersPage() {
     return (
         <Stack>
-            <PageHeader 
-            header="Suncokreti" 
-            subHeader={`Sakupljanje suncokrete i koristi ih u svom vrtu za uređenje i dekoraciju.`}
-            padded 
-            visual={(
-                <Image
-                    src="https://cdn.gredice.com/sunflower-large.svg"
-                    alt="Suncokret"
-                    width={192}
-                    height={192}
-                    priority />
-            )} />
+            <PageHeader
+                header="Suncokreti"
+                subHeader={`Sakupljaj suncokrete i koristi ih u svom vrtu za uređenje i dekoraciju ili kupnju novih biljaka 🌱`}
+                padded
+                visual={(
+                    <Image
+                        src="https://cdn.gredice.com/sunflower-large.svg"
+                        alt="Suncokret"
+                        width={192}
+                        height={192}
+                        priority />
+                )} />
             <SectionsView
                 sectionsData={sectionsData}
                 componentsRegistry={sectionsComponentRegistry} />

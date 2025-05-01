@@ -11,8 +11,15 @@ import { Calendar, LayoutGrid } from "lucide-react";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import Link from "next/link";
+import { Typography } from "@signalco/ui-primitives/Typography";
+import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
 
 export const revalidate = 3600; // 1 hour
+
+export const metadata = {
+    title: "Biljke",
+    description: "Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu.",
+};
 
 export default async function PlantsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
     const params = await searchParams;
@@ -68,6 +75,10 @@ export default async function PlantsPage({ searchParams }: { searchParams: Promi
                     </TabsContent>
                 </Tabs>
             </Suspense>
+            <Row spacing={2} className="mt-12">
+                <Typography level="body1">Sviđa ti se odabir ili nema biljke koja te zanima?</Typography>
+                <FeedbackModal topic="www/plants" />
+            </Row>
         </Stack>
     );
 }

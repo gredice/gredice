@@ -30,7 +30,7 @@ export function PageHeader({
                         </CardOverflow>
                     </Card>
                 )}
-                <Stack spacing={2} className="max-w-96">
+                <Stack spacing={2} className="md:max-w-96">
                     <Typography level="h2" component="h1">{header}</Typography>
                     {alternativeName && <Typography level="body2" secondary>{alternativeName}</Typography>}
                     {subHeader && <Typography level="body1" secondary className="text-balance">{subHeader}</Typography>}
