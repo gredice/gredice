@@ -22,18 +22,7 @@ export function InformationSection({ plantId, id, header, content, instructions 
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 group">
-            <div className="flex justify-between">
-                <Typography id={slug(header)} level="h2" className="text-2xl">{header}</Typography>
-                <FeedbackModal
-                    className="group-hover:opacity-100 opacity-0 transition-opacity"
-                    topic="www/plants/information"
-                    data={{
-                        plantId: plantId,
-                        sectionId: id
-                    }}
-                />
-            </div>
-            <div className="hidden md:block" />
+            <Typography id={slug(header)} level="h2" className="text-2xl md:col-span-2">{header}</Typography>
             <Markdown>{content}</Markdown>
             <Stack className={cx("border rounded-lg p-2 h-fit", !instructions?.length && 'justify-center')}>
                 {(instructions?.length ?? 0) <= 0 && (
@@ -45,6 +34,14 @@ export function InformationSection({ plantId, id, header, content, instructions 
                     <PlantingInstructions instructions={instructions} />
                 )}
             </Stack>
+            <FeedbackModal
+                className="md:group-hover:opacity-100 md:opacity-0 transition-opacity ml-auto"
+                topic="www/plants/information"
+                data={{
+                    plantId: plantId,
+                    sectionId: id
+                }}
+            />
         </div>
     )
 }

@@ -18,6 +18,7 @@ import { PlantAttributes } from "./PlantAttributes";
 import { InformationSection } from "./InformationSection";
 import { VerifiedInformationBadge } from "./VerifiedInformationBadge";
 import { PlantImage } from "../../../components/plants/PlantImage";
+import { MapPinHouse } from "lucide-react";
 
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true;
@@ -60,6 +61,9 @@ export type PlantData = {
     calendar?: {
         [key: string]: { start: number, end: number }[]
     },
+    prices: {
+        perPlant: number,
+    }
     // companions?: number[],
     // antagonists?: number[],
     // diseases?: number[],
@@ -118,9 +122,12 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                     headerChildren={(
                         <Stack spacing={2} alignItems="start">
                             {plant.information.origin && (
-                                <Stack>
+                                <Stack spacing={1}>
                                     <Typography level="body2">Porijeklo</Typography>
-                                    <Typography>{plant.information.origin}</Typography>
+                                    <Row spacing={1}>
+                                        <MapPinHouse className="size-5 shrink-0" />
+                                        <Typography>{plant.information.origin}</Typography>
+                                    </Row>
                                 </Stack>
                             )}
                             {plant.information.verified && <VerifiedInformationBadge />}

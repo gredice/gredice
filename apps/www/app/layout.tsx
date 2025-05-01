@@ -18,7 +18,10 @@ import { ReactNode } from "react";
 import { Logotype } from "../components/Logotype";
 
 export const metadata: Metadata = {
-    title: "Gredice - vrt po tvom",
+    title: {
+        template: "%s | Gredice",
+        default: "Gredice - vrt po tvom",
+    },
     description: "Tvoj digitalni vrt s pravim povrćem i beplatnom dostavom. Postavi gredice, zasadi svoje omiljeno povrće, održavaj vrt i uberi plodove a mi ćemo se pobrinuti o brzoj dostavi i besplatnoj na tvoj kućni prag.",
     keywords: [
         "gredice", "gredica",
@@ -113,7 +116,6 @@ export default async function RootLayout({
                                 { href: KnownPages.Blocks, text: 'Blokovi' },
                                 { href: KnownPages.FAQ, text: 'Česta pitanja' },
                             ]}>
-
                             <Link href={KnownPages.GardenApp}>
                                 <NavigatingButton className="bg-green-800 hover:bg-green-700">
                                     Vrt
