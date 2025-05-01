@@ -39,7 +39,7 @@ export default async function FaqPage() {
                     </Accordion>
                 ))}
                 <Row spacing={2}>
-                    <Typography level="body1">Jesu li ti informacije bile korisne?</Typography>
+                    <Typography level="body1">Jesu li ti informacije korisne?</Typography>
                     <FeedbackModal topic="www/faq" />
                 </Row>
             </Stack>
