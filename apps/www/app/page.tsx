@@ -122,12 +122,9 @@ export default function Home() {
                 </Typography>
                 <PlantsShowcase />
             </Stack>
-            <Stack spacing={4} className="mt-20 mb-10">
-                <Typography level="h4" component="h2">Ostale zanimljivosti</Typography>
-                <div className="w-fit bg-white border shadow p-6 rounded-xl">
-                    <NewsletterSignUp />
-                </div>
-            </Stack>
+            <div className="bg-white border shadow p-6 rounded-xl mt-20 mb-10">
+                <NewsletterSignUp />
+            </div>
         </Stack>
     );
 }
