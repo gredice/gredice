@@ -1,10 +1,10 @@
 import { ItemCard } from "../../components/shared/ItemCard";
-import { PlantData } from "./[alias]/page";
 import { KnownPages } from "../../src/KnownPages";
 import { PlantImage } from "../../components/plants/PlantImage";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { cx } from "@signalco/ui-primitives/cx";
+import { PlantData } from "../../lib/@types/PlantData";
 
 export type PlantsGalleryItemProps =
     Pick<PlantData, 'information' | 'image'> &

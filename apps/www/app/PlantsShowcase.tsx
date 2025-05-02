@@ -1,11 +1,11 @@
 import { client } from "@gredice/client";
-import { PlantData } from "./biljke/[alias]/page";
 import { PlantsGalleryItem } from "./biljke/PlantsGalleryItem";
 import { cx } from "@signalco/ui-primitives/cx";
 import Link from "next/link";
 import { KnownPages } from "../src/KnownPages";
 import { Navigate } from "@signalco/ui-icons";
 import { Row } from "@signalco/ui-primitives/Row";
+import { PlantData } from "../lib/@types/PlantData";
 
 export async function PlantsShowcase() {
     const entities = await (await client().api.directories.entities[":entityType"].$get({
