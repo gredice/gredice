@@ -5,10 +5,10 @@ import { CSSProperties, Fragment } from "react";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { orderBy } from "@signalco/js";
-import Image from "next/image";
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import Link from "next/link";
 import { KnownPages } from "../../src/KnownPages";
+import { PlantImage } from "../../components/plants/PlantImage";
 
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true;
@@ -70,11 +70,7 @@ export function PlantsCalendar({ plants }: { plants: PlantData[] }) {
                                 <Link href={KnownPages.Plant(plant.information.name)} prefetch>
                                     <Row justifyContent="space-between" spacing={1} className="mx-2">
                                         <Row spacing={1}>
-                                            <Image
-                                                src={plant.image?.cover?.url ?? '/assets/plants/placeholder.png'}
-                                                width={20}
-                                                height={20}
-                                                alt={`Slika ${plant.information.name}`} />
+                                            <PlantImage plant={plant} width={20} height={20} />
                                             <Typography level="body2">
                                                 {plant.information.name}
                                             </Typography>

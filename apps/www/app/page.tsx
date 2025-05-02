@@ -7,9 +7,9 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NewsletterSignUp } from "./NewsletterSignUp";
 import { GameSceneDynamic } from "./GameSceneDynamic";
-import SeedsAndTransplants from '../assets/SeedsAndTransplants.png';
-import RaisedBedMaintenance from '../assets/RaisedBedMaintenance.png';
-import DeliveryTruck from '../assets/DeliveryTruck.png';
+import SeedsAndTransplants from '../assets/SeedsAndTransplants.webp';
+import RaisedBedMaintenance from '../assets/RaisedBedMaintenance.webp';
+import DeliveryTruck from '../assets/DeliveryTruck.webp';
 import Image from "next/image";
 import { Row } from "@signalco/ui-primitives/Row";
 import { PlantsShowcase } from "./PlantsShowcase";
@@ -42,7 +42,7 @@ const sectionsData: SectionData[] = [
         header: 'Par koraka do svježeg povrća',
         description: 'Zasadi, održavaj i uberi. Pomoći ćemo ti u svakom koraku i na kraju ti dostaviti svježe povrće iz tvojih gredica.',
         asset: (
-            <div className="h-full items-center flex flex-row mb-8 -mt-4 md:mt-4">
+            <div className="h-full items-center flex flex-row mb-8 -mt-4">
                 <Stack spacing={4}>
                     <Row spacing={2}>
                         <Check className="size-5" />
