@@ -2,10 +2,10 @@
 
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
-import { PlantData } from "./[alias]/page";
 import { Gallery } from "@signalco/ui/Gallery";
 import { PlantsGalleryItem } from "./PlantsGalleryItem";
 import { orderBy } from "@signalco/js";
+import { PlantData } from "../../lib/@types/PlantData";
 
 export function PlantsGallery({ plants }: { plants: PlantData[] }) {
     const [search] = useSearchParam('pretraga');
