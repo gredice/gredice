@@ -5,7 +5,6 @@ import { CSSProperties, Fragment } from "react";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { orderBy } from "@signalco/js";
-import Image from "next/image";
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import Link from "next/link";
 import { KnownPages } from "../../src/KnownPages";
