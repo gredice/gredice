@@ -1,6 +1,5 @@
 'use client';
 
-import { PlantData } from "./[alias]/page";
 import { CSSProperties, Fragment } from "react";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
@@ -9,6 +8,7 @@ import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import Link from "next/link";
 import { KnownPages } from "../../src/KnownPages";
 import { PlantImage } from "../../components/plants/PlantImage";
+import { PlantData } from "../../lib/@types/PlantData";
 
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true;

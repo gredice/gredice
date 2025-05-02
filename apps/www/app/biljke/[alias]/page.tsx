@@ -13,12 +13,12 @@ import { Accordion } from "@signalco/ui/Accordion";
 import { client } from "@gredice/client";
 import { slug } from "@signalco/js";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
-import { PlantInstruction } from "./PlantingInstructions";
-import { PlantAttributes } from "./PlantAttributes";
+import { PlantAttributeCards } from "./PlantAttributeCards";
 import { InformationSection } from "./InformationSection";
 import { VerifiedInformationBadge } from "./VerifiedInformationBadge";
 import { PlantImage } from "../../../components/plants/PlantImage";
 import { MapPinHouse } from "lucide-react";
+import { PlantData } from "../../../lib/@types/PlantData";
 
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true;
@@ -34,41 +34,6 @@ export async function generateStaticParams() {
         alias: String(entity.information.name),
     }));
 }
-
-export type PlantData = {
-    id: number,
-    // plantFamily?: PlantFamily,
-    information: {
-        name: string,
-        verified: boolean,
-        description?: string | null,
-        origin?: string | null,
-        latinName?: string | null,
-        soilPreparation?: string | null,
-        sowing?: string | null,
-        planting?: string | null,
-        flowering?: string | null,
-        maintenance?: string | null,
-        growth?: string | null,
-        harvest?: string | null,
-        storage?: string | null,
-        watering?: string | null,
-        instructions?: PlantInstruction[] | null,
-        tip?: { header: string, content: string }[] | null
-    },
-    image?: { cover?: { url?: string } },
-    attributes?: PlantAttributes,
-    calendar?: {
-        [key: string]: { start: number, end: number }[]
-    },
-    prices: {
-        perPlant: number,
-    }
-    // companions?: number[],
-    // antagonists?: number[],
-    // diseases?: number[],
-    // pests?: number[],
-};
 
 type InformationSection = {
     header: string,
@@ -167,7 +132,7 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                         </Stack>
                         <Stack spacing={1} className="group">
                             <Typography level="h2" className="text-2xl">Svojstva</Typography>
-                            <PlantAttributes attributes={plant.attributes} />
+                            <PlantAttributeCards attributes={plant.attributes} />
                             <FeedbackModal
                                 topic="www/plants/attributes"
                                 data={{
@@ -185,7 +150,7 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                         id={section.id}
                         header={section.header}
                         content={plant.information[section.id]}
-                        instructions={plant.information.instructions?.filter(i => i.stage === section.id)} />
+                        operations={plant.information.operations} />
                 ))}
                 {((plant.information.tip?.length ?? 0) > 0) && (
                     <Stack spacing={2}>

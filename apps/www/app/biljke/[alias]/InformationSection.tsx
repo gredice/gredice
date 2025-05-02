@@ -5,33 +5,47 @@ import { cx } from "@signalco/ui-primitives/cx";
 import { Markdown } from "../../../components/shared/Markdown";
 import { slug } from "@signalco/js";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
-import { PlantingInstructions, PlantInstruction } from "./PlantingInstructions";
+import { PlantOperations } from "./PlantOperations";
+import { client } from "@gredice/client";
+import { OperationData } from "../../../lib/@types/OperationData";
 
 export type InformationSectionProps = {
     plantId: number
     id: string
     header: string
     content: string | null | undefined
-    instructions?: PlantInstruction[]
+    operations?: string[] | null
 }
 
-export function InformationSection({ plantId, id, header, content, instructions }: InformationSectionProps) {
+export async function InformationSection({ plantId, id, header, content, operations }: InformationSectionProps) {
     if (!content) {
         return null;
     }
+
+    const operationsData = await (await client().api.directories.entities[":entityType"].$get({
+        param: {
+            entityType: "operation"
+        }
+    })).json() as OperationData[];
+    const applicableOperations = operationsData.filter((operation) => {
+        const operationId = operation.information.name.toLowerCase();
+        const idMatched = operations?.some((op) => op.toLowerCase() === operationId) ?? false;
+        const sectionMatched = operation.attributes.stage === id;
+        return idMatched && sectionMatched;
+    });
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 group">
             <Typography id={slug(header)} level="h2" className="text-2xl md:col-span-2">{header}</Typography>
             <Markdown>{content}</Markdown>
-            <Stack className={cx("border rounded-lg p-2 h-fit", !instructions?.length && 'justify-center')}>
-                {(instructions?.length ?? 0) <= 0 && (
+            <Stack className={cx("border rounded-lg p-2 h-fit", !applicableOperations?.length && 'justify-center')}>
+                {(applicableOperations?.length ?? 0) <= 0 && (
                     <NoDataPlaceholder className="self-center py-4">
                         Nema dostupnih akcija
                     </NoDataPlaceholder>
                 )}
-                {(instructions?.length ?? 0) > 0 && (
-                    <PlantingInstructions instructions={instructions} />
+                {(applicableOperations?.length ?? 0) > 0 && (
+                    <PlantOperations operations={applicableOperations} />
                 )}
             </Stack>
             <FeedbackModal

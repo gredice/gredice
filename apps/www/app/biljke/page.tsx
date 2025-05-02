@@ -1,6 +1,5 @@
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PlantsGallery } from "./PlantsGallery";
-import { PlantData } from "./[alias]/page";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { client } from "@gredice/client";
 import { Suspense } from "react";
@@ -13,6 +12,7 @@ import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import Link from "next/link";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
+import { PlantData } from "../../lib/@types/PlantData";
 
 export const revalidate = 3600; // 1 hour
 
