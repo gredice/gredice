@@ -15,7 +15,7 @@
     "test:run": "playwright test"
   },
   "dependencies": {
-    "@hono/zod-validator": "0.4.3",
+    "@hono/zod-validator": "0.5.0",
     "@scalar/api-reference-react": "0.6.25",
     "hono": "4.7.8",
     "hono-openapi": "0.4.8",
