@@ -10,7 +10,7 @@ import { preSeasonNewsletterSubscribe } from "./actions";
 import { GentleSlide } from "@signalco/ui/GentleSlide";
 import { useActionState } from "react";
 import Image from "next/image";
-import NewsletterImage from "../assets/NewsletterVisual.png";
+import NewsletterImage from "../assets/NewsletterVisual.webp";
 
 export function NewsletterSignUp() {
     const [state, submitAction, isPending] = useActionState(preSeasonNewsletterSubscribe, null);
