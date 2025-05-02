@@ -1,18 +1,8 @@
 import { Sun, Droplet, Sprout, Leaf, Ruler, ArrowDownToLine, Thermometer, Tally3 } from "lucide-react"
+import { PlantAttributesData } from "../../../lib/@types/PlantAttributesData";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
 
-export type PlantAttributes = {
-    light?: number | null
-    water?: string | null
-    soil?: string | null
-    nutrients?: string | null
-    seedingDistance?: number | null
-    seedingDepth?: number | null
-    gernimationTemperature?: number | null
-    germinationType?: string | null
-};
-
-export function PlantAttributes({ attributes }: { attributes: PlantAttributes | undefined }) {
+export function PlantAttributeCards({ attributes }: { attributes: PlantAttributesData | undefined }) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <AttributeCard

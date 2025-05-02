@@ -1,5 +1,5 @@
 import Image, { ImageProps } from "next/image";
-import { PlantData } from "../../app/biljke/[alias]/page";
+import { PlantData } from "../../lib/@types/PlantData";
 
 export function PlantImage({ plant, ...rest }: Omit<ImageProps, 'src' | 'alt'> & { plant: Pick<PlantData, 'image' | 'information'> }) {    
     return (
