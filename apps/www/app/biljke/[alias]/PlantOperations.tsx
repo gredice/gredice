@@ -2,7 +2,7 @@ import { Card, CardContent } from "@signalco/ui-primitives/Card";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Circle, Euro, Hammer, Info } from "lucide-react"
+import { Euro, Hammer, Info } from "lucide-react"
 import Image from "next/image";
 import { OperationData } from "../../../lib/@types/OperationData";
 import { Row } from "@signalco/ui-primitives/Row";
