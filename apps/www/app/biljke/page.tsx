@@ -1,7 +1,6 @@
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PlantsGallery } from "./PlantsGallery";
 import { PageHeader } from "../../components/shared/PageHeader";
-import { client } from "@gredice/client";
 import { Suspense } from "react";
 import { PageFilterInput } from "../../components/shared/PageFilterInput";
 import { PlantsCalendar } from "./PlantsCalendar";
@@ -12,10 +11,9 @@ import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import Link from "next/link";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
-import { PlantData } from "../../lib/@types/PlantData";
+import { getPlantsData } from "../../lib/plants/getPlantsData";
 
 export const revalidate = 3600; // 1 hour
-
 export const metadata = {
     title: "Biljke",
     description: "Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu.",
@@ -25,11 +23,7 @@ export default async function PlantsPage({ searchParams }: { searchParams: Promi
     const params = await searchParams;
     const view = params.pregled;
     const search = params.pretraga;
-    const entities = await (await client().api.directories.entities[":entityType"].$get({
-        param: {
-            entityType: "plant"
-        }
-    })).json() as PlantData[];
+    const entities = await getPlantsData();
     return (
         <Stack>
             <PageHeader

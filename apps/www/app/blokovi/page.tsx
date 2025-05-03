@@ -7,8 +7,6 @@ import { PageFilterInput } from "../../components/shared/PageFilterInput";
 import { BlockGallery } from "./BlockGallery";
 
 export const revalidate = 3600; // 1 hour
-export const dynamicParams = true;
-
 export const metadata = {
     title: "Blokovi",
     description: "Pregledaj sve blokove koje možeš koristiti u svom vrtu.",

@@ -40,9 +40,11 @@ export async function InformationSection({ plantId, id, header, content, operati
             <Markdown>{content}</Markdown>
             <Stack className={cx("border rounded-lg p-2 h-fit", !applicableOperations?.length && 'justify-center')}>
                 {(applicableOperations?.length ?? 0) <= 0 && (
-                    <NoDataPlaceholder className="self-center py-4">
-                        Nema dostupnih akcija
-                    </NoDataPlaceholder>
+                    <div className="py-4">
+                        <NoDataPlaceholder>
+                            Nema dostupnih akcija
+                        </NoDataPlaceholder>
+                    </div>
                 )}
                 {(applicableOperations?.length ?? 0) > 0 && (
                     <PlantOperations operations={applicableOperations} />

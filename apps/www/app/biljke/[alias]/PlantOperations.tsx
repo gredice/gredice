@@ -61,7 +61,7 @@ export function PlantOperations({ operations }: { operations?: OperationData[] }
     });
 
     return (
-        <div className="space-y-4">
+        <Stack spacing={1}>
             {orderedOperations?.map((operation) => (
                 <div key={operation.information.name} className="flex flex-col md:flex-row md:items-center group gap-x-4">
                     {/* TODO: Extract insutrction card */}
@@ -82,7 +82,7 @@ export function PlantOperations({ operations }: { operations?: OperationData[] }
                                 </span>
                                 <Modal
                                     title={operation.information.label}
-                                    className="border border-tertiary border-b-4"
+                                    className="border border-tertiary border-b-4 max-w-xl"
                                     trigger={(
                                         <IconButton
                                             size="lg"
@@ -100,7 +100,11 @@ export function PlantOperations({ operations }: { operations?: OperationData[] }
                                                 <p>{operation.information.shortDescription}</p>
                                             </Stack>
                                         </Row>
+                                        <Card>
+                                            <CardContent>
                                         <Markdown>{operation.information.description}</Markdown>
+                                            </CardContent>
+                                        </Card>
                                         <div className="grid grid-cols-2">
                                             <AttributeCard header="Cijena" icon={<Euro />} value={operation.prices.perOperation.toFixed(2)} />
                                         </div>
@@ -111,6 +115,6 @@ export function PlantOperations({ operations }: { operations?: OperationData[] }
                     </Card>
                 </div>
             ))}
-        </div>
+        </Stack>
     )
 }

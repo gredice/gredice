@@ -113,7 +113,6 @@ export default async function RootLayout({
                             )}
                             links={[
                                 { href: KnownPages.Plants, text: 'Biljke' },
-                                { href: KnownPages.Blocks, text: 'Blokovi' },
                                 { href: KnownPages.FAQ, text: 'Česta pitanja' },
                             ]}>
                             <Link href={KnownPages.GardenApp}>
