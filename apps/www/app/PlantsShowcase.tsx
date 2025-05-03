@@ -1,18 +1,13 @@
-import { client } from "@gredice/client";
 import { PlantsGalleryItem } from "./biljke/PlantsGalleryItem";
 import { cx } from "@signalco/ui-primitives/cx";
 import Link from "next/link";
 import { KnownPages } from "../src/KnownPages";
 import { Navigate } from "@signalco/ui-icons";
 import { Row } from "@signalco/ui-primitives/Row";
-import { PlantData } from "../lib/@types/PlantData";
+import { getPlantsData } from "../lib/plants/getPlantsData";
 
 export async function PlantsShowcase() {
-    const entities = await (await client().api.directories.entities[":entityType"].$get({
-        param: {
-            entityType: "plant"
-        }
-    })).json() as PlantData[];
+    const entities = await getPlantsData();
     const plants = entities.slice(0, 4);
 
     return (

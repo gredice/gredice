@@ -15,7 +15,26 @@ import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal
 import { Row } from "@signalco/ui-primitives/Row";
 
 export const revalidate = 3600; // 1 hour
-export const dynamicParams = true;
+export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }) {
+    const { alias: aliasUnescaped } = await params;
+    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const blockData = await (await client().api.directories.entities[":entityType"].$get({
+        param: {
+            entityType: "block"
+        }
+    })).json() as BlockData[];
+    const block = blockData.find((block) => block.information.label === alias);
+    if (!block) {
+        return {
+            title: "Blok nije pronađen",
+            description: "Blok koji tražiš nije pronađen.",
+        };
+    }
+    return {
+        title: block.information.label,
+        description: block.information.shortDescription,
+    };
+}
 
 export async function generateStaticParams() {
     const entities = await (await client().api.directories.entities[":entityType"].$get({

@@ -10,7 +10,6 @@ import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDat
 import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
 import { KnownPages } from "../../../src/KnownPages";
 import { Accordion } from "@signalco/ui/Accordion";
-import { client } from "@gredice/client";
 import { slug } from "@signalco/js";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
 import { PlantAttributeCards } from "./PlantAttributeCards";
@@ -18,19 +17,28 @@ import { InformationSection } from "./InformationSection";
 import { VerifiedInformationBadge } from "./VerifiedInformationBadge";
 import { PlantImage } from "../../../components/plants/PlantImage";
 import { MapPinHouse } from "lucide-react";
-import { PlantData } from "../../../lib/@types/PlantData";
+import { getPlantsData } from "../../../lib/plants/getPlantsData";
 
 export const revalidate = 3600; // 1 hour
-export const dynamicParams = true;
+export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }) {
+    const { alias: aliasUnescaped } = await params;
+    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const plant = (await getPlantsData()).find((plant) => plant.information.name.toLowerCase() === alias?.toLowerCase());
+    if (!plant) {
+        return {
+            title: "Biljka nije pronađena",
+            description: "Biljka nije pronađena",
+        };
+    }
+    return {
+        title: plant.information.name,
+        description: plant.information.description
+    };
+}
 
 export async function generateStaticParams() {
-    const entities = await (await client().api.directories.entities[":entityType"].$get({
-        param: {
-            entityType: "plant"
-        }
-    })).json() as PlantData[];
-
-    return entities.map((entity) => ({
+    const plants = await getPlantsData();
+    return plants.map((entity) => ({
         alias: String(entity.information.name),
     }));
 }
@@ -48,12 +56,7 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
         notFound();
     }
 
-    const plants = await (await client().api.directories.entities[":entityType"].$get({
-        param: {
-            entityType: "plant"
-        }
-    })).json() as PlantData[];
-    const plant = plants.find((plant) => plant.information.name.toLowerCase() === alias.toLowerCase());
+    const plant = (await getPlantsData()).find((plant) => plant.information.name.toLowerCase() === alias.toLowerCase());
     if (!plant) {
         notFound();
     }
