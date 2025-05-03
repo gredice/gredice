@@ -10,8 +10,8 @@ export function ProfileInfo() {
     return (
         <Row spacing={2} className="pr-4">
             <ProfileAvatar />
-            <Stack spacing={0.5}>
-                <Typography level="body2" semiBold noWrap>
+            <Stack spacing={0.5} className="overflow-hidden">
+                <Typography level="body2" semiBold noWrap title={currentUser.data?.displayName}>
                     {currentUser.data?.displayName}
                 </Typography>
                 {currentUser.data?.userName !== currentUser.data?.displayName && (

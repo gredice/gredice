@@ -1,7 +1,7 @@
 import { HudCard } from "./components/HudCard";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Check, CheckCheck, Inbox, LogOut, Settings2, User } from 'lucide-react';
+import { Check, CheckCheck, ExternalLink, Inbox, LogOut, Settings2, Sprout, User } from 'lucide-react';
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Popper } from "@signalco/ui-primitives/Popper";
@@ -16,6 +16,7 @@ import { ProfileInfo } from "../shared-ui/ProfileInfo";
 import { ProfileAvatar } from "../shared-ui/ProfileAvatar";
 import { useNotifications } from "../hooks/useNotifications";
 import { Skeleton } from "@signalco/ui-primitives/Skeleton";
+import { KnownPages } from "../knownPages";
 
 function NotificationsCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
@@ -63,7 +64,7 @@ function ProfileCard() {
             <DropdownMenuSeparator className="my-4" />
             {currentGarden ? (
                 <DropdownMenuItem className="gap-3 bg-muted">
-                    <Check className="h-4 w-4" />
+                    <Check className="size-4" />
                     <span>{currentGarden.name}</span>
                 </DropdownMenuItem>
             ) : (
@@ -71,20 +72,28 @@ function ProfileCard() {
             )}
             <DropdownMenuSeparator className="my-4" />
             <DropdownMenuItem className="gap-3" onClick={() => setProfileModalOpen('generalno')}>
-                <User className="h-4 w-4" />
+                <User className="size-4" />
                 <span>Profil</span>
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-3" onClick={() => setProfileModalOpen('obavijesti')}>
-                <Inbox className="h-4 w-4" />
+                <Inbox className="size-4" />
                 <span>Obavijesti</span>
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-3" onClick={() => setProfileModalOpen('generalno')}>
-                <Settings2 className="h-4 w-4" />
+                <Settings2 className="size-4" />
                 <span>Postavke</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-4" />
+            <DropdownMenuItem className="gap-3 justify-between" href={KnownPages.GredicePlants}>
+                <Row spacing={1.5}>
+                    <Sprout className="size-4" />
+                    <span>Baza biljaka</span>
+                </Row>
+                <ExternalLink className="size-4 self-end" />
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="my-4" />
             <DropdownMenuItem className="gap-3" href="/odjava">
-                <LogOut className="h-4 w-4" />
+                <LogOut className="size-4" />
                 <span>Sign Out</span>
             </DropdownMenuItem>
         </DropdownMenuContent>
