@@ -169,7 +169,7 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
             tension: 350,
         }
     });
-    const blockedPosition = [stack.position.x, currentStackHeight, stack.position.z];
+    const blockedPosition: [number, number, number] = [stack.position.x, currentStackHeight, stack.position.z];
 
     return (
         <animated.group
