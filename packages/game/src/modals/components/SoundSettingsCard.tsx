@@ -105,7 +105,7 @@ export function SoundSettingsCard() {
                             label="Efekti"
                         />
                     </Stack>
-                <Button
+                    <Button
                         onClick={handleReset}
                         variant="outlined"
                         startDecorator={<RotateCcw className="size-4" />}

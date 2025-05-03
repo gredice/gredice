@@ -32,7 +32,7 @@ export function AttributeInput({
     attributeValue: SelectAttributeValue | undefined | null
 }) {
     const handleChange = async (value: string | null) => {
-        // Ignore if not changed
+        // Ignore if not changed or empty/null value
         if (value === attributeValue?.value ||
             (value === '' && !attributeValue?.value)) {
             return;
