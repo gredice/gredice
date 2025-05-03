@@ -9,6 +9,8 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Markdown } from "../../../components/shared/Markdown";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
+import { NavigatingButton } from "@signalco/ui/NavigatingButton";
+import { KnownPages } from "../../../src/KnownPages";
 
 function operationFrequencyLabel(frequency: string) {
     switch (frequency) {
@@ -100,14 +102,21 @@ export function PlantOperations({ operations }: { operations?: OperationData[] }
                                                 <p>{operation.information.shortDescription}</p>
                                             </Stack>
                                         </Row>
-                                        <Card>
-                                            <CardContent>
-                                        <Markdown>{operation.information.description}</Markdown>
-                                            </CardContent>
-                                        </Card>
-                                        <div className="grid grid-cols-2">
+                                        {Boolean(operation.information.description) && (
+                                            <Card>
+                                                <CardContent>
+                                                    <Markdown>{operation.information.description}</Markdown>
+                                                </CardContent>
+                                            </Card>
+                                        )}
+                                        <div className="grid grid-cols-2 gap-2">
                                             <AttributeCard header="Cijena" icon={<Euro />} value={operation.prices.perOperation.toFixed(2)} />
                                         </div>
+                                        <NavigatingButton
+                                            href={KnownPages.GardenApp}
+                                            className="bg-green-800 hover:bg-green-700 self-end">
+                                            Moj vrt
+                                        </NavigatingButton>
                                     </Stack>
                                 </Modal>
                             </Row>
