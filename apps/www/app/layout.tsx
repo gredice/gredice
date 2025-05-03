@@ -9,13 +9,10 @@ import { PageNav } from "@signalco/ui/Nav";
 import { KnownPages } from "../src/KnownPages";
 import Link from "next/link";
 import { NavigatingButton } from "@signalco/ui/NavigatingButton";
-import { SectionsView } from "@signalco/cms-core/SectionsView";
-import { SectionData } from "@signalco/cms-core/SectionData";
-import { CompanyGitHub, CompanyReddit, CompanyX } from "@signalco/ui-icons";
-import { sectionsComponentRegistry } from "../components/shared/sectionsComponentRegistry";
 import { ClientAppProvider } from "../components/providers/ClientAppProvider";
 import { ReactNode } from "react";
 import { Logotype } from "../components/Logotype";
+import { Footer } from "./Footer";
 
 export const metadata: Metadata = {
     title: {
@@ -51,47 +48,6 @@ export const metadata: Metadata = {
     }
 };
 
-const sectionsData: SectionData[] = [
-    {
-        component: 'Footer1',
-        tagline: 'Gredice',
-        asset: <Logotype className="w-[320px] h-[87px]" />,
-        features: [
-            {
-                header: 'Informacije',
-                ctas: [
-                    { label: 'Biljke', href: KnownPages.Plants },
-                    { label: 'Blokovi', href: KnownPages.Blocks },
-                    { label: 'Suncokreti', href: KnownPages.Sunflowers },
-                    { label: 'Česta pitanja', href: KnownPages.FAQ },
-                    { label: 'O nama', href: KnownPages.AboutUs },
-                ]
-            },
-            {
-                header: 'Zajednice',
-                ctas: [
-                    { label: 'r/gredice', href: 'https://www.reddit.com/r/gredice/' },
-                    { label: 'Razgovori na GitHub-u', href: 'https://github.com/gredice/gredice/discussions' },
-                ]
-            },
-            {
-                header: 'Legalno',
-                ctas: [
-                    { label: 'Politika privatnosti', href: KnownPages.LegalPrivacy },
-                    { label: 'Uvjeti korištenja', href: KnownPages.LegalTerms },
-                    { label: 'Politika kolačića', href: KnownPages.LegalCookies },
-                    { label: 'Licenca izvnornog koda', href: KnownPages.LegalLicense },
-                ]
-            }
-        ],
-        ctas: [
-            { label: 'X', href: 'https://x.com/gredicecom', icon: <CompanyX /> },
-            { label: 'reddit', href: 'https://www.reddit.com/r/gredice/', icon: <CompanyReddit /> },
-            { label: 'GitHub', href: 'https://github.com/gredice', icon: <CompanyGitHub /> },
-        ]
-    }
-];
-
 export default async function RootLayout({
     children,
 }: Readonly<{
@@ -126,11 +82,7 @@ export default async function RootLayout({
                                 {children}
                             </Container>
                         </main>
-                        <footer>
-                            <SectionsView
-                                sectionsData={sectionsData}
-                                componentsRegistry={sectionsComponentRegistry} />
-                        </footer>
+                        <Footer />
                     </Stack>
                     <Analytics />
                     <AxiomWebVitals />
