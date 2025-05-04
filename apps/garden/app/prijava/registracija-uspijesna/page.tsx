@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card";
-import { Mail } from 'lucide-react'
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { Mail } from '@signalco/ui-icons';
 
 export default function RegistrationSuccessfulPage() {
     return (
@@ -11,7 +11,7 @@ export default function RegistrationSuccessfulPage() {
             <Card className="w-[350px] p-12">
                 <CardHeader>
                     <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#2f6e40] mx-auto mb-4">
-                        <Mail className="w-6 h-6 text-white" />
+                        <Mail className="size-6 text-white" />
                     </div>
                     <CardTitle className="text-center">Registracija uspješna</CardTitle>
                 </CardHeader>

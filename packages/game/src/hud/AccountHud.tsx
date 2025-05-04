@@ -1,7 +1,6 @@
 import { HudCard } from "./components/HudCard";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Check, CheckCheck, ExternalLink, Inbox, LogOut, Settings2, Sprout, User } from 'lucide-react';
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Popper } from "@signalco/ui-primitives/Popper";
@@ -17,6 +16,7 @@ import { ProfileAvatar } from "../shared-ui/ProfileAvatar";
 import { useNotifications } from "../hooks/useNotifications";
 import { Skeleton } from "@signalco/ui-primitives/Skeleton";
 import { KnownPages } from "../knownPages";
+import { Check, User, Inbox, ExternalLink, Approved, Configuration, Sprout, LogOut } from "@signalco/ui-icons";
 
 function NotificationsCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
@@ -31,7 +31,7 @@ function NotificationsCard() {
                     size="sm"
                     title="Označi sve kao pročitane"
                     disabled={!notifications.data.notifications.length}>
-                    <CheckCheck />
+                    <Approved />
                 </IconButton>
             </Row>
             <Divider />
@@ -80,7 +80,7 @@ function ProfileCard() {
                 <span>Obavijesti</span>
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-3" onClick={() => setProfileModalOpen('generalno')}>
-                <Settings2 className="size-4" />
+                <Configuration className="size-4" />
                 <span>Postavke</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-4" />
@@ -94,7 +94,7 @@ function ProfileCard() {
             <DropdownMenuSeparator className="my-4" />
             <DropdownMenuItem className="gap-3" href="/odjava">
                 <LogOut className="size-4" />
-                <span>Sign Out</span>
+                <span>Odjava</span>
             </DropdownMenuItem>
         </DropdownMenuContent>
     )

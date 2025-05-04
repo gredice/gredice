@@ -1,4 +1,4 @@
-import { Sun, Droplet, Sprout, Leaf, Ruler, ArrowDownToLine, Thermometer, Tally3 } from "lucide-react"
+import { Sun, Droplet, Sprout, Leaf, Ruler, ArrowDownToLine, Thermometer, Tally3 } from "@signalco/ui-icons"
 import { PlantAttributesData } from "../../../lib/@types/PlantAttributesData";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
 

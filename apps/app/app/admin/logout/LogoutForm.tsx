@@ -4,13 +4,13 @@ import { Card } from "@signalco/ui-primitives/Card";
 import { Alert } from "@signalco/ui/Alert";
 import { authCurrentUserQueryKeys } from "@signalco/auth-client";
 import { useActionState } from "react";
-import { AlertTriangle } from "lucide-react";
 import { queryClient } from "../../../components/providers/ClientAppProvider";
 import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { KnownPages } from "../../../src/KnownPages";
 import { Stack } from "@signalco/ui-primitives/Stack";
+import { Warning } from "@signalco/ui-icons";
 
 function autoSubmitForm(form: HTMLFormElement | null) {
     form?.requestSubmit();
@@ -44,7 +44,7 @@ export function LogoutForm() {
                         </Row>
                     )}
                     {error && (
-                        <Alert color="danger" startDecorator={<AlertTriangle />}>
+                        <Alert color="danger" startDecorator={<Warning />}>
                             Došlo je do greške prilikom odjave.
                         </Alert>
                     )}

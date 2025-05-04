@@ -7,7 +7,7 @@ import { Add } from "@signalco/ui-icons";
 import { ServerActionIconButton } from "../../../../components/shared/ServerActionIconButton";
 import Link from "next/link";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { BookA } from "lucide-react";
+import { BookA } from "@signalco/ui-icons";
 import { KnownPages } from "../../../../src/KnownPages";
 import { auth } from "../../../../lib/auth/auth";
 import { Typography } from "@signalco/ui-primitives/Typography";

@@ -5,13 +5,14 @@ import { Suspense } from "react";
 import { PageFilterInput } from "../../components/shared/PageFilterInput";
 import { PlantsCalendar } from "./PlantsCalendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@signalco/ui-primitives/Tabs";
-import { Calendar, LayoutGrid } from "lucide-react";
+import { Calendar } from "@signalco/ui-icons";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import Link from "next/link";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
 import { getPlantsData } from "../../lib/plants/getPlantsData";
+import { LayoutGrid } from "@signalco/ui-icons";
 
 export const revalidate = 3600; // 1 hour
 export const metadata = {

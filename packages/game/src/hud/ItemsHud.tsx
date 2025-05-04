@@ -2,7 +2,6 @@ import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { HudCard } from "./components/HudCard";
 import { Divider } from "@signalco/ui-primitives/Divider";
 import { Row } from "@signalco/ui-primitives/Row";
-import { ChevronUp, Info } from "lucide-react";
 import { Popper } from "@signalco/ui-primitives/Popper";
 import { HTMLAttributes, useState } from "react";
 import { Stack } from "@signalco/ui-primitives/Stack";
@@ -16,6 +15,7 @@ import { BlockData } from "../../@types/BlockData";
 import { useCurrentGarden } from "../hooks/useCurrentGarden";
 import { useBlockData } from "../hooks/useBlockData";
 import { useIsEditMode } from "../hooks/useIsEditMode";
+import { Info, Up } from "@signalco/ui-icons";
 
 type HudItemEntity = {
     type: 'entity',
@@ -267,7 +267,7 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                         alt={label}
                         className="absolute size-10 -mb-4"
                     />
-                    <ChevronUp className="absolute top-0.5 text-muted-foreground" />
+                    <Up className="absolute top-0.5 text-muted-foreground" />
                 </IconButton>
             )}>
             <Stack spacing={1}>

@@ -9,7 +9,7 @@ import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import { useCurrentAccount } from "../hooks/useCurrentAccount";
 import { SunflowersList } from "../shared-ui/sunflowers/SunflowersList";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { ChevronRight, Info } from "lucide-react";
+import { Navigate, Info } from "@signalco/ui-icons";
 
 function SunflowersCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
@@ -29,7 +29,7 @@ function SunflowersCard() {
                         <img src="https://cdn.gredice.com/sunflower-large.svg" alt="Suncokret" className="size-20" />
                         <Stack spacing={2}>
                             <Typography level="body2">Suncokreti su vrsta bodova na tvom Gredice racunu koje dobiva za razne radnje i pomocu kojih mozes uciniti svoj vrt sto lijepsim i zdravijim.</Typography>
-                            <Button variant="solid" size="sm" href="https://www.gredice.com/suncokreti" target="_blank" endDecorator={(<ChevronRight className="size-5" />)}>
+                            <Button variant="solid" size="sm" href="https://www.gredice.com/suncokreti" target="_blank" endDecorator={(<Navigate className="size-5" />)}>
                                 Saznaj više
                             </Button>
                         </Stack>

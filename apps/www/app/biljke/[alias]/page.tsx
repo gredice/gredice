@@ -16,7 +16,7 @@ import { PlantAttributeCards } from "./PlantAttributeCards";
 import { InformationSection } from "./InformationSection";
 import { VerifiedInformationBadge } from "./VerifiedInformationBadge";
 import { PlantImage } from "../../../components/plants/PlantImage";
-import { MapPinHouse } from "lucide-react";
+import { MapPinHouse } from "@signalco/ui-icons";
 import { getPlantsData } from "../../../lib/plants/getPlantsData";
 
 export const revalidate = 3600; // 1 hour

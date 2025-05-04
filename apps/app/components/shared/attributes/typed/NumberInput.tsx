@@ -1,7 +1,7 @@
 import { Add } from "@signalco/ui-icons";
 import { Input } from "@signalco/ui-primitives/Input";
 import { Row } from "@signalco/ui-primitives/Row";
-import { Minus } from "lucide-react";
+import { Remove } from "@signalco/ui-icons";
 import { useState } from "react";
 import { AttributeInputProps } from "../AttributeInputProps";
 import { Button } from "@signalco/ui-primitives/Button";
@@ -31,7 +31,7 @@ export function NumberInput({ value, onChange }: AttributeInputProps) {
                 variant='outlined'
                 type='button'
                 onClick={() => handleIncrementDecrement(false)}>
-                <Minus className='size-4' />
+                <Remove className='size-4' />
             </Button>
             <Input
                 className='w-20 rounded-none'
