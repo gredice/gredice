@@ -2,7 +2,6 @@ import { Card, CardContent } from "@signalco/ui-primitives/Card";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Euro, Hammer, Info } from "lucide-react"
 import Image from "next/image";
 import { OperationData } from "../../../lib/@types/OperationData";
 import { Row } from "@signalco/ui-primitives/Row";
@@ -11,6 +10,7 @@ import { Markdown } from "../../../components/shared/Markdown";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { NavigatingButton } from "@signalco/ui/NavigatingButton";
 import { KnownPages } from "../../../src/KnownPages";
+import { Euro, Hammer, Info } from "@signalco/ui-icons";
 
 function operationFrequencyLabel(frequency: string) {
     switch (frequency) {

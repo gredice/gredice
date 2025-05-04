@@ -6,12 +6,12 @@ import { Input } from "@signalco/ui-primitives/Input";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Frown, Meh, Send, Smile } from "lucide-react";
 import { useState } from "react";
 import { FeedbackTrigger, FeedbackTriggerProps } from "./FeedbackTriggerLike";
 import { Popper } from "@signalco/ui-primitives/Popper";
 import { cx } from "@signalco/ui-primitives/cx";
 import { client } from "@gredice/client";
+import { Send, SmileHappy, SmileMeh, SmileSad } from "@signalco/ui-icons";
 
 export type FeedbackModalProps = {
     title?: string;
@@ -60,7 +60,7 @@ export function FeedbackModal({ title, topic, data, ...rest }: FeedbackModalProp
                             className={cx(score === 'dislike' && 'bg-red-200 text-red-800')}
                             title="Ne sviđa mi se"
                             onClick={() => setScore('dislike')}>
-                            <Frown />
+                            <SmileSad />
                         </IconButton>
                         <IconButton
                             type="button"
@@ -68,7 +68,7 @@ export function FeedbackModal({ title, topic, data, ...rest }: FeedbackModalProp
                             className={cx(score === 'neutral' && 'bg-neutral-200 text-neutral-800')}
                             title="Ne znam"
                             onClick={() => setScore('neutral')}>
-                            <Meh />
+                            <SmileMeh />
                         </IconButton>
                         <IconButton
                             type="button"
@@ -76,7 +76,7 @@ export function FeedbackModal({ title, topic, data, ...rest }: FeedbackModalProp
                             className={cx(score === 'like' && 'bg-green-200 text-green-800')}
                             title="Sviđa mi se"
                             onClick={() => setScore('like')}>
-                            <Smile />
+                            <SmileHappy />
                         </IconButton>
                     </Row>
                     <Input name="comment" placeholder="Komentar" autoFocus={score !== 'neutral'} />

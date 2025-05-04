@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card"
-import { MailCheck } from 'lucide-react'
+import { MailCheck } from '@signalco/ui-icons'
 import { VerifyEmail } from "./VerifyEmail"
 import { Suspense } from "react"
 

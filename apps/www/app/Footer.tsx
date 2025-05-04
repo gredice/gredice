@@ -1,7 +1,7 @@
 import { KnownPages } from "../src/KnownPages";
 import { SectionsView } from "@signalco/cms-core/SectionsView";
 import { SectionData } from "@signalco/cms-core/SectionData";
-import { CompanyGitHub, CompanyReddit, CompanyX } from "@signalco/ui-icons";
+import { CompanyFacebook, CompanyGitHub, CompanyReddit, CompanyX } from "@signalco/ui-icons";
 import { sectionsComponentRegistry } from "../components/shared/sectionsComponentRegistry";
 import { Logotype } from "../components/Logotype";
 
@@ -39,6 +39,7 @@ const sectionsData: SectionData[] = [
             }
         ],
         ctas: [
+            { label: 'Facebook', href: 'https://link.gredice.com/facebook', icon: <CompanyFacebook /> },
             { label: 'X', href: 'https://x.com/gredicecom', icon: <CompanyX /> },
             { label: 'reddit', href: 'https://www.reddit.com/r/gredice/', icon: <CompanyReddit /> },
             { label: 'GitHub', href: 'https://github.com/gredice', icon: <CompanyGitHub /> },

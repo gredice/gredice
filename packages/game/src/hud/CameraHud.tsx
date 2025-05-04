@@ -1,7 +1,7 @@
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { useGameState } from "../useGameState";
 import { Row } from "@signalco/ui-primitives/Row";
-import { Redo, Undo } from "lucide-react";
+import { Redo, Undo } from "@signalco/ui-icons";
 
 export function CameraHud() {
     const worldRotate = useGameState(state => state.worldRotate);

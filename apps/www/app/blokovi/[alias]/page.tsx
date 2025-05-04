@@ -8,7 +8,7 @@ import { BlockData } from "../@types/BlockData";
 import { BlockImage } from "../../../components/blocks/BlockImage";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
-import { Layers2, Ruler } from "lucide-react";
+import { Layers, Ruler } from "@signalco/ui-icons";
 import { client } from "@gredice/client";
 import { Markdown } from "../../../components/shared/Markdown";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
@@ -52,7 +52,7 @@ function BlockAttributes({ prices, attributes }: BlockData) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <AttributeCard icon={<Ruler className="size-5" />} header="Visina" value={`${Math.round(attributes.height * 100)} cm`} />
-            <AttributeCard icon={<Layers2 className="size-5" />} header="Slaganje" value={attributes.stackable === true ? 'Da' : 'Ne'} />
+            <AttributeCard icon={<Layers className="size-5" />} header="Slaganje" value={attributes.stackable === true ? 'Da' : 'Ne'} />
             <AttributeCard
                 icon={<span className="text-xl">🌻</span>}
                 header="Cijena"

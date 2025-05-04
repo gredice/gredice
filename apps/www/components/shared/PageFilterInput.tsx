@@ -2,9 +2,8 @@
 
 import { Input } from "@signalco/ui-primitives/Input";
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
-import { Search } from "lucide-react";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Close } from "@signalco/ui-icons";
+import { Search, Close } from "@signalco/ui-icons";
 import { cx } from "@signalco/ui-primitives/cx";
 import { HTMLAttributes } from "react";
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Ghost } from "lucide-react";
+import { Ghost } from "@signalco/ui-icons";
 
 export function ButtonImpersonateUser({ userId }: { userId: string }) {
     const handleImpersonate = async () => {

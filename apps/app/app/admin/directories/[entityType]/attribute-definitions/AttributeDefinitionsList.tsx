@@ -3,7 +3,7 @@ import { Card } from "@signalco/ui-primitives/Card";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Bookmark, BookA, Binary, Type, ToggleRight, Hash } from "lucide-react";
+import { Bookmark, BookA, Binary, FontType, ToggleRight, Hash } from "@signalco/ui-icons";
 import { NoDataPlaceholder } from "../../../../../components/shared/placeholders/NoDataPlaceholder";
 import { KnownPages } from "../../../../../src/KnownPages";
 import { SplitView } from "@signalco/ui/SplitView";
@@ -14,7 +14,7 @@ import { CreateAttributeDefinitionButton } from "./CreateAttributeDefinitionButt
 
 function AttributeDataTypeIcon({ dataType, ...rest }: { dataType: string } & HTMLAttributes<SVGElement>) {
     switch (dataType) {
-        case 'text': return <Type {...rest} />;
+        case 'text': return <FontType {...rest} />;
         case 'number': return <Hash {...rest} />;
         case 'boolean': return <ToggleRight {...rest} />;
         case 'markdown': return (

@@ -1,7 +1,7 @@
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { HudCard } from "./components/HudCard";
-import { Check, Edit2 } from "lucide-react";
 import { useGameState } from "../useGameState";
+import { Edit, Check } from "@signalco/ui-icons";
 
 export function GameModeHud() {
     const mode = useGameState((state) => state.mode);
@@ -17,7 +17,7 @@ export function GameModeHud() {
                 className="rounded-full"
                 title={mode !== 'edit' ? "Uredi vrt" : "Završi uređivanje"}
                 onClick={() => setMode(mode !== 'edit' ? 'edit' : 'normal')}>
-                {mode !== 'edit' ? <Edit2 /> : <Check className="text-green-600 !stroke-[3px]" />}
+                {mode !== 'edit' ? <Edit /> : <Check className="text-green-600 !stroke-[3px]" />}
             </IconButton>
         </HudCard>
     )

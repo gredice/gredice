@@ -8,7 +8,7 @@ import { Alert } from "@signalco/ui/Alert";
 import { authCurrentUserQueryKeys } from "@signalco/auth-client";
 import { queryClient } from "../../components/providers/ClientAppProvider";
 import { useActionState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { Warning } from "@signalco/ui-icons";
 
 export function LoginDialog() {
     const [error, submitAction, isPending] = useActionState(async (_previousState: unknown, formData: FormData) => {
@@ -50,7 +50,7 @@ export function LoginDialog() {
                             </Stack>
                             <Button type="submit" loading={isPending} variant="solid">Prijavi se</Button>
                             {error && (
-                                <Alert color="danger" startDecorator={<AlertTriangle />}>
+                                <Alert color="danger" startDecorator={<Warning />}>
                                     Greška prilikom prijave. Pokušajte ponovo.
                                 </Alert>
                             )}

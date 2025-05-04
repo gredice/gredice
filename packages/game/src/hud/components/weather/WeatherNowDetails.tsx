@@ -1,4 +1,3 @@
-import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, LucideIcon, Circle, Wind, ChevronRight } from 'lucide-react'
 import { RainIcon } from './icons/RainIcon'
 import { weatherIcons } from './WeatherIcons';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -8,10 +7,11 @@ import { Divider } from '@signalco/ui-primitives/Divider';
 import { Link } from '@signalco/ui-primitives/Link';
 import { useWeatherNow } from '../../../hooks/useWeatherNow';
 import { WeatherForecastDays } from './WeatherForecastDetails';
-import { useState } from 'react';
+import { FC, useState } from 'react';
 import { Button } from '@signalco/ui-primitives/Button';
+import { Empty, Navigate, Wind, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight } from '@signalco/ui-icons';
 
-export const windDirectionIcons: Record<string, LucideIcon> = {
+export const windDirectionIcons: Record<string, FC> = {
     N: ArrowUp,
     NE: ArrowUpRight,
     E: ArrowRight,
@@ -31,7 +31,7 @@ export function WeatherNowDetails() {
     const [showForecast, setShowForecast] = useState(false);
 
     const WeatherIcon = weatherIcons[data.symbol]
-    const WindIcon = data.windDirection ? windDirectionIcons[data.windDirection] : Circle;
+    const WindIcon = data.windDirection ? windDirectionIcons[data.windDirection] : Empty;
 
     // Chance of rain is a number between 0 and 1,
     // chance is 100 when there is 10 or more mm of rain
@@ -80,7 +80,7 @@ export function WeatherNowDetails() {
                         </div>
                     </Row>
                     <div className='border-l block md:hidden'>
-                        <Button variant='plain' className='h-full rounded-none' endDecorator={<ChevronRight />} onClick={() => setShowForecast(true)}>
+                        <Button variant='plain' className='h-full rounded-none' endDecorator={<Navigate />} onClick={() => setShowForecast(true)}>
                             Prognoza                            
                         </Button>
                     </div>

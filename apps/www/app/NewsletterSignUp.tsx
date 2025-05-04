@@ -5,12 +5,13 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Input } from "@signalco/ui-primitives/Input";
 import { Button } from "@signalco/ui-primitives/Button";
-import { AlertTriangle, MailCheck } from "lucide-react";
+import { MailCheck } from "@signalco/ui-icons";
 import { preSeasonNewsletterSubscribe } from "./actions";
 import { GentleSlide } from "@signalco/ui/GentleSlide";
 import { useActionState } from "react";
 import Image from "next/image";
 import NewsletterImage from "../assets/NewsletterVisual.webp";
+import { Warning } from "@signalco/ui-icons";
 
 export function NewsletterSignUp() {
     const [state, submitAction, isPending] = useActionState(preSeasonNewsletterSubscribe, null);
@@ -50,7 +51,7 @@ export function NewsletterSignUp() {
                     <div className="col-start-1 mt-1">
                         <GentleSlide appear={(state?.error || state?.success) ?? false} direction="down" duration={150}>
                             {state?.error && (
-                                <Alert startDecorator={<AlertTriangle className="stroke-red-600" />}>
+                                <Alert startDecorator={<Warning className="stroke-red-600" />}>
                                     Greška prilikom prijave. Pokušaj ponovo.
                                 </Alert>
                             )}

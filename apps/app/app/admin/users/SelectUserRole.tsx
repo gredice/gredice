@@ -3,7 +3,7 @@
 import { getUsers } from "@gredice/storage";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import { updateUserRole } from "../../(actions)/userActions";
-import { ShieldCheck, User } from "lucide-react";
+import { Security, User } from "@signalco/ui-icons";
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import { useState } from "react";
 import { Typography } from "@signalco/ui-primitives/Typography";
@@ -32,7 +32,7 @@ export function SelectUserRole({ user }: { user: Awaited<ReturnType<typeof getUs
                 value={user.role}
                 onValueChange={(newRole) => setConfirmOpen(newRole)}
                 items={[
-                    { value: 'admin', label: 'Administrator', icon: <ShieldCheck className="size-5" /> },
+                    { value: 'admin', label: 'Administrator', icon: <Security className="size-5" /> },
                     { value: 'user', label: 'Korisnik', icon: <User className="size-5" /> }
                 ]} />
             <ModalConfirm
