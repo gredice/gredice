@@ -15,6 +15,7 @@ const sectionsData: SectionData[] = [
                 header: 'Informacije',
                 ctas: [
                     { label: 'Biljke', href: KnownPages.Plants },
+                    { label: 'Povišene gredice', href: KnownPages.RaisedBeds },
                     { label: 'Blokovi', href: KnownPages.Blocks },
                     { label: 'Suncokreti', href: KnownPages.Sunflowers },
                     { label: 'Česta pitanja', href: KnownPages.FAQ },
