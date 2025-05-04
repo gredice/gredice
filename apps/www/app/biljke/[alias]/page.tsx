@@ -16,8 +16,9 @@ import { PlantAttributeCards } from "./PlantAttributeCards";
 import { InformationSection } from "./InformationSection";
 import { VerifiedInformationBadge } from "./VerifiedInformationBadge";
 import { PlantImage } from "../../../components/plants/PlantImage";
-import { MapPinHouse } from "@signalco/ui-icons";
+import { Euro, LayoutGrid, MapPinHouse, Sprout } from "@signalco/ui-icons";
 import { getPlantsData } from "../../../lib/plants/getPlantsData";
+import { AttributeCard } from "../../../components/attributes/DetailCard";
 
 export const revalidate = 3600; // 1 hour
 export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }) {
@@ -60,6 +61,14 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
     if (!plant) {
         notFound();
     }
+
+    let plantsPerRow = 30 / (plant.attributes?.seedingDistance ?? 30);
+    if (plantsPerRow < 1) {
+        console.warn(`Plants per row is less than 1 (${plantsPerRow}) for ${plant.information.name}. Setting to 1.`);
+        plantsPerRow = 1;
+    }
+    const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
+    const pricePerPlant = plant.prices?.perPlant ? (plant.prices.perPlant / totalPlants).toFixed(2) : null;
 
     const informationSections: InformationSection[] = [
         { header: "Sijanje", id: "sowing", avaialble: Boolean(plant.information.sowing) },
@@ -127,6 +136,24 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                             )}
                             <FeedbackModal
                                 topic="www/plants/calendar"
+                                data={{
+                                    plantId: plant.id,
+                                    plantAlias: alias
+                                }}
+                                className="self-end group-hover:opacity-100 opacity-0 transition-opacity" />
+                        </Stack>
+                        <Stack spacing={1} className="group">
+                            <Typography level="h2" className="text-2xl">Informacije</Typography>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <AttributeCard
+                                    icon={<LayoutGrid />}
+                                    header="Broj biljaka na 30x30 cm"
+                                    value={totalPlants.toString()} />
+                                <AttributeCard icon={<Sprout />} header="Cijena po biljci" value={`${pricePerPlant} EUR`} />
+                                <AttributeCard icon={<Euro />} header="Cijena za sadnju" value={`${plant.prices.perPlant.toFixed(2)} EUR`} />
+                            </div>
+                            <FeedbackModal
+                                topic="www/plants/attributes"
                                 data={{
                                     plantId: plant.id,
                                     plantAlias: alias
