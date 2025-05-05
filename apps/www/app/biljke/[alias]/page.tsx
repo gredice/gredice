@@ -148,7 +148,11 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                                 <AttributeCard
                                     icon={<LayoutGrid />}
                                     header="Broj biljaka na 30x30 cm"
-                                    value={totalPlants.toString()} />
+                                    value={totalPlants.toString()}
+                                    description="Povišena gredica podjeljena je na polja veličine 30x30 cm. Tako povišena gredica od 2x1m ima 18 polja za sadnju tvojih biljaka. U svako polje može stati određeni broj biljaka, ovisno o vrsti."
+                                    navigateHref={KnownPages.RaisedBeds}
+                                    navigateLabel="Više o gredicama"
+                                />
                                 <AttributeCard icon={<Sprout />} header="Cijena po biljci" value={`${pricePerPlant} EUR`} />
                                 <AttributeCard icon={<Euro />} header="Cijena za sadnju" value={`${plant.prices.perPlant.toFixed(2)} EUR`} />
                             </div>
