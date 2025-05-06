@@ -53,11 +53,13 @@ export function AttributeCard({ icon, header, value, description, navigateLabel,
                                 <Markdown>{description}</Markdown>
                             </CardContent>
                         </Card>
-                        <NavigatingButton
-                            href={navigateHref}
-                            className="bg-green-800 hover:bg-green-700 self-end">
-                            {navigateLabel}
-                        </NavigatingButton>
+                        {navigateHref && navigateLabel && (
+                            <NavigatingButton
+                                href={navigateHref}
+                                className="bg-green-800 hover:bg-green-700 self-end">
+                                {navigateLabel}
+                            </NavigatingButton>
+                        )}
                     </Stack>
                 </Modal>
             )}
