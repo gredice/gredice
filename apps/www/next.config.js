@@ -16,6 +16,11 @@ const nextConfig = {
         ]
     },
     productionBrowserSourceMaps: true,
+    logging: {
+        fetches: {
+            fullUrl: true
+        }
+    }
 };
 
 export default withAxiom(nextConfig);

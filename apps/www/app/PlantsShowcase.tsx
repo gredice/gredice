@@ -18,6 +18,7 @@ export async function PlantsShowcase() {
                         <PlantsGalleryItem
                             key={plant.information.name}
                             information={plant.information}
+                            attributes={plant.attributes}
                             image={plant.image}
                             prices={plant.prices}
                         />
