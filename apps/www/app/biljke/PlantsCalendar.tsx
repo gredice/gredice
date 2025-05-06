@@ -10,9 +10,6 @@ import { KnownPages } from "../../src/KnownPages";
 import { PlantImage } from "../../components/plants/PlantImage";
 import { PlantData } from "../../lib/@types/PlantData";
 
-export const revalidate = 3600; // 1 hour
-export const dynamicParams = true;
-
 const calendarMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
 
 const calendarActivityTypes = {

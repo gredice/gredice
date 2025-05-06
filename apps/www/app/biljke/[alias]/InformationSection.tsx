@@ -6,8 +6,7 @@ import { Markdown } from "../../../components/shared/Markdown";
 import { slug } from "@signalco/js";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
 import { PlantOperations } from "./PlantOperations";
-import { client } from "@gredice/client";
-import { OperationData } from "../../../lib/@types/OperationData";
+import { getOperationsData } from "../../../lib/plants/getOperationsData";
 
 export type InformationSectionProps = {
     plantId: number
@@ -22,11 +21,7 @@ export async function InformationSection({ plantId, id, header, content, operati
         return null;
     }
 
-    const operationsData = await (await client().api.directories.entities[":entityType"].$get({
-        param: {
-            entityType: "operation"
-        }
-    })).json() as OperationData[];
+    const operationsData = await getOperationsData();
     const applicableOperations = operationsData.filter((operation) => {
         const operationId = operation.information.name.toLowerCase();
         const idMatched = operations?.some((op) => op.toLowerCase() === operationId) ?? false;

@@ -14,7 +14,6 @@ import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
 import { getPlantsData } from "../../lib/plants/getPlantsData";
 import { LayoutGrid } from "@signalco/ui-icons";
 
-export const revalidate = 3600; // 1 hour
 export const metadata = {
     title: "Biljke",
     description: "Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu.",

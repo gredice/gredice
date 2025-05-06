@@ -1,16 +1,16 @@
 import { client } from "@gredice/client";
-import { PlantData } from "../@types/PlantData";
 import { unstable_cache } from "next/cache";
+import { OperationData } from "../@types/OperationData";
 
-export const getPlantsData = unstable_cache(async () => {
+export const getOperationsData = unstable_cache(async () => {
     return await (await client().api.directories.entities[":entityType"].$get({
         param: {
-            entityType: "plant"
+            entityType: "operation"
         }
-    })).json() as PlantData[];
+    })).json() as OperationData[];
 },
-    ['plantsData'],
+    ['operationsData'],
     {
         revalidate: 60 * 60, // 1 hour
-        tags: ['plantsData']
+        tags: ['operationsData']
     });
