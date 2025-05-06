@@ -7,13 +7,15 @@ export const queryCode = `query FullQuery{root{enableDebugHud}}`;
 export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"enableDebugHud":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
 
 export const initData = {"commitId":24474,"hash":"3076875996853314","reducedExpression":{"id":"hSzx_K7sNYI77jRriD4U1","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"sAbJTW3LHNEltLHB8AA4n","body":{"id":"8qdt_QWcSqIYYFTe-_aA0","logs":{},"type":"ObjectExpression","fields":{"enableDebugHud":{"id":"Mtmi1IYM6njIsW8GtY_nz","type":"SwitchExpression","cases":[{"id":"QMRGlwOYR8ftLC5PaYv3f","when":{"a":{"id":"CFPf03mL_IrYeVqDCFkFX","type":"GetFieldExpression","object":{"id":"0XtUBFH9kcSr2JpUboBAO","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"BZ17_qmFfcyqAuDSTOPbH"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"m6CkH8xPniVBY7xaeYiY4","type":"ListExpression","items":[{"id":"W5YSdKM0LaQD1iFaj49Ts","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"jxrczTLb4JoCDS92YkatR","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"o2yTJWspoeGw-lrTFAQJI","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}},{"id":"eIZRk4f_PCOj1rUwMuqMQ","when":{"a":{"a":{"id":"lQeoesytUjVq3DDCyXyHX","type":"GetFieldExpression","object":{"id":"tJDLqomHNZaLXMoumZSlZ","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"BZ17_qmFfcyqAuDSTOPbH"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"3rMfzeKlYUU_MdNC4bnIv","type":"ListExpression","items":[{"id":"TGlOdrgXL7553ccDC4ggR","type":"EnumExpression","value":"production","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"6FM0egS3mmxRk4C8oPHDo","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"b":{"a":{"id":"mGG481o8fvN8jso-9YU94","type":"GetFieldExpression","object":{"id":"nXKEKD2KkcH6NH0pF3-PX","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"BZ17_qmFfcyqAuDSTOPbH"},"fieldPath":"context > user > email","valueType":{"type":"StringValueType"}},"b":{"id":"ddwPJTJ8xXp4wxv4UgGQI","type":"ListExpression","items":[{"id":"DIdDu39oozQegfjYbFCT6","type":"StringExpression","value":"aleksandar.toplek@gredice.com","valueType":{"type":"StringValueType"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"StringValueType"}}},"id":"Tpj8MIBI5-EW14nUVx9PL","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"id":"9gW-tD1AAnqpPcijo4bog","type":"ComparisonExpression","operator":"AND","valueType":{"type":"BooleanValueType"}},"then":{"id":"3tjur13HpM_9LhX9HAzpZ","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"Udb-DvT4n56Sy1UP6H-qC","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"eBU-zMgJe6dO6jTG4feRf","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"HC9HIJsBk_0LEh72su_AH":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"BZ17_qmFfcyqAuDSTOPbH","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
-  
-/**
- * @deprecated use '@vercel/flags/providers/hypertune' package instead.
- */
+
+
 export const vercelFlagDefinitions = {"enableDebugHud":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugHud"}};
 
 export type FlagValues = {
+  "enableDebugHud": boolean;
+}
+
+export type AllFlagValues = {
   "enableDebugHud": boolean;
 }
 
@@ -30,11 +32,9 @@ export function decodeFlagValues<TFlagPaths extends keyof FlagValues & string>(
   return sdk.decodeFlagValues({ flagPaths, encodedValues })
 }
 
-export type Rec = {
+export type VariableValues = {};
 
-}
-
-export type Rec3 = {
+export type User = {
   id: string;
   name: string;
   email: string;
@@ -54,14 +54,16 @@ export type Environment = typeof EnvironmentEnumValues[number];
  * You can define other custom input types with fields that are primitives, enums 
  * or other input types.
  */
-export type Rec2 = {
-  user: Rec3;
+export type Context = {
+  user: User;
   environment: Environment;
 }
 
 export type RootArgs = {
-  context: Rec2;
+  context: Context;
 }
+
+export type EmptyObject = {};
 
 export type Root = {
   enableDebugHud: boolean;
@@ -85,7 +87,7 @@ export class RootNode extends sdk.Node {
   /**
    * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugHud})
    */
-  enableDebugHud({ args = {}, fallback }: { args?: Rec; fallback: boolean; }): boolean {
+  enableDebugHud({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
     const props0 = this.getFieldNodeProps("enableDebugHud", { fieldArguments: args });
     const expression0 = props0.expression;
 
@@ -126,12 +128,12 @@ export type Source = {
 
 const sourceFallback = {root:{enableDebugHud:false}};
 
-export type Rec5 = {
+export type GetQueryRootArgs = {
   args: RootArgs;
 }
 
-export type Rec4 = {
-  root: Rec5;
+export type GetQueryArgs = {
+  root: GetQueryRootArgs;
 }
 
 /**
@@ -148,7 +150,7 @@ export type Rec4 = {
 export class SourceNode extends sdk.Node {
   override typeName = "Query" as const;
 
-  get({ args, fallback = sourceFallback as Source}: { args: Rec4; fallback?: Source }): Source {
+  get({ args, fallback = sourceFallback as Source}: { args: GetQueryArgs; fallback?: Source }): Source {
     const getQuery = sdk.mergeFieldQueryAndArgs(
       query.fragmentDefinitions,
       sdk.getFieldQueryForPath(query.fragmentDefinitions, query.fieldQuery, []), 
@@ -181,7 +183,6 @@ export class SourceNode extends sdk.Node {
   }
 }
 
-export type VariableValues = Rec;
 export type DehydratedState = sdk.DehydratedState<Source, VariableValues>
 export type CreateSourceOptions = { 
   token: string; 

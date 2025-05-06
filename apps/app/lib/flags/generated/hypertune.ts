@@ -7,13 +7,15 @@ export const queryCode = `query FullQuery{root{test}}`;
 export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"test":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
 
 export const initData = {"commitId":19211,"hash":"4871243922453954","reducedExpression":{"id":"4cmrVZ7gmP7cQUXSyil6V","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"p75oIfghy517QKWcPUlB1","body":{"id":"efsCvfq0oaArjAx_CQ3qF","logs":{},"type":"ObjectExpression","fields":{"test":{"id":"wO0nzrm_i_KfVsVQIj17U","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"c8EbrBZoww0glEA3r4hHi":1,"RgEsXrAmtQk_o2GIaPDZy":1,"pk_cazPsQ5RDDacfC-tqJ":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"d7xvtNWcJynsxjcV8aLk2","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
-  
-/**
- * @deprecated use '@vercel/flags/providers/hypertune' package instead.
- */
+
+
 export const vercelFlagDefinitions = {"test":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4088/main/draft/logic?selected_field_path=root%3Etest"}};
 
 export type FlagValues = {
+  "test": boolean;
+}
+
+export type AllFlagValues = {
   "test": boolean;
 }
 
@@ -30,11 +32,9 @@ export function decodeFlagValues<TFlagPaths extends keyof FlagValues & string>(
   return sdk.decodeFlagValues({ flagPaths, encodedValues })
 }
 
-export type Rec = {
+export type VariableValues = {};
 
-}
-
-export type Rec3 = {
+export type User = {
   id: string;
   name: string;
   email: string;
@@ -54,14 +54,16 @@ export type Environment = typeof EnvironmentEnumValues[number];
  * You can define other custom input types with fields that are primitives, enums 
  * or other input types.
  */
-export type Rec2 = {
-  user: Rec3;
+export type Context = {
+  user: User;
   environment: Environment;
 }
 
 export type RootArgs = {
-  context: Rec2;
+  context: Context;
 }
+
+export type EmptyObject = {};
 
 export type Root = {
   test: boolean;
@@ -85,7 +87,7 @@ export class RootNode extends sdk.Node {
   /**
    * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4088/main/draft/logic?selected_field_path=root%3Etest})
    */
-  test({ args = {}, fallback }: { args?: Rec; fallback: boolean; }): boolean {
+  test({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
     const props0 = this.getFieldNodeProps("test", { fieldArguments: args });
     const expression0 = props0.expression;
 
@@ -126,12 +128,12 @@ export type Source = {
 
 const sourceFallback = {root:{test:false}};
 
-export type Rec5 = {
+export type GetQueryRootArgs = {
   args: RootArgs;
 }
 
-export type Rec4 = {
-  root: Rec5;
+export type GetQueryArgs = {
+  root: GetQueryRootArgs;
 }
 
 /**
@@ -148,7 +150,7 @@ export type Rec4 = {
 export class SourceNode extends sdk.Node {
   override typeName = "Query" as const;
 
-  get({ args, fallback = sourceFallback as Source}: { args: Rec4; fallback?: Source }): Source {
+  get({ args, fallback = sourceFallback as Source}: { args: GetQueryArgs; fallback?: Source }): Source {
     const getQuery = sdk.mergeFieldQueryAndArgs(
       query.fragmentDefinitions,
       sdk.getFieldQueryForPath(query.fragmentDefinitions, query.fieldQuery, []), 
@@ -181,7 +183,6 @@ export class SourceNode extends sdk.Node {
   }
 }
 
-export type VariableValues = Rec;
 export type DehydratedState = sdk.DehydratedState<Source, VariableValues>
 export type CreateSourceOptions = { 
   token: string; 
