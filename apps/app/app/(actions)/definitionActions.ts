@@ -31,7 +31,6 @@ export async function upsertAttributeDefinition(definition: InsertAttributeDefin
         throw new Error('Missing required fields');
     }
 
-    let didCreate = Boolean(!id);
     if (id) {
         await storageUpdateAttributeDefinition({
             ...definition,
