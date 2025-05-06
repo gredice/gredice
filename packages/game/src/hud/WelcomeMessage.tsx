@@ -1,13 +1,13 @@
 'use client';
 
 import { Modal } from "@signalco/ui-primitives/Modal";
-import { useGameState } from "@gredice/game";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { useMemo, useState } from "react";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Button } from "@signalco/ui-primitives/Button";
 import { useGameAudio } from "../hooks/useGameAudio";
 import { Navigate } from "@signalco/ui-icons";
+import { useGameState } from "../useGameState";
 
 const messageTypes = {
     welcome: {
