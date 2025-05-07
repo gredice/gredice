@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.gredice.vrt.twa",
+        "sha256_cert_fingerprints": ["33:8A:CB:39:A4:46:2F:AD:42:1B:97:63:F2:76:CE:2E:91:47:01:E0:79:37:61:C2:55:3E:EE:E3:DD:39:77:F2"]
+      }
+    }]

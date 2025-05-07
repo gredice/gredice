@@ -296,7 +296,8 @@ export function ItemsHud() {
         <HudCard
             open={isEditMode}
             position="bottom"
-            className="static md:px-1 pointer-events-auto self-center">
+            className="static md:px-1 pointer-events-auto self-center"
+            animateHeight>
             <Row spacing={0.5} className="md:px-1" justifyContent="center">
                 {items.map((item, index) => {
                     if (item.type === 'separator') {
