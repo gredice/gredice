@@ -155,7 +155,7 @@ export function Environment({ noBackground, noSound, noWeather }: EnvironmentPro
             directionalLightRef.current.intensity = sunIntensity * 5;
             if (weather && ((weather?.cloudy ?? 0) > 0 || (weather?.foggy ?? 0) > 0)) {
                 directionalLightRef.current.intensity = weather.cloudy > 0.5 || weather.foggy > 0.5
-                    ? sunIntensity * 0.2
+                    ? sunIntensity / Math.max(weather.cloudy, weather.foggy) / 3
                     : sunIntensity * 3;
             }
         }
