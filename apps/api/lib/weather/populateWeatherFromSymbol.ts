@@ -20,13 +20,13 @@ export function populateWeatherFromSymbol(symbol: number): Weather {
         case 1: // Sunny
             break;
         case 2: // SunnyLightClouds
-            weather.cloudy = 0.33;
+            weather.cloudy = 0.20;
             break;
         case 3: // SunnyMediumClouds
-            weather.cloudy = 0.66;
+            weather.cloudy = 0.40;
             break;
         case 4: // SunnyHeavyClouds
-            weather.cloudy = 1;
+            weather.cloudy = 0.60;
             break;
         case 5: // CloudyLight
             weather.cloudy = 0.33;

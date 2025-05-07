@@ -2,9 +2,10 @@ import { OrbitControls } from '@react-three/drei';
 import { useEffect, useRef, useState } from 'react';
 import { useGameState } from '../useGameState';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Vector3 } from 'three';
+import { TOUCH, Vector3 } from 'three';
 import { useControls } from 'leva';
 import { CameraController } from '../controllers/CameraController';
+import { useIsEditMode } from '../hooks/useIsEditMode';
 
 function useCameraRotate() {
     const orbitControls = useGameState(state => state.orbitControls);
@@ -91,6 +92,7 @@ const useKeyboardControls = () => {
 }
 
 export function Controls({ isDevelopment }: { isDevelopment?: boolean }) {
+    const isEditMode = useIsEditMode();
     const setOrbitControls = useGameState(state => state.setOrbitControls);
     const setIsDragging = useGameState(state => state.setIsDragging);
     useCameraRotate();
@@ -119,7 +121,12 @@ export function Controls({ isDevelopment }: { isDevelopment?: boolean }) {
                 onStart={() => setIsDragging(true)}
                 onEnd={() => setIsDragging(false)}
                 minZoom={50}
-                maxZoom={200} />
+                maxZoom={200}
+                touches={{
+                    ONE: isEditMode ? undefined : TOUCH.PAN,
+                    TWO: isEditMode ? TOUCH.DOLLY_PAN : undefined,
+                }}
+            />
         </>
     )
 }

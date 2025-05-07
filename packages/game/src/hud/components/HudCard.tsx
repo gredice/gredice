@@ -6,12 +6,13 @@ import { useSpring, animated } from "@react-spring/web";
 
 type HudCardProps = HTMLAttributes<HTMLDivElement> & {
     open?: boolean,
-    position: 'floating' | 'top' | 'bottom' | 'right' | 'left' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
+    position: 'floating' | 'top' | 'bottom' | 'right' | 'left' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left',
+    animateHeight?: boolean,
 };
 
-export function HudCard({ open, position, className, style, ...rest }: HudCardProps) {
+export function HudCard({ open, position, className, style, animateHeight, ...rest }: HudCardProps) {
     const transitions = useSpring({
-        opacity: open ? 1 : 1,
+        opacity: open ? 1 : 0,
         transform: open
             ? "translateY(0)"
             : (position === 'bottom' ? "translateY(100%)" : "translateY(-100%)"),
@@ -22,7 +23,9 @@ export function HudCard({ open, position, className, style, ...rest }: HudCardPr
         <animated.div
             className={cx(
                 "absolute md:p-1",
-                'bg-background border-tertiary',
+                'bg-background border-tertiary transition-all',
+                animateHeight && open && 'h-auto',
+                animateHeight && !open && 'h-0',
                 position === 'floating' && 'rounded-full border-b-4',
                 position === 'top' && 'rounded-b-xl border-b-4',
                 position === 'bottom' && 'rounded-t-xl border-t-4',
