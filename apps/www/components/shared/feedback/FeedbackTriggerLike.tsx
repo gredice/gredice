@@ -1,7 +1,7 @@
 import { cx } from "@signalco/ui-primitives/cx";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Row } from "@signalco/ui-primitives/Row";
-import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { ThumbsDown, ThumbsUp } from "@signalco/ui-icons";
 import { ButtonHTMLAttributes, HTMLAttributes } from "react";
 
 export type FeedbackTriggerProps = {

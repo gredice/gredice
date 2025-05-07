@@ -5,46 +5,54 @@ import { cx } from "@signalco/ui-primitives/cx";
 import { Markdown } from "../../../components/shared/Markdown";
 import { slug } from "@signalco/js";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
-import { PlantingInstructions, PlantInstruction } from "./PlantingInstructions";
+import { PlantOperations } from "./PlantOperations";
+import { getOperationsData } from "../../../lib/plants/getOperationsData";
 
 export type InformationSectionProps = {
     plantId: number
     id: string
     header: string
     content: string | null | undefined
-    instructions?: PlantInstruction[]
+    operations?: string[] | null
 }
 
-export function InformationSection({ plantId, id, header, content, instructions }: InformationSectionProps) {
+export async function InformationSection({ plantId, id, header, content, operations }: InformationSectionProps) {
     if (!content) {
         return null;
     }
 
+    const operationsData = await getOperationsData();
+    const applicableOperations = operationsData.filter((operation) => {
+        const operationId = operation.information.name.toLowerCase();
+        const idMatched = operations?.some((op) => op.toLowerCase() === operationId) ?? false;
+        const sectionMatched = operation.attributes.stage === id;
+        return idMatched && sectionMatched;
+    });
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 group">
-            <div className="flex justify-between">
-                <Typography id={slug(header)} level="h2" className="text-2xl">{header}</Typography>
-                <FeedbackModal
-                    className="group-hover:opacity-100 opacity-0 transition-opacity"
-                    topic="www/plants/information"
-                    data={{
-                        plantId: plantId,
-                        sectionId: id
-                    }}
-                />
-            </div>
-            <div className="hidden md:block" />
+            <Typography id={slug(header)} level="h2" className="text-2xl md:col-span-2">{header}</Typography>
             <Markdown>{content}</Markdown>
-            <Stack className={cx("border rounded-lg p-2 h-fit", !instructions?.length && 'justify-center')}>
-                {(instructions?.length ?? 0) <= 0 && (
-                    <NoDataPlaceholder className="self-center py-4">
-                        Nema dostupnih akcija
-                    </NoDataPlaceholder>
+            <Stack className={cx("border rounded-lg p-2 h-fit", !applicableOperations?.length && 'justify-center')}>
+                {(applicableOperations?.length ?? 0) <= 0 && (
+                    <div className="py-4">
+                        <NoDataPlaceholder>
+                            Nema dostupnih akcija
+                        </NoDataPlaceholder>
+                    </div>
                 )}
-                {(instructions?.length ?? 0) > 0 && (
-                    <PlantingInstructions instructions={instructions} />
+                {(applicableOperations?.length ?? 0) > 0 && (
+                    <PlantOperations operations={applicableOperations} />
                 )}
             </Stack>
+            <FeedbackModal
+                className="md:group-hover:opacity-100 md:opacity-0 transition-opacity ml-auto"
+                topic="www/plants/information"
+                data={{
+                    plantId: plantId,
+                    sectionId: id
+                }}
+            />
         </div>
     )
 }

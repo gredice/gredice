@@ -38,10 +38,10 @@ export function OverviewModal() {
         <Modal
             open={Boolean(settingsMode)}
             onOpenChange={handleOpenChange}
-            className="min-w-full lg:min-w-[80%] xl:min-w-[60%] min-h-[70%] max-h-full overflow-y-auto h-full md:h-auto p-0 border-tertiary border-b-4"
+            className="md:min-w-full lg:min-w-[80%] xl:min-w-[60%] md:min-h-[70%] md:max-h-full md:border-tertiary md:border-b-4"
             title="Profil">
-            <div className="grid grid-rows-[auto_1fr] md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr]">
-                <Stack spacing={2} className="md:border-r p-6 md:pr-0">
+            <div className="grid grid-rows-[auto_1fr] gap-4 md:gap-0 md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr]">
+                <Stack spacing={2} className="md:border-r md:pl-2">
                     <ProfileInfo />
                     <SelectItems
                         className="md:hidden"
@@ -90,7 +90,7 @@ export function OverviewModal() {
                         />
                     </List>
                 </Stack>
-                <div className="pt-0 md:pt-6 md:pl-6 p-6">
+                <div className="md:pl-6">
                     {settingsMode === 'generalno' && (
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">Profil</Typography>
@@ -200,7 +200,7 @@ export function OverviewModal() {
                                         </CardContent>
                                     </Card>
                                 </div>
-                                <ScrollArea className="h-96 rounded-lg text-card-foreground bg-card border shadow-sm p-4">
+                                <ScrollArea className="basis-56 md:basis-96 rounded-lg text-card-foreground bg-card border shadow-sm p-4">
                                     <SunflowersList />
                                 </ScrollArea>
                             </Stack>

@@ -19,7 +19,9 @@ export function PageHeader({
     return (
         <div className={cx(
             "grid grid-cols-1 justify-between gap-4",
-            visual ? "md:grid-cols-2" : "md:grid-cols-3",
+            'md:grid-cols-3',
+            Boolean(children) && Boolean(visual) && "md:grid-cols-2",
+            !children && Boolean(visual) && 'md:grid-cols-1',
             padded && "py-12 md:py-24"
         )}>
             <div className={cx("flex flex-col md:flex-row gap-4", !visual && "md:col-span-2")}>
@@ -30,7 +32,7 @@ export function PageHeader({
                         </CardOverflow>
                     </Card>
                 )}
-                <Stack spacing={2} className="max-w-96">
+                <Stack spacing={2} className="md:max-w-96">
                     <Typography level="h2" component="h1">{header}</Typography>
                     {alternativeName && <Typography level="body2" secondary>{alternativeName}</Typography>}
                     {subHeader && <Typography level="body1" secondary className="text-balance">{subHeader}</Typography>}

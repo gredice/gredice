@@ -2,7 +2,7 @@ import { Button } from "@signalco/ui-primitives/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Mail } from "lucide-react";
+import { Mail } from "@signalco/ui-icons";
 import Link from "next/link";
 
 export function EmailSentCard() {

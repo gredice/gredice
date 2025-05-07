@@ -9,7 +9,11 @@ import { Markdown } from "../../components/shared/Markdown";
 import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
 import { Row } from "@signalco/ui-primitives/Row";
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600; // 1 hour
+export const metadata = {
+    title: "Česta pitanja",
+    description: "Odgovaramo na sva tvoja pitanja.",
+};
 
 export default async function FaqPage() {
     const faq = await (await client().api.directories.entities[":entityType"].$get({
@@ -26,7 +30,11 @@ export default async function FaqPage() {
                 padded />
             <Stack spacing={4} className="grid grid-cols-1 md:grid-cols-2">
                 {!faq.length && (
-                    <NoDataPlaceholder className="md:col-span-2" />
+                    <div className=" border rounded py-4 md:col-span-2">
+                        <NoDataPlaceholder>
+                            Nema dostupnih pitanja
+                        </NoDataPlaceholder>
+                    </div>
                 )}
                 {faq.map((item) => (
                     <Accordion key={item.information.name}>
@@ -35,7 +43,7 @@ export default async function FaqPage() {
                     </Accordion>
                 ))}
                 <Row spacing={2}>
-                    <Typography level="body1">Jesu li ti informacije bile korisne?</Typography>
+                    <Typography level="body1">Jesu li ti informacije korisne?</Typography>
                     <FeedbackModal topic="www/faq" />
                 </Row>
             </Stack>

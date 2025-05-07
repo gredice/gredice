@@ -5,11 +5,11 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Spinner } from "@signalco/ui-primitives/Spinner";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../../lib/apiFetch";
+import { Warning } from "@signalco/ui-icons";
 
 export function VerifyEmail() {
     const router = useRouter();
@@ -45,7 +45,7 @@ export function VerifyEmail() {
         return (
             <Stack spacing={3}>
                 <Row spacing={2} justifyContent='center' className="text-red-500">
-                    <TriangleAlert className="size-6 min-w-6" />
+                    <Warning className="size-6 min-w-6" />
                     <Typography>Neuspješna potvrda email adrese. Pokušaj ponovno.</Typography>
                 </Row>
                 <Link href='/' legacyBehavior passHref>

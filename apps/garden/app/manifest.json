@@ -1,14 +1,43 @@
 {
+    "id": "/",
     "name": "Gredice",
     "short_name": "Gredice",
     "description": "Tvoj vrt u jednom kliku",
+    "categories": [
+        "entertainment",
+        "food",
+        "games",
+        "health",
+        "lifestyle",
+        "shopping",
+        "social"
+    ],
     "lang": "hr",
     "dir": "ltr",
     "start_url": "/",
+    "launch_handler": {
+        "client_mode": [
+            "navigate-existing",
+            "auto"
+        ]
+    },
     "display": "fullscreen",
+    "display_override": [
+        "window-controls-overlay",
+        "standalone",
+        "browser"
+    ],
+    "prefer_related_applications": false,
     "theme_color": "#2e6f40",
     "background_color": "#2e6f40",
     "orientation": "any",
+    "handle_links": "preferred",
+    "scope": "https://vrt.gredice.com",
+    "scope_extensions": [
+        {
+            "origin": "vrt.gredice.com"
+        }
+    ],
     "icons": [
         {
             "src": "/web-app-manifest-192x192.png",
@@ -34,5 +63,6 @@
             "url": "/?pregled=generalno",
             "description": "Pregled postavki"
         }
-    ]
+    ],
+    "edge_side_panel": {}
 }

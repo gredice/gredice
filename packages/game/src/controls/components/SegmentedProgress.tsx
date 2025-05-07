@@ -1,7 +1,7 @@
 import { cx } from "@signalco/ui-primitives/cx";
 import { Progress } from "./Progress";
 import { HTMLAttributes } from "react";
-import { Check } from "lucide-react";
+import { Check } from "@signalco/ui-icons";
 
 export type SegmentedProgressProps = {
     segments: { value: number, indeterminate?: boolean, label?: string }[]

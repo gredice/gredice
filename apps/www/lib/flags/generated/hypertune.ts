@@ -7,13 +7,15 @@ export const queryCode = `query FullQuery{root{preSeason}}`;
 export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"preSeason":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
 
 export const initData = {"commitId":19306,"hash":"3376041817202543","reducedExpression":{"id":"aSYD5sRoX5E3yt1VdQu_e","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"mVlU96bBrUq2pFr7LvmL6","body":{"id":"v7OKVmigjMDLFjxa9kFxr","logs":{},"type":"ObjectExpression","fields":{"preSeason":{"id":"VSyDYJcckoNeyZlz_UXNS","type":"SwitchExpression","cases":[{"id":"5sY9FQG8YrzbTZ__9VCAC","when":{"a":{"id":"1TrfI3vjyjLGFG5zPTVPf","type":"GetFieldExpression","object":{"id":"mNJH5yfiRvdMPd-6prq4H","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"tvsyZ9Ks8fQ7w0Eze2VXz"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"zoDFcBwaLaFgIGayWb4z5","type":"ListExpression","items":[{"id":"x_qI0aYGB5zNmB2rC_a1L","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"2wvd9ynKWWJP2K47Rw1R2","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"X3W1Zs82gQ0QdeAE9fak_","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"D30yJjI-z7E_T7_49gnZM","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"NDL61LP_HqkAxksxbMyko","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"0ynfs6c7DzYuhe1ilcBBM":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"tvsyZ9Ks8fQ7w0Eze2VXz","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
-  
-/**
- * @deprecated use '@vercel/flags/providers/hypertune' package instead.
- */
+
+
 export const vercelFlagDefinitions = {"preSeason":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3EpreSeason"}};
 
 export type FlagValues = {
+  "preSeason": boolean;
+}
+
+export type AllFlagValues = {
   "preSeason": boolean;
 }
 
@@ -30,9 +32,7 @@ export function decodeFlagValues<TFlagPaths extends keyof FlagValues & string>(
   return sdk.decodeFlagValues({ flagPaths, encodedValues })
 }
 
-export type Rec = {
-
-}
+export type VariableValues = {};
 
 export const EnvironmentEnumValues = [
   "development",
@@ -48,13 +48,15 @@ export type Environment = typeof EnvironmentEnumValues[number];
  * You can define other custom input types with fields that are primitives, enums 
  * or other input types.
  */
-export type Rec2 = {
+export type Context = {
   environment: Environment;
 }
 
 export type RootArgs = {
-  context: Rec2;
+  context: Context;
 }
+
+export type EmptyObject = {};
 
 export type Root = {
   preSeason: boolean;
@@ -78,7 +80,7 @@ export class RootNode extends sdk.Node {
   /**
    * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3EpreSeason})
    */
-  preSeason({ args = {}, fallback }: { args?: Rec; fallback: boolean; }): boolean {
+  preSeason({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
     const props0 = this.getFieldNodeProps("preSeason", { fieldArguments: args });
     const expression0 = props0.expression;
 
@@ -119,12 +121,12 @@ export type Source = {
 
 const sourceFallback = {root:{preSeason:false}};
 
-export type Rec4 = {
+export type GetQueryRootArgs = {
   args: RootArgs;
 }
 
-export type Rec3 = {
-  root: Rec4;
+export type GetQueryArgs = {
+  root: GetQueryRootArgs;
 }
 
 /**
@@ -141,7 +143,7 @@ export type Rec3 = {
 export class SourceNode extends sdk.Node {
   override typeName = "Query" as const;
 
-  get({ args, fallback = sourceFallback as Source}: { args: Rec3; fallback?: Source }): Source {
+  get({ args, fallback = sourceFallback as Source}: { args: GetQueryArgs; fallback?: Source }): Source {
     const getQuery = sdk.mergeFieldQueryAndArgs(
       query.fragmentDefinitions,
       sdk.getFieldQueryForPath(query.fragmentDefinitions, query.fieldQuery, []), 
@@ -174,7 +176,6 @@ export class SourceNode extends sdk.Node {
   }
 }
 
-export type VariableValues = Rec;
 export type DehydratedState = sdk.DehydratedState<Source, VariableValues>
 export type CreateSourceOptions = { 
   token: string; 

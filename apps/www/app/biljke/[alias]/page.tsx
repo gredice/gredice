@@ -10,61 +10,38 @@ import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDat
 import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
 import { KnownPages } from "../../../src/KnownPages";
 import { Accordion } from "@signalco/ui/Accordion";
-import { client } from "@gredice/client";
 import { slug } from "@signalco/js";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
-import { PlantInstruction } from "./PlantingInstructions";
-import { PlantAttributes } from "./PlantAttributes";
+import { PlantAttributeCards } from "./PlantAttributeCards";
 import { InformationSection } from "./InformationSection";
 import { VerifiedInformationBadge } from "./VerifiedInformationBadge";
 import { PlantImage } from "../../../components/plants/PlantImage";
+import { Euro, LayoutGrid, MapPinHouse, Sprout } from "@signalco/ui-icons";
+import { getPlantsData } from "../../../lib/plants/getPlantsData";
+import { AttributeCard } from "../../../components/attributes/DetailCard";
 
-export const revalidate = 3600; // 1 hour
-export const dynamicParams = true;
+export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }) {
+    const { alias: aliasUnescaped } = await params;
+    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const plant = (await getPlantsData()).find((plant) => plant.information.name.toLowerCase() === alias?.toLowerCase());
+    if (!plant) {
+        return {
+            title: "Biljka nije pronađena",
+            description: "Biljka nije pronađena",
+        };
+    }
+    return {
+        title: plant.information.name,
+        description: plant.information.description
+    };
+}
 
 export async function generateStaticParams() {
-    const entities = await (await client().api.directories.entities[":entityType"].$get({
-        param: {
-            entityType: "plant"
-        }
-    })).json() as PlantData[];
-
-    return entities.map((entity) => ({
+    const plants = await getPlantsData();
+    return plants.map((entity) => ({
         alias: String(entity.information.name),
     }));
 }
-
-export type PlantData = {
-    id: number,
-    // plantFamily?: PlantFamily,
-    information: {
-        name: string,
-        verified: boolean,
-        description?: string | null,
-        origin?: string | null,
-        latinName?: string | null,
-        soilPreparation?: string | null,
-        sowing?: string | null,
-        planting?: string | null,
-        flowering?: string | null,
-        maintenance?: string | null,
-        growth?: string | null,
-        harvest?: string | null,
-        storage?: string | null,
-        watering?: string | null,
-        instructions?: PlantInstruction[] | null,
-        tip?: { header: string, content: string }[] | null
-    },
-    image?: { cover?: { url?: string } },
-    attributes?: PlantAttributes,
-    calendar?: {
-        [key: string]: { start: number, end: number }[]
-    },
-    // companions?: number[],
-    // antagonists?: number[],
-    // diseases?: number[],
-    // pests?: number[],
-};
 
 type InformationSection = {
     header: string,
@@ -79,15 +56,18 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
         notFound();
     }
 
-    const plants = await (await client().api.directories.entities[":entityType"].$get({
-        param: {
-            entityType: "plant"
-        }
-    })).json() as PlantData[];
-    const plant = plants.find((plant) => plant.information.name.toLowerCase() === alias.toLowerCase());
+    const plant = (await getPlantsData()).find((plant) => plant.information.name.toLowerCase() === alias.toLowerCase());
     if (!plant) {
         notFound();
     }
+
+    let plantsPerRow = 30 / (plant.attributes?.seedingDistance ?? 30);
+    if (plantsPerRow < 1) {
+        console.warn(`Plants per row is less than 1 (${plantsPerRow}) for ${plant.information.name}. Setting to 1.`);
+        plantsPerRow = 1;
+    }
+    const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
+    const pricePerPlant = plant.prices?.perPlant ? (plant.prices.perPlant / totalPlants).toFixed(2) : null;
 
     const informationSections: InformationSection[] = [
         { header: "Sijanje", id: "sowing", avaialble: Boolean(plant.information.sowing) },
@@ -118,9 +98,12 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                     headerChildren={(
                         <Stack spacing={2} alignItems="start">
                             {plant.information.origin && (
-                                <Stack>
+                                <Stack spacing={1}>
                                     <Typography level="body2">Porijeklo</Typography>
-                                    <Typography>{plant.information.origin}</Typography>
+                                    <Row spacing={1}>
+                                        <MapPinHouse className="size-5 shrink-0" />
+                                        <Typography>{plant.information.origin}</Typography>
+                                    </Row>
                                 </Stack>
                             )}
                             {plant.information.verified && <VerifiedInformationBadge />}
@@ -159,8 +142,30 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                                 className="self-end group-hover:opacity-100 opacity-0 transition-opacity" />
                         </Stack>
                         <Stack spacing={1} className="group">
+                            <Typography level="h2" className="text-2xl">Informacije</Typography>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <AttributeCard
+                                    icon={<LayoutGrid />}
+                                    header="Broj biljaka na 30x30 cm"
+                                    value={totalPlants.toString()}
+                                    description="Povišena gredica podjeljena je na polja veličine 30x30 cm. Tako povišena gredica od 2x1m ima 18 polja za sadnju tvojih biljaka. U svako polje može stati određeni broj biljaka, ovisno o vrsti odnosno o razmaku sijanje/sadnje biljke."
+                                    navigateHref={KnownPages.RaisedBeds}
+                                    navigateLabel="Više o gredicama"
+                                />
+                                <AttributeCard icon={<Sprout />} header="Cijena po biljci" value={`${pricePerPlant} EUR`} />
+                                <AttributeCard icon={<Euro />} header="Cijena za sadnju" value={`${plant.prices.perPlant.toFixed(2)} EUR`} />
+                            </div>
+                            <FeedbackModal
+                                topic="www/plants/attributes"
+                                data={{
+                                    plantId: plant.id,
+                                    plantAlias: alias
+                                }}
+                                className="self-end group-hover:opacity-100 opacity-0 transition-opacity" />
+                        </Stack>
+                        <Stack spacing={1} className="group">
                             <Typography level="h2" className="text-2xl">Svojstva</Typography>
-                            <PlantAttributes attributes={plant.attributes} />
+                            <PlantAttributeCards attributes={plant.attributes} />
                             <FeedbackModal
                                 topic="www/plants/attributes"
                                 data={{
@@ -178,7 +183,7 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                         id={section.id}
                         header={section.header}
                         content={plant.information[section.id]}
-                        instructions={plant.information.instructions?.filter(i => i.stage === section.id)} />
+                        operations={plant.information.operations} />
                 ))}
                 {((plant.information.tip?.length ?? 0) > 0) && (
                     <Stack spacing={2}>

@@ -3,7 +3,7 @@ import { Card } from "@signalco/ui-primitives/Card";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Bookmark, BookA, Binary, Type, ToggleRight, Hash } from "lucide-react";
+import { Bookmark, BookA, Binary, FontType, ToggleRight, Hash } from "@signalco/ui-icons";
 import { NoDataPlaceholder } from "../../../../../components/shared/placeholders/NoDataPlaceholder";
 import { KnownPages } from "../../../../../src/KnownPages";
 import { SplitView } from "@signalco/ui/SplitView";
@@ -14,7 +14,7 @@ import { CreateAttributeDefinitionButton } from "./CreateAttributeDefinitionButt
 
 function AttributeDataTypeIcon({ dataType, ...rest }: { dataType: string } & HTMLAttributes<SVGElement>) {
     switch (dataType) {
-        case 'text': return <Type {...rest} />;
+        case 'text': return <FontType {...rest} />;
         case 'number': return <Hash {...rest} />;
         case 'boolean': return <ToggleRight {...rest} />;
         case 'markdown': return (
@@ -42,10 +42,7 @@ function AttributeDataTypeIcon({ dataType, ...rest }: { dataType: string } & HTM
 
 function AttributeDefinitionCard({ attributeDefinition }: { attributeDefinition: ExtendedAttributeDefinition }) {
     return (
-        <Link
-            href={KnownPages.DirectoryEntityTypeAttributeDefinition(attributeDefinition.entityTypeName, attributeDefinition.id)}
-            passHref
-            legacyBehavior>
+        <Link href={KnownPages.DirectoryEntityTypeAttributeDefinition(attributeDefinition.entityTypeName, attributeDefinition.id)}>
             <Card>
                 <Row spacing={1}>
                     <AttributeDataTypeIcon dataType={attributeDefinition.dataType} className="size-5 text-muted-foreground" />
@@ -64,10 +61,7 @@ function AttributeDefinitionCard({ attributeDefinition }: { attributeDefinition:
 
 function AttributeDefinitionCategoryCard({ attributeDefinitionCategory }: { attributeDefinitionCategory: SelectAttributeDefinitionCategory }) {
     return (
-        <Link
-            href={KnownPages.DirectoryEntityTypeAttributeDefinitionCategory(attributeDefinitionCategory.entityTypeName, attributeDefinitionCategory.id)}
-            passHref
-            legacyBehavior>
+        <Link href={KnownPages.DirectoryEntityTypeAttributeDefinitionCategory(attributeDefinitionCategory.entityTypeName, attributeDefinitionCategory.id)}>
             <Card>
                 <Row spacing={1} justifyContent="space-between">
                     <Stack>

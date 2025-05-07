@@ -1,4 +1,3 @@
-import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, LucideIcon, Circle, Wind } from 'lucide-react'
 import { RainIcon } from './icons/RainIcon'
 import { weatherIcons } from './WeatherIcons';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -7,8 +6,10 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { Link } from '@signalco/ui-primitives/Link';
 import { useWeatherForecast } from '../../../hooks/useWeatherForecast';
+import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, Empty, Wind } from '@signalco/ui-icons';
+import React from 'react';
 
-export const windDirectionIcons: Record<string, LucideIcon> = {
+export const windDirectionIcons: Record<string, React.FC> = {
     N: ArrowUp,
     NE: ArrowUpRight,
     E: ArrowRight,
@@ -27,7 +28,7 @@ export function WeatherForecastDays() {
         <div className="grid grid-cols-3">
             {data.map((day, index) => {
                 const WeatherIcon = weatherIcons[day.symbol]
-                const WindIcon = day.windDirection ? windDirectionIcons[day.windDirection] : Circle;
+                const WindIcon = day.windDirection ? windDirectionIcons[day.windDirection] : Empty;
 
                 // Write "Danas" for today, name of the day for other days (Ponedjeljak, Utorak, etc.)
                 const dateName = index === 0

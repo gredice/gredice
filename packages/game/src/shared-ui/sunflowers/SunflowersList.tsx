@@ -5,8 +5,8 @@ import { List } from "@signalco/ui-primitives/List";
 import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { useCurrentAccount } from "../../hooks/useCurrentAccount";
 import { NoSunflowersPlaceholder } from "./NoSunflowersPlaceholder";
-import { Circle } from "lucide-react";
 import { BlockImage } from "../BlockImage";
+import { Empty } from "@signalco/ui-icons";
 
 function sunflowerReasonToDescription(reason: string) {
     if (reason === 'registration') {
@@ -21,7 +21,7 @@ function sunflowerReasonToDescription(reason: string) {
     }
 
     console.warn('Unknown sunflower reason:', reason);
-    return { icon: <Circle className="size-10" />, label: 'Nepoznato' };
+    return { icon: <Empty className="size-10" />, label: 'Nepoznato' };
 }
 
 export function SunflowersList({ limit }: { limit?: number }) {

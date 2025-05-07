@@ -7,11 +7,25 @@ import { BlockData } from "./@types/BlockData";
 import { orderBy } from "@signalco/js";
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import { Typography } from "@signalco/ui-primitives/Typography";
+import { cx } from "@signalco/ui-primitives/cx";
+import { Row } from "@signalco/ui-primitives/Row";
 
-function BlockGalleryItem(props: BlockData) {
-    const entity = props;
+function BlockGalleryItem(props: BlockData & { showPrices?: boolean }) {
+    const { showPrices = true, ...entity } = props;
     return (
-        <ItemCard label={entity.information.label} href={`/blokovi/${entity.information.label}`}>
+        <ItemCard
+            label={(
+                <Row spacing={1} justifyContent={cx(showPrices ? "space-between" : 'center')}>
+                    <Typography>{entity.information.label}</Typography>
+                    {(showPrices && entity.prices) && (
+                        <Typography level="body2" className="flex flex-row gap-2">
+                            <span>🌻</span>
+                            <span>{entity.prices.sunflowers ?? '-'}</span>
+                        </Typography>
+                    )}
+                </Row>
+            )}
+            href={`/blokovi/${entity.information.label}`}>
             <BlockImage blockName={entity.information.name} fill />
         </ItemCard>
     );

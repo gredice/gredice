@@ -7,7 +7,7 @@ import { Add } from "@signalco/ui-icons";
 import { ServerActionIconButton } from "../../../../components/shared/ServerActionIconButton";
 import Link from "next/link";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { BookA } from "lucide-react";
+import { BookA } from "@signalco/ui-icons";
 import { KnownPages } from "../../../../src/KnownPages";
 import { auth } from "../../../../lib/auth/auth";
 import { Typography } from "@signalco/ui-primitives/Typography";
@@ -23,26 +23,26 @@ export default async function EntitiesPage({ params }: { params: Promise<{ entit
 
     return (
         <Stack spacing={2}>
-                <Row spacing={1} justifyContent="space-between">
+            <Row spacing={1} justifyContent="space-between">
                 <Typography level="h1" className="text-2xl" semiBold>{entityType?.label}</Typography>
-                    <Row>
-                        <Link href={KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName)} passHref legacyBehavior>
-                            <IconButton variant="plain" title="Atributi">
-                                <BookA className='size-5' />
-                            </IconButton>
-                        </Link>
-                        <ServerActionIconButton
-                            variant="plain"
-                            title="Dodaj zapis"
-                            onClick={createEntityBound}>
-                            <Add className='size-5' />
-                        </ServerActionIconButton>
-                    </Row>
+                <Row>
+                    <Link href={KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName)}>
+                        <IconButton variant="plain" title="Atributi">
+                            <BookA className='size-5' />
+                        </IconButton>
+                    </Link>
+                    <ServerActionIconButton
+                        variant="plain"
+                        title="Dodaj zapis"
+                        onClick={createEntityBound}>
+                        <Add className='size-5' />
+                    </ServerActionIconButton>
                 </Row>
+            </Row>
             <Card>
-            <CardOverflow>
-                <EntitiesTable entityTypeName={entityTypeName} />
-            </CardOverflow>
+                <CardOverflow>
+                    <EntitiesTable entityTypeName={entityTypeName} />
+                </CardOverflow>
             </Card>
         </Stack>
     );

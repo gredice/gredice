@@ -8,14 +8,33 @@ import { BlockData } from "../@types/BlockData";
 import { BlockImage } from "../../../components/blocks/BlockImage";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
-import { Layers2, Ruler } from "lucide-react";
+import { Layers, Ruler } from "@signalco/ui-icons";
 import { client } from "@gredice/client";
 import { Markdown } from "../../../components/shared/Markdown";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
 import { Row } from "@signalco/ui-primitives/Row";
 
 export const revalidate = 3600; // 1 hour
-export const dynamicParams = true;
+export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }) {
+    const { alias: aliasUnescaped } = await params;
+    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const blockData = await (await client().api.directories.entities[":entityType"].$get({
+        param: {
+            entityType: "block"
+        }
+    })).json() as BlockData[];
+    const block = blockData.find((block) => block.information.label === alias);
+    if (!block) {
+        return {
+            title: "Blok nije pronađen",
+            description: "Blok koji tražiš nije pronađen.",
+        };
+    }
+    return {
+        title: block.information.label,
+        description: block.information.shortDescription,
+    };
+}
 
 export async function generateStaticParams() {
     const entities = await (await client().api.directories.entities[":entityType"].$get({
@@ -29,11 +48,15 @@ export async function generateStaticParams() {
     }));
 }
 
-function BlockAttributes({ attributes }: { attributes: BlockData['attributes'] }) {
+function BlockAttributes({ prices, attributes }: BlockData) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <AttributeCard icon={<Ruler className="size-5" />} header="Visina" value={`${Math.round(attributes.height * 100)} cm`} />
-            <AttributeCard icon={<Layers2 className="size-5" />} header="Slaganje" value={attributes.stackable === true ? 'Da' : 'Ne'} />
+            <AttributeCard icon={<Layers className="size-5" />} header="Slaganje" value={attributes.stackable === true ? 'Da' : 'Ne'} />
+            <AttributeCard
+                icon={<span className="text-xl">🌻</span>}
+                header="Cijena"
+                value={prices.sunflowers?.toString() ?? '-'} />
         </div>
     )
 }
@@ -78,10 +101,10 @@ export default async function BlockPage({ params }: { params: Promise<{ alias: s
                     <Markdown>{entity.information.fullDescription}</Markdown>
                     <Stack spacing={1}>
                         <Typography level="h5">Svojstva</Typography>
-                        <BlockAttributes attributes={entity.attributes} />
+                        <BlockAttributes {...entity} />
                     </Stack>
                     <Row spacing={2}>
-                        <Typography level="body1">Jesu li ti informacije bile korisne?</Typography>
+                        <Typography level="body1">Jesu li ti informacije korisne?</Typography>
                         <FeedbackModal
                             topic="www/blocks/details"
                             data={{

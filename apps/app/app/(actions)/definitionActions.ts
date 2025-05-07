@@ -20,20 +20,23 @@ export async function upsertAttributeDefinition(definition: InsertAttributeDefin
     await auth(['admin']);
 
     const id = definition.id;
+
+    // Validate required fields
+    const name = definition.name;
+    const label = definition.label;
+    const entityTypeName = definition.entityTypeName;
+    const category = definition.category;
+    const dataType = definition.dataType;
+    if (!name || !label || !entityTypeName || !category || !dataType) {
+        throw new Error('Missing required fields');
+    }
+
     if (id) {
         await storageUpdateAttributeDefinition({
             ...definition,
             id
         });
     } else {
-        const name = definition.name;
-        const label = definition.label;
-        const entityTypeName = definition.entityTypeName;
-        const category = definition.category;
-        const dataType = definition.dataType;
-        if (!name || !label || !entityTypeName || !category || !dataType) {
-            throw new Error('Missing required fields');
-        }
         await storageCreateAttributeDefinition({
             ...definition,
             name,
@@ -43,9 +46,8 @@ export async function upsertAttributeDefinition(definition: InsertAttributeDefin
             dataType
         });
     }
-    if (definition.entityTypeName) {
-        revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(definition.entityTypeName));
-    }
+
+    revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName));
 }
 
 export async function deleteAttributeDefinition(entityTypeName: string, definitionId: number) {

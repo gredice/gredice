@@ -4,7 +4,6 @@ import { Divider } from "@signalco/ui-primitives/Divider";
 import { Input } from "@signalco/ui-primitives/Input";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import { Stack } from "@signalco/ui-primitives/Stack";
-import { Plus } from "lucide-react";
 import { revalidatePath } from "next/cache";
 import { Field } from "../../../../components/shared/fields/Field";
 import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
@@ -13,6 +12,7 @@ import { auth } from "../../../../lib/auth/auth";
 import { KnownPages } from "../../../../src/KnownPages";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Table } from "@signalco/ui-primitives/Table";
+import { Add } from "@signalco/ui-icons";
 
 export async function AccountSunflowersCard({ accountId }: { accountId: string }) {
     const currentSunflowers = await getSunflowers(accountId);
@@ -49,7 +49,7 @@ export async function AccountSunflowersCard({ accountId }: { accountId: string }
                                         { value: 'gift', label: 'Poklon' }
                                     ]} />
                             </div>
-                            <Button size="sm" type="submit" startDecorator={<Plus className="size-5" />}>Dodjeli</Button>
+                            <Button size="sm" type="submit" startDecorator={<Add className="size-5" />}>Dodjeli</Button>
                         </Stack>
                     </form>
                 </div>

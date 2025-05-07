@@ -22,7 +22,7 @@ export async function createEntityType(entityTypeName: string, label: string) {
 
     await upsertEntityType({ name: entityTypeName, label: label });
     revalidatePath(KnownPages.Directories);
-    redirect(KnownPages.DirectoryEntityType(entityTypeName));
+    redirect(KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName));
 }
 
 export async function createEntity(entityTypeName: string) {
@@ -77,7 +77,6 @@ export async function handleValueDelete(attributeValue: SelectAttributeValue) {
 
     await deleteAttributeValue(attributeValue.id);
     revalidatePath(`/admin/directories/${attributeValue.entityTypeName}/${attributeValue.entityId}`);
-    redirect(`/admin/directories/${attributeValue.entityTypeName}`);
 }
 
 export async function handleEntityDelete(entityTypeName: string, entityId: number) {

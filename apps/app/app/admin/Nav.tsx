@@ -1,12 +1,12 @@
 import { List, ListHeader } from "@signalco/ui-primitives/List";
-import { Fence, File, Home, Inbox, Landmark, Smile } from "lucide-react";
 import { KnownPages } from "../../src/KnownPages";
-import { User } from "@signalco/ui-icons";
+import { Bank, Fence, Home, Inbox, SmileHappy, User } from "@signalco/ui-icons";
 import { NavItem } from "./NavItem";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { EntityTypeCreateModal } from "./EntityTypeCreateModal";
 import { getEntityTypes } from "@gredice/storage";
 import { ProfileNavItem } from "./ProfileNavItem";
+import { File } from "@signalco/ui-icons";
 
 export async function Nav() {
     const entityTypes = await getEntityTypes();
@@ -38,7 +38,7 @@ export async function Nav() {
             <Stack spacing={1}>
                 <ListHeader header="Administracija" />
                 <List>
-                    <NavItem href={KnownPages.Accounts} label="Računi" icon={<Landmark className="size-5" />} />
+                    <NavItem href={KnownPages.Accounts} label="Računi" icon={<Bank className="size-5" />} />
                     <NavItem href={KnownPages.Users} label="Korisnici" icon={<User className="size-5" />} />
                     <NavItem href={KnownPages.Gardens} label="Vrtovi" icon={<Fence className="size-5" />} />
                 </List>
@@ -47,7 +47,7 @@ export async function Nav() {
                 <ListHeader header="Komunikacija" />
                 <List>
                     <NavItem href={KnownPages.CommunicationInbox} label="Sandučić" icon={<Inbox className="size-5" />} />
-                    <NavItem href={KnownPages.Feedback} label="Povratne informacije" icon={<Smile className="size-5" />} />
+                    <NavItem href={KnownPages.Feedback} label="Povratne informacije" icon={<SmileHappy className="size-5" />} />
                 </List>
             </Stack>
         </Stack>

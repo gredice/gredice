@@ -6,14 +6,14 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { BlockTypeSelect, BoldItalicUnderlineToggles, headingsPlugin, InsertThematicBreak, listsPlugin, ListsToggle, markdownShortcutPlugin, MDXEditor, MDXEditorMethods, quotePlugin, Separator, thematicBreakPlugin, toolbarPlugin, UndoRedo } from '@mdxeditor/editor';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Button } from '@signalco/ui-primitives/Button';
-import { Mail, Send } from '@signalco/ui-icons';
+import { Clear, Mail, Send } from '@signalco/ui-icons';
 import '@mdxeditor/editor/style.css'
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Row } from '@signalco/ui-primitives/Row';
 import { submitEmailForm } from './actions';
 import { ChangeEvent, useActionState, useCallback, useEffect, useRef, useState } from 'react';
 import { cx } from '@signalco/ui-primitives/cx';
-import { File, Paperclip, X } from 'lucide-react';
+import { File, Paperclip } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Progress } from '@signalco/ui-primitives/Progress';
 
@@ -78,10 +78,10 @@ export function EmailSendForm({ from }: { from: string }) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className='flex gap-2'>
+                <Row spacing={1}>
                     <Mail className="size-6" />
-                    Novi email
-                </CardTitle>
+                    <CardTitle>Novi email</CardTitle>
+                </Row>
             </CardHeader>
             <form action={formAction}>
                 <CardContent>
@@ -174,7 +174,7 @@ export function EmailSendForm({ from }: { from: string }) {
                                                         className="size-5 p-0"
                                                         onClick={() => removeAttachment(index)}
                                                     >
-                                                        <X className="h-3 w-3" />
+                                                        <Clear className="h-3 w-3" />
                                                     </IconButton>
                                                 </div>
                                             ))}
@@ -188,6 +188,17 @@ export function EmailSendForm({ from }: { from: string }) {
                             )}
                         </Stack>
                         <CardActions>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                className="hidden"
+                                multiple
+                            />
+                            <input
+                                type="hidden"
+                                name="attachments"
+                                value={attachments.map(({ name }) => name).join(',')} />
                             <Button
                                 type='button'
                                 variant="outlined"
@@ -197,14 +208,6 @@ export function EmailSendForm({ from }: { from: string }) {
                             >
                                 Dodaj prilog
                             </Button>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
-                                className="hidden"
-                                multiple
-                            />
-                            <input type="hidden" name="attachments" value={attachments.map(({ name }) => name).join(',')} />
                             <Button variant='solid' type="submit" startDecorator={<Send className="size-4" />} loading={pending} disabled={pending}>
                                 Pošalji
                             </Button>

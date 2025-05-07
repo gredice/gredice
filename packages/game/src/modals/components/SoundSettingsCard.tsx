@@ -3,7 +3,7 @@ import { SoundSlider } from "./SoundSlider"
 import { useEffect } from "react"
 import { Card, CardContent } from "@signalco/ui-primitives/Card"
 import { Stack } from "@signalco/ui-primitives/Stack"
-import { Leaf, Play, RotateCcw } from "lucide-react"
+import { Leaf, Play, Reset } from "@signalco/ui-icons"
 import { useGameAudio } from "../../hooks/useGameAudio"
 import { Alert } from "@signalco/ui/Alert"
 import { Typography } from "@signalco/ui-primitives/Typography"
@@ -105,10 +105,10 @@ export function SoundSettingsCard() {
                             label="Efekti"
                         />
                     </Stack>
-                <Button
+                    <Button
                         onClick={handleReset}
                         variant="outlined"
-                        startDecorator={<RotateCcw className="size-4" />}
+                        startDecorator={<Reset className="size-4" />}
                         size="sm"
                         className="self-end">
                         Vrati zadano

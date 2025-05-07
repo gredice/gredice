@@ -1,8 +1,8 @@
 import { Card, CardHeader, CardOverflow } from "@signalco/ui-primitives/Card";
 import Link from "next/link";
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, ReactElement } from "react";
 
-export function ItemCard({ children, label, href }: PropsWithChildren<{ label: string, href: string }>) {
+export function ItemCard({ children, label, href }: PropsWithChildren<{ label: string | ReactElement, href: string }>) {
     return (
         <Link href={href || ''} passHref prefetch>
             <Card className="overflow-hidden">
@@ -11,7 +11,7 @@ export function ItemCard({ children, label, href }: PropsWithChildren<{ label: s
                         {children}
                     </div>
                 </CardOverflow>
-                <CardHeader className="bg-muted/60 border-t -m-2 p-2 text-center">{label}</CardHeader>
+                <CardHeader className="bg-muted/60 border-t -m-2 py-2 px-3 text-center">{label}</CardHeader>
             </Card>
         </Link>
     );

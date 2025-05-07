@@ -1,6 +1,6 @@
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { useGameAudio } from "../hooks/useGameAudio";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, Mute } from "@signalco/ui-icons";
 
 export function AudioHud() {
     const { isMuted, isSuspended, setMuted, resumeIfNeeded } = useGameAudio();
@@ -11,7 +11,7 @@ export function AudioHud() {
             onClick={() => isSuspended ? resumeIfNeeded() : setMuted(!isMuted)}
             variant="plain"
             className='pointer-events-auto hover:bg-muted'>
-            {(isMuted || isSuspended) ? <VolumeX /> : <Volume2 />}
+            {(isMuted || isSuspended) ? <Mute /> : <Volume2 />}
         </IconButton>
     )
 }

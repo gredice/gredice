@@ -1,13 +1,13 @@
 'use client';
 
 import { Modal } from "@signalco/ui-primitives/Modal";
-import { useGameState } from "@gredice/game";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { useMemo, useState } from "react";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Button } from "@signalco/ui-primitives/Button";
-import { ChevronRight } from "lucide-react";
 import { useGameAudio } from "../hooks/useGameAudio";
+import { Navigate } from "@signalco/ui-icons";
+import { useGameState } from "../useGameState";
 
 const messageTypes = {
     welcome: {
@@ -101,7 +101,7 @@ export function WelcomeMessage() {
                             <Typography key={index} level="body1">{text}</Typography>
                         ))}
                     </Stack>
-                    <Button variant="solid" endDecorator={<ChevronRight className="size-5 animate-pulse" />} onClick={() => handleOpenChange(false)}>Kreni u avanturu</Button>
+                    <Button variant="solid" endDecorator={<Navigate className="size-5 animate-pulse" />} onClick={() => handleOpenChange(false)}>Kreni u avanturu</Button>
                 </Stack>
                 <div className="w-full h-full rounded-3xl bg-card flex flex-row items-end justify-center [grid-area:sunflower]">
                     <div className="size-40 relative">

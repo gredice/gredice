@@ -7,13 +7,15 @@ export const queryCode = `query FullQuery{root{showUI}}`;
 export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"showUI":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
 
 export const initData = {"commitId":19212,"hash":"8763432039174089","reducedExpression":{"id":"DLtynSOOp0PagiOhQUw0f","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"JY75eOxQTEzlV-A6Ni37v","body":{"id":"az-7S84s8S4CqbMMBi2z3","logs":{},"type":"ObjectExpression","fields":{"showUI":{"id":"0Z52N1oXb2apI6ZC_csP-","type":"SwitchExpression","cases":[{"id":"aHto_R5OkFsfhJiSmj0Za","when":{"a":{"id":"bW6KAK3IVzLXK7Wsggolw","type":"GetFieldExpression","object":{"id":"mnM9fr7nSlZ5pr1Ief6V0","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"CbT1XTBNkXnaDuUjpkURx"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"lf8VUBWywLUJd6AfbSrs3","type":"ListExpression","items":[{"id":"_FudFyMhG9fIkMHp68RlO","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},{"id":"uQ70SQNZhGjQiawrl7kdo","type":"EnumExpression","value":"test","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"adZPQ08a0L80Gs43FGzWZ","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"kAccljBkWAVpmRi-_O55D","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"f1ryfOsxx6_i9yN74QSlW","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"B78l7-qHhFBZSvOn_ty9O","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"chgmSwThmZFMS-q0jyO_7":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"CbT1XTBNkXnaDuUjpkURx","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
-  
-/**
- * @deprecated use '@vercel/flags/providers/hypertune' package instead.
- */
+
+
 export const vercelFlagDefinitions = {"showUI":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4089/main/draft/logic?selected_field_path=root%3EshowUI"}};
 
 export type FlagValues = {
+  "showUI": boolean;
+}
+
+export type AllFlagValues = {
   "showUI": boolean;
 }
 
@@ -30,11 +32,9 @@ export function decodeFlagValues<TFlagPaths extends keyof FlagValues & string>(
   return sdk.decodeFlagValues({ flagPaths, encodedValues })
 }
 
-export type Rec = {
+export type VariableValues = {};
 
-}
-
-export type Rec3 = {
+export type User = {
   id: string;
   name: string;
   email: string;
@@ -54,14 +54,16 @@ export type Environment = typeof EnvironmentEnumValues[number];
  * You can define other custom input types with fields that are primitives, enums 
  * or other input types.
  */
-export type Rec2 = {
-  user: Rec3;
+export type Context = {
+  user: User;
   environment: Environment;
 }
 
 export type RootArgs = {
-  context: Rec2;
+  context: Context;
 }
+
+export type EmptyObject = {};
 
 export type Root = {
   showUI: boolean;
@@ -85,7 +87,7 @@ export class RootNode extends sdk.Node {
   /**
    * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4089/main/draft/logic?selected_field_path=root%3EshowUI})
    */
-  showUI({ args = {}, fallback }: { args?: Rec; fallback: boolean; }): boolean {
+  showUI({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
     const props0 = this.getFieldNodeProps("showUI", { fieldArguments: args });
     const expression0 = props0.expression;
 
@@ -126,12 +128,12 @@ export type Source = {
 
 const sourceFallback = {root:{showUI:false}};
 
-export type Rec5 = {
+export type GetQueryRootArgs = {
   args: RootArgs;
 }
 
-export type Rec4 = {
-  root: Rec5;
+export type GetQueryArgs = {
+  root: GetQueryRootArgs;
 }
 
 /**
@@ -148,7 +150,7 @@ export type Rec4 = {
 export class SourceNode extends sdk.Node {
   override typeName = "Query" as const;
 
-  get({ args, fallback = sourceFallback as Source}: { args: Rec4; fallback?: Source }): Source {
+  get({ args, fallback = sourceFallback as Source}: { args: GetQueryArgs; fallback?: Source }): Source {
     const getQuery = sdk.mergeFieldQueryAndArgs(
       query.fragmentDefinitions,
       sdk.getFieldQueryForPath(query.fragmentDefinitions, query.fieldQuery, []), 
@@ -181,7 +183,6 @@ export class SourceNode extends sdk.Node {
   }
 }
 
-export type VariableValues = Rec;
 export type DehydratedState = sdk.DehydratedState<Source, VariableValues>
 export type CreateSourceOptions = { 
   token: string; 

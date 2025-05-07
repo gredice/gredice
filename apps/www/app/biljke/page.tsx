@@ -1,28 +1,29 @@
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PlantsGallery } from "./PlantsGallery";
-import { PlantData } from "./[alias]/page";
 import { PageHeader } from "../../components/shared/PageHeader";
-import { client } from "@gredice/client";
 import { Suspense } from "react";
 import { PageFilterInput } from "../../components/shared/PageFilterInput";
 import { PlantsCalendar } from "./PlantsCalendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@signalco/ui-primitives/Tabs";
-import { Calendar, LayoutGrid } from "lucide-react";
+import { Calendar } from "@signalco/ui-icons";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import Link from "next/link";
+import { Typography } from "@signalco/ui-primitives/Typography";
+import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
+import { getPlantsData } from "../../lib/plants/getPlantsData";
+import { LayoutGrid } from "@signalco/ui-icons";
 
-export const revalidate = 3600; // 1 hour
+export const metadata = {
+    title: "Biljke",
+    description: "Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu.",
+};
 
 export default async function PlantsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
     const params = await searchParams;
     const view = params.pregled;
     const search = params.pretraga;
-    const entities = await (await client().api.directories.entities[":entityType"].$get({
-        param: {
-            entityType: "plant"
-        }
-    })).json() as PlantData[];
+    const entities = await getPlantsData();
     return (
         <Stack>
             <PageHeader
@@ -68,6 +69,10 @@ export default async function PlantsPage({ searchParams }: { searchParams: Promi
                     </TabsContent>
                 </Tabs>
             </Suspense>
+            <Row spacing={2} className="mt-12">
+                <Typography level="body1">Sviđa ti se odabir ili nema biljke koja te zanima?</Typography>
+                <FeedbackModal topic="www/plants" />
+            </Row>
         </Stack>
     );
 }
