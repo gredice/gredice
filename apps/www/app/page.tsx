@@ -27,6 +27,7 @@ const sectionsData: SectionData[] = [
                     freezeTime={new Date(2024, 5, 21, 11, 30)}
                     noBackground
                     hideHud
+                    noControls
                     noWeather
                     noSound
                     mockGarden />

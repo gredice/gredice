@@ -33,6 +33,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     // Demo purposes only
     freezeTime?: Date,
     noBackground?: boolean,
+    noControls?: boolean,
     hideHud?: boolean,
     noWeather?: boolean,
     noSound?: boolean,
@@ -60,6 +61,7 @@ const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
 function GameScene({
     isDevelopment,
     zoom = 'normal',
+    noControls,
     noWeather,
     noBackground,
     noSound,
@@ -105,7 +107,9 @@ function GameScene({
                         ))
                     )}
                 </group>
-                <Controls isDevelopment={isDevelopment} />
+                {!noControls && (
+                    <Controls isDevelopment={isDevelopment} />
+                )}
             </Scene>
             {!hideHud && (
                 <>
