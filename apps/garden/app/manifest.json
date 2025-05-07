@@ -12,6 +12,15 @@
         "shopping",
         "social"
     ],
+    "iarc_rating_id": "99c854d4-aa39-4d5a-b7e7-46fdd9d59486",
+    "prefer_related_applications": false,
+    "related_applications": [
+        {
+            "platform": "play",
+            "url": "https://play.google.com/store/apps/details?id=com.gredice.vrt.twa",
+            "id": "com.gredice.vrt.twa"
+        }
+    ],
     "lang": "hr",
     "dir": "ltr",
     "start_url": "/",
@@ -27,7 +36,6 @@
         "standalone",
         "browser"
     ],
-    "prefer_related_applications": false,
     "theme_color": "#2e6f40",
     "background_color": "#2e6f40",
     "orientation": "any",
