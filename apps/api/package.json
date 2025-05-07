@@ -33,6 +33,7 @@
     "@eslint/js": "9.26.0",
     "@gredice/apidocs": "workspace:*",
     "@gredice/storage": "workspace:*",
+    "@gredice/stripe": "workspace:*",
     "@gredice/transactional": "workspace:*",
     "@playwright/test": "1.52.0",
     "@signalco/auth-server": "0.5.3",

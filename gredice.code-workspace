@@ -45,6 +45,10 @@
 			"path": "packages/storage"
 		},
 		{
+			"name": "📦 @gredice/stripe",
+			"path": "packages/stripe"
+		},
+		{
 			"name": "📦 @gredice/transactional",
 			"path": "packages/transactional"
 		}

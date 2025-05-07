@@ -1,0 +1,22 @@
+{
+  "name": "@gredice/stripe",
+  "version": "0.0.0",
+  "private": true,
+  "sideEffects": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    "./client": "./src/client/index.ts",
+    "./server": "./src/server/index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "@types/react": "19.1.2"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "typescript": "5.8.3",
+    "@stripe/stripe-js": "7.3.0",
+    "stripe": "18.1.0"
+  }
+}
