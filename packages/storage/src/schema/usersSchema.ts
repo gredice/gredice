@@ -1,11 +1,23 @@
 import { relations } from "drizzle-orm";
 import { index, pgTable, serial, smallint, text, timestamp } from "drizzle-orm/pg-core";
+import { raisedBeds } from "./gardenSchema";
 
 export const accounts = pgTable('accounts', {
     id: text('id').primaryKey(),
+    stripeCustomerId: text('stripe_customer_id'),
+    addressStreet1: text('address_street1'),
+    addressStreet2: text('address_street2'),
+    addressCity: text('address_city'),
+    addressZip: text('address_zip'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
 });
+
+export const accountsRelations = relations(accounts, ({ many }) => ({
+    raisedBeds: many(raisedBeds, {
+        relationName: 'raisedBedsAccount',
+    }),
+}));
 
 export const accountUsers = pgTable('account_users', {
     id: serial('id').primaryKey(),

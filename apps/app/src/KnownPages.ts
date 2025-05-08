@@ -16,4 +16,8 @@ export const KnownPages = {
     CommunicationInbox: '/admin/communication/inbox',
     Feedback: '/admin/feedback',
     Logout: '/admin/logout',
+    RaisedBeds: '/admin/raised-beds',
+    RaisedBed: (raisedBedId: number) => `/admin/raised-beds/${raisedBedId}`,
+    Transactions: '/admin/transactions',
+    Transaction: (transactionId: number) => `/admin/transactions/${transactionId}`,
 }

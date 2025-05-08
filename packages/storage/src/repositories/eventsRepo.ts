@@ -18,6 +18,16 @@ export const knownEventTypes = {
         delete: "garden.delete",
         blockPlace: "garden.blockPlace",
     },
+    transactions: {
+        create: "transaction.create",
+        update: "transaction.update",
+        delete: "transaction.delete",
+    },
+    raisedBeds: {
+        create: "raisedBed.create",
+        update: "raisedBed.update",
+        delete: "raisedBed.delete",
+    },
 }
 
 export const knownEvents = {
@@ -36,6 +46,44 @@ export const knownEvents = {
         deletedV1: (aggregateId: string) => ({ type: knownEventTypes.gardens.delete, version: 1, aggregateId }),
         blockPlacedV1: (aggregateId: string, data: { id: string, name: string }) => ({ type: knownEventTypes.gardens.blockPlace, version: 1, aggregateId, data }),
         blockRemovedV1: (aggregateId: string, data: { id: string }) => ({ type: knownEventTypes.gardens.blockPlace, version: 1, aggregateId, data }),
+    },
+    transactions: {
+        createdV1: (aggregateId: string, data: { accountId: string; amount: number; currency: string; status: string }) => ({
+            type: knownEventTypes.transactions.create,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        updatedV1: (aggregateId: string, data: { status: string }) => ({
+            type: knownEventTypes.transactions.update,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        deletedV1: (aggregateId: string) => ({
+            type: knownEventTypes.transactions.delete,
+            version: 1,
+            aggregateId,
+        }),
+    },
+    raisedBeds: {
+        createdV1: (aggregateId: string, data: { gardenId: number; blockId: string }) => ({
+            type: knownEventTypes.raisedBeds.create,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        updatedV1: (aggregateId: string, data: { blockId?: string }) => ({
+            type: knownEventTypes.raisedBeds.update,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        deletedV1: (aggregateId: string) => ({
+            type: knownEventTypes.raisedBeds.delete,
+            version: 1,
+            aggregateId,
+        }),
     },
 }
 
