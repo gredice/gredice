@@ -2,7 +2,7 @@ import { OrbitControls } from '@react-three/drei';
 import { useEffect, useRef, useState } from 'react';
 import { useGameState } from '../useGameState';
 import { useFrame, useThree } from '@react-three/fiber';
-import { TOUCH, Vector3 } from 'three';
+import { MOUSE, TOUCH, Vector3 } from 'three';
 import { useControls } from 'leva';
 import { CameraController } from '../controllers/CameraController';
 import { useIsEditMode } from '../hooks/useIsEditMode';
@@ -122,6 +122,11 @@ export function Controls({ isDevelopment }: { isDevelopment?: boolean }) {
                 onEnd={() => setIsDragging(false)}
                 minZoom={50}
                 maxZoom={200}
+                mouseButtons={{
+                    LEFT: isEditMode ? undefined : MOUSE.PAN,
+                    MIDDLE: MOUSE.DOLLY,
+                    RIGHT: isEditMode ? MOUSE.PAN : undefined,
+                }}
                 touches={{
                     ONE: isEditMode ? undefined : TOUCH.PAN,
                     TWO: isEditMode ? TOUCH.DOLLY_PAN : TOUCH.DOLLY_PAN,

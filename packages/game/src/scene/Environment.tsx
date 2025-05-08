@@ -15,10 +15,10 @@ const backgroundColorScale = chroma
     .domain([0.2, 0.225, 0.25, 0.75, 0.775, 0.8, 0.85]);
 const sunTemperatureScale = chroma
     .scale([chroma.temperature(20000), chroma.temperature(8000), chroma.temperature(6000), chroma.temperature(6000), chroma.temperature(2000), chroma.temperature(20000)])
-    .domain([0.2, 0.3, 0.75, 0.85]);
+    .domain([0.175, 0.25, 0.8, 0.85]);
 const sunIntensityTimeScale = chroma
     .scale(['black', 'white', 'white', 'black'])
-    .domain([0.2, 0.225, 0.75, 0.8]);
+    .domain([0.15, 0.225, 0.75, 0.825]);
 const hemisphereSkyColorScale = chroma
     .scale([chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000), chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000)])
     .domain([0.2, 0.25, 0.3, 0.75, 0.8, 0.85]);
@@ -30,14 +30,14 @@ function getSunPosition({ lat, lon }: Garden['location'], currentTime: Date, tim
 
     const sunPosition = getPosition(currentTime, lat, lon);
 
-    const pos = new Vector3(5, 10, 0);
+    const pos = new Vector3(5, 20, 0);
 
     const hinge = new Quaternion();
 
     const rotator = new Quaternion();
     rotator.setFromAxisAngle(new Vector3(0, -1, 0), sunPosition.altitude);
     hinge.premultiply(rotator);
-    rotator.setFromAxisAngle(new Vector3(1, 0, 0), sunPosition.azimuth);
+    rotator.setFromAxisAngle(new Vector3(0.8, 0, 0), sunPosition.azimuth);
     hinge.premultiply(rotator);
 
     pos.applyQuaternion(hinge);
@@ -160,9 +160,9 @@ export function Environment({ noBackground, noSound, noWeather }: EnvironmentPro
             }
         }
         if (ambientRef.current) {
-            ambientRef.current.intensity = sunIntensity * 2 + 1.3;
+            ambientRef.current.intensity = sunIntensity * 4 + 1;
             if (weather && ((weather?.cloudy ?? 0) > 0 || (weather?.foggy ?? 0) > 0)) {
-                ambientRef.current.intensity = sunIntensity * 2 + 2;
+                ambientRef.current.intensity = sunIntensity * 2 + 1;
             }
         }
 
@@ -220,12 +220,7 @@ export function Environment({ noBackground, noSound, noWeather }: EnvironmentPro
         <>
             {!noBackground && <color ref={backgroundRef} attach="background" args={[0, 0, 0]} />}
             <ambientLight ref={ambientRef} />
-            <hemisphereLight ref={hemisphereRef} position={[0, 1, 0]} intensity={2} />
-            <directionalLight
-                intensity={1.5}
-                color={0xecfaff}
-                position={[-10, 10, 10]}
-            />
+            <hemisphereLight ref={hemisphereRef} position={[0, 1, 0]} intensity={1.5} />
             {/* TODO: Update shadow camera position based on camera position */}
             <directionalLight
                 ref={directionalLightRef}
