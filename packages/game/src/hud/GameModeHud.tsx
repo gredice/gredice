@@ -11,7 +11,7 @@ export function GameModeHud() {
         <HudCard
             open
             position="floating"
-            className="static">
+            className="static px-0.5">
             <IconButton
                 variant="plain"
                 className="rounded-full"

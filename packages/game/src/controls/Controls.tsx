@@ -124,7 +124,7 @@ export function Controls({ isDevelopment }: { isDevelopment?: boolean }) {
                 maxZoom={200}
                 touches={{
                     ONE: isEditMode ? undefined : TOUCH.PAN,
-                    TWO: isEditMode ? TOUCH.DOLLY_PAN : undefined,
+                    TWO: isEditMode ? TOUCH.DOLLY_PAN : TOUCH.DOLLY_PAN,
                 }}
             />
         </>
