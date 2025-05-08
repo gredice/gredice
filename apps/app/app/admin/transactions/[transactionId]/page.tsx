@@ -1,4 +1,4 @@
-import { getTransaction, getTransactionEntities } from "@gredice/storage";
+import { getTransaction } from "@gredice/storage";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
 import { KnownPages } from "../../../../src/KnownPages";
@@ -8,13 +8,17 @@ import { NoDataPlaceholder } from "../../../../components/shared/placeholders/No
 import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
+import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 
 export const dynamic = 'force-dynamic';
 
 export default async function TransactionDetailsPage({ params }: { params: Promise<{ transactionId: string }> }) {
     const { transactionId } = await params;
-    const transaction = await getTransaction(transactionId);
-    const entities = await getTransactionEntities(transactionId);
+    const transactionIdNumber = parseInt(transactionId, 10);
+    if (isNaN(transactionIdNumber)) {
+        return notFound();
+    }
+    const transaction = await getTransaction(transactionIdNumber);
 
     if (!transaction) {
         return notFound();
@@ -32,7 +36,7 @@ export default async function TransactionDetailsPage({ params }: { params: Promi
             <Stack spacing={2}>
                 <Row spacing={2}>
                     <Typography level="body1">ID: {transaction.id}</Typography>
-                    <Typography level="body1">Tip: {transaction.type}</Typography>
+                    <Typography level="body1">Tip: {transaction.status}</Typography>
                     <Typography level="body1">Iznos: {transaction.amount}</Typography>
                     <Typography level="body1">Datum kreiranja: <LocaleDateTime>{transaction.createdAt}</LocaleDateTime></Typography>
                 </Row>
@@ -44,11 +48,11 @@ export default async function TransactionDetailsPage({ params }: { params: Promi
                             <Table.Row>
                                 <Table.Head>ID entiteta</Table.Head>
                                 <Table.Head>Tip entiteta</Table.Head>
-                                <Table.Head>Datum kreiranja</Table.Head>
+                                <Table.Head>ID entiteta</Table.Head>
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
-                            {entities.length === 0 && (
+                            {transaction.transactionEntities.length === 0 && (
                                 <Table.Row>
                                     <Table.Cell colSpan={3}>
                                         <NoDataPlaceholder>
@@ -57,15 +61,11 @@ export default async function TransactionDetailsPage({ params }: { params: Promi
                                     </Table.Cell>
                                 </Table.Row>
                             )}
-                            {entities.map(entity => (
+                            {transaction.transactionEntities.map(entity => (
                                 <Table.Row key={entity.id}>
                                     <Table.Cell>{entity.id}</Table.Cell>
-                                    <Table.Cell>{entity.type}</Table.Cell>
-                                    <Table.Cell title={entity.createdAt.toISOString()}>
-                                        <LocaleDateTime>
-                                            {entity.createdAt}
-                                        </LocaleDateTime>
-                                    </Table.Cell>
+                                    <Table.Cell>{entity.entityTypeName}</Table.Cell>
+                                    <Table.Cell>{entity.entityId}</Table.Cell>
                                 </Table.Row>
                             ))}
                         </Table.Body>

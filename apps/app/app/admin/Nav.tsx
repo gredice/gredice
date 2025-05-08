@@ -43,6 +43,7 @@ export async function Nav() {
                     <NavItem href={KnownPages.Users} label="Korisnici" icon={<User className="size-5" />} />
                     <NavItem href={KnownPages.Gardens} label="Vrtovi" icon={<Fence className="size-5" />} />
                     <NavItem href={KnownPages.RaisedBeds} label="Gredice" icon={<Tally3 className="size-5 rotate-90 mt-1" />} />
+                    <NavItem href={KnownPages.ShoppingCarts} label="Košarice" icon={<Tally3 className="size-5 rotate-90 mt-1" />} />
                 </List>
             </Stack>
             <Stack spacing={1}>

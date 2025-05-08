@@ -77,7 +77,7 @@ export default async function GardenPage({ params }: { params: Promise<{ gardenI
                             {raisedBeds.map(bed => (
                                 <Table.Row key={bed.id}>
                                     <Table.Cell>{bed.id}</Table.Cell>
-                                    <Table.Cell><LocaleDateTime>{bed.createdAt}</LocaleDateTime></Table.Cell>
+                                    <Table.Cell title={bed.createdAt.toISOString()}><LocaleDateTime time={false}>{bed.createdAt}</LocaleDateTime></Table.Cell>
                                 </Table.Row>
                             ))}
                         </Table.Body>

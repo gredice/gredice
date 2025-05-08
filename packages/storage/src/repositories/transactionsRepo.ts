@@ -28,9 +28,26 @@ export async function createTransaction(transaction: InsertTransaction, entities
     return transactionId;
 }
 
+export async function getTransaction(transactionId: number) {
+    return storage.query.transactions.findFirst({
+        where: eq(transactions.id, transactionId),
+        with: {
+            transactionEntities: true,
+        },
+    });
+}
+
 export async function getTransactions(accountId: string) {
     return storage.query.transactions.findMany({
         where: eq(transactions.accountId, accountId),
+        with: {
+            transactionEntities: true,
+        },
+    });
+}
+
+export async function getAllTransactions() {
+    return storage.query.transactions.findMany({
         with: {
             transactionEntities: true,
         },

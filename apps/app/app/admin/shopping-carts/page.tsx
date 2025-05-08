@@ -1,6 +1,5 @@
-import { getAllTransactions } from "@gredice/storage";
+import { getAllShoppingCarts } from "@gredice/storage";
 import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
-import { Chip } from "@signalco/ui-primitives/Chip";
 import { Table } from "@signalco/ui-primitives/Table";
 import { auth } from "../../../lib/auth/auth";
 import { KnownPages } from "../../../src/KnownPages";
@@ -8,54 +7,48 @@ import Link from "next/link";
 import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
 import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
 
 export const dynamic = 'force-dynamic';
 
-export default async function TransactionsPage() {
+export default async function ShoppingCartsPage() {
     await auth(['admin']);
-    const transactions = await getAllTransactions();
+    const shoppingCarts = await getAllShoppingCarts();
 
     return (
         <Stack spacing={2}>
-            <Row spacing={1}>
-                <Typography level="h1" className="text-2xl" semiBold>{"Transakcije"}</Typography>
-                <Chip color="primary" size="sm">{transactions.length}</Chip>
-            </Row>
+            <Typography level="h1" className="text-2xl" semiBold>Košarice</Typography>
             <Card>
                 <CardOverflow>
                     <Table>
                         <Table.Header>
                             <Table.Row>
                                 <Table.Head>ID</Table.Head>
-                                <Table.Head>Status</Table.Head>
-                                <Table.Head>Iznos</Table.Head>
-                                <Table.Head>Datum kreiranja</Table.Head>
+                                <Table.Head>Račun</Table.Head>
+                                <Table.Head>Datum isteka</Table.Head>
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
-                            {transactions.length === 0 && (
+                            {shoppingCarts.length === 0 && (
                                 <Table.Row>
-                                    <Table.Cell colSpan={4}>
+                                    <Table.Cell colSpan={3}>
                                         <NoDataPlaceholder>
-                                            Nema transakcija
+                                            Nema košarica
                                         </NoDataPlaceholder>
                                     </Table.Cell>
                                 </Table.Row>
                             )}
-                            {transactions.map(transaction => (
-                                <Table.Row key={transaction.id}>
+                            {shoppingCarts.map(cart => (
+                                <Table.Row key={cart.id}>
                                     <Table.Cell>
-                                        <Link href={KnownPages.Transaction(transaction.id)}>
-                                            {transaction.id}
+                                        <Link href={KnownPages.ShoppingCart(cart.id)}>
+                                            {cart.id}
                                         </Link>
                                     </Table.Cell>
-                                    <Table.Cell>{transaction.status}</Table.Cell>
-                                    <Table.Cell>{transaction.amount}</Table.Cell>
-                                    <Table.Cell title={transaction.createdAt.toISOString()}>
+                                    <Table.Cell>{cart.accountId}</Table.Cell>
+                                    <Table.Cell title={cart.expiresAt.toISOString()}>
                                         <LocaleDateTime time={false}>
-                                            {transaction.createdAt}
+                                            {cart.expiresAt}
                                         </LocaleDateTime>
                                     </Table.Cell>
                                 </Table.Row>
