@@ -1,10 +1,8 @@
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../components/shared/PageHeader";
-import { FaqData } from "./@types/FaqData";
 import { Accordion } from "@signalco/ui/Accordion";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NoDataPlaceholder } from "../../components/shared/placeholders/NoDataPlaceholder";
-import { client } from "@gredice/client";
 import { Markdown } from "../../components/shared/Markdown";
 import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
 import { Row } from "@signalco/ui-primitives/Row";
