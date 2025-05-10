@@ -5,10 +5,14 @@ import { getEntities } from '../actions/entitiesActions';
 
 
 export function SelectEntity({ value, onChange, attributeDefinition }: AttributeInputProps) {
-    const entityTypeName = attributeDefinition.dataType.split(':')[1];
+    const entityTypeName = attributeDefinition?.dataType.split(':')[1];
     const [entities, setEntities] = useState<Awaited<ReturnType<typeof getEntities>>>();
 
     useEffect(() => {
+        if (!entityTypeName) {
+            return;
+        }
+
         getEntities(entityTypeName)
             .then((response) => {
                 setEntities(response);
