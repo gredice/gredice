@@ -49,7 +49,7 @@ export async function upsertAttributeDefinition(definition: InsertAttributeDefin
     }
 
     // Retrieve the entity type name from the definition
-    let entityTypeName = definition.entityTypeName;
+    const entityTypeName = definition.entityTypeName;
     if (entityTypeName) {
         revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName));
     } else if (!entityTypeName && id) {

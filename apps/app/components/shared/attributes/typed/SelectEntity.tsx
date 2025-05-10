@@ -1,8 +1,7 @@
 import { AttributeInputProps } from '../AttributeInputProps';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getEntities } from '../actions/entitiesActions';
-import { get } from 'http';
 
 
 export function SelectEntity({ value, onChange, attributeDefinition }: AttributeInputProps) {
