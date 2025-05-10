@@ -14,7 +14,9 @@ export async function EntityAttributeProgress({ entityTypeName, entity }: { enti
     const notPopulatedRequiredAttributes = definitions.filter(d =>
         d.required &&
         !entity.attributes.some(a => a.attributeDefinitionId === d.id && (a.value?.length ?? 0) > 0));
-    const progress = ((numberOfRequiredAttributes - notPopulatedRequiredAttributes.length) / numberOfRequiredAttributes) * 100;
+    const progress = numberOfRequiredAttributes > 0
+        ? ((numberOfRequiredAttributes - notPopulatedRequiredAttributes.length) / numberOfRequiredAttributes) * 100
+        : 100;
 
     return (
         <Tooltip delayDuration={250}>

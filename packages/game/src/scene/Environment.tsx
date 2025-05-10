@@ -12,13 +12,13 @@ import { useCurrentGarden } from '../hooks/useCurrentGarden';
 
 const backgroundColorScale = chroma
     .scale(['#2D3947', '#BADDf6', '#E7E2CC', '#E7E2CC', '#f8b195', '#6c5b7b', '#2D3947'])
-    .domain([0.2, 0.225, 0.25, 0.75, 0.775, 0.8, 0.85]);
+    .domain([0.2, 0.225, 0.25, 0.75, 0.765, 0.785, 0.8]);
 const sunTemperatureScale = chroma
     .scale([chroma.temperature(20000), chroma.temperature(8000), chroma.temperature(6000), chroma.temperature(6000), chroma.temperature(2000), chroma.temperature(20000)])
-    .domain([0.175, 0.25, 0.8, 0.85]);
+    .domain([0.2, 0.25, 0.775, 0.8]);
 const sunIntensityTimeScale = chroma
     .scale(['black', 'white', 'white', 'black'])
-    .domain([0.15, 0.225, 0.75, 0.825]);
+    .domain([0.2, 0.225, 0.75, 0.81]);
 const hemisphereSkyColorScale = chroma
     .scale([chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000), chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000)])
     .domain([0.2, 0.25, 0.3, 0.75, 0.8, 0.85]);
@@ -160,9 +160,10 @@ export function Environment({ noBackground, noSound, noWeather }: EnvironmentPro
             }
         }
         if (ambientRef.current) {
-            ambientRef.current.intensity = sunIntensity * 4 + 1;
+            const intensityOffset = 1;
+            ambientRef.current.intensity = sunIntensity * 2 + intensityOffset;
             if (weather && ((weather?.cloudy ?? 0) > 0 || (weather?.foggy ?? 0) > 0)) {
-                ambientRef.current.intensity = sunIntensity * 2 + 1;
+                ambientRef.current.intensity = sunIntensity * 2 + intensityOffset;
             }
         }
 
@@ -199,6 +200,9 @@ export function Environment({ noBackground, noSound, noWeather }: EnvironmentPro
             backgroundColor[1] / 255 * 0.5,
             backgroundColor[2] / 255 * 0.5,
             'srgb');
+        if (hemisphereRef.current) {
+            hemisphereRef.current.intensity = sunIntensity * 2 + 3;
+        }
     }, [currentTime, timeOfDay, weather]);
 
     // Handle fog
@@ -220,7 +224,7 @@ export function Environment({ noBackground, noSound, noWeather }: EnvironmentPro
         <>
             {!noBackground && <color ref={backgroundRef} attach="background" args={[0, 0, 0]} />}
             <ambientLight ref={ambientRef} />
-            <hemisphereLight ref={hemisphereRef} position={[0, 1, 0]} intensity={1.5} />
+            <hemisphereLight ref={hemisphereRef} position={[0, 1, 0]} intensity={3} />
             {/* TODO: Update shadow camera position based on camera position */}
             <directionalLight
                 ref={directionalLightRef}

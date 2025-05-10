@@ -1,4 +1,4 @@
-import { MDXEditor, UndoRedo, BoldItalicUnderlineToggles, toolbarPlugin, markdownShortcutPlugin, headingsPlugin, listsPlugin, quotePlugin, thematicBreakPlugin, BlockTypeSelect, InsertThematicBreak, ListsToggle, Separator } from "@mdxeditor/editor";
+import { MDXEditor, UndoRedo, BoldItalicUnderlineToggles, toolbarPlugin, markdownShortcutPlugin, headingsPlugin, listsPlugin, quotePlugin, thematicBreakPlugin, BlockTypeSelect, CreateLink, InsertThematicBreak, ListsToggle, Separator, linkPlugin, linkDialogPlugin } from "@mdxeditor/editor";
 import { useState } from "react";
 import { AttributeInputProps } from '../AttributeInputProps';
 import '@mdxeditor/editor/style.css'
@@ -16,6 +16,8 @@ export function MarkdownInput({ value, onChange }: AttributeInputProps) {
                     listsPlugin(),
                     quotePlugin(),
                     thematicBreakPlugin(),
+                    linkPlugin(),
+                    linkDialogPlugin(),
                     markdownShortcutPlugin(),
                     toolbarPlugin({
                         toolbarContents: () => (
@@ -26,6 +28,7 @@ export function MarkdownInput({ value, onChange }: AttributeInputProps) {
                                 <BlockTypeSelect />
                                 <BoldItalicUnderlineToggles />
                                 <Separator />
+                                <CreateLink />
                                 <InsertThematicBreak />
                                 <ListsToggle />
                             </>
