@@ -2,6 +2,7 @@
 
 import {
     InsertAttributeDefinition,
+    getAttributeDefinition as storageGetAttributeDefinition,
     createAttributeDefinition as storageCreateAttributeDefinition,
     updateAttributeDefinition as storageUpdateAttributeDefinition,
     deleteAttributeDefinition as storageDeleteAttributeDefinition,
@@ -20,23 +21,23 @@ export async function upsertAttributeDefinition(definition: InsertAttributeDefin
     await auth(['admin']);
 
     const id = definition.id;
-
-    // Validate required fields
-    const name = definition.name;
-    const label = definition.label;
-    const entityTypeName = definition.entityTypeName;
-    const category = definition.category;
-    const dataType = definition.dataType;
-    if (!name || !label || !entityTypeName || !category || !dataType) {
-        throw new Error('Missing required fields');
-    }
-
     if (id) {
         await storageUpdateAttributeDefinition({
             ...definition,
             id
         });
     } else {
+        // Validate required fields
+        const name = definition.name;
+        const label = definition.label;
+        const entityTypeName = definition.entityTypeName;
+        const category = definition.category;
+        const dataType = definition.dataType;
+        if (!name || !label || !entityTypeName || !category || !dataType) {
+            console.error('Missing required fields', { name, label, entityTypeName, category, dataType });
+            throw new Error('Missing required fields.');
+        }
+
         await storageCreateAttributeDefinition({
             ...definition,
             name,
@@ -47,7 +48,17 @@ export async function upsertAttributeDefinition(definition: InsertAttributeDefin
         });
     }
 
-    revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName));
+    // Retrieve the entity type name from the definition
+    const entityTypeName = definition.entityTypeName;
+    if (entityTypeName) {
+        revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName));
+    } else if (!entityTypeName && id) {
+        const definition = await storageGetAttributeDefinition(id);
+        if (!definition) {
+            throw new Error('Definition not found');
+        }
+        revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(definition.entityTypeName));
+    }
 }
 
 export async function deleteAttributeDefinition(entityTypeName: string, definitionId: number) {

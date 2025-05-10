@@ -20,6 +20,7 @@
     "hono": "4.7.8",
     "hono-openapi": "0.4.8",
     "next": "15.3.1",
+    "prettier": "3.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "resend": "4.5.1",

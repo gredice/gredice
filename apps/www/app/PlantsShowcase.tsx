@@ -10,6 +10,8 @@ export async function PlantsShowcase() {
     const entities = await getPlantsData();
     const plants = entities.slice(0, 4);
 
+    console.log(plants);
+
     return (
         <div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">

@@ -3,7 +3,7 @@ import { Card } from "@signalco/ui-primitives/Card";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Bookmark, BookA, Binary, FontType, ToggleRight, Hash } from "@signalco/ui-icons";
+import { Bookmark, BookA, Binary, FontType, ToggleRight, Hash, File } from "@signalco/ui-icons";
 import { NoDataPlaceholder } from "../../../../../components/shared/placeholders/NoDataPlaceholder";
 import { KnownPages } from "../../../../../src/KnownPages";
 import { SplitView } from "@signalco/ui/SplitView";
@@ -13,6 +13,9 @@ import { CreateAttributeDefinitionCategoryButton } from "./CreateAttributeDefini
 import { CreateAttributeDefinitionButton } from "./CreateAttributeDefinitionButton";
 
 function AttributeDataTypeIcon({ dataType, ...rest }: { dataType: string } & HTMLAttributes<SVGElement>) {
+    if (dataType.startsWith('ref:')) {
+        return <File {...rest} />;
+    }
     switch (dataType) {
         case 'text': return <FontType {...rest} />;
         case 'number': return <Hash {...rest} />;
