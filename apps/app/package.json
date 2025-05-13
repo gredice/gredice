@@ -51,7 +51,7 @@
     "babel-plugin-react-compiler": "19.1.0-rc.1",
     "eslint": "9.26.0",
     "eslint-config-next": "15.3.2",
-    "lucide-react": "0.508.0",
+    "lucide-react": "0.510.0",
     "next-axiom": "1.9.1",
     "postcss": "8.5.3",
     "tailwindcss": "3.4.17",
