@@ -22,7 +22,7 @@
     "next": "15.3.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-email": "4.0.11",
+    "react-email": "4.0.13",
     "resend": "4.5.1",
     "server-only": "0.0.1"
   },

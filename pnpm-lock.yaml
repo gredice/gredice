@@ -157,8 +157,8 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
       react-email:
-        specifier: 4.0.11
-        version: 4.0.11(@babel/core@7.26.10)(@playwright/test@1.52.0)(babel-plugin-react-compiler@19.1.0-rc.1)(bufferutil@4.0.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.87.0)
+        specifier: 4.0.13
+        version: 4.0.13(@babel/core@7.26.10)(@playwright/test@1.52.0)(babel-plugin-react-compiler@19.1.0-rc.1)(bufferutil@4.0.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.87.0)
       resend:
         specifier: 4.5.1
         version: 4.5.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -782,8 +782,8 @@ importers:
         specifier: 19.1.0
         version: 19.1.0
       react-email:
-        specifier: 4.0.11
-        version: 4.0.11(@playwright/test@1.52.0)(bufferutil@4.0.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.87.0)
+        specifier: 4.0.13
+        version: 4.0.13(@playwright/test@1.52.0)(bufferutil@4.0.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.87.0)
       typescript:
         specifier: 5.8.3
         version: 5.8.3
@@ -6273,8 +6273,8 @@ packages:
     peerDependencies:
       react: '>= 16.8'
 
-  react-email@4.0.11:
-    resolution: {integrity: sha512-t/8ZlVSOXVlmtbLLAinTePYefdx1FipPiu9a4RmFar7vizevrDoTNz8mEzOBEMTJp/OhloP3UOkLJN0iCjBDrg==}
+  react-email@4.0.13:
+    resolution: {integrity: sha512-U858xl3mferQ3nkkCA5mG9tkAMuMpdVFS4bU8TLZv8eG6+kQDGI9gbfB+YVpD+IzUjJZB2ft+LBsEs4k0Sav9A==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -14310,7 +14310,7 @@ snapshots:
       prop-types: 15.8.1
       react: 19.1.0
 
-  react-email@4.0.11(@babel/core@7.26.10)(@playwright/test@1.52.0)(babel-plugin-react-compiler@19.1.0-rc.1)(bufferutil@4.0.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.87.0):
+  react-email@4.0.13(@babel/core@7.26.10)(@playwright/test@1.52.0)(babel-plugin-react-compiler@19.1.0-rc.1)(bufferutil@4.0.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.87.0):
     dependencies:
       '@babel/parser': 7.27.1
       '@babel/traverse': 7.27.1
@@ -14339,7 +14339,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  react-email@4.0.11(@playwright/test@1.52.0)(bufferutil@4.0.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.87.0):
+  react-email@4.0.13(@playwright/test@1.52.0)(bufferutil@4.0.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.87.0):
     dependencies:
       '@babel/parser': 7.27.1
       '@babel/traverse': 7.27.1
