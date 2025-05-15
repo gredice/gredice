@@ -153,7 +153,7 @@ function mockGarden(): Garden {
     };
 }
 
-export function useCurrentGarden(): UseQueryResult<Garden> {
+export function useCurrentGarden(): UseQueryResult<Garden | null> {
     const isMock = useGameState(state => state.isMock);
     const { data: gardens } = useGardens(isMock);
     return useQuery({
@@ -176,7 +176,7 @@ export function useCurrentGarden(): UseQueryResult<Garden> {
 
             // Make first garden the current one
             // TODO: Change this to use stored garden ID when multiple gardens are supported
-            const currentGardenId = gardens[0].id; 
+            const currentGardenId = gardens[0].id;
             const currentGardenResponse = await client().api.gardens[":gardenId"].$get({
                 param: {
                     gardenId: currentGardenId.toString()
@@ -212,14 +212,14 @@ export function useCurrentGarden(): UseQueryResult<Garden> {
             }
 
             return {
-                id: garden.id,
+                id: garden.id?.toString(),
                 name: garden.name,
                 stacks,
                 location: {
                     lat: garden.latitude,
                     lon: garden.longitude
                 }
-            };
+            } satisfies Garden;
         },
         enabled: isMock || Boolean(gardens),
         staleTime: 1000 * 60 // 1m
