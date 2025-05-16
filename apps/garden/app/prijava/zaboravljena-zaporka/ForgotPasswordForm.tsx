@@ -1,12 +1,13 @@
 'use client'
 
-import {FormEvent, useState} from 'react'
+import { FormEvent, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from "@signalco/ui-primitives/Button"
 import { Input } from "@signalco/ui-primitives/Input"
 import { Stack } from '@signalco/ui-primitives/Stack'
 import { Typography } from '@signalco/ui-primitives/Typography'
 import { apiFetch } from '../../../lib/apiFetch'
+import { errorMessages } from '../../../misc/errorMessages'
 
 export function ForgotPasswordForm() {
     const router = useRouter()
@@ -25,7 +26,7 @@ export function ForgotPasswordForm() {
         });
         if (!response.ok) {
             console.error(response.statusText);
-            setError('Došlo je do greške prilikom slanja emaila. Pokušaj ponovno.');
+            setError(errorMessages.forgotPasswordEmail);
             return;
         }
 

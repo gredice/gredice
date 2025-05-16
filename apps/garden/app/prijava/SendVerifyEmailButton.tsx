@@ -5,6 +5,8 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { apiFetch } from "../../lib/apiFetch";
+import { showNotification } from "@signalco/ui-notifications";
+import { errorMessages } from "../../misc/errorMessages";
 
 export function SendVerifyEmailButton() {
     const router = useRouter();
@@ -23,7 +25,7 @@ export function SendVerifyEmailButton() {
         if (response.status !== 201) {
             setIsLoading(false);
             console.error('Failed to send verify email with status', response.status);
-            // TODO: Show error
+            showNotification(errorMessages.verificationEmail, 'error');
             return;
         }
 

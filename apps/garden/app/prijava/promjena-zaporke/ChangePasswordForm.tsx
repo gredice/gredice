@@ -1,6 +1,6 @@
 'use client'
 
-import {FormEvent, useState} from 'react'
+import { FormEvent, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Stack } from '@signalco/ui-primitives/Stack'
 import { Typography } from '@signalco/ui-primitives/Typography'
@@ -9,6 +9,7 @@ import { Input } from '@signalco/ui-primitives/Input'
 import { Alert } from '@signalco/ui/Alert'
 import Link from 'next/link'
 import { apiFetch } from '../../../lib/apiFetch'
+import { errorMessages } from '../../../misc/errorMessages'
 
 export function ChangePasswordForm() {
     const router = useRouter()
@@ -32,7 +33,7 @@ export function ChangePasswordForm() {
         });
         if (!response.ok) {
             console.error(response.statusText);
-            setError('Došlo je do greške prilikom promjene zaporke. Pokušaj ponovno.');
+            setError(errorMessages.changePassword);
             return;
         }
 
@@ -74,7 +75,7 @@ export function ChangePasswordForm() {
                                 required
                             />
                         </Stack>
-                            {error && <Typography level='body2' color='danger' semiBold>{error}</Typography>}
+                        {error && <Typography level='body2' color='danger' semiBold>{error}</Typography>}
                         <Button type="submit" fullWidth variant='soft'>
                             Spremi
                         </Button>
