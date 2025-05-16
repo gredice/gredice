@@ -79,7 +79,7 @@ export function SoundSettingsCard() {
                             className="text-green-950 dark:text-green-50"
                             startDecorator={<Leaf />}
                             endDecorator={<Button onClick={resumeIfNeeded} variant="soft" size="sm" className="!p-4" startDecorator={<Play className="size-5" />}>Nastavi</Button>}>
-                            <Typography>Zvuk je privremeno isključen jer tvoj uređaj uštedi energiju. Pritisnite gumb ispod da nastavite s reprodukcijom zvuka.</Typography>
+                            <Typography>Zvuk je privremeno isključen jer tvoj uređaj štedi energiju.</Typography>
                         </Alert>
                     )}
                     <Stack spacing={4}>

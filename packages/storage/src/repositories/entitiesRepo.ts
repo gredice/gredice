@@ -29,16 +29,19 @@ export function getEntitiesRaw(entityTypeName: string, state?: string) {
     });
 }
 
-export async function getEntitiesFormatted<T>(entityTypeName: string) {
+export async function getEntitiesFormatted(entityTypeName: string) {
     const entities = await getEntitiesRaw(entityTypeName, 'published');
-    return entities.map(expandEntity) as T[];
+    return await Promise.all(entities.map(expandEntity));
 }
 
-function expandValue(value: string | null | undefined, attributeDefinition: SelectAttributeDefinition) {
+async function expandValue(value: string | null | undefined, attributeDefinition: SelectAttributeDefinition) {
     if (value === null || value === undefined) {
         return null;
     }
 
+    if (attributeDefinition.dataType.startsWith('ref:')) {
+        return await resolveRef(value, attributeDefinition);
+    }
     if (attributeDefinition.dataType === 'number') {
         return parseFloat(value);
     }
@@ -53,7 +56,36 @@ function expandValue(value: string | null | undefined, attributeDefinition: Sele
     }
 }
 
-function expandEntity(entityRaw: SelectEntity & { entityType: SelectEntityType, attributes: (SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition })[] } | undefined) {
+async function expandEntityAttributes<T extends Record<string, unknown>>(entity: T, attributes: (SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition })[]) {
+    const expandedEntity = { ...entity };
+    for (const key in attributes) {
+        const attribute = attributes[key];
+
+        // Create category object if it doesn't exist
+        if (expandedEntity[attribute.attributeDefinition.category] === undefined) {
+            (expandedEntity as Record<string, unknown>)[attribute.attributeDefinition.category] = {};
+        }
+        const category = expandedEntity[attribute.attributeDefinition.category] as Record<string, unknown>;
+        if (attribute.attributeDefinition.multiple) {
+            // Create array if it doesn't exist
+            if (category[attribute.attributeDefinition.name] === undefined) {
+                category[attribute.attributeDefinition.name] = [];
+            }
+            const array = category[attribute.attributeDefinition.name] as unknown[];
+            array.push(await expandValue(attribute.value, attribute.attributeDefinition));
+        } else {
+            category[attribute.attributeDefinition.name] = await expandValue(attribute.value, attribute.attributeDefinition);
+        }
+    };
+    return expandedEntity;
+}
+
+async function expandEntity(
+    entityRaw: SelectEntity & {
+        entityType: SelectEntityType,
+        attributes: (SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition })[]
+    } | undefined,
+) {
     if (!entityRaw) {
         return null;
     }
@@ -79,35 +111,45 @@ function expandEntity(entityRaw: SelectEntity & { entityType: SelectEntityType, 
         createdAt: entityRaw.createdAt,
         updatedAt: entityRaw.updatedAt
     };
-    entityRaw.attributes.forEach(attribute => {
-        // Create category object if it doesn't exist
-        if (entity[attribute.attributeDefinition.category] === undefined) {
-            entity[attribute.attributeDefinition.category] = {};
-        }
-        const category = entity[attribute.attributeDefinition.category] as Record<string, unknown>;
+    return await expandEntityAttributes(entity, entityRaw.attributes);
+}
 
-        if (attribute.attributeDefinition.multiple) {
-            // Create array if it doesn't exist
-            if (category[attribute.attributeDefinition.name] === undefined) {
-                category[attribute.attributeDefinition.name] = [];
-            }
-            const array = category[attribute.attributeDefinition.name] as unknown[];
-            array.push(expandValue(attribute.value, attribute.attributeDefinition));
-            return;
-        } else {
-            category[attribute.attributeDefinition.name] = expandValue(attribute.value, attribute.attributeDefinition);
-        }
-    });
+async function resolveRef(value: string | null, attributeDefinition: SelectAttributeDefinition) {
+    const refEntityTypeName = attributeDefinition.dataType.split(':')[1];
+    if (!value) {
+        return;
+    }
+    const refNames: string[] = [];
+    if (attributeDefinition.multiple) {
+        refNames.push(...(JSON.parse(value) ?? []));
+    } else {
+        refNames.push(value);
+    }
 
-    return entity;
+    // Get all entities of the referenced type
+    // and filter them by the names in the attribute value
+    const refEntitiesByType = await getEntitiesRaw(refEntityTypeName, 'published');
+    const refEntities = refEntitiesByType.filter(e =>
+        e.attributes.some(a =>
+            a.value != null &&
+            a.attributeDefinition.category === 'information' &&
+            a.attributeDefinition.name === 'name' &&
+            refNames.includes(a.value))
+    );
+
+    if (attributeDefinition.multiple) {
+        return await Promise.all(refEntities.map(ref => expandEntityAttributes({}, ref.attributes)));
+    } else {
+        return refEntities[0] ? await expandEntityAttributes({}, refEntities[0].attributes) : null;
+    }
 }
 
 export async function getEntityFormatted(id: number) {
     const entityRaw = await getEntityRaw(id);
-    return expandEntity(entityRaw);
+    return await expandEntity(entityRaw);
 }
 
-export function getEntityRaw(id: number) {
+export async function getEntityRaw(id: number) {
     return storage.query.entities.findFirst({
         where: and(eq(entities.id, id), eq(entities.isDeleted, false)),
         with: {

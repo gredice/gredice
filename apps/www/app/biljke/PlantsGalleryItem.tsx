@@ -43,7 +43,12 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                 </Row>
             )}
             href={KnownPages.Plant(information.name)}>
-            <PlantImage plant={props} fill />
+            <PlantImage
+                plant={props}
+                fill
+                priority
+                sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
+            />
         </ItemCard>
     );
 }

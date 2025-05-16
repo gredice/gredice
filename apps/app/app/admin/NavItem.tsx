@@ -11,7 +11,7 @@ export function NavItem({ href, label, icon, strictMatch }: { href: string, labe
         <Link href={href}>
             <ListItem
                 nodeId={href}
-                selected={strictMatch ? pathname === href : pathname.startsWith(href)}
+                selected={strictMatch ? pathname === href : pathname === href || pathname.startsWith(href + '/')}
                 onSelected={() => { }}
                 label={label}
                 startDecorator={icon} />

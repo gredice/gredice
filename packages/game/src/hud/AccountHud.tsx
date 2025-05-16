@@ -114,7 +114,7 @@ export function AccountHud() {
                     side="bottom"
                     sideOffset={12}>
                     <DropdownMenuTrigger asChild>
-                        <Button className="rounded-full p-0 aspect-square hover:outline hover:outline-1 hover:outline-offset-1 hover:outline-primary" size='sm' variant="plain" title="Obavijesti">
+                        <Button className="rounded-full p-0.5 aspect-square hover:outline hover:outline-1 hover:outline-offset-1 hover:outline-primary" size='sm' variant="plain" title="Obavijesti">
                             <ProfileAvatar variant="transparentOnMobile" />
                         </Button>
                     </DropdownMenuTrigger>

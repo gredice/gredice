@@ -12,6 +12,7 @@ import { JsonInput } from './typed/JsonInput';
 import { handleValueSave, handleValueDelete } from '../../../app/(actions)/entityActions';
 import { ComponentType } from 'react';
 import { AttributeInputProps } from './AttributeInputProps';
+import { SelectEntity } from './typed/SelectEntity';
 
 const MarkdownInput = dynamic(() => import('./typed/MarkdownInput').then(mod => ({
     default: mod.MarkdownInput
@@ -54,7 +55,9 @@ export function AttributeInput({
 
     let AttributeInputComponent: ComponentType<AttributeInputProps> = TextInput;
     let schema: string | null = null;
-    if (attributeDefinition.dataType === 'boolean') {
+    if (attributeDefinition.dataType.startsWith('ref:')) {
+        AttributeInputComponent = SelectEntity;
+    } else if (attributeDefinition.dataType === 'boolean') {
         AttributeInputComponent = BooleanInput;
     } else if (attributeDefinition.dataType === 'markdown') {
         AttributeInputComponent = MarkdownInput;
@@ -69,6 +72,7 @@ export function AttributeInput({
     return (
         <div className='grid grid-cols-[1fr,auto] gap-1 items-center'>
             <AttributeInputComponent
+                attributeDefinition={attributeDefinition}
                 value={attributeValue?.value}
                 onChange={handleChange}
                 schema={schema}
