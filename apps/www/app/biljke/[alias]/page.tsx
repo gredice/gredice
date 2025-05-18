@@ -148,7 +148,7 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                                     icon={<LayoutGrid />}
                                     header="Broj biljaka na 30x30 cm"
                                     value={totalPlants.toString()}
-                                    description="Povišena gredica podjeljena je na polja veličine 30x30 cm. Tako povišena gredica od 2x1m ima 18 polja za sadnju tvojih biljaka. U svako polje može stati određeni broj biljaka, ovisno o vrsti odnosno o razmaku sijanje/sadnje biljke."
+                                    description="Podignutim gredica podjeljena je na polja veličine 30x30 cm. Tako podignuta gredica od 2x1m ima 18 polja za sadnju tvojih biljaka. U svako polje može stati određeni broj biljaka, ovisno o vrsti odnosno o razmaku sijanje/sadnje biljke."
                                     navigateHref={KnownPages.RaisedBeds}
                                     navigateLabel="Više o gredicama"
                                 />

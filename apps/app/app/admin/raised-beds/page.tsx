@@ -17,7 +17,7 @@ export default async function RaisedBedsPage() {
 
     return (
         <Stack spacing={2}>
-            <Typography level="h1" className="text-2xl" semiBold>Podignuti Kreveti</Typography>
+            <Typography level="h1" className="text-2xl" semiBold>Gredice</Typography>
             <Card>
                 <CardOverflow>
                     <Table>

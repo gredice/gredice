@@ -16,7 +16,7 @@ export default async function RaisedBedPage({ params }: { params: { raisedBedId:
     return (
         <Stack spacing={4}>
             <Breadcrumbs items={[
-                { label: 'Podignuti Kreveti', href: KnownPages.RaisedBeds },
+                { label: 'Gredice', href: KnownPages.RaisedBeds },
                 { label: raisedBed?.id }
             ]} />
             <Card>

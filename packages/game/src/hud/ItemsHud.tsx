@@ -32,7 +32,14 @@ type HudItemPicker = {
 type HudItem = HudItemEntity | HudItemPicker | { type: 'separator' };
 
 const items: HudItem[] = [
-    { type: 'entity', name: 'Raised_Bed' },
+    {
+        type: 'picker',
+        label: "Gredice",
+        imageSrc: 'https://www.gredice.com/assets/blocks/Raised_Bed.png',
+        items: [
+            { type: 'entity', name: 'Raised_Bed' }
+        ]
+    },
     { type: 'separator' },
     {
         type: 'picker',

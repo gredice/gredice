@@ -10,13 +10,13 @@
     "./server": "./src/server/index.ts"
   },
   "devDependencies": {
-    "@types/node": "22.15.3",
-    "@types/react": "19.1.2"
+    "@types/node": "22.15.18",
+    "@types/react": "19.1.4"
   },
   "dependencies": {
-    "react": "19.1.0",
-    "typescript": "5.8.3",
     "@stripe/stripe-js": "7.3.0",
-    "stripe": "18.1.0"
+    "react": "19.1.0",
+    "stripe": "18.1.0",
+    "typescript": "5.8.3"
   }
 }
