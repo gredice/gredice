@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from "react";
+import { useWindowFocus } from "../hooks/useWindowFocus";
 
 function fromAudio(context: AudioContext, buffer: AudioBuffer) {
     return new AudioBufferSourceNode(context, {
@@ -111,6 +112,15 @@ function useMusic(handler: mixerManagerHandler, context: AudioContext, config: {
             }
         }
     };
+
+    const isWindowInFocus = useWindowFocus();
+    useEffect(() => {
+        if (isWindowInFocus) {
+            operations.play();
+        } else {
+            operations.stop();
+        }
+    }, [isWindowInFocus]);
 
     useEffect(() => {
         return () => {

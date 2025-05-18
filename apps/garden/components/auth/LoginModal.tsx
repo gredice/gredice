@@ -9,7 +9,6 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { authCurrentUserQueryKeys } from "@signalco/auth-client";
 import { useState } from 'react';
 import { Alert } from '@signalco/ui/Alert';
 import { apiFetch } from '../../lib/apiFetch';
@@ -44,7 +43,7 @@ export default function LoginModal() {
         const { token } = await response.json();
         localStorage.setItem('gredice-token', token);
 
-        await queryClient.invalidateQueries({ queryKey: authCurrentUserQueryKeys });
+        await queryClient.invalidateQueries();
     }
 
     const handleRegister = async (email: string, password: string) => {

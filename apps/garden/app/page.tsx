@@ -1,4 +1,4 @@
-import { SignedIn, SignedOut } from "@signalco/auth-client/components";
+import { SignedOut } from "@signalco/auth-client/components";
 import LoginModal from "../components/auth/LoginModal";
 import getHypertune from "../lib/flags/getHypertune";
 import { GameSceneDynamic } from "./GameSceneDynamic";
@@ -8,9 +8,7 @@ export default async function Home() {
 
   return (
     <div className="grid grid-cols-1 h-[100dvh] relative overflow-hidden">
-      <SignedIn>
-        <GameSceneDynamic isDevelopment={enableDebugHud} />
-      </SignedIn>
+      <GameSceneDynamic isDevelopment={enableDebugHud} />
       <SignedOut>
         <LoginModal />
       </SignedOut>
