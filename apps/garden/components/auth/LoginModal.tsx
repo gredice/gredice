@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Alert } from '@signalco/ui/Alert';
-import { apiFetch } from '../../lib/apiFetch';
+import { client } from '@gredice/client';
 
 export default function LoginModal() {
     const router = useRouter();
@@ -20,41 +20,42 @@ export default function LoginModal() {
 
     const handleLogin = async (email: string, password: string) => {
         setError(undefined);
-        const response = await apiFetch('/api/auth/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password })
-        });
-        if (response.status === 403) {
-            const { error } = await response.json();
-            if (error === 'verify_email') {
-                router.push(`/prijava/potvrda-emaila/posalji?email=${email}`);
-                return;
+        const response = await client().api.auth.login.$post({
+            json: {
+                email,
+                password
             }
-        }
-        if (response.status !== 200) {
+        });
+
+        if (response.status === 200) {
+            const { token } = await response.json();
+            localStorage.setItem('gredice-token', token);
+            await queryClient.invalidateQueries();
+            return;
+        } else {
+            const json = await response.json();
+            if ('error' in json) {
+                if (error === 'verify_email') {
+                    router.push(`/prijava/potvrda-emaila/posalji?email=${email}`);
+                    return;
+                }
+            }
+
             console.error('Login failed with status', response.status);
             setError('Prijava nije uspjela. Pokušaj ponovno.');
             return;
         }
-
-        const { token } = await response.json();
-        localStorage.setItem('gredice-token', token);
-
-        await queryClient.invalidateQueries();
     }
 
     const handleRegister = async (email: string, password: string) => {
         setError(undefined);
-        const response = await apiFetch('/api/auth/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password })
+        const response = await client().api.auth.register.$post({
+            json: {
+                email,
+                password
+            }
         });
+
         if (response.status !== 201) {
             console.error('Registration failed with status', response.status);
             setError('Registracija nije uspjela. Pokušaj ponovno.');
@@ -69,7 +70,6 @@ export default function LoginModal() {
             open
             title="Prijava"
             className='bg-card border-tertiary border-b-4 rounded-lg shadow-2xl'
-            disableMobile
             hideClose>
             <Stack spacing={2}>
                 <Row spacing={2} justifyContent='start'>

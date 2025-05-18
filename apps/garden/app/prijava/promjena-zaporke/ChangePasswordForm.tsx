@@ -8,8 +8,8 @@ import { Button } from '@signalco/ui-primitives/Button'
 import { Input } from '@signalco/ui-primitives/Input'
 import { Alert } from '@signalco/ui/Alert'
 import Link from 'next/link'
-import { apiFetch } from '../../../lib/apiFetch'
 import { errorMessages } from '../../../misc/errorMessages'
+import { client } from '@gredice/client'
 
 export function ChangePasswordForm() {
     const router = useRouter()
@@ -22,15 +22,21 @@ export function ChangePasswordForm() {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
         if (password !== confirmPassword) {
-            setError('Zaporke se ne podudaraju')
-            return
+            setError(errorMessages.passwordsDontMatch);
+            return;
+        }
+        if (!token) {
+            setError(errorMessages.tokenInvalid);
+            return;
         }
 
-        const response = await apiFetch('/api/auth/change-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password, token }),
+        const response = await client().api.auth['change-password'].$post({
+            json: {
+                password,
+                token
+            }
         });
+
         if (!response.ok) {
             console.error(response.statusText);
             setError(errorMessages.changePassword);

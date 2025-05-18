@@ -3,9 +3,9 @@
 import { AuthProvider } from '@signalco/auth-client/components';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PropsWithChildren } from 'react';
-import { apiFetch } from '../../lib/apiFetch';
 import { ThemeProvider } from 'next-themes';
 import { NotificationsContainer } from '@signalco/ui-notifications';
+import { client } from '@gredice/client';
 
 export type User = {
     id: string;
@@ -13,7 +13,7 @@ export type User = {
 };
 
 async function currentUserFactory() {
-    const response = await apiFetch('/api/users/current');
+    const response = await client().api.users.current.$get();
     if (response.status < 200 || response.status > 299) {
         return null;
     }
