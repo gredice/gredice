@@ -2,26 +2,30 @@ import { and, eq } from "drizzle-orm";
 import { shoppingCarts, shoppingCartItems } from "../schema";
 import { storage } from "../storage";
 
-export async function getOrCreateShoppingCart(accountId: string, expiresAt: Date) {
+export async function getOrCreateShoppingCart(accountId: string, expiresAt?: Date) {
     let cart = await storage.query.shoppingCarts.findFirst({
         where: and(eq(shoppingCarts.accountId, accountId), eq(shoppingCarts.isDeleted, false)),
+        with: {
+            items: true
+        },
     });
-
-    if (!cart) {
-        cart = (await storage
-            .insert(shoppingCarts)
-            .values({ accountId, expiresAt })
-            .returning({
-                id: shoppingCarts.id,
-                createdAt: shoppingCarts.createdAt,
-                updatedAt: shoppingCarts.updatedAt,
-                isDeleted: shoppingCarts.isDeleted,
-                accountId: shoppingCarts.accountId,
-                expiresAt: shoppingCarts.expiresAt,
-            }))[0];
+    if (cart) {
+        return cart;
     }
 
-    return cart;
+    const createdCart = (await storage
+        .insert(shoppingCarts)
+        .values({ accountId, expiresAt: expiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) })
+        .returning({
+            id: shoppingCarts.id
+        }))[0];
+
+    return await storage.query.shoppingCarts.findFirst({
+        where: and(eq(shoppingCarts.id, createdCart.id), eq(shoppingCarts.isDeleted, false)),
+        with: {
+            items: true
+        },
+    });
 }
 
 export async function upsertOrRemoveCartItem(cartId: number, entityId: string, entityTypeName: string, amount: number) {

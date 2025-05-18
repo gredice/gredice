@@ -24,6 +24,15 @@ export function getAccountUsers(accountId: string) {
     });
 }
 
+export async function assignStripeCustomerId(accountId: string, stripeCustomerId: string) {
+    const result = await storage
+        .update(accounts)
+        .set({ stripeCustomerId })
+        .where(eq(accounts.id, accountId))
+        .returning();
+    return result[0];
+}
+
 export async function getSunflowers(accountId: string) {
     // Calculate sunflowers based on events
     let currentSunflowers = 0;

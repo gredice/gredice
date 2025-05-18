@@ -25,6 +25,7 @@ import { EntityFactory } from './entities/EntityFactory';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { GardenLoadingIndicator } from './GardenLoadingIndicator';
 import { Environment } from './scene/Environment';
+import { ShoppingCartHud } from './hud/ShoppingCartHud';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string,
@@ -116,6 +117,7 @@ function GameScene({
                     <div className='absolute top-2 left-2 flex flex-row items-start md:flex-col gap-1 md:gap-2'>
                         <AccountHud />
                         <GameModeHud />
+                        <ShoppingCartHud />
                     </div>
                     <div className='absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2'>
                         <WeatherHud />

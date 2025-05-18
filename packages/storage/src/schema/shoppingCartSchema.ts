@@ -1,7 +1,6 @@
 import { pgTable, serial, text, integer, timestamp, boolean, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { accounts } from "./usersSchema";
-import { entities } from "./cmsSchema";
 import { gardens, raisedBeds } from "./gardenSchema";
 
 export const shoppingCarts = pgTable('shopping_carts', {

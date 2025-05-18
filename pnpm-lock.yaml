@@ -625,6 +625,9 @@ importers:
       '@gredice/client':
         specifier: workspace:*
         version: link:../client
+      '@gredice/stripe':
+        specifier: workspace:*
+        version: link:../stripe
       '@radix-ui/react-progress':
         specifier: 1.1.6
         version: 1.1.6(@types/react-dom@19.1.5(@types/react@19.1.4))(@types/react@19.1.4)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)

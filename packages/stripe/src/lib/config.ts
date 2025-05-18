@@ -3,17 +3,17 @@ import Stripe from 'stripe';
 let stripe: Stripe | null = null;
 
 export function getDomain() {
-    const url = process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL;
+    const url = process.env.NEXT_PUBLIC_STRIPE_PROJECT_URL;
     if (!url) {
-        throw new Error('NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL is not defined');
+        throw new Error('NEXT_PUBLIC_STRIPE_PROJECT_URL is not defined');
     }
     return url;
 }
 
 export function getReturnUrl() {
-    const url = process.env.NEXT_PUBLIC_VERCEL_PROJECT_RETURN_URL;
+    const url = process.env.NEXT_PUBLIC_STRIPE_RETURN_URL;
     if (!url) {
-        throw new Error('NEXT_PUBLIC_VERCEL_PROJECT_RETURN_URL is not defined');
+        throw new Error('NEXT_PUBLIC_STRIPE_RETURN_URL is not defined');
     }
     return url;
 }

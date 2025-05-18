@@ -13,6 +13,20 @@ export type UserAccount = {
     stripeCustomerId?: string;
 }
 
+export type CheckoutItem = {
+    price: {
+        valueInCents: number;
+        currency: 'EUR';
+    };
+    product: {
+        name: string;
+        description?: string;
+        imageUrls?: string[];
+        metadata?: Record<string, string | number | null>;
+    };
+    quantity: number;
+};
+
 async function ensureStripeCustomer(account: UserAccount): Promise<string> {
     // Check if the user already has a Stripe customer ID
     // Ensure customer still exists in Stripe and is not deleted
@@ -43,25 +57,69 @@ async function ensureStripeCustomer(account: UserAccount): Promise<string> {
     return newCustomer.id;
 }
 
+export async function getStripeCheckoutSession(sessionId: string) {
+    try {
+        const session = await getStripe().checkout.sessions.retrieve(sessionId);
+        return {
+            id: session.id,
+            customerId: session.customer,
+            status: session.status
+        };
+    } catch (error) {
+        if (error instanceof Error) {
+            console.error(error.message + ' Please try again later or contact a system administrator.', 'error');
+        } else {
+            console.error('An unknown error occurred. Please try again later or contact a system administrator.', 'error');
+        }
+        throw error;
+    }
+}
+
+export async function stripeSessionCancel(sessionId: string) {
+    try {
+        const session = await getStripe().checkout.sessions.expire(sessionId);
+        return {
+            id: session.id,
+            customerId: session.customer,
+            status: session.status
+        };
+    } catch (error) {
+        if (error instanceof Error) {
+            console.error(error.message + ' Please try again later or contact a system administrator.', 'error');
+        } else {
+            console.error('An unknown error occurred. Please try again later or contact a system administrator.', 'error');
+        }
+        throw error;
+    }
+}
+
 export async function stripeCheckout(
     account: UserAccount,
-    stripePriceId: string
+    data: {
+        items: CheckoutItem[],
+    }
 ) {
     try {
         const customerId = await ensureStripeCustomer(account);
         const params: Stripe.Checkout.SessionCreateParams = {
-            billing_address_collection: 'required',
             customer: customerId,
             customer_update: {
                 address: 'auto',
             },
-            line_items: [
-                {
-                    price: stripePriceId,
-                    quantity: 1
-                }
-            ],
-            mode: 'subscription',
+            line_items: data.items.map(item => ({
+                price_data: {
+                    currency: item.price.currency,
+                    product_data: {
+                        name: item.product.name,
+                        description: item.product.description,
+                        images: item.product.imageUrls,
+                        metadata: item.product.metadata
+                    },
+                    unit_amount: item.price.valueInCents,
+                },
+                quantity: item.quantity,
+            })),
+            mode: 'payment',
             cancel_url: returnUrl,
             success_url: returnUrl
         };
@@ -168,7 +226,7 @@ export async function stripeCreatePortal(account: UserAccount) {
     try {
         const customerId = await ensureStripeCustomer(account);
         try {
-            const { url } = await getStripe().billingPortal.sessions.create({
+            const { url, id } = await getStripe().billingPortal.sessions.create({
                 customer: customerId,
                 return_url: returnUrl
             });
@@ -176,6 +234,7 @@ export async function stripeCreatePortal(account: UserAccount) {
                 throw new Error('Could not create billing portal');
             }
             return {
+                sessionId: id,
                 url,
                 customerId
             };
