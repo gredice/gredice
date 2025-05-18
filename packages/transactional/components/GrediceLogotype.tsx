@@ -1,5 +1,5 @@
-import { Img } from "@react-email/components";
 import * as React from "react";
+import { Img } from "@react-email/components";
 
 export function GrediceLogotype() {
     return (

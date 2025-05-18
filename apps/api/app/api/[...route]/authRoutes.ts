@@ -26,27 +26,35 @@ const app = new Hono()
             const user = await getUserWithLogins(email);
             if (!user) {
                 console.debug('User not found', email);
-                return context.notFound();
+                return context.json({
+                    error: 'User not found'
+                }, { status: 404 });
             }
 
             const login = user.usersLogins.find(login => login.loginType === 'password');
             if (!login) {
                 console.debug('User login not found', email);
-                return context.notFound();
+                return context.json({
+                    error: 'User not found'
+                }, { status: 404 });
             }
 
             // TODO: Move to Auth library
             // Check if user is blocked
             if (login.blockedUntil && login.blockedUntil.getTime() > Date.now()) {
                 console.debug('User blocked', email);
-                return context.notFound();
+                return context.json({
+                    error: 'User not found'
+                }, { status: 404 });
             }
 
             // Extract salt and password hash from login
             const { salt, password: storedHash } = JSON.parse(login.loginData);
             if (!salt || !storedHash) {
                 console.debug('User password login data corrupted', email, login.id);
-                return context.notFound();
+                return context.json({
+                    error: 'User not found'
+                }, { status: 404 });
             }
 
             // Check if password is correct
@@ -64,7 +72,9 @@ const app = new Hono()
                 }
                 await incLoginFailedAttempts(login.id);
 
-                return context.notFound();
+                return context.json({
+                    error: 'User not found'
+                }, { status: 404 });
             }
 
             // TODO: Move to Auth library
@@ -111,33 +121,43 @@ const app = new Hono()
             const email = result?.payload.sub;
             if (!email) {
                 console.warn('Token is invalid', error);
-                return context.newResponse('Token is invalid', { status: 400 });
+                return context.json({
+                    error: 'Token is invalid'
+                }, { status: 400 });
             }
 
             // Get user with logins
             const user = await getUserWithLogins(email);
             if (!user) {
                 console.debug('User does not exist', email);
-                return context.notFound();
+                return context.json({
+                    error: 'User not found'
+                }, { status: 404 });
             }
 
             // Set email as verified
             const userLogin = user.usersLogins.find(login => login.loginId === email && login.loginType === 'password');
             if (!userLogin) {
                 console.debug('User login not found', email);
-                return context.notFound();
+                return context.json({
+                    error: 'User not found'
+                }, { status: 404 });
             }
 
             // Send email
             await changePassword(userLogin.id, password);
 
-            return context.newResponse(null, { status: 204 });
+            return context.json({
+                message: 'Password changed successfully'
+            });
         })
     .post(
         '/logout',
         async (context) => {
             await clearCookie(context);
-            return context.newResponse(null, { status: 204 });
+            return context.json({
+                message: 'Logged out successfully'
+            });
         })
     .post(
         '/register',
@@ -154,7 +174,9 @@ const app = new Hono()
             if (user) {
                 console.debug('User already exists', email);
                 // TODO: Instead, do login flow (redirect to login url)
-                return context.newResponse('User already exists', { status: 400 });
+                return context.json({
+                    error: 'User already exists'
+                }, { status: 400 });
             }
 
             // Create user with password
@@ -162,7 +184,9 @@ const app = new Hono()
 
             await sendEmailVerification(email);
 
-            return context.newResponse(null, { status: 201 });
+            return context.json({
+                message: 'User created successfully'
+            }, { status: 201 });
         })
     .post(
         '/send-change-password-email',
@@ -177,13 +201,17 @@ const app = new Hono()
             const user = await getUserWithLogins(email);
             if (!user) {
                 console.debug('User does not exist', email);
-                return context.notFound();
+                return context.json({
+                    error: 'User not found'
+                }, { status: 404 });
             }
 
             // Send email
             await sendChangePassword(email);
 
-            return context.newResponse(null, { status: 201 });
+            return context.json({
+                message: 'Change password email sent successfully'
+            });
         })
     .post(
         '/send-verify-email',
@@ -198,13 +226,17 @@ const app = new Hono()
             const user = await getUserWithLogins(email);
             if (!user) {
                 console.debug('User does not exist', email);
-                return context.notFound();
+                return context.json({
+                    error: 'User not found'
+                }, { status: 404 });
             }
 
             // Send email
             await sendEmailVerification(email);
 
-            return context.newResponse(null, { status: 201 });
+            return context.json({
+                message: 'Verify email sent successfully'
+            });
         })
     .post(
         '/verify-email',
@@ -224,21 +256,27 @@ const app = new Hono()
             const email = result?.payload.sub;
             if (!email) {
                 console.warn('Token is invalid', error);
-                return context.newResponse('Token is invalid', { status: 400 });
+                return context.json({
+                    error: 'Token is invalid'
+                }, { status: 400 });
             }
 
             // Get user with logins
             const user = await getUserWithLogins(email);
             if (!user) {
                 console.debug('User does not exist', email);
-                return context.notFound();
+                return context.json({
+                    error: 'Token is invalid'
+                }, { status: 400 });
             }
 
             // Set email as verified
             const userLogin = user.usersLogins.find(login => login.loginId === email && login.loginType === 'password');
             if (!userLogin) {
                 console.debug('User login not found', email);
-                return context.notFound();
+                return context.json({
+                    error: 'Token is invalid'
+                }, { status: 400 });
             }
             await updateLoginData(userLogin.id, {
                 ...JSON.parse(userLogin.loginData),
@@ -251,7 +289,15 @@ const app = new Hono()
                 ctaUrl: 'https://vrt.gredice.com'
             });
 
-            return context.newResponse(null, { status: 204 });
+            const jwtToken = await createJwt(user.id);
+            await Promise.all([
+                setCookie(context, jwtToken),
+                loginSuccessful(userLogin.id)
+            ]);
+
+            return context.json({
+                token: jwtToken
+            });
         });
 
 export default app;
