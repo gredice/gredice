@@ -19,6 +19,7 @@ import { PlantImage } from "../../../components/plants/PlantImage";
 import { Euro, LayoutGrid, MapPinHouse, Sprout } from "@signalco/ui-icons";
 import { getPlantsData } from "../../../lib/plants/getPlantsData";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
+import { NavigatingButton } from "@signalco/ui/NavigatingButton";
 
 export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }) {
     const { alias: aliasUnescaped } = await params;
@@ -96,7 +97,7 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                     alternativeName={plant.information.latinName ? `lat. ${plant.information.latinName}` : null}
                     subHeader={plant.information.description}
                     headerChildren={(
-                        <Stack spacing={2} alignItems="start">
+                        <Stack spacing={4} alignItems="start">
                             {plant.information.origin && (
                                 <Stack spacing={1}>
                                     <Typography level="body2">Porijeklo</Typography>
@@ -119,6 +120,9 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                                     </Row>
                                 </Stack>
                             )}
+                            <NavigatingButton href={KnownPages.GardenApp} className="bg-green-800 hover:bg-green-700">
+                                Moj vrt
+                            </NavigatingButton>
                         </Stack>
                     )}>
                     <Stack>
