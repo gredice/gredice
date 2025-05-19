@@ -1,5 +1,5 @@
 import { Identify } from "flags";
-import { dedupe, flag } from "flags/next";
+import { dedupe } from "flags/next";
 import { Context } from "./generated/hypertune";
 import { client } from "@gredice/client";
 
