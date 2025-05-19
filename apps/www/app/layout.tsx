@@ -13,6 +13,7 @@ import { ClientAppProvider } from "../components/providers/ClientAppProvider";
 import { ReactNode } from "react";
 import { Logotype } from "../components/Logotype";
 import { Footer } from "./Footer";
+import { VercelToolbar } from '@vercel/toolbar/next';
 
 export const metadata: Metadata = {
     title: {
@@ -53,6 +54,8 @@ export default async function RootLayout({
 }: Readonly<{
     children: ReactNode;
 }>) {
+    const shouldInjectToolbar = process.env.NODE_ENV === 'development';
+
     return (
         <html lang="hr">
             <Head>
@@ -86,6 +89,7 @@ export default async function RootLayout({
                     </Stack>
                     <Analytics />
                     <AxiomWebVitals />
+                    {shouldInjectToolbar && <VercelToolbar />}
                 </body>
             </ClientAppProvider>
         </html>

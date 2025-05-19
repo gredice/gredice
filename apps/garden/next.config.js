@@ -1,5 +1,5 @@
 // @ts-check
-
+import vercelToolbar from '@vercel/toolbar/plugins/next'
 import { withAxiom } from 'next-axiom';
 
 /** @type {import('next').NextConfig} */
@@ -23,4 +23,6 @@ const nextConfig = {
     },
 };
 
-export default withAxiom(nextConfig);
+const withVercelToolbar = vercelToolbar();
+
+export default withVercelToolbar(withAxiom(nextConfig));
