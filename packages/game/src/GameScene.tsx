@@ -40,7 +40,12 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     noSound?: boolean,
     mockGarden?: boolean,
 
-    isDevelopment?: boolean,
+    // Development purposes
+    flags?: {
+        enableDebugHudFlag?: boolean
+        enableDebugCloseupFlag?: boolean
+        shoppingCartFlag?: boolean
+    }
 }
 
 function EditModeGrid() {
@@ -60,7 +65,6 @@ function EditModeGrid() {
 const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
 
 function GameScene({
-    isDevelopment,
     zoom = 'normal',
     noControls,
     noWeather,
@@ -68,6 +72,7 @@ function GameScene({
     noSound,
     hideHud,
     className,
+    flags,
     ...rest
 }: GameSceneProps) {
     useGameTimeManager();
@@ -89,7 +94,7 @@ function GameScene({
                 zoom={zoom === 'far' ? 75 : 100}
                 className='!absolute'
             >
-                {isDevelopment && <DebugHud />}
+                {Boolean(flags?.enableDebugHudFlag) && <DebugHud />}
                 <EditModeGrid />
                 <Environment
                     noBackground={noBackground}
@@ -109,7 +114,7 @@ function GameScene({
                     )}
                 </group>
                 {!noControls && (
-                    <Controls isDevelopment={isDevelopment} />
+                    <Controls debugCloseup={Boolean(flags?.enableDebugCloseupFlag)} />
                 )}
             </Scene>
             {!hideHud && (
@@ -117,7 +122,9 @@ function GameScene({
                     <div className='absolute top-2 left-2 flex flex-row items-start md:flex-col gap-1 md:gap-2'>
                         <AccountHud />
                         <GameModeHud />
-                        <ShoppingCartHud />
+                        {Boolean(flags?.shoppingCartFlag) && (
+                            <ShoppingCartHud />
+                        )}
                     </div>
                     <div className='absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2'>
                         <WeatherHud />
