@@ -4,7 +4,8 @@ import { AxiomWebVitals } from 'next-axiom';
 import "./globals.css";
 import Head from "next/head";
 import { ClientAppProvider } from "../components/providers/ClientAppProvider";
-import {ReactNode} from "react";
+import { ReactNode } from "react";
+import { VercelToolbar } from '@vercel/toolbar/next';
 
 export const metadata: Metadata = {
   title: "Vrt | Gredice",
@@ -16,6 +17,8 @@ export default function RootLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
+  const shouldInjectToolbar = process.env.NODE_ENV === 'development';
+
   return (
     <html lang="hr" suppressHydrationWarning={true}>
       <Head>
@@ -28,6 +31,7 @@ export default function RootLayout({
         </ClientAppProvider>
         <Analytics />
         <AxiomWebVitals />
+        {shouldInjectToolbar && <VercelToolbar />}
       </body>
     </html>
   );
