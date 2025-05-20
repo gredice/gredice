@@ -91,7 +91,7 @@ const useKeyboardControls = () => {
     }, [setPanDir]);
 }
 
-export function Controls({ isDevelopment }: { isDevelopment?: boolean }) {
+export function Controls({ debugCloseup }: { debugCloseup?: boolean }) {
     const isEditMode = useIsEditMode();
     const setOrbitControls = useGameState(state => state.setOrbitControls);
     const setIsDragging = useGameState(state => state.setIsDragging);
@@ -100,7 +100,7 @@ export function Controls({ isDevelopment }: { isDevelopment?: boolean }) {
     const [isAnimating, setIsAnimating] = useState(false);
 
     // Closeup
-    const { isCloseUp, targetPosition } = isDevelopment ? useControls({
+    const { isCloseUp, targetPosition } = debugCloseup ? useControls({
         isCloseUp: { value: false, label: "Closeup" },
         targetPosition: { value: [0, 0, 0], label: "Target Position" },
     }) : { isCloseUp: false, targetPosition: [0, 0, 0] as [number, number, number] };

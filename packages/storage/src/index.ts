@@ -11,3 +11,5 @@ export * from './repositories/farmsRepo';
 export * from './repositories/eventsRepo';
 export * from './repositories/analyticsRepo';
 export * from './repositories/feedbacksRepo';
+export * from './repositories/transactionsRepo';
+export * from './repositories/shoppingCartRepo';

@@ -4,7 +4,9 @@ import { Button } from "@signalco/ui-primitives/Button";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { apiFetch } from "../../lib/apiFetch";
+import { showNotification } from "@signalco/ui-notifications";
+import { errorMessages } from "../../misc/errorMessages";
+import { client } from "@gredice/client";
 
 export function SendVerifyEmailButton() {
     const router = useRouter();
@@ -12,18 +14,21 @@ export function SendVerifyEmailButton() {
     const email = searchParams.get('email');
     const [isLoading, setIsLoading] = useState(false);
     const handleSend = async () => {
+        if (!email) {
+            showNotification(errorMessages.verifyEmailInvalid, 'error');
+            return;
+        }
+
         setIsLoading(true);
-        const response = await apiFetch('/api/auth/send-verify-email', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email })
+        const response = await client().api.auth["send-verify-email"].$post({
+            json: {
+                email
+            }
         });
-        if (response.status !== 201) {
+
+        if (response.status === 404 || response) {
             setIsLoading(false);
-            console.error('Failed to send verify email with status', response.status);
-            // TODO: Show error
+            showNotification(errorMessages.verificationEmail, 'error');
             return;
         }
 

@@ -1,12 +1,12 @@
 import { List, ListHeader } from "@signalco/ui-primitives/List";
 import { KnownPages } from "../../src/KnownPages";
-import { Bank, Fence, Home, Inbox, SmileHappy, User } from "@signalco/ui-icons";
+import { Bank, Fence, Home, Inbox, SmileHappy, User, Tally3, Euro } from "@signalco/ui-icons";
 import { NavItem } from "./NavItem";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { EntityTypeCreateModal } from "./EntityTypeCreateModal";
 import { getEntityTypes } from "@gredice/storage";
 import { ProfileNavItem } from "./ProfileNavItem";
-import { File } from "@signalco/ui-icons";
+import { File, ShoppingCart } from "@signalco/ui-icons";
 
 export async function Nav() {
     const entityTypes = await getEntityTypes();
@@ -39,8 +39,11 @@ export async function Nav() {
                 <ListHeader header="Administracija" />
                 <List>
                     <NavItem href={KnownPages.Accounts} label="Računi" icon={<Bank className="size-5" />} />
+                    <NavItem href={KnownPages.ShoppingCarts} label="Košarice" icon={<ShoppingCart className="size-5" />} />
+                    <NavItem href={KnownPages.Transactions} label="Transakcije" icon={<Euro className="size-5" />} />
                     <NavItem href={KnownPages.Users} label="Korisnici" icon={<User className="size-5" />} />
                     <NavItem href={KnownPages.Gardens} label="Vrtovi" icon={<Fence className="size-5" />} />
+                    <NavItem href={KnownPages.RaisedBeds} label="Gredice" icon={<Tally3 className="size-5 rotate-90 mt-1" />} />
                 </List>
             </Stack>
             <Stack spacing={1}>

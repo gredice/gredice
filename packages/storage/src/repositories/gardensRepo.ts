@@ -1,7 +1,7 @@
 import 'server-only';
 import { and, count, desc, eq } from "drizzle-orm";
 import { storage } from "..";
-import { gardenBlocks, gardens, gardenStacks, InsertGarden, UpdateGarden, UpdateGardenBlock, UpdateGardenStack } from "../schema";
+import { gardenBlocks, gardens, gardenStacks, raisedBeds, InsertGarden, UpdateGarden, UpdateGardenBlock, UpdateGardenStack, InsertRaisedBed, UpdateRaisedBed } from "../schema";
 import { createEvent, knownEvents } from './eventsRepo';
 import { v4 as uuidV4 } from 'uuid';
 
@@ -32,7 +32,13 @@ export async function getGardens() {
 
 export async function getAccountGardens(accountId: string) {
     return storage.query.gardens.findMany({
-        where: and(eq(gardens.accountId, accountId), eq(gardens.isDeleted, false))
+        where: and(
+            eq(gardens.accountId, accountId),
+            eq(gardens.isDeleted, false)
+        ),
+        with: {
+            raisedBeds: true
+        }
     });
 }
 
@@ -174,4 +180,43 @@ export async function deleteGardenStack(gardenId: number, { x, y }: { x: number,
                 eq(gardenStacks.positionY, y)
             )
         );
+}
+
+export async function createRaisedBed(raisedBed: InsertRaisedBed) {
+    return (await storage
+        .insert(raisedBeds)
+        .values(raisedBed)
+        .returning({ id: raisedBeds.id }))[0].id;
+}
+
+export async function getRaisedBeds(gardenId: number) {
+    return storage.query.raisedBeds.findMany({
+        where: and(
+            eq(raisedBeds.gardenId, gardenId),
+            eq(raisedBeds.isDeleted, false)
+        ),
+    });
+}
+
+export async function getRaisedBed(raisedBedId: number) {
+    return storage.query.raisedBeds.findFirst({
+        where: and(eq(raisedBeds.id, raisedBedId), eq(raisedBeds.isDeleted, false))
+    });
+}
+
+export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
+    await storage.update(raisedBeds).set(raisedBed).where(eq(raisedBeds.id, raisedBed.id));
+}
+
+export async function deleteRaisedBed(raisedBedId: number) {
+    await storage.update(raisedBeds).set({ isDeleted: true }).where(eq(raisedBeds.id, raisedBedId));
+}
+
+export async function getAllRaisedBeds() {
+    return storage.query.raisedBeds.findMany({
+        where: and(
+            eq(raisedBeds.isDeleted, false),
+            eq(raisedBeds.isDeleted, false)
+        )
+    });
 }

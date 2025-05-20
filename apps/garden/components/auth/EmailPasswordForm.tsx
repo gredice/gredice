@@ -1,4 +1,4 @@
-import {useState, useEffect, FormEvent} from 'react'
+import { useState, useEffect, FormEvent } from 'react'
 import { Input } from '@signalco/ui-primitives/Input';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -14,21 +14,25 @@ export function EmailPasswordForm({
     submitText,
     registration: registration = false
 }: EmailPasswordFormProps) {
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [repeatPassword, setRepeatPassword] = useState('')
-    const [passwordsMatch, setPasswordsMatch] = useState(true)
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [repeatPassword, setRepeatPassword] = useState('');
+    const [passwordsMatch, setPasswordsMatch] = useState<boolean | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        if (registration) {
+        if (registration && typeof passwordsMatch === 'boolean') {
             setPasswordsMatch(password === repeatPassword)
         }
     }, [password, repeatPassword, registration])
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault()
-        if (!registration || passwordsMatch) {
+
+        const doPasswordsMarch = password === repeatPassword;
+        setPasswordsMatch(doPasswordsMarch);
+
+        if (!registration || doPasswordsMarch) {
             setIsLoading(true);
             onSubmit(email, password).then(() => setIsLoading(false));
         }
@@ -63,7 +67,7 @@ export function EmailPasswordForm({
                             onChange={(e) => setRepeatPassword(e.target.value)}
                             required
                         />
-                        {!passwordsMatch && (
+                        {passwordsMatch === false && (
                             <p className="text-sm text-red-500">Zaporke se ne podudaraju</p>
                         )}
                     </Stack>
@@ -74,7 +78,7 @@ export function EmailPasswordForm({
                     type="submit"
                     fullWidth
                     variant='soft'
-                    disabled={registration && !passwordsMatch}
+                    disabled={registration && !(Boolean(password.length) && Boolean(repeatPassword.length))}
                     loading={isLoading}
                 >
                     {submitText}

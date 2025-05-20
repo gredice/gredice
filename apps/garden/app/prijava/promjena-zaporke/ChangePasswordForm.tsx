@@ -1,6 +1,6 @@
 'use client'
 
-import {FormEvent, useState} from 'react'
+import { FormEvent, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Stack } from '@signalco/ui-primitives/Stack'
 import { Typography } from '@signalco/ui-primitives/Typography'
@@ -8,7 +8,8 @@ import { Button } from '@signalco/ui-primitives/Button'
 import { Input } from '@signalco/ui-primitives/Input'
 import { Alert } from '@signalco/ui/Alert'
 import Link from 'next/link'
-import { apiFetch } from '../../../lib/apiFetch'
+import { errorMessages } from '../../../misc/errorMessages'
+import { client } from '@gredice/client'
 
 export function ChangePasswordForm() {
     const router = useRouter()
@@ -21,18 +22,24 @@ export function ChangePasswordForm() {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
         if (password !== confirmPassword) {
-            setError('Zaporke se ne podudaraju')
-            return
+            setError(errorMessages.passwordsDontMatch);
+            return;
+        }
+        if (!token) {
+            setError(errorMessages.tokenInvalid);
+            return;
         }
 
-        const response = await apiFetch('/api/auth/change-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password, token }),
+        const response = await client().api.auth['change-password'].$post({
+            json: {
+                password,
+                token
+            }
         });
+
         if (!response.ok) {
             console.error(response.statusText);
-            setError('Došlo je do greške prilikom promjene zaporke. Pokušaj ponovno.');
+            setError(errorMessages.changePassword);
             return;
         }
 
@@ -74,7 +81,7 @@ export function ChangePasswordForm() {
                                 required
                             />
                         </Stack>
-                            {error && <Typography level='body2' color='danger' semiBold>{error}</Typography>}
+                        {error && <Typography level='body2' color='danger' semiBold>{error}</Typography>}
                         <Button type="submit" fullWidth variant='soft'>
                             Spremi
                         </Button>

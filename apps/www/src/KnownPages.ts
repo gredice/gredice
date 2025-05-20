@@ -5,7 +5,7 @@ export const KnownPages = {
     Plant: (alias: string) => `/biljke/${alias}`,
     Blocks: '/blokovi',
     Sunflowers: '/suncokreti',
-    RaisedBeds: '/povisena-gredica',
+    RaisedBeds: '/podignuta-gredica',
     Block: (alias: string) => `/blokovi/${alias}`,
     AboutUs: '/o-nama',
     FAQ: '/cesta-pitanja',

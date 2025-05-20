@@ -41,7 +41,8 @@ export function EntityFactory({ name, stack, block, noControl, ...rest }: { name
     const isEditMode = useIsEditMode();
     const EntityComponent = entityNameMap[name];
     if (!EntityComponent) {
-        console.error(`Unknown entity: ${name}`);
+        console.error(`Unknown entity: ${name} at ${stack.position.x}, ${stack.position.z}`);
+        console.debug(stack);
         return null;
     }
 

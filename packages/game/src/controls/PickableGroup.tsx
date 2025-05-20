@@ -6,7 +6,7 @@ import { PointerEvent, PropsWithChildren, useEffect, useMemo, useRef, useState }
 import { Handler, useDrag } from '@use-gesture/react';
 import { useSpring, animated } from '@react-spring/three';
 import { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
-import { getBlockDataByName, useStackHeight } from '../utils/getStackHeight';
+import { getBlockDataByName, getStackHeight, useStackHeight } from '../utils/getStackHeight';
 import { useGameState } from '../useGameState';
 import { Shadow } from '@react-three/drei';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
@@ -102,9 +102,7 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
         const hoveredStack = getStack(dest);
         const hoveredStackHeight = hoveredStack === stack
             ? 0
-            : currentStackHeight
-        // TODO: Use hovered stack height to determine the height of the block
-        // : stackHeight(hoveredStack) - (currentStackHeight ?? 0);
+            : getStackHeight(blockData, hoveredStack) - (currentStackHeight ?? 0);
 
         // Check if under current hovered stack is stackable and mark as blocked or not
         const lastBlock = hoveredStack?.position === stack.position

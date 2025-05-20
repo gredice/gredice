@@ -47,7 +47,9 @@ async function Dashboard() {
         gardens: gardensCount,
         blocks: blocksCount,
         events: eventsCount,
-        farms: farmsCount
+        farms: farmsCount,
+        raisedBeds: raisedBedsCount,
+        transactions: transactionsCount,
     } = await getAnalyticsTotals();
 
     return (
@@ -69,6 +71,8 @@ async function Dashboard() {
                     <FactCard header="Vrtovi" value={gardensCount} href={KnownPages.Gardens} />
                     <FactCard header="Blokovi" value={blocksCount} />
                     <FactCard header="Događaji" value={eventsCount} />
+                    <FactCard header="Gredice" value={raisedBedsCount} href={KnownPages.RaisedBeds} />
+                    <FactCard header="Transakcije" value={transactionsCount} href={KnownPages.Transactions} />
                 </div>
             </Stack>
         </Stack>

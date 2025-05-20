@@ -30,7 +30,10 @@ export const gardenRelations = relations(gardens, ({ one, many }) => ({
     }),
     stacks: many(gardenStacks, {
         relationName: 'gardenStacks',
-    })
+    }),
+    raisedBeds: many(raisedBeds, {
+        relationName: 'raisedBedsGarden',
+    }),
 }));
 
 export type InsertGarden = typeof gardens.$inferInsert;
@@ -94,3 +97,42 @@ export type UpdateGardenBlock =
     Partial<Omit<typeof gardenBlocks.$inferInsert, 'id' | 'gardenId' | 'name' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
     Pick<typeof gardenBlocks.$inferSelect, 'id'>;
 export type SelectGardenBlock = typeof gardenBlocks.$inferSelect;
+
+export const raisedBeds = pgTable('raised_beds', {
+    id: serial('id').primaryKey(),
+    accountId: text('account_id').notNull().references(() => accounts.id),
+    gardenId: integer('garden_id').notNull().references(() => gardens.id),
+    blockId: text('block_id').notNull().references(() => gardenBlocks.id),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
+    isDeleted: boolean('is_deleted').notNull().default(false),
+}, (table) => [
+    index('raised_beds_account_id_idx').on(table.accountId),
+    index('raised_beds_garden_id_idx').on(table.gardenId),
+    index('raised_beds_block_id_idx').on(table.blockId),
+    index('raised_beds_is_deleted_idx').on(table.isDeleted),
+]);
+
+export const raisedBedRelations = relations(raisedBeds, ({ one }) => ({
+    account: one(accounts, {
+        fields: [raisedBeds.accountId],
+        references: [accounts.id],
+        relationName: 'raisedBedsAccount',
+    }),
+    garden: one(gardens, {
+        fields: [raisedBeds.gardenId],
+        references: [gardens.id],
+        relationName: 'raisedBedsGarden',
+    }),
+    block: one(gardenBlocks, {
+        fields: [raisedBeds.blockId],
+        references: [gardenBlocks.id],
+        relationName: 'raisedBedsBlock',
+    }),
+}));
+
+export type InsertRaisedBed = typeof raisedBeds.$inferInsert;
+export type UpdateRaisedBed =
+    Partial<Omit<typeof raisedBeds.$inferInsert, 'id' | 'gardenId' | 'blockId' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
+    Pick<typeof raisedBeds.$inferSelect, 'id'>;
+export type SelectRaisedBed = typeof raisedBeds.$inferSelect;

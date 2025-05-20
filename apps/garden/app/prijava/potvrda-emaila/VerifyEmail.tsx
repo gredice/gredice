@@ -8,14 +8,16 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { apiFetch } from "../../../lib/apiFetch";
 import { Warning } from "@signalco/ui-icons";
+import { client } from "@gredice/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function VerifyEmail() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const token = searchParams.get('token');
     const [error, setError] = useState<string>();
+    const queryClient = useQueryClient();
 
     useEffect(() => {
         (async () => {
@@ -24,20 +26,23 @@ export function VerifyEmail() {
                 return;
             }
 
-            const response = await apiFetch('/api/auth/verify-email', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ token: window.location.search.split('=')[1] })
+            const response = await client().api.auth["verify-email"].$post({
+                json: {
+                    token
+                }
             });
-            if (response.status !== 204) {
-                console.error('Failed to verify email with status', response.status);
-                setError('Neuspješna potvrda email adrese. Pokušaj ponovno.');
-                return;
+
+            // Handle successful verification by storing the token and redirecting
+            // to the home page (user is logged in)
+            if (response.status === 200) {
+                const { token: jwtToken } = await response.json();
+                localStorage.setItem('gredice-token', jwtToken);
+                await queryClient.invalidateQueries();
+                router.push('/');
             }
 
-            router.push('/'); // Redirect to home page
+            console.error('Failed to verify email with status', response.status);
+            setError('Neuspješna potvrda email adrese. Pokušaj ponovno.');
         })();
     }, [router, token]);
 

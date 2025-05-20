@@ -11,13 +11,8 @@ export function getBlockDataByName(blockData: BlockData[] | null | undefined, na
     return block;
 }
 
-export function useStackHeight(stack: Stack | undefined, stopBlock?: Block) {
-    if (!stack || stack.blocks.length <= 0) {
-        return 0;
-    }
-
-    const { data: blockData } = useBlockData();
-    if (!blockData) {
+export function getStackHeight(blockData: BlockData[] | null | undefined, stack: Stack | undefined, stopBlock?: Block) {
+    if (!blockData || !stack || stack.blocks.length <= 0) {
         return 0;
     }
 
@@ -29,4 +24,9 @@ export function useStackHeight(stack: Stack | undefined, stopBlock?: Block) {
         height += getBlockDataByName(blockData, block.name)?.attributes.height ?? 0;
     }
     return height;
+}
+
+export function useStackHeight(stack: Stack | undefined, stopBlock?: Block) {
+    const { data: blockData } = useBlockData();
+    return getStackHeight(blockData, stack, stopBlock);
 }
