@@ -5,37 +5,10 @@ import { DotIndicator } from "@signalco/ui-primitives/DotIndicator";
 import { HudCard } from "./components/HudCard";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Modal } from "@signalco/ui-primitives/Modal";
-import { useQuery } from "@tanstack/react-query";
-import { client } from "@gredice/client";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
-
-function useShoppingCart() {
-    return useQuery({
-        queryKey: ['shopping-cart'],
-        queryFn: async () => {
-            const response = await client().api["shopping-cart"].$get();
-            if (response.status !== 200) {
-                throw new Error('Failed to fetch shopping cart');
-            }
-            const cart = await response.json();
-            cart.items.push({
-                id: 1,
-                cartId: cart.id,
-                amount: 10.00,
-                gardenId: 1,
-                raisedBedId: 1,
-                entityTypeName: "product",
-                entityId: "1",
-                isDeleted: false,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            });
-            return cart;
-        },
-    });
-}
+import { useShoppingCart } from "../hooks/useShoppingCart";
 
 function ShoppingCartItem() {
     return (
@@ -44,12 +17,10 @@ function ShoppingCartItem() {
             <Stack className="grow">
                 <Row justifyContent="space-between">
                     <Typography level="body1">Naziv proizvoda</Typography>
-                    <Typography level="body1" bold>
-                        <Row>
-                            10.00
-                            <Euro className="size-4" />
-                        </Row>
-                    </Typography>
+                    <Row>
+                        <Typography level="body1" bold>10.00</Typography>
+                        <Euro className="size-4" />
+                    </Row>
                 </Row>
                 <Typography level="body3" secondary>
                     Opis proizvoda

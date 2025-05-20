@@ -1,10 +1,25 @@
 import { Hono } from 'hono';
 import { validator as zValidator } from 'hono-openapi/zod';
 import { z } from 'zod';
-import { assignStripeCustomerId, getAccount, getEntitiesFormatted, getEntityFormatted, getEntityTypeByName, getShoppingCart, getUser } from '@gredice/storage';
+import { assignStripeCustomerId, getAccount, getEntitiesFormatted, getShoppingCart, getUser } from '@gredice/storage';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import { CheckoutItem, getStripeCheckoutSession, stripeCheckout, stripeSessionCancel } from "@gredice/stripe/server";
 import { describeRoute } from 'hono-openapi';
+
+type EntityType = Awaited<ReturnType<typeof getEntitiesFormatted>>[0];
+type EntityTypeStandardized = EntityType & {
+    information?: {
+        name?: string;
+        shortDescription?: string;
+    };
+    images?: {
+        cover?: string;
+    };
+    // TODO: Cover other types of pricing
+    prices?: {
+        perOperation: number;
+    };
+}
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .post(
@@ -39,17 +54,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Retrieve entities data
-            type EntityType = Awaited<ReturnType<typeof getEntitiesFormatted>>[0];
             const entityTypeNames = cart.items.map((item) => item.entityTypeName);
             const entitiesData = await Promise.all(entityTypeNames.map(getEntitiesFormatted));
             const entitiesByTypeName = entityTypeNames.reduce((acc, typeName, index) => {
-                const entities = entitiesData[index];
+                const entities = entitiesData[index] as EntityTypeStandardized[];
                 if (!acc[typeName]) {
                     acc[typeName] = [];
                 }
                 acc[typeName].push(...entities);
                 return acc;
-            }, {} as Record<string, EntityType[]>);
+            }, {} as Record<string, EntityTypeStandardized[]>);
 
             // TODO: Generate a stripe checkout items from cart items
             const items: CheckoutItem[] = [];
@@ -62,12 +76,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
                 // TODO: Apply discounted price if available
 
-                const name = (entityData as any)?.information?.name;
-                const description = (entityData as any)?.information?.shortDescription || undefined;
-                const valueInCents = Math.round((entityData as any).prices.perOperation * 100);
+                const name = entityData.information?.name;
+                const description = entityData.information?.shortDescription || undefined;
+                const valueInCents = Math.round((entityData.prices?.perOperation ?? 0) * 100);
                 const quantity = item.amount;
-                const imageUrls = (entityData as any)?.images?.cover ? [
-                    (entityData as any).images.cover
+                const imageUrls = entityData.images?.cover ? [
+                    entityData.images.cover
                 ] : [];
 
                 // TODO: Validate item data

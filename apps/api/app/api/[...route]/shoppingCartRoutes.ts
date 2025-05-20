@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { validator as zValidator } from 'hono-openapi/zod';
 import { z } from 'zod';
-import { getOrCreateShoppingCart, upsertOrRemoveCartItem, deleteShoppingCart, getShoppingCart } from '@gredice/storage';
+import { getOrCreateShoppingCart, upsertOrRemoveCartItem, deleteShoppingCart } from '@gredice/storage';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import { describeRoute } from 'hono-openapi';
 

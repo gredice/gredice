@@ -2,9 +2,7 @@
 
 import Stripe from 'stripe';
 
-import { getDomain, getReturnUrl, getStripe } from '../config';
-
-const returnUrl = `https://${getDomain()}/${getReturnUrl()}`;
+import { getReturnUrl, getStripe } from '../config';
 
 export type UserAccount = {
     id: string;
@@ -120,8 +118,8 @@ export async function stripeCheckout(
                 quantity: item.quantity,
             })),
             mode: 'payment',
-            cancel_url: returnUrl,
-            success_url: returnUrl
+            cancel_url: getReturnUrl(),
+            success_url: getReturnUrl()
         };
 
         // Create a checkout session in Stripe
@@ -228,7 +226,7 @@ export async function stripeCreatePortal(account: UserAccount) {
         try {
             const { url, id } = await getStripe().billingPortal.sessions.create({
                 customer: customerId,
-                return_url: returnUrl
+                return_url: getReturnUrl()
             });
             if (!url) {
                 throw new Error('Could not create billing portal');

@@ -784,6 +784,9 @@ importers:
 
   packages/stripe:
     dependencies:
+      '@signalco/js':
+        specifier: 0.1.0
+        version: 0.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@stripe/stripe-js':
         specifier: 7.3.0
         version: 7.3.0
