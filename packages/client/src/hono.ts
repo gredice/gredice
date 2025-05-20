@@ -3,7 +3,7 @@ import { hc } from "hono/client";
 import { AppType } from "@gredice/api/routes";
 
 const getAppUrl = () => {
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'development') {
         return `http://localhost:3005`;
     } else {
         return `https://api.gredice.com`;
