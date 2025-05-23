@@ -2,7 +2,7 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { PlantsGallery } from "./PlantsGallery";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { Suspense } from "react";
-import { PageFilterInput } from "../../components/shared/PageFilterInput";
+import { FilterInput } from "@gredice/ui/FilterInput";
 import { PlantsCalendar } from "./PlantsCalendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@signalco/ui-primitives/Tabs";
 import { Calendar } from "@signalco/ui-icons";
@@ -31,7 +31,7 @@ export default async function PlantsPage({ searchParams }: { searchParams: Promi
                 header="Biljke"
                 subHeader="Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu.">
                 <Suspense>
-                    <PageFilterInput
+                    <FilterInput
                         searchParamName="pretraga"
                         fieldName="plant-search"
                         className="lg:flex items-start justify-end" />

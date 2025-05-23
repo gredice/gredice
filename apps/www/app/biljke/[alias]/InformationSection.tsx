@@ -22,7 +22,7 @@ export async function InformationSection({ plantId, id, header, content, operati
     }
 
     const operationsData = await getOperationsData();
-    const applicableOperations = operationsData.filter((operation) => {
+    const applicableOperations = operationsData?.filter((operation) => {
         const operationId = operation.information.name.toLowerCase();
         const idMatched = operations?.some((op) => op.toLowerCase() === operationId) ?? false;
         const sectionMatched = operation.attributes.stage === id;

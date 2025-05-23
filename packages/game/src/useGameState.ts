@@ -114,7 +114,7 @@ export function createGameState({ appBaseUrl, freezeTime, isMock }: {
         mode: 'normal',
         setMode: (mode) => {
             if (get().view === 'closeup') {
-                set({ mode: 'normal' });
+                set({ view: 'normal' });
             }
             set({ mode });
         },

@@ -8,7 +8,7 @@ import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import Link from "next/link";
 import { KnownPages } from "../../src/KnownPages";
 import { PlantImage } from "../../components/plants/PlantImage";
-import { PlantData } from "../../lib/@types/PlantData";
+import { PlantData } from "../../lib/plants/getPlantsData";
 
 const calendarMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
 
@@ -31,9 +31,9 @@ const calendarActivityTypes = {
     }
 } as const;
 
-export function PlantsCalendar({ plants }: { plants: PlantData[] }) {
+export function PlantsCalendar({ plants }: { plants: PlantData[] | undefined }) {
     const [search] = useSearchParam('pretraga');
-    const filteredPlants = orderBy(plants, (a, b) => a.information.name.localeCompare(b.information.name))
+    const filteredPlants = orderBy(plants ?? [], (a, b) => a.information.name.localeCompare(b.information.name))
         .filter(plant => !search || plant.information.name.toLowerCase().includes(search.toLowerCase()))
         .map(plant => ({ ...plant, id: plant.id.toString() }));
 
@@ -114,7 +114,7 @@ export function PlantsCalendar({ plants }: { plants: PlantData[] }) {
                 <div
                     className="absolute bottom-0 w-0.5 bg-red-600"
                     style={{
-                        top: `${-(Object.keys(calendarActivityTypes).length * plants.length + 1) * 20}px`,
+                        top: `${-(Object.keys(calendarActivityTypes).length * filteredPlants.length + 1) * 20}px`,
                         left: `${((currentMonth + currentMonthProgress) / 12) * 100}%`
                     }}
                 />

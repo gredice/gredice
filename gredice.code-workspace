@@ -51,6 +51,10 @@
 		{
 			"name": "📦 @gredice/transactional",
 			"path": "packages/transactional"
+		},
+		{
+			"name": "📦 @gredice/ui",
+			"path": "packages/ui"
 		}
 	],
 	"settings": {

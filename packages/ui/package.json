@@ -1,0 +1,24 @@
+{
+  "name": "@gredice/ui",
+  "version": "1.0.0",
+  "private": true,
+  "exports": {
+    "./*": "./src/*/index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.19",
+    "@types/react": "19.1.4",
+    "typescript": "5.8.3"
+  },
+  "dependencies": {
+    "@signalco/ui-primitives": "0.6.1",
+    "@signalco/hooks": "0.2.1",
+    "@signalco/ui-icons": "0.2.2",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "peerDependencies": {
+    "react": "19.x",
+    "react-dom": "19.x"
+  }
+}

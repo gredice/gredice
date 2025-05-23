@@ -125,7 +125,7 @@ function ShoppingCart() {
                         onClick={handleCheckout}
                         fullWidth
                         disabled={!cart?.items.length}>
-                        Plačanje
+                        Plaćanje
                     </Button>
                 </Row>
             </Stack>
@@ -146,19 +146,19 @@ export function ShoppingCartHud() {
                     title="Košarica"
                     className='bg-card border-tertiary border-b-4'
                     trigger={(
-                        <Button
+                        <IconButton
                             title="Trenutno vrijeme"
                             variant="plain"
-                            className="relative rounded-full px-2 justify-between pr-4 md:pr-2" size="sm">
+                            className="relative rounded-full justify-between">
                             <ShoppingCartIcon className="size-5" />
                             {Boolean(cart?.items.length) && (
-                                <div className="absolute right-0 top-0">
-                                    <DotIndicator size={16} color={"success"} content={(
+                                <div className="absolute -right-2 -top-2">
+                                    <DotIndicator size={24} color={"success"} content={(
                                         <Typography>{cart?.items.length}</Typography>
                                     )} />
                                 </div>
                             )}
-                        </Button>
+                        </IconButton>
                     )}>
                     <ShoppingCart />
                 </Modal>

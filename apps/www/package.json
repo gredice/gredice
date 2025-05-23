@@ -32,6 +32,7 @@
     "@eslint/js": "9.27.0",
     "@gredice/client": "workspace:*",
     "@gredice/game": "workspace:*",
+    "@gredice/ui": "workspace:*",
     "@playwright/experimental-ct-react": "1.52.0",
     "@playwright/test": "1.52.0",
     "@signalco/cms-components-marketing": "0.1.1",
