@@ -1,5 +1,35 @@
-import { getAttributeDefinitions, getEntityTypes } from "@gredice/storage";
+import { ExtendedAttributeDefinition, getAttributeDefinitions, getEntityTypes } from "@gredice/storage";
 import { OpenAPIV3_1 } from "openapi-types";
+
+function resolvePropertyData(attributeDefinition: ExtendedAttributeDefinition) {
+    let propertyData: OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject | null = null;
+    switch (attributeDefinition.dataType) {
+        case 'number':
+            propertyData = {
+                type: 'number',
+                description: attributeDefinition.description || undefined
+            };
+            break;
+        case 'boolean':
+            propertyData = {
+                type: 'boolean',
+                description: attributeDefinition.description || undefined
+            };
+            break;
+        case 'image':
+            propertyData = {
+                $ref: '#/components/schemas/image',
+                description: attributeDefinition.description || undefined
+            };
+            break;
+        default:
+            propertyData = {
+                type: 'string',
+                description: attributeDefinition.description || undefined
+            };
+    }
+    return propertyData;
+}
 
 async function openApiEntitiesDoc(entityType: Awaited<ReturnType<typeof getEntityTypes>>[0]): Promise<Required<Pick<OpenAPIV3_1.Document, 'paths' | 'components'>>> {
     let properties: OpenAPIV3_1.SchemaObject['properties'] = {
@@ -28,34 +58,30 @@ async function openApiEntitiesDoc(entityType: Awaited<ReturnType<typeof getEntit
 
     const attributeDefinitions = await getAttributeDefinitions(entityType.name);
     for (const attributeDefinition of attributeDefinitions) {
-        const attributeType = attributeDefinition.dataType === 'json' ? 'object' : attributeDefinition.dataType;
         const categoryObject = properties[attributeDefinition.category];
+        const propertyData = resolvePropertyData(attributeDefinition);
         if (categoryObject === undefined) {
             properties[attributeDefinition.category] = {
                 type: 'object',
                 properties: {
-                    [attributeDefinition.name]: {
-                        type: attributeType === 'number' ? 'number' : attributeType === 'boolean' ? 'boolean' : 'string',
-                        description: attributeDefinition.description || undefined
-                    }
+                    [attributeDefinition.name]: propertyData
                 },
                 required: attributeDefinition.required ? [attributeDefinition.name] : undefined
             };
         } else {
             const category = categoryObject as OpenAPIV3_1.SchemaObject;
-            category.properties = {
-                ...category.properties,
-                [attributeDefinition.name]: {
-                    type: attributeType === 'number' ? 'number' : attributeType === 'boolean' ? 'boolean' : 'string',
-                    description: attributeDefinition.description || undefined
+            if (propertyData) {
+                category.properties = {
+                    ...category.properties,
+                    [attributeDefinition.name]: propertyData
+                };
+                // Add required attribute
+                if (attributeDefinition.required) {
+                    if (category.required === undefined) {
+                        category.required = [];
+                    }
+                    category.required.push(attributeDefinition.name);
                 }
-            };
-            // Add required attribute
-            if (attributeDefinition.required) {
-                if (category.required === undefined) {
-                    category.required = [];
-                }
-                category.required.push(attributeDefinition.name);
             }
         }
     }
@@ -142,7 +168,17 @@ export async function openApiDocs(config?: OpenApiDocsConfig): Promise<OpenAPIV3
         security: [],
         paths: {},
         components: {
-            schemas: {}
+            schemas: {
+                image: {
+                    type: 'object',
+                    properties: {
+                        url: {
+                            type: 'string',
+                            format: 'uri'
+                        }
+                    }
+                }
+            }
         }
     }
 
