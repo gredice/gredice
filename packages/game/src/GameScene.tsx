@@ -26,6 +26,8 @@ import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { GardenLoadingIndicator } from './GardenLoadingIndicator';
 import { Environment } from './scene/Environment';
 import { ShoppingCartHud } from './hud/ShoppingCartHud';
+import { Button } from '@signalco/ui-primitives/Button';
+import { HudCard } from './hud/components/HudCard';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string,
@@ -45,6 +47,8 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
         enableDebugHudFlag?: boolean
         enableDebugCloseupFlag?: boolean
         shoppingCartFlag?: boolean
+        allowAddToCartFlag?: boolean
+        allowRaisedBedSelectionFlag?: boolean
     }
 }
 
@@ -77,6 +81,8 @@ function GameScene({
 }: GameSceneProps) {
     useGameTimeManager();
     useThemeManager();
+    const view = useGameState(state => state.view);
+    const setView = useGameState(state => state.setView);
     const { data: garden, isPending } = useCurrentGarden();
 
     if (isPending) {
@@ -109,7 +115,9 @@ function GameScene({
                                 stack={stack}
                                 block={block}
                                 rotation={block.rotation}
-                                variant={block.variant} />
+                                variant={block.variant}
+                                enableSelection={Boolean(flags?.allowRaisedBedSelectionFlag)}
+                            />
                         ))
                     )}
                 </group>
@@ -141,6 +149,21 @@ function GameScene({
                     </div>
                     <OverviewModal />
                     <WelcomeMessage />
+                    {/* Exit closeup component */}
+                    <HudCard
+                        open={view === 'closeup'}
+                        position="floating"
+                        className="absolute md:px-1 bottom-2 left-1/2 -translate-x-1/2">
+                        <Button
+                            variant='plain'
+                            className='rounded-full'
+                            onClick={() => {
+                                setView({ view: 'normal' });
+                            }}
+                        >
+                            Završi uređivanje
+                        </Button>
+                    </HudCard>
                 </>
             )}
         </div>

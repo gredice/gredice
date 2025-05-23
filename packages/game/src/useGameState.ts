@@ -5,6 +5,7 @@ import { getTimes } from "suncalc";
 import { Garden } from "./types/Garden";
 import { audioConfig } from "./utils/audioConfig";
 import { createContext, useContext } from "react";
+import { Block } from "./types/Block";
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
@@ -64,6 +65,11 @@ type GameState = {
     mode: GameMode;
     setMode: (mode: GameMode) => void,
 
+    // Camera
+    view: 'normal' | 'closeup',
+    closeupBlock: Block | null,
+    setView: (options: { view: 'normal', block?: Block } | { view: 'closeup', block: Block }) => void,
+
     // Debug (overrides)
     weather?: { cloudy: number, rainy: number, snowy: number, foggy: number },
     setWeather: (weather: { cloudy: number, rainy: number, snowy: number, foggy: number }) => void,
@@ -103,8 +109,31 @@ export function createGameState({ appBaseUrl, freezeTime, isMock }: {
         timeOfDay,
         sunriseTime: getSunriseSunset(defaultLocation, now).sunrise,
         sunsetTime: getSunriseSunset(defaultLocation, now).sunset,
+
+        // Game
         mode: 'normal',
-        setMode: (mode) => set({ mode }),
+        setMode: (mode) => {
+            if (get().view === 'closeup') {
+                set({ mode: 'normal' });
+            }
+            set({ mode });
+        },
+
+        // Camera
+        view: 'normal',
+        closeupBlock: null,
+        setView: ({ view, block }) => {
+            if (get().mode === 'edit') {
+                get().setMode('normal');
+            }
+
+            if (view === 'closeup') {
+                set({ view, closeupBlock: block });
+            } else {
+                set({ view });
+            }
+        },
+
         isDragging: false,
         orbitControls: null,
         setOrbitControls: (ref) => set({ orbitControls: ref }),

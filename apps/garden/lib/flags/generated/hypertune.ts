@@ -2,22 +2,26 @@
 
 import * as sdk from "hypertune";
 
-export const queryCode = `query FullQuery{root{enableDebugCloseup shoppingCart enableDebugHud}}`;
+export const queryId = "eec947ec-f912-5657-b619-c45a294d8a63";
 
-export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"enableDebugCloseup":{"fieldArguments":{},"fieldQuery":null},"shoppingCart":{"fieldArguments":{},"fieldQuery":null},"enableDebugHud":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
+export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"allowAddToCart":{"fieldArguments":{},"fieldQuery":null},"allowRaisedBedSelection":{"fieldArguments":{},"fieldQuery":null},"enableDebugCloseup":{"fieldArguments":{},"fieldQuery":null},"shoppingCart":{"fieldArguments":{},"fieldQuery":null},"enableDebugHud":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
 
-export const initData = {"commitId":27864,"hash":"5060280387971841","reducedExpression":{"id":"hSzx_K7sNYI77jRriD4U1","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"sAbJTW3LHNEltLHB8AA4n","body":{"id":"8qdt_QWcSqIYYFTe-_aA0","logs":{},"type":"ObjectExpression","fields":{"enableDebugCloseup":{"id":"mIXrvVwY4U5YQ3O59T0j6","type":"SwitchExpression","cases":[{"id":"GWDeNaXeGYXMABwxBOomu","when":{"a":{"id":"tG6ZGpHBtnxEG9NH1OQiq","type":"GetFieldExpression","object":{"id":"LX0CM9QauTMAGSEeJUDLq","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"BZ17_qmFfcyqAuDSTOPbH"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"GtTCVjIj8jVeOxDTRwgSX","type":"ListExpression","items":[{"id":"BCnWob9dYRFfhatS02Xl_","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"fb9TE3Yb7NPrHsUzsCYxy","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"YLIqLryynNv9QRR9C_aRo","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"QFB3U9FDNc3w6aWW9XwPN","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"1TXYDm782KoLc85_O7sNF","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"J5D2Ud8BFP5uvl2WQp9Ie":1}}},"shoppingCart":{"id":"2LzRqBun6uOKG5TD8PwEp","type":"SwitchExpression","cases":[{"id":"-toQo7vtvAn8wxbxlqq-3","when":{"a":{"id":"ikwGgW4iuvdeMLne27U-q","type":"GetFieldExpression","object":{"id":"OeLfpKCeQGQjVqCVsO39i","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"BZ17_qmFfcyqAuDSTOPbH"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"OUC-COwqurU8gqdTwCfSs","type":"ListExpression","items":[{"id":"mAJH3WOCxEP9E1j74Yklz","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"wgn6kbnCnPL7FXmgXgcgg","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"5evyivgkSOR7DM_7-9T-B","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"oqDDAUxxqTDTe88_Z0kvp","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"oU1qNF45pf8zYxXQfjC5v","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"SAlh8nV-RpCdprS8YAUsI":1}}},"enableDebugHud":{"id":"eBU-zMgJe6dO6jTG4feRf","type":"BooleanExpression","value":false,"metadata":{"note":""},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"HC9HIJsBk_0LEh72su_AH":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"BZ17_qmFfcyqAuDSTOPbH","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
+export const initData = {"commitId":28038,"hash":"3381808783990240","reducedExpression":{"id":"hSzx_K7sNYI77jRriD4U1","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"sAbJTW3LHNEltLHB8AA4n","body":{"id":"8qdt_QWcSqIYYFTe-_aA0","logs":{},"type":"ObjectExpression","fields":{"allowAddToCart":{"id":"sSgLZXpjD-ddtLnc1BCSG","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"is1fRh3HtB1DBxnaxGNYR":1}}},"allowRaisedBedSelection":{"id":"j4lijTFPq_LLpnU4SFaWH","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"_fg3IGX5HUoNFCnQnWIqT":1}}},"enableDebugCloseup":{"id":"mIXrvVwY4U5YQ3O59T0j6","type":"SwitchExpression","cases":[{"id":"GWDeNaXeGYXMABwxBOomu","when":{"a":{"id":"tG6ZGpHBtnxEG9NH1OQiq","type":"GetFieldExpression","object":{"id":"LX0CM9QauTMAGSEeJUDLq","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"BZ17_qmFfcyqAuDSTOPbH"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"GtTCVjIj8jVeOxDTRwgSX","type":"ListExpression","items":[{"id":"BCnWob9dYRFfhatS02Xl_","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"fb9TE3Yb7NPrHsUzsCYxy","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"YLIqLryynNv9QRR9C_aRo","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"QFB3U9FDNc3w6aWW9XwPN","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"1TXYDm782KoLc85_O7sNF","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"J5D2Ud8BFP5uvl2WQp9Ie":1}}},"shoppingCart":{"id":"2LzRqBun6uOKG5TD8PwEp","type":"SwitchExpression","cases":[{"id":"-toQo7vtvAn8wxbxlqq-3","when":{"a":{"id":"ikwGgW4iuvdeMLne27U-q","type":"GetFieldExpression","object":{"id":"OeLfpKCeQGQjVqCVsO39i","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"BZ17_qmFfcyqAuDSTOPbH"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"OUC-COwqurU8gqdTwCfSs","type":"ListExpression","items":[{"id":"mAJH3WOCxEP9E1j74Yklz","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"wgn6kbnCnPL7FXmgXgcgg","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"5evyivgkSOR7DM_7-9T-B","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"oqDDAUxxqTDTe88_Z0kvp","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"oU1qNF45pf8zYxXQfjC5v","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"SAlh8nV-RpCdprS8YAUsI":1}}},"enableDebugHud":{"id":"eBU-zMgJe6dO6jTG4feRf","type":"BooleanExpression","value":false,"metadata":{"note":""},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"HC9HIJsBk_0LEh72su_AH":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"BZ17_qmFfcyqAuDSTOPbH","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
 
 
-export const vercelFlagDefinitions = {"enableDebugCloseup":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugCloseup"},"shoppingCart":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EshoppingCart"},"enableDebugHud":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugHud"}};
+export const vercelFlagDefinitions = {"allowAddToCart":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EallowAddToCart"},"allowRaisedBedSelection":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EallowRaisedBedSelection"},"enableDebugCloseup":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugCloseup"},"shoppingCart":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EshoppingCart"},"enableDebugHud":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugHud"}};
 
 export type RootFlagValues = {
+  "allowAddToCart": boolean;
+  "allowRaisedBedSelection": boolean;
   "enableDebugCloseup": boolean;
   "shoppingCart": boolean;
   "enableDebugHud": boolean;
 }
 
 export type FlagValues = {
+  "allowAddToCart": boolean;
+  "allowRaisedBedSelection": boolean;
   "enableDebugCloseup": boolean;
   "shoppingCart": boolean;
   "enableDebugHud": boolean;
@@ -26,6 +30,8 @@ export type FlagValues = {
 export type FlagPaths = keyof FlagValues & string;
 
 export const flagFallbacks: FlagValues = {
+  "allowAddToCart": false,
+  "allowRaisedBedSelection": false,
   "enableDebugCloseup": false,
   "shoppingCart": false,
   "enableDebugHud": false,
@@ -72,12 +78,14 @@ export type RootArgs = {
 export type EmptyObject = {};
 
 export type Root = {
+  allowAddToCart: boolean;
+  allowRaisedBedSelection: boolean;
   enableDebugCloseup: boolean;
   shoppingCart: boolean;
   enableDebugHud: boolean;
 }
 
-const rootFallback = {enableDebugCloseup:false,shoppingCart:false,enableDebugHud:false};
+const rootFallback = {allowAddToCart:false,allowRaisedBedSelection:false,enableDebugCloseup:false,shoppingCart:false,enableDebugHud:false};
 
 export class RootNode extends sdk.Node {
   override typeName = "Root" as const;
@@ -90,6 +98,46 @@ export class RootNode extends sdk.Node {
   get({ fallback = rootFallback as Root}: { fallback?: Root } = {}): Root {
     const getQuery = null;
     return this.getValue({ query: getQuery, fallback }) as Root;
+  }
+
+  /**
+   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EallowAddToCart})
+   */
+  allowAddToCart({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
+    const props0 = this.getFieldNodeProps("allowAddToCart", { fieldArguments: args });
+    const expression0 = props0.expression;
+
+    if (
+      expression0 &&
+      expression0.type === "BooleanExpression"
+    ) {
+      const node = new sdk.BooleanNode(props0);
+      return node.get({ fallback });
+    }
+
+    const node = new sdk.BooleanNode(props0);
+    node._logUnexpectedTypeError();
+    return node.get({ fallback });
+  }
+
+  /**
+   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EallowRaisedBedSelection})
+   */
+  allowRaisedBedSelection({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
+    const props0 = this.getFieldNodeProps("allowRaisedBedSelection", { fieldArguments: args });
+    const expression0 = props0.expression;
+
+    if (
+      expression0 &&
+      expression0.type === "BooleanExpression"
+    ) {
+      const node = new sdk.BooleanNode(props0);
+      return node.get({ fallback });
+    }
+
+    const node = new sdk.BooleanNode(props0);
+    node._logUnexpectedTypeError();
+    return node.get({ fallback });
   }
 
   /**
@@ -174,7 +222,7 @@ export type Source = {
   root: Root;
 }
 
-const sourceFallback = {root:{enableDebugCloseup:false,shoppingCart:false,enableDebugHud:false}};
+const sourceFallback = {root:{allowAddToCart:false,allowRaisedBedSelection:false,enableDebugCloseup:false,shoppingCart:false,enableDebugHud:false}};
 
 export type GetQueryRootArgs = {
   args: RootArgs;
@@ -248,7 +296,7 @@ export function createSource({
     NodeConstructor: SourceNode,
     token,
     query,
-    queryCode,
+    queryId,
     variableValues,
     override,
     options: {initData: initData as unknown as sdk.InitData, ...options },
