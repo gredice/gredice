@@ -13,7 +13,7 @@ export type InformationSectionProps = {
     id: string
     header: string
     content: string | null | undefined
-    operations?: string[] | null
+    operations?: string[] | null | undefined
 }
 
 export async function InformationSection({ plantId, id, header, content, operations }: InformationSectionProps) {

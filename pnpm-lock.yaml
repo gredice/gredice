@@ -175,6 +175,9 @@ importers:
       '@gredice/apidocs':
         specifier: workspace:*
         version: link:../../packages/apidocs
+      '@gredice/js':
+        specifier: workspace:*
+        version: link:../../packages/js
       '@gredice/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -598,6 +601,9 @@ importers:
 
   packages/apidocs:
     devDependencies:
+      '@gredice/js':
+        specifier: workspace:*
+        version: link:../js
       '@gredice/storage':
         specifier: workspace:*
         version: link:../storage
@@ -764,6 +770,19 @@ importers:
       zustand:
         specifier: 5.0.4
         version: 5.0.4(@types/react@19.1.4)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
+
+  packages/js:
+    dependencies:
+      '@signalco/js':
+        specifier: 0.1.0
+        version: 0.1.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+    devDependencies:
+      '@types/node':
+        specifier: 22.15.19
+        version: 22.15.19
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
 
   packages/storage:
     devDependencies:

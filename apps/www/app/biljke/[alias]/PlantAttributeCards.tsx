@@ -1,8 +1,8 @@
 import { Sun, Droplet, Sprout, Leaf, Ruler, ArrowDownToLine, Thermometer, Tally3 } from "@signalco/ui-icons"
-import { PlantAttributesData } from "../../../lib/@types/PlantAttributesData";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
+import { PlantData } from "@gredice/client";
 
-export function PlantAttributeCards({ attributes }: { attributes: PlantAttributesData | undefined }) {
+export function PlantAttributeCards({ attributes }: { attributes: PlantData['attributes'] | undefined }) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <AttributeCard

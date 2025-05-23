@@ -9,5 +9,3 @@ export const getPlantsData = unstable_cache(async () => {
         revalidate: 60 * 60, // 1 hour
         tags: ['plantsData']
     });
-
-export type PlantData = NonNullable<Awaited<ReturnType<typeof getPlantsData>>>[number];

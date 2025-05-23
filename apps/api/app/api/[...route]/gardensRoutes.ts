@@ -45,19 +45,20 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const { accountId } = context.get('authContext');
-            const [garden, blockPlaceEventsRaw, blocks] = await Promise.all([
+            const [garden, /*blockPlaceEventsRaw,*/ blocks] = await Promise.all([
                 getGarden(gardenIdNumber),
-                getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 10000),
+                // getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 10000),
                 getGardenBlocks(gardenIdNumber)
             ]);
             if (!garden || garden.accountId !== accountId) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            const blockPlaceEvents = blockPlaceEventsRaw.map(event => ({
-                ...event,
-                data: event.data as { id: string, name: string }
-            }));
+            // TODO: Implement validation of block place events
+            // const blockPlaceEvents = blockPlaceEventsRaw.map(event => ({
+            //     ...event,
+            //     data: event.data as { id: string, name: string }
+            // }));
 
             // Stacks: group by x then by y
             const stacks = garden.stacks.reduce((acc, stack) => {
@@ -69,6 +70,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     // const blockPlaceEvent = blockPlaceEvents.find(event => event.data.id === blockId)?.data.name;
                     // if (!blockPlaceEvent) {
                     //     console.warn('Block place event not found', { blockId });
+                    //     return null;
                     // }
                     if (!block) {
                         console.warn('Block not found', { blockId });
@@ -477,7 +479,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // Check garden exists and is owned by user
             const { accountId } = context.get('authContext');
 
-            const [garden, entities] = await Promise.all([
+            const [garden, blockData] = await Promise.all([
                 getGarden(gardenIdNumber),
                 getBlockData()
             ]);
@@ -491,7 +493,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { blockName } = context.req.valid('json');
 
             // Retrieve block information (cost)
-            const block = entities.find(block => block.information.name === blockName);
+            const block = blockData.find(block => block.information.name === blockName);
             if (!block) {
                 return context.json({ error: 'Requested block not found' }, 400);
             }

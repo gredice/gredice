@@ -1,24 +1,7 @@
 import { ImageResponse } from 'next/og'
 import { GardenDisplay2D } from '../../../components/GardenDisplay2D'
 import { Logotype } from '../../../components/Logotype';
-import { client } from '@gredice/client';
-
-type BlockData = {
-    id: string,
-    information: {
-        name: string,
-        label: string,
-        shortDescription: string,
-        fullDescription: string,
-    },
-    attributes: {
-        height: number,
-        stackable?: boolean
-    },
-    prices: {
-        sunflowers: number
-    }
-}
+import { client, directoriesClient } from '@gredice/client';
 
 export const size = {
     width: 1200,
@@ -45,8 +28,11 @@ export default async function GardenOgImage({ params }: { params: Promise<{ id: 
     }
     const garden = await gardenResponse.json();
 
-    const blockDataResponse = await client().api.directories.entities[":entityType"].$get({ param: { entityType: 'block' } });
-    const blockData = await blockDataResponse.json() as BlockData[];
+    const blockData = (await directoriesClient().GET('/entities/block')).data;
+    if (!blockData) {
+        console.error(`Block data not found`);
+        return null;
+    }
 
     return new ImageResponse(
         (

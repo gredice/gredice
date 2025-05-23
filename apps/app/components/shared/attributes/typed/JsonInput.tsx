@@ -7,9 +7,9 @@ import { AttributeInputProps } from '../AttributeInputProps';
 import { TextInput } from './TextInput';
 import { BooleanInput } from './BooleanInput';
 import { NumberInput } from './NumberInput';
-import { AttributeInputSchema } from '../AttributeInputSchema';
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@signalco/ui-primitives/Skeleton';
+import { unwrapSchema } from '@gredice/js/jsonSchema';
 
 const MarkdownInput = dynamic(() => import('./MarkdownInput').then(mod => ({
     default: mod.MarkdownInput
@@ -17,51 +17,6 @@ const MarkdownInput = dynamic(() => import('./MarkdownInput').then(mod => ({
     ssr: false,
     loading: () => <Skeleton className='w-full h-40' />
 });
-
-/**
- * Unwraps the schema string to schema object model.
- * 
- * Format:
- *   key1:type,key2:type,...
- *   key is name of the property
- *   type is one of: string | number | boolean | schema
- *   when type is schema it is wrapped in {} like 'key1:{subkey1:string,subkey2:{subsubkey1:string}}
- * @param schema The schema string
- * @returns The unwrapped schema model.
- */
-function unwrapSchema(schema: string): AttributeInputSchema {
-    const result: AttributeInputSchema = {};
-    let depth = 0;
-    let currentPair = '';
-
-    for (let i = 0; i < schema.length; i++) {
-        const char = schema[i];
-
-        if (char === ',' && depth === 0) {
-            processPair(currentPair);
-            currentPair = '';
-        } else {
-            if (char === '{') depth++;
-            if (char === '}') depth--;
-            currentPair += char;
-        }
-    }
-
-    if (currentPair) {
-        processPair(currentPair);
-    }
-
-    function processPair(pair: string) {
-        const [key, type] = pair.split(/:(.+)/); // Split only at the first colon
-        if (type.startsWith('{') && type.endsWith('}')) {
-            result[key] = unwrapSchema(type.slice(1, -1));
-        } else {
-            result[key] = type;
-        }
-    }
-
-    return result;
-}
 
 export function JsonInput({ value, onChange, schema }: AttributeInputProps) {
     const [inputValue, setInputValue] = useState<Record<string, unknown>>(JSON.parse(value ?? '{}'));

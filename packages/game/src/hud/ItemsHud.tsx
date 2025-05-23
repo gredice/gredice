@@ -11,11 +11,11 @@ import { Link } from "@signalco/ui-primitives/Link";
 import { cx } from "@signalco/ui-primitives/cx";
 import { useBlockPlace } from "../hooks/useBlockPlace";
 import { Stack as GardenStack } from "../types/Stack";
-import { BlockData } from "../../@types/BlockData";
 import { useCurrentGarden } from "../hooks/useCurrentGarden";
 import { useBlockData } from "../hooks/useBlockData";
 import { useIsEditMode } from "../hooks/useIsEditMode";
 import { Info, Up } from "@signalco/ui-icons";
+import { BlockData } from "@gredice/client";
 
 type HudItemEntity = {
     type: 'entity',

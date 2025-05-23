@@ -41,6 +41,10 @@
 			"path": "packages/game"
 		},
 		{
+			"name": "📦 @gredice/js",
+			"path": "packages/js"
+		},
+		{
 			"name": "📦 @gredice/storage",
 			"path": "packages/storage"
 		},

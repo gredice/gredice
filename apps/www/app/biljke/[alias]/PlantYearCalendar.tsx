@@ -1,3 +1,4 @@
+import { PlantData } from "@gredice/client";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { CSSProperties, Fragment } from "react";
@@ -23,7 +24,12 @@ const calendarActivityTypes = {
     }
 } as const;
 
-export function PlantYearCalendar({ activities, now }: { activities: { [_: string]: { start: number, end: number }[] }, now?: Date }) {
+export type PlantYearCalendarProps = {
+    activities: PlantData['calendar'],
+    now?: Date
+}
+
+export function PlantYearCalendar({ activities, now }: PlantYearCalendarProps) {
     const currentDate = now ?? new Date();
     const currentMonth = currentDate.getMonth() // 0-indexed
     const currentMonthProgress = currentDate.getDate() / new Date(currentDate.getFullYear(), currentMonth, 0).getDate();
@@ -51,13 +57,14 @@ export function PlantYearCalendar({ activities, now }: { activities: { [_: strin
                         </Row>
                         {calendarMonths.map((_, index) => {
                             const month = index + 1;
-                            const currentActivities = activities[activityTypeName];
-                            const currentMonthActivities = currentActivities.filter(a => month >= Math.floor(a.start) && month <= Math.floor(a.end));
-                            const minStart = Math.min(...currentMonthActivities.map(a => a.start % 1));
-                            const maxEnd = Math.max(...currentMonthActivities.map(a => a.end % 1));
+                            const currentActivities = activities[activityTypeName as keyof typeof calendarActivityTypes];
+                            if (!currentActivities) return null;
+                            const currentMonthActivities = currentActivities.filter(a => month >= Math.floor(a.start ?? 0) && month <= Math.floor(a.end ?? 0));
+                            const minStart = Math.min(...currentMonthActivities.map(a => (a.start ?? 0) % 1));
+                            const maxEnd = Math.max(...currentMonthActivities.map(a => (a.end ?? 0) % 1));
                             const isActivityActive = currentMonthActivities.length > 0;
-                            const isActivityStart = currentActivities.some(a => month === Math.floor(a.start));
-                            const isActivityEnd = currentActivities.some(a => month === Math.floor(a.end));
+                            const isActivityStart = currentActivities.some(a => month === Math.floor(a.start ?? 0));
+                            const isActivityEnd = currentActivities.some(a => month === Math.floor(a.end ?? 0));
 
                             return (
                                 <div key={index} className="relative border-l">

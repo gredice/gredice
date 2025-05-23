@@ -1,34 +1,141 @@
 import { ExtendedAttributeDefinition, getAttributeDefinitions, getEntityTypes } from "@gredice/storage";
 import { OpenAPIV3_1 } from "openapi-types";
+import { unwrapSchema } from '@gredice/js/jsonSchema';
 
-function resolvePropertyData(attributeDefinition: ExtendedAttributeDefinition) {
-    let propertyData: OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject | null = null;
+function resolveJsonPropertyData(schema: string) {
+    const unwrapped = unwrapSchema(schema);
+
+    function unwrapToOpenApiProperties(schemaObj: Record<string, string | Record<string, any>>): OpenAPIV3_1.SchemaObject {
+        const properties: Record<string, OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject> = {};
+
+        for (const [key, value] of Object.entries(schemaObj)) {
+            if (typeof value === 'string') {
+                // Map primitive types
+                switch (value) {
+                    case 'number':
+                        properties[key] = { type: 'number' };
+                        break;
+                    case 'boolean':
+                        properties[key] = { type: 'boolean' };
+                        break;
+                    case 'text':
+                    case 'markdown':
+                    case 'string':
+                        properties[key] = { type: 'string' };
+                        break;
+                    default:
+                        properties[key] = { type: 'string' }; // Default to string for unknown types
+                }
+            } else if (typeof value === 'object') {
+                // Recursively process nested schemas
+                const nestedSchema = unwrapToOpenApiProperties(value);
+                properties[key] = {
+                    type: 'object',
+                    properties: nestedSchema.properties
+                } as OpenAPIV3_1.SchemaObject;
+            }
+        }
+
+        return {
+            type: 'object',
+            properties: properties as Record<string, OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject>
+        };
+    }
+
+    return unwrapToOpenApiProperties(unwrapped);
+}
+
+function resolvePropertyDataType(attributeDefinition: ExtendedAttributeDefinition) {
     switch (attributeDefinition.dataType) {
         case 'number':
-            propertyData = {
+            return {
                 type: 'number',
                 description: attributeDefinition.description || undefined
-            };
-            break;
+            } satisfies OpenAPIV3_1.SchemaObject;
         case 'boolean':
-            propertyData = {
+            return {
                 type: 'boolean',
                 description: attributeDefinition.description || undefined
-            };
-            break;
+            } satisfies OpenAPIV3_1.SchemaObject;
         case 'image':
-            propertyData = {
+            return {
                 $ref: '#/components/schemas/image',
                 description: attributeDefinition.description || undefined
-            };
-            break;
+            } satisfies OpenAPIV3_1.ReferenceObject;
         default:
-            propertyData = {
+            return {
                 type: 'string',
                 description: attributeDefinition.description || undefined
-            };
+            } satisfies OpenAPIV3_1.SchemaObject;
+    }
+}
+
+async function resolvePropertyData(attributeDefinition: ExtendedAttributeDefinition) {
+    if (attributeDefinition.dataType.startsWith('json|')) {
+        const propertyData = resolveJsonPropertyData(attributeDefinition.dataType.substring(5));
+        if (attributeDefinition.multiple) {
+            return {
+                type: 'array',
+                items: propertyData
+            } satisfies OpenAPIV3_1.SchemaObject;
+        } else {
+            return propertyData;
+        }
+    }
+
+    if (attributeDefinition.dataType.startsWith('ref:')) {
+        const refType = attributeDefinition.dataType.substring(4);
+        const refAttributeDefinitions = await getAttributeDefinitions(refType);
+        return {
+            type: 'object',
+            properties: {
+                ...await populateAttributeDefinitionsProperties(refAttributeDefinitions)
+            },
+            description: attributeDefinition.description || undefined
+        } satisfies OpenAPIV3_1.SchemaObject;
+    }
+
+    const propertyData = resolvePropertyDataType(attributeDefinition);
+    if (attributeDefinition.multiple) {
+        return {
+            type: 'array',
+            items: propertyData
+        } satisfies OpenAPIV3_1.SchemaObject;
     }
     return propertyData;
+}
+
+async function populateAttributeDefinitionsProperties(attributeDefinitions: ExtendedAttributeDefinition[]) {
+    const properties: OpenAPIV3_1.SchemaObject['properties'] = {};
+    for (const attributeDefinition of attributeDefinitions) {
+        const categoryObject = properties[attributeDefinition.category];
+        const propertyData = await resolvePropertyData(attributeDefinition);
+        if (categoryObject === undefined) {
+            properties[attributeDefinition.category] = {
+                type: 'object',
+                properties: {
+                    [attributeDefinition.name]: propertyData
+                },
+                required: attributeDefinition.required ? [attributeDefinition.name] : undefined
+            };
+        } else {
+            const category = categoryObject as OpenAPIV3_1.SchemaObject;
+            if (propertyData) {
+                category.properties = {
+                    ...category.properties,
+                    [attributeDefinition.name]: propertyData
+                };
+                // Add required attribute
+                if (attributeDefinition.required) {
+                    if (category.required === undefined) {
+                        category.required = [];
+                    }
+                    category.required.push(attributeDefinition.name);
+                }
+            }
+        }
+    }
+    return properties;
 }
 
 async function openApiEntitiesDoc(entityType: Awaited<ReturnType<typeof getEntityTypes>>[0]): Promise<Required<Pick<OpenAPIV3_1.Document, 'paths' | 'components'>>> {
@@ -57,34 +164,13 @@ async function openApiEntitiesDoc(entityType: Awaited<ReturnType<typeof getEntit
     };
 
     const attributeDefinitions = await getAttributeDefinitions(entityType.name);
-    for (const attributeDefinition of attributeDefinitions) {
-        const categoryObject = properties[attributeDefinition.category];
-        const propertyData = resolvePropertyData(attributeDefinition);
-        if (categoryObject === undefined) {
-            properties[attributeDefinition.category] = {
-                type: 'object',
-                properties: {
-                    [attributeDefinition.name]: propertyData
-                },
-                required: attributeDefinition.required ? [attributeDefinition.name] : undefined
-            };
-        } else {
-            const category = categoryObject as OpenAPIV3_1.SchemaObject;
-            if (propertyData) {
-                category.properties = {
-                    ...category.properties,
-                    [attributeDefinition.name]: propertyData
-                };
-                // Add required attribute
-                if (attributeDefinition.required) {
-                    if (category.required === undefined) {
-                        category.required = [];
-                    }
-                    category.required.push(attributeDefinition.name);
-                }
-            }
-        }
-    }
+    const attributeProperties = await populateAttributeDefinitionsProperties(attributeDefinitions);
+
+    // Merge attribute properties into the main properties object
+    properties = {
+        ...properties,
+        ...attributeProperties
+    };
 
     // Append other properties
     properties = {
@@ -113,7 +199,7 @@ async function openApiEntitiesDoc(entityType: Awaited<ReturnType<typeof getEntit
                                     schema: {
                                         type: 'array',
                                         items: {
-                                            $ref: `#/components/schemas/Entity-${entityType.name}`
+                                            $ref: `#/components/schemas/entity-${entityType.name}`
                                         }
                                     }
                                 }
@@ -125,7 +211,7 @@ async function openApiEntitiesDoc(entityType: Awaited<ReturnType<typeof getEntit
         },
         components: {
             schemas: {
-                [`Entity-${entityType.name}`]: {
+                [`entity-${entityType.name}`]: {
                     type: 'object',
                     properties,
                     required: ['id', 'entityType', 'createdAt', 'updatedAt', ...attributeDefinitions.map(attribute => `${attribute.category}`)]

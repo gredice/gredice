@@ -3,7 +3,6 @@ import { Modal } from "@signalco/ui-primitives/Modal";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import Image from "next/image";
-import { OperationData } from "../../../lib/@types/OperationData";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Markdown } from "../../../components/shared/Markdown";
@@ -11,6 +10,7 @@ import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { NavigatingButton } from "@signalco/ui/NavigatingButton";
 import { KnownPages } from "../../../src/KnownPages";
 import { Euro, Hammer, Info } from "@signalco/ui-icons";
+import { OperationData } from "../../../lib/plants/getOperationsData";
 
 function operationFrequencyLabel(frequency: string) {
     switch (frequency) {
@@ -34,7 +34,7 @@ function operationFrequencyLabel(frequency: string) {
 }
 
 function OperationImage({ operation }: { operation: OperationData }) {
-    if (!operation.images?.cover?.url) {
+    if (!operation.image?.cover?.url) {
         return (
             <Hammer className="size-[32px] min-w-[32px]" />
         );
@@ -42,7 +42,7 @@ function OperationImage({ operation }: { operation: OperationData }) {
 
     return (
         <Image
-            src={operation.images.cover.url}
+            src={operation.image.cover.url}
             width={32}
             height={32}
             style={{

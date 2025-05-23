@@ -1,2 +1,2 @@
 export { client } from './hono';
-export { directoriesClient } from './directories-api';
+export * from './directories-api';

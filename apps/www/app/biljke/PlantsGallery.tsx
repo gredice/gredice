@@ -5,7 +5,7 @@ import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import { Gallery } from "@signalco/ui/Gallery";
 import { PlantsGalleryItem } from "./PlantsGalleryItem";
 import { orderBy } from "@signalco/js";
-import { PlantData } from "../../lib/plants/getPlantsData";
+import { PlantData } from "@gredice/client";
 
 export function PlantsGallery({ plants }: { plants: PlantData[] | undefined }) {
     const [search] = useSearchParam('pretraga');

@@ -3,14 +3,14 @@
 import { Gallery } from "@signalco/ui/Gallery";
 import { ItemCard } from "../../components/shared/ItemCard";
 import { BlockImage } from "../../components/blocks/BlockImage";
-import { BlockData } from "./@types/BlockData";
 import { orderBy } from "@signalco/js";
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { cx } from "@signalco/ui-primitives/cx";
 import { Row } from "@signalco/ui-primitives/Row";
+import { BlockData } from "@gredice/client";
 
-function BlockGalleryItem(props: BlockData & { showPrices?: boolean }) {
+function BlockGalleryItem(props: Omit<BlockData, 'id'> & { id: string, showPrices?: boolean }) {
     const { showPrices = true, ...entity } = props;
     return (
         <ItemCard
@@ -31,9 +31,9 @@ function BlockGalleryItem(props: BlockData & { showPrices?: boolean }) {
     );
 }
 
-export function BlockGallery({ blocks }: { blocks: BlockData[] }) {
+export function BlockGallery({ blocks }: { blocks: BlockData[] | undefined }) {
     const [search] = useSearchParam('pretraga');
-    const filteredBlocks = orderBy(blocks, (a, b) => a.information.name.localeCompare(b.information.label))
+    const filteredBlocks = orderBy(blocks ?? [], (a, b) => a.information.name.localeCompare(b.information.label))
         .filter(blocks => !search || blocks.information.label.toLowerCase().includes(search.toLowerCase()))
         .map(blocks => ({ ...blocks, id: blocks.id.toString() }));
 

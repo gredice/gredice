@@ -3,15 +3,15 @@
 import { KnownPages } from "../../../src/KnownPages";
 import { useParams } from "next/navigation";
 import { orderBy } from "@signalco/js";
-import { BlockData } from "../@types/BlockData";
 import { BlockImage } from "../../../components/blocks/BlockImage";
 import { ListCollapsable } from "../../../components/shared/ListCollapsable";
+import { BlockData } from "@gredice/client";
 
-export function BlocksList({ blockData }: { blockData: BlockData[] }) {
+export function BlocksList({ blockData }: { blockData: BlockData[] | undefined }) {
     const { alias: aliasUnescaped } = useParams<{ alias: string }>();
     const alias = decodeURIComponent(aliasUnescaped);
 
-    const entitiesArray = orderBy(blockData, (a, b) => a.information.label.localeCompare(b.information.label));
+    const entitiesArray = orderBy(blockData ?? [], (a, b) => a.information.label.localeCompare(b.information.label));
 
     const items = entitiesArray.map((entity) => ({
         value: entity.information.label,

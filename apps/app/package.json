@@ -32,6 +32,7 @@
     "@gredice/apidocs": "workspace:*",
     "@gredice/storage": "workspace:*",
     "@gredice/stripe": "workspace:*",
+    "@gredice/js": "workspace:*",
     "@mdxeditor/editor": "3.32.3",
     "@playwright/experimental-ct-react": "1.52.0",
     "@playwright/test": "1.52.0",

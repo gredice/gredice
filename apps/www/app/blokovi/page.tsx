@@ -1,7 +1,6 @@
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../components/shared/PageHeader";
-import { BlockData } from "./@types/BlockData";
-import { client } from "@gredice/client";
+import { directoriesClient } from "@gredice/client";
 import { Suspense } from "react";
 import { PageFilterInput } from "../../components/shared/PageFilterInput";
 import { BlockGallery } from "./BlockGallery";
@@ -13,11 +12,7 @@ export const metadata = {
 };
 
 export default async function BlocksPage() {
-    const entities = await (await client().api.directories.entities[":entityType"].$get({
-        param: {
-            entityType: "block"
-        }
-    })).json() as BlockData[];
+    const blocks = (await directoriesClient().GET('/entities/block')).data;
     return (
         <Stack>
             <PageHeader
@@ -32,7 +27,7 @@ export default async function BlocksPage() {
                 </Suspense>
             </PageHeader>
             <Suspense>
-                <BlockGallery blocks={entities} />
+                <BlockGallery blocks={blocks} />
             </Suspense>
         </Stack>
     );
