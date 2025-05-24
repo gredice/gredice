@@ -826,8 +826,8 @@ importers:
         specifier: 19.1.0
         version: 19.1.0
       stripe:
-        specifier: 18.1.0
-        version: 18.1.0(@types/node@22.15.18)
+        specifier: 18.1.1
+        version: 18.1.1(@types/node@22.15.18)
       typescript:
         specifier: 5.8.3
         version: 5.8.3
@@ -6924,8 +6924,8 @@ packages:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
 
-  stripe@18.1.0:
-    resolution: {integrity: sha512-MLDiniPTHqcfIT3anyBPmOEcaiDhYa7/jRaNypQ3Rt2SJnayQZBvVbFghIziUCZdltGAndm/ZxVOSw6uuSCDig==}
+  stripe@18.1.1:
+    resolution: {integrity: sha512-hlF0ripc2nJrihpsJZQDl3xirS7tpdpS7DlmSNLEDRW8j7Qr215y5DHOI3+aEY/lq6PG8y4GR1RZPtEoIoAs/g==}
     engines: {node: '>=12.*'}
     peerDependencies:
       '@types/node': '>=12.x.x'
@@ -15244,7 +15244,7 @@ snapshots:
 
   strip-json-comments@3.1.1: {}
 
-  stripe@18.1.0(@types/node@22.15.18):
+  stripe@18.1.1(@types/node@22.15.18):
     dependencies:
       qs: 6.14.0
     optionalDependencies:
