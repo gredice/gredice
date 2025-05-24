@@ -8,11 +8,18 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "scripts": {},
+  "scripts": {
+    "regenerate": "pnpm run /^regenerate:.*/",
+    "regenerate:directories-api": "pnpm dlx openapi-typescript https://api.gredice.com/api/docs/directories -o ./src/lib/directories-api/v1.d.ts"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.14.0"
+  },
   "devDependencies": {
     "@gredice/api": "workspace:*",
     "hono": "4.7.10",
     "@types/node": "22.15.19",
+    "openapi-typescript": "7.8.0",
     "typescript": "5.8.3"
   }
 }

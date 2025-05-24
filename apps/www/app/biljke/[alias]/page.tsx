@@ -24,7 +24,7 @@ import { NavigatingButton } from "@signalco/ui/NavigatingButton";
 export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }) {
     const { alias: aliasUnescaped } = await params;
     const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
-    const plant = (await getPlantsData()).find((plant) => plant.information.name.toLowerCase() === alias?.toLowerCase());
+    const plant = (await getPlantsData())?.find((plant) => plant.information.name.toLowerCase() === alias?.toLowerCase());
     if (!plant) {
         return {
             title: "Biljka nije pronađena",
@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: { params: Promise<{ alias: st
 
 export async function generateStaticParams() {
     const plants = await getPlantsData();
-    return plants.map((entity) => ({
+    return plants?.map((entity) => ({
         alias: String(entity.information.name),
     }));
 }
@@ -57,7 +57,7 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
         notFound();
     }
 
-    const plant = (await getPlantsData()).find((plant) => plant.information.name.toLowerCase() === alias.toLowerCase());
+    const plant = (await getPlantsData())?.find((plant) => plant.information.name.toLowerCase() === alias.toLowerCase());
     if (!plant) {
         notFound();
     }

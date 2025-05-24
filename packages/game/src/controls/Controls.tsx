@@ -6,6 +6,7 @@ import { MOUSE, TOUCH, Vector3 } from 'three';
 import { useControls } from 'leva';
 import { CameraController } from '../controllers/CameraController';
 import { useIsEditMode } from '../hooks/useIsEditMode';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 
 function useCameraRotate() {
     const orbitControls = useGameState(state => state.orbitControls);
@@ -95,15 +96,25 @@ export function Controls({ debugCloseup }: { debugCloseup?: boolean }) {
     const isEditMode = useIsEditMode();
     const setOrbitControls = useGameState(state => state.setOrbitControls);
     const setIsDragging = useGameState(state => state.setIsDragging);
+    const garden = useCurrentGarden();
     useCameraRotate();
     useKeyboardControls();
     const [isAnimating, setIsAnimating] = useState(false);
 
     // Closeup
+    const isCloseUpView = useGameState(state => state.view) === 'closeup';
+    const closeupBlock = useGameState(state => state.closeupBlock);
+    // Find stat containing the closeup block
+    const closeupPosition: [number, number, number] = closeupBlock
+        ? (garden.data?.stacks.find(stack => stack.blocks.some(block => block.id === closeupBlock.id))?.position.toArray() as [number, number, number])
+        : [0, 0, 0];
     const { isCloseUp, targetPosition } = debugCloseup ? useControls({
         isCloseUp: { value: false, label: "Closeup" },
         targetPosition: { value: [0, 0, 0], label: "Target Position" },
-    }) : { isCloseUp: false, targetPosition: [0, 0, 0] as [number, number, number] };
+    }) : {
+        isCloseUp: isCloseUpView,
+        targetPosition: closeupPosition
+    };
 
     return (
         <>

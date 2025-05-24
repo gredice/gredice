@@ -1,9 +1,8 @@
-import { PropsWithChildren, useState } from "react";
-import { Html } from "@react-three/drei"
-import { Popper } from "@signalco/ui-primitives/Popper";
-import { BlockInfo } from "./components/BlockInfo";
+import { PropsWithChildren, useRef } from "react";
 import { create } from "zustand";
 import { Block } from "../types/Block";
+import { useGameState } from "../useGameState";
+import { Stack } from "../types/Stack";
 
 type useHoveredBlockStore = {
     hoveredBlock: Block | null,
@@ -13,21 +12,33 @@ type useHoveredBlockStore = {
 export const useHoveredBlockStore = create<useHoveredBlockStore>((set) => ({
     hoveredBlock: null,
     setHoveredBlock: (block: Block | null) => set({ hoveredBlock: block }),
-}))
+}));
 
-export function SelectableGroup({ children, block }: PropsWithChildren<{ block: Block }>) {
-    const [selected, setSelected] = useState(false);
+export function SelectableGroup({ children, stack, block }: PropsWithChildren<{ stack: Stack, block: Block }>) {
+    const groupRef = useRef(null);
     const hovered = useHoveredBlockStore();
+    const setView = useGameState(state => state.setView);
 
-    const handleSelected = () => {
-        if (block.name !== 'Raised_Bed_Construction')
-            return children;
+    if (block.name !== 'Raised_Bed') {
+        return children;
+    }
 
-        setSelected(!selected);
+    function handleSelected() {
+        handleOpenChange(true);
+    }
+
+    function handleOpenChange(open: boolean) {
+        if (open) {
+            setView({ view: 'closeup', block });
+            hovered.setHoveredBlock(null);
+        } else {
+            setView({ view: 'normal' });
+        }
     }
 
     return (
         <group
+            ref={groupRef}
             onPointerEnter={(e) => {
                 e.stopPropagation();
                 hovered.setHoveredBlock(block);
@@ -40,17 +51,6 @@ export function SelectableGroup({ children, block }: PropsWithChildren<{ block: 
             }}
             onClick={handleSelected}>
             {children}
-            {selected && (
-                <Html>
-                    <Popper
-                        open
-                        onOpenChange={setSelected}
-                        anchor={(<div />)}
-                        className="w-auto">
-                        <BlockInfo block={block} />
-                    </Popper>
-                </Html>
-            )}
         </group>
     )
 }

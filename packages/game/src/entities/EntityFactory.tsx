@@ -18,6 +18,7 @@ import { Composter } from "./Composter";
 import { Bush } from "./Bush";
 import { Tree } from "./Tree";
 import { useIsEditMode } from "../hooks/useIsEditMode";
+import { useGameState } from "../useGameState";
 
 const entityNameMap: Record<string, any> = {
     "Block_Ground": BlockGround,
@@ -37,29 +38,43 @@ const entityNameMap: Record<string, any> = {
     "Raised_Bed_Construction": RaisedBedContruction,
 };
 
-export function EntityFactory({ name, stack, block, noControl, ...rest }: { name: string, noControl?: boolean } & EntityInstanceProps) {
+type EntityFactoryProps = {
+    name: string;
+    noControl?: boolean;
+    enableSelection?: boolean;
+};
+
+export function EntityFactory({ name, stack, block, noControl, enableSelection, ...rest }: EntityFactoryProps & EntityInstanceProps) {
     const isEditMode = useIsEditMode();
     const EntityComponent = entityNameMap[name];
+    const view = useGameState(state => state.view);
+
     if (!EntityComponent) {
         console.error(`Unknown entity: ${name} at ${stack.position.x}, ${stack.position.z}`);
         console.debug(stack);
         return null;
     }
 
+    const SelectableGroupWrapper = view !== 'closeup' && enableSelection
+        ? SelectableGroup
+        : (props: any) => <>{props.children}</>;
+
     if (!isEditMode) {
         return (
-            <SelectableGroup
+            <SelectableGroupWrapper
+                stack={stack}
                 block={block}>
                 <EntityComponent
                     stack={stack}
                     block={block}
                     {...rest} />
-            </SelectableGroup>
+            </SelectableGroupWrapper>
         );
     }
 
     return (
-        <SelectableGroup
+        <SelectableGroupWrapper
+            stack={stack}
             block={block}>
             <PickableGroup
                 stack={stack}
@@ -74,6 +89,6 @@ export function EntityFactory({ name, stack, block, noControl, ...rest }: { name
                         {...rest} />
                 </RotatableGroup>
             </PickableGroup>
-        </SelectableGroup>
+        </SelectableGroupWrapper>
     );
 }

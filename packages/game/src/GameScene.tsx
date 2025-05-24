@@ -26,6 +26,10 @@ import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { GardenLoadingIndicator } from './GardenLoadingIndicator';
 import { Environment } from './scene/Environment';
 import { ShoppingCartHud } from './hud/ShoppingCartHud';
+import { RaisedBedFieldHud } from './hud/RaisedBedFieldHud';
+import { useBlockData } from './hooks/useBlockData';
+import { useWeatherForecast } from './hooks/useWeatherForecast';
+import { useWeatherNow } from './hooks/useWeatherNow';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string,
@@ -45,6 +49,8 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
         enableDebugHudFlag?: boolean
         enableDebugCloseupFlag?: boolean
         shoppingCartFlag?: boolean
+        allowAddToCartFlag?: boolean
+        allowRaisedBedSelectionFlag?: boolean
     }
 }
 
@@ -77,8 +83,12 @@ function GameScene({
 }: GameSceneProps) {
     useGameTimeManager();
     useThemeManager();
-    const { data: garden, isPending } = useCurrentGarden();
 
+    // Prelaod all required data 
+    const { isPending: blockDataPending } = useBlockData();
+    const { data: garden, isPending: gardenPending } = useCurrentGarden();
+    const { isPending: weatherPending } = useWeatherNow();
+    const isPending = gardenPending || blockDataPending || weatherPending;
     if (isPending) {
         return (
             <GardenLoadingIndicator />
@@ -109,7 +119,9 @@ function GameScene({
                                 stack={stack}
                                 block={block}
                                 rotation={block.rotation}
-                                variant={block.variant} />
+                                variant={block.variant}
+                                enableSelection={Boolean(flags?.allowRaisedBedSelectionFlag)}
+                            />
                         ))
                     )}
                 </group>
@@ -139,6 +151,7 @@ function GameScene({
                         <ItemsHud />
                         <div className='hidden md:block' />
                     </div>
+                    <RaisedBedFieldHud />
                     <OverviewModal />
                     <WelcomeMessage />
                 </>

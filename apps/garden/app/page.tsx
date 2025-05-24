@@ -2,11 +2,15 @@ import { SignedOut } from "@signalco/auth-client/components";
 import LoginModal from "../components/auth/LoginModal";
 import { GameSceneDynamic } from "./GameSceneDynamic";
 import { enableDebugHudFlag, shoppingCartFlag } from "./flags";
+import { ComponentProps } from "react";
 
 export default async function Home() {
-  const flags = {
-    enableDebugHud: await enableDebugHudFlag(),
+  const flags: ComponentProps<typeof GameSceneDynamic>["flags"] = {
+    enableDebugHudFlag: await enableDebugHudFlag(),
+    enableDebugCloseupFlag: await enableDebugHudFlag(),
     shoppingCartFlag: await shoppingCartFlag(),
+    allowAddToCartFlag: await shoppingCartFlag(),
+    allowRaisedBedSelectionFlag: await shoppingCartFlag(),
   };
 
   return (

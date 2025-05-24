@@ -15,7 +15,7 @@ export function HudCard({ open, position, className, style, animateHeight, ...re
         opacity: open ? 1 : 0,
         transform: open
             ? "translateY(0)"
-            : (position === 'bottom' ? "translateY(100%)" : "translateY(-100%)"),
+            : (position === 'bottom' || (className?.includes('bottom-') ?? false) ? "translateY(100%)" : "translateY(-100%)"),
         config: { duration: 150 }
     });
 

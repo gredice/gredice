@@ -1,14 +1,7 @@
 import { hc } from "hono/client";
 
 import { AppType } from "@gredice/api/routes";
-
-const getAppUrl = () => {
-    if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'development') {
-        return `http://localhost:3005`;
-    } else {
-        return `https://api.gredice.com`;
-    }
-}
+import { getAppUrl, getAuthHeaders } from "./shared";
 
 function clientAuth() {
     if (typeof localStorage === 'undefined') {
@@ -17,7 +10,7 @@ function clientAuth() {
 
     return {
         headers: {
-            authorization: `Bearer ${localStorage.getItem('gredice-token')}`
+            authorization: getAuthHeaders() ?? ''
         }
     };
 }

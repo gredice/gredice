@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
+import { BlockData } from '@gredice/client';
 import { EntityViewer } from '@gredice/game';
 import { test } from '@playwright/experimental-ct-react';
-import { BlockData } from '../app/blokovi/@types/BlockData';
 import { readFileSync } from 'fs';
 
 test.use({ deviceScaleFactor: 2, viewport: { width: 320 / 2, height: 320 } });

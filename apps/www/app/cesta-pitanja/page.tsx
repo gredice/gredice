@@ -17,7 +17,7 @@ export const metadata = {
 
 export default async function FaqPage() {
     const faq = await getFaqData();
-    const categories = orderBy([...new Set(faq.map((item) => item.attributes?.category?.information?.label))], (a, b) => a.localeCompare(b));
+    const categories = orderBy([...new Set(faq?.map((item) => item.attributes?.category?.information?.label))], (a, b) => a && b ? a.localeCompare(b) : 0);
 
     return (
         <Stack>
@@ -26,7 +26,7 @@ export default async function FaqPage() {
                 subHeader="Odgovaramo na sva tvoja pitanja."
                 padded />
             <Stack spacing={4}>
-                {!faq.length && (
+                {!faq?.length && (
                     <div className=" border rounded py-4 md:col-span-2">
                         <NoDataPlaceholder>
                             Nema dostupnih pitanja
@@ -37,7 +37,7 @@ export default async function FaqPage() {
                     <Stack key={category} spacing={2}>
                         <Typography level="h4">{category}</Typography>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {faq.filter((item) => item.attributes?.category?.information?.label === category).map((item) => (
+                            {faq?.filter((item) => item.attributes?.category?.information?.label === category).map((item) => (
                                 <Accordion key={item.information.name} className="h-min">
                                     <Typography className="px-3" semiBold>{item.information.header}</Typography>
                                     <Markdown className="px-3">{item.information.content}</Markdown>

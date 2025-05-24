@@ -5,11 +5,11 @@ import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import { Gallery } from "@signalco/ui/Gallery";
 import { PlantsGalleryItem } from "./PlantsGalleryItem";
 import { orderBy } from "@signalco/js";
-import { PlantData } from "../../lib/@types/PlantData";
+import { PlantData } from "@gredice/client";
 
-export function PlantsGallery({ plants }: { plants: PlantData[] }) {
+export function PlantsGallery({ plants }: { plants: PlantData[] | undefined }) {
     const [search] = useSearchParam('pretraga');
-    const filteredPlants = orderBy(plants, (a, b) => a.information.name.localeCompare(b.information.name))
+    const filteredPlants = orderBy(plants ?? [], (a, b) => a.information.name.localeCompare(b.information.name))
         .filter(plant => !search || plant.information.name.toLowerCase().includes(search.toLowerCase()))
         .map(plant => ({ ...plant, id: plant.id.toString() }));
 

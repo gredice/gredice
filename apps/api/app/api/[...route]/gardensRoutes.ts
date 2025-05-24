@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createGardenBlock, createGardenStack, deleteGardenStack, getAccountGardens, getGarden, getGardenBlocks, getGardenStack, spendSunflowers, updateGardenBlock, updateGardenStack } from '@gredice/storage';
+import { createGardenBlock, createGardenStack, deleteGardenStack, getAccountGardens, getGarden, getGardenBlocks, getGardenStack, getRaisedBed, getRaisedBeds, spendSunflowers, updateGardenBlock, updateGardenStack } from '@gredice/storage';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from 'zod';
 import { describeRoute } from 'hono-openapi';
@@ -45,31 +45,44 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const { accountId } = context.get('authContext');
-            const [garden, blockPlaceEventsRaw, blocks] = await Promise.all([
+            const [garden, /*blockPlaceEventsRaw,*/ blocks] = await Promise.all([
                 getGarden(gardenIdNumber),
-                getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 10000),
+                // getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 10000),
                 getGardenBlocks(gardenIdNumber)
             ]);
             if (!garden || garden.accountId !== accountId) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            const blockPlaceEvents = blockPlaceEventsRaw.map(event => ({
-                ...event,
-                data: event.data as { id: string, name: string }
-            }));
+            // TODO: Implement validation of block place events
+            // const blockPlaceEvents = blockPlaceEventsRaw.map(event => ({
+            //     ...event,
+            //     data: event.data as { id: string, name: string }
+            // }));
 
             // Stacks: group by x then by y
             const stacks = garden.stacks.reduce((acc, stack) => {
                 if (!acc[stack.positionX]) {
                     acc[stack.positionX] = {};
                 }
-                acc[stack.positionX][stack.positionY] = stack.blocks.map(blockId => ({
-                    id: blockId,
-                    name: blockPlaceEvents.find(event => event.data.id === blockId)?.data.name ?? 'unknown',
-                    rotation: blocks.find(block => block.id === blockId)?.rotation ?? 0,
-                    variant: blocks.find(block => block.id === blockId)?.variant
-                }));
+                acc[stack.positionX][stack.positionY] = stack.blocks.map(blockId => {
+                    const block = blocks.find(block => block.id === blockId);
+                    // const blockPlaceEvent = blockPlaceEvents.find(event => event.data.id === blockId)?.data.name;
+                    // if (!blockPlaceEvent) {
+                    //     console.warn('Block place event not found', { blockId });
+                    //     return null;
+                    // }
+                    if (!block) {
+                        console.warn('Block not found', { blockId });
+                        return null;
+                    }
+                    return ({
+                        id: blockId,
+                        name: block?.name ?? 'unknown',
+                        rotation: block?.rotation ?? 0,
+                        variant: block?.variant
+                    });
+                }).filter(Boolean).map(i => i!);
                 return acc;
             }, {} as Record<string, Record<string, { id: string, name: string, rotation?: number | null, variant?: number | null }[]>>);
 
@@ -466,7 +479,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // Check garden exists and is owned by user
             const { accountId } = context.get('authContext');
 
-            const [garden, entities] = await Promise.all([
+            const [garden, blockData] = await Promise.all([
                 getGarden(gardenIdNumber),
                 getBlockData()
             ]);
@@ -480,7 +493,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { blockName } = context.req.valid('json');
 
             // Retrieve block information (cost)
-            const block = entities.find(block => block.information.name === blockName);
+            const block = blockData.find(block => block.information.name === blockName);
             if (!block) {
                 return context.json({ error: 'Requested block not found' }, 400);
             }
@@ -574,6 +587,81 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: result.errorMessage }, result.errorStatus as ContentfulStatusCode);
             }
             return context.json(null, 200);
+        }
+    )
+    .get(
+        '/:gardenId/raised-beds',
+        describeRoute({
+            description: 'Get raised beds in a garden',
+        }),
+        zValidator(
+            "param",
+            z.object({
+                gardenId: z.string(),
+            })
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId);
+            if (isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            // Check garden exists and is owned by user
+            const { accountId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({
+                    error: 'Garden not found'
+                }, 404);
+            }
+
+            const raisedBeds = await getRaisedBeds(gardenIdNumber);
+            return context.json(raisedBeds.map(raisedBed => ({
+                id: raisedBed.id,
+                blockId: raisedBed.blockId,
+                createdAt: raisedBed.createdAt,
+                updatedAt: raisedBed.updatedAt
+            })));
+        }
+    )
+    .get(
+        '/:gardenId/raised-beds/:raisedBedId',
+        describeRoute({
+            description: 'Get raised bed information',
+        }),
+        zValidator(
+            "param",
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+            })
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId);
+            if (isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            const raisedBedIdNumber = parseInt(raisedBedId);
+            if (isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (!raisedBed || raisedBed.gardenId !== gardenIdNumber || raisedBed.accountId !== accountId) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            return context.json({
+                id: raisedBed.id,
+                blockId: raisedBed.blockId,
+                createdAt: raisedBed.createdAt,
+                updatedAt: raisedBed.updatedAt
+            });
         }
     );
 

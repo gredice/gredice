@@ -13,7 +13,7 @@ export function HoverOutline({ hovered }: { hovered?: boolean }) {
     return (
         // <Outlines thickness={3} color="white" />
         <Edges
-            linewidth={2}
+            linewidth={3}
             threshold={60} // Display edges only when the angle between two faces exceeds this value (default=15 degrees)
             color="white"
         />

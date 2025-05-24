@@ -23,6 +23,8 @@ export function CameraController({
   onAnimationStart,
   onAnimationComplete,
 }: CameraControllerProps) {
+  const endZoom = 400;
+
   const { camera } = useThree();
   const controlsRef = useGameState(state => state.orbitControls);
 
@@ -66,7 +68,7 @@ export function CameraController({
 
         animationEndPosition.current.copy(new THREE.Vector3(targetPosition[0] - 1, camera.position.y, targetPosition[2]));
         animationEndTarget.current.copy(new THREE.Vector3(...targetPosition));
-        animationEndZoom.current = 300;
+        animationEndZoom.current = endZoom;
       } else {
         console.debug('Returning to isometric view');
         animationEndPosition.current.copy(startPosition.current);

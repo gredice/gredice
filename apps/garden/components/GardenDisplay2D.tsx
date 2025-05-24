@@ -1,7 +1,7 @@
 import { HTMLAttributes } from "react";
 import { orderBy } from '@signalco/js';
 import { BlockImage } from "./BlockImage";
-import { BlockData } from "../@types/BlockData";
+import { BlockData } from "@gredice/client";
 
 export type GardenDisplay2DProps = {
     garden: {

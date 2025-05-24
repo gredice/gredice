@@ -41,6 +41,10 @@
 			"path": "packages/game"
 		},
 		{
+			"name": "📦 @gredice/js",
+			"path": "packages/js"
+		},
+		{
 			"name": "📦 @gredice/storage",
 			"path": "packages/storage"
 		},
@@ -51,6 +55,10 @@
 		{
 			"name": "📦 @gredice/transactional",
 			"path": "packages/transactional"
+		},
+		{
+			"name": "📦 @gredice/ui",
+			"path": "packages/ui"
 		}
 	],
 	"settings": {

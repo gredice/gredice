@@ -5,7 +5,7 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { cx } from "@signalco/ui-primitives/cx";
-import { PlantData } from "../../lib/@types/PlantData";
+import { PlantData } from "@gredice/client";
 
 export type PlantsGalleryItemProps =
     Pick<PlantData, 'information' | 'attributes' | 'image'> &

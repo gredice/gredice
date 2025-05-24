@@ -15,6 +15,7 @@ export type User = {
 async function currentUserFactory() {
     const response = await client().api.users.current.$get();
     if (response.status < 200 || response.status > 299) {
+        console.error('Failed to fetch current user:', response.statusText);
         return null;
     }
 

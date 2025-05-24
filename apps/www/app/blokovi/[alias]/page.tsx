@@ -4,12 +4,11 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { ListHeader } from "@signalco/ui-primitives/List";
 import { SplitView } from "@signalco/ui/SplitView";
 import { BlocksList } from "./BlocksList";
-import { BlockData } from "../@types/BlockData";
 import { BlockImage } from "../../../components/blocks/BlockImage";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { Layers, Ruler } from "@signalco/ui-icons";
-import { client } from "@gredice/client";
+import { BlockData, directoriesClient } from "@gredice/client";
 import { Markdown } from "../../../components/shared/Markdown";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
 import { Row } from "@signalco/ui-primitives/Row";
@@ -18,12 +17,8 @@ export const revalidate = 3600; // 1 hour
 export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }) {
     const { alias: aliasUnescaped } = await params;
     const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
-    const blockData = await (await client().api.directories.entities[":entityType"].$get({
-        param: {
-            entityType: "block"
-        }
-    })).json() as BlockData[];
-    const block = blockData.find((block) => block.information.label === alias);
+    const blockData = (await directoriesClient().GET('/entities/block')).data;
+    const block = blockData?.find((block) => block.information.label === alias);
     if (!block) {
         return {
             title: "Blok nije pronađen",
@@ -37,13 +32,8 @@ export async function generateMetadata({ params }: { params: Promise<{ alias: st
 }
 
 export async function generateStaticParams() {
-    const entities = await (await client().api.directories.entities[":entityType"].$get({
-        param: {
-            entityType: "block"
-        }
-    })).json() as BlockData[];
-
-    return entities.map((entity) => ({
+    const entities = (await directoriesClient().GET('/entities/block')).data;
+    return entities?.map((entity) => ({
         alias: String(entity.information.label),
     }));
 }
@@ -69,12 +59,8 @@ export default async function BlockPage({ params }: { params: Promise<{ alias: s
     }
 
     // TODO: Query API for single entities with filter on 'label' attribute
-    const blockData = await (await client().api.directories.entities[":entityType"].$get({
-        param: {
-            entityType: "block"
-        }
-    })).json() as BlockData[];
-    const entity = blockData.find((block) => block.information.label === alias);
+    const blockData = (await directoriesClient().GET('/entities/block')).data;
+    const entity = blockData?.find((block) => block.information.label === alias);
     if (!entity) {
         notFound();
     }

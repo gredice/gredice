@@ -1,4 +1,4 @@
-import { BlockData } from "../../@types/BlockData";
+import { BlockData } from "@gredice/client";
 import { useBlockData } from "../hooks/useBlockData";
 import type { Block } from "../types/Block";
 import type { Stack } from "../types/Stack";

@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import chroma from 'chroma-js';
 import { getPosition } from 'suncalc';
 import { useGameState } from '../useGameState';
-import { AmbientLight, Color, DirectionalLight, HemisphereLight, Quaternion, Vector3 } from 'three';
+import { Color, Quaternion, Vector3 } from 'three';
 import { Garden } from '../types/Garden';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { Drops } from './Rain/Drops';
@@ -64,14 +64,108 @@ export type EnvironmentProps = {
     noWeather?: boolean
 }
 
+type EnvironmentElements = {
+    background: Color,
+    ambient: {
+        intensity: number,
+    },
+    hemisphere: {
+        color: Color,
+        groundColor: Color,
+        intensity: number,
+    },
+    directionalLight: {
+        color: Color,
+        position: Vector3,
+        intensity: number,
+    },
+}
+
+function useEnvironmentElements({
+    location,
+    currentTime,
+    timeOfDay,
+    weather
+}: {
+    location: Garden['location'],
+    currentTime: Date,
+    timeOfDay: number,
+    weather: ReturnType<typeof useWeatherNow>['data']
+}) {
+    const {
+        sunPosition,
+        colors: { background, sunTemperature, hemisphereSkyColor },
+        intensities: { sun: sunIntensity },
+    } = environmentState(location, currentTime, timeOfDay);
+
+    // Directional light
+    const directionalLightColor = useRef<Color>(new Color());
+    directionalLightColor.current.setRGB(
+        sunTemperature[0] / 255,
+        sunTemperature[1] / 255,
+        sunTemperature[2] / 255,
+        'srgb');
+    const directionalLightIntensity = Math.max(0, sunIntensity * 5 - (weather?.cloudy ?? 0) * 4 - (weather?.foggy ?? 0) * 4);
+    const directionalLightPosition = sunPosition;
+
+    // Ambient light
+    const ambientIntensityOffset = 1;
+    const ambientLightIntensity = sunIntensity * (2 + Math.max(0, -(weather?.cloudy ?? 0) - (weather?.foggy ?? 0))) + ambientIntensityOffset
+
+    // Background color
+    const backgroundColor = useRef<Color>(new Color());
+    backgroundColor.current.setRGB(
+        background[0] / 255,
+        background[1] / 255,
+        background[2] / 255,
+        'srgb');
+
+    // Set background color based on weather
+    if (weather && ((weather?.cloudy ?? 0) > 0 || (weather?.foggy ?? 0) > 0)) {
+        const rainyBackground = { h: 0, s: 0, l: 0 };
+        backgroundColor.current.getHSL(rainyBackground);
+        backgroundColor.current.setHSL(
+            rainyBackground.h,
+            rainyBackground.s * (1 - Math.min(0.7, weather.cloudy + weather.foggy)),// * (weather.cloudy > 0.5 || weather.foggy > 0.5 ? 0.3 : 0.8),
+            rainyBackground.l * (1 - Math.min(0.1, weather.cloudy + weather.foggy)))// * (weather.cloudy > 0.9 ? 0.8 : (weather.cloudy > 0.4 ? 0.9 : 0.95)));
+    }
+
+    const hemisphereColor = useRef<Color>(new Color());
+    hemisphereColor.current.setRGB(
+        hemisphereSkyColor[0] / 255 * -0,
+        hemisphereSkyColor[1] / 255,
+        hemisphereSkyColor[2] / 255,
+        'srgb');
+
+    const hemisphereGroundColor = useRef<Color>(new Color());
+    hemisphereGroundColor.current.setRGB(
+        backgroundColor.current.r / 255 * 0.5,
+        backgroundColor.current.g / 255 * 0.5,
+        backgroundColor.current.b / 255 * 0.5,
+        'srgb');
+    const hemisphereIntensity = sunIntensity * 2 + 3;
+
+    return {
+        background: backgroundColor.current,
+        ambient: {
+            intensity: ambientLightIntensity,
+        },
+        hemisphere: {
+            color: hemisphereColor.current,
+            groundColor: hemisphereGroundColor.current,
+            intensity: hemisphereIntensity,
+        },
+        directionalLight: {
+            color: directionalLightColor.current,
+            position: directionalLightPosition,
+            intensity: directionalLightIntensity,
+        }
+    };
+}
+
 export function Environment({ noBackground, noSound, noWeather }: EnvironmentProps) {
     const cameraShadowSize = 20;
     const shadowMapSize = 8;
-
-    const backgroundRef = useRef<Color>(null);
-    const ambientRef = useRef<AmbientLight>(null);
-    const hemisphereRef = useRef<HemisphereLight>(null);
-    const directionalLightRef = useRef<DirectionalLight>(null);
 
     const currentTime = useGameState((state) => state.currentTime);
     const timeOfDay = useGameState((state) => state.timeOfDay);
@@ -144,66 +238,12 @@ export function Environment({ noBackground, noSound, noWeather }: EnvironmentPro
         };
     }, [timeOfDay, weather, overrideWeather, noSound]);
 
-    useEffect(() => {
-        const {
-            sunPosition,
-            colors: { background: backgroundColor, sunTemperature, hemisphereSkyColor },
-            intensities: { sun: sunIntensity },
-        } = environmentState(location, currentTime, timeOfDay);
-
-        if (directionalLightRef.current) {
-            directionalLightRef.current.intensity = sunIntensity * 5;
-            if (weather && ((weather?.cloudy ?? 0) > 0 || (weather?.foggy ?? 0) > 0)) {
-                directionalLightRef.current.intensity = weather.cloudy > 0.5 || weather.foggy > 0.5
-                    ? sunIntensity / Math.max(weather.cloudy, weather.foggy) / 3
-                    : sunIntensity * 3;
-            }
-        }
-        if (ambientRef.current) {
-            const intensityOffset = 1;
-            ambientRef.current.intensity = sunIntensity * 2 + intensityOffset;
-            if (weather && ((weather?.cloudy ?? 0) > 0 || (weather?.foggy ?? 0) > 0)) {
-                ambientRef.current.intensity = sunIntensity * 2 + intensityOffset;
-            }
-        }
-
-        directionalLightRef.current?.color.setRGB(
-            sunTemperature[0] / 255,
-            sunTemperature[1] / 255,
-            sunTemperature[2] / 255,
-            'srgb');
-        directionalLightRef.current?.position.copy(sunPosition);
-
-        backgroundRef.current?.setRGB(
-            backgroundColor[0] / 255,
-            backgroundColor[1] / 255,
-            backgroundColor[2] / 255,
-            'srgb');
-
-        // Set background color based on weather
-        if (weather && ((weather?.cloudy ?? 0) > 0 || (weather?.foggy ?? 0) > 0)) {
-            const rainyBackground = { h: 0, s: 0, l: 0 };
-            backgroundRef.current?.getHSL(rainyBackground);
-            backgroundRef.current?.setHSL(
-                rainyBackground.h,
-                rainyBackground.s * (weather.cloudy > 0.5 || weather.foggy > 0.5 ? 0.3 : 0.8),
-                rainyBackground.l * (weather.cloudy > 0.9 ? 0.8 : (weather.cloudy > 0.4 ? 0.9 : 0.95)));
-        }
-
-        hemisphereRef.current?.color.setRGB(
-            hemisphereSkyColor[0] / 255 * -0,
-            hemisphereSkyColor[1] / 255,
-            hemisphereSkyColor[2] / 255,
-            'srgb');
-        hemisphereRef.current?.groundColor.setRGB(
-            backgroundColor[0] / 255 * 0.5,
-            backgroundColor[1] / 255 * 0.5,
-            backgroundColor[2] / 255 * 0.5,
-            'srgb');
-        if (hemisphereRef.current) {
-            hemisphereRef.current.intensity = sunIntensity * 2 + 3;
-        }
-    }, [currentTime, timeOfDay, weather]);
+    const { background, ambient, hemisphere, directionalLight } = useEnvironmentElements({
+        location,
+        currentTime,
+        timeOfDay,
+        weather
+    });
 
     // Handle fog
     const fog = weather?.foggy ?? 0;
@@ -222,12 +262,24 @@ export function Environment({ noBackground, noSound, noWeather }: EnvironmentPro
 
     return (
         <>
-            {!noBackground && <color ref={backgroundRef} attach="background" args={[0, 0, 0]} />}
-            <ambientLight ref={ambientRef} />
-            <hemisphereLight ref={hemisphereRef} position={[0, 1, 0]} intensity={3} />
+            {!noBackground && (
+                <color
+                    attach="background"
+                    args={[background.r, background.g, background.b]} />
+            )}
+            <ambientLight
+                intensity={ambient.intensity}
+            />
+            <hemisphereLight
+                position={[0, 1, 0]}
+                color={hemisphere.color}
+                groundColor={hemisphere.groundColor}
+                intensity={hemisphere.intensity} />
             {/* TODO: Update shadow camera position based on camera position */}
             <directionalLight
-                ref={directionalLightRef}
+                intensity={directionalLight.intensity}
+                color={directionalLight.color}
+                position={directionalLight.position}
                 shadow-mapSize={shadowMapSize * 1024}
                 // shadow-near={0.01}
                 // shadow-far={1000}
