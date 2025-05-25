@@ -10,7 +10,7 @@
     "./server": "./src/lib/server/index.ts"
   },
   "devDependencies": {
-    "@types/node": "22.15.18",
+    "@types/node": "22.15.20",
     "@types/react": "19.1.4"
   },
   "dependencies": {
