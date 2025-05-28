@@ -753,8 +753,8 @@ importers:
         specifier: 0.176.0
         version: 0.176.0
       three-custom-shader-material:
-        specifier: 6.3.6
-        version: 6.3.6(@react-three/fiber@9.1.2(@types/react@19.1.5)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(three@0.176.0))(react@19.1.0)(three@0.176.0)
+        specifier: 6.3.7
+        version: 6.3.7(@react-three/fiber@9.1.2(@types/react@19.1.5)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(three@0.176.0))(react@19.1.0)(three@0.176.0)
       three-stdlib:
         specifier: 2.36.0
         version: 2.36.0(three@0.176.0)
@@ -7012,8 +7012,8 @@ packages:
   thenify@3.3.1:
     resolution: {integrity: sha512-RVZSIV5IG10Hk3enotrhvz0T9em6cyHBLkH/YAZuKqd8hRkKhSfCGIcP2KUY0EPxndzANBmNllzWPwak+bheSw==}
 
-  three-custom-shader-material@6.3.6:
-    resolution: {integrity: sha512-oEw+xB8O7ixqyCWJEO9/dm/cDARENyatdxsTDG578LohSQioN3Y+nftl2ijhWUSTPRTPW1GVi+9HJOQXKIXD9A==}
+  three-custom-shader-material@6.3.7:
+    resolution: {integrity: sha512-u+REZFLqjCTFgKrBu9nFomwcmLwGkuz//Hk8NezXBnC1rVb+0knyxsoFisoltQRJLg4CoB0pJda9iYItlX4IuQ==}
     peerDependencies:
       '@react-three/fiber': '>=8.0'
       react: '>=18.0'
@@ -15339,7 +15339,7 @@ snapshots:
     dependencies:
       any-promise: 1.3.0
 
-  three-custom-shader-material@6.3.6(@react-three/fiber@9.1.2(@types/react@19.1.5)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(three@0.176.0))(react@19.1.0)(three@0.176.0):
+  three-custom-shader-material@6.3.7(@react-three/fiber@9.1.2(@types/react@19.1.5)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(three@0.176.0))(react@19.1.0)(three@0.176.0):
     dependencies:
       three: 0.176.0
     optionalDependencies:
