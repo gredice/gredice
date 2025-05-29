@@ -80,9 +80,7 @@ export function EntityFactory({ name, stack, block, noControl, enableSelection, 
                 stack={stack}
                 block={block}
                 noControl={noControl}>
-                <RotatableGroup
-                    stack={stack}
-                    block={block}>
+                <RotatableGroup block={block}>
                     <EntityComponent
                         stack={stack}
                         block={block}
