@@ -10,7 +10,6 @@ import { Alert } from "@signalco/ui/Alert";
 import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
 import { Skeleton } from "@signalco/ui-primitives/Skeleton";
 import { ListItem } from "@signalco/ui-primitives/ListItem";
-import { Sprout } from "@signalco/ui-icons";
 
 export function PlantPicker({ trigger }: { trigger: ReactElement }) {
     const { data: plants, isLoading, isError } = usePlants();
@@ -20,7 +19,10 @@ export function PlantPicker({ trigger }: { trigger: ReactElement }) {
         : plants;
 
     return (
-        <Modal trigger={trigger} title={"Odabir biljke"} className="z-[99999999]">
+        <Modal
+            trigger={trigger}
+            title={"Odabir biljke"}
+            className="z-[99999999] md:border-tertiary md:border-b-4">
             <Stack spacing={2}>
                 <Stack>
                     <Typography level="h3" className="text-xl">
@@ -63,9 +65,6 @@ export function PlantPicker({ trigger }: { trigger: ReactElement }) {
                                     <Typography level="body1">{plant.information.name}</Typography>
                                     <Typography level="body2" className="font-normal line-clamp-2 break-words">{plant.information.description}</Typography>
                                 </Stack>
-                            )}
-                            endDecorator={(
-                                <Sprout className="size-4" />
                             )}
                         />
                     ))}

@@ -44,7 +44,7 @@ export function VerifyEmail() {
             console.error('Failed to verify email with status', response.status);
             setError('Neuspješna potvrda email adrese. Pokušaj ponovno.');
         })();
-    }, [router, token]);
+    }, [router, token, queryClient]);
 
     if (error) {
         return (

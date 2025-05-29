@@ -24,7 +24,7 @@ export function EmailPasswordForm({
         if (registration && typeof passwordsMatch === 'boolean') {
             setPasswordsMatch(password === repeatPassword)
         }
-    }, [password, repeatPassword, registration])
+    }, [password, repeatPassword, registration, passwordsMatch])
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault()
