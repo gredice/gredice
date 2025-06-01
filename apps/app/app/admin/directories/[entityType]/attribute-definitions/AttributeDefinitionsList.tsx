@@ -3,7 +3,7 @@ import { Card } from "@signalco/ui-primitives/Card";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Bookmark, BookA, Binary, FontType, ToggleRight, Hash, File } from "@signalco/ui-icons";
+import { Bookmark, BookA, Binary, FontType, ToggleRight, Hash, File, Tally3 } from "@signalco/ui-icons";
 import { NoDataPlaceholder } from "../../../../../components/shared/placeholders/NoDataPlaceholder";
 import { KnownPages } from "../../../../../src/KnownPages";
 import { SplitView } from "@signalco/ui/SplitView";
@@ -20,6 +20,7 @@ function AttributeDataTypeIcon({ dataType, ...rest }: { dataType: string } & HTM
         case 'text': return <FontType {...rest} />;
         case 'number': return <Hash {...rest} />;
         case 'boolean': return <ToggleRight {...rest} />;
+        case 'barcode': return <Tally3 {...rest} />;
         case 'markdown': return (
             <svg
                 xmlns="http://www.w3.org/2000/svg"

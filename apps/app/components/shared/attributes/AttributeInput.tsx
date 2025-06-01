@@ -13,6 +13,7 @@ import { handleValueSave, handleValueDelete } from '../../../app/(actions)/entit
 import { ComponentType } from 'react';
 import { AttributeInputProps } from './AttributeInputProps';
 import { SelectEntity } from './typed/SelectEntity';
+import { BarcodeInput } from './typed/BarcodeInput';
 
 const MarkdownInput = dynamic(() => import('./typed/MarkdownInput').then(mod => ({
     default: mod.MarkdownInput
@@ -63,6 +64,8 @@ export function AttributeInput({
         AttributeInputComponent = MarkdownInput;
     } else if (attributeDefinition.dataType === 'number') {
         AttributeInputComponent = NumberInput;
+    } else if (attributeDefinition.dataType === 'barcode') {
+        AttributeInputComponent = BarcodeInput;
     } else if (attributeDefinition.dataType.startsWith('json')) {
         AttributeInputComponent = JsonInput;
         // Extract schema from json|{schema} string
