@@ -156,8 +156,8 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                                     navigateHref={KnownPages.RaisedBeds}
                                     navigateLabel="Više o gredicama"
                                 />
-                                <AttributeCard icon={<Sprout />} header="Cijena po biljci" value={`${pricePerPlant} EUR`} />
-                                <AttributeCard icon={<Euro />} header="Cijena za sadnju" value={`${plant.prices.perPlant.toFixed(2)} EUR`} />
+                                {pricePerPlant && <AttributeCard icon={<Sprout />} header="Cijena po biljci" value={`${pricePerPlant} EUR`} />}
+                                {plant.prices?.perPlant && <AttributeCard icon={<Euro />} header="Cijena za sadnju" value={`${plant.prices.perPlant.toFixed(2)} EUR`} />}
                             </div>
                             <FeedbackModal
                                 topic="www/plants/attributes"

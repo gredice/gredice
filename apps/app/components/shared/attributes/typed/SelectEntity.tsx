@@ -3,7 +3,6 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { useEffect, useState } from 'react';
 import { getEntities } from '../actions/entitiesActions';
 
-
 export function SelectEntity({ value, onChange, attributeDefinition }: AttributeInputProps) {
     const entityTypeName = attributeDefinition?.dataType.split(':')[1];
     const [entities, setEntities] = useState<Awaited<ReturnType<typeof getEntities>>>();
