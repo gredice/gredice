@@ -10,6 +10,7 @@ import { NumberInput } from './NumberInput';
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import { unwrapSchema } from '@gredice/js/jsonSchema';
+import { BarcodeInput } from './BarcodeInput';
 
 const MarkdownInput = dynamic(() => import('./MarkdownInput').then(mod => ({
     default: mod.MarkdownInput
@@ -41,6 +42,8 @@ export function JsonInput({ value, onChange, schema }: AttributeInputProps) {
                         InputComponent = BooleanInput;
                     } else if (schemaUnwrapped[key] === 'markdown') {
                         InputComponent = MarkdownInput;
+                    } else if (schemaUnwrapped[key] === 'barcode') {
+                        InputComponent = BarcodeInput;
                     } else if (typeof schemaUnwrapped[key] === 'object') {
                         InputComponent = JsonInput;
                     } else {

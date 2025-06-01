@@ -19,6 +19,7 @@ function resolveJsonPropertyData(schema: string) {
                         properties[key] = { type: 'boolean' };
                         break;
                     case 'text':
+                    case 'barcode':
                     case 'markdown':
                     case 'string':
                         properties[key] = { type: 'string' };
