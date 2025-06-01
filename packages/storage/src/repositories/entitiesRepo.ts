@@ -51,6 +51,18 @@ async function expandValue(value: string | null | undefined, attributeDefinition
     else if (attributeDefinition.dataType.startsWith('json')) {
         return JSON.parse(value);
     }
+    else if (attributeDefinition.dataType === 'image') {
+        // Assuming the value is a URL or path to the image
+        const data = JSON.parse(value) as unknown;
+        let url = '';
+        if (typeof data === 'object' && data !== null && 'url' in data && typeof data.url === 'string') {
+            url = data.url;
+        }
+        return {
+            url,
+            // TODO: Alt, image size, etc. can be added here
+        } as const;
+    }
     else {
         return value;
     }
