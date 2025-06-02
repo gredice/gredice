@@ -1,15 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-export function useNotifications(userId?: string, read?: boolean) {
+export function useNotifications(userId: string, read?: boolean) {
   return useQuery({
     queryKey: ['notifications', userId, read],
     queryFn: async () => {
-      if (!userId) return [];
       const params = new URLSearchParams({ userId });
       if (read !== undefined) params.append('read', String(read));
       const res = await fetch(`/api/notifications?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch notifications');
-      return await res.json();
+      return res.json();
     },
     enabled: !!userId,
   });
