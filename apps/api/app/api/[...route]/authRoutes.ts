@@ -282,6 +282,11 @@ const app = new Hono()
 
             // Helper to log in and respond
             async function loginAndRespond(alreadyVerified: boolean = false) {
+                if (!user || !userLogin) {
+                    console.debug('User or user login not found', email);
+                    throw new Error('User or user login not found');
+                }
+
                 const jwtToken = await createJwt(user.id);
                 await Promise.all([
                     setCookie(context, jwtToken),
@@ -308,7 +313,7 @@ const app = new Hono()
                 ctaUrl: 'https://vrt.gredice.com'
             });
 
-            return await loginAndRespond(false);
+            return loginAndRespond(false);
         });
 
 export default app;
