@@ -13,3 +13,4 @@ export * from './repositories/analyticsRepo';
 export * from './repositories/feedbacksRepo';
 export * from './repositories/transactionsRepo';
 export * from './repositories/shoppingCartRepo';
+export * from './repositories/notificationsRepo';
