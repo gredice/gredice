@@ -270,7 +270,7 @@ const app = new Hono()
                 }, { status: 400 });
             }
 
-            // Set email as verified
+            // Set email as verified (idempotent)
             const userLogin = user.usersLogins.find(login => login.loginId === email && login.loginType === 'password');
             if (!userLogin) {
                 console.debug('User login not found', email);
@@ -278,8 +278,32 @@ const app = new Hono()
                     error: 'Token is invalid'
                 }, { status: 400 });
             }
+            const loginData = JSON.parse(userLogin.loginData);
+
+            // Helper to log in and respond
+            async function loginAndRespond(alreadyVerified: boolean = false) {
+                if (!user || !userLogin) {
+                    console.debug('User or user login not found', email);
+                    throw new Error('User or user login not found');
+                }
+
+                const jwtToken = await createJwt(user.id);
+                await Promise.all([
+                    setCookie(context, jwtToken),
+                    loginSuccessful(userLogin.id)
+                ]);
+                return context.json({
+                    token: jwtToken,
+                    ...(alreadyVerified ? { alreadyVerified: true } : {})
+                });
+            }
+
+            if (loginData.isVerified === true) {
+                // Already verified
+                return await loginAndRespond(true);
+            }
             await updateLoginData(userLogin.id, {
-                ...JSON.parse(userLogin.loginData),
+                ...loginData,
                 isVerified: true
             });
 
@@ -289,15 +313,7 @@ const app = new Hono()
                 ctaUrl: 'https://vrt.gredice.com'
             });
 
-            const jwtToken = await createJwt(user.id);
-            await Promise.all([
-                setCookie(context, jwtToken),
-                loginSuccessful(userLogin.id)
-            ]);
-
-            return context.json({
-                token: jwtToken
-            });
+            return loginAndRespond(false);
         });
 
 export default app;
