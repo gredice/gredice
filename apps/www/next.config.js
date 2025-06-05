@@ -6,6 +6,7 @@ const nextConfig = {
     experimental: {
         reactCompiler: true,
     },
+    expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
     images: {
         remotePatterns: [
             {
@@ -16,12 +17,7 @@ const nextConfig = {
             },
         ]
     },
-    productionBrowserSourceMaps: true,
-    logging: {
-        fetches: {
-            fullUrl: true
-        }
-    }
+    productionBrowserSourceMaps: true
 };
 
 const withVercelToolbar = vercelToolbar();
