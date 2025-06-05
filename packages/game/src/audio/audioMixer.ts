@@ -91,14 +91,7 @@ function useMusic(handler: mixerManagerHandler, context: AudioContext, config: {
                 return;
             }
 
-            // Always stop previous node before starting a new one
-            if (node.current) {
-                node.current.stop();
-                node.current.disconnect();
-                node.current = null;
-            }
-
-            // Don't start new if parallel is not allowed and one is already playing (should not happen now)
+            // Don't start new if already playing and parallel is not allowed
             if (!config.allowParallel && node.current) {
                 return;
             }
