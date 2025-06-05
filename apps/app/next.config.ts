@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
             bodySizeLimit: '10mb'
         }
     },
+    expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
     images: {
         remotePatterns: [
             {

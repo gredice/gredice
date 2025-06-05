@@ -6,10 +6,12 @@ import { Input } from "@signalco/ui-primitives/Input";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
+import { auth } from "../../../../../lib/auth/auth";
 
 export function CreateAttributeDefinitionCategoryButton({ entityTypeName }: { entityTypeName: string }) {
     async function submitForm(formData: FormData) {
         'use server';
+        await auth(['admin']);
 
         const name = formData.get('name') as string;
         const label = formData.get('label') as string;
