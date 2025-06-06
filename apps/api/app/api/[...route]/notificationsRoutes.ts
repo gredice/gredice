@@ -40,7 +40,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { id } = c.req.valid('param');
             const { readWhere } = c.req.valid('json');
             if (!id || !readWhere) return c.json({ error: 'Missing id or readWhere' }, 400);
-            await markNotificationRead(Number(id), readWhere);
+            await markNotificationRead(id, readWhere);
             return c.json({ success: true });
         }
     );

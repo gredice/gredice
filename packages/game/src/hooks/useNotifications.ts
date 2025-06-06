@@ -1,3 +1,4 @@
+import { client } from '@gredice/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function useNotifications(userId?: string, read?: boolean) {
@@ -5,11 +6,13 @@ export function useNotifications(userId?: string, read?: boolean) {
     queryKey: ['notifications', userId, read],
     queryFn: async () => {
       if (!userId) return [];
-      const params = new URLSearchParams({ userId });
-      if (read !== undefined) params.append('read', String(read));
-      const res = await fetch(`/api/notifications?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to fetch notifications');
-      return await res.json();
+      const response = await client().api.notifications.$get({
+        query: {
+          userId,
+          read: read ? "true" : undefined,
+        }
+      });
+      return await response.json();
     },
     enabled: !!userId,
   });
@@ -19,16 +22,18 @@ export function useMarkNotificationRead() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, readWhere }: { id: number; readWhere: string }) => {
-      const res = await fetch('/api/notifications', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, readWhere }),
+      const res = await client().api.notifications.$post({
+        body: {
+          id,
+          readWhere,
+        }
       });
-      if (!res.ok) throw new Error('Failed to mark notification as read');
+      if (!res.ok)
+        throw new Error('Failed to mark notification as read');
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    onSuccess: (id) => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', id] });
     },
   });
 }
