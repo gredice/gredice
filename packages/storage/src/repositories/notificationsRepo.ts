@@ -1,16 +1,23 @@
-import { and, eq } from 'drizzle-orm';
-import { notifications, InsertNotification, UpdateNotification, SelectNotification } from '../schema';
+import { and, eq, isNotNull } from 'drizzle-orm';
+import { notifications, InsertNotification, SelectNotification } from '../schema';
 import { storage } from '..';
+import { randomUUID } from 'node:crypto';
 
-export function createNotification(notification: InsertNotification) {
-    return storage.insert(notifications).values(notification);
+export async function createNotification(notification: InsertNotification) {
+    const result = await storage.insert(notifications).values({
+        id: randomUUID(),
+        ...notification
+    }).returning({ id: notifications.id });
+    return result[0].id;
 }
 
 export function getNotificationsByUser(userId: string, read?: boolean): Promise<SelectNotification[]> {
     return storage.query.notifications.findMany({
         where: read === undefined
             ? eq(notifications.userId, userId)
-            : and(eq(notifications.userId, userId), eq(notifications.read, read)),
+            : and(
+                eq(notifications.userId, userId),
+                isNotNull(notifications.readAt)),
         orderBy: notifications.createdAt,
     });
 }
@@ -19,19 +26,21 @@ export function getNotificationsByAccount(accountId: string, read?: boolean): Pr
     return storage.query.notifications.findMany({
         where: read === undefined
             ? eq(notifications.accountId, accountId)
-            : and(eq(notifications.accountId, accountId), eq(notifications.read, read)),
+            : and(
+                eq(notifications.accountId, accountId),
+                isNotNull(notifications.readAt)),
         orderBy: notifications.createdAt,
     });
 }
 
-export function markNotificationRead(id: number, readWhere: string) {
+export function markNotificationRead(id: string, readWhere: string) {
     return storage.update(notifications)
-        .set({ read: true, readWhere })
+        .set({ readAt: new Date(), readWhere })
         .where(eq(notifications.id, id));
 }
 
 export function markAllNotificationsRead(userId: string, readWhere: string) {
     return storage.update(notifications)
-        .set({ read: true, readWhere })
-        .where(and(eq(notifications.userId, userId), eq(notifications.read, false)));
+        .set({ readAt: new Date(), readWhere })
+        .where(and(eq(notifications.userId, userId), isNotNull(notifications.readAt)));
 }

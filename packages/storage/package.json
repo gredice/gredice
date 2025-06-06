@@ -11,14 +11,21 @@
     "scripts": {
         "generate": "drizzle-kit generate",
         "migrate": "tsx --env-file=.env ./src/migrate.ts",
-        "studio": "drizzle-kit studio"
+        "studio": "drizzle-kit studio",
+        "test": "pnpm run test:node",
+        "test:db:start": "zsh ./tests/startTestDb.sh",
+        "test:db:migrate": "tsx --env-file=.env.test --conditions=react-server ./src/migrate.ts",
+        "test:db:stop": "zsh ./tests/stopTestDb.sh",
+        "test:node": "pnpm run test:db:start && pnpm run test:db:migrate && tsx --test --env-file=.env.test --conditions=react-server ./tests/**/*.node.spec.ts && pnpm run test:db:stop"
     },
     "devDependencies": {
+        "@neondatabase/serverless": "1.0.1",
         "@signalco/js": "0.1.0",
-        "@vercel/postgres": "0.10.0",
+        "dotenv": "16.5.0",
         "drizzle-kit": "0.31.1",
         "drizzle-orm": "0.44.1",
         "openapi-types": "12.1.3",
+        "pg": "8.16.0",
         "server-only": "0.0.1",
         "tsx": "4.19.4",
         "typescript": "5.8.3",

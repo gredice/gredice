@@ -9,7 +9,11 @@ export async function createGarden(garden: InsertGarden) {
     const createdGarden = (await storage
         .insert(gardens)
         .values(garden)
-        .returning({ id: gardens.id, name: gardens.name, accountId: gardens.accountId }))[0];
+        .returning({
+            id: gardens.id,
+            name: gardens.name,
+            accountId: gardens.accountId
+        }))[0];
     if (!createdGarden) {
         throw new Error('Failed to create garden');
     }
@@ -21,7 +25,7 @@ export async function createGarden(garden: InsertGarden) {
             accountId: createdGarden.accountId
         }));
 
-    return createdGarden;
+    return createdGarden.id;
 }
 
 export async function getGardens() {

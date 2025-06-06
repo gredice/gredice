@@ -2,6 +2,7 @@ import 'server-only';
 import { accounts, accountUsers, storage } from "..";
 import { desc, eq } from 'drizzle-orm';
 import { createEvent, getEvents, knownEvents, knownEventTypes } from './eventsRepo';
+import { randomUUID } from 'node:crypto';
 
 export function getAccounts() {
     return storage.query.accounts.findMany({
@@ -22,6 +23,24 @@ export function getAccountUsers(accountId: string) {
             user: true
         }
     });
+}
+
+export async function createAccount() {
+    const account = storage
+        .insert(accounts)
+        .values({
+            id: randomUUID(),
+        })
+        .returning({ id: accounts.id });
+    const accountId = (await account)[0].id;
+    if (!accountId) {
+        throw new Error('Failed to create account');
+    }
+
+    await createEvent(knownEvents.accounts.createdV1(accountId));
+    await earnSunflowers(accountId, 1000, 'registration');
+
+    return accountId;
 }
 
 export async function assignStripeCustomerId(accountId: string, stripeCustomerId: string) {

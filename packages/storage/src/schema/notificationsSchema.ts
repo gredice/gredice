@@ -1,22 +1,50 @@
-import { pgTable, serial, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, boolean, index, integer } from "drizzle-orm/pg-core";
 import { accounts, users } from "./usersSchema";
+import { gardenBlocks, gardens } from "./gardenSchema";
+import { relations } from "drizzle-orm";
 
 export const notifications = pgTable('notifications', {
-    id: serial('id').primaryKey(),
+    id: text('id').primaryKey(),
     header: text('header').notNull(),
     content: text('content').notNull(), // markdown content
-    image: text('image'),
-    userId: text('user_id').references(() => users.id),
-    accountId: text('account_id').references(() => accounts.id),
-    read: boolean('read').notNull().default(false),
+    imageUrl: text('image'),
+    linkUrl: text('link_url'), // optional link to more details
+    accountId: text('account_id').notNull().references(() => accounts.id),
+    userId: text('user_id').references(() => users.id), // optional, for user-specific notifications
+    gardenId: integer('garden_id').references(() => gardens.id), // optional, for garden-specific notifications
+    blockId: text('block_id').references(() => gardenBlocks.id), // optional, for block-specific notifications
+    readAt: timestamp('read_at'), // null if not read
     readWhere: text('read_where'), // e.g. 'web', 'mobile', ...
     createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => [
-    index('notifications_user_id_idx').on(table.userId),
     index('notifications_account_id_idx').on(table.accountId),
-    index('notifications_read_idx').on(table.read),
+    index('notifications_user_id_idx').on(table.userId),
+    index('notifications_readAt_idx').on(table.readAt),
     index('notifications_created_at_idx').on(table.createdAt),
 ]);
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+    account: one(accounts, {
+        fields: [notifications.accountId],
+        references: [accounts.id],
+        relationName: 'notificationsAccount',
+    }),
+    user: one(users, {
+        fields: [notifications.userId],
+        references: [users.id],
+        relationName: 'notificationsUser',
+    }),
+    garden: one(gardens, {
+        fields: [notifications.gardenId],
+        references: [gardens.id],
+        relationName: 'notificationsGarden',
+    }),
+    block: one(gardenBlocks, {
+        fields: [notifications.blockId],
+        references: [gardenBlocks.id],
+        relationName: 'notificationsBlock',
+    }),
+}));
 
 export type InsertNotification = Omit<typeof notifications.$inferInsert, 'id' | 'createdAt'>;
 export type UpdateNotification = Partial<Omit<typeof notifications.$inferInsert, 'id' | 'createdAt'>> & { id: number };

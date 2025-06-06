@@ -15,7 +15,10 @@ export async function getOrCreateShoppingCart(accountId: string, expiresAt?: Dat
 
     const createdCart = (await storage
         .insert(shoppingCarts)
-        .values({ accountId, expiresAt: expiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) })
+        .values({
+            accountId,
+            expiresAt: expiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        })
         .returning({
             id: shoppingCarts.id
         }))[0];
