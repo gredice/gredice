@@ -4,11 +4,11 @@ import { storage } from "../storage";
 import { entityTypes, InsertEntityType, UpdateEntityType } from '../schema';
 
 export function getEntityTypes() {
-    return storage.select().from(entityTypes).orderBy(entityTypes.order);
+    return storage().select().from(entityTypes).orderBy(entityTypes.order);
 }
 
 export function getEntityTypeByName(entityTypeName: string) {
-    return storage.query.entityTypes.findFirst({
+    return storage().query.entityTypes.findFirst({
         where: and(eq(entityTypes.name, entityTypeName), eq(entityTypes.isDeleted, false)),
     });
 }
@@ -19,12 +19,12 @@ export async function upsertEntityType(value: InsertEntityType | UpdateEntityTyp
             throw new Error('Entity type id is required');
         }
 
-        await storage
+        await storage()
             .update(entityTypes)
             .set({ ...value })
             .where(eq(entityTypes.id, value.id));
     } else {
-        await storage
+        await storage()
             .insert(entityTypes)
             .values(value)
             .onConflictDoUpdate({
@@ -37,7 +37,7 @@ export async function upsertEntityType(value: InsertEntityType | UpdateEntityTyp
 }
 
 export function deleteEntityType(id: number) {
-    return storage
+    return storage()
         .update(entityTypes)
         .set({ isDeleted: true })
         .where(eq(entityTypes.id, id));

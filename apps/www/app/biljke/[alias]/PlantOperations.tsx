@@ -11,6 +11,7 @@ import { NavigatingButton } from "@signalco/ui/NavigatingButton";
 import { KnownPages } from "../../../src/KnownPages";
 import { Euro, Hammer, Info } from "@signalco/ui-icons";
 import { OperationData } from "../../../lib/plants/getOperationsData";
+import { PlantData } from "@gredice/client";
 
 function operationFrequencyLabel(frequency: string) {
     switch (frequency) {
@@ -33,7 +34,7 @@ function operationFrequencyLabel(frequency: string) {
     }
 }
 
-function OperationImage({ operation }: { operation: OperationData }) {
+function OperationImage({ operation }: { operation: Partial<Pick<OperationData, "image" | "information">> }) {
     if (!operation.image?.cover?.url) {
         return (
             <Hammer className="size-[32px] min-w-[32px]" />
@@ -50,46 +51,46 @@ function OperationImage({ operation }: { operation: OperationData }) {
                 width: '32px',
                 height: '32px'
             }}
-            alt={operation.information.label} />
+            alt={operation.information?.label ?? "Slika operacije"} />
     );
 }
 
-export function PlantOperations({ operations }: { operations?: OperationData[] }) {
+export function PlantOperations({ operations }: { operations?: PlantData["information"]["operations"] }) {
     const orderedOperations = operations?.sort((a, b) => {
-        if (a.attributes.relativeDays == null && b.attributes.relativeDays == null) return 0;
-        if (a.attributes.relativeDays == null) return 1;
-        if (b.attributes.relativeDays == null) return -1;
+        if (a.attributes?.relativeDays == null && b.attributes?.relativeDays == null) return 0;
+        if (a.attributes?.relativeDays == null) return 1;
+        if (b.attributes?.relativeDays == null) return -1;
         return a.attributes.relativeDays - b.attributes.relativeDays;
     });
 
     return (
         <Stack spacing={1}>
-            {orderedOperations?.map((operation) => (
-                <div key={operation.information.name} className="flex flex-col md:flex-row md:items-center group gap-x-4">
+            {orderedOperations?.map((operation, operationIndex) => (
+                <div key={operation.information?.name ?? operationIndex} className="flex flex-col md:flex-row md:items-center group gap-x-4">
                     {/* TODO: Extract insutrction card */}
                     <Card className="flex-grow">
                         <CardContent className="py-0 pl-3 pr-0 flex items-center justify-between">
                             <Row spacing={2}>
                                 <OperationImage operation={operation} />
                                 <div>
-                                    <h3 className="font-semibold">{operation.information.label}</h3>
-                                    {operation.attributes.frequency && (
+                                    <h3 className="font-semibold">{operation.information?.label}</h3>
+                                    {operation.attributes?.frequency && (
                                         <p className="text-sm text-muted-foreground">{operationFrequencyLabel(operation.attributes.frequency)}</p>
                                     )}
                                 </div>
                             </Row>
                             <Row spacing={1}>
                                 <span>
-                                    {operation.prices.perOperation.toFixed(2)}€
+                                    {operation.prices?.perOperation.toFixed(2)}€
                                 </span>
                                 <Modal
-                                    title={operation.information.label}
+                                    title={operation.information?.label ?? 'Informacije o operaciji'}
                                     className="border border-tertiary border-b-4 max-w-xl"
                                     trigger={(
                                         <IconButton
                                             size="lg"
                                             variant="plain"
-                                            aria-label={`Više informacija o ${operation.information.label}`}
+                                            aria-label={`Više informacija o ${operation.information?.label}`}
                                         >
                                             <Info />
                                         </IconButton>
@@ -98,11 +99,11 @@ export function PlantOperations({ operations }: { operations?: OperationData[] }
                                         <Row spacing={2}>
                                             <OperationImage operation={operation} />
                                             <Stack spacing={1}>
-                                                <Typography level="h4">{operation.information.label}</Typography>
-                                                <p>{operation.information.shortDescription}</p>
+                                                <Typography level="h4">{operation.information?.label}</Typography>
+                                                <p>{operation.information?.shortDescription}</p>
                                             </Stack>
                                         </Row>
-                                        {Boolean(operation.information.description) && (
+                                        {operation.information?.description && (
                                             <Card>
                                                 <CardContent>
                                                     <Markdown>{operation.information.description}</Markdown>
@@ -110,7 +111,7 @@ export function PlantOperations({ operations }: { operations?: OperationData[] }
                                             </Card>
                                         )}
                                         <div className="grid grid-cols-2 gap-2">
-                                            <AttributeCard header="Cijena" icon={<Euro />} value={operation.prices.perOperation.toFixed(2)} />
+                                            <AttributeCard header="Cijena" icon={<Euro />} value={operation.prices?.perOperation.toFixed(2)} />
                                         </div>
                                         <NavigatingButton
                                             href={KnownPages.GardenApp}

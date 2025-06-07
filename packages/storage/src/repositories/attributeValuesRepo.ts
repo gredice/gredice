@@ -13,7 +13,7 @@ export async function upsertAttributeValue(value: InsertAttributeValue) {
         }
     }
 
-    return await storage
+    return await storage()
         .insert(attributeValues)
         .values(value)
         .onConflictDoUpdate({
@@ -26,7 +26,7 @@ export async function upsertAttributeValue(value: InsertAttributeValue) {
 }
 
 export function deleteAttributeValue(id: number) {
-    return storage
+    return storage()
         .update(attributeValues)
         .set({ isDeleted: true })
         .where(eq(attributeValues.id, id));

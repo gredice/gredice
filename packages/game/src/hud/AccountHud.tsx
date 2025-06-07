@@ -13,14 +13,16 @@ import { NoNotificationsPlaceholder } from "../shared-ui/NoNotificationsPlacehol
 import { useCurrentGarden } from "../hooks/useCurrentGarden";
 import { ProfileInfo } from "../shared-ui/ProfileInfo";
 import { ProfileAvatar } from "../shared-ui/ProfileAvatar";
-import { useNotifications } from "../hooks/useNotifications";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 import { Skeleton } from "@signalco/ui-primitives/Skeleton";
 import { KnownPages } from "../knownPages";
 import { Check, User, Inbox, ExternalLink, Approved, Configuration, Sprout, LogOut } from "@signalco/ui-icons";
+import { useNotifications } from "../hooks/useNotifications";
 
 function NotificationsCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
-    const notifications = useNotifications();
+    const { data: currentUser } = useCurrentUser();
+    const notifications = useNotifications(currentUser?.id, false);
 
     return (
         <Stack>
@@ -30,17 +32,17 @@ function NotificationsCard() {
                     variant="plain"
                     size="sm"
                     title="Označi sve kao pročitane"
-                    disabled={!notifications.data.notifications.length}>
+                    disabled={!notifications.data?.length}>
                     <Approved />
                 </IconButton>
             </Row>
             <Divider />
             <Stack className="p-4" spacing={2}>
-                {!notifications.data.notifications.length && <NoNotificationsPlaceholder />}
-                {notifications.data.notifications.map((notification, index) => (
-                    <Stack key={index}>
-                        <Typography level="body2" bold>{notification.title}</Typography>
-                        <Typography level="body2">{notification.description}</Typography>
+                {!notifications.data?.length && <NoNotificationsPlaceholder />}
+                {notifications.data?.map((notification, index) => (
+                    <Stack key={notification.id ?? index}>
+                        <Typography level="body2" bold>{notification.header}</Typography>
+                        <Typography level="body2">{notification.content}</Typography>
                     </Stack>
                 ))}
             </Stack>
@@ -68,7 +70,7 @@ function ProfileCard() {
                     <span>{currentGarden.name}</span>
                 </DropdownMenuItem>
             ) : (
-                    <DropdownMenuLabel className="bg-muted">Još nemaš svoj vrt</DropdownMenuLabel>
+                <DropdownMenuLabel className="bg-muted">Još nemaš svoj vrt</DropdownMenuLabel>
             )}
             <DropdownMenuSeparator className="my-4" />
             <DropdownMenuItem className="gap-3" onClick={() => setProfileModalOpen('generalno')}>
@@ -124,13 +126,13 @@ export function AccountHud() {
                     {isPending ? (
                         <Skeleton className="w-32 h-7" />
                     ) : (currentGarden && (
-                            <SelectItems
-                                className="w-32"
-                                variant="plain"
-                                value={currentGarden.id.toString()}
-                                items={[
-                                    { value: currentGarden.id.toString(), label: currentGarden.name },
-                                ]} />
+                        <SelectItems
+                            className="w-32"
+                            variant="plain"
+                            value={currentGarden.id.toString()}
+                            items={[
+                                { value: currentGarden.id.toString(), label: currentGarden.name },
+                            ]} />
                     )
                     )}
                 </div>

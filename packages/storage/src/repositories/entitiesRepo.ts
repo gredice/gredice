@@ -12,7 +12,7 @@ import {
 } from "..";
 
 export function getEntitiesRaw(entityTypeName: string, state?: string) {
-    return storage.query.entities.findMany({
+    return storage().query.entities.findMany({
         where: state
             ? and(eq(entities.entityTypeName, entityTypeName), eq(entities.state, state), eq(entities.isDeleted, false))
             : and(eq(entities.entityTypeName, entityTypeName), eq(entities.isDeleted, false)),
@@ -133,7 +133,28 @@ async function resolveRef(value: string | null, attributeDefinition: SelectAttri
     }
     const refNames: string[] = [];
     if (attributeDefinition.multiple) {
-        refNames.push(...(JSON.parse(value) ?? []));
+        try {
+            // If the value is a JSON string, parse it
+            const parsedValue = JSON.parse(value);
+            if (!Array.isArray(parsedValue)) {
+                refNames.push(value);
+            } else {
+                // If it's an array, push each item to refNames
+                for (const item of parsedValue) {
+                    if (typeof item === 'string') {
+                        refNames.push(item);
+                    } else {
+                        // If the item is not a string, treat it as a single string
+                        refNames.push(JSON.stringify(item));
+                    }
+                }
+            }
+        } catch {
+            // If parsing fails, treat the value as a single string
+            refNames.push(value);
+            return;
+        }
+        refNames.push(value);
     } else {
         refNames.push(value);
     }
@@ -162,7 +183,7 @@ export async function getEntityFormatted(id: number) {
 }
 
 export async function getEntityRaw(id: number) {
-    return storage.query.entities.findFirst({
+    return storage().query.entities.findFirst({
         where: and(eq(entities.id, id), eq(entities.isDeleted, false)),
         with: {
             attributes: {
@@ -177,7 +198,7 @@ export async function getEntityRaw(id: number) {
 }
 
 export async function createEntity(entityTypeName: string) {
-    const result = await storage
+    const result = await storage()
         .insert(entities)
         .values({ entityTypeName })
         .returning({ id: entities.id });
@@ -199,7 +220,7 @@ export async function duplicateEntity(id: number) {
         order: attr.order,
     }));
 
-    await storage
+    await storage()
         .insert(attributeValues)
         .values(newAttributes);
 
@@ -215,14 +236,14 @@ export async function updateEntity(entity: UpdateEntity) {
         updateData.publishedAt = new Date();
     }
 
-    await storage
+    await storage()
         .update(entities)
         .set(entity)
         .where(eq(entities.id, entity.id));
 }
 
 export function deleteEntity(id: number) {
-    return storage
+    return storage()
         .update(entities)
         .set({ isDeleted: true })
         .where(eq(entities.id, id));

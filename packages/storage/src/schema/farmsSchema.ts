@@ -12,7 +12,7 @@ export const farms = pgTable('farms', {
     index('farms_f_is_deleted_idx').on(table.isDeleted),
 ]);
 
-export type InsertFarm = typeof farms.$inferInsert;
+export type InsertFarm = Omit<typeof farms.$inferInsert, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>;
 export type UpdateFarm =
     Partial<Omit<typeof farms.$inferInsert, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
     Pick<typeof farms.$inferSelect, 'id'>;

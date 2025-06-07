@@ -11,6 +11,7 @@ import gardensRoutes from './gardensRoutes';
 import feedbackRoutes from './feedbackRoutes';
 import shoppingCartRoutes from './shoppingCartRoutes';
 import checkoutRoutes from './checkoutRoutes';
+import notificationsRoutes from './notificationsRoutes';
 import { openApiDocs } from '@gredice/apidocs/openApiDocs';
 import { openAPISpecs } from 'hono-openapi';
 
@@ -32,7 +33,8 @@ const app = new Hono()
     .route('/feedback', feedbackRoutes)
     .route('/shopping-cart', shoppingCartRoutes)
     .route('/checkout', checkoutRoutes)
-    .route('/data', dataRoutes);
+    .route('/data', dataRoutes)
+    .route('/notifications', notificationsRoutes);
 
 app
     .get(`/docs/auth`, openAPISpecs(authRoutes, {
