@@ -152,7 +152,6 @@ async function resolveRef(value: string | null, attributeDefinition: SelectAttri
         } catch {
             // If parsing fails, treat the value as a single string
             refNames.push(value);
-            return;
         }
         refNames.push(value);
     } else {
