@@ -84,7 +84,12 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(entity:
                 category[attribute.attributeDefinition.name] = [];
             }
             const array = category[attribute.attributeDefinition.name] as unknown[];
-            array.push(await expandValue(attribute.value, attribute.attributeDefinition));
+            const result = await expandValue(attribute.value, attribute.attributeDefinition);
+            if (Array.isArray(result)) {
+                array.push(...result);
+            } else {
+                array.push(result);
+            }
         } else {
             category[attribute.attributeDefinition.name] = await expandValue(attribute.value, attribute.attributeDefinition);
         }
@@ -153,7 +158,6 @@ async function resolveRef(value: string | null, attributeDefinition: SelectAttri
             // If parsing fails, treat the value as a single string
             refNames.push(value);
         }
-        refNames.push(value);
     } else {
         refNames.push(value);
     }
@@ -170,6 +174,7 @@ async function resolveRef(value: string | null, attributeDefinition: SelectAttri
     );
 
     if (attributeDefinition.multiple) {
+        console.log(`Resolving multiple references for attribute ${attributeDefinition.name} with values:`, refNames);
         return await Promise.all(refEntities.map(ref => expandEntityAttributes({}, ref.attributes)));
     } else {
         return refEntities[0] ? await expandEntityAttributes({}, refEntities[0].attributes) : null;

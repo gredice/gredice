@@ -457,16 +457,16 @@ export interface components {
                 growth: string;
                 storage: string;
                 maintenance: string;
-                origin: string;
                 /** @description Informacije o berbi biljke. */
                 harvest: string;
                 verified?: boolean;
-                sowing?: string;
+                origin: string;
                 planting?: string;
                 tip?: {
                     header?: string;
                     content?: string;
                 }[];
+                sowing?: string;
                 name: string;
                 latinName: string;
                 description: string;
@@ -691,16 +691,16 @@ export interface components {
                         growth: string;
                         storage: string;
                         maintenance: string;
-                        origin: string;
                         /** @description Informacije o berbi biljke. */
                         harvest: string;
                         verified?: boolean;
-                        sowing?: string;
+                        origin: string;
                         planting?: string;
                         tip?: {
                             header?: string;
                             content?: string;
                         }[];
+                        sowing?: string;
                         name: string;
                         latinName: string;
                         description: string;
@@ -784,6 +784,14 @@ export interface components {
                     };
                 };
                 name: string;
+                description?: string;
+                shortDescription: string;
+                latinName?: string;
+                sowing?: string;
+                origin?: string;
+            };
+            image: {
+                cover?: components["schemas"]["image"];
             };
             /** Format: date-time */
             createdAt: string;
@@ -865,16 +873,16 @@ export interface components {
                         growth: string;
                         storage: string;
                         maintenance: string;
-                        origin: string;
                         /** @description Informacije o berbi biljke. */
                         harvest: string;
                         verified?: boolean;
-                        sowing?: string;
+                        origin: string;
                         planting?: string;
                         tip?: {
                             header?: string;
                             content?: string;
                         }[];
+                        sowing?: string;
                         name: string;
                         latinName: string;
                         description: string;
@@ -966,16 +974,16 @@ export interface components {
                                 growth: string;
                                 storage: string;
                                 maintenance: string;
-                                origin: string;
                                 /** @description Informacije o berbi biljke. */
                                 harvest: string;
                                 verified?: boolean;
-                                sowing?: string;
+                                origin: string;
                                 planting?: string;
                                 tip?: {
                                     header?: string;
                                     content?: string;
                                 }[];
+                                sowing?: string;
                                 name: string;
                                 latinName: string;
                                 description: string;
@@ -1059,6 +1067,14 @@ export interface components {
                             };
                         };
                         name: string;
+                        description?: string;
+                        shortDescription: string;
+                        latinName?: string;
+                        sowing?: string;
+                        origin?: string;
+                    };
+                    image?: {
+                        cover?: components["schemas"]["image"];
                     };
                 };
                 countryOfOrigin?: string;
