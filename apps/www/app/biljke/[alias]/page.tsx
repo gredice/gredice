@@ -20,6 +20,8 @@ import { Euro, LayoutGrid, MapPinHouse, Sprout } from "@signalco/ui-icons";
 import { getPlantsData } from "../../../lib/plants/getPlantsData";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { NavigatingButton } from "@signalco/ui/NavigatingButton";
+import { getPlantSortsData } from "../../../lib/plants/getPlantSortsData";
+import { PlantSortsList } from "./PlantSortsList";
 
 export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }) {
     const { alias: aliasUnescaped } = await params;
@@ -81,6 +83,9 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
         { header: "Berba", id: "harvest", avaialble: Boolean(plant.information.harvest) },
         { header: "Skladištenje", id: "storage", avaialble: Boolean(plant.information.storage) },
     ];
+
+    const allSorts = await getPlantSortsData();
+    const plantSorts = allSorts.filter(sort => sort.information.plant.information?.name?.toLowerCase() === plant.information.name.toLowerCase());
 
     return (
         <div className="py-8">
@@ -223,6 +228,7 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                             plantAlias: alias
                         }} />
                 </Row>
+                <PlantSortsList sorts={plantSorts} basePlantName={plant.information.name} />
             </Stack>
         </div>
     );

@@ -19,6 +19,7 @@
     },
     "pnpm": {
         "onlyBuiltDependencies": [
+            "@ffmpeg-installer/linux-x64",
             "@parcel/watcher",
             "bufferutil",
             "core-js",
