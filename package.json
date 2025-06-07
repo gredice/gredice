@@ -9,7 +9,7 @@
         "test": "turbo test"
     },
     "devDependencies": {
-        "@types/pg": "^8.15.4",
+        "@types/pg": "8.15.4",
         "turbo": "2.5.4",
         "typescript": "5.8.3"
     },
@@ -30,6 +30,6 @@
         ]
     },
     "dependencies": {
-        "pg": "^8.16.0"
+        "pg": "8.16.0"
     }
 }
