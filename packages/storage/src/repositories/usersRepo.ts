@@ -7,13 +7,13 @@ import { randomUUID, randomBytes as cryptoRandomBytes, pbkdf2Sync } from 'node:c
 import { createEvent, knownEvents } from './eventsRepo';
 
 export function getUsers() {
-    return storage.query.users.findMany({
+    return storage().query.users.findMany({
         orderBy: desc(users.createdAt)
     });
 }
 
 export function getUser(userId: string) {
-    return storage.query.users.findFirst({
+    return storage().query.users.findFirst({
         where: eq(users.id, userId),
         with: {
             accounts: {
@@ -26,7 +26,7 @@ export function getUser(userId: string) {
 }
 
 export function getUserWithLogins(userName: string) {
-    return storage.query.users.findFirst({
+    return storage().query.users.findFirst({
         where: eq(users.userName, userName),
         with: {
             usersLogins: true
@@ -35,7 +35,7 @@ export function getUserWithLogins(userName: string) {
 }
 
 export function loginSuccessful(userLoginId: number) {
-    return storage.update(userLogins).set({
+    return storage().update(userLogins).set({
         lastLogin: new Date()
     }).where(eq(userLogins.id, userLoginId));
 }
@@ -48,7 +48,7 @@ export function loginSuccessful(userLoginId: number) {
  */
 export async function createUserWithPassword(userName: string, password: string) {
     // Check if user already exists
-    const existingUser = await storage.query.users.findFirst({
+    const existingUser = await storage().query.users.findFirst({
         where: eq(users.userName, userName)
     });
     if (existingUser) {
@@ -70,7 +70,7 @@ export async function createUserWithPassword(userName: string, password: string)
     });
 
     // Create user
-    const createdUsers = await storage
+    const createdUsers = await storage()
         .insert(users)
         .values({
             id: randomUUID(),
@@ -85,7 +85,7 @@ export async function createUserWithPassword(userName: string, password: string)
     await createEvent(knownEvents.users.createdV1(userId));
 
     // Link user to account
-    await storage.insert(accountUsers).values({
+    await storage().insert(accountUsers).values({
         accountId,
         userId
     });
@@ -94,7 +94,7 @@ export async function createUserWithPassword(userName: string, password: string)
     // Insert the password login
     const salt = cryptoRandomBytes(128).toString('base64');
     const passwordHash = pbkdf2Sync(password, salt, 10000, 512, 'sha512').toString('hex');
-    await storage.insert(userLogins).values({
+    await storage().insert(userLogins).values({
         userId,
         loginType: 'password',
         loginId: userName,
@@ -105,24 +105,24 @@ export async function createUserWithPassword(userName: string, password: string)
 }
 
 export async function updateUserRole(userId: string, newRole: string) {
-    await storage.update(users).set({ role: newRole }).where(eq(users.id, userId));
+    await storage().update(users).set({ role: newRole }).where(eq(users.id, userId));
 }
 
 export async function incLoginFailedAttempts(loginId: number) {
-    await storage.update(userLogins).set({
+    await storage().update(userLogins).set({
         failedAttempts: sql`${userLogins.failedAttempts} + 1`,
         lastFailedAttempt: new Date()
     }).where(eq(userLogins.id, loginId));
 }
 
 export async function blockLogin(loginId: number, blockedUntil: Date) {
-    await storage.update(userLogins).set({
+    await storage().update(userLogins).set({
         blockedUntil
     }).where(eq(userLogins.id, loginId));
 }
 
 export async function clearLoginFailedAttempts(loginId: number) {
-    await storage.update(userLogins).set({
+    await storage().update(userLogins).set({
         failedAttempts: 0,
         lastFailedAttempt: null,
         blockedUntil: null
@@ -130,7 +130,7 @@ export async function clearLoginFailedAttempts(loginId: number) {
 }
 
 export async function updateLoginData(loginId: number, data: Record<string, any>) {
-    await storage.update(userLogins).set({
+    await storage().update(userLogins).set({
         loginData: JSON.stringify(data)
     }).where(eq(userLogins.id, loginId));
 }
@@ -138,7 +138,7 @@ export async function updateLoginData(loginId: number, data: Record<string, any>
 export async function changePassword(loginId: number, newPassword: string) {
     const salt = cryptoRandomBytes(128).toString('base64');
     const passwordHash = pbkdf2Sync(newPassword, salt, 10000, 512, 'sha512').toString('hex');
-    await storage.update(userLogins).set({
+    await storage().update(userLogins).set({
         loginData: JSON.stringify({ salt, password: passwordHash, isVerified: true })
     }).where(eq(userLogins.id, loginId));
 }

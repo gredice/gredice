@@ -88,7 +88,7 @@ export const knownEvents = {
 }
 
 export function getEvents(type: string | string[], aggregateId: string, offset: number = 0, limit: number = 1000) {
-    return storage.query.events.findMany({
+    return storage().query.events.findMany({
         where: and(
             eq(events.aggregateId, aggregateId),
             Array.isArray(type)
@@ -108,7 +108,7 @@ export type Event = {
 }
 
 export function createEvent({ type, version, aggregateId, data }: Event) {
-    return storage.insert(events).values({
+    return storage().insert(events).values({
         type,
         version,
         aggregateId,

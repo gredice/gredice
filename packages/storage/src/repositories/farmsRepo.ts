@@ -4,13 +4,13 @@ import { farms, InsertFarm, storage } from "..";
 import { desc } from 'drizzle-orm';
 
 export async function getFarms() {
-    return storage.query.farms.findMany({
+    return storage().query.farms.findMany({
         orderBy: desc(farms.createdAt)
     });
 }
 
 export async function createFarm(data: InsertFarm) {
-    const farm = await storage
+    const farm = await storage()
         .insert(farms)
         .values(data)
         .returning({ id: farms.id });

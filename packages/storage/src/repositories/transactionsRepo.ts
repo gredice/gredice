@@ -5,7 +5,7 @@ import { storage } from "../storage";
 import { createEvent, knownEvents } from "./eventsRepo";
 
 export async function createTransaction(transaction: InsertTransaction, entities?: InsertTransactionEntity[]) {
-    const transactionId = (await storage
+    const transactionId = (await storage()
         .insert(transactions)
         .values(transaction)
         .returning({ id: transactions.id }))[0].id;
@@ -15,7 +15,7 @@ export async function createTransaction(transaction: InsertTransaction, entities
             ...entity,
             transactionId,
         }));
-        await storage.insert(transactionEntities).values(transactionEntitiesData);
+        await storage().insert(transactionEntities).values(transactionEntitiesData);
     }
 
     await createEvent(knownEvents.transactions.createdV1(transactionId.toString(), {
@@ -29,7 +29,7 @@ export async function createTransaction(transaction: InsertTransaction, entities
 }
 
 export async function getTransaction(transactionId: number) {
-    return storage.query.transactions.findFirst({
+    return storage().query.transactions.findFirst({
         where: and(eq(transactions.id, transactionId), eq(transactions.isDeleted, false)),
         with: {
             transactionEntities: true,
@@ -38,7 +38,7 @@ export async function getTransaction(transactionId: number) {
 }
 
 export async function getTransactions(accountId: string) {
-    return storage.query.transactions.findMany({
+    return storage().query.transactions.findMany({
         where: and(eq(transactions.accountId, accountId), eq(transactions.isDeleted, false)),
         with: {
             transactionEntities: true,
@@ -47,7 +47,7 @@ export async function getTransactions(accountId: string) {
 }
 
 export async function getAllTransactions() {
-    return storage.query.transactions.findMany({
+    return storage().query.transactions.findMany({
         where: eq(transactions.isDeleted, false),
         with: {
             transactionEntities: true,
@@ -56,7 +56,7 @@ export async function getAllTransactions() {
 }
 
 export async function getTransactionByStripeId(stripePaymentId: string) {
-    return storage.query.transactions.findFirst({
+    return storage().query.transactions.findFirst({
         where: and(eq(transactions.stripePaymentId, stripePaymentId), eq(transactions.isDeleted, false)),
         with: {
             transactionEntities: true,
@@ -65,7 +65,7 @@ export async function getTransactionByStripeId(stripePaymentId: string) {
 }
 
 export async function updateTransaction(transaction: UpdateTransaction) {
-    await storage
+    await storage()
         .update(transactions)
         .set(transaction)
         .where(
@@ -82,7 +82,7 @@ export async function updateTransaction(transaction: UpdateTransaction) {
 }
 
 export async function deleteTransaction(transactionId: number) {
-    await storage
+    await storage()
         .update(transactions)
         .set({ isDeleted: true })
         .where(eq(transactions.id, transactionId));

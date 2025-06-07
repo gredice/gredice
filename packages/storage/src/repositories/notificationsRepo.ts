@@ -4,7 +4,7 @@ import { storage } from '..';
 import { randomUUID } from 'node:crypto';
 
 export async function createNotification(notification: InsertNotification) {
-    const result = await storage.insert(notifications).values({
+    const result = await storage().insert(notifications).values({
         id: randomUUID(),
         ...notification
     }).returning({ id: notifications.id });
@@ -12,7 +12,7 @@ export async function createNotification(notification: InsertNotification) {
 }
 
 export function getNotificationsByUser(userId: string, read?: boolean): Promise<SelectNotification[]> {
-    return storage.query.notifications.findMany({
+    return storage().query.notifications.findMany({
         where: read === undefined
             ? eq(notifications.userId, userId)
             : and(
@@ -23,7 +23,7 @@ export function getNotificationsByUser(userId: string, read?: boolean): Promise<
 }
 
 export function getNotificationsByAccount(accountId: string, read?: boolean): Promise<SelectNotification[]> {
-    return storage.query.notifications.findMany({
+    return storage().query.notifications.findMany({
         where: read === undefined
             ? eq(notifications.accountId, accountId)
             : and(
@@ -34,13 +34,13 @@ export function getNotificationsByAccount(accountId: string, read?: boolean): Pr
 }
 
 export function markNotificationRead(id: string, readWhere: string) {
-    return storage.update(notifications)
+    return storage().update(notifications)
         .set({ readAt: new Date(), readWhere })
         .where(eq(notifications.id, id));
 }
 
 export function markAllNotificationsRead(userId: string, readWhere: string) {
-    return storage.update(notifications)
+    return storage().update(notifications)
         .set({ readAt: new Date(), readWhere })
         .where(and(eq(notifications.userId, userId), isNotNull(notifications.readAt)));
 }

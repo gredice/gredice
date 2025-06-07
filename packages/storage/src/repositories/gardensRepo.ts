@@ -6,7 +6,7 @@ import { createEvent, knownEvents } from './eventsRepo';
 import { v4 as uuidV4 } from 'uuid';
 
 export async function createGarden(garden: InsertGarden) {
-    const createdGarden = (await storage
+    const createdGarden = (await storage()
         .insert(gardens)
         .values(garden)
         .returning({
@@ -29,13 +29,13 @@ export async function createGarden(garden: InsertGarden) {
 }
 
 export async function getGardens() {
-    return storage.query.gardens.findMany({
+    return storage().query.gardens.findMany({
         orderBy: desc(gardens.createdAt)
     });
 }
 
 export async function getAccountGardens(accountId: string) {
-    return storage.query.gardens.findMany({
+    return storage().query.gardens.findMany({
         where: and(
             eq(gardens.accountId, accountId),
             eq(gardens.isDeleted, false)
@@ -47,7 +47,7 @@ export async function getAccountGardens(accountId: string) {
 }
 
 export async function getGarden(gardenId: number) {
-    return storage.query.gardens.findFirst({
+    return storage().query.gardens.findFirst({
         where: and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)),
         with: {
             farm: true,
@@ -57,7 +57,7 @@ export async function getGarden(gardenId: number) {
 }
 
 export async function updateGarden(garden: UpdateGarden) {
-    await storage.update(gardens).set(garden).where(eq(gardens.id, garden.id));
+    await storage().update(gardens).set(garden).where(eq(gardens.id, garden.id));
 
     if (garden.name) {
         await createEvent(knownEvents.gardens.renamedV1(garden.id.toString(), { name: garden.name }));
@@ -65,18 +65,18 @@ export async function updateGarden(garden: UpdateGarden) {
 }
 
 export async function deleteGarden(gardenId: number) {
-    await storage.update(gardens).set({ isDeleted: true }).where(eq(gardens.id, gardenId));
+    await storage().update(gardens).set({ isDeleted: true }).where(eq(gardens.id, gardenId));
     await createEvent(knownEvents.gardens.deletedV1(gardenId.toString()));
 }
 
 export async function getGardenBlocks(gardenId: number) {
-    return storage.query.gardenBlocks.findMany({
+    return storage().query.gardenBlocks.findMany({
         where: and(eq(gardenBlocks.gardenId, gardenId), eq(gardenBlocks.isDeleted, false))
     });
 }
 
 export async function getGardenBlock(gardenId: number, blockId: string) {
-    return storage.query.gardenBlocks.findFirst({
+    return storage().query.gardenBlocks.findFirst({
         where: and(
             eq(gardenBlocks.gardenId, gardenId),
             eq(gardenBlocks.id, blockId),
@@ -89,7 +89,7 @@ export async function createGardenBlock(gardenId: number, blockName: string) {
     const blockId = uuidV4();
 
     await Promise.all([
-        storage.insert(gardenBlocks).values({
+        storage().insert(gardenBlocks).values({
             id: blockId,
             gardenId,
             name: blockName
@@ -101,7 +101,7 @@ export async function createGardenBlock(gardenId: number, blockName: string) {
 }
 
 export async function updateGardenBlock({ id, ...values }: UpdateGardenBlock) {
-    await storage
+    await storage()
         .update(gardenBlocks)
         .set({
             ...values
@@ -110,7 +110,7 @@ export async function updateGardenBlock({ id, ...values }: UpdateGardenBlock) {
 }
 
 export async function deleteGardenBlock(gardenId: number, blockId: string) {
-    await storage
+    await storage()
         .update(gardenBlocks)
         .set({ isDeleted: true })
         .where(
@@ -123,13 +123,13 @@ export async function deleteGardenBlock(gardenId: number, blockId: string) {
 }
 
 export async function getGardenStacks(gardenId: number) {
-    return storage.query.gardenStacks.findMany({
+    return storage().query.gardenStacks.findMany({
         where: and(eq(gardenStacks.gardenId, gardenId), eq(gardenStacks.isDeleted, false))
     });
 }
 
 export async function getGardenStack(gardenId: number, { x, y }: { x: number, y: number }) {
-    return storage.query.gardenStacks.findFirst({
+    return storage().query.gardenStacks.findFirst({
         where: and(
             eq(gardenStacks.gardenId, gardenId),
             eq(gardenStacks.positionX, x),
@@ -141,7 +141,7 @@ export async function getGardenStack(gardenId: number, { x, y }: { x: number, y:
 
 export async function createGardenStack(gardenId: number, { x, y }: { x: number, y: number }) {
     // Check if stack at location already exists
-    const [{ count: existingStacksCount }] = await storage
+    const [{ count: existingStacksCount }] = await storage()
         .select({ count: count() })
         .from(gardenStacks)
         .where(
@@ -154,27 +154,27 @@ export async function createGardenStack(gardenId: number, { x, y }: { x: number,
         return false;
     }
 
-    await storage
+    await storage()
         .insert(gardenStacks)
         .values({ gardenId, positionX: x, positionY: y });
     return true;
 }
 
 export async function updateGardenStack(gardenId: number, stacks: Omit<UpdateGardenStack, 'id'> & { x: number, y: number }) {
-    const stackId = (await storage.query.gardenStacks.findFirst({
+    const stackId = (await storage().query.gardenStacks.findFirst({
         where: and(eq(gardenStacks.gardenId, gardenId), eq(gardenStacks.positionX, stacks.x), eq(gardenStacks.positionY, stacks.y), eq(gardenStacks.isDeleted, false))
     }))?.id;
     if (!stackId) {
         throw new Error('Stack not found');
     }
 
-    await storage.update(gardenStacks).set({
+    await storage().update(gardenStacks).set({
         blocks: stacks.blocks,
     }).where(and(eq(gardenStacks.gardenId, gardenId), eq(gardenStacks.id, stackId)));
 }
 
 export async function deleteGardenStack(gardenId: number, { x, y }: { x: number, y: number }) {
-    await storage
+    await storage()
         .update(gardenStacks)
         .set({ isDeleted: true })
         .where(
@@ -187,14 +187,14 @@ export async function deleteGardenStack(gardenId: number, { x, y }: { x: number,
 }
 
 export async function createRaisedBed(raisedBed: InsertRaisedBed) {
-    return (await storage
+    return (await storage()
         .insert(raisedBeds)
         .values(raisedBed)
         .returning({ id: raisedBeds.id }))[0].id;
 }
 
 export async function getRaisedBeds(gardenId: number) {
-    return storage.query.raisedBeds.findMany({
+    return storage().query.raisedBeds.findMany({
         where: and(
             eq(raisedBeds.gardenId, gardenId),
             eq(raisedBeds.isDeleted, false)
@@ -203,21 +203,21 @@ export async function getRaisedBeds(gardenId: number) {
 }
 
 export async function getRaisedBed(raisedBedId: number) {
-    return storage.query.raisedBeds.findFirst({
+    return storage().query.raisedBeds.findFirst({
         where: and(eq(raisedBeds.id, raisedBedId), eq(raisedBeds.isDeleted, false))
     });
 }
 
 export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
-    await storage.update(raisedBeds).set(raisedBed).where(eq(raisedBeds.id, raisedBed.id));
+    await storage().update(raisedBeds).set(raisedBed).where(eq(raisedBeds.id, raisedBed.id));
 }
 
 export async function deleteRaisedBed(raisedBedId: number) {
-    await storage.update(raisedBeds).set({ isDeleted: true }).where(eq(raisedBeds.id, raisedBedId));
+    await storage().update(raisedBeds).set({ isDeleted: true }).where(eq(raisedBeds.id, raisedBedId));
 }
 
 export async function getAllRaisedBeds() {
-    return storage.query.raisedBeds.findMany({
+    return storage().query.raisedBeds.findMany({
         where: and(
             eq(raisedBeds.isDeleted, false),
             eq(raisedBeds.isDeleted, false)

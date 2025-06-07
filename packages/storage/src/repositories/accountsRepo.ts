@@ -5,19 +5,19 @@ import { createEvent, getEvents, knownEvents, knownEventTypes } from './eventsRe
 import { randomUUID } from 'node:crypto';
 
 export function getAccounts() {
-    return storage.query.accounts.findMany({
+    return storage().query.accounts.findMany({
         orderBy: desc(accounts.createdAt),
     });
 }
 
 export function getAccount(accountId: string) {
-    return storage.query.accounts.findFirst({
+    return storage().query.accounts.findFirst({
         where: eq(accounts.id, accountId),
     });
 }
 
 export function getAccountUsers(accountId: string) {
-    return storage.query.accountUsers.findMany({
+    return storage().query.accountUsers.findMany({
         where: eq(accountUsers.accountId, accountId),
         with: {
             user: true
@@ -26,7 +26,7 @@ export function getAccountUsers(accountId: string) {
 }
 
 export async function createAccount() {
-    const account = storage
+    const account = storage()
         .insert(accounts)
         .values({
             id: randomUUID(),
@@ -44,7 +44,7 @@ export async function createAccount() {
 }
 
 export async function assignStripeCustomerId(accountId: string, stripeCustomerId: string) {
-    const result = await storage
+    const result = await storage()
         .update(accounts)
         .set({ stripeCustomerId })
         .where(eq(accounts.id, accountId))

@@ -1,7 +1,7 @@
-import { drizzle as neonDrizzle, NeonHttpDatabase } from "drizzle-orm/neon-http";
+import { drizzle as neonDrizzle, NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { drizzle as nodeDrizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
-import { neon } from "@neondatabase/serverless";
-import { migrate as neonMigrate } from 'drizzle-orm/neon-http/migrator';
+import { Pool } from '@neondatabase/serverless';
+import { migrate as neonMigrate } from 'drizzle-orm/neon-serverless/migrator';
 import { migrate as nodeMigrate } from 'drizzle-orm/node-postgres/migrator';
 import * as schema from './schema';
 
@@ -16,26 +16,33 @@ function getDbConnectionString() {
     return connectionString;
 }
 
-let storage: NeonHttpDatabase<typeof schema>;
-if (isTest) {
-    // Test client
-    storage = nodeDrizzle(getDbConnectionString(), { schema }) as any;
-} else {
-    // Production client
-    const sql = neon(getDbConnectionString());
-    storage = neonDrizzle({
-        client: sql,
-        schema
-    });
+let pool: Pool | null = null;
+let client: NodePgDatabase<typeof schema> | NeonDatabase<typeof schema> | null = null;
+export function storage() {
+    if (isTest) {
+        if (!client) {
+            console.debug('Instantiating NodePgDatabase for testing');
+            client = nodeDrizzle(getDbConnectionString(), { schema }) as any
+        }
+        return client as NodePgDatabase<typeof schema>;
+    }
+
+    if (!pool) {
+        pool = new Pool({ connectionString: getDbConnectionString() });
+    }
+    if (!client) {
+        client = neonDrizzle({
+            client: pool,
+            schema
+        });
+    }
+    return client as NeonDatabase<typeof schema>;
 }
 
-async function migrate() {
+export async function migrate() {
     if (isTest) {
-        const migrateDb = storage as unknown as NodePgDatabase<typeof schema>;
-        await nodeMigrate(migrateDb, { migrationsFolder: './src/migrations' });
+        await nodeMigrate(storage(), { migrationsFolder: './src/migrations' });
     } else {
-        await neonMigrate(storage, { migrationsFolder: './src/migrations' });
+        await neonMigrate(storage(), { migrationsFolder: './src/migrations' });
     }
 }
-
-export { storage, migrate };
