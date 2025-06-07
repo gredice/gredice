@@ -6,14 +6,14 @@ import { Markdown } from "../../../components/shared/Markdown";
 import { slug } from "@signalco/js";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
 import { PlantOperations } from "./PlantOperations";
-import { getOperationsData } from "../../../lib/plants/getOperationsData";
+import { PlantData } from "@gredice/client";
 
 export type InformationSectionProps = {
     plantId: number
     id: string
     header: string
     content: string | null | undefined
-    operations?: string[] | null | undefined
+    operations?: PlantData["information"]["operations"] | null | undefined
 }
 
 export async function InformationSection({ plantId, id, header, content, operations }: InformationSectionProps) {
@@ -21,13 +21,8 @@ export async function InformationSection({ plantId, id, header, content, operati
         return null;
     }
 
-    const operationsData = await getOperationsData();
-    const applicableOperations = operationsData?.filter((operation) => {
-        const operationId = operation.information.name.toLowerCase();
-        const idMatched = operations?.some((op) => op.toLowerCase() === operationId) ?? false;
-        const sectionMatched = operation.attributes.stage === id;
-        return idMatched && sectionMatched;
-    });
+    // Filter operations based on stage
+    const applicableOperations = operations?.filter((operation) => operation.attributes?.stage === id);
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 group">

@@ -87,6 +87,18 @@ async function resolvePropertyData(attributeDefinition: ExtendedAttributeDefinit
     if (attributeDefinition.dataType.startsWith('ref:')) {
         const refType = attributeDefinition.dataType.substring(4);
         const refAttributeDefinitions = await getAttributeDefinitions(refType);
+        if (attributeDefinition.multiple) {
+            return {
+                type: 'array',
+                items: {
+                    type: 'object',
+                    properties: {
+                        ...await populateAttributeDefinitionsProperties(refAttributeDefinitions)
+                    },
+                    description: attributeDefinition.description || undefined
+                }
+            } satisfies OpenAPIV3_1.SchemaObject;
+        }
         return {
             type: 'object',
             properties: {
@@ -263,7 +275,8 @@ export async function openApiDocs(config?: OpenApiDocsConfig): Promise<OpenAPIV3
                             type: 'string',
                             format: 'uri'
                         }
-                    }
+                    },
+                    required: ['url'],
                 }
             }
         }

@@ -133,7 +133,28 @@ async function resolveRef(value: string | null, attributeDefinition: SelectAttri
     }
     const refNames: string[] = [];
     if (attributeDefinition.multiple) {
-        refNames.push(...(JSON.parse(value) ?? []));
+        try {
+            // If the value is a JSON string, parse it
+            const parsedValue = JSON.parse(value);
+            if (!Array.isArray(parsedValue)) {
+                refNames.push(value);
+            } else {
+                // If it's an array, push each item to refNames
+                for (const item of parsedValue) {
+                    if (typeof item === 'string') {
+                        refNames.push(item);
+                    } else {
+                        // If the item is not a string, treat it as a single string
+                        refNames.push(JSON.stringify(item));
+                    }
+                }
+            }
+        } catch {
+            // If parsing fails, treat the value as a single string
+            refNames.push(value);
+            return;
+        }
+        refNames.push(value);
     } else {
         refNames.push(value);
     }
