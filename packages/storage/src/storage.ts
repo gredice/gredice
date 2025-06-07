@@ -8,18 +8,21 @@ import * as schema from './schema';
 // Switch between test and production clients based on environment variable
 const isTest = process.env.TEST_ENV === '1';
 
-const connectionString = process.env.POSTGRES_URL;
-if (!connectionString) {
-    throw new Error("POSTGRES_URL environment variable is not set.");
+function getDbConnectionString() {
+    const connectionString = process.env.POSTGRES_URL;
+    if (!connectionString) {
+        throw new Error("POSTGRES_URL environment variable is not set.");
+    }
+    return connectionString;
 }
 
 let storage: NeonHttpDatabase<typeof schema>;
 if (isTest) {
     // Test client
-    storage = nodeDrizzle(connectionString, { schema }) as any;
+    storage = nodeDrizzle(getDbConnectionString(), { schema }) as any;
 } else {
     // Production client
-    const sql = neon(connectionString);
+    const sql = neon(getDbConnectionString());
     storage = neonDrizzle({
         client: sql,
         schema
