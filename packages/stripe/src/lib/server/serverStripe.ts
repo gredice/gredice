@@ -1,7 +1,5 @@
-'use server';
-
+import "server-only";
 import Stripe from 'stripe';
-
 import { getReturnUrl, getStripe } from '../config';
 
 export type UserAccount = {

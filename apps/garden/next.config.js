@@ -8,6 +8,7 @@ const nextConfig = {
     experimental: {
         reactCompiler: true,
     },
+    expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
     productionBrowserSourceMaps: true,
     images: {
         remotePatterns: [

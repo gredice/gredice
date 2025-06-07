@@ -854,6 +854,9 @@ importers:
       '@types/react':
         specifier: 19.1.6
         version: 19.1.6
+      server-only:
+        specifier: 0.0.1
+        version: 0.0.1
 
   packages/transactional:
     dependencies:
