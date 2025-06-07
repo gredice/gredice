@@ -3,6 +3,7 @@ export const KnownPages = {
 
     Plants: '/biljke',
     Plant: (alias: string) => `/biljke/${alias}`,
+    PlantSort: (alias: string, sortName: string) => `/biljke/${alias}/sorta/${sortName}`,
     Blocks: '/blokovi',
     Sunflowers: '/suncokreti',
     RaisedBeds: '/podignuta-gredica',

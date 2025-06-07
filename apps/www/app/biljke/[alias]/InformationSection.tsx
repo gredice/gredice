@@ -22,7 +22,13 @@ export async function InformationSection({ plantId, id, header, content, operati
     }
 
     // Filter operations based on stage
-    const applicableOperations = operations?.filter((operation) => operation.attributes?.stage === id);
+    console.log(`Filtering operations for stage: ${id}`);
+    console.log(`Available operations:`, operations);
+    const applicableOperations = operations?.filter((operation) => {
+        console.log('operation', operation.information?.name, operation.attributes?.stage, id, operation.attributes?.stage === id);
+        return operation.attributes?.stage === id;
+    });
+    console.log(`Applicable operations:`, applicableOperations);
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 group">

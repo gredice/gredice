@@ -8,7 +8,7 @@ export type PageHeaderProps = {
     padded?: boolean;
     visual?: ReactNode;
     header: string;
-    alternativeName?: string | null;
+    alternativeName?: ReactNode | string | null;
     subHeader?: string | null;
     headerChildren?: ReactNode;
 };
@@ -34,7 +34,13 @@ export function PageHeader({
                 )}
                 <Stack spacing={2} className="md:max-w-96">
                     <Typography level="h2" component="h1">{header}</Typography>
-                    {alternativeName && <Typography level="body2" secondary>{alternativeName}</Typography>}
+                    {alternativeName && (
+                        typeof alternativeName === 'string' ? (
+                            <Typography level="body2" secondary>{alternativeName}</Typography>
+                        ) : (
+                            alternativeName
+                        )
+                    )}
                     {subHeader && <Typography level="body1" secondary className="text-balance">{subHeader}</Typography>}
                     {headerChildren}
                 </Stack>
