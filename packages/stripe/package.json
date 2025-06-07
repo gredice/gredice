@@ -10,14 +10,14 @@
     "./server": "./src/lib/server/index.ts"
   },
   "devDependencies": {
-    "@types/node": "22.15.29",
+    "@types/node": "22.15.30",
     "@types/react": "19.1.6"
   },
   "dependencies": {
     "@signalco/js": "0.1.0",
     "@stripe/stripe-js": "7.3.1",
     "react": "19.1.0",
-    "stripe": "18.2.0",
+    "stripe": "18.2.1",
     "typescript": "5.8.3"
   }
 }
