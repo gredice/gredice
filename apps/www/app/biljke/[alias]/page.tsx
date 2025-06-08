@@ -11,6 +11,7 @@ import { getPlantsData } from "../../../lib/plants/getPlantsData";
 import { PlantSortsList } from "./PlantSortsList";
 import { PlantPageHeader } from "./PlantPageHeader";
 import { getPlantInforationSections } from "./getPlantInforationSections";
+import { PlantTips } from "./PlantTips";
 
 export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }) {
     const { alias: aliasUnescaped } = await params;
@@ -67,29 +68,7 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                         operations={plant.information.operations} />
                 ))}
                 {((plant.information.tip?.length ?? 0) > 0) && (
-                    <Stack spacing={2}>
-                        <Typography level="h2" className="text-2xl">
-                            Savjeti
-                        </Typography>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {plant.information.tip?.map((tip) => (
-                                <Accordion defaultOpen key={tip.header} className="h-fit">
-                                    <Typography level="h3" className="text-lg" semiBold secondary>{tip.header}</Typography>
-                                    <Stack spacing={2}>
-                                        <Typography>{tip.content}</Typography>
-                                        <FeedbackModal
-                                            className="self-end"
-                                            topic="www/plants/advice"
-                                            data={{
-                                                plantId: plant.id,
-                                                tipHeader: tip.header
-                                            }}
-                                        />
-                                    </Stack>
-                                </Accordion>
-                            ))}
-                        </div>
-                    </Stack>
+                    <PlantTips plant={plant} />
                 )}
                 <PlantSortsList basePlantName={plant.information.name} />
                 <Row spacing={2}>

@@ -8,6 +8,9 @@ import { PlantPageHeader } from "../../PlantPageHeader";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { FeedbackModal } from "../../../../../components/shared/feedback/FeedbackModal";
+import { getPlantInforationSections } from "../../getPlantInforationSections";
+import { InformationSection } from "../../InformationSection";
+import { PlantTips } from "../../PlantTips";
 
 export default async function PlantSortPage({ params }: { params: Promise<{ alias: string, sortAlias: string }> }) {
     const { alias: aliasUnescaped, sortAlias: sortAliasUnescaped } = await params;
@@ -26,6 +29,8 @@ export default async function PlantSortPage({ params }: { params: Promise<{ alia
         notFound();
     }
 
+    const informationSections = getPlantInforationSections(basePlantData);
+
     return (
         <div className="py-8">
             <Stack spacing={4}>
@@ -38,6 +43,19 @@ export default async function PlantSortPage({ params }: { params: Promise<{ alia
                 <PlantPageHeader
                     plant={basePlantData}
                     sort={sortData} />
+                {informationSections.filter((section) => section.avaialble).map((section) => (
+                    <InformationSection
+                        key={section.id}
+                        id={section.id}
+                        plantId={basePlantData.id}
+                        header={section.header}
+                        content={basePlantData.information[section.id]}
+                        sortContent={sortData.information[section.id]}
+                        operations={basePlantData.information.operations} />
+                ))}
+                {((basePlantData.information.tip?.length ?? 0) > 0) && (
+                    <PlantTips plant={basePlantData} />
+                )}
                 <Row spacing={2}>
                     <Typography level="body1">Jesu li ti informacije o ovoj biljci korisne?</Typography>
                     <FeedbackModal

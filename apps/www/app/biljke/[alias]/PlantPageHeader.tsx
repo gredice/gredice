@@ -20,7 +20,7 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 
 export function PlantPageHeader({ plant, sort }: { plant: PlantData, sort?: PlantSortData }) {
     const informationSections = getPlantInforationSections(plant);
-    let plantsPerRow = 30 / (plant.attributes?.seedingDistance ?? 30);
+    let plantsPerRow = Math.floor(30 / (plant.attributes?.seedingDistance ?? 30));
     if (plantsPerRow < 1) {
         console.warn(`Plants per row is less than 1 (${plantsPerRow}) for ${plant.information.name}. Setting to 1.`);
         plantsPerRow = 1;
