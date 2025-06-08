@@ -4,7 +4,6 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
 import { KnownPages } from "../../../src/KnownPages";
-import { Accordion } from "@signalco/ui/Accordion";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
 import { InformationSection } from "./InformationSection";
 import { getPlantsData } from "../../../lib/plants/getPlantsData";
@@ -67,10 +66,10 @@ export default async function PlantPage(props: { params: Promise<{ alias: string
                         content={plant.information[section.id]}
                         operations={plant.information.operations} />
                 ))}
+                <PlantSortsList basePlantName={plant.information.name} />
                 {((plant.information.tip?.length ?? 0) > 0) && (
                     <PlantTips plant={plant} />
                 )}
-                <PlantSortsList basePlantName={plant.information.name} />
                 <Row spacing={2}>
                     <Typography level="body1">Jesu li ti informacije o ovoj biljci korisne?</Typography>
                     <FeedbackModal
