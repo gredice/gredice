@@ -15,7 +15,7 @@ export type PlantsGalleryItemProps =
 
 export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
     const { information, prices, attributes, showPrices = true } = props;
-    let plantsPerRow = 30 / (attributes?.seedingDistance ?? 30);
+    let plantsPerRow = Math.floor(30 / (attributes?.seedingDistance ?? 30));
     if (plantsPerRow < 1) {
         console.warn(`Plants per row is less than 1 (${plantsPerRow}) for ${information.name}. Setting to 1.`);
         plantsPerRow = 1;

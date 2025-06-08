@@ -684,6 +684,9 @@ export interface components {
                 label: string;
             };
             information: {
+                harvest?: string;
+                planting?: string;
+                flowering?: string;
                 plant: {
                     information?: {
                         watering: string;
@@ -789,6 +792,11 @@ export interface components {
                 latinName?: string;
                 sowing?: string;
                 origin?: string;
+                watering?: string;
+                soilPreparation?: string;
+                growth?: string;
+                storage?: string;
+                maintenance?: string;
             };
             image: {
                 cover?: components["schemas"]["image"];
@@ -967,6 +975,9 @@ export interface components {
                 };
                 plantSort: {
                     information?: {
+                        harvest?: string;
+                        planting?: string;
+                        flowering?: string;
                         plant: {
                             information?: {
                                 watering: string;
@@ -1072,6 +1083,11 @@ export interface components {
                         latinName?: string;
                         sowing?: string;
                         origin?: string;
+                        watering?: string;
+                        soilPreparation?: string;
+                        growth?: string;
+                        storage?: string;
+                        maintenance?: string;
                     };
                     image?: {
                         cover?: components["schemas"]["image"];
