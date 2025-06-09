@@ -39,7 +39,10 @@ export async function getAccountGardens(accountId: string) {
         where: and(
             eq(gardens.accountId, accountId),
             eq(gardens.isDeleted, false)
-        )
+        ),
+        with: {
+            raisedBeds: true
+        }
     });
 }
 

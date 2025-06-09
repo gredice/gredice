@@ -16,7 +16,7 @@ export function useBlockRotate() {
             const gardenId = garden.id;
             await client().api.gardens[":gardenId"].blocks[":blockId"].$put({
                 param: {
-                    gardenId,
+                    gardenId: gardenId.toString(),
                     blockId: blockId
                 },
                 json: {

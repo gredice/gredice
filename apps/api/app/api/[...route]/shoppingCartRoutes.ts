@@ -22,7 +22,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // TODO: Calculate total amount of items in the cart
             const cartItemsWithShopInfo = await getCartItemsInfo(cart.items);
-            let total = cartItemsWithShopInfo.reduce((sum, item) => sum + (item.shopData.price ?? 0), 0);
+            const total = cartItemsWithShopInfo.reduce((sum, item) => sum + (item.shopData.price ?? 0), 0);
 
             return context.json({
                 ...cart,
