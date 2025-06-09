@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createGardenBlock, createGardenStack, deleteGardenStack, getAccountGardens, getGarden, getGardenBlocks, getGardenStack, getRaisedBed, getRaisedBeds, spendSunflowers, updateGardenBlock, updateGardenStack } from '@gredice/storage';
+import { createGardenBlock, createGardenStack, createRaisedBed, deleteGardenStack, getAccountGardens, getGarden, getGardenBlocks, getGardenStack, getRaisedBed, getRaisedBeds, spendSunflowers, updateGardenBlock, updateGardenStack } from '@gredice/storage';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from 'zod';
 import { describeRoute } from 'hono-openapi';
@@ -8,6 +8,7 @@ import { getEvents, knownEventTypes } from '@gredice/storage';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { ContentfulStatusCode } from 'hono/utils/http-status';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
+import { generateRaisedBedName } from '../../../lib/garden/generateRaisedBedName';
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -61,6 +62,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // }));
 
             // Stacks: group by x then by y
+            const raisedBedsToCreate: string[] = [];
             const stacks = garden.stacks.reduce((acc, stack) => {
                 if (!acc[stack.positionX]) {
                     acc[stack.positionX] = {};
@@ -76,6 +78,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         console.warn('Block not found', { blockId });
                         return null;
                     }
+
+                    // Verify block has raised bed attached to it if it's type is raised bed
+                    if (block.name === "Raised_Bed") {
+                        const assignedRaisedBed = garden.raisedBeds.find(raisedBed => raisedBed.blockId === blockId);
+                        if (!assignedRaisedBed) {
+                            raisedBedsToCreate.push(blockId);
+                        }
+                    }
+
                     return ({
                         id: blockId,
                         name: block?.name ?? 'unknown',
@@ -86,13 +97,39 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return acc;
             }, {} as Record<string, Record<string, { id: string, name: string, rotation?: number | null, variant?: number | null }[]>>);
 
+            // Create missing raised beds
+            let freshGarden: NonNullable<Awaited<ReturnType<typeof getGarden>>> = garden;
+            if (raisedBedsToCreate.length > 0) {
+                for (const blockId of raisedBedsToCreate) {
+                    await createRaisedBed({
+                        name: generateRaisedBedName(),
+                        blockId,
+                        gardenId: garden.id,
+                        accountId: garden.accountId
+                    });
+                    console.info('Created missing raised bed', { gardenId: garden.id, blockId });
+                }
+                const refreshed = await getGarden(gardenIdNumber); // Refresh garden to include new raised beds
+                if (!refreshed) {
+                    throw new Error(`Garden ${gardenIdNumber} not found after creating raised beds`);
+                }
+                freshGarden = refreshed;
+            }
+
             return context.json({
-                id: garden.id,
-                name: garden.name,
-                latitude: garden.farm.latitude,
-                longitude: garden.farm.longitude,
+                id: freshGarden.id,
+                name: freshGarden.name,
+                latitude: freshGarden.farm.latitude,
+                longitude: freshGarden.farm.longitude,
                 stacks,
-                createdAt: garden.createdAt
+                raisedBeds: freshGarden.raisedBeds.map(raisedBed => ({
+                    id: raisedBed.id,
+                    name: raisedBed.name,
+                    blockId: raisedBed.blockId,
+                    createdAt: raisedBed.createdAt,
+                    updatedAt: raisedBed.updatedAt
+                })),
+                createdAt: freshGarden.createdAt
             });
         })
     .get(

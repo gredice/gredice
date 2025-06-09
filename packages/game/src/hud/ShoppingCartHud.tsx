@@ -1,4 +1,4 @@
-import { ArrowRight, Delete, Euro, Navigate, ShoppingCart as ShoppingCartIcon } from "@signalco/ui-icons";
+import { Delete, Euro, Navigate, ShoppingCart as ShoppingCartIcon, Timer } from "@signalco/ui-icons";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Row } from "@signalco/ui-primitives/Row";
 import { DotIndicator } from "@signalco/ui-primitives/DotIndicator";
@@ -8,54 +8,116 @@ import { Modal } from "@signalco/ui-primitives/Modal";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { useShoppingCart } from "../hooks/useShoppingCart";
+import { useShoppingCart, ShoppingCartItemData } from "../hooks/useShoppingCart";
+import { useCurrentGarden } from "../hooks/useCurrentGarden";
+import { client } from "@gredice/client";
+import { ModalConfirm } from "@signalco/ui/ModalConfirm";
+import { Chip } from "@signalco/ui-primitives/Chip";
+import { useQueryClient } from "@tanstack/react-query";
 
-function ShoppingCartItem() {
+function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
+    const { data: garden } = useCurrentGarden();
+    const queryClient = useQueryClient(); // TODO: Move to mutation
+
+    const hasGarden = Boolean(item.gardenId && garden);
+    const hasRaisedBed = Boolean(item.raisedBedId);
+    const hasPosition = Boolean(item.positionIndex);
+
+    const raisedBed = hasRaisedBed ? garden?.raisedBeds.find(rb => rb.id === item.raisedBedId) : null;
+    const scheduledDateString = item.additionalData ? JSON.parse(item.additionalData).scheduledDate : null;
+    const scheduledDate = scheduledDateString ? new Date(scheduledDateString) : null;
+
+    async function handleRemoveItem() {
+        await client().api["shopping-cart"].$post({
+            json: {
+                amount: 0,
+                cartId: item.cartId,
+                entityId: item.entityId,
+                entityTypeName: item.entityTypeName,
+                gardenId: item.gardenId ?? undefined,
+                raisedBedId: item.raisedBedId ?? undefined,
+                positionIndex: item.positionIndex ?? undefined,
+                additionalData: item.additionalData,
+            }
+        });
+        queryClient.invalidateQueries({ queryKey: ['shopping-cart'] });
+    }
+
     return (
-        <Row spacing={2}>
-            <img className="rounded-lg border overflow-hidden" width={50} height={50} />
+        <Row spacing={2} alignItems="start">
+            <img className="rounded-lg border overflow-hidden" width={50} height={50} src={"https://www.gredice.com" + (item.shopData.image ?? '/assets/plants/placeholder.png')} />
             <Stack className="grow">
                 <Row justifyContent="space-between">
-                    <Typography level="body1">Naziv proizvoda</Typography>
+                    <Typography level="body1" noWrap>{item.shopData.name}</Typography>
                     <Row>
-                        <Typography level="body1" bold>10.00</Typography>
+                        <Typography level="body1" bold>{item.shopData.price?.toFixed(2) ?? "Nevaljan iznos"}</Typography>
                         <Euro className="size-4" />
                     </Row>
                 </Row>
-                <Typography level="body3" secondary>
-                    Opis proizvoda
-                </Typography>
+                {item.shopData.description && (
+                    <Typography level="body3" secondary>
+                        {item.shopData.description}
+                    </Typography>
+                )}
                 <Row justifyContent="space-between">
-                    <Row spacing={1}>
-                        <Row justifyContent="space-between" spacing={0.5}>
-                            <Typography level="body3">Kol.</Typography>
-                            <Typography level="body2" bold>
-                                2
-                            </Typography>
+                    <Stack spacing={1}>
+                        <Row spacing={1}>
+                            <Row justifyContent="space-between" spacing={0.5}>
+                                <Typography level="body3">Kol.</Typography>
+                                <Typography level="body2" bold>{item.amount}</Typography>
+                            </Row>
+                            {(hasGarden || hasRaisedBed || hasPosition) && (
+                                <span className="inline-block h-1 w-1 rounded-full bg-muted-foreground mx-1"></span>
+                            )}
+                            <Row spacing={0.5} className="flex-wrap gap-y-0">
+                                {hasGarden && (
+                                    <Typography level="body3" secondary>
+                                        {garden?.name || "Nepoznati vrt"}
+                                    </Typography>
+                                )}
+                                {(hasGarden && hasRaisedBed) && (
+                                    <Navigate className="size-3 shrink-0" />
+                                )}
+                                {hasRaisedBed && (
+                                    <Typography level="body3" secondary>
+                                        {item.raisedBedId ? `Gredica ${raisedBed?.name}` : "Nepoznato"}
+                                    </Typography>
+                                )}
+                                {(hasRaisedBed && hasPosition) && (
+                                    <Navigate className="size-3 shrink-0" />
+                                )}
+                                {hasPosition && (
+                                    <Typography level="body3" secondary>
+                                        {item.positionIndex !== undefined ? `Pozicija ${item.positionIndex}` : "Nepoznato"}
+                                    </Typography>
+                                )}
+                            </Row>
                         </Row>
-                        <span className="inline-block h-1 w-1 rounded-full bg-muted-foreground mx-1"></span>
-                        <Row spacing={0.5}>
-                            <Typography level="body3" secondary>
-                                Garden
-                            </Typography>
-                            <Navigate className="size-3" />
-                            <Typography level="body3" secondary>
-                                Raised bed
-                            </Typography>
-                            <Navigate className="size-3" />
-                            <Typography level="body3" secondary>
-                                Skladište
-                            </Typography>
-                        </Row>
-                    </Row>
-                    <IconButton
-                        title="Makni s popisa"
-                        variant="plain"
-                        className="rounded-full p-1 text-red-600"
-                        size="sm"
-                        onClick={() => alert("Remove item from cart")}>
-                        <Delete className="size-4" />
-                    </IconButton>
+                        {scheduledDate && (
+                            <Row>
+                                <Chip startDecorator={<Timer className="size-4" />} className="bg-muted">
+                                    <Typography level="body3" secondary>
+                                        {scheduledDate.toLocaleDateString()}
+                                    </Typography>
+                                </Chip>
+                            </Row>
+                        )}
+                    </Stack>
+                    <ModalConfirm
+                        title="Potvrdi brisanje stavke"
+                        header="Brisanje stavke iz košarice"
+                        onConfirm={handleRemoveItem}
+                        trigger={(
+                            <IconButton
+                                title="Makni s popisa"
+                                variant="plain"
+                                className="rounded-full p-1 text-red-600"
+                                size="sm">
+                                <Delete className="size-4" />
+                            </IconButton>
+                        )}>
+                        <Typography>Jeste li sigurni da želite ukloniti ovu stavku iz košarice?</Typography>
+                    </ModalConfirm>
                 </Row>
             </Stack>
         </Row>
@@ -63,7 +125,7 @@ function ShoppingCartItem() {
 }
 
 function ShoppingCart() {
-    const { data: cart, isLoading, isError } = useShoppingCart();
+    const { data: cart, isLoading, isError, refetch } = useShoppingCart();
 
     // const totalItems = items.reduce((total, item) => total + item.quantity, 0)
     // const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0)
@@ -72,9 +134,9 @@ function ShoppingCart() {
         alert("Proceeding to checkout!")
     }
 
-    const handleClearCart = () => {
-        // TODO: Delete cart
-        alert("Cart cleared!")
+    async function confirmClearCart() {
+        await client().api["shopping-cart"].$delete();
+        refetch();
     }
 
     return (
@@ -85,14 +147,14 @@ function ShoppingCart() {
                 </div>
                 <Typography level="h3">Košarica</Typography>
             </Row>
-            <Stack>
+            <Stack spacing={2}>
                 {isLoading && <Typography level="body1">Učitavanje...</Typography>}
                 {isError && <Typography level="body1">Greška prilikom učitavanja košarice</Typography>}
                 {!isLoading && !isError && (
                     <>
                         {cart?.items.length ? (
                             cart.items.map((item) => (
-                                <ShoppingCartItem key={item.id} />
+                                <ShoppingCartItem key={item.id} item={item} />
                             ))
                         ) : (
                             <NoDataPlaceholder>Košarica je prazna</NoDataPlaceholder>
@@ -105,21 +167,30 @@ function ShoppingCart() {
                     <Typography>
                         Ukupno
                     </Typography>
-                    <Typography level="body1" bold>
-                        <Row>
-                            {(cart?.items.reduce((total, item) => total + item.amount, 0) || 0).toFixed(2)}
-                            <Euro className="size-4" />
-                        </Row>
-                    </Typography>
+                    <Row>
+                        <Typography level="body1" bold>
+                            {cart?.total.toFixed(2)}
+                        </Typography>
+                        <Euro className="size-4" />
+                    </Row>
                 </Row>
                 <Row spacing={2}>
-                    <Button
-                        variant="plain"
-                        onClick={handleClearCart}
-                        fullWidth
-                        disabled={!cart?.items.length}>
-                        Očisti košaricu
-                    </Button>
+                    {/* TODO: Localize */}
+                    <ModalConfirm
+                        title="Potvrdi brisanje košarice"
+                        header="Brisanje košarice"
+                        onConfirm={confirmClearCart}
+                        trigger={
+                            <Button
+                                variant="plain"
+                                fullWidth
+                                disabled={!cart?.items.length}>
+                                Očisti košaricu
+                            </Button>
+                        }
+                    >
+                        <Typography>Jeste li sigurni da želite obrisati sve stavke iz košarice?</Typography>
+                    </ModalConfirm>
                     <Button
                         variant="solid"
                         onClick={handleCheckout}
@@ -134,7 +205,10 @@ function ShoppingCart() {
 }
 
 export function ShoppingCartHud() {
-    const { data: cart, isLoading, isError } = useShoppingCart();
+    const { data: cart } = useShoppingCart();
+    if (!cart) {
+        return null;
+    }
 
     return (
         <HudCard

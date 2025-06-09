@@ -11,9 +11,7 @@ export function RaisedBedFieldHud() {
     const view = useGameState(state => state.view);
     const setView = useGameState(state => state.setView);
     const closeupBlock = useGameState(state => state.closeupBlock);
-    const raisedBed = null;
-
-    // console.log('raised bed', raisedBed.data);
+    const raisedBed = currentGarden?.raisedBeds.find((bed) => bed.blockId === closeupBlock?.id);
 
     return (
         <>
@@ -24,7 +22,14 @@ export function RaisedBedFieldHud() {
                     view === 'closeup' && "opacity-100 [transition-delay:950ms] pointer-events-auto",
                 )}>
                 {view === 'closeup' && (
-                    <RaisedBedField />
+                    <>
+                        {currentGarden && raisedBed && (
+                            <RaisedBedField
+                                gardenId={currentGarden.id}
+                                raisedBedId={raisedBed.id}
+                            />
+                        )}
+                    </>
                     // {/* <Popper
                     //         open
                     //         onOpenChange={handleOpenChange}

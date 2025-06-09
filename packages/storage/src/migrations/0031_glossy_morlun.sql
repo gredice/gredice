@@ -1,0 +1,1 @@
+ALTER TABLE "raised_beds" ADD COLUMN "name" text NOT NULL;

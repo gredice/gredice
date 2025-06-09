@@ -100,6 +100,7 @@ export type SelectGardenBlock = typeof gardenBlocks.$inferSelect;
 
 export const raisedBeds = pgTable('raised_beds', {
     id: serial('id').primaryKey(),
+    name: text('name').notNull(),
     accountId: text('account_id').notNull().references(() => accounts.id),
     gardenId: integer('garden_id').notNull().references(() => gardens.id),
     blockId: text('block_id').notNull().references(() => gardenBlocks.id),

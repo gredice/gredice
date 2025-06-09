@@ -10,7 +10,7 @@ export const currentGardenKeys = [...useGardensKeys, 'current'];
 
 function mockGarden(): Garden {
     return {
-        id: 'demo',
+        id: 99999,
         name: 'Moj vrt',
         stacks: [
             {
@@ -22,7 +22,7 @@ function mockGarden(): Garden {
                         rotation: 0
                     },
                     {
-                        id: '4',
+                        id: '3',
                         name: 'Raised_Bed',
                         rotation: 0
                     }
@@ -149,7 +149,19 @@ function mockGarden(): Garden {
                 ]
             }
         ],
-        location: { lat: 45.739, lon: 16.572 }
+        location: { lat: 45.739, lon: 16.572 },
+        raisedBeds: [
+            {
+                id: 1,
+                name: 'Raised Bed 1',
+                blockId: '3',
+            },
+            {
+                id: 2,
+                name: 'Raised Bed 2',
+                blockId: '4',
+            }
+        ]
     };
 }
 
@@ -212,13 +224,14 @@ export function useCurrentGarden(): UseQueryResult<Garden | null> {
             }
 
             return {
-                id: garden.id?.toString(),
+                id: garden.id,
                 name: garden.name,
                 stacks,
                 location: {
                     lat: garden.latitude,
                     lon: garden.longitude
-                }
+                },
+                raisedBeds: garden.raisedBeds
             } satisfies Garden;
         },
         enabled: isMock || Boolean(gardens),

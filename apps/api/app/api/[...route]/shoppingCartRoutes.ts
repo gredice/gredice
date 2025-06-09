@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getOrCreateShoppingCart, upsertOrRemoveCartItem, deleteShoppingCart } from '@gredice/storage';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import { describeRoute } from 'hono-openapi';
+import { getCartItemsInfo } from './checkoutRoutes';
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -18,7 +19,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!cart) {
                 return context.json({ error: 'Cart not found' }, 404);
             }
-            return context.json(cart);
+
+            // TODO: Calculate total amount of items in the cart
+            const cartItemsWithShopInfo = await getCartItemsInfo(cart.items);
+            let total = cartItemsWithShopInfo.reduce((sum, item) => sum + (item.shopData.price ?? 0), 0);
+
+            return context.json({
+                ...cart,
+                items: cartItemsWithShopInfo,
+                total,
+            });
         })
     .post(
         '/',
@@ -30,29 +40,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
             cartId: z.number(),
             entityId: z.string(),
             entityTypeName: z.string(),
-            amount: z.number().int().min(1),
+            amount: z.number().int().min(0).max(100),
+            gardenId: z.number().optional(),
+            raisedBedId: z.number().optional(),
+            positionIndex: z.number().int().optional(),
+            additionalData: z.string().optional().nullable(),
         })),
         async (context) => {
-            const { cartId, entityId, entityTypeName, amount } = context.req.valid('json');
-            await upsertOrRemoveCartItem(cartId, entityId, entityTypeName, amount);
-            return context.json({ success: true });
-        }
-    )
-    .patch(
-        '/',
-        describeRoute({
-            description: 'Update an item in the shopping cart',
-        }),
-        authValidator(['user', 'admin']),
-        zValidator('json', z.object({
-            cartId: z.number(),
-            entityId: z.string(),
-            entityTypeName: z.string(),
-            amount: z.number().int(),
-        })),
-        async (context) => {
-            const { cartId, entityId, entityTypeName, amount } = context.req.valid('json');
-            await upsertOrRemoveCartItem(cartId, entityId, entityTypeName, amount);
+            const { cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData } = context.req.valid('json');
+            await upsertOrRemoveCartItem(cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData);
             return context.json({ success: true });
         }
     )

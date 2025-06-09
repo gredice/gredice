@@ -1,150 +1,40 @@
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
-import { usePlants } from "../../hooks/usePlants";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { FilterInput } from "@gredice/ui/FilterInput";
 import { ReactElement, useState } from "react";
-import { List } from "@signalco/ui-primitives/List";
-import { Alert } from "@signalco/ui/Alert";
-import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
-import { Skeleton } from "@signalco/ui-primitives/Skeleton";
-import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { SegmentedProgress } from "../../controls/components/SegmentedProgress";
 import { PlantData, PlantSortData } from "@gredice/client";
-import { usePlantSorts } from "../../hooks/usePlantSorts";
-import { Button } from "@signalco/ui-primitives/Button";
-import { Input } from "@signalco/ui-primitives/Input";
+import { useShoppingCart } from "../../hooks/useShoppingCart";
+import { PlantsList } from "./PlantsList";
+import { PlantsSortList } from "./PlantsSortList";
+import { PlantPickerOptions } from "./PlantPickerOptions";
+import { useSetShoppingCartItem } from "../../hooks/useSetShoppingCartItem";
 import { Row } from "@signalco/ui-primitives/Row";
-import { useSetShoppingCartItem } from "../../hooks/useShoppingCart";
+import { Button } from "@signalco/ui-primitives/Button";
+import { Check, Left, ShoppingCart } from "@signalco/ui-icons";
 
-function PlantListItemSkeleton() {
-    return (
-        <div className="p-2 flex flex-row gap-2">
-            <Skeleton className="w-12 h-12" />
-            <div className="flex flex-col gap-1">
-                <Skeleton className="w-32 h-6" />
-                <Skeleton className="w-44 h-5" />
-            </div>
-        </div>
-    )
-}
+type PlantPickerProps = {
+    positionIndex: number;
+    gardenId: number;
+    raisedBedId: number;
+    trigger: ReactElement;
+};
 
-function PlantsSortList({ plantId, onChange }: { plantId: number, onChange: (plant: PlantSortData) => void }) {
-    const { data: plantSorts, isLoading, isError } = usePlantSorts(plantId);
-    const [search] = useSearchParam('pretraga', '');
-    const filteredPlantSorts = search.length > 0
-        ? plantSorts?.filter(sort => sort.information.name.toLowerCase().includes(search.toLowerCase()))
-        : plantSorts;
-
-    return (
-        <>
-            {isError && (
-                <Alert color="danger">
-                    Greška prilikom učitavanja sorta biljke
-                </Alert>
-            )}
-            <List variant="outlined" className="bg-card max-h-96 overflow-y-auto">
-                {!isLoading && filteredPlantSorts?.length === 0 && (
-                    <NoDataPlaceholder className="p-4">
-                        Nema rezultata
-                    </NoDataPlaceholder>
-                )}
-                {isLoading && Array.from({ length: 3 }).map((_, index) => (
-                    <PlantListItemSkeleton key={index} />
-                ))}
-                {filteredPlantSorts?.map((sort) => (
-                    <ListItem
-                        key={sort.id}
-                        variant="outlined"
-                        nodeId={sort.id.toString()}
-                        onSelected={() => onChange(sort)}
-                        startDecorator={(
-                            <img
-                                src={'https://www.gredice.com/' + (sort.image?.cover?.url ?? sort.information.plant.image?.cover?.url)}
-                                alt={sort.information.name}
-                                className="size-10"
-                            />
-                        )}
-                        label={(
-                            <Stack>
-                                <Typography level="body1">{sort.information.name}</Typography>
-                                <Typography level="body2" className="font-normal line-clamp-2 break-words">{sort.information.shortDescription}</Typography>
-                            </Stack>
-                        )}
-                    />
-                ))}
-            </List>
-        </>
-    );
-}
-
-function PlantsList({ onChange }: { onChange: (plant: PlantData) => void }) {
-    const { data: plants, isLoading, isError } = usePlants();
-    const [search] = useSearchParam('pretraga', '');
-    const filteredPlants = search.length > 0
-        ? plants?.filter(plant => plant.information.name.toLowerCase().includes(search.toLowerCase()))
-        : plants;
-
-    return (
-        <>
-            {isError && (
-                <Alert color="danger">
-                    Greška prilikom učitavanja biljaka
-                </Alert>
-            )}
-            <List variant="outlined" className="bg-card max-h-96 overflow-y-auto">
-                {!isLoading && filteredPlants?.length === 0 && (
-                    <NoDataPlaceholder className="p-4">
-                        Nema rezultata
-                    </NoDataPlaceholder>
-                )}
-                {isLoading && Array.from({ length: 3 }).map((_, index) => (
-                    <PlantListItemSkeleton key={index} />
-                ))}
-                {filteredPlants?.map((plant) => (
-                    <ListItem
-                        key={plant.id}
-                        variant="outlined"
-                        nodeId={plant.id.toString()}
-                        onSelected={() => onChange(plant)}
-                        startDecorator={(
-                            <img
-                                src={'https://www.gredice.com/' + plant.image.cover.url}
-                                alt={plant.information.name}
-                                className="size-10"
-                            />
-                        )}
-                        label={(
-                            <Stack>
-                                <Typography level="body1">{plant.information.name}</Typography>
-                                <Typography level="body2" className="font-normal line-clamp-2 break-words">{plant.information.description}</Typography>
-                            </Stack>
-                        )}
-                    />
-                ))}
-            </List>
-        </>
-    );
-}
-
-export function PlantPicker({ trigger }: { trigger: ReactElement }) {
+export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger }: PlantPickerProps) {
+    const [open, setOpen] = useState(false);
     const [, setSearch] = useSearchParam('pretraga', '');
     const steps = [
         { label: 'Odabir biljke', subHeader: 'Odaberi biljku koju želiš posaditi' },
         { label: 'Odabir sorte', subHeader: 'Odaberi sortu biljke koju želiš posaditi' },
         { label: 'Opcije', subHeader: 'Dodatne opcije sadnje biljke' },
     ];
-    const cartItem = useSetShoppingCartItem();
-
-    // Steap 1: select plant
+    const { data: cart } = useShoppingCart();
+    const setCartItem = useSetShoppingCartItem();
     const [selectedPlant, setSelectedPlant] = useState<PlantData | null>(null);
-
-    // Step 2: select sort
     const [selectedSort, setSelectedSort] = useState<PlantSortData | null>(null);
-
-    // Step 3: options
-    const [plantDate, setPlantDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [plantOptions, setPlantOptions] = useState<{ scheduledDate: Date | null | undefined } | null>(null);
 
     let currentStep = 0;
     if (selectedPlant) {
@@ -165,28 +55,45 @@ export function PlantPicker({ trigger }: { trigger: ReactElement }) {
         setSearch(undefined);
     }
 
-    async function handlePlantOptions(options: { plantDate: Date }) {
+    function handlePlantOptionsChange(options: { scheduledDate: Date | null | undefined }) {
+        setPlantOptions(options);
+    }
+
+    async function handleConfirm() {
         if (!selectedSort) {
             return;
         }
-        await cartItem.mutateAsync({
+
+        const existingItem = cart?.items.find(item =>
+            item.entityTypeName === selectedSort.entityType.name &&
+            item.entityId === selectedSort.id.toString() &&
+            item.gardenId === gardenId &&
+            item.raisedBedId === raisedBedId &&
+            item.positionIndex === positionIndex
+        );
+
+        await setCartItem.mutateAsync({
             entityTypeName: selectedSort.entityType.name,
             entityId: selectedSort.id.toString(),
-            amount: 1
+            amount: (existingItem?.amount ?? 0) + 1,
+            gardenId,
+            raisedBedId,
+            positionIndex,
+            additionalData: JSON.stringify({
+                scheduledDate: plantOptions?.scheduledDate?.toISOString(),
+            })
         });
+        setOpen(false);
     }
 
     function handleOpenChange(open: boolean) {
-        if (!open) {
-            setSelectedPlant(null);
-            setSelectedSort(null);
-            setSearch(undefined);
-        }
+        setOpen(open);
     }
 
     return (
         <Modal
             trigger={trigger}
+            open={open}
             onOpenChange={handleOpenChange}
             title={"Odabir biljke"}
             className="z-[99999999] md:border-tertiary md:border-b-4">
@@ -207,45 +114,69 @@ export function PlantPicker({ trigger }: { trigger: ReactElement }) {
                     </Typography>
                 </Stack>
                 {currentStep < 2 && <FilterInput searchParamName={"pretraga"} fieldName={"search"} />}
-                {currentStep === 0 && <PlantsList onChange={handlePlantSelect} />}
+                {currentStep === 0 && (
+                    <>
+                        <PlantsList onChange={handlePlantSelect} />
+                        <Row>
+                            <Button
+                                variant="outlined"
+                                onClick={() => {
+                                    setOpen(false);
+                                }}
+                                startDecorator={<Left className="size-5" />}
+                            >
+                                Odustani
+                            </Button>
+                        </Row>
+                    </>
+                )}
                 {(currentStep === 1 && selectedPlant) && (
-                    <PlantsSortList
-                        plantId={selectedPlant.id}
-                        onChange={(sort) => {
-                            handleSortSelect(sort);
-                            setSearch(undefined);
-                        }} />
+                    <>
+                        <PlantsSortList
+                            plantId={selectedPlant.id}
+                            onChange={(sort) => {
+                                handleSortSelect(sort);
+                                setSearch(undefined);
+                            }} />
+                        <Row>
+                            <Button
+                                variant="outlined"
+                                onClick={() => {
+                                    setSelectedSort(null);
+                                    setSearch(undefined);
+                                }}
+                                startDecorator={<Left className="size-5" />}
+                            >
+                                Odabir biljke
+                            </Button>
+                        </Row>
+                    </>
                 )}
                 {currentStep === 2 && selectedSort && (
-                    <Stack spacing={2}>
-                        <Row spacing={1} className="bg-card rounded-md border p-2">
-                            <img
-                                src={'https://www.gredice.com/' + (selectedSort.image?.cover?.url ?? selectedSort.information.plant.image?.cover?.url)}
-                                alt={selectedSort.information.name}
-                                className="size-10"
-                            />
-                            <Typography level="body1">
-                                {selectedSort.information.name}
-                            </Typography>
+                    <>
+                        <PlantPickerOptions
+                            selectedSort={selectedSort}
+                            onChange={handlePlantOptionsChange} />
+                        <Row justifyContent="space-between">
+                            <Button
+                                variant="outlined"
+                                onClick={() => {
+                                    setSelectedSort(null);
+                                    setSearch(undefined);
+                                }}
+                                startDecorator={<Left className="size-5" />}
+                            >
+                                Odabir sorte
+                            </Button>
+                            <Button
+                                variant="solid"
+                                onClick={handleConfirm}
+                                startDecorator={<ShoppingCart className="size-5" />}
+                            >
+                                Potvrdi sadnju
+                            </Button>
                         </Row>
-                        <Input
-                            type="date"
-                            label="Datum sadnje"
-                            name="plantDate"
-                            className="w-full"
-                            value={plantDate}
-                            onChange={(e) => setPlantDate(e.target.value)}
-                            // Tomorrow's date as default and minimum date
-                            // max is 3 months from now
-                            min={new Date().toISOString().split('T')[0]}
-                            max={new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString().split('T')[0]}
-                        />
-                        <Button
-                            variant="solid"
-                            onClick={() => handlePlantOptions({ plantDate: new Date(plantDate) })}>
-                            Potvrdi sadnju
-                        </Button>
-                    </Stack>
+                    </>
                 )}
             </Stack>
         </Modal>

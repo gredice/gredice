@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { validator as zValidator } from 'hono-openapi/zod';
 import { z } from 'zod';
-import { assignStripeCustomerId, getAccount, getEntitiesFormatted, getShoppingCart, getUser } from '@gredice/storage';
+import { assignStripeCustomerId, getAccount, getEntitiesFormatted, getShoppingCart, getUser, SelectShoppingCartItem } from '@gredice/storage';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import { CheckoutItem, getStripeCheckoutSession, stripeCheckout, stripeSessionCancel } from "@gredice/stripe/server";
 import { describeRoute } from 'hono-openapi';
@@ -11,14 +11,70 @@ type EntityTypeStandardized = EntityType & {
     information?: {
         name?: string;
         shortDescription?: string;
+        description?: string;
+
+        // Parent items
+        plant?: EntityTypeStandardized;
     };
     images?: {
-        cover?: string;
+        cover?: { url?: string };
+    },
+    image?: {
+        cover?: { url?: string };
     };
-    // TODO: Cover other types of pricing
     prices?: {
-        perOperation: number;
+        perPlant?: number;
+        perOperation?: number;
     };
+}
+
+export type ShoppingCartItemWithShopData = SelectShoppingCartItem & {
+    shopData: {
+        name?: string;
+        description?: string;
+        image?: string;
+        price?: number;
+    };
+};
+
+export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise<ShoppingCartItemWithShopData[]> {
+    const entityTypeNames = items.map((item) => item.entityTypeName);
+    const uniqueEntityTypeNames = Array.from(new Set(entityTypeNames));
+    const entitiesData = await Promise.all(uniqueEntityTypeNames.map(getEntitiesFormatted));
+    const entitiesByTypeName = uniqueEntityTypeNames.reduce((acc, typeName, index) => {
+        const entities = entitiesData[index] as EntityTypeStandardized[];
+        if (!acc[typeName]) {
+            acc[typeName] = [];
+        }
+        acc[typeName].push(...entities);
+        return acc;
+    }, {} as Record<string, EntityTypeStandardized[]>);
+
+    return items.map((item) => {
+        const entityData = entitiesByTypeName[item.entityTypeName].find((entity) => entity?.id.toString() === item.entityId);
+        if (!entityData) {
+            console.warn('Entity not found', { entityId: item.entityId, entityTypeName: item.entityTypeName });
+            return null;
+        }
+
+        console.log(entityData)
+
+        return {
+            ...item,
+            shopData: {
+                name: entityData.information?.name,
+                description: entityData.information?.shortDescription ?? entityData.information?.description,
+                image: entityData.image?.cover?.url ??
+                    entityData.images?.cover?.url ??
+                    entityData.information?.plant?.image?.cover?.url ??
+                    entityData.information?.plant?.images?.cover?.url,
+                price: entityData.prices?.perOperation ??
+                    entityData.prices?.perPlant ??
+                    entityData.information?.plant?.prices?.perOperation ??
+                    entityData.information?.plant?.prices?.perPlant,
+            }
+        };
+    }).filter(i => Boolean(i)).map(i => i!);
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
@@ -54,35 +110,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Retrieve entities data
-            const entityTypeNames = cart.items.map((item) => item.entityTypeName);
-            const entitiesData = await Promise.all(entityTypeNames.map(getEntitiesFormatted));
-            const entitiesByTypeName = entityTypeNames.reduce((acc, typeName, index) => {
-                const entities = entitiesData[index] as EntityTypeStandardized[];
-                if (!acc[typeName]) {
-                    acc[typeName] = [];
-                }
-                acc[typeName].push(...entities);
-                return acc;
-            }, {} as Record<string, EntityTypeStandardized[]>);
+            const cartItemsWithShopData = await getCartItemsInfo(cart.items);
 
             // TODO: Generate a stripe checkout items from cart items
             const items: CheckoutItem[] = [];
-            for (const item of cart.items) {
-                const entityData = entitiesByTypeName[item.entityTypeName].find((entity) => entity?.id.toString() === item.entityId);
-                if (!entityData) {
-                    console.warn('Entity not found', { entityId: item.entityId, entityTypeName: item.entityTypeName });
-                    continue;
-                }
-
+            for (const item of cartItemsWithShopData) {
                 // TODO: Apply discounted price if available
 
-                const name = entityData.information?.name;
-                const description = entityData.information?.shortDescription || undefined;
-                const valueInCents = Math.round((entityData.prices?.perOperation ?? 0) * 100);
+                const name = item.shopData?.name;
+                const description = item.shopData?.description || undefined;
+                const valueInCents = Math.round((item.shopData?.price ?? 0) * 100);
                 const quantity = item.amount;
-                const imageUrls = entityData.images?.cover ? [
-                    entityData.images.cover
-                ] : [];
+                const imageUrls = item.shopData.image ? [item.shopData.image] : [];
 
                 // TODO: Validate item data
                 if (!name || !valueInCents || !quantity) {

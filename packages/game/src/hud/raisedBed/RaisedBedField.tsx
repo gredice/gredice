@@ -22,7 +22,13 @@ function ShovelIcon(props: SVGProps<SVGSVGElement>) {
     );
 }
 
-export function RaisedBedField() {
+export function RaisedBedField({
+    gardenId,
+    raisedBedId
+}: {
+    gardenId: number;
+    raisedBedId: number;
+}) {
     return (
         <div className="size-full grid grid-rows-3">
             {[...Array(3)].map((_, rowIndex) => (
@@ -40,6 +46,9 @@ export function RaisedBedField() {
                                         <ShovelIcon className="size-10 stroke-green-800" />
                                     </button>
                                 )}
+                                gardenId={gardenId}
+                                raisedBedId={raisedBedId}
+                                positionIndex={rowIndex * 3 + colIndex}
                             />
                         </div>
                     ))}
