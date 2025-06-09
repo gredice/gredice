@@ -9,6 +9,7 @@ async function getPlants() {
 export function usePlants() {
     return useQuery({
         queryKey: ['plants'],
-        queryFn: getPlants
+        queryFn: getPlants,
+        staleTime: 1000 * 60 * 60, // 1 hour
     });
 }

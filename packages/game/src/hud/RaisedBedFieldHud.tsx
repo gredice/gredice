@@ -4,6 +4,7 @@ import { HudCard } from "./components/HudCard";
 import { cx } from "@signalco/ui-primitives/cx";
 import { useCurrentGarden } from "../hooks/useCurrentGarden";
 import { RaisedBedField } from "./raisedBed/RaisedBedField";
+import { Check } from "@signalco/ui-icons";
 
 export function RaisedBedFieldHud() {
     const { data: currentGarden } = useCurrentGarden();
@@ -44,6 +45,7 @@ export function RaisedBedFieldHud() {
                     onClick={() => {
                         setView({ view: 'normal' });
                     }}
+                    startDecorator={<Check className="size-5" />}
                 >
                     Završi uređivanje
                 </Button>

@@ -355,45 +355,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/entities/seed": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * /entities/seed
-         * @description Get all entities of type seed.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["entity-seed"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/entities/brand": {
         parameters: {
             query?: never;
@@ -421,6 +382,45 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["entity-brand"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/entities/seed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/seed
+         * @description Get all entities of type seed.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-seed"][];
                     };
                 };
             };
@@ -471,6 +471,7 @@ export interface components {
                 latinName: string;
                 description: string;
                 operations: {
+                    id?: number;
                     attributes?: {
                         /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
                         relativeDays?: number;
@@ -571,6 +572,7 @@ export interface components {
             attributes: {
                 tags?: string[];
                 category: {
+                    id?: number;
                     information?: {
                         name: string;
                         label: string;
@@ -688,6 +690,7 @@ export interface components {
                 planting?: string;
                 flowering?: string;
                 plant: {
+                    id?: number;
                     information?: {
                         watering: string;
                         soilPreparation: string;
@@ -708,6 +711,7 @@ export interface components {
                         latinName: string;
                         description: string;
                         operations: {
+                            id?: number;
                             attributes?: {
                                 /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
                                 relativeDays?: number;
@@ -855,6 +859,25 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        "entity-brand": {
+            id: number;
+            entityType: {
+                /** @default 16 */
+                id: number;
+                /** @default brand */
+                name: string;
+                /** @default Brend */
+                label: string;
+            };
+            information: {
+                website?: string;
+                name: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         "entity-seed": {
             id: number;
             entityType: {
@@ -862,19 +885,21 @@ export interface components {
                 id: number;
                 /** @default seed */
                 name: string;
-                /** @default sjeme */
+                /** @default Sjeme */
                 label: string;
             };
             information: {
                 name: string;
                 barcode?: string;
                 brand: {
+                    id?: number;
                     information?: {
                         website?: string;
                         name: string;
                     };
                 };
                 plant: {
+                    id?: number;
                     information?: {
                         watering: string;
                         soilPreparation: string;
@@ -895,6 +920,7 @@ export interface components {
                         latinName: string;
                         description: string;
                         operations: {
+                            id?: number;
                             attributes?: {
                                 /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
                                 relativeDays?: number;
@@ -974,11 +1000,13 @@ export interface components {
                     };
                 };
                 plantSort: {
+                    id?: number;
                     information?: {
                         harvest?: string;
                         planting?: string;
                         flowering?: string;
                         plant: {
+                            id?: number;
                             information?: {
                                 watering: string;
                                 soilPreparation: string;
@@ -999,6 +1027,7 @@ export interface components {
                                 latinName: string;
                                 description: string;
                                 operations: {
+                                    id?: number;
                                     attributes?: {
                                         /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
                                         relativeDays?: number;
@@ -1102,25 +1131,6 @@ export interface components {
             };
             application: {
                 applicationArea?: number;
-            };
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        "entity-brand": {
-            id: number;
-            entityType: {
-                /** @default 16 */
-                id: number;
-                /** @default brand */
-                name: string;
-                /** @default Brend */
-                label: string;
-            };
-            information: {
-                website?: string;
-                name: string;
             };
             /** Format: date-time */
             createdAt: string;

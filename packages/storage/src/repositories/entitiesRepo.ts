@@ -174,10 +174,13 @@ async function resolveRef(value: string | null, attributeDefinition: SelectAttri
     );
 
     if (attributeDefinition.multiple) {
-        console.log(`Resolving multiple references for attribute ${attributeDefinition.name} with values:`, refNames);
-        return await Promise.all(refEntities.map(ref => expandEntityAttributes({}, ref.attributes)));
+        return await Promise.all(refEntities.map(ref => expandEntityAttributes({
+            id: ref.id,
+        }, ref.attributes)));
     } else {
-        return refEntities[0] ? await expandEntityAttributes({}, refEntities[0].attributes) : null;
+        return refEntities[0] ? await expandEntityAttributes({
+            id: refEntities[0].id,
+        }, refEntities[0].attributes) : null;
     }
 }
 
