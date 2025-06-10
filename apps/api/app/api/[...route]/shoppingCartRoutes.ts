@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { getOrCreateShoppingCart, upsertOrRemoveCartItem, deleteShoppingCart, getRaisedBed, getEntitiesFormatted } from '@gredice/storage';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import { describeRoute } from 'hono-openapi';
-import { getCartItemsInfo } from './checkoutRoutes';
+import { EntityStandardized, getCartItemsInfo } from './checkoutRoutes';
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -28,7 +28,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (raisedBedsToAdd.length > 0) {
                 console.debug('Adding raised beds to cart', { raisedBedsToAdd });
                 const operations = await getEntitiesFormatted('operation');
-                const raisedBedOperation = operations.find(block => (block as any).information.name === 'raisedBed1m');
+                const raisedBedOperation = operations.find(operation => (operation as EntityStandardized).information?.name === 'raisedBed1m');
                 if (!raisedBedOperation) {
                     return context.json({ error: 'Raised bed operation not found' }, 500);
                 }

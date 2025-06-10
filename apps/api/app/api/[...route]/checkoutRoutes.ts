@@ -7,7 +7,7 @@ import { CheckoutItem, getStripeCheckoutSession, stripeCheckout, stripeSessionCa
 import { describeRoute } from 'hono-openapi';
 
 type EntityType = Awaited<ReturnType<typeof getEntitiesFormatted>>[0];
-type EntityTypeStandardized = EntityType & {
+export type EntityStandardized = EntityType & {
     information?: {
         name?: string;
         label?: string;
@@ -15,7 +15,7 @@ type EntityTypeStandardized = EntityType & {
         description?: string;
 
         // Parent items
-        plant?: EntityTypeStandardized;
+        plant?: EntityStandardized;
     };
     images?: {
         cover?: { url?: string };
@@ -51,13 +51,13 @@ export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise
     const uniqueEntityTypeNames = Array.from(new Set(entityTypeNames));
     const entitiesData = await Promise.all(uniqueEntityTypeNames.map(getEntitiesFormatted));
     const entitiesByTypeName = uniqueEntityTypeNames.reduce((acc, typeName, index) => {
-        const entities = entitiesData[index] as EntityTypeStandardized[];
+        const entities = entitiesData[index] as EntityStandardized[];
         if (!acc[typeName]) {
             acc[typeName] = [];
         }
         acc[typeName].push(...entities);
         return acc;
-    }, {} as Record<string, EntityTypeStandardized[]>);
+    }, {} as Record<string, EntityStandardized[]>);
 
     // Process auto-discounts for raised beds
     const mentionedRaisedBeds = Array.from(new Set(items.filter(item => Boolean(item.raisedBedId)).map(item => item.raisedBedId!)));
@@ -66,7 +66,7 @@ export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise
     const discounts: ShoppingCartDiscount[] = [];
     if (raisedBedsToAdd.length > 0) {
         const operations = await getEntitiesFormatted('operation');
-        const raisedBedOperation = operations.find(block => (block as any).information.name === 'raisedBed1m');
+        const raisedBedOperation = operations.find(block => (block as EntityStandardized).information?.name === 'raisedBed1m');
         if (!raisedBedOperation) {
             throw new Error('Raised bed operation not found');
         }
