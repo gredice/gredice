@@ -6,7 +6,7 @@ import Head from "next/head";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import Link from "next/link";
 import Image from "next/image";
-import {ReactNode} from "react";
+import { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "API | Gredice",
@@ -30,7 +30,7 @@ export default function RootLayout({
           <div className="h-[62px]" />
           <div className='border-b px-4 py-2 fixed top-0 left-0 w-full z-10' style={{ backgroundColor: '#000' }}>
             <Link href="/">
-              <Image alt='Logo' src="/Logo - gredice@2x.svg" width={44} height={44} />
+              <Image alt='Logo' src="https://cdn.gredice.com/Logotype-gredice_2x.png" width={163} height={44} />
             </Link>
           </div>
           {children}
