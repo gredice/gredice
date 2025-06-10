@@ -122,9 +122,9 @@ function useMusic(handler: mixerManagerHandler, context: AudioContext, config: {
 
     const isWindowInFocus = useWindowFocus();
     useEffect(() => {
-        if (isWindowInFocus) {
+        if (isWindowInFocus && node.current) {
             operations.play();
-        } else {
+        } else if (node.current) {
             operations.stop();
         }
     }, [isWindowInFocus]);

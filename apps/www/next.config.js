@@ -15,6 +15,12 @@ const nextConfig = {
                 port: '',
                 pathname: '/assets/**',
             },
+            {
+                protocol: 'https',
+                hostname: 'cdn.gredice.com',
+                port: '',
+                pathname: '/**',
+            },
         ]
     },
     productionBrowserSourceMaps: true
