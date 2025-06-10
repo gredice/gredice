@@ -62,6 +62,6 @@
 		}
 	],
 	"settings": {
-		"typescript.tsdk": "✨ gredice-monorepo\\node_modules\\typescript\\lib"
+		"typescript.tsdk": "📦 @gredice/game/node_modules/typescript/lib"
 	}
 }

@@ -6,7 +6,9 @@ export async function getOrCreateShoppingCart(accountId: string, expiresAt?: Dat
     let cart = await storage().query.shoppingCarts.findFirst({
         where: and(eq(shoppingCarts.accountId, accountId), eq(shoppingCarts.isDeleted, false)),
         with: {
-            items: true
+            items: {
+                where: eq(shoppingCartItems.isDeleted, false),
+            }
         },
     });
     if (cart) {
@@ -26,16 +28,32 @@ export async function getOrCreateShoppingCart(accountId: string, expiresAt?: Dat
     return await storage().query.shoppingCarts.findFirst({
         where: and(eq(shoppingCarts.id, createdCart.id), eq(shoppingCarts.isDeleted, false)),
         with: {
-            items: true
+            items: {
+                where: eq(shoppingCartItems.isDeleted, false),
+            }
         },
     });
 }
 
-export async function upsertOrRemoveCartItem(cartId: number, entityId: string, entityTypeName: string, amount: number) {
+export async function upsertOrRemoveCartItem(
+    cartId: number,
+    entityId: string,
+    entityTypeName: string,
+    amount: number,
+    gardenId?: number,
+    raisedBedId?: number,
+    positionIndex?: number,
+    additionalData?: string | null
+) {
     const existingItem = await storage().query.shoppingCartItems.findFirst({
         where: and(
             eq(shoppingCartItems.cartId, cartId),
+            eq(shoppingCartItems.entityTypeName, entityTypeName),
             eq(shoppingCartItems.entityId, entityId),
+            gardenId ? eq(shoppingCartItems.gardenId, gardenId) : undefined,
+            raisedBedId ? eq(shoppingCartItems.raisedBedId, raisedBedId) : undefined,
+            positionIndex ? eq(shoppingCartItems.positionIndex, positionIndex) : undefined,
+            additionalData ? eq(shoppingCartItems.additionalData, additionalData) : undefined,
             eq(shoppingCartItems.isDeleted, false)
         ),
     });
@@ -67,6 +85,10 @@ export async function upsertOrRemoveCartItem(cartId: number, entityId: string, e
             entityId,
             entityTypeName,
             amount,
+            gardenId,
+            raisedBedId,
+            positionIndex,
+            additionalData
         });
     }
 }
@@ -86,7 +108,9 @@ export async function getAllShoppingCarts() {
     return await storage().query.shoppingCarts.findMany({
         where: eq(shoppingCarts.isDeleted, false),
         with: {
-            items: true
+            items: {
+                where: eq(shoppingCartItems.isDeleted, false),
+            }
         },
     });
 }
@@ -95,7 +119,9 @@ export async function getShoppingCart(cartId: number) {
     return await storage().query.shoppingCarts.findFirst({
         where: and(eq(shoppingCarts.id, cartId), eq(shoppingCarts.isDeleted, false)),
         with: {
-            items: true
+            items: {
+                where: eq(shoppingCartItems.isDeleted, false),
+            }
         },
     });
 }

@@ -93,6 +93,9 @@ async function resolvePropertyData(attributeDefinition: ExtendedAttributeDefinit
                 items: {
                     type: 'object',
                     properties: {
+                        id: {
+                            type: 'number'
+                        },
                         ...await populateAttributeDefinitionsProperties(refAttributeDefinitions)
                     },
                     description: attributeDefinition.description || undefined
@@ -102,6 +105,9 @@ async function resolvePropertyData(attributeDefinition: ExtendedAttributeDefinit
         return {
             type: 'object',
             properties: {
+                id: {
+                    type: 'number'
+                },
                 ...await populateAttributeDefinitionsProperties(refAttributeDefinitions)
             },
             description: attributeDefinition.description || undefined

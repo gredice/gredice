@@ -7,14 +7,7 @@ settings:
 importers:
 
   .:
-    dependencies:
-      pg:
-        specifier: 8.16.0
-        version: 8.16.0
     devDependencies:
-      '@types/pg':
-        specifier: 8.15.4
-        version: 8.15.4
       turbo:
         specifier: 2.5.4
         version: 2.5.4
@@ -130,6 +123,9 @@ importers:
       next-axiom:
         specifier: 1.9.1
         version: 1.9.1(next@15.3.3(@playwright/test@1.52.0)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.89.1))(react@19.1.0)
+      pg:
+        specifier: 8.16.0
+        version: 8.16.0
       postcss:
         specifier: 8.5.4
         version: 8.5.4

@@ -4,15 +4,14 @@ import { HudCard } from "./components/HudCard";
 import { cx } from "@signalco/ui-primitives/cx";
 import { useCurrentGarden } from "../hooks/useCurrentGarden";
 import { RaisedBedField } from "./raisedBed/RaisedBedField";
+import { Check } from "@signalco/ui-icons";
 
 export function RaisedBedFieldHud() {
     const { data: currentGarden } = useCurrentGarden();
     const view = useGameState(state => state.view);
     const setView = useGameState(state => state.setView);
     const closeupBlock = useGameState(state => state.closeupBlock);
-    const raisedBed = null;
-
-    // console.log('raised bed', raisedBed.data);
+    const raisedBed = currentGarden?.raisedBeds.find((bed) => bed.blockId === closeupBlock?.id);
 
     return (
         <>
@@ -23,7 +22,14 @@ export function RaisedBedFieldHud() {
                     view === 'closeup' && "opacity-100 [transition-delay:950ms] pointer-events-auto",
                 )}>
                 {view === 'closeup' && (
-                    <RaisedBedField />
+                    <>
+                        {currentGarden && raisedBed && (
+                            <RaisedBedField
+                                gardenId={currentGarden.id}
+                                raisedBedId={raisedBed.id}
+                            />
+                        )}
+                    </>
                     // {/* <Popper
                     //         open
                     //         onOpenChange={handleOpenChange}
@@ -44,6 +50,7 @@ export function RaisedBedFieldHud() {
                     onClick={() => {
                         setView({ view: 'normal' });
                     }}
+                    startDecorator={<Check className="size-5" />}
                 >
                     Završi uređivanje
                 </Button>

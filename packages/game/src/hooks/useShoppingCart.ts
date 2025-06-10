@@ -13,3 +13,6 @@ export function useShoppingCart() {
         },
     });
 }
+
+export type ShoppingCartData = NonNullable<Awaited<ReturnType<typeof useShoppingCart>['data']>>;
+export type ShoppingCartItemData = ShoppingCartData['items'][0];

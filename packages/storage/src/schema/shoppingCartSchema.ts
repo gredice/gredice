@@ -23,6 +23,8 @@ export const shoppingCartItems = pgTable('shopping_cart_items', {
     entityTypeName: text('entity_type_name').notNull(),
     gardenId: integer('garden_id').references(() => gardens.id),
     raisedBedId: integer('raised_bed_id').references(() => raisedBeds.id),
+    positionIndex: integer('position_index'),
+    additionalData: text('additional_data').$type<string | null>().default(null),
     amount: integer('amount').notNull(),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
@@ -58,3 +60,5 @@ export const shoppingCartItemRelations = relations(shoppingCartItems, ({ one }) 
         relationName: 'shoppingCartItemsRaisedBed',
     }),
 }));
+
+export type SelectShoppingCartItem = typeof shoppingCartItems.$inferSelect;

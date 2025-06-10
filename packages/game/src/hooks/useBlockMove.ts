@@ -17,7 +17,7 @@ export function useBlockMove() {
             const gardenId = garden.id;
             await client().api.gardens[":gardenId"].stacks.$patch({
                 param: {
-                    gardenId: gardenId
+                    gardenId: gardenId.toString()
                 },
                 json: [
                     {
