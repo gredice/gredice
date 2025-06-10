@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { validator as zValidator } from 'hono-openapi/zod';
 import { z } from 'zod';
-import { getOrCreateShoppingCart, upsertOrRemoveCartItem, deleteShoppingCart } from '@gredice/storage';
+import { getOrCreateShoppingCart, upsertOrRemoveCartItem, deleteShoppingCart, getRaisedBed, getEntitiesFormatted } from '@gredice/storage';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import { describeRoute } from 'hono-openapi';
 import { getCartItemsInfo } from './checkoutRoutes';
@@ -15,14 +15,47 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId } = context.get('authContext');
-            const cart = await getOrCreateShoppingCart(accountId);
+            let cart = await getOrCreateShoppingCart(accountId);
             if (!cart) {
                 return context.json({ error: 'Cart not found' }, 404);
             }
 
-            // TODO: Calculate total amount of items in the cart
+            // Process shopping cart
+            // 1. inject raised bed item if raised beds are not yet paid (entityTypeName = 'raisedBed')
+            const mentionedRaisedBeds = Array.from(new Set(cart.items.filter(item => Boolean(item.raisedBedId)).map(item => item.raisedBedId!)));
+            const raisedBeds = await Promise.all(mentionedRaisedBeds.map(id => getRaisedBed(id)));
+            const raisedBedsToAdd = raisedBeds.filter(rb => rb && rb.status === 'new');
+            if (raisedBedsToAdd.length > 0) {
+                console.debug('Adding raised beds to cart', { raisedBedsToAdd });
+                const operations = await getEntitiesFormatted('operation');
+                const raisedBedOperation = operations.find(block => (block as any).information.name === 'raisedBed1m');
+                if (!raisedBedOperation) {
+                    return context.json({ error: 'Raised bed operation not found' }, 500);
+                }
+
+                for (const raisedBed of raisedBedsToAdd) {
+                    if (!raisedBed) continue;
+
+                    await upsertOrRemoveCartItem(
+                        cart.id,
+                        (raisedBedOperation.id ?? 0).toString(),
+                        raisedBedOperation.entityType.name,
+                        1, // Amount is always 1 for raised beds
+                        raisedBed.gardenId,
+                        raisedBed.id
+                    );
+                }
+
+                // Refresh the cart after adding raised beds
+                cart = await getOrCreateShoppingCart(accountId);
+                if (!cart) {
+                    return context.json({ error: 'Cart not found' }, 404);
+                }
+            }
+
+            // Calculate total amount of items in the cart
             const cartItemsWithShopInfo = await getCartItemsInfo(cart.items);
-            const total = cartItemsWithShopInfo.reduce((sum, item) => sum + (item.shopData.price ?? 0), 0);
+            const total = cartItemsWithShopInfo.reduce((sum, item) => sum + (typeof item.shopData.discountPrice === "number" ? item.shopData.discountPrice : item.shopData.price ?? 0), 0);
 
             return context.json({
                 ...cart,

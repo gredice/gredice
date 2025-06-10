@@ -14,11 +14,14 @@ import { client } from "@gredice/client";
 import { ModalConfirm } from "@signalco/ui/ModalConfirm";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { useQueryClient } from "@tanstack/react-query";
+import { cx } from "@signalco/ui-primitives/cx";
+import { clientStripe } from '@gredice/stripe/client';
 
 function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
     const queryClient = useQueryClient(); // TODO: Move to mutation
 
+    const hasDiscount = typeof item.shopData.discountPrice === 'number';
     const hasGarden = Boolean(item.gardenId && garden);
     const hasRaisedBed = Boolean(item.raisedBedId);
     const hasPosition = Boolean(item.positionIndex);
@@ -47,13 +50,26 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         <Row spacing={2} alignItems="start">
             <img className="rounded-lg border overflow-hidden" width={50} height={50} src={"https://www.gredice.com" + (item.shopData.image ?? '/assets/plants/placeholder.png')} />
             <Stack className="grow">
-                <Row justifyContent="space-between">
+                <Row alignItems="start" justifyContent="space-between" spacing={1}>
                     <Typography level="body1" noWrap>{item.shopData.name}</Typography>
                     <Row>
-                        <Typography level="body1" bold>{item.shopData.price?.toFixed(2) ?? "Nevaljan iznos"}</Typography>
-                        <Euro className="size-4" />
+                        <Typography className={cx(hasDiscount && 'line-through opacity-50 text-sm')} level="body1" bold>{item.shopData.price?.toFixed(2) ?? "Nevaljan iznos"}</Typography>
+                        <Euro className={cx(hasDiscount ? "size-3" : "size-4")} />
                     </Row>
                 </Row>
+                {hasDiscount && (
+                    <Row justifyContent="space-between" spacing={1}>
+                        <Typography level="body3" secondary className="text-green-600">
+                            {`Popust: ${(100 - (item.shopData.discountPrice! / item.shopData.price! * 100)).toFixed(0)}% - ${item.shopData.discountDescription}`}
+                        </Typography>
+                        <Row spacing={0.5} alignItems="center">
+                            <Typography level="body1" bold className="text-green-600">
+                                {item.shopData.discountPrice?.toFixed(2) ?? "Nevaljan iznos"}
+                            </Typography>
+                            <Euro className="size-4" />
+                        </Row>
+                    </Row>
+                )}
                 {item.shopData.description && (
                     <Typography level="body3" secondary>
                         {item.shopData.description}
@@ -127,11 +143,32 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
 function ShoppingCart() {
     const { data: cart, isLoading, isError, refetch } = useShoppingCart();
 
-    // const totalItems = items.reduce((total, item) => total + item.quantity, 0)
-    // const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0)
+    const handleCheckout = async () => {
+        if (!cart || !cart.id) {
+            console.error("No cart available for checkout");
+            return;
+        }
 
-    const handleCheckout = () => {
-        alert("Proceeding to checkout!")
+        const response = await client().api.checkout.checkout.$post({
+            json: {
+                cartId: cart.id,
+            }
+        });
+        if (!response.ok) {
+            console.error("Failed to create checkout session:", response.statusText);
+            // TODO: Show notification to user
+            return;
+        }
+
+        const checkoutSession = await response.json();
+        const stripe = await clientStripe();
+        const result = await stripe?.redirectToCheckout({
+            sessionId: checkoutSession.sessionId,
+        });
+        if (result?.error) {
+            console.error("Stripe checkout error:", result.error);
+            // TODO: Show notification to user
+        }
     }
 
     async function confirmClearCart() {
@@ -147,7 +184,7 @@ function ShoppingCart() {
                 </div>
                 <Typography level="h3">Košarica</Typography>
             </Row>
-            <Stack spacing={2}>
+            <Stack spacing={2} className="max-h-[50vh] overflow-y-auto">
                 {isLoading && <Typography level="body1">Učitavanje...</Typography>}
                 {isError && <Typography level="body1">Greška prilikom učitavanja košarice</Typography>}
                 {!isLoading && !isError && (

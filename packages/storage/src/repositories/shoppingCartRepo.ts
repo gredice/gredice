@@ -108,7 +108,9 @@ export async function getAllShoppingCarts() {
     return await storage().query.shoppingCarts.findMany({
         where: eq(shoppingCarts.isDeleted, false),
         with: {
-            items: true
+            items: {
+                where: eq(shoppingCartItems.isDeleted, false),
+            }
         },
     });
 }
@@ -117,7 +119,9 @@ export async function getShoppingCart(cartId: number) {
     return await storage().query.shoppingCarts.findFirst({
         where: and(eq(shoppingCarts.id, cartId), eq(shoppingCarts.isDeleted, false)),
         with: {
-            items: true
+            items: {
+                where: eq(shoppingCartItems.isDeleted, false),
+            }
         },
     });
 }
