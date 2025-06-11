@@ -31,3 +31,20 @@ export async function createTestAccount() {
     // Always create a new account for each test to ensure isolation
     return await createAccount();
 }
+
+/**
+ * Helper to create a raised bed for tests
+ * @param gardenId - The garden ID where the raised bed will be created
+ * @param accountId - The account ID associated with the raised bed
+ * @param blockId - The block ID where the raised bed will be located
+ */
+export async function createTestRaisedBed(gardenId: number, accountId: string, blockId: string) {
+    const { createRaisedBed } = await import('@gredice/storage');
+    return await createRaisedBed({
+        name: 'Test Bed',
+        accountId,
+        gardenId,
+        blockId,
+        status: 'new',
+    });
+}
