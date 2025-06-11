@@ -248,3 +248,23 @@ export async function stripeCreatePortal(account: UserAccount) {
         console.error(error);
     }
 }
+
+export async function stripeWebhookConstructEvent(body: string, sig: string, webhookSecret: string | undefined) {
+    if (!webhookSecret) {
+        throw new Error('Stripe webhook secret is not provided.');
+    }
+
+    try {
+        const event = getStripe().webhooks.constructEvent(body, sig, webhookSecret);
+        console.info(`🔔  Webhook received: ${event.type}`);
+        return event;
+    } catch (err: unknown) {
+        if (err instanceof Error) {
+            console.error(`❌ Error message: ${err.message}`);
+            throw new Error(`Webhook Error: ${err.message}`);
+        } else {
+            console.error('Stripe webhook event - unknown error', err);
+            throw new Error('Stripe webhook event - unknown error');
+        }
+    }
+}
