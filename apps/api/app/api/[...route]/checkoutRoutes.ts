@@ -204,8 +204,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 });
             }
 
-            console.debug('Stripe checkout items', JSON.stringify(items));
-
             const { customerId, sessionId } = await stripeCheckout({
                 id: account.id,
                 email: user.userName,
