@@ -44,7 +44,7 @@ export async function upsertOrRemoveCartItem(
     raisedBedId?: number,
     positionIndex?: number,
     additionalData?: string | null,
-    owner: 'user' | 'automatic' = 'user' // new param, default to 'user'
+    type: 'user' | 'automatic' = 'user' // new param, default to 'user'
 ) {
     const existingItem = await storage().query.shoppingCartItems.findFirst({
         where: and(
@@ -56,7 +56,7 @@ export async function upsertOrRemoveCartItem(
             positionIndex ? eq(shoppingCartItems.positionIndex, positionIndex) : undefined,
             additionalData ? eq(shoppingCartItems.additionalData, additionalData) : undefined,
             eq(shoppingCartItems.isDeleted, false),
-            eq(shoppingCartItems.owner, owner)
+            eq(shoppingCartItems.type, type)
         ),
     });
 
@@ -113,7 +113,7 @@ export async function upsertOrRemoveCartItem(
             raisedBedId,
             positionIndex,
             additionalData,
-            owner
+            type
         });
     }
 }
