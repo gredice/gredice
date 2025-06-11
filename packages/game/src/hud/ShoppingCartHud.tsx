@@ -46,6 +46,9 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         queryClient.invalidateQueries({ queryKey: ['shopping-cart'] });
     }
 
+    // Hide delete button for automatic items
+    const isAutomatic = item.owner === 'automatic';
+
     return (
         <Row spacing={2} alignItems="start">
             <img className="rounded-lg border overflow-hidden" width={50} height={50} src={"https://www.gredice.com" + (item.shopData.image ?? '/assets/plants/placeholder.png')} />
@@ -119,21 +122,24 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             </Row>
                         )}
                     </Stack>
-                    <ModalConfirm
-                        title="Potvrdi brisanje stavke"
-                        header="Brisanje stavke iz košarice"
-                        onConfirm={handleRemoveItem}
-                        trigger={(
-                            <IconButton
-                                title="Makni s popisa"
-                                variant="plain"
-                                className="rounded-full p-1 text-red-600"
-                                size="sm">
-                                <Delete className="size-4" />
-                            </IconButton>
-                        )}>
-                        <Typography>Jeste li sigurni da želite ukloniti ovu stavku iz košarice?</Typography>
-                    </ModalConfirm>
+                    {/* Only show delete button if not automatic */}
+                    {!isAutomatic && (
+                        <ModalConfirm
+                            title="Potvrdi brisanje stavke"
+                            header="Brisanje stavke iz košarice"
+                            onConfirm={handleRemoveItem}
+                            trigger={(
+                                <IconButton
+                                    title="Makni s popisa"
+                                    variant="plain"
+                                    className="rounded-full p-1 text-red-600"
+                                    size="sm">
+                                    <Delete className="size-4" />
+                                </IconButton>
+                            )}>
+                            <Typography>Jeste li sigurni da želite ukloniti ovu stavku iz košarice?</Typography>
+                        </ModalConfirm>
+                    )}
                 </Row>
             </Stack>
         </Row>

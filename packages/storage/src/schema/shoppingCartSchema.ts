@@ -29,6 +29,7 @@ export const shoppingCartItems = pgTable('shopping_cart_items', {
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
+    owner: text('type').notNull().default('user'), // 'user' | 'automatic'
 }, (table) => [
     index('shopping_cart_items_cart_id_idx').on(table.cartId),
     index('shopping_cart_items_entity_id_idx').on(table.entityId),
@@ -61,4 +62,5 @@ export const shoppingCartItemRelations = relations(shoppingCartItems, ({ one }) 
     }),
 }));
 
-export type SelectShoppingCartItem = typeof shoppingCartItems.$inferSelect;
+export type ShoppingCartItemOwner = 'user' | 'automatic';
+export type SelectShoppingCartItem = typeof shoppingCartItems.$inferSelect & { type: ShoppingCartItemOwner };
