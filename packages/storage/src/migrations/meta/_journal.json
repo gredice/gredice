@@ -232,6 +232,13 @@
       "when": 1749513470397,
       "tag": "0032_solid_mattie_franklin",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1749682648809,
+      "tag": "0033_chilly_luckman",
+      "breakpoints": true
     }
   ]
 }

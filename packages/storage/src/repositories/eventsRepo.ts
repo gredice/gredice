@@ -28,6 +28,13 @@ export const knownEventTypes = {
         update: "raisedBed.update",
         delete: "raisedBed.delete",
     },
+    raisedBedFields: {
+        create: "raisedBedField.create",
+        update: "raisedBedField.update",
+        delete: "raisedBedField.delete",
+        plantPlace: "raisedBedField.plantPlace",
+        operationOrder: "raisedBedField.operationOrder",
+    },
 }
 
 export const knownEvents = {
@@ -83,6 +90,37 @@ export const knownEvents = {
             type: knownEventTypes.raisedBeds.delete,
             version: 1,
             aggregateId,
+        }),
+    },
+    raisedBedFields: {
+        createdV1: (aggregateId: string, data: { status: string }) => ({
+            type: knownEventTypes.raisedBedFields.create,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        updatedV1: (aggregateId: string, data: { status: string }) => ({
+            type: knownEventTypes.raisedBedFields.update,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        deletedV1: (aggregateId: string) => ({
+            type: knownEventTypes.raisedBedFields.delete,
+            version: 1,
+            aggregateId,
+        }),
+        plantPlaceV1: (aggregateId: string, data: { plantId: string, plantSortId: string, status: string }) => ({
+            type: knownEventTypes.raisedBedFields.plantPlace,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        operationOrderV1: (aggregateId: string, data: { orderId: string, status: string }) => ({
+            type: knownEventTypes.raisedBedFields.operationOrder,
+            version: 1,
+            aggregateId,
+            data,
         }),
     },
 }

@@ -2,8 +2,10 @@ import 'server-only';
 import { and, count, desc, eq } from "drizzle-orm";
 import { storage } from "..";
 import { gardenBlocks, gardens, gardenStacks, raisedBeds, InsertGarden, UpdateGarden, UpdateGardenBlock, UpdateGardenStack, InsertRaisedBed, UpdateRaisedBed } from "../schema";
-import { createEvent, knownEvents } from './eventsRepo';
+import { createEvent, knownEvents, knownEventTypes } from './eventsRepo';
 import { v4 as uuidV4 } from 'uuid';
+import { getEvents } from './eventsRepo';
+import { raisedBedFields, InsertRaisedBedField } from '../schema/gardenSchema';
 
 export async function createGarden(garden: InsertGarden) {
     const createdGarden = (await storage()
@@ -199,14 +201,61 @@ export async function getRaisedBeds(gardenId: number) {
         where: and(
             eq(raisedBeds.gardenId, gardenId),
             eq(raisedBeds.isDeleted, false)
-        ),
+        )
     });
 }
 
 export async function getRaisedBed(raisedBedId: number) {
-    return storage().query.raisedBeds.findFirst({
+    const raisedBed = await storage().query.raisedBeds.findFirst({
         where: and(eq(raisedBeds.id, raisedBedId), eq(raisedBeds.isDeleted, false))
     });
+    if (!raisedBed) return null;
+    // Attach raised bed fields with event-sourced info
+    return {
+        ...raisedBed,
+        fields: await getRaisedBedFieldsWithEvents(raisedBed.id)
+    };
+}
+
+// New: Retrieve all raised bed fields for a single raised bed, with event-sourced info
+export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
+    const fields = await storage().query.raisedBedFields.findMany({
+        where: and(
+            eq(raisedBedFields.raisedBedId, raisedBedId),
+            eq(raisedBedFields.isDeleted, false)
+        ),
+    });
+    // For each field, fetch and apply events
+    return Promise.all(fields.map(async (field) => {
+        const aggregateId = `${field.raisedBedId}|${field.positionIndex}`;
+        const events = await getEvents([
+            knownEventTypes.raisedBedFields.create,
+            knownEventTypes.raisedBedFields.update,
+            knownEventTypes.raisedBedFields.delete,
+            knownEventTypes.raisedBedFields.plantPlace,
+            knownEventTypes.raisedBedFields.operationOrder,
+        ], aggregateId);
+        // Reduce events to get latest status, plant info, etc.
+        let status = field.status;
+        let plantId = undefined;
+        let plantSortId = undefined;
+        let orderId = undefined;
+        for (const event of events.reverse()) {
+            const data = event.data as Record<string, any> | undefined;
+            if (event.type === 'raisedBedField.update' && data?.status) status = data.status;
+            if (event.type === 'raisedBedField.plantPlace') {
+                plantId = data?.plantId;
+                plantSortId = data?.plantSortId;
+                status = data?.status || status;
+            }
+            if (event.type === 'raisedBedField.operationOrder') {
+                orderId = data?.orderId;
+                status = data?.status || status;
+            }
+            if (event.type === 'raisedBedField.delete') status = 'deleted';
+        }
+        return { ...field, status, plantId, plantSortId, orderId };
+    }));
 }
 
 export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
@@ -224,4 +273,33 @@ export async function getAllRaisedBeds() {
             eq(raisedBeds.isDeleted, false)
         )
     });
+}
+
+export async function upsertRaisedBedField(field: Omit<InsertRaisedBedField, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'> & { status?: string }) {
+    // Try to update first
+    const updated = await storage()
+        .update(raisedBedFields)
+        .set({ ...field, updatedAt: new Date() })
+        .where(and(
+            eq(raisedBedFields.raisedBedId, field.raisedBedId),
+            eq(raisedBedFields.positionIndex, field.positionIndex),
+            eq(raisedBedFields.isDeleted, false)
+        ));
+    if (updated.rowCount && updated.rowCount > 0) {
+        return;
+    }
+
+    // If not updated, insert new
+    await storage()
+        .insert(raisedBedFields)
+        .values(field)
+        .onConflictDoNothing();
+}
+
+export async function deleteRaisedBedField(raisedBedId: number, positionIndex: number) {
+    await storage().update(raisedBedFields).set({ isDeleted: true }).where(and(
+        eq(raisedBedFields.raisedBedId, raisedBedId),
+        eq(raisedBedFields.positionIndex, positionIndex),
+        eq(raisedBedFields.isDeleted, false)
+    ));
 }
