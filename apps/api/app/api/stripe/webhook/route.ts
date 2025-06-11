@@ -16,7 +16,7 @@ const relevantEvents = new Set([
 async function manageCheckoutSession(paymentStatus: Stripe.Checkout.Session.PaymentStatus, customerId?: string, items?: Stripe.ApiList<Stripe.LineItem>) {
     // Here you would typically update your database to reflect the payment status
     // For example, mark the user's subscription as active or update their account status
-    console.log(`Payment status for customer ${customerId}: ${paymentStatus}`);
+    console.log(`Payment status for customer ${customerId}: ${paymentStatus} (${items?.length ?? 0} items)`);
     // Implement your logic here
 }
 
