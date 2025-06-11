@@ -42,7 +42,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         raisedBedOperation.entityType.name,
                         1, // Amount is always 1 for raised beds
                         raisedBed.gardenId,
-                        raisedBed.id
+                        raisedBed.id,
+                        undefined,
+                        undefined,
+                        'automatic' // Mark as automatic
                     );
                 }
 
@@ -50,6 +53,25 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 cart = await getOrCreateShoppingCart(accountId);
                 if (!cart) {
                     return context.json({ error: 'Cart not found' }, 404);
+                }
+            }
+
+            // 2. Remove automatic raised bed operation if no items reference the raised bed
+            for (const raisedBed of mentionedRaisedBeds) {
+                const itemsForBed = cart.items.filter(item => item.raisedBedId === raisedBed && !item.isDeleted);
+                const hasOnlyAutomatic = itemsForBed.length === 1 && itemsForBed[0].entityTypeName === 'operation' && itemsForBed[0].owner === 'automatic';
+                if (hasOnlyAutomatic) {
+                    await upsertOrRemoveCartItem(
+                        cart.id,
+                        itemsForBed[0].entityId,
+                        itemsForBed[0].entityTypeName,
+                        0, // Remove
+                        itemsForBed[0].gardenId,
+                        itemsForBed[0].raisedBedId,
+                        itemsForBed[0].positionIndex,
+                        itemsForBed[0].additionalData,
+                        'automatic'
+                    );
                 }
             }
 
@@ -81,7 +103,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         })),
         async (context) => {
             const { cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData } = context.req.valid('json');
-            await upsertOrRemoveCartItem(cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData);
+            await upsertOrRemoveCartItem(cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData, 'user');
             return context.json({ success: true });
         }
     )
