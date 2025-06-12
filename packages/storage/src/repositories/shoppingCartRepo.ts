@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, not } from "drizzle-orm";
 import { shoppingCarts, shoppingCartItems } from "../schema";
 import { storage } from "../storage";
 
@@ -60,8 +60,8 @@ export async function upsertOrRemoveCartItem(
         ),
     });
 
-    // Prevent deletion of automatic items via API (amount <= 0)
-    if (amount <= 0 && existingItem?.type === 'automatic') {
+    // Prevent deletion of automatic items (amount <= 0)
+    if (amount <= 0 && existingItem?.type === 'automatic' && existingItem.raisedBedId) {
         // Check if this is a raised bed automatic item and if there are any other items for this raised bed
         const hasOtherItemsForRaisedBed = await storage().query.shoppingCartItems.findFirst({
             where: and(
@@ -69,7 +69,7 @@ export async function upsertOrRemoveCartItem(
                 eq(shoppingCartItems.raisedBedId, existingItem.raisedBedId),
                 eq(shoppingCartItems.isDeleted, false),
                 // Exclude the automatic item itself
-                eq(shoppingCartItems.id, existingItem.id) === false
+                not(eq(shoppingCartItems.id, existingItem.id))
             ),
         });
         if (hasOtherItemsForRaisedBed) {

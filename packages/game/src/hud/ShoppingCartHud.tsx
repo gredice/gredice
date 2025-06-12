@@ -24,7 +24,7 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const hasDiscount = typeof item.shopData.discountPrice === 'number';
     const hasGarden = Boolean(item.gardenId && garden);
     const hasRaisedBed = Boolean(item.raisedBedId);
-    const hasPosition = Boolean(item.positionIndex);
+    const hasPosition = typeof item.positionIndex === 'number';
 
     const raisedBed = hasRaisedBed ? garden?.raisedBeds.find(rb => rb.id === item.raisedBedId) : null;
     const scheduledDateString = item.additionalData ? JSON.parse(item.additionalData).scheduledDate : null;
@@ -47,7 +47,7 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     }
 
     // Hide delete button for automatic items
-    const isAutomatic = item.owner === 'automatic';
+    const isAutomatic = item.type === 'automatic';
 
     return (
         <Row spacing={2} alignItems="start">
@@ -107,7 +107,7 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 )}
                                 {hasPosition && (
                                     <Typography level="body3" secondary>
-                                        {item.positionIndex !== undefined ? `Pozicija ${item.positionIndex}` : "Nepoznato"}
+                                        {`Pozicija ${(item.positionIndex ?? 0) + 1}`}
                                     </Typography>
                                 )}
                             </Row>

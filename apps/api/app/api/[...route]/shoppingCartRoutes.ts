@@ -59,17 +59,22 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // 2. Remove automatic raised bed operation if no items reference the raised bed
             for (const raisedBed of mentionedRaisedBeds) {
                 const itemsForBed = cart.items.filter(item => item.raisedBedId === raisedBed && !item.isDeleted);
-                const hasOnlyAutomatic = itemsForBed.length === 1 && itemsForBed[0].entityTypeName === 'operation' && itemsForBed[0].type === 'automatic';
+                const itemForBed = itemsForBed[0];
+                const hasOnlyAutomatic =
+                    itemsForBed.length === 1 &&
+                    itemForBed.entityTypeName === 'operation' &&
+                    itemForBed.type === 'automatic' &&
+                    itemForBed.gardenId;
                 if (hasOnlyAutomatic) {
                     await upsertOrRemoveCartItem(
                         cart.id,
-                        itemsForBed[0].entityId,
-                        itemsForBed[0].entityTypeName,
+                        itemForBed.entityId,
+                        itemForBed.entityTypeName,
                         0, // Remove
-                        itemsForBed[0].gardenId,
-                        itemsForBed[0].raisedBedId,
-                        itemsForBed[0].positionIndex,
-                        itemsForBed[0].additionalData,
+                        itemForBed.gardenId ?? undefined,
+                        itemForBed.raisedBedId ?? undefined,
+                        itemForBed.positionIndex ?? undefined,
+                        itemForBed.additionalData ?? undefined,
                         'automatic'
                     );
                 }

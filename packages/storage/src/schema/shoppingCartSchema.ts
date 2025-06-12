@@ -62,5 +62,4 @@ export const shoppingCartItemRelations = relations(shoppingCartItems, ({ one }) 
     }),
 }));
 
-export type ShoppingCartItemType = 'user' | 'automatic';
-export type SelectShoppingCartItem = typeof shoppingCartItems.$inferSelect & { type: ShoppingCartItemType };
+export type SelectShoppingCartItem = typeof shoppingCartItems.$inferSelect;
