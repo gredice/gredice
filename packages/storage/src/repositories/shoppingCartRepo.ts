@@ -30,8 +30,9 @@ export async function getOrCreateShoppingCart(accountId: string, expiresAt?: Dat
         with: {
             items: {
                 where: eq(shoppingCartItems.isDeleted, false),
+                orderBy: shoppingCartItems.createdAt,
             }
-        },
+        }
     });
 }
 

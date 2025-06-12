@@ -2,14 +2,13 @@ import { createStore, useStore } from "zustand";
 import { audioMixer } from "./audio/audioMixer";
 import { OrbitControls } from 'three-stdlib';
 import { getTimes } from "suncalc";
-import { Garden } from "./types/Garden";
 import { audioConfig } from "./utils/audioConfig";
 import { createContext, useContext } from "react";
 import { Block } from "./types/Block";
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
-function getSunriseSunset({ lat, lon }: Garden['location'], currentTime: Date) {
+function getSunriseSunset({ lat, lon }: { lat: number, lon: number }, currentTime: Date) {
     const { sunrise: sunriseStart, sunset: sunsetStart } = getTimes(currentTime, lat, lon);
     return { sunrise: sunriseStart, sunset: sunsetStart };
 }
@@ -23,7 +22,7 @@ function getSunriseSunset({ lat, lon }: Garden['location'], currentTime: Date) {
  * 
  * @returns A number between 0 and 1 representing the current time of day
  */
-function getTimeOfDay({ lat, lon }: Garden['location'], currentTime: Date) {
+function getTimeOfDay({ lat, lon }: { lat: number, lon: number }, currentTime: Date) {
     const { sunrise: sunriseStart, sunset: sunsetStart } = getSunriseSunset({ lat, lon }, currentTime);
 
     const sunrise = sunriseStart.getHours() * 60 + sunriseStart.getMinutes();

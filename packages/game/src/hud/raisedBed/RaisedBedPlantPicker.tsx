@@ -142,7 +142,7 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger }: P
                             <Button
                                 variant="outlined"
                                 onClick={() => {
-                                    setSelectedSort(null);
+                                    setSelectedPlant(null);
                                     setSearch(undefined);
                                 }}
                                 startDecorator={<Left className="size-5" />}

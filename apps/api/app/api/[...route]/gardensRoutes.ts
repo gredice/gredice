@@ -126,6 +126,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     id: raisedBed.id,
                     name: raisedBed.name,
                     blockId: raisedBed.blockId,
+                    status: raisedBed.status,
+                    fields: raisedBed.fields,
                     createdAt: raisedBed.createdAt,
                     updatedAt: raisedBed.updatedAt
                 })),

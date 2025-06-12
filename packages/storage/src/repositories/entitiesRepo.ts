@@ -29,18 +29,93 @@ export function getEntitiesRaw(entityTypeName: string, state?: string) {
     });
 }
 
-export async function getEntitiesFormatted(entityTypeName: string) {
-    const entities = await getEntitiesRaw(entityTypeName, 'published');
-    return await Promise.all(entities.map(expandEntity));
+// Add a type for the cache, ensuring attributes and entityType are included
+interface EntityWithAttributesAndType extends SelectEntity {
+    attributes: (SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition })[];
+    entityType: SelectEntityType;
+}
+interface EntityTypeCache {
+    [key: string]: Promise<EntityWithAttributesAndType[]>;
 }
 
-async function expandValue(value: string | null | undefined, attributeDefinition: SelectAttributeDefinition) {
+// Update expandEntity to accept a cache
+async function expandEntity(
+    entityRaw: EntityWithAttributesAndType | undefined,
+    cache: EntityTypeCache = {}
+) {
+    if (!entityRaw) {
+        return null;
+    }
+
+    const entity: {
+        id: number,
+        entityType: {
+            id: number,
+            name: string,
+            label: string,
+        },
+        createdAt: Date,
+        updatedAt: Date,
+        [key: string]: unknown
+    } = {
+        id: entityRaw.id,
+        entityType: {
+            id: entityRaw.entityType.id,
+            name: entityRaw.entityType.name,
+            label: entityRaw.entityType.label,
+        },
+        createdAt: entityRaw.createdAt,
+        updatedAt: entityRaw.updatedAt
+    };
+    return await expandEntityAttributes(entity, entityRaw.attributes, cache);
+}
+
+// Update expandEntityAttributes to accept a cache
+async function expandEntityAttributes<T extends Record<string, unknown>>(
+    entity: T,
+    attributes: (SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition })[],
+    cache: EntityTypeCache = {}
+) {
+    const expandedEntity = { ...entity };
+    // Prepare all attribute expansion promises
+    const attributePromises = attributes.map(async (attribute) => {
+        // Create category object if it doesn't exist
+        if (expandedEntity[attribute.attributeDefinition.category] === undefined) {
+            (expandedEntity as Record<string, unknown>)[attribute.attributeDefinition.category] = {};
+        }
+        const category = expandedEntity[attribute.attributeDefinition.category] as Record<string, unknown>;
+        if (attribute.attributeDefinition.multiple) {
+            // Create array if it doesn't exist
+            if (category[attribute.attributeDefinition.name] === undefined) {
+                category[attribute.attributeDefinition.name] = [];
+            }
+            const array = category[attribute.attributeDefinition.name] as unknown[];
+            const result = await expandValue(attribute.value, attribute.attributeDefinition, cache);
+            if (Array.isArray(result)) {
+                array.push(...result);
+            } else {
+                array.push(result);
+            }
+        } else {
+            category[attribute.attributeDefinition.name] = await expandValue(attribute.value, attribute.attributeDefinition, cache);
+        }
+    });
+    await Promise.all(attributePromises);
+    return expandedEntity;
+}
+
+// Update expandValue to accept a cache
+async function expandValue(
+    value: string | null | undefined,
+    attributeDefinition: SelectAttributeDefinition,
+    cache: EntityTypeCache = {}
+) {
     if (value === null || value === undefined) {
         return null;
     }
 
     if (attributeDefinition.dataType.startsWith('ref:')) {
-        return await resolveRef(value, attributeDefinition);
+        return await resolveRef(value, attributeDefinition, cache);
     }
     if (attributeDefinition.dataType === 'number') {
         return parseFloat(value);
@@ -68,70 +143,12 @@ async function expandValue(value: string | null | undefined, attributeDefinition
     }
 }
 
-async function expandEntityAttributes<T extends Record<string, unknown>>(entity: T, attributes: (SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition })[]) {
-    const expandedEntity = { ...entity };
-    for (const key in attributes) {
-        const attribute = attributes[key];
-
-        // Create category object if it doesn't exist
-        if (expandedEntity[attribute.attributeDefinition.category] === undefined) {
-            (expandedEntity as Record<string, unknown>)[attribute.attributeDefinition.category] = {};
-        }
-        const category = expandedEntity[attribute.attributeDefinition.category] as Record<string, unknown>;
-        if (attribute.attributeDefinition.multiple) {
-            // Create array if it doesn't exist
-            if (category[attribute.attributeDefinition.name] === undefined) {
-                category[attribute.attributeDefinition.name] = [];
-            }
-            const array = category[attribute.attributeDefinition.name] as unknown[];
-            const result = await expandValue(attribute.value, attribute.attributeDefinition);
-            if (Array.isArray(result)) {
-                array.push(...result);
-            } else {
-                array.push(result);
-            }
-        } else {
-            category[attribute.attributeDefinition.name] = await expandValue(attribute.value, attribute.attributeDefinition);
-        }
-    };
-    return expandedEntity;
-}
-
-async function expandEntity(
-    entityRaw: SelectEntity & {
-        entityType: SelectEntityType,
-        attributes: (SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition })[]
-    } | undefined,
+// Update resolveRef to use the cache and correct types
+async function resolveRef(
+    value: string | null,
+    attributeDefinition: SelectAttributeDefinition,
+    cache: EntityTypeCache = {}
 ) {
-    if (!entityRaw) {
-        return null;
-    }
-
-    // Expand attributes to entity object
-    const entity: {
-        id: number,
-        entityType: {
-            id: number,
-            name: string,
-            label: string,
-        },
-        createdAt: Date,
-        updatedAt: Date,
-        [key: string]: unknown
-    } = {
-        id: entityRaw.id,
-        entityType: {
-            id: entityRaw.entityType.id,
-            name: entityRaw.entityType.name,
-            label: entityRaw.entityType.label,
-        },
-        createdAt: entityRaw.createdAt,
-        updatedAt: entityRaw.updatedAt
-    };
-    return await expandEntityAttributes(entity, entityRaw.attributes);
-}
-
-async function resolveRef(value: string | null, attributeDefinition: SelectAttributeDefinition) {
     const refEntityTypeName = attributeDefinition.dataType.split(':')[1];
     if (!value) {
         return;
@@ -139,54 +156,61 @@ async function resolveRef(value: string | null, attributeDefinition: SelectAttri
     const refNames: string[] = [];
     if (attributeDefinition.multiple) {
         try {
-            // If the value is a JSON string, parse it
             const parsedValue = JSON.parse(value);
             if (!Array.isArray(parsedValue)) {
                 refNames.push(value);
             } else {
-                // If it's an array, push each item to refNames
                 for (const item of parsedValue) {
                     if (typeof item === 'string') {
                         refNames.push(item);
                     } else {
-                        // If the item is not a string, treat it as a single string
                         refNames.push(JSON.stringify(item));
                     }
                 }
             }
         } catch {
-            // If parsing fails, treat the value as a single string
             refNames.push(value);
         }
     } else {
         refNames.push(value);
     }
 
-    // Get all entities of the referenced type
-    // and filter them by the names in the attribute value
-    const refEntitiesByType = await getEntitiesRaw(refEntityTypeName, 'published');
-    const refEntities = refEntitiesByType.filter(e =>
-        e.attributes.some(a =>
+    // Use cache key based on entity type and state
+    const cacheKey = `${refEntityTypeName}:published`;
+    if (!cache[cacheKey]) {
+        cache[cacheKey] = getEntitiesRaw(refEntityTypeName, 'published') as Promise<EntityWithAttributesAndType[]>;
+    }
+    const refEntitiesByType = await cache[cacheKey];
+    const refNameSet = new Set(refNames);
+    const refEntities = refEntitiesByType.filter((e: EntityWithAttributesAndType) =>
+        e.attributes.some((a: SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition }) =>
             a.value != null &&
             a.attributeDefinition.category === 'information' &&
             a.attributeDefinition.name === 'name' &&
-            refNames.includes(a.value))
+            refNameSet.has(a.value))
     );
 
     if (attributeDefinition.multiple) {
         return await Promise.all(refEntities.map(ref => expandEntityAttributes({
             id: ref.id,
-        }, ref.attributes)));
+        }, ref.attributes, cache)));
     } else {
         return refEntities[0] ? await expandEntityAttributes({
             id: refEntities[0].id,
-        }, refEntities[0].attributes) : null;
+        }, refEntities[0].attributes, cache) : null;
     }
 }
 
+export async function getEntitiesFormatted(entityTypeName: string) {
+    const cache: EntityTypeCache = {};
+    const entities = await getEntitiesRaw(entityTypeName, 'published') as EntityWithAttributesAndType[];
+    return await Promise.all(entities.map(e => expandEntity(e, cache)));
+}
+
 export async function getEntityFormatted(id: number) {
-    const entityRaw = await getEntityRaw(id);
-    return await expandEntity(entityRaw);
+    const cache: EntityTypeCache = {};
+    const entityRaw = await getEntityRaw(id) as EntityWithAttributesAndType | undefined;
+    return await expandEntity(entityRaw, cache);
 }
 
 export async function getEntityRaw(id: number) {
