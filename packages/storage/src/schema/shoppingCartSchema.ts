@@ -29,6 +29,7 @@ export const shoppingCartItems = pgTable('shopping_cart_items', {
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
+    type: text('type').notNull().default('user'), // 'user' | 'automatic'
 }, (table) => [
     index('shopping_cart_items_cart_id_idx').on(table.cartId),
     index('shopping_cart_items_entity_id_idx').on(table.entityId),

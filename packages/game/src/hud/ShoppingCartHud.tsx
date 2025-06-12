@@ -24,7 +24,7 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const hasDiscount = typeof item.shopData.discountPrice === 'number';
     const hasGarden = Boolean(item.gardenId && garden);
     const hasRaisedBed = Boolean(item.raisedBedId);
-    const hasPosition = Boolean(item.positionIndex);
+    const hasPosition = typeof item.positionIndex === 'number';
 
     const raisedBed = hasRaisedBed ? garden?.raisedBeds.find(rb => rb.id === item.raisedBedId) : null;
     const scheduledDateString = item.additionalData ? JSON.parse(item.additionalData).scheduledDate : null;
@@ -45,6 +45,9 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         });
         queryClient.invalidateQueries({ queryKey: ['shopping-cart'] });
     }
+
+    // Hide delete button for automatic items
+    const isAutomatic = item.type === 'automatic';
 
     return (
         <Row spacing={2} alignItems="start">
@@ -104,7 +107,7 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 )}
                                 {hasPosition && (
                                     <Typography level="body3" secondary>
-                                        {item.positionIndex !== undefined ? `Pozicija ${item.positionIndex}` : "Nepoznato"}
+                                        {`Pozicija ${(item.positionIndex ?? 0) + 1}`}
                                     </Typography>
                                 )}
                             </Row>
@@ -119,21 +122,24 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             </Row>
                         )}
                     </Stack>
-                    <ModalConfirm
-                        title="Potvrdi brisanje stavke"
-                        header="Brisanje stavke iz košarice"
-                        onConfirm={handleRemoveItem}
-                        trigger={(
-                            <IconButton
-                                title="Makni s popisa"
-                                variant="plain"
-                                className="rounded-full p-1 text-red-600"
-                                size="sm">
-                                <Delete className="size-4" />
-                            </IconButton>
-                        )}>
-                        <Typography>Jeste li sigurni da želite ukloniti ovu stavku iz košarice?</Typography>
-                    </ModalConfirm>
+                    {/* Only show delete button if not automatic */}
+                    {!isAutomatic && (
+                        <ModalConfirm
+                            title="Potvrdi brisanje stavke"
+                            header="Brisanje stavke iz košarice"
+                            onConfirm={handleRemoveItem}
+                            trigger={(
+                                <IconButton
+                                    title="Makni s popisa"
+                                    variant="plain"
+                                    className="rounded-full p-1 text-red-600"
+                                    size="sm">
+                                    <Delete className="size-4" />
+                                </IconButton>
+                            )}>
+                            <Typography>Jeste li sigurni da želite ukloniti ovu stavku iz košarice?</Typography>
+                        </ModalConfirm>
+                    )}
                 </Row>
             </Stack>
         </Row>

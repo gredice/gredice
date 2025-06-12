@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, not } from "drizzle-orm";
 import { shoppingCarts, shoppingCartItems } from "../schema";
 import { storage } from "../storage";
 
@@ -43,7 +43,8 @@ export async function upsertOrRemoveCartItem(
     gardenId?: number,
     raisedBedId?: number,
     positionIndex?: number,
-    additionalData?: string | null
+    additionalData?: string | null,
+    type: 'user' | 'automatic' = 'user' // new param, default to 'user'
 ) {
     const existingItem = await storage().query.shoppingCartItems.findFirst({
         where: and(
@@ -54,9 +55,32 @@ export async function upsertOrRemoveCartItem(
             raisedBedId ? eq(shoppingCartItems.raisedBedId, raisedBedId) : undefined,
             positionIndex ? eq(shoppingCartItems.positionIndex, positionIndex) : undefined,
             additionalData ? eq(shoppingCartItems.additionalData, additionalData) : undefined,
-            eq(shoppingCartItems.isDeleted, false)
+            eq(shoppingCartItems.isDeleted, false),
+            eq(shoppingCartItems.type, type)
         ),
     });
+
+    // Prevent deletion of automatic items (amount <= 0)
+    if (amount <= 0 && existingItem?.type === 'automatic' && existingItem.raisedBedId) {
+        // Check if this is a raised bed automatic item and if there are any other items for this raised bed
+        const hasOtherItemsForRaisedBed = await storage().query.shoppingCartItems.findFirst({
+            where: and(
+                eq(shoppingCartItems.cartId, cartId),
+                eq(shoppingCartItems.raisedBedId, existingItem.raisedBedId),
+                eq(shoppingCartItems.isDeleted, false),
+                // Exclude the automatic item itself
+                not(eq(shoppingCartItems.id, existingItem.id))
+            ),
+        });
+        if (hasOtherItemsForRaisedBed) {
+            throw new Error('Cannot delete automatic shopping cart item via API');
+        }
+        // Allow removal if no other items for this raised bed
+        await storage().update(shoppingCartItems).set({
+            isDeleted: true,
+        }).where(eq(shoppingCartItems.id, existingItem.id));
+        return;
+    }
 
     if (amount <= 0) {
         if (existingItem) {
@@ -88,7 +112,8 @@ export async function upsertOrRemoveCartItem(
             gardenId,
             raisedBedId,
             positionIndex,
-            additionalData
+            additionalData,
+            type
         });
     }
 }

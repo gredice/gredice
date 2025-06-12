@@ -239,6 +239,13 @@
       "when": 1749682648809,
       "tag": "0033_chilly_luckman",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1749684413896,
+      "tag": "0034_left_callisto",
+      "breakpoints": true
     }
   ]
 }
