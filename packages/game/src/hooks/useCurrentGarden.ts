@@ -1,14 +1,13 @@
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
-import { client } from '@gredice/client';
+import { client, GardenResponse } from '@gredice/client';
 import { Stack } from "../types/Stack";
 import { Vector3 } from "three";
-import { Garden } from "../types/Garden";
 import { useGardens, useGardensKeys } from "./useGardens";
 import { useGameState } from "../useGameState";
 
 export const currentGardenKeys = [...useGardensKeys, 'current'];
 
-function mockGarden(): Garden {
+function mockGarden() {
     return {
         id: 99999,
         name: 'Moj vrt',
@@ -155,17 +154,33 @@ function mockGarden(): Garden {
                 id: 1,
                 name: 'Raised Bed 1',
                 blockId: '3',
+                fields: [],
+                status: 'new',
+                updatedAt: new Date().toISOString(),
+                createdAt: new Date().toISOString()
             },
             {
                 id: 2,
                 name: 'Raised Bed 2',
                 blockId: '4',
+                fields: [],
+                status: 'new',
+                updatedAt: new Date().toISOString(),
+                createdAt: new Date().toISOString()
             }
         ]
     };
 }
 
-export function useCurrentGarden(): UseQueryResult<Garden | null> {
+type useCurrentGardenResponse = Omit<GardenResponse, 'stacks' | 'latitude' | 'longitude' | 'createdAt' | 'updatedAt'> & {
+    stacks: Stack[];
+    location: {
+        lat: number;
+        lon: number;
+    };
+}
+
+export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | null> {
     const isMock = useGameState(state => state.isMock);
     const { data: gardens } = useGardens(isMock);
     return useQuery({
@@ -232,7 +247,7 @@ export function useCurrentGarden(): UseQueryResult<Garden | null> {
                     lon: garden.longitude
                 },
                 raisedBeds: garden.raisedBeds
-            } satisfies Garden;
+            };
         },
         enabled: isMock || Boolean(gardens),
         staleTime: 1000 * 60 // 1m

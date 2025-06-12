@@ -1,24 +1,50 @@
 import { cx } from "@signalco/ui-primitives/cx";
-import { SVGProps } from "react";
 import { PlantPicker } from "./RaisedBedPlantPicker";
+import { PlantingSeed } from "../../icons/PlantingSeed";
+import { useCurrentGarden } from "../../hooks/useCurrentGarden";
+import { useShoppingCart } from "../../hooks/useShoppingCart";
+import { DotIndicator } from "@signalco/ui-primitives/DotIndicator";
+import { ShoppingCart } from "@signalco/ui-icons";
 
-function ShovelIcon(props: SVGProps<SVGSVGElement>) {
+function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBedId: number; gardenId: number; positionIndex: number }) {
+    const { data: cart } = useShoppingCart();
+    const { data: garden } = useCurrentGarden();
+    const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
+    if (!raisedBed) {
+        return null;
+    }
+
+    const field = raisedBed.fields.find(field => field.positionIndex === positionIndex);
+    const cartItem = cart?.items.find(item => item.raisedBedId === raisedBedId && item.positionIndex === positionIndex);
+
     return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            width={24}
-            height={24}
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            className="lucide lucide-shovel-icon lucide-shovel"
-            {...props}
-        >
-            <path d="M2 22v-5l5-5 5 5-5 5zM9.5 14.5 16 8M17 2l5 5-.5.5a3.53 3.53 0 0 1-5 0s0 0 0 0a3.53 3.53 0 0 1 0-5L17 2" />
-        </svg>
+        <PlantPicker
+            trigger={(
+                <button
+                    type="button"
+                    className={cx(
+                        'relative',
+                        "bg-gradient-to-br from-lime-100/90 to-lime-100/80 size-full flex items-center justify-center rounded-sm",
+                        "hover:bg-white cursor-pointer"
+                    )}>
+                    {cartItem ? (
+                        <>
+                            <img src={`https://www.gredice.com/${cartItem.shopData.image}`} alt={cartItem.shopData.name} width={60} height={60} />
+                            <div className="absolute right-1 top-1">
+                                <DotIndicator size={30} color={"success"} content={(
+                                    <ShoppingCart className="size-6 stroke-white" />
+                                )} />
+                            </div>
+                        </>
+                    ) : (
+                        <PlantingSeed className="size-10 stroke-green-800" />
+                    )}
+                </button>
+            )}
+            gardenId={gardenId}
+            raisedBedId={raisedBedId}
+            positionIndex={positionIndex}
+        />
     );
 }
 
@@ -35,17 +61,7 @@ export function RaisedBedField({
                 <div key={`${rowIndex}`} className="size-full grid grid-cols-3">
                     {[...Array(3)].map((_, colIndex) => (
                         <div key={`${rowIndex}-${colIndex}`} className="size-full p-0.5">
-                            <PlantPicker
-                                trigger={(
-                                    <button
-                                        type="button"
-                                        className={cx(
-                                            "bg-gradient-to-br from-lime-100/90 to-lime-100/80 size-full flex items-center justify-center rounded-sm",
-                                            "hover:bg-white cursor-pointer"
-                                        )}>
-                                        <ShovelIcon className="size-10 stroke-green-800" />
-                                    </button>
-                                )}
+                            <RaisedBedFieldItem
                                 gardenId={gardenId}
                                 raisedBedId={raisedBedId}
                                 positionIndex={rowIndex * 3 + colIndex}

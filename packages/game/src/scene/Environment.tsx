@@ -5,7 +5,6 @@ import chroma from 'chroma-js';
 import { getPosition } from 'suncalc';
 import { useGameState } from '../useGameState';
 import { Color, Quaternion, Vector3 } from 'three';
-import { Garden } from '../types/Garden';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { Drops } from './Rain/Drops';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
@@ -23,7 +22,7 @@ const hemisphereSkyColorScale = chroma
     .scale([chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000), chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000)])
     .domain([0.2, 0.25, 0.3, 0.75, 0.8, 0.85]);
 
-function getSunPosition({ lat, lon }: Garden['location'], currentTime: Date, timeOfDay: number) {
+function getSunPosition({ lat, lon }: { lat: number, lon: number }, currentTime: Date, timeOfDay: number) {
     const date = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
     date.setHours(Math.trunc(timeOfDay * 24));
     date.setMinutes(Math.trunc((timeOfDay * 24 - Math.trunc(timeOfDay * 24)) * 60));
@@ -45,7 +44,7 @@ function getSunPosition({ lat, lon }: Garden['location'], currentTime: Date, tim
     return pos;
 }
 
-export function environmentState({ lat, lon }: Garden['location'], currentTime: Date, timeOfDay: number) {
+export function environmentState({ lat, lon }: { lat: number, lon: number }, currentTime: Date, timeOfDay: number) {
     const sunPosition = getSunPosition({ lat, lon }, currentTime, timeOfDay);
     const colors = {
         background: backgroundColorScale(timeOfDay).rgb(),
@@ -87,7 +86,7 @@ function useEnvironmentElements({
     timeOfDay,
     weather
 }: {
-    location: Garden['location'],
+    location: { lat: number, lon: number },
     currentTime: Date,
     timeOfDay: number,
     weather: ReturnType<typeof useWeatherNow>['data']

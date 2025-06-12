@@ -49,14 +49,24 @@ export async function getAccountGardens(accountId: string) {
 }
 
 export async function getGarden(gardenId: number) {
-    return storage().query.gardens.findFirst({
-        where: and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)),
-        with: {
-            farm: true,
-            stacks: true,
-            raisedBeds: true
-        }
-    });
+    const [garden, raisedBeds] = await Promise.all([
+        storage().query.gardens.findFirst({
+            where: and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)),
+            with: {
+                farm: true,
+                stacks: true
+            }
+        }),
+        getRaisedBeds(gardenId)
+    ]);
+    if (!garden) {
+        return null;
+    }
+    // Attach raised beds with event-sourced info
+    return {
+        ...garden,
+        raisedBeds
+    }
 }
 
 export async function updateGarden(garden: UpdateGarden) {
@@ -197,23 +207,34 @@ export async function createRaisedBed(raisedBed: InsertRaisedBed) {
 }
 
 export async function getRaisedBeds(gardenId: number) {
-    return storage().query.raisedBeds.findMany({
+    const beds = await storage().query.raisedBeds.findMany({
         where: and(
             eq(raisedBeds.gardenId, gardenId),
             eq(raisedBeds.isDeleted, false)
         )
     });
+    // For each raised bed, fetch and attach fields with event-sourced info
+    return Promise.all(beds.map(async (bed) => {
+        const fields = await getRaisedBedFieldsWithEvents(bed.id);
+        return {
+            ...bed,
+            fields
+        };
+    }));
 }
 
 export async function getRaisedBed(raisedBedId: number) {
-    const raisedBed = await storage().query.raisedBeds.findFirst({
-        where: and(eq(raisedBeds.id, raisedBedId), eq(raisedBeds.isDeleted, false))
-    });
+    const [raisedBed, fields] = await Promise.all([
+        storage().query.raisedBeds.findFirst({
+            where: and(eq(raisedBeds.id, raisedBedId), eq(raisedBeds.isDeleted, false))
+        }),
+        getRaisedBedFieldsWithEvents(raisedBedId)
+    ]);
     if (!raisedBed) return null;
     // Attach raised bed fields with event-sourced info
     return {
         ...raisedBed,
-        fields: await getRaisedBedFieldsWithEvents(raisedBed.id)
+        fields
     };
 }
 
