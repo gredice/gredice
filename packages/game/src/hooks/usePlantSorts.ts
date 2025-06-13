@@ -17,3 +17,15 @@ export function usePlantSorts(plantId: number | null | undefined) {
         staleTime: 1000 * 60 * 60, // 1 hour
     });
 }
+
+export function usePlantSort(sortId: number | null | undefined) {
+    return useQuery({
+        queryKey: ['plants', 'sorts', sortId],
+        queryFn: async () => {
+            const sorts = await getPlantSorts();
+            return sorts?.find(sort => sort.id === sortId) ?? null;
+        },
+        enabled: Boolean(sortId),
+        staleTime: 1000 * 60 * 60, // 1 hour
+    });
+}

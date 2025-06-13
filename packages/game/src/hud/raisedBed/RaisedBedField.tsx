@@ -5,6 +5,7 @@ import { useCurrentGarden } from "../../hooks/useCurrentGarden";
 import { useShoppingCart } from "../../hooks/useShoppingCart";
 import { DotIndicator } from "@signalco/ui-primitives/DotIndicator";
 import { ShoppingCart } from "@signalco/ui-icons";
+import { usePlantSort } from "../../hooks/usePlantSorts";
 
 function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBedId: number; gardenId: number; positionIndex: number }) {
     const { data: cart } = useShoppingCart();
@@ -14,8 +15,14 @@ function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBe
         return null;
     }
 
-    const field = raisedBed.fields.find(field => field.positionIndex === positionIndex);
-    const cartItem = cart?.items.find(item => item.raisedBedId === raisedBedId && item.positionIndex === positionIndex);
+    const cartItems = cart?.items.filter(item =>
+        item.raisedBedId === raisedBedId &&
+        item.positionIndex === positionIndex);
+    const plantCartItem = cartItems?.find(item => item.entityTypeName === 'plantSort');
+    const plantSortId = plantCartItem ? Number(plantCartItem.entityId) : null;
+    const { data: plantSort } = usePlantSort(plantSortId);
+    const plantId = plantSort?.information.plant.id;
+    const plantOptions = plantCartItem?.additionalData ? JSON.parse(plantCartItem.additionalData) : null;
 
     return (
         <PlantPicker
@@ -27,9 +34,9 @@ function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBe
                         "bg-gradient-to-br from-lime-100/90 to-lime-100/80 size-full flex items-center justify-center rounded-sm",
                         "hover:bg-white cursor-pointer"
                     )}>
-                    {cartItem ? (
+                    {plantCartItem ? (
                         <>
-                            <img src={`https://www.gredice.com/${cartItem.shopData.image}`} alt={cartItem.shopData.name} width={60} height={60} />
+                            <img src={`https://www.gredice.com/${plantCartItem.shopData.image}`} alt={plantCartItem.shopData.name} width={60} height={60} />
                             <div className="absolute right-1 top-1">
                                 <DotIndicator size={30} color={"success"} content={(
                                     <ShoppingCart className="size-6 stroke-white" />
@@ -44,6 +51,9 @@ function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBe
             gardenId={gardenId}
             raisedBedId={raisedBedId}
             positionIndex={positionIndex}
+            selectedPlantId={plantId}
+            selectedSortId={plantSortId}
+            selectedPlantOptions={plantOptions}
         />
     );
 }

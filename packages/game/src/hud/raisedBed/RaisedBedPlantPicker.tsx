@@ -20,9 +20,12 @@ type PlantPickerProps = {
     gardenId: number;
     raisedBedId: number;
     trigger: ReactElement;
+    selectedPlantId?: number | null;
+    selectedSortId?: number | null;
+    selectedPlantOptions?: { scheduledDate: Date | null | undefined } | null;
 };
 
-export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger }: PlantPickerProps) {
+export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger, selectedPlantId: preselectedPlantId, selectedSortId: preselectedSortId, selectedPlantOptions: preselectedPlantOptions }: PlantPickerProps) {
     const [open, setOpen] = useState(false);
     const [, setSearch] = useSearchParam('pretraga', '');
     const steps = [
@@ -32,26 +35,26 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger }: P
     ];
     const { data: cart } = useShoppingCart();
     const setCartItem = useSetShoppingCartItem();
-    const [selectedPlant, setSelectedPlant] = useState<PlantData | null>(null);
-    const [selectedSort, setSelectedSort] = useState<PlantSortData | null>(null);
-    const [plantOptions, setPlantOptions] = useState<{ scheduledDate: Date | null | undefined } | null>(null);
+    const [selectedPlantId, setSelectedPlantId] = useState<number | null>(preselectedPlantId ?? null);
+    const [selectedSortId, setSelectedSortId] = useState<number | null>(preselectedSortId ?? null);
+    const [plantOptions, setPlantOptions] = useState<{ scheduledDate: Date | null | undefined } | null>(preselectedPlantOptions ?? null);
 
     let currentStep = 0;
-    if (selectedPlant) {
+    if (selectedPlantId) {
         currentStep = 1;
     }
-    if (selectedSort) {
+    if (selectedSortId) {
         currentStep = 2;
     }
 
     function handlePlantSelect(plant: PlantData) {
-        setSelectedPlant(plant);
-        setSelectedSort(null);
+        setSelectedPlantId(plant.id);
+        setSelectedSortId(null);
         setSearch(undefined);
     }
 
     function handleSortSelect(sort: PlantSortData) {
-        setSelectedSort(sort);
+        setSelectedSortId(sort.id);
         setSearch(undefined);
     }
 
@@ -60,22 +63,32 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger }: P
     }
 
     async function handleConfirm() {
-        if (!selectedSort) {
+        if (!selectedSortId) {
             return;
         }
 
+        // Remove existing item if it exists in cart already
         const existingItem = cart?.items.find(item =>
-            item.entityTypeName === selectedSort.entityType.name &&
-            item.entityId === selectedSort.id.toString() &&
+            item.entityTypeName === "plantSort" &&
             item.gardenId === gardenId &&
             item.raisedBedId === raisedBedId &&
             item.positionIndex === positionIndex
         );
+        if (existingItem) {
+            await setCartItem.mutateAsync({
+                ...existingItem,
+                gardenId: existingItem.gardenId ?? undefined,
+                raisedBedId: existingItem.raisedBedId ?? undefined,
+                positionIndex: existingItem.positionIndex ?? undefined,
+                amount: 0
+            });
+        };
 
+        // Add new item to cart
         await setCartItem.mutateAsync({
-            entityTypeName: selectedSort.entityType.name,
-            entityId: selectedSort.id.toString(),
-            amount: (existingItem?.amount ?? 0) + 1,
+            entityTypeName: "plantSort",
+            entityId: selectedSortId?.toString(),
+            amount: 1,
             gardenId,
             raisedBedId,
             positionIndex,
@@ -130,10 +143,10 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger }: P
                         </Row>
                     </>
                 )}
-                {(currentStep === 1 && selectedPlant) && (
+                {(currentStep === 1 && selectedPlantId) && (
                     <>
                         <PlantsSortList
-                            plantId={selectedPlant.id}
+                            plantId={selectedPlantId}
                             onChange={(sort) => {
                                 handleSortSelect(sort);
                                 setSearch(undefined);
@@ -142,7 +155,7 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger }: P
                             <Button
                                 variant="plain"
                                 onClick={() => {
-                                    setSelectedPlant(null);
+                                    setSelectedPlantId(null);
                                     setSearch(undefined);
                                 }}
                                 startDecorator={<Left className="size-5" />}
@@ -152,16 +165,17 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger }: P
                         </Row>
                     </>
                 )}
-                {currentStep === 2 && selectedSort && (
+                {currentStep === 2 && selectedPlantId && selectedSortId && (
                     <>
                         <PlantPickerOptions
-                            selectedSort={selectedSort}
+                            selectedPlantId={selectedPlantId}
+                            selectedSortId={selectedSortId}
                             onChange={handlePlantOptionsChange} />
                         <Row justifyContent="space-between">
                             <Button
                                 variant="plain"
                                 onClick={() => {
-                                    setSelectedSort(null);
+                                    setSelectedSortId(null);
                                     setSearch(undefined);
                                 }}
                                 startDecorator={<Left className="size-5" />}

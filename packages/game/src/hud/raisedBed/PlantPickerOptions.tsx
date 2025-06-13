@@ -4,9 +4,11 @@ import { useState } from "react";
 import { PlantSortData } from "@gredice/client";
 import { Input } from "@signalco/ui-primitives/Input";
 import { Row } from "@signalco/ui-primitives/Row";
+import { usePlantSorts } from "../../hooks/usePlantSorts";
 
 export type PlantPickerOptionsProps = {
-    selectedSort: PlantSortData;
+    selectedPlantId: number;
+    selectedSortId: number;
     onChange: (options: { scheduledDate: Date | null | undefined }) => void;
 };
 
@@ -18,13 +20,19 @@ function formatLocalDate(date: Date): string {
     return `${year}-${month}-${day}`;
 }
 
-export function PlantPickerOptions({ selectedSort, onChange }: PlantPickerOptionsProps) {
+export function PlantPickerOptions({ selectedPlantId, selectedSortId, onChange }: PlantPickerOptionsProps) {
     // Use local time for tomorrow and 3 months from now
     const today = new Date();
     const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
     const threeMonthsFromTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth() + 3, tomorrow.getDate());
-
     const [plantDate, setPlantDate] = useState<string>(formatLocalDate(tomorrow));
+
+    const { data: plantSorts } = usePlantSorts(selectedPlantId);
+    const selectedSort = plantSorts?.find((sort: PlantSortData) => sort.id === selectedSortId);
+
+    if (!selectedSort) {
+        return <Typography level="body1">Nema dostupnih sorti za odabranu biljku.</Typography>;
+    }
 
     function handlePlantDateChange(date: string) {
         const parsedDate = date ? new Date(date) : null;
