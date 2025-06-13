@@ -8,8 +8,8 @@ import { ShoppingCart } from "@signalco/ui-icons";
 import { usePlantSort } from "../../hooks/usePlantSorts";
 
 function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBedId: number; gardenId: number; positionIndex: number }) {
-    const { data: cart } = useShoppingCart();
-    const { data: garden } = useCurrentGarden();
+    const { data: cart, isPending: isCartPending } = useShoppingCart();
+    const { data: garden, isPending: isGardenPending } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
     if (!raisedBed) {
         return null;
@@ -20,9 +20,14 @@ function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBe
         item.positionIndex === positionIndex);
     const plantCartItem = cartItems?.find(item => item.entityTypeName === 'plantSort');
     const plantSortId = plantCartItem ? Number(plantCartItem.entityId) : null;
-    const { data: plantSort } = usePlantSort(plantSortId);
+    const { data: plantSort, isPending: isPlantSortPending } = usePlantSort(plantSortId);
     const plantId = plantSort?.information.plant.id;
     const plantOptions = plantCartItem?.additionalData ? JSON.parse(plantCartItem.additionalData) : null;
+
+    const isLoading = isCartPending || isGardenPending || (plantSortId && isPlantSortPending);
+    if (isLoading) {
+        return null;
+    }
 
     return (
         <PlantPicker
@@ -51,6 +56,7 @@ function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBe
             gardenId={gardenId}
             raisedBedId={raisedBedId}
             positionIndex={positionIndex}
+            inShoppingCart={Boolean(plantCartItem)}
             selectedPlantId={plantId}
             selectedSortId={plantSortId}
             selectedPlantOptions={plantOptions}

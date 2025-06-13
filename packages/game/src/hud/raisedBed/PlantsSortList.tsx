@@ -40,14 +40,15 @@ export function PlantsSortList({ plantId, onChange }: { plantId: number, onChang
                 {filteredPlantSorts?.map((sort) => (
                     <Row key={sort.id}>
                         <ListItem
-                            variant="outlined"
-                            className="rounded-r-lg"
+                            className="rounded-none rounded-r"
                             nodeId={sort.id.toString()}
                             onSelected={() => onChange(sort)}
                             startDecorator={(
                                 <img
                                     src={'https://www.gredice.com/' + (sort.image?.cover?.url ?? sort.information.plant.image?.cover?.url)}
                                     alt={sort.information.name}
+                                    width={40}
+                                    height={40}
                                     className="size-10" />
                             )}
                             label={(
