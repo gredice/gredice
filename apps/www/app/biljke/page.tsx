@@ -13,8 +13,9 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
 import { getPlantsData } from "../../lib/plants/getPlantsData";
 import { LayoutGrid } from "@signalco/ui-icons";
+import { Metadata } from "next";
 
-export const metadata = {
+export const metadata: Metadata = {
     title: "Biljke",
     description: "Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu.",
 };

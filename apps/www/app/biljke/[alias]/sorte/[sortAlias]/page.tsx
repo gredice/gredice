@@ -11,6 +11,35 @@ import { FeedbackModal } from "../../../../../components/shared/feedback/Feedbac
 import { getPlantInforationSections } from "../../getPlantInforationSections";
 import { InformationSection } from "../../InformationSection";
 import { PlantTips } from "../../PlantTips";
+import { Metadata } from "next";
+
+export const revalidate = 3600; // 1 hour
+export async function generateMetadata({ params }: { params: Promise<{ alias: string, sortAlias: string }> }): Promise<Metadata> {
+    const { alias: aliasUnescaped, sortAlias: sortAliasUnescaped } = await params;
+    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const sortAlias = sortAliasUnescaped ? decodeURIComponent(sortAliasUnescaped) : null;
+    const sort = (await getPlantSortsData())?.find((sort) =>
+        sort.information.plant.information?.name.toLowerCase() === alias?.toLowerCase() &&
+        sort.information.name.toLowerCase() === sortAlias?.toLowerCase());
+    if (!sort) {
+        return {
+            title: "Sorta nije pronađena",
+            description: "Sorta nije pronađena",
+        };
+    }
+    return {
+        title: sort.information.name,
+        description: sort.information.description
+    };
+}
+
+export async function generateStaticParams() {
+    const sorts = await getPlantSortsData();
+    return sorts?.map((entity) => ({
+        alias: String(entity.information.plant.information?.name),
+        sortAlias: String(entity.information.name),
+    }));
+}
 
 export default async function PlantSortPage({ params }: { params: Promise<{ alias: string, sortAlias: string }> }) {
     const { alias: aliasUnescaped, sortAlias: sortAliasUnescaped } = await params;

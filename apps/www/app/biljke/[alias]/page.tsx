@@ -11,8 +11,10 @@ import { PlantSortsList } from "./PlantSortsList";
 import { PlantPageHeader } from "./PlantPageHeader";
 import { getPlantInforationSections } from "./getPlantInforationSections";
 import { PlantTips } from "./PlantTips";
+import { Metadata } from "next";
 
-export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }) {
+export const revalidate = 3600; // 1 hour
+export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }): Promise<Metadata> {
     const { alias: aliasUnescaped } = await params;
     const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
     const plant = (await getPlantsData())?.find((plant) => plant.information.name.toLowerCase() === alias?.toLowerCase());

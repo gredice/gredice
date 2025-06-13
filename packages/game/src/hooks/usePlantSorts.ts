@@ -3,7 +3,7 @@ import { directoriesClient } from "@gredice/client";
 
 async function getPlantSorts() {
     const sorts = await directoriesClient().GET("/entities/plantSort")
-    return sorts.data;
+    return sorts.data?.sort((a, b) => a.information.name.localeCompare(b.information.name));
 }
 
 export function usePlantSorts(plantId: number | null | undefined) {
