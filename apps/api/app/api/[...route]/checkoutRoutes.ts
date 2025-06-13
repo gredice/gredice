@@ -66,7 +66,7 @@ export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise
     const discounts: ShoppingCartDiscount[] = [];
     if (raisedBedsToAdd.length > 0) {
         const operations = await getEntitiesFormatted('operation');
-        const raisedBedOperation = operations.find(block => (block as EntityStandardized).information?.name === 'raisedBed1m');
+        const raisedBedOperation = operations.find((block: EntityStandardized) => block.information?.name === 'raisedBed1m');
         if (!raisedBedOperation) {
             throw new Error('Raised bed operation not found');
         }
