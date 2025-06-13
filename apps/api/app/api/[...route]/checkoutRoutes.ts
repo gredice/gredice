@@ -72,7 +72,7 @@ export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise
         }
 
         for (const raisedBed of raisedBedsToAdd) {
-            const itemsInCartForRaisedBed = items.filter(item => item.raisedBedId === raisedBed?.id).length;
+            const itemsInCartForRaisedBed = items.filter(item => item.type === 'user' && item.raisedBedId === raisedBed?.id).length;
             // If more than half of the raised bed is filled, apply a discount
             // Assuming a raised bed is considered "filled" if it has more than 4 items
             if (itemsInCartForRaisedBed > 4) {
@@ -112,7 +112,7 @@ export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise
                 discountDescription: discounts.find(discount => discount.cartItemId === item.id)?.discountDescription
             }
         };
-    }).filter(i => Boolean(i)).map(i => i!);
+    }).filter(i => Boolean(i)).map(i => i!).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()

@@ -20,12 +20,22 @@ type PlantPickerProps = {
     gardenId: number;
     raisedBedId: number;
     trigger: ReactElement;
+    inShoppingCart?: boolean;
     selectedPlantId?: number | null;
     selectedSortId?: number | null;
     selectedPlantOptions?: { scheduledDate: Date | null | undefined } | null;
 };
 
-export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger, selectedPlantId: preselectedPlantId, selectedSortId: preselectedSortId, selectedPlantOptions: preselectedPlantOptions }: PlantPickerProps) {
+export function PlantPicker({
+    gardenId,
+    raisedBedId,
+    positionIndex,
+    trigger,
+    inShoppingCart,
+    selectedPlantId: preselectedPlantId,
+    selectedSortId: preselectedSortId,
+    selectedPlantOptions: preselectedPlantOptions
+}: PlantPickerProps) {
     const [open, setOpen] = useState(false);
     const [, setSearch] = useSearchParam('pretraga', '');
     const steps = [
@@ -40,11 +50,10 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger, sel
     const [plantOptions, setPlantOptions] = useState<{ scheduledDate: Date | null | undefined } | null>(preselectedPlantOptions ?? null);
 
     let currentStep = 0;
-    if (selectedPlantId) {
-        currentStep = 1;
-    }
     if (selectedSortId) {
         currentStep = 2;
+    } else if (selectedPlantId) {
+        currentStep = 1;
     }
 
     function handlePlantSelect(plant: PlantData) {
@@ -62,11 +71,7 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger, sel
         setPlantOptions(options);
     }
 
-    async function handleConfirm() {
-        if (!selectedSortId) {
-            return;
-        }
-
+    async function removeFromCart() {
         // Remove existing item if it exists in cart already
         const existingItem = cart?.items.find(item =>
             item.entityTypeName === "plantSort" &&
@@ -83,6 +88,23 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger, sel
                 amount: 0
             });
         };
+    }
+
+    async function handleRemove() {
+        setOpen(false);
+        setSelectedPlantId(null);
+        setSelectedSortId(null);
+        setPlantOptions(null);
+        setSearch(undefined);
+        await removeFromCart();
+    }
+
+    async function handleConfirm() {
+        if (!selectedSortId) {
+            return;
+        }
+
+        await removeFromCart();
 
         // Add new item to cart
         await setCartItem.mutateAsync({
@@ -102,6 +124,11 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger, sel
     function handleOpenChange(open: boolean) {
         setOpen(open);
     }
+
+    console.log('currentStep', currentStep);
+    console.log('selectedPlantId', selectedPlantId);
+    console.log('selectedSortId', selectedSortId);
+    console.log('plantOptions', plantOptions);
 
     return (
         <Modal
@@ -182,13 +209,22 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger, sel
                             >
                                 Odabir sorte
                             </Button>
-                            <Button
-                                variant="solid"
-                                onClick={handleConfirm}
-                                startDecorator={<ShoppingCart className="size-5" />}
-                            >
-                                Potvrdi sadnju
-                            </Button>
+                            <Row spacing={1}>
+                                {inShoppingCart && (
+                                    <Button
+                                        variant="plain"
+                                        onClick={handleRemove}>
+                                        Ukloni
+                                    </Button>
+                                )}
+                                <Button
+                                    variant="solid"
+                                    onClick={handleConfirm}
+                                    startDecorator={<ShoppingCart className="shrink-0 size-5" />}
+                                >
+                                    Potvrdi sadnju
+                                </Button>
+                            </Row>
                         </Row>
                     </>
                 )}

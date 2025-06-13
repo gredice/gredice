@@ -42,14 +42,15 @@ export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void 
                     return (
                         <Row key={plant.id}>
                             <ListItem
-                                variant="outlined"
-                                className="rounded-r-lg"
+                                className="rounded-none rounded-r"
                                 nodeId={plant.id.toString()}
                                 onSelected={() => onChange(plant)}
                                 startDecorator={(
                                     <img
                                         src={'https://www.gredice.com/' + plant.image.cover.url}
                                         alt={plant.information.name}
+                                        width={40}
+                                        height={40}
                                         className="size-10" />
                                 )}
                                 label={(
