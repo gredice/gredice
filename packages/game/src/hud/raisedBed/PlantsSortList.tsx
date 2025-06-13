@@ -12,6 +12,7 @@ import { KnownPages } from "../../knownPages";
 import { Link } from "@signalco/ui-primitives/Link";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Info } from "@signalco/ui-icons";
+import { Row } from "@signalco/ui-primitives/Row";
 
 export function PlantsSortList({ plantId, onChange }: { plantId: number, onChange: (plant: PlantSortData) => void }) {
     const { data: plantSorts, isLoading, isError } = usePlantSorts(plantId);
@@ -37,34 +38,34 @@ export function PlantsSortList({ plantId, onChange }: { plantId: number, onChang
                     <PlantListItemSkeleton key={index} />
                 ))}
                 {filteredPlantSorts?.map((sort) => (
-                    <ListItem
-                        key={sort.id}
-                        variant="outlined"
-                        nodeId={sort.id.toString()}
-                        onSelected={() => onChange(sort)}
-                        startDecorator={(
-                            <img
-                                src={'https://www.gredice.com/' + (sort.image?.cover?.url ?? sort.information.plant.image?.cover?.url)}
-                                alt={sort.information.name}
-                                className="size-10"
-                            />
-                        )}
-                        label={(
-                            <Stack>
-                                <Typography level="body1">{sort.information.name}</Typography>
-                                <Typography level="body2" className="font-normal line-clamp-2 break-words">{sort.information.shortDescription}</Typography>
-                            </Stack>
-                        )}
-                        endDecorator={(
-                            <Link href={KnownPages.GredicePlantSort(sort.information.plant.information?.name ?? 'nepoznato', sort.information.name)}>
-                                <IconButton
-                                    title="Više informacija"
-                                    variant="soft">
-                                    <Info className="size-5" />
-                                </IconButton>
-                            </Link>
-                        )}
-                    />
+                    <Row key={sort.id}>
+                        <ListItem
+                            variant="outlined"
+                            className="rounded-r-lg"
+                            nodeId={sort.id.toString()}
+                            onSelected={() => onChange(sort)}
+                            startDecorator={(
+                                <img
+                                    src={'https://www.gredice.com/' + (sort.image?.cover?.url ?? sort.information.plant.image?.cover?.url)}
+                                    alt={sort.information.name}
+                                    className="size-10" />
+                            )}
+                            label={(
+                                <Stack>
+                                    <Typography level="body1">{sort.information.name}</Typography>
+                                    <Typography level="body2" className="font-normal line-clamp-2 break-words">{sort.information.shortDescription}</Typography>
+                                </Stack>
+                            )} />
+                        <Link
+                            href={KnownPages.GredicePlantSort(sort.information.plant.information?.name ?? 'nepoznato', sort.information.name)}
+                            className="mx-2">
+                            <IconButton
+                                title="Više informacija"
+                                variant="soft">
+                                <Info className="size-5" />
+                            </IconButton>
+                        </Link>
+                    </Row>
                 ))}
             </List>
         </>

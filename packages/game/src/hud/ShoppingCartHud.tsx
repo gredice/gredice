@@ -13,13 +13,12 @@ import { useCurrentGarden } from "../hooks/useCurrentGarden";
 import { client } from "@gredice/client";
 import { ModalConfirm } from "@signalco/ui/ModalConfirm";
 import { Chip } from "@signalco/ui-primitives/Chip";
-import { useQueryClient } from "@tanstack/react-query";
 import { cx } from "@signalco/ui-primitives/cx";
 import { clientStripe } from '@gredice/stripe/client';
+import { useSetShoppingCartItem } from "../hooks/useSetShoppingCartItem";
 
 function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
-    const queryClient = useQueryClient(); // TODO: Move to mutation
 
     const hasDiscount = typeof item.shopData.discountPrice === 'number';
     const hasGarden = Boolean(item.gardenId && garden);
@@ -29,21 +28,18 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const raisedBed = hasRaisedBed ? garden?.raisedBeds.find(rb => rb.id === item.raisedBedId) : null;
     const scheduledDateString = item.additionalData ? JSON.parse(item.additionalData).scheduledDate : null;
     const scheduledDate = scheduledDateString ? new Date(scheduledDateString) : null;
+    const setShoppingCartItem = useSetShoppingCartItem();
 
     async function handleRemoveItem() {
-        await client().api["shopping-cart"].$post({
-            json: {
-                amount: 0,
-                cartId: item.cartId,
-                entityId: item.entityId,
-                entityTypeName: item.entityTypeName,
-                gardenId: item.gardenId ?? undefined,
-                raisedBedId: item.raisedBedId ?? undefined,
-                positionIndex: item.positionIndex ?? undefined,
-                additionalData: item.additionalData,
-            }
+        await setShoppingCartItem.mutateAsync({
+            amount: 0,
+            entityId: item.entityId,
+            entityTypeName: item.entityTypeName,
+            gardenId: item.gardenId ?? undefined,
+            raisedBedId: item.raisedBedId ?? undefined,
+            positionIndex: item.positionIndex ?? undefined,
+            additionalData: item.additionalData,
         });
-        queryClient.invalidateQueries({ queryKey: ['shopping-cart'] });
     }
 
     // Hide delete button for automatic items
@@ -132,6 +128,7 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 <IconButton
                                     title="Makni s popisa"
                                     variant="plain"
+                                    loading={setShoppingCartItem.isPending}
                                     className="rounded-full p-1 text-red-600"
                                     size="sm">
                                     <Delete className="size-4" />

@@ -10,10 +10,10 @@
   },
   "scripts": {},
   "devDependencies": {
-    "@gredice/storage": "workspace:*",
     "@gredice/js": "workspace:*",
+    "@gredice/storage": "workspace:*",
     "openapi-types": "12.1.3",
-    "tsx": "4.19.4",
+    "tsx": "4.20.3",
     "typescript": "5.8.3"
   }
 }

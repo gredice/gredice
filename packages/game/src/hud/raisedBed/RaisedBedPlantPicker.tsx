@@ -13,7 +13,7 @@ import { PlantPickerOptions } from "./PlantPickerOptions";
 import { useSetShoppingCartItem } from "../../hooks/useSetShoppingCartItem";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Button } from "@signalco/ui-primitives/Button";
-import { Check, Left, ShoppingCart } from "@signalco/ui-icons";
+import { Left, ShoppingCart } from "@signalco/ui-icons";
 
 type PlantPickerProps = {
     positionIndex: number;
@@ -95,7 +95,7 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger }: P
             trigger={trigger}
             open={open}
             onOpenChange={handleOpenChange}
-            title={"Odabir biljke"}
+            title={"Sijanje biljke"}
             className="z-[99999999] md:border-tertiary md:border-b-4">
             <Stack spacing={2}>
                 <SegmentedProgress
@@ -119,7 +119,7 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger }: P
                         <PlantsList onChange={handlePlantSelect} />
                         <Row>
                             <Button
-                                variant="outlined"
+                                variant="plain"
                                 onClick={() => {
                                     setOpen(false);
                                 }}
@@ -140,7 +140,7 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger }: P
                             }} />
                         <Row>
                             <Button
-                                variant="outlined"
+                                variant="plain"
                                 onClick={() => {
                                     setSelectedPlant(null);
                                     setSearch(undefined);
@@ -159,7 +159,7 @@ export function PlantPicker({ gardenId, raisedBedId, positionIndex, trigger }: P
                             onChange={handlePlantOptionsChange} />
                         <Row justifyContent="space-between">
                             <Button
-                                variant="outlined"
+                                variant="plain"
                                 onClick={() => {
                                     setSelectedSort(null);
                                     setSearch(undefined);
