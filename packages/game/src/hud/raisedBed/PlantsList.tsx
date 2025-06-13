@@ -12,6 +12,7 @@ import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Info } from "@signalco/ui-icons";
 import { KnownPages } from "../../knownPages";
 import { Link } from "@signalco/ui-primitives/Link";
+import { Row } from "@signalco/ui-primitives/Row";
 
 export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void }) {
     const { data: plants, isLoading, isError } = usePlants();
@@ -36,27 +37,32 @@ export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void 
                 {isLoading && Array.from({ length: 3 }).map((_, index) => (
                     <PlantListItemSkeleton key={index} />
                 ))}
-                {filteredPlants?.map((plant) => (
-                    <ListItem
-                        key={plant.id}
-                        variant="outlined"
-                        nodeId={plant.id.toString()}
-                        onSelected={() => onChange(plant)}
-                        startDecorator={(
-                            <img
-                                src={'https://www.gredice.com/' + plant.image.cover.url}
-                                alt={plant.information.name}
-                                className="size-10"
-                            />
-                        )}
-                        label={(
-                            <Stack>
-                                <Typography level="body1">{plant.information.name}</Typography>
-                                <Typography level="body2" className="font-normal line-clamp-2 break-words">{plant.information.description}</Typography>
-                            </Stack>
-                        )}
-                        endDecorator={(
-                            <Link href={KnownPages.GredicePlant(plant.information.name)}>
+                {filteredPlants?.map((plant) => {
+                    const price = plant.prices?.perPlant ? plant.prices.perPlant.toFixed(2) : 'Nepoznato';
+                    return (
+                        <Row key={plant.id}>
+                            <ListItem
+                                variant="outlined"
+                                className="rounded-r-lg"
+                                nodeId={plant.id.toString()}
+                                onSelected={() => onChange(plant)}
+                                startDecorator={(
+                                    <img
+                                        src={'https://www.gredice.com/' + plant.image.cover.url}
+                                        alt={plant.information.name}
+                                        className="size-10" />
+                                )}
+                                label={(
+                                    <Stack>
+                                        <Typography level="body1">{plant.information.name}</Typography>
+                                        <Typography level="body2" className="font-normal line-clamp-2 break-words">{plant.information.description}</Typography>
+                                    </Stack>
+                                )}
+                                endDecorator={(
+                                    <span>{price}€</span>
+                                )} />
+                            <Link href={KnownPages.GredicePlant(plant.information.name)}
+                                className="mx-2">
                                 <IconButton
                                     title="Više informacija"
                                     variant="soft"
@@ -66,9 +72,9 @@ export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void 
                                     <Info className="size-5" />
                                 </IconButton>
                             </Link>
-                        )}
-                    />
-                ))}
+                        </Row>
+                    );
+                })}
             </List>
         </>
     );

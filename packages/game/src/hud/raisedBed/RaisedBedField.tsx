@@ -64,7 +64,7 @@ export function RaisedBedField({
                             <RaisedBedFieldItem
                                 gardenId={gardenId}
                                 raisedBedId={raisedBedId}
-                                positionIndex={rowIndex * 3 + colIndex}
+                                positionIndex={(2 - rowIndex) * 3 + (2 - colIndex)}
                             />
                         </div>
                     ))}

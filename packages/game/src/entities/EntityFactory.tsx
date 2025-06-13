@@ -73,20 +73,16 @@ export function EntityFactory({ name, stack, block, noControl, enableSelection, 
     }
 
     return (
-        <SelectableGroupWrapper
+        <PickableGroup
             stack={stack}
-            block={block}>
-            <PickableGroup
-                stack={stack}
-                block={block}
-                noControl={noControl}>
-                <RotatableGroup block={block}>
-                    <EntityComponent
-                        stack={stack}
-                        block={block}
-                        {...rest} />
-                </RotatableGroup>
-            </PickableGroup>
-        </SelectableGroupWrapper>
+            block={block}
+            noControl={noControl}>
+            <RotatableGroup block={block}>
+                <EntityComponent
+                    stack={stack}
+                    block={block}
+                    {...rest} />
+            </RotatableGroup>
+        </PickableGroup>
     );
 }

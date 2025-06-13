@@ -10,6 +10,7 @@ import {
     storage,
     type UpdateEntity
 } from "..";
+import { bustCached, cacheKeys, directoriesCached } from '../cache/directoriesCached';
 
 export function getEntitiesRaw(entityTypeName: string, state?: string) {
     return storage().query.entities.findMany({
@@ -202,15 +203,19 @@ async function resolveRef(
 }
 
 export async function getEntitiesFormatted(entityTypeName: string) {
-    const cache: EntityTypeCache = {};
-    const entities = await getEntitiesRaw(entityTypeName, 'published') as EntityWithAttributesAndType[];
-    return await Promise.all(entities.map(e => expandEntity(e, cache)));
+    return directoriesCached(cacheKeys.entityTypeName(entityTypeName), async () => {
+        const cache: EntityTypeCache = {};
+        const entities = await getEntitiesRaw(entityTypeName, 'published') as EntityWithAttributesAndType[];
+        return await Promise.all(entities.map(e => expandEntity(e, cache)));
+    }, 60 * 60);
 }
 
 export async function getEntityFormatted(id: number) {
-    const cache: EntityTypeCache = {};
-    const entityRaw = await getEntityRaw(id) as EntityWithAttributesAndType | undefined;
-    return await expandEntity(entityRaw, cache);
+    return directoriesCached(cacheKeys.entity(id), async () => {
+        const cache: EntityTypeCache = {};
+        const entity = await getEntityRaw(id) as EntityWithAttributesAndType | undefined;
+        return await expandEntity(entity, cache);
+    }, 60 * 60);
 }
 
 export async function getEntityRaw(id: number) {
@@ -229,10 +234,13 @@ export async function getEntityRaw(id: number) {
 }
 
 export async function createEntity(entityTypeName: string) {
-    const result = await storage()
-        .insert(entities)
-        .values({ entityTypeName })
-        .returning({ id: entities.id });
+    const [result] = await Promise.all([
+        storage()
+            .insert(entities)
+            .values({ entityTypeName })
+            .returning({ id: entities.id }),
+        bustCached(cacheKeys.entityTypeName(entityTypeName))
+    ]);
     return result[0].id;
 }
 
@@ -251,9 +259,13 @@ export async function duplicateEntity(id: number) {
         order: attr.order,
     }));
 
-    await storage()
-        .insert(attributeValues)
-        .values(newAttributes);
+    await Promise.all([
+        storage()
+            .insert(attributeValues)
+            .values(newAttributes),
+        bustCached(cacheKeys.entityTypeName(entity.entityTypeName)),
+        bustCached(cacheKeys.entity(newEntityId))
+    ]);
 
     return newEntityId;
 }
@@ -267,15 +279,28 @@ export async function updateEntity(entity: UpdateEntity) {
         updateData.publishedAt = new Date();
     }
 
-    await storage()
-        .update(entities)
-        .set(entity)
-        .where(eq(entities.id, entity.id));
+    await Promise.all([
+        storage()
+            .update(entities)
+            .set(entity)
+            .where(eq(entities.id, entity.id)),
+        bustCached(cacheKeys.entity(entity.id)),
+        entity.entityTypeName ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName)) : null
+    ]);
 }
 
-export function deleteEntity(id: number) {
-    return storage()
-        .update(entities)
-        .set({ isDeleted: true })
-        .where(eq(entities.id, id));
+export async function deleteEntity(id: number) {
+    const entity = await getEntityRaw(id);
+    if (!entity) {
+        throw new Error(`Entity with id ${id} not found`);
+    }
+
+    await Promise.all([
+        storage()
+            .update(entities)
+            .set({ isDeleted: true })
+            .where(eq(entities.id, id)),
+        bustCached(cacheKeys.entity(id)),
+        entity.entityTypeName ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName)) : null
+    ]);
 }

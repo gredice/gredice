@@ -34,17 +34,25 @@ export function PlantPickerOptions({ selectedSort, onChange }: PlantPickerOption
 
     const min = formatLocalDate(tomorrow);
     const max = formatLocalDate(threeMonthsFromTomorrow);
+    const price = selectedSort.information.plant.prices?.perPlant
+        ? selectedSort.information.plant.prices.perPlant.toFixed(2)
+        : 'Nepoznato';
 
     return (
         <Stack spacing={2}>
-            <Row spacing={1} className="bg-card rounded-md border p-2">
-                <img
-                    src={'https://www.gredice.com/' + (selectedSort.image?.cover?.url ?? selectedSort.information.plant.image?.cover?.url)}
-                    alt={selectedSort.information.name}
-                    className="size-10"
-                />
-                <Typography level="body1">
-                    {selectedSort.information.name}
+            <Row spacing={1} justifyContent="space-between" className="bg-card rounded-md border p-2 pr-4">
+                <Row spacing={1}>
+                    <img
+                        src={'https://www.gredice.com/' + (selectedSort.image?.cover?.url ?? selectedSort.information.plant.image?.cover?.url)}
+                        alt={selectedSort.information.name}
+                        className="size-10"
+                    />
+                    <Typography level="body1">
+                        {selectedSort.information.name}
+                    </Typography>
+                </Row>
+                <Typography level="body1" semiBold>
+                    {price}€
                 </Typography>
             </Row>
             <Input

@@ -34,7 +34,7 @@ export function SegmentedProgress({ className, segments, ...rest }: SegmentedPro
                         )}>
                             <Check className={cx("size-3 text-white", segment.value < 100 && 'hidden')} />
                         </div>
-                        <div className="text-xs text-center absolute left-1/2 top-full transform -translate-x-1/2 pt-1">
+                        <div className="select-none text-xs text-center absolute left-1/2 top-full transform -translate-x-1/2 pt-1">
                             {segment.label}
                         </div>
                     </div>
