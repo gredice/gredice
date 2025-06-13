@@ -10,7 +10,9 @@ import { slug } from "@signalco/js";
 
 async function PlantSortsListContent({ basePlantName }: { basePlantName: string }) {
     const allSorts = await getPlantSortsData();
-    const sorts = allSorts?.filter(sort => sort.information.plant.information?.name?.toLowerCase() === basePlantName.toLowerCase()) ?? [];
+    const sorts = (allSorts
+        ?.filter(sort => sort.information.plant.information?.name?.toLowerCase() === basePlantName.toLowerCase()) ?? [])
+        .sort((a, b) => a.information.name.localeCompare(b.information.name));
     if (!sorts.length) {
         return (
             <Stack spacing={2}>

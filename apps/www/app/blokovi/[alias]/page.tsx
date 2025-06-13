@@ -12,9 +12,10 @@ import { BlockData, directoriesClient } from "@gredice/client";
 import { Markdown } from "../../../components/shared/Markdown";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
 import { Row } from "@signalco/ui-primitives/Row";
+import { Metadata } from "next";
 
 export const revalidate = 3600; // 1 hour
-export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }) {
+export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }): Promise<Metadata> {
     const { alias: aliasUnescaped } = await params;
     const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
     const blockData = (await directoriesClient().GET('/entities/block')).data;
