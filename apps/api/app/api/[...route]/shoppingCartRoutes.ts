@@ -28,7 +28,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (raisedBedsToAdd.length > 0) {
                 console.debug('Adding raised beds to cart', { raisedBedsToAdd });
                 const operations = await getEntitiesFormatted('operation');
-                const raisedBedOperation = operations.find(operation => (operation as EntityStandardized).information?.name === 'raisedBed1m');
+                const raisedBedOperation = operations.find((operation: EntityStandardized) => operation.information?.name === 'raisedBed1m');
                 if (!raisedBedOperation) {
                     return context.json({ error: 'Raised bed operation not found' }, 500);
                 }
