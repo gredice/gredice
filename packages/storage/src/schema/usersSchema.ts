@@ -46,6 +46,8 @@ export const accountUsersRelations = relations(accountUsers, ({ one }) => ({
 export const users = pgTable('users', {
     id: text('id').primaryKey(),
     userName: text('username').notNull(),
+    avatarUrl: text('avatar_url'),
+    displayName: text('display_name'),
     role: text('role').notNull(),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
@@ -63,6 +65,7 @@ export const usersRelations = relations(users, ({ many }) => ({
 }));
 
 export type InsertUser = typeof users.$inferInsert;
+export type UpdateUserInfo = Omit<typeof users.$inferInsert, 'id' | 'createdAt' | 'updatedAt' | 'role'>;
 export type SelectUser = typeof users.$inferSelect;
 
 export const userLogins = pgTable('user_logins', {
