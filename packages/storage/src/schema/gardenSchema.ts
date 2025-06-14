@@ -132,7 +132,7 @@ export const raisedBedRelations = relations(raisedBeds, ({ one, many }) => ({
         relationName: 'raisedBedsBlock',
     }),
     fields: many(raisedBedFields, {
-        relationName: 'raisedBedFieldsRaisedBedw',
+        relationName: 'raisedBedFieldsRaisedBed',
     })
 }));
 
