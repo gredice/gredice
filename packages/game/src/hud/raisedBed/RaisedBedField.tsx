@@ -25,7 +25,7 @@ function RaisedBedFieldItemButton({ isLoading, children, className, ...rest }: R
             className={cx(
                 'relative',
                 "bg-gradient-to-br from-lime-100/90 to-lime-100/80 size-full flex items-center justify-center rounded-sm",
-                "hover:bg-white cursor-pointer",
+                "hover:bg-white",
                 "transition-colors",
                 className
             )} {...rest}>
@@ -233,20 +233,23 @@ export function RaisedBedField({
     raisedBedId: number;
 }) {
     return (
-        <div className="size-full grid grid-rows-3">
-            {[...Array(3)].map((_, rowIndex) => (
-                <div key={`${rowIndex}`} className="size-full grid grid-cols-3">
-                    {[...Array(3)].map((_, colIndex) => (
-                        <div key={`${rowIndex}-${colIndex}`} className="size-full p-0.5">
-                            <RaisedBedFieldItem
-                                gardenId={gardenId}
-                                raisedBedId={raisedBedId}
-                                positionIndex={(2 - rowIndex) * 3 + (2 - colIndex)}
-                            />
-                        </div>
-                    ))}
-                </div>
-            ))}
-        </div>
+        <>
+            <div></div>
+            <div className="size-full grid grid-rows-3">
+                {[...Array(3)].map((_, rowIndex) => (
+                    <div key={`${rowIndex}`} className="size-full grid grid-cols-3">
+                        {[...Array(3)].map((_, colIndex) => (
+                            <div key={`${rowIndex}-${colIndex}`} className="size-full p-0.5">
+                                <RaisedBedFieldItem
+                                    gardenId={gardenId}
+                                    raisedBedId={raisedBedId}
+                                    positionIndex={(2 - rowIndex) * 3 + (2 - colIndex)}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                ))}
+            </div>
+        </>
     );
 }

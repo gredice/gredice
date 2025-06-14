@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { validator as zValidator } from 'hono-openapi/zod';
 import { z } from 'zod';
-import { getOrCreateShoppingCart, upsertOrRemoveCartItem, deleteShoppingCart, getRaisedBed, getEntitiesFormatted } from '@gredice/storage';
+import { getOrCreateShoppingCart, upsertOrRemoveCartItem, deleteShoppingCart, getRaisedBed, getEntitiesFormatted, markCartPaidIfAllItemsPaid } from '@gredice/storage';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import { describeRoute } from 'hono-openapi';
 import { EntityStandardized, getCartItemsInfo } from './checkoutRoutes';
@@ -62,13 +62,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
             for (const raisedBedId of mentionedRaisedBedIds) {
                 const raisedBed = raisedBeds.find(rb => rb?.id === raisedBedId);
                 const itemsForBed = cart.items.filter(item => item.raisedBedId === raisedBedId && !item.isDeleted);
-                const itemForBed = itemsForBed[0];
-                const hasOnlyAutomatic =
-                    itemsForBed.length === 1 &&
-                    itemForBed.entityTypeName === 'operation' &&
-                    itemForBed.type === 'automatic' &&
-                    itemForBed.gardenId;
-                if (hasOnlyAutomatic || raisedBed?.status !== 'new') {
+                const itemForBed = itemsForBed.find(item =>
+                    item.entityTypeName === 'operation' &&
+                    item.type === 'automatic' &&
+                    item.gardenId);
+                const notPayedItems = itemsForBed.filter(item => item.status !== 'paid');
+                const hasOnlyAutomatic = notPayedItems.length > 0 && itemForBed;
+                if (itemForBed && (hasOnlyAutomatic || raisedBed?.status !== 'new')) {
                     await upsertOrRemoveCartItem(
                         cart.id,
                         itemForBed.entityId,
@@ -77,7 +77,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         itemForBed.gardenId ?? undefined,
                         itemForBed.raisedBedId ?? undefined,
                         itemForBed.positionIndex ?? undefined,
-                        itemForBed.additionalData ?? undefined,
+                        undefined,
                         'automatic',
                         true // Force delete to allow removal of paid items
                     );
@@ -85,6 +85,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
             }
             if (didRemoveItems) {
+                await markCartPaidIfAllItemsPaid(cart.id);
+
                 // Refresh the cart after removing items
                 cart = await getOrCreateShoppingCart(accountId);
                 if (!cart) {
