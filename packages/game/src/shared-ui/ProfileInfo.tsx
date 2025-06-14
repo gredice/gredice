@@ -10,7 +10,7 @@ export function ProfileInfo() {
     return (
         <Row spacing={2} className="pr-4">
             <ProfileAvatar />
-            <Stack spacing={0.5} className="overflow-hidden">
+            <Stack className="overflow-hidden">
                 <Typography level="body2" semiBold noWrap title={currentUser.data?.displayName}>
                     {currentUser.data?.displayName}
                 </Typography>

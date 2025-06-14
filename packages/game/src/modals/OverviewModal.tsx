@@ -1,6 +1,6 @@
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import { Button } from "@signalco/ui-primitives/Button";
-import { Card, CardContent, CardHeader, CardTitle, CardActions } from "@signalco/ui-primitives/Card";
+import { Card, CardContent, CardActions } from "@signalco/ui-primitives/Card";
 import { Input } from "@signalco/ui-primitives/Input";
 import { List } from "@signalco/ui-primitives/List";
 import { ListItem } from "@signalco/ui-primitives/ListItem";
@@ -8,7 +8,6 @@ import { Modal } from "@signalco/ui-primitives/Modal";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NoNotificationsPlaceholder } from "../shared-ui/NoNotificationsPlaceholder";
-import { RowProps } from "@signalco/ui-primitives/Row";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { ProfileInfo } from "../shared-ui/ProfileInfo";
 import { SoundSettingsCard } from "./components/SoundSettingsCard";
@@ -16,6 +15,7 @@ import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import { SunflowersList } from "../shared-ui/sunflowers/SunflowersList";
 import { useCurrentAccount } from "../hooks/useCurrentAccount";
 import { ScrollArea } from "@signalco/ui-primitives/ScrollArea";
+import { UserProfileCard } from "./components/UserProfileCard";
 
 export function OverviewModal() {
     const [settingsMode, setProfileModalOpen] = useSearchParam('pregled');
@@ -27,10 +27,6 @@ export function OverviewModal() {
     }
 
     const currentUser = useCurrentUser();
-    const dateFormatter = new Intl.DateTimeFormat('hr-HR', { month: 'long', year: 'numeric' });
-    const memberSinceDisplay = currentUser.data?.createdAt
-        ? dateFormatter.format(currentUser.data?.createdAt)
-        : undefined;
 
     const { data: currentAccount } = useCurrentAccount();
 
@@ -94,25 +90,7 @@ export function OverviewModal() {
                     {settingsMode === 'generalno' && (
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">Profil</Typography>
-                            <Card>
-                                <form>
-                                    <CardContent noHeader>
-                                        <Stack spacing={2}>
-                                            <Input
-                                                name="displayName"
-                                                label="Ime koje će biti prikazano drugim korisnicima"
-                                                defaultValue={currentUser.data?.displayName}
-                                                type="text"
-                                                placeholder="Unesite ime..."
-                                                required />
-                                            <CardActions className="justify-between">
-                                                <Typography level="body2">Član od: {memberSinceDisplay}</Typography>
-                                                <Button size="sm" variant="solid" type="submit">Spremi</Button>
-                                            </CardActions>
-                                        </Stack>
-                                    </CardContent>
-                                </form>
-                            </Card>
+                            <UserProfileCard />
                         </Stack>
                     )}
                     {settingsMode === 'sigurnost' && (

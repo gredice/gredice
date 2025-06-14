@@ -14,7 +14,7 @@
     "test": "pnpm run /^test:.*/",
     "test:run": "playwright test",
     "regenerate": "pnpm run /^regenerate:.*/",
-    "regenerate:directories-api": "pnpm dlx openapi-typescript https://api.gredice.com/api/docs/directories -o ./lib/@types/directories-api/v1.d.ts"
+    "regenerate:directories-api": "pnpm dlx openapi-typescript http://localhost:3005/api/docs/directories -o ./lib/@types/directories-api/v1.d.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "0.7.0",
