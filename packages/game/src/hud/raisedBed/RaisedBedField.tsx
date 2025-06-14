@@ -25,9 +25,6 @@ function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBe
     const plantOptions = plantCartItem?.additionalData ? JSON.parse(plantCartItem.additionalData) : null;
 
     const isLoading = isCartPending || isGardenPending || (plantSortId && isPlantSortPending);
-    if (isLoading) {
-        return null;
-    }
 
     return (
         <PlantPicker
@@ -39,17 +36,21 @@ function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBe
                         "bg-gradient-to-br from-lime-100/90 to-lime-100/80 size-full flex items-center justify-center rounded-sm",
                         "hover:bg-white cursor-pointer"
                     )}>
-                    {plantCartItem ? (
+                    {!isLoading && (
                         <>
-                            <img src={`https://www.gredice.com/${plantCartItem.shopData.image}`} alt={plantCartItem.shopData.name} width={60} height={60} />
-                            <div className="absolute right-1 top-1">
-                                <DotIndicator size={30} color={"success"} content={(
-                                    <ShoppingCart className="size-6 stroke-white" />
-                                )} />
-                            </div>
+                            {plantCartItem ? (
+                                <>
+                                    <img src={`https://www.gredice.com/${plantCartItem.shopData.image}`} alt={plantCartItem.shopData.name} width={60} height={60} />
+                                    <div className="absolute right-1 top-1">
+                                        <DotIndicator size={30} color={"success"} content={(
+                                            <ShoppingCart className="size-6 stroke-white" />
+                                        )} />
+                                    </div>
+                                </>
+                            ) : (
+                                <PlantingSeed className="size-10 stroke-green-800" />
+                            )}
                         </>
-                    ) : (
-                        <PlantingSeed className="size-10 stroke-green-800" />
                     )}
                 </button>
             )}
