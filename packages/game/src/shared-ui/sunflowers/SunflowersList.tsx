@@ -10,14 +10,17 @@ import { Empty } from "@signalco/ui-icons";
 
 function sunflowerReasonToDescription(reason: string) {
     if (reason === 'registration') {
-        return { icon: <span className="text-4xl size-10">🎉</span>, label: 'Nagrada za registraciju' };
+        return { icon: <span className="text-4xl size-10 -ml-1.5">🎉</span>, label: 'Nagrada za registraciju' };
     }
 
     if (reason.startsWith('block')) {
         return { icon: <BlockImage blockName={reason.split(':')[1]} className="size-10" />, label: 'Postavljanje bloka' };
     }
     if (reason === 'gift') {
-        return { icon: <span className="text-4xl size-10">🎁</span>, label: 'Poklon' };
+        return { icon: <span className="text-4xl size-10 -ml-1.5">🎁</span>, label: 'Poklon' };
+    }
+    if (reason === 'payment') {
+        return { icon: <span className="text-4xl text-center size-10 -ml-1.5">💰</span>, label: 'Plaćanje' };
     }
 
     console.warn('Unknown sunflower reason:', reason);
