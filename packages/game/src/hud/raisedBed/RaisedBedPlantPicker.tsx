@@ -50,7 +50,7 @@ export function PlantPicker({
     const [plantOptions, setPlantOptions] = useState<{ scheduledDate: Date | null | undefined } | null>(preselectedPlantOptions ?? null);
 
     let currentStep = 0;
-    if (selectedSortId) {
+    if (selectedPlantId && selectedSortId) {
         currentStep = 2;
     } else if (selectedPlantId) {
         currentStep = 1;
@@ -104,8 +104,6 @@ export function PlantPicker({
             return;
         }
 
-        await removeFromCart();
-
         // Add new item to cart
         await setCartItem.mutateAsync({
             entityTypeName: "plantSort",
@@ -124,11 +122,6 @@ export function PlantPicker({
     function handleOpenChange(open: boolean) {
         setOpen(open);
     }
-
-    console.log('currentStep', currentStep);
-    console.log('selectedPlantId', selectedPlantId);
-    console.log('selectedSortId', selectedSortId);
-    console.log('plantOptions', plantOptions);
 
     return (
         <Modal
@@ -197,6 +190,7 @@ export function PlantPicker({
                         <PlantPickerOptions
                             selectedPlantId={selectedPlantId}
                             selectedSortId={selectedSortId}
+                            selectedOptions={plantOptions}
                             onChange={handlePlantOptionsChange} />
                         <Row justifyContent="space-between">
                             <Button

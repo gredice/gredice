@@ -10,10 +10,12 @@ export const shoppingCarts = pgTable('shopping_carts', {
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
+    status: text('status').notNull().default('new'), // 'new' | 'paid'
 }, (table) => [
     index('shopping_carts_account_id_idx').on(table.accountId),
     index('shopping_carts_expires_at_idx').on(table.expiresAt),
     index('shopping_carts_is_deleted_idx').on(table.isDeleted),
+    index('shopping_carts_status_idx').on(table.status),
 ]);
 
 export const shoppingCartItems = pgTable('shopping_cart_items', {
@@ -30,12 +32,14 @@ export const shoppingCartItems = pgTable('shopping_cart_items', {
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
     type: text('type').notNull().default('user'), // 'user' | 'automatic'
+    status: text('status').notNull().default('new'), // 'new' | 'paid'
 }, (table) => [
     index('shopping_cart_items_cart_id_idx').on(table.cartId),
     index('shopping_cart_items_entity_id_idx').on(table.entityId),
     index('shopping_cart_items_garden_id_idx').on(table.gardenId),
     index('shopping_cart_items_raised_bed_id_idx').on(table.raisedBedId),
     index('shopping_cart_items_is_deleted_idx').on(table.isDeleted),
+    index('shopping_cart_items_status_idx').on(table.status),
 ]);
 
 export const shoppingCartRelations = relations(shoppingCarts, ({ many }) => ({

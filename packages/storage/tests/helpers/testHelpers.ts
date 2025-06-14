@@ -1,4 +1,4 @@
-import { createFarm, getFarms, getAccount, createAccount as storageCreateAccount, createAccount, getAccounts } from '@gredice/storage';
+import { createFarm, getFarms, getAccount, createAccount as storageCreateAccount, createAccount, getAccounts, createGardenBlock } from '@gredice/storage';
 import { accounts } from '../../src/schema/usersSchema';
 
 /**
@@ -47,4 +47,8 @@ export async function createTestRaisedBed(gardenId: number, accountId: string, b
         blockId,
         status: 'new',
     });
+}
+
+export async function createTestBlock(gardenId: number, blockName: string) {
+    return await createGardenBlock(gardenId, blockName);
 }

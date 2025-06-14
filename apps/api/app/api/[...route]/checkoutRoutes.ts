@@ -46,6 +46,7 @@ export type ShoppingCartItemWithShopData = SelectShoppingCartItem & {
     };
 };
 
+// TODO: Move to lib
 export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise<ShoppingCartItemWithShopData[]> {
     const entityTypeNames = items.map((item) => item.entityTypeName);
     const uniqueEntityTypeNames = Array.from(new Set(entityTypeNames));
@@ -85,6 +86,18 @@ export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise
                     discountDescription: 'Besplatna podignuta gredica ukoliko je više od pola gredice ispunjeno',
                 });
             }
+        }
+    }
+
+    // Process paid discounts for items that are already paid
+    const paidItems = items.filter(item => item.status === 'paid');
+    if (paidItems.length > 0) {
+        for (const item of paidItems) {
+            discounts.push({
+                cartItemId: item.id,
+                discountPrice: 0,
+                discountDescription: 'Već plaćeno',
+            });
         }
     }
 
@@ -148,7 +161,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Retrieve entities data
-            const cartItemsWithShopData = await getCartItemsInfo(cart.items);
+            const cartItemsWithShopData = (await getCartItemsInfo(cart.items)).filter(item => item.status !== 'paid');
 
             // Generate a stripe checkout items from cart items
             const items: CheckoutItem[] = [];
@@ -184,6 +197,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         name,
                         description,
                         imageUrls,
+                        // TODO: Construct/deconstruct functions
                         metadata: {
                             entityId: item.entityId,
                             entityTypeName: item.entityTypeName,

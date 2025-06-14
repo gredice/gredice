@@ -24,7 +24,9 @@ export function useCheckout() {
             }
             const { sessionId } = responseData;
             const stripe = await clientStripe();
-            const result = await stripe?.redirectToCheckout({ sessionId, });
+            const result = await stripe?.redirectToCheckout({
+                sessionId
+            });
             if (result?.error) {
                 console.error("Stripe checkout error:", result.error);
                 // TODO: Show notification to user

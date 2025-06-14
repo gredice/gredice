@@ -90,7 +90,7 @@ test('deleteGarden marks garden as deleted', async () => {
     const gardenId = await createTestGarden({ accountId, farmId });
     await deleteGarden(gardenId);
     const garden = await getGarden(gardenId);
-    assert.strictEqual(garden, undefined);
+    assert.strictEqual(garden, null);
 });
 
 test('createGardenBlock and getGardenBlocks', async () => {
@@ -134,7 +134,7 @@ test('deleteGardenBlock marks block as deleted', async () => {
     const blockId = await createGardenBlock(gardenId, 'BlockA');
     await deleteGardenBlock(gardenId, blockId);
     const block = await getGardenBlock(gardenId, blockId);
-    assert.strictEqual(block, undefined);
+    assert.strictEqual(block, null);
 });
 
 test('getGardenStacks returns stacks for garden', async () => {
@@ -198,25 +198,25 @@ test('deleteGardenStack marks stack as deleted', async () => {
     await createGardenStack(gardenId, { x: 5, y: 5 });
     await deleteGardenStack(gardenId, { x: 5, y: 5 });
     const stack = await getGardenStack(gardenId, { x: 5, y: 5 });
-    assert.strictEqual(stack, undefined);
+    assert.strictEqual(stack, null);
 });
 
 // Edge cases
 
-test('getGarden returns undefined for non-existent garden', async () => {
+test('getGarden returns null for non-existent garden', async () => {
     createTestDb();
     const garden = await getGarden(99999);
-    assert.strictEqual(garden, undefined);
+    assert.strictEqual(garden, null);
 });
 
-test('getGardenBlock returns undefined for non-existent block', async () => {
+test('getGardenBlock returns null for non-existent block', async () => {
     createTestDb();
     const block = await getGardenBlock(1, 'nonexistent');
-    assert.strictEqual(block, undefined);
+    assert.strictEqual(block, null);
 });
 
-test('getGardenStack returns undefined for non-existent stack', async () => {
+test('getGardenStack returns null for non-existent stack', async () => {
     createTestDb();
     const stack = await getGardenStack(1, { x: 42, y: 42 });
-    assert.strictEqual(stack, undefined);
+    assert.strictEqual(stack, null);
 });
