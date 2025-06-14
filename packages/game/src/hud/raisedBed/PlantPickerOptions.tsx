@@ -9,6 +9,7 @@ import { usePlantSorts } from "../../hooks/usePlantSorts";
 export type PlantPickerOptionsProps = {
     selectedPlantId: number;
     selectedSortId: number;
+    selectedOptions: { scheduledDate: Date | null | undefined } | null;
     onChange: (options: { scheduledDate: Date | null | undefined }) => void;
 };
 
@@ -20,12 +21,12 @@ function formatLocalDate(date: Date): string {
     return `${year}-${month}-${day}`;
 }
 
-export function PlantPickerOptions({ selectedPlantId, selectedSortId, onChange }: PlantPickerOptionsProps) {
+export function PlantPickerOptions({ selectedPlantId, selectedSortId, selectedOptions, onChange }: PlantPickerOptionsProps) {
     // Use local time for tomorrow and 3 months from now
     const today = new Date();
     const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
     const threeMonthsFromTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth() + 3, tomorrow.getDate());
-    const [plantDate, setPlantDate] = useState<string>(formatLocalDate(tomorrow));
+    const [plantDate, setPlantDate] = useState<string>(formatLocalDate(selectedOptions?.scheduledDate ?? tomorrow));
 
     const { data: plantSorts } = usePlantSorts(selectedPlantId);
     const selectedSort = plantSorts?.find((sort: PlantSortData) => sort.id === selectedSortId);

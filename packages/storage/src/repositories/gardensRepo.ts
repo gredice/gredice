@@ -254,28 +254,38 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             knownEventTypes.raisedBedFields.update,
             knownEventTypes.raisedBedFields.delete,
             knownEventTypes.raisedBedFields.plantPlace,
+            knownEventTypes.raisedBedFields.plantUpdate,
             knownEventTypes.raisedBedFields.operationOrder,
         ], aggregateId);
+
         // Reduce events to get latest status, plant info, etc.
-        let status = field.status;
-        let plantId = undefined;
+        let plantStatus = undefined;
         let plantSortId = undefined;
-        let orderId = undefined;
+        let plantScheduledDate = undefined;
+
+        // TODO: Implement operations handling
+        let operationId = undefined;
+        let operationStatus = undefined;
+
         for (const event of events.reverse()) {
             const data = event.data as Record<string, any> | undefined;
-            if (event.type === 'raisedBedField.update' && data?.status) status = data.status;
+            if (event.type === 'raisedBedField.update' && data?.status) plantStatus = data.status;
             if (event.type === 'raisedBedField.plantPlace') {
-                plantId = data?.plantId;
-                plantSortId = data?.plantSortId;
-                status = data?.status || status;
+                plantSortId = data?.plantSortId ? parseInt(data.plantSortId, 10) : undefined;
+                plantScheduledDate = data?.scheduledDate || plantScheduledDate;
+                plantStatus = "new";
+            }
+            if (event.type === 'raisedBedField.plantUpdate') {
+                plantStatus = data?.status || plantStatus;
             }
             if (event.type === 'raisedBedField.operationOrder') {
-                orderId = data?.orderId;
-                status = data?.status || status;
+                operationId = data?.orderId;
+                operationStatus = data?.status || operationStatus;
             }
-            if (event.type === 'raisedBedField.delete') status = 'deleted';
+            if (event.type === 'raisedBedField.delete') plantStatus = 'deleted';
         }
-        return { ...field, status, plantId, plantSortId, orderId };
+
+        return { ...field, plantStatus, plantSortId, plantScheduledDate };
     }));
 }
 

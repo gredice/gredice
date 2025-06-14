@@ -65,7 +65,8 @@ export async function upsertOrRemoveCartItem(
     raisedBedId?: number,
     positionIndex?: number,
     additionalData?: string | null,
-    type: 'user' | 'automatic' = 'user', // new param, default to 'user'
+    type: 'user' | 'automatic' = 'user', // new param, default to 'user',
+    forceDelete: boolean = false
 ) {
     const existingItem = await storage().query.shoppingCartItems.findFirst({
         where: and(
@@ -74,15 +75,14 @@ export async function upsertOrRemoveCartItem(
             eq(shoppingCartItems.entityId, entityId),
             gardenId ? eq(shoppingCartItems.gardenId, gardenId) : undefined,
             raisedBedId ? eq(shoppingCartItems.raisedBedId, raisedBedId) : undefined,
-            positionIndex ? eq(shoppingCartItems.positionIndex, positionIndex) : undefined,
-            additionalData ? eq(shoppingCartItems.additionalData, additionalData) : undefined,
+            typeof positionIndex === 'number' ? eq(shoppingCartItems.positionIndex, positionIndex) : undefined,
             eq(shoppingCartItems.isDeleted, false),
             eq(shoppingCartItems.type, type)
         ),
     });
 
     // Prevent deletion of paid items
-    if (amount <= 0 && existingItem?.status === 'paid') {
+    if (!forceDelete && amount <= 0 && existingItem?.status === 'paid') {
         throw new Error('Cannot delete paid shopping cart item via API');
     }
 
@@ -98,7 +98,7 @@ export async function upsertOrRemoveCartItem(
                 not(eq(shoppingCartItems.id, existingItem.id))
             ),
         });
-        if (hasOtherItemsForRaisedBed) {
+        if (!forceDelete && hasOtherItemsForRaisedBed) {
             throw new Error('Cannot delete automatic shopping cart item via API');
         }
         // Allow removal if no other items for this raised bed
@@ -130,6 +130,7 @@ export async function upsertOrRemoveCartItem(
             .update(shoppingCartItems)
             .set({
                 amount,
+                additionalData
             })
             .where(eq(shoppingCartItems.id, existingItem.id))
             .returning({

@@ -1,5 +1,5 @@
 import { client } from "@gredice/client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useShoppingCart } from "./useShoppingCart";
 
 export function useSetShoppingCartItem() {

@@ -56,10 +56,15 @@ async function ensureStripeCustomer(account: UserAccount): Promise<string> {
 export async function getStripeCheckoutSession(sessionId: string) {
     try {
         const session = await getStripe().checkout.sessions.retrieve(sessionId);
+        const line_items = await getStripe().checkout.sessions.listLineItems(sessionId, {
+            expand: ['data.price.product'],
+        });
         return {
             id: session.id,
             customerId: session.customer,
-            status: session.status
+            status: session.status,
+            paymentStatus: session.payment_status,
+            lineItems: line_items
         };
     } catch (error) {
         if (error instanceof Error) {

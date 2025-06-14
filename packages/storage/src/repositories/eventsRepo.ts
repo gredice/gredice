@@ -33,6 +33,7 @@ export const knownEventTypes = {
         update: "raisedBedField.update",
         delete: "raisedBedField.delete",
         plantPlace: "raisedBedField.plantPlace",
+        plantUpdate: "raisedBedField.plantUpdate",
         operationOrder: "raisedBedField.operationOrder",
     },
 }
@@ -110,7 +111,13 @@ export const knownEvents = {
             version: 1,
             aggregateId,
         }),
-        plantPlaceV1: (aggregateId: string, data: { plantId: string, plantSortId: string, status: string }) => ({
+        plantPlaceV1: (aggregateId: string, data: { plantSortId: string, scheduledDate: string }) => ({
+            type: knownEventTypes.raisedBedFields.plantPlace,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        plantUpdateV1: (aggregateId: string, data: { status: string }) => ({
             type: knownEventTypes.raisedBedFields.plantPlace,
             version: 1,
             aggregateId,

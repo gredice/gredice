@@ -92,31 +92,12 @@ export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise
     // Process paid discounts for items that are already paid
     const paidItems = items.filter(item => item.status === 'paid');
     if (paidItems.length > 0) {
-        const paidItemsByEntity = paidItems.reduce((acc, item) => {
-            const key = `${item.entityTypeName}-${item.entityId}`;
-            if (!acc[key]) {
-                acc[key] = [];
-            }
-            acc[key].push(item);
-            return acc;
-        }, {} as Record<string, SelectShoppingCartItem[]>);
-
-        for (const [key, paidItemsForEntity] of Object.entries(paidItemsByEntity)) {
-            const [entityTypeName, entityId] = key.split('-');
-            const entityData = entitiesByTypeName[entityTypeName]?.find(entity => entity?.id.toString() === entityId);
-            if (!entityData) {
-                console.warn('Entity not found for paid discount', { entityId, entityTypeName });
-                continue;
-            }
-
-            const totalPaidAmount = paidItemsForEntity.reduce((sum, item) => sum + item.amount, 0);
-            if (totalPaidAmount > 0) {
-                discounts.push({
-                    cartItemId: paidItemsForEntity[0].id,
-                    discountPrice: 0,
-                    discountDescription: 'Već plaćeno',
-                });
-            }
+        for (const item of paidItems) {
+            discounts.push({
+                cartItemId: item.id,
+                discountPrice: 0,
+                discountDescription: 'Već plaćeno',
+            });
         }
     }
 
@@ -216,6 +197,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         name,
                         description,
                         imageUrls,
+                        // TODO: Construct/deconstruct functions
                         metadata: {
                             entityId: item.entityId,
                             entityTypeName: item.entityTypeName,

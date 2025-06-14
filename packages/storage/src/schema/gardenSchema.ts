@@ -146,7 +146,6 @@ export const raisedBedFields = pgTable('raised_bed_fields', {
     id: serial('id').primaryKey(),
     raisedBedId: integer('raised_bed_id').notNull().references(() => raisedBeds.id),
     positionIndex: integer('position_index').notNull(),
-    status: text('status').notNull().default('new'), // Possible values: 'new', 'approved', 'planted', 'harvested', 'uprooted'
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
