@@ -1,6 +1,5 @@
 import { Button } from "@signalco/ui-primitives/Button";
 import { useGameState } from "../useGameState";
-import { HudCard } from "./components/HudCard";
 import { cx } from "@signalco/ui-primitives/cx";
 import { useCurrentGarden } from "../hooks/useCurrentGarden";
 import { RaisedBedField } from "./raisedBed/RaisedBedField";
