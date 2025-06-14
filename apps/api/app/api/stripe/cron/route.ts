@@ -1,5 +1,4 @@
 import { getStripeCheckoutSessions } from "@gredice/stripe/server";
-import { NextRequest } from "next/server";
 import { processCheckoutSession } from "../../../../lib/stripe/processCheckoutSession";
 
 export const dynamic = 'force-dynamic';
