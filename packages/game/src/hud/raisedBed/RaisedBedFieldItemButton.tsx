@@ -13,7 +13,7 @@ export function RaisedBedFieldItemButton({ isLoading, children, className, ...re
             className={cx(
                 'relative',
                 "bg-gradient-to-br from-lime-100/90 to-lime-100/80 size-full flex items-center justify-center rounded-sm",
-                "hover:bg-white cursor-pointer",
+                "hover:bg-white",
                 "transition-colors",
                 className
             )} {...rest}>
