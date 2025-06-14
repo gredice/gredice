@@ -53,6 +53,21 @@ async function ensureStripeCustomer(account: UserAccount): Promise<string> {
     return newCustomer.id;
 }
 
+export async function getStripeCheckoutSessions(lastDateTime: Date) {
+    try {
+        const sessions = await getStripe().checkout.sessions.list({
+            created: {
+                gte: Math.floor(lastDateTime.getTime() / 1000),
+            },
+            limit: 100
+        });
+        return sessions.data;
+    } catch (error) {
+        console.error('Error fetching checkout sessions:', error);
+        throw error;
+    }
+}
+
 export async function getStripeCheckoutSession(sessionId: string) {
     try {
         const session = await getStripe().checkout.sessions.retrieve(sessionId);
@@ -64,7 +79,8 @@ export async function getStripeCheckoutSession(sessionId: string) {
             customerId: session.customer,
             status: session.status,
             paymentStatus: session.payment_status,
-            lineItems: line_items
+            lineItems: line_items,
+            amountTotal: session.amount_total,
         };
     } catch (error) {
         if (error instanceof Error) {
