@@ -1,7 +1,7 @@
 import 'server-only';
 import { desc, eq, sql } from "drizzle-orm";
-import { createAccount, earnSunflowers, getFarms, storage } from "..";
-import { accountUsers, userLogins, users } from "../schema";
+import { createAccount, getFarms, storage } from "..";
+import { accountUsers, UpdateUserInfo, userLogins, users } from "../schema";
 import { createGarden } from "./gardensRepo";
 import { randomUUID, randomBytes as cryptoRandomBytes, pbkdf2Sync } from 'node:crypto';
 import { createEvent, knownEvents } from './eventsRepo';
@@ -23,6 +23,15 @@ export function getUser(userId: string) {
             }
         }
     });
+}
+
+export function updateUser(user: { id: string } & Partial<UpdateUserInfo>) {
+    return storage()
+        .update(users)
+        .set({
+            ...user
+        })
+        .where(eq(users.id, user.id));
 }
 
 export function getUserWithLogins(userName: string) {

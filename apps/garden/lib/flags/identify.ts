@@ -18,7 +18,7 @@ export async function getContext() {
             user: {
                 email: user?.userName,
                 id: user?.id,
-                name: user?.displayName,
+                name: user?.displayName ?? user?.userName,
             },
             environment: process.env.NODE_ENV
         };

@@ -253,6 +253,13 @@
       "when": 1749895014733,
       "tag": "0035_strong_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1749934146927,
+      "tag": "0036_shocking_expediter",
+      "breakpoints": true
     }
   ]
 }
