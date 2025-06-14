@@ -89,13 +89,13 @@ export async function getGardenBlocks(gardenId: number) {
 }
 
 export async function getGardenBlock(gardenId: number, blockId: string) {
-    return storage().query.gardenBlocks.findFirst({
+    return await storage().query.gardenBlocks.findFirst({
         where: and(
             eq(gardenBlocks.gardenId, gardenId),
             eq(gardenBlocks.id, blockId),
             eq(gardenBlocks.isDeleted, false)
         )
-    });
+    }) ?? null;
 }
 
 export async function createGardenBlock(gardenId: number, blockName: string) {
@@ -142,14 +142,14 @@ export async function getGardenStacks(gardenId: number) {
 }
 
 export async function getGardenStack(gardenId: number, { x, y }: { x: number, y: number }) {
-    return storage().query.gardenStacks.findFirst({
+    return await storage().query.gardenStacks.findFirst({
         where: and(
             eq(gardenStacks.gardenId, gardenId),
             eq(gardenStacks.positionX, x),
             eq(gardenStacks.positionY, y),
             eq(gardenStacks.isDeleted, false)
         )
-    });
+    }) ?? null;
 }
 
 export async function createGardenStack(gardenId: number, { x, y }: { x: number, y: number }) {

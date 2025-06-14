@@ -2,12 +2,17 @@ import { and, eq, not } from "drizzle-orm";
 import { shoppingCarts, shoppingCartItems } from "../schema";
 import { storage } from "../storage";
 
-export async function getOrCreateShoppingCart(accountId: string, expiresAt?: Date) {
+export async function getOrCreateShoppingCart(accountId: string, expiresAt?: Date, status: 'new' | 'paid' = 'new') {
     let cart = await storage().query.shoppingCarts.findFirst({
-        where: and(eq(shoppingCarts.accountId, accountId), eq(shoppingCarts.isDeleted, false)),
+        where: and(
+            eq(shoppingCarts.accountId, accountId),
+            eq(shoppingCarts.isDeleted, false),
+            eq(shoppingCarts.status, status)
+        ),
         with: {
             items: {
-                where: eq(shoppingCartItems.isDeleted, false),
+                where: and(eq(shoppingCartItems.isDeleted, false)),
+                orderBy: shoppingCartItems.createdAt,
             }
         },
     });
@@ -15,25 +20,40 @@ export async function getOrCreateShoppingCart(accountId: string, expiresAt?: Dat
         return cart;
     }
 
-    const createdCart = (await storage()
+    const createdCartId = (await storage()
         .insert(shoppingCarts)
         .values({
             accountId,
-            expiresAt: expiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            expiresAt: expiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            status: 'new',
         })
         .returning({
             id: shoppingCarts.id
-        }))[0];
+        }))[0].id;
 
-    return await storage().query.shoppingCarts.findFirst({
-        where: and(eq(shoppingCarts.id, createdCart.id), eq(shoppingCarts.isDeleted, false)),
-        with: {
-            items: {
-                where: eq(shoppingCartItems.isDeleted, false),
-                orderBy: shoppingCartItems.createdAt,
-            }
-        }
-    });
+    return getShoppingCart(createdCartId);
+}
+
+export async function markCartPaidIfAllItemsPaid(cartId: number) {
+    const cart = await getShoppingCart(cartId);
+    if (!cart) {
+        console.warn(`Cart ${cartId} not found for marking as paid.`);
+        return;
+    }
+
+    if (cart.items.length > 0 && cart.items.every(item => item.status === 'paid')) {
+        await storage()
+            .update(shoppingCarts)
+            .set({ status: 'paid' })
+            .where(eq(shoppingCarts.id, cartId));
+        console.debug(`Cart ${cartId} marked as paid because all items are paid.`);
+    }
+}
+
+export async function setCartItemPaid(itemId: number) {
+    await storage()
+        .update(shoppingCartItems).set({ status: 'paid' })
+        .where(eq(shoppingCartItems.id, itemId));
 }
 
 export async function upsertOrRemoveCartItem(
@@ -45,7 +65,7 @@ export async function upsertOrRemoveCartItem(
     raisedBedId?: number,
     positionIndex?: number,
     additionalData?: string | null,
-    type: 'user' | 'automatic' = 'user' // new param, default to 'user'
+    type: 'user' | 'automatic' = 'user', // new param, default to 'user'
 ) {
     const existingItem = await storage().query.shoppingCartItems.findFirst({
         where: and(
@@ -60,6 +80,11 @@ export async function upsertOrRemoveCartItem(
             eq(shoppingCartItems.type, type)
         ),
     });
+
+    // Prevent deletion of paid items
+    if (amount <= 0 && existingItem?.status === 'paid') {
+        throw new Error('Cannot delete paid shopping cart item via API');
+    }
 
     // Prevent deletion of automatic items (amount <= 0)
     if (amount <= 0 && existingItem?.type === 'automatic' && existingItem.raisedBedId) {
@@ -80,7 +105,7 @@ export async function upsertOrRemoveCartItem(
         await storage().update(shoppingCartItems).set({
             isDeleted: true,
         }).where(eq(shoppingCartItems.id, existingItem.id));
-        return;
+        return null;
     }
 
     if (amount <= 0) {
@@ -97,25 +122,36 @@ export async function upsertOrRemoveCartItem(
                 await storage().update(shoppingCarts).set({ isDeleted: true }).where(eq(shoppingCarts.id, cartId));
             }
         }
-        return;
+        return null;
     }
 
     if (existingItem) {
-        await storage().update(shoppingCartItems).set({
-            amount,
-        }).where(eq(shoppingCartItems.id, existingItem.id));
+        return (await storage()
+            .update(shoppingCartItems)
+            .set({
+                amount,
+            })
+            .where(eq(shoppingCartItems.id, existingItem.id))
+            .returning({
+                id: shoppingCartItems.id
+            }))[0].id;
     } else {
-        await storage().insert(shoppingCartItems).values({
-            cartId,
-            entityId,
-            entityTypeName,
-            amount,
-            gardenId,
-            raisedBedId,
-            positionIndex,
-            additionalData,
-            type
-        });
+        return (await storage()
+            .insert(shoppingCartItems)
+            .values({
+                cartId,
+                entityId,
+                entityTypeName,
+                amount,
+                gardenId,
+                raisedBedId,
+                positionIndex,
+                additionalData,
+                type
+            })
+            .returning({
+                id: shoppingCartItems.id
+            }))[0].id;
     }
 }
 
@@ -130,12 +166,13 @@ export async function deleteShoppingCart(accountId: string) {
     }
 }
 
-export async function getAllShoppingCarts() {
+export async function getAllShoppingCarts({ status = 'new' }: { status?: 'new' | 'paid' } = {}) {
     return await storage().query.shoppingCarts.findMany({
-        where: eq(shoppingCarts.isDeleted, false),
+        where: and(eq(shoppingCarts.isDeleted, false), eq(shoppingCarts.status, status)),
         with: {
             items: {
                 where: eq(shoppingCartItems.isDeleted, false),
+                orderBy: shoppingCartItems.createdAt,
             }
         },
     });
@@ -143,10 +180,13 @@ export async function getAllShoppingCarts() {
 
 export async function getShoppingCart(cartId: number) {
     return await storage().query.shoppingCarts.findFirst({
-        where: and(eq(shoppingCarts.id, cartId), eq(shoppingCarts.isDeleted, false)),
+        where: and(
+            eq(shoppingCarts.id, cartId),
+            eq(shoppingCarts.isDeleted, false)),
         with: {
             items: {
                 where: eq(shoppingCartItems.isDeleted, false),
+                orderBy: shoppingCartItems.createdAt,
             }
         },
     });

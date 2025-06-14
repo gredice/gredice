@@ -46,6 +46,7 @@ export type ShoppingCartItemWithShopData = SelectShoppingCartItem & {
     };
 };
 
+// TODO: Move to lib
 export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise<ShoppingCartItemWithShopData[]> {
     const entityTypeNames = items.map((item) => item.entityTypeName);
     const uniqueEntityTypeNames = Array.from(new Set(entityTypeNames));
@@ -83,6 +84,37 @@ export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise
                         item.entityId === raisedBedOperation.id.toString())?.id ?? 0,
                     discountPrice: 0,
                     discountDescription: 'Besplatna podignuta gredica ukoliko je više od pola gredice ispunjeno',
+                });
+            }
+        }
+    }
+
+    // Process paid discounts for items that are already paid
+    const paidItems = items.filter(item => item.status === 'paid');
+    if (paidItems.length > 0) {
+        const paidItemsByEntity = paidItems.reduce((acc, item) => {
+            const key = `${item.entityTypeName}-${item.entityId}`;
+            if (!acc[key]) {
+                acc[key] = [];
+            }
+            acc[key].push(item);
+            return acc;
+        }, {} as Record<string, SelectShoppingCartItem[]>);
+
+        for (const [key, paidItemsForEntity] of Object.entries(paidItemsByEntity)) {
+            const [entityTypeName, entityId] = key.split('-');
+            const entityData = entitiesByTypeName[entityTypeName]?.find(entity => entity?.id.toString() === entityId);
+            if (!entityData) {
+                console.warn('Entity not found for paid discount', { entityId, entityTypeName });
+                continue;
+            }
+
+            const totalPaidAmount = paidItemsForEntity.reduce((sum, item) => sum + item.amount, 0);
+            if (totalPaidAmount > 0) {
+                discounts.push({
+                    cartItemId: paidItemsForEntity[0].id,
+                    discountPrice: 0,
+                    discountDescription: 'Već plaćeno',
                 });
             }
         }
@@ -148,7 +180,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Retrieve entities data
-            const cartItemsWithShopData = await getCartItemsInfo(cart.items);
+            const cartItemsWithShopData = (await getCartItemsInfo(cart.items)).filter(item => item.status !== 'paid');
 
             // Generate a stripe checkout items from cart items
             const items: CheckoutItem[] = [];

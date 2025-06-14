@@ -15,7 +15,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId } = context.get('authContext');
-            let cart = await getOrCreateShoppingCart(accountId);
+            const status = context.req.query('status') as 'new' | 'paid' | undefined;
+            let cart = await getOrCreateShoppingCart(accountId, undefined, status || 'new');
             if (!cart) {
                 return context.json({ error: 'Cart not found' }, 404);
             }
@@ -80,13 +81,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
             }
 
-            // Calculate total amount of items in the cart
-            const cartItemsWithShopInfo = await getCartItemsInfo(cart.items);
-            const total = cartItemsWithShopInfo.reduce((sum, item) =>
-                sum + (typeof item.shopData.discountPrice === "number"
-                    ? item.shopData.discountPrice
-                    : item.shopData.price ?? 0),
-                0);
+            // Calculate total amount of items in the cart (exclude paid items)
+            const cartItemsWithShopInfo = (await getCartItemsInfo(cart.items));
+            const total = cartItemsWithShopInfo
+                .filter(item => item.status !== 'paid')
+                .reduce((sum, item) =>
+                    sum + (typeof item.shopData.discountPrice === "number"
+                        ? item.shopData.discountPrice
+                        : item.shopData.price ?? 0),
+                    0);
 
             return context.json({
                 ...cart,
@@ -109,10 +112,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
             raisedBedId: z.number().optional(),
             positionIndex: z.number().int().optional(),
             additionalData: z.string().optional().nullable(),
+            // status is intentionally omitted to prevent updates from API
         })),
         async (context) => {
             const { cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData } = context.req.valid('json');
             await upsertOrRemoveCartItem(cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData, 'user');
+            // After update, check if all items are paid and mark cart as paid if so
+            const { markCartPaidIfAllItemsPaid } = await import('@gredice/storage');
+            await markCartPaidIfAllItemsPaid(cartId);
             return context.json({ success: true });
         }
     )

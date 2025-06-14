@@ -19,7 +19,7 @@ export function getSecretKey() {
     return key;
 }
 
-export function getReturnUrl() {
+export function getReturnUrl(params?: Record<string, string> | string) {
     let url = process.env.NEXT_PUBLIC_STRIPE_RETURN_URL;
     if (url && !isAbsoluteUrl(url)) {
         const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
@@ -35,6 +35,19 @@ export function getReturnUrl() {
 
     if (!url) {
         throw new Error('NEXT_PUBLIC_STRIPE_RETURN_URL is not defined');
+    }
+
+    if (params) {
+        let query = '';
+        if (typeof params === 'string') {
+            query = params.startsWith('?') ? params : `?${params}`;
+        } else if (typeof params === 'object') {
+            const searchParams = new URLSearchParams(params).toString();
+            query = searchParams ? `?${searchParams}` : '';
+        }
+        if (query) {
+            url += url.includes('?') ? `&${query.replace(/^\?/, '')}` : query;
+        }
     }
     return url;
 }

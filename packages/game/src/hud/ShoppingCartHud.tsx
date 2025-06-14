@@ -42,8 +42,8 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         });
     }
 
-    // Hide delete button for automatic items
-    const isAutomatic = item.type === 'automatic';
+    // Hide delete button for automatic and paid items
+    const isAutomatic = item.type === 'automatic' || item.status === 'paid';
 
     return (
         <Row spacing={2} alignItems="start">
@@ -52,7 +52,12 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                 <Row alignItems="start" justifyContent="space-between" spacing={1}>
                     <Typography level="body1" noWrap>{item.shopData.name}</Typography>
                     <Row>
-                        <Typography className={cx(hasDiscount && 'line-through opacity-50 text-sm')} level="body1" bold>{item.shopData.price?.toFixed(2) ?? "Nevaljan iznos"}</Typography>
+                        <Typography
+                            className={cx(hasDiscount && 'line-through opacity-50 text-sm')}
+                            level="body1"
+                            bold>
+                            {item.shopData.price?.toFixed(2) ?? "Nevaljan iznos"}
+                        </Typography>
                         <Euro className={cx(hasDiscount ? "size-3" : "size-4")} />
                     </Row>
                 </Row>

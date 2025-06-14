@@ -116,8 +116,8 @@ export async function stripeCheckout(
                 quantity: item.quantity,
             })),
             mode: 'payment',
-            cancel_url: getReturnUrl(),
-            success_url: getReturnUrl()
+            cancel_url: getReturnUrl({ status: 'cancel' }),
+            success_url: getReturnUrl({ status: 'success' }),
         };
 
         // Create a checkout session in Stripe

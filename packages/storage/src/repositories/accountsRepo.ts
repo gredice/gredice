@@ -81,6 +81,15 @@ export async function earnSunflowers(accountId: string, amount: number, reason: 
     await createEvent(knownEvents.accounts.sunflowersEarnedV1(accountId, { amount, reason }));
 }
 
+export async function earnSunflowersForPayment(accountId: string, payment: number) {
+    // Calculate sunflowers based on payment amount
+    // For every 1 unit spent, earn 10 sunflowers
+    const sunflowers = Math.round(payment * 10);
+    if (sunflowers > 0) {
+        await earnSunflowers(accountId, sunflowers, 'payment');
+    }
+}
+
 export async function spendSunflowers(accountId: string, amount: number, reason: string) {
     const currentSunflowers = await getSunflowers(accountId);
     if (currentSunflowers < amount) {
