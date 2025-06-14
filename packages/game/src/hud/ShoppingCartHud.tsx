@@ -14,8 +14,8 @@ import { client } from "@gredice/client";
 import { ModalConfirm } from "@signalco/ui/ModalConfirm";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { cx } from "@signalco/ui-primitives/cx";
-import { clientStripe } from '@gredice/stripe/client';
 import { useSetShoppingCartItem } from "../hooks/useSetShoppingCartItem";
+import { useCheckout } from "../hooks/useCheckout";
 
 function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
@@ -142,9 +142,9 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         </Row>
     );
 }
-
 function ShoppingCart() {
     const { data: cart, isLoading, isError, refetch } = useShoppingCart();
+    const checkout = useCheckout();
 
     const handleCheckout = async () => {
         if (!cart || !cart.id) {
@@ -152,26 +152,7 @@ function ShoppingCart() {
             return;
         }
 
-        const response = await client().api.checkout.checkout.$post({
-            json: {
-                cartId: cart.id,
-            }
-        });
-        if (!response.ok) {
-            console.error("Failed to create checkout session:", response.statusText);
-            // TODO: Show notification to user
-            return;
-        }
-
-        const checkoutSession = await response.json();
-        const stripe = await clientStripe();
-        const result = await stripe?.redirectToCheckout({
-            sessionId: checkoutSession.sessionId,
-        });
-        if (result?.error) {
-            console.error("Stripe checkout error:", result.error);
-            // TODO: Show notification to user
-        }
+        await checkout.mutateAsync(cart?.id);
     }
 
     async function confirmClearCart() {
@@ -235,7 +216,8 @@ function ShoppingCart() {
                         variant="solid"
                         onClick={handleCheckout}
                         fullWidth
-                        disabled={!cart?.items.length}>
+                        disabled={!cart?.items.length || checkout.isPending}
+                        loading={checkout.isPending}>
                         Plaćanje
                     </Button>
                 </Row>

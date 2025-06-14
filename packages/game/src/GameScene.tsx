@@ -30,6 +30,7 @@ import { RaisedBedFieldHud } from './hud/RaisedBedFieldHud';
 import { useBlockData } from './hooks/useBlockData';
 import { useWeatherForecast } from './hooks/useWeatherForecast';
 import { useWeatherNow } from './hooks/useWeatherNow';
+import { PaymentSuccessfulMessage } from './hud/PaymentSuccessfulMessage';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string,
@@ -154,6 +155,7 @@ function GameScene({
                     <RaisedBedFieldHud />
                     <OverviewModal />
                     <WelcomeMessage />
+                    <PaymentSuccessfulMessage />
                 </>
             )}
         </div>
