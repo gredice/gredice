@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
         });
     }
 
-    let yesterday = new Date();
+    const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 3);
     const checkoutSessions = await getStripeCheckoutSessions(yesterday);
     await Promise.all(checkoutSessions.map(s => s.id).map(processCheckoutSession));
