@@ -22,7 +22,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json({
                 id: dbUser.id,
                 userName: dbUser.userName,
-                displayName: dbUser.displayName,
+                displayName: dbUser.displayName ?? dbUser.userName,
                 avatarUrl: dbUser.avatarUrl,
                 createdAt: dbUser.createdAt,
             });
