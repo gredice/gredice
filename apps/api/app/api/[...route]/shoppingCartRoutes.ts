@@ -117,10 +117,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
             });
             const newRaisedBeds = raisedBeds.filter(rb => rb && rb.status === 'new');
             if (newRaisedBeds.length === 1) {
-                const raisedBedId = newRaisedBeds[0].id;
-                const count = raisedBedItemCounts[raisedBedId] || 0;
-                if (count > 0 && count < 5) {
-                    notes.push('Dodajte 4 ili više biljaka u ovu gredicu za ostvarivanje popusta!');
+                const raisedBedId = newRaisedBeds[0]?.id;
+                if (raisedBedId) {
+                    const count = raisedBedItemCounts[raisedBedId] || 0;
+                    if (count > 0 && count < 5) {
+                        notes.push('Dodajte 4 ili više biljaka u ovu gredicu za ostvarivanje popusta!');
+                    }
                 }
             }
             // --- End notes logic ---
