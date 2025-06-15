@@ -22,12 +22,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json({
                 id: dbUser.id,
                 userName: dbUser.userName,
-                displayName: dbUser.displayName,
+                displayName: dbUser.displayName ?? dbUser.userName,
                 avatarUrl: dbUser.avatarUrl,
                 createdAt: dbUser.createdAt,
             });
         })
-    .post(
+    .patch(
         '/:userId',
         describeRoute({
             description: 'Update a user. Only the current user can update their own information. You can submit partial information to update only specific fields.',
@@ -43,10 +43,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
             z.object({
                 userName: z.string().optional(),
                 displayName: z.string().optional(),
-                avatarUrl: z.string().optional(),
+                avatarUrl: z.string().optional().nullable(),
             })
         ),
-        authValidator(['admin']),
+        authValidator(['user', 'admin']),
         async (context) => {
             const { userId } = context.req.valid('param');
             const userInfo = context.req.valid('json');
