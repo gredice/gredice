@@ -66,7 +66,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     item.entityTypeName === 'operation' &&
                     item.type === 'automatic' &&
                     item.gardenId);
-                const notPayedItems = itemsForBed.filter(item => item.status !== 'paid');
+                const notPayedItems = itemsForBed.filter(item => item.status !== 'paid' && item.type !== 'automatic');
                 const hasOnlyAutomatic = notPayedItems.length <= 0 && Boolean(itemForBed);
                 if (itemForBed && (hasOnlyAutomatic || raisedBed?.status !== 'new')) {
                     console.debug(`Removing automatic raised bed operation ${itemForBed.entityId} from cart ${cart.id}`, notPayedItems.length, Boolean(itemForBed));
