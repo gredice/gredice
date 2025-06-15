@@ -20,7 +20,7 @@ export function RaisedBedFieldHud() {
                 "opacity-0 transition-opacity pointer-events-none duration-300",
                 view === 'closeup' && "opacity-100 [transition-delay:950ms] pointer-events-auto",
             )}>
-                <div className="absolute max-w-64 md:max-w-[312px] top-[calc(50%-203.5px)] left-[calc(50%-156.5px)] bg-gradient-to-br from-lime-100/90 to-lime-100/80 text-primary-foreground py-2 px-4 rounded-sm">
+                <div className="absolute max-w-64 md:max-w-[312px] top-[calc(50%-203.5px)] left-[calc(50%-156.5px)] bg-gradient-to-br from-lime-100/90 to-lime-100/80 text-primary dark:text-primary-foreground py-2 px-4 rounded-sm">
                     <Row spacing={1}>
                         <Edit className="size-5 shrink-0" />
                         <Typography semiBold noWrap>{raisedBed?.name}</Typography>
@@ -51,7 +51,7 @@ export function RaisedBedFieldHud() {
                     variant='plain'
                     className={cx(
                         'rounded-full bg-gradient-to-br from-lime-100/90 to-lime-100/80',
-                        "text-primary-foreground hover:text-primary-foreground hover:bg-white",
+                        "text-primary dark:text-primary-foreground dark:hover:text-primary-foreground/80 hover:bg-white hover:text-primary/80",
                         "absolute top-[calc(50%-203.5px)] md:left-[calc(50%+210px)] md:size-auto",
                         "size-10 left-[calc(50%+118px)]",
                     )}
