@@ -27,7 +27,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const raisedBeds = await Promise.all(mentionedRaisedBedIds.map(id => getRaisedBed(id)));
             const raisedBedsToAdd = raisedBeds.filter(rb => rb && rb.status === 'new');
             if (raisedBedsToAdd.length > 0) {
-                console.debug('Adding raised beds to cart', { raisedBedsToAdd });
                 const operations = await getEntitiesFormatted('operation');
                 const raisedBedOperation = operations.find((operation: EntityStandardized) => operation.information?.name === 'raisedBed1m');
                 if (!raisedBedOperation) {
@@ -37,6 +36,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 for (const raisedBed of raisedBedsToAdd) {
                     if (!raisedBed) continue;
 
+                    console.debug(`Adding automatic raised bed operation ${raisedBed.id} to cart ${cart.id}`);
                     await upsertOrRemoveCartItem(
                         cart.id,
                         (raisedBedOperation.id ?? 0).toString(),
@@ -66,9 +66,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     item.entityTypeName === 'operation' &&
                     item.type === 'automatic' &&
                     item.gardenId);
-                const notPayedItems = itemsForBed.filter(item => item.status !== 'paid');
-                const hasOnlyAutomatic = notPayedItems.length > 0 && itemForBed;
+                const notPayedItems = itemsForBed.filter(item => item.status !== 'paid' && item.type !== 'automatic');
+                const hasOnlyAutomatic = notPayedItems.length <= 0 && Boolean(itemForBed);
                 if (itemForBed && (hasOnlyAutomatic || raisedBed?.status !== 'new')) {
+                    console.debug(`Removing automatic raised bed operation ${itemForBed.entityId} from cart ${cart.id}`, notPayedItems.length, Boolean(itemForBed));
                     await upsertOrRemoveCartItem(
                         cart.id,
                         itemForBed.entityId,
@@ -104,10 +105,33 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         : item.shopData.price ?? 0),
                     0);
 
+            // --- Notes logic ---
+            const notes: string[] = [];
+            // Group items by raisedBedId, count items per raised bed (excluding paid items)
+            // Find all 'new' raised beds
+            const raisedBedItemCounts: Record<number, number> = {};
+            cartItemsWithShopInfo.forEach(item => {
+                if (item.raisedBedId && item.status !== 'paid' && item.type !== 'automatic') {
+                    raisedBedItemCounts[item.raisedBedId] = (raisedBedItemCounts[item.raisedBedId] || 0) + 1;
+                }
+            });
+            const newRaisedBeds = raisedBeds.filter(rb => rb && rb.status === 'new');
+            if (newRaisedBeds.length === 1) {
+                const raisedBedId = newRaisedBeds[0]?.id;
+                if (raisedBedId) {
+                    const count = raisedBedItemCounts[raisedBedId] || 0;
+                    if (count > 0 && count < 5) {
+                        notes.push('Dodajte 4 ili više biljaka u ovu gredicu za ostvarivanje popusta!');
+                    }
+                }
+            }
+            // --- End notes logic ---
+
             return context.json({
                 ...cart,
                 items: cartItemsWithShopInfo,
                 total,
+                notes,
             });
         })
     .post(

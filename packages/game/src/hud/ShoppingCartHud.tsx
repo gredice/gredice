@@ -1,4 +1,4 @@
-import { Delete, Euro, Navigate, ShoppingCart as ShoppingCartIcon, Timer } from "@signalco/ui-icons";
+import { Delete, Euro, Info, Navigate, ShoppingCart as ShoppingCartIcon, Timer } from "@signalco/ui-icons";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Row } from "@signalco/ui-primitives/Row";
 import { DotIndicator } from "@signalco/ui-primitives/DotIndicator";
@@ -16,6 +16,7 @@ import { Chip } from "@signalco/ui-primitives/Chip";
 import { cx } from "@signalco/ui-primitives/cx";
 import { useSetShoppingCartItem } from "../hooks/useSetShoppingCartItem";
 import { useCheckout } from "../hooks/useCheckout";
+import { Alert } from "@signalco/ui/Alert";
 
 function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
@@ -173,6 +174,18 @@ function ShoppingCart() {
                 </div>
                 <Typography level="h3">Košarica</Typography>
             </Row>
+            {/* Display notes if present */}
+            {cart && (cart?.notes?.length ?? 0) > 0 && (
+                <Stack spacing={1}>
+                    {cart.notes.map((note) => (
+                        <Alert key={note} color="info" startDecorator={<Info className="opacity-80 stroke-blue-900 dark:stroke-blue-100 mt-px" />}>
+                            <Typography level="body2" className="text-primary/90 text-blue-900 dark:text-blue-100">
+                                {note}
+                            </Typography>
+                        </Alert>
+                    ))}
+                </Stack>
+            )}
             <Stack spacing={2} className="max-h-[50vh] overflow-y-auto">
                 {isLoading && <Typography level="body1">Učitavanje...</Typography>}
                 {isError && <Typography level="body1">Greška prilikom učitavanja košarice</Typography>}
