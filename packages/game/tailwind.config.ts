@@ -1,5 +1,6 @@
 import type { Config } from "tailwindcss";
 import { config } from '@signalco/ui-themes-minimal/config';
+import tailwindcssTypography from '@tailwindcss/typography';
 
 const tailwindConfig: Config = {
   content: [
@@ -17,6 +18,9 @@ const tailwindConfig: Config = {
     animation: {
       progress: "progress 1s infinite linear",
     },
-  }
+  },
+  plugins: [
+    tailwindcssTypography
+  ],
 };
 export default tailwindConfig;

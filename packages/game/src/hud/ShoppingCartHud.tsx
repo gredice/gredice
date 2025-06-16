@@ -261,7 +261,7 @@ export function ShoppingCartHud() {
                     className='bg-card border-tertiary border-b-4'
                     trigger={(
                         <IconButton
-                            title="Trenutno vrijeme"
+                            title="Košarica"
                             variant="plain"
                             className="relative rounded-full justify-between">
                             <ShoppingCartIcon className="size-5" />

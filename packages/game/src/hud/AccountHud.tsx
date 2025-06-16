@@ -9,20 +9,25 @@ import { Divider } from "@signalco/ui-primitives/Divider";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@signalco/ui-primitives/Menu';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
-import { NoNotificationsPlaceholder } from "../shared-ui/NoNotificationsPlaceholder";
 import { useCurrentGarden } from "../hooks/useCurrentGarden";
 import { ProfileInfo } from "../shared-ui/ProfileInfo";
 import { ProfileAvatar } from "../shared-ui/ProfileAvatar";
-import { useCurrentUser } from "../hooks/useCurrentUser";
 import { Skeleton } from "@signalco/ui-primitives/Skeleton";
 import { KnownPages } from "../knownPages";
 import { Check, User, Inbox, ExternalLink, Approved, Configuration, Sprout, LogOut } from "@signalco/ui-icons";
+import { NotificationList } from "./NotificationList";
+import { useMarkAllNotificationsRead } from "../hooks/useMarkAllNotificationsRead";
 import { useNotifications } from "../hooks/useNotifications";
+import { useCurrentUser } from "../hooks/useCurrentUser";
+import { DotIndicator } from "@signalco/ui-primitives/DotIndicator";
 
 function NotificationsCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
-    const { data: currentUser } = useCurrentUser();
-    const notifications = useNotifications(currentUser?.id, false);
+    const markAllNotificationsRead = useMarkAllNotificationsRead();
+
+    const handleMarkAllNotificationsRead = () => {
+        markAllNotificationsRead.mutate({ readWhere: 'game' });
+    };
 
     return (
         <Stack>
@@ -32,33 +37,33 @@ function NotificationsCard() {
                     variant="plain"
                     size="sm"
                     title="Označi sve kao pročitane"
-                    disabled={!notifications.data?.length}>
+                    onClick={handleMarkAllNotificationsRead}>
                     <Approved />
                 </IconButton>
             </Row>
             <Divider />
-            <Stack className="p-4" spacing={2}>
-                {!notifications.data?.length && <NoNotificationsPlaceholder />}
-                {notifications.data?.map((notification, index) => (
-                    <Stack key={notification.id ?? index}>
-                        <Typography level="body2" bold>{notification.header}</Typography>
-                        <Typography level="body2">{notification.content}</Typography>
-                    </Stack>
-                ))}
-            </Stack>
+            <NotificationList short />
             <Divider />
             <Stack>
-                <Button variant="plain" size="sm" fullWidth className="rounded-t-none" onClick={() => setProfileModalOpen('obavijesti')}>
+                <Button
+                    variant="plain"
+                    size="sm"
+                    fullWidth
+                    className="rounded-t-none"
+                    onClick={() => setProfileModalOpen('obavijesti')}>
                     Prikaži sve obavijesti
                 </Button>
             </Stack>
-        </Stack>
+        </Stack >
     );
 }
 
 function ProfileCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
+    const { data: currentUser } = useCurrentUser();
     const { data: currentGarden } = useCurrentGarden();
+    const { data: notifications } = useNotifications(currentUser?.id, false);
+    const hasUnreadNotifications = notifications?.some(notification => !notification.readAt);
 
     return (
         <DropdownMenuContent className="w-80 p-4" align="end" sideOffset={12}>
@@ -77,7 +82,14 @@ function ProfileCard() {
                 <User className="size-4" />
                 <span>Profil</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-3" onClick={() => setProfileModalOpen('obavijesti')}>
+            <DropdownMenuItem
+                className="gap-3"
+                onClick={() => setProfileModalOpen('obavijesti')}
+                endDecorator={(
+                    <>
+                        {hasUnreadNotifications && <DotIndicator color={"success"} />}
+                    </>
+                )}>
                 <Inbox className="size-4" />
                 <span>Obavijesti</span>
             </DropdownMenuItem>
@@ -103,7 +115,10 @@ function ProfileCard() {
 }
 
 export function AccountHud() {
+    const { data: currentUser } = useCurrentUser();
     const { data: currentGarden, isPending } = useCurrentGarden();
+    const { data: notifications } = useNotifications(currentUser?.id, false);
+    const hasUnreadNotifications = notifications?.some(notification => !notification.readAt);
 
     return (
         <HudCard
@@ -116,8 +131,13 @@ export function AccountHud() {
                     side="bottom"
                     sideOffset={12}>
                     <DropdownMenuTrigger asChild>
-                        <Button className="rounded-full p-0.5 aspect-square hover:outline hover:outline-1 hover:outline-offset-1 hover:outline-primary" size='sm' variant="plain" title="Obavijesti">
+                        <Button className="relative rounded-full p-0.5 aspect-square hover:outline hover:outline-1 hover:outline-offset-1 hover:outline-primary" size='sm' variant="plain" title="Profil">
                             <ProfileAvatar variant="transparentOnMobile" />
+                            {hasUnreadNotifications && (
+                                <div className="md:hidden absolute right-0 -top-1">
+                                    <DotIndicator size={14} color={"success"} />
+                                </div>
+                            )}
                         </Button>
                     </DropdownMenuTrigger>
                     <ProfileCard />
@@ -142,7 +162,12 @@ export function AccountHud() {
                         side="bottom"
                         sideOffset={12}
                         trigger={(
-                            <Button className="rounded-full p-0 aspect-square" size='sm' variant="plain" title="Obavijesti">
+                            <Button className="relative rounded-full p-0 aspect-square" size='sm' variant="plain" title="Obavijesti">
+                                {hasUnreadNotifications && (
+                                    <div className="absolute right-1 top-1">
+                                        <DotIndicator color={"success"} />
+                                    </div>
+                                )}
                                 <Inbox className="size-5" />
                             </Button>
                         )}>

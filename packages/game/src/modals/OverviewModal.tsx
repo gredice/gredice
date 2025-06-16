@@ -1,13 +1,10 @@
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
-import { Button } from "@signalco/ui-primitives/Button";
-import { Card, CardContent, CardActions } from "@signalco/ui-primitives/Card";
-import { Input } from "@signalco/ui-primitives/Input";
-import { List } from "@signalco/ui-primitives/List";
+import { Card, CardContent } from "@signalco/ui-primitives/Card";
+import { List, ListHeader } from "@signalco/ui-primitives/List";
 import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { NoNotificationsPlaceholder } from "../shared-ui/NoNotificationsPlaceholder";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { ProfileInfo } from "../shared-ui/ProfileInfo";
 import { SoundSettingsCard } from "./components/SoundSettingsCard";
@@ -16,19 +13,29 @@ import { SunflowersList } from "../shared-ui/sunflowers/SunflowersList";
 import { useCurrentAccount } from "../hooks/useCurrentAccount";
 import { ScrollArea } from "@signalco/ui-primitives/ScrollArea";
 import { UserProfileCard } from "./components/UserProfileCard";
+import { NotificationList } from "../hud/NotificationList";
+import { useState } from "react";
+import { Row } from "@signalco/ui-primitives/Row";
+import { Approved, Empty } from "@signalco/ui-icons";
+import { useMarkAllNotificationsRead } from "../hooks/useMarkAllNotificationsRead";
+import { IconButton } from "@signalco/ui-primitives/IconButton";
 
 export function OverviewModal() {
     const [settingsMode, setProfileModalOpen] = useSearchParam('pregled');
+    const currentUser = useCurrentUser();
+    const { data: currentAccount } = useCurrentAccount();
+    const [notificationsFilter, setNotificationsFilter] = useState('unread');
+    const markAllNotificationsRead = useMarkAllNotificationsRead();
+
+    const handleMarkAllNotificationsRead = () => {
+        markAllNotificationsRead.mutate({ readWhere: 'game' });
+    };
 
     const handleOpenChange = (open: boolean) => {
         if (!open) {
             setProfileModalOpen(undefined);
         }
     }
-
-    const currentUser = useCurrentUser();
-
-    const { data: currentAccount } = useCurrentAccount();
 
     return (
         <Modal
@@ -152,12 +159,31 @@ export function OverviewModal() {
                     )}
                     {settingsMode === 'obavijesti' && (
                         <Stack spacing={4}>
-                            <Typography level="h4" className="hidden md:block">Obavijesti</Typography>
-                            <Card>
-                                <CardContent noHeader>
-                                    <NoNotificationsPlaceholder />
-                                </CardContent>
-                            </Card>
+                            <Row justifyContent="space-between">
+                                <Typography level="h4" className="hidden md:block">Obavijesti</Typography>
+                                <Row>
+                                    <SelectItems
+                                        variant="plain"
+                                        value={notificationsFilter}
+                                        onValueChange={setNotificationsFilter}
+                                        items={[
+                                            { label: 'Nepročitane', value: 'unread', icon: <Empty className="size-4" /> },
+                                            { label: 'Sve obavijesti', value: 'all', icon: <Approved className="size-4" /> },
+                                        ]}
+                                    />
+                                    <IconButton
+                                        className="mr-3"
+                                        variant="plain"
+                                        size="sm"
+                                        title="Označi sve kao pročitane"
+                                        onClick={handleMarkAllNotificationsRead}>
+                                        <Approved />
+                                    </IconButton>
+                                </Row>
+                            </Row>
+                            <ScrollArea className="basis-56 md:basis-96 rounded-lg text-card-foreground bg-card shadow-sm p-0">
+                                <NotificationList read={notificationsFilter === 'all'} short />
+                            </ScrollArea>
                         </Stack>
                     )}
                     {settingsMode === 'suncokreti' && (
