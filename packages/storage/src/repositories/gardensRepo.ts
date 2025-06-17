@@ -6,6 +6,7 @@ import { createEvent, knownEvents, knownEventTypes } from './eventsRepo';
 import { v4 as uuidV4 } from 'uuid';
 import { getEvents } from './eventsRepo';
 import { raisedBedFields, InsertRaisedBedField } from '../schema/gardenSchema';
+import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
 
 export async function createGarden(garden: InsertGarden) {
     const createdGarden = (await storage()
@@ -199,10 +200,13 @@ export async function deleteGardenStack(gardenId: number, { x, y }: { x: number,
         );
 }
 
-export async function createRaisedBed(raisedBed: InsertRaisedBed) {
+export async function createRaisedBed(raisedBed: Omit<InsertRaisedBed, 'name'>) {
     return (await storage()
         .insert(raisedBeds)
-        .values(raisedBed)
+        .values({
+            ...raisedBed,
+            name: generateRaisedBedName()
+        })
         .returning({ id: raisedBeds.id }))[0].id;
 }
 

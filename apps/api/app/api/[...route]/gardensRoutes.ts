@@ -8,7 +8,6 @@ import { getEvents, knownEventTypes } from '@gredice/storage';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { ContentfulStatusCode } from 'hono/utils/http-status';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
-import { generateRaisedBedName } from '../../../lib/garden/generateRaisedBedName';
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -102,7 +101,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (raisedBedsToCreate.length > 0) {
                 for (const blockId of raisedBedsToCreate) {
                     await createRaisedBed({
-                        name: generateRaisedBedName(),
                         blockId,
                         gardenId: garden.id,
                         accountId: garden.accountId
