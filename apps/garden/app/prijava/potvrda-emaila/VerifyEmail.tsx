@@ -39,6 +39,7 @@ export function VerifyEmail() {
                 localStorage.setItem('gredice-token', jwtToken);
                 await queryClient.invalidateQueries();
                 router.push('/');
+                return;
             }
 
             console.error('Failed to verify email with status', response.status);
