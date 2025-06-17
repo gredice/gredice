@@ -1,4 +1,3 @@
-
 export function generateRaisedBedName() {
     // Adjectives by gender
     const adjectives: { m: string[]; f: string[]; n: string[] } = {
