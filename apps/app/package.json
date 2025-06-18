@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",
-    "@eslint/js": "9.28.0",
+    "@eslint/js": "9.29.0",
     "@gredice/apidocs": "workspace:*",
     "@gredice/js": "workspace:*",
     "@gredice/storage": "workspace:*",
@@ -52,7 +52,7 @@
     "@vercel/analytics": "1.5.0",
     "@zxing/library": "0.21.3",
     "babel-plugin-react-compiler": "19.1.0-rc.2",
-    "eslint": "9.28.0",
+    "eslint": "9.29.0",
     "eslint-config-next": "15.3.3",
     "next-axiom": "1.9.1",
     "postcss": "8.5.5",
