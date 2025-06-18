@@ -11,8 +11,8 @@ export interface MarkdownEmailTemplateProps {
 }
 
 export default function MarkdownEmailTemplate({
-    content,
-    previewText
+    content = "Markdown **email** content",
+    previewText,
 }: MarkdownEmailTemplateProps) {
     return (
         <Html>
