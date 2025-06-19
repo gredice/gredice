@@ -12,6 +12,7 @@ import { auth } from "../../../../lib/auth/auth";
 import { KnownPages } from "../../../../src/KnownPages";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Table } from "@signalco/ui-primitives/Table";
+import { ScrollArea } from "@signalco/ui-primitives/ScrollArea";
 import { Add } from "@signalco/ui-icons";
 
 export async function AccountSunflowersCard({ accountId }: { accountId: string }) {
@@ -54,43 +55,45 @@ export async function AccountSunflowersCard({ accountId }: { accountId: string }
                     </form>
                 </div>
             </CardContent>
-            <CardOverflow className="overflow-y-auto max-h-80">
+            <CardOverflow>
                 <Divider />
-                <Table>
-                    <Table.Header>
-                        <Table.Row>
-                            <Table.Head>Tip</Table.Head>
-                            <Table.Head>Iznos</Table.Head>
-                            <Table.Head>Datum kreiranja</Table.Head>
-                        </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
-                        {history.length === 0 && (
+                <ScrollArea className="h-80">
+                    <Table>
+                        <Table.Header>
                             <Table.Row>
-                                <Table.Cell colSpan={3}>
-                                    <NoDataPlaceholder>
-                                        Nema suncokreta
-                                    </NoDataPlaceholder>
-                                </Table.Cell>
+                                <Table.Head>Tip</Table.Head>
+                                <Table.Head>Iznos</Table.Head>
+                                <Table.Head>Datum kreiranja</Table.Head>
                             </Table.Row>
-                        )}
-                        {history.map(sunflower => (
-                            <Table.Row key={sunflower.id}>
-                                <Table.Cell>
-                                    {sunflower.type}
-                                </Table.Cell>
-                                <Table.Cell>
-                                    {sunflower.amount}
-                                </Table.Cell>
-                                <Table.Cell title={sunflower.createdAt.toISOString()}>
-                                    <LocaleDateTime>
-                                        {sunflower.createdAt}
-                                    </LocaleDateTime>
-                                </Table.Cell>
-                            </Table.Row>
-                        ))}
-                    </Table.Body>
-                </Table>
+                        </Table.Header>
+                        <Table.Body>
+                            {history.length === 0 && (
+                                <Table.Row>
+                                    <Table.Cell colSpan={3}>
+                                        <NoDataPlaceholder>
+                                            Nema suncokreta
+                                        </NoDataPlaceholder>
+                                    </Table.Cell>
+                                </Table.Row>
+                            )}
+                            {history.map(sunflower => (
+                                <Table.Row key={sunflower.id}>
+                                    <Table.Cell>
+                                        {sunflower.type}
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        {sunflower.amount}
+                                    </Table.Cell>
+                                    <Table.Cell title={sunflower.createdAt.toISOString()}>
+                                        <LocaleDateTime>
+                                            {sunflower.createdAt}
+                                        </LocaleDateTime>
+                                    </Table.Cell>
+                                </Table.Row>
+                            ))}
+                        </Table.Body>
+                    </Table>
+                </ScrollArea>
             </CardOverflow>
         </Card>
     );
