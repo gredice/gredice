@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
 import { CompanyWhatsApp } from "../../app/Footer";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { ArrowRight, Calendar, Lightning, Navigate } from "@signalco/ui-icons";
+import { Calendar, Lightning, Navigate } from "@signalco/ui-icons";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { Button } from "@signalco/ui-primitives/Button";
 import { cx } from "@signalco/ui-primitives/cx";

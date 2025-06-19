@@ -14,9 +14,7 @@ import Image from "next/image";
 import { Row } from "@signalco/ui-primitives/Row";
 import { PlantsShowcase } from "./PlantsShowcase";
 import WhatsAppCard from "../components/social/WhatsAppCard";
-import { Card } from "@signalco/ui-primitives/Card";
 import { CompanyInstagram } from "./Footer";
-import Link from "next/link";
 
 const sectionsData: SectionData[] = [
     {
