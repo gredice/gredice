@@ -8,9 +8,11 @@ import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
 import { Row } from "@signalco/ui-primitives/Row";
 import { getFaqData } from "../../lib/plants/getFaqData";
 import { orderBy } from "@signalco/js";
+import { Metadata } from "next";
+import WhatsAppCard from "../../components/social/WhatsAppCard";
 
 export const revalidate = 3600; // 1 hour
-export const metadata = {
+export const metadata: Metadata = {
     title: "Česta pitanja",
     description: "Odgovaramo na sva tvoja pitanja.",
 };
@@ -46,6 +48,10 @@ export default async function FaqPage() {
                         </div>
                     </Stack>
                 ))}
+                <Stack spacing={4}>
+                    <Typography level="h4">Nema tvojeg pitanja?</Typography>
+                    <WhatsAppCard short />
+                </Stack>
             </Stack>
             <Row spacing={2} className="mt-8">
                 <Typography level="body1">Jesu li ti informacije korisne?</Typography>

@@ -1,6 +1,6 @@
 import { SectionsView } from "@signalco/cms-core/SectionsView";
 import { sectionsComponentRegistry } from "../components/shared/sectionsComponentRegistry";
-import { Check, Navigate } from "@signalco/ui-icons";
+import { Check, CompanyFacebook, Navigate } from "@signalco/ui-icons";
 import { KnownPages } from "../src/KnownPages";
 import { SectionData } from "@signalco/cms-core/SectionData";
 import { Stack } from "@signalco/ui-primitives/Stack";
@@ -13,6 +13,10 @@ import DeliveryTruck from '../assets/DeliveryTruck.webp';
 import Image from "next/image";
 import { Row } from "@signalco/ui-primitives/Row";
 import { PlantsShowcase } from "./PlantsShowcase";
+import WhatsAppCard from "../components/social/WhatsAppCard";
+import { Card } from "@signalco/ui-primitives/Card";
+import { CompanyInstagram } from "./Footer";
+import Link from "next/link";
 
 const sectionsData: SectionData[] = [
     {
@@ -123,9 +127,28 @@ export default function Home() {
                 </Typography>
                 <PlantsShowcase />
             </Stack>
-            <div className="bg-white border shadow p-6 rounded-xl mt-20 mb-10">
-                <NewsletterSignUp />
-            </div>
+            <Stack spacing={4} className="mt-20">
+                <Stack spacing={1}>
+                    <Typography level="body1" semiBold tertiary>Zajednica za svakoga</Typography>
+                    <Typography level="h2">Pridruži se našim zajednicama</Typography>
+                </Stack>
+                <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-4 mb-10">
+                    <div className="mx-auto">
+                        <WhatsAppCard />
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-2 gap-4">
+                        <div className="bg-white border shadow p-6 rounded-xl lg:col-span-2">
+                            <NewsletterSignUp />
+                        </div>
+                        <a href="https://gredice.link/ig" className="bg-white border shadow p-4 rounded-xl flex items-center justify-center hover:bg-[#833ab4]/10 transition-colors">
+                            <CompanyInstagram className="size-40 rounded-[50px] p-4 fill-white bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045]" />
+                        </a>
+                        <a href="https://gredice.link/fb" className="bg-white border shadow p-4 rounded-xl flex items-center justify-center hover:bg-[#1877F2]/10 transition-colors">
+                            <CompanyFacebook className="size-48 rounded-[50px] p-4 fill-[#1877F2]" />
+                        </a>
+                    </div>
+                </div>
+            </Stack>
         </Stack>
     );
 }
