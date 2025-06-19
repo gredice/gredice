@@ -13,7 +13,7 @@ import { Table } from "@signalco/ui-primitives/Table";
 import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
 import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
 import { AccountTransactionsCard } from "./AccountTransactionsCard";
-import { NotificationCreateCard } from "../../../../components/NotificationCreateCard";
+import { NotificationsTableCard } from "../../../../components/notifications/NotificationsTableCard";
 
 export const dynamic = 'force-dynamic';
 
@@ -79,7 +79,7 @@ export default async function AccountPage({ params }: { params: Promise<{ accoun
                         </Table>
                     </CardOverflow>
                 </Card>
-                <NotificationCreateCard accountId={accountId} />
+                <NotificationsTableCard accountId={accountId} />
             </div>
         </Stack>
     );
