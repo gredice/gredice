@@ -20,7 +20,7 @@ export const metadata: Metadata = {
         template: "%s | Gredice",
         default: "Gredice - vrt po tvom",
     },
-    description: "Tvoj digitalni vrt s pravim povrćem i beplatnom dostavom. Postavi gredice, zasadi svoje omiljeno povrće, održavaj vrt i uberi plodove, a mi ćemo se pobrinuti o brzoj i besplatnoj dostavi na tvoj kućni prag.",
+    description: "Tvoj digitalni vrt s pravim povrćem i besplatnom dostavom. Postavi gredice, zasadi svoje omiljeno povrće, održavaj vrt i uberi plodove, a mi ćemo se pobrinuti o brzoj i besplatnoj dostavi na tvoj kućni prag.",
     keywords: [
         "gredice", "gredica",
         "digitalni", "vrt",
