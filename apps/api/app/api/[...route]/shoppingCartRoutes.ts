@@ -121,7 +121,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 if (raisedBedId) {
                     const count = raisedBedItemCounts[raisedBedId] || 0;
                     if (count > 0 && count < 5) {
-                        notes.push('Dodajte 4 ili više biljaka u ovu gredicu za ostvarivanje popusta!');
+                        notes.push('Dodaj 5 ili više biljaka u gredicu za popusta - besplatna gredica!');
                     }
                 }
             }
