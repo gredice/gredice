@@ -51,21 +51,22 @@ const sectionsData: SectionData[] = [
                         <Check className="size-5" />
                         <Stack>
                             <Typography level="h6" component="span">Samo tvoj vrt</Typography>
-                            <Typography level="body2">Tvoja gredica - tvoje povrće</Typography>
+                            <Typography level="body2" secondary>Tvoja gredica - tvoje povrće</Typography>
                         </Stack>
                     </Row>
                     <Row spacing={2}>
                         <Check className="size-5" />
                         <Stack>
                             <Typography level="h6" component="span">Nema pretplate</Typography>
-                            <Typography level="body2">Plaćaš samo ono što zasadiš, odradiš ili kupiš</Typography>
+                            <Typography level="body1" secondary>Plaćaš samo ono što zasadiš, odradiš ili kupiš</Typography>
                         </Stack>
                     </Row>
                     <Row spacing={2}>
                         <Check className="size-5" />
                         <Stack>
                             <Typography level="h6" component="span">Besplatna dostava</Typography>
-                            <Typography level="body2">Prva berba svake biljke uključuje besplatnu dostavu</Typography>
+                            <Typography level="body1" secondary>Prva berba svake biljke uključuje besplatnu dostavu</Typography>
+                            <Typography level="body3">* Besplatna dostava je dostupna samo za područje Zagreba</Typography>
                         </Stack>
                     </Row>
                 </Stack>
@@ -99,8 +100,11 @@ const sectionsData: SectionData[] = [
                     <Row spacing={4}>
                         <Image alt="Dostava povrća" className="w-32 sm:w-[200px]" src={DeliveryTruck} width={200} height={200} />
                         <Stack spacing={2}>
-                            <Typography level="h4" component="h3">Uberi</Typography>
-                            <Typography level="body1" className="text-balance">Zatraži branje svog povrća kad god želiš. Mi beremo i dostavljamo još svježe na kućni prag.</Typography>
+                            <Typography level="h4" component="h3">Uberi i uživaj</Typography>
+                            <Stack>
+                                <Typography level="body1" className="text-balance">Zatraži branje svog povrća kad god želiš. Mi beremo i dostavljamo još svježe na kućni prag.</Typography>
+                                <Typography level="body3">* Besplatna dostava je dostupna samo za područje Zagreba</Typography>
+                            </Stack>
                         </Stack>
                     </Row>
                 )
