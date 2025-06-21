@@ -1,6 +1,6 @@
 import { SectionsView } from "@signalco/cms-core/SectionsView";
 import { sectionsComponentRegistry } from "../components/shared/sectionsComponentRegistry";
-import { Check, CompanyFacebook, Navigate } from "@signalco/ui-icons";
+import { Check, Navigate } from "@signalco/ui-icons";
 import { KnownPages } from "../src/KnownPages";
 import { SectionData } from "@signalco/cms-core/SectionData";
 import { Stack } from "@signalco/ui-primitives/Stack";
