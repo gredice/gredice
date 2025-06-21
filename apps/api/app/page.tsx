@@ -4,7 +4,6 @@ import { ListItem } from '@signalco/ui-primitives/ListItem';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Navigate } from '@signalco/ui-icons';
-import Link from 'next/link';
 
 const apis = [
   { label: '/api/auth', href: '/docs/auth' },
@@ -23,9 +22,7 @@ export default function Home() {
         <CardOverflow>
           <List variant='outlined'>
             {apis.map(({ label, href }) => (
-              <Link key={label} href={href} legacyBehavior passHref prefetch>
-                <ListItem variant='outlined' label={label} href={href} endDecorator={<Navigate />} />
-              </Link>
+              <ListItem key={label} variant='outlined' label={label} href={href} endDecorator={<Navigate />} />
             ))}
           </List>
         </CardOverflow>

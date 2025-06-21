@@ -54,9 +54,7 @@ export function VerifyEmail() {
                     <Warning className="size-6 min-w-6" />
                     <Typography>Neuspješna potvrda email adrese. Pokušaj ponovno.</Typography>
                 </Row>
-                <Link href='/' legacyBehavior passHref>
-                    <Button fullWidth variant='soft'>Povratak</Button>
-                </Link>
+                <Button href='/' fullWidth variant='soft'>Povratak</Button>
             </Stack>
         );
     }

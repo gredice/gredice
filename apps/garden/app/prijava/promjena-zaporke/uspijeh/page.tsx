@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card";
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -20,11 +19,9 @@ export default function RegistrationSuccessfulPage() {
                         <Typography level="body2" center>
                             Možeš se prijaviti s novom zaporkom.
                         </Typography>
-                        <Link href="/" passHref legacyBehavior>
-                            <Button fullWidth variant='soft'>
-                                Prijava
-                            </Button>
-                        </Link>
+                        <Button href="/" fullWidth variant='soft'>
+                            Prijava
+                        </Button>
                     </Stack>
                 </CardContent>
             </Card>
