@@ -33,7 +33,7 @@
     "@gredice/js": "workspace:*",
     "@gredice/storage": "workspace:*",
     "@gredice/stripe": "workspace:*",
-    "@mdxeditor/editor": "3.35.1",
+    "@mdxeditor/editor": "3.36.0",
     "@playwright/experimental-ct-react": "1.53.0",
     "@playwright/test": "1.53.0",
     "@signalco/auth-client": "0.3.0",
