@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card";
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Button } from '@signalco/ui-primitives/Button';

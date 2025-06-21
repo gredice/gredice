@@ -5,7 +5,6 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Spinner } from "@signalco/ui-primitives/Spinner";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Warning } from "@signalco/ui-icons";
