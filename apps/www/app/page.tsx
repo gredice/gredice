@@ -13,8 +13,9 @@ import DeliveryTruck from '../assets/DeliveryTruck.webp';
 import Image from "next/image";
 import { Row } from "@signalco/ui-primitives/Row";
 import { PlantsShowcase } from "./PlantsShowcase";
-import WhatsAppCard from "../components/social/WhatsAppCard";
-import { CompanyInstagram } from "./Footer";
+import { FacebookCard } from "../components/social/FacebookCard";
+import { InstagramCard } from "../components/social/InstagramCard";
+import { WhatsAppCard } from "../components/social/WhatsAppCard";
 
 const sectionsData: SectionData[] = [
     {
@@ -130,20 +131,12 @@ export default function Home() {
                     <Typography level="body1" semiBold tertiary>Zajednica za svakoga</Typography>
                     <Typography level="h2">Pridruži se našim zajednicama</Typography>
                 </Stack>
-                <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-4 mb-10">
-                    <div className="mx-auto">
-                        <WhatsAppCard />
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-2 gap-4">
-                        <div className="bg-white border shadow p-6 rounded-xl lg:col-span-2">
-                            <NewsletterSignUp />
-                        </div>
-                        <a href="https://gredice.link/ig" className="bg-white border shadow p-4 rounded-xl flex items-center justify-center hover:bg-[#833ab4]/10 transition-colors">
-                            <CompanyInstagram className="size-40 rounded-[50px] p-4 fill-white bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045]" />
-                        </a>
-                        <a href="https://gredice.link/fb" className="bg-white border shadow p-4 rounded-xl flex items-center justify-center hover:bg-[#1877F2]/10 transition-colors">
-                            <CompanyFacebook className="size-48 rounded-[50px] p-4 fill-[#1877F2]" />
-                        </a>
+                <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-4 mb-10 grid-rows-3">
+                    <WhatsAppCard />
+                    <InstagramCard />
+                    <FacebookCard />
+                    <div className="bg-white border shadow p-6 rounded-xl lg:col-start-2 lg:row-start-1 lg:row-span-3">
+                        <NewsletterSignUp />
                     </div>
                 </div>
             </Stack>

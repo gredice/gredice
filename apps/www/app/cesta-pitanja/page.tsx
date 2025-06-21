@@ -9,7 +9,7 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { getFaqData } from "../../lib/plants/getFaqData";
 import { orderBy } from "@signalco/js";
 import { Metadata } from "next";
-import WhatsAppCard from "../../components/social/WhatsAppCard";
+import { WhatsAppCard } from "../../components/social/WhatsAppCard";
 
 export const revalidate = 3600; // 1 hour
 export const metadata: Metadata = {
@@ -50,7 +50,7 @@ export default async function FaqPage() {
                 ))}
                 <Stack spacing={4}>
                     <Typography level="h4">Nema tvojeg pitanja?</Typography>
-                    <WhatsAppCard short />
+                    <WhatsAppCard />
                 </Stack>
             </Stack>
             <Row spacing={2} className="mt-8">
