@@ -8,6 +8,7 @@ import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDat
 import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Stack } from "@signalco/ui-primitives/Stack";
+import { Chip } from "@signalco/ui-primitives/Chip";
 
 export const dynamic = 'force-dynamic';
 
@@ -65,7 +66,9 @@ export default async function ShoppingCartsPage() {
                                             {cart.items.length}
                                         </Table.Cell>
                                         <Table.Cell>
-                                            {cart.status}
+                                            <Chip className="w-fit" color={cart.status === 'paid' ? 'success' : 'neutral'}>
+                                                {cart.status === 'paid' ? 'Plaćena' : (cart.status === 'new' ? 'Nova' : cart.status)}
+                                            </Chip>
                                         </Table.Cell>
                                         <Table.Cell>
                                             <LocaleDateTime time={false}>

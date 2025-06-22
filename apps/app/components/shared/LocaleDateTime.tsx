@@ -1,9 +1,9 @@
-'use client';
+'use client'; // Note: Must be a client component so that locale is applied correctly
 
 import dynamic from 'next/dynamic';
 
 export const LocaleDateTime = dynamic(
-    () => import('./LocaleDateTime').then(mod => mod._localeDatetime), 
+    () => import('./LocaleDateTime').then(mod => mod._localeDatetime),
     { ssr: false });
 
 export function _localeDatetime({ children, date, time }: { children: Date | null | undefined, date?: boolean, time?: boolean }) {
@@ -25,12 +25,12 @@ export function _localeDatetime({ children, date, time }: { children: Date | nul
             options.hour = undefined;
             options.minute = undefined;
             options.second = undefined;
-        } 
+        }
         if (date === false) {
             options.year = undefined;
             options.month = undefined;
             options.day = undefined;
         }
-        return new Intl.DateTimeFormat('hr-HR', options).format(new Date(children));
+        return <span title={children?.toISOString()}>{new Intl.DateTimeFormat('hr-HR', options).format(new Date(children))}</span>;
     }
 }
