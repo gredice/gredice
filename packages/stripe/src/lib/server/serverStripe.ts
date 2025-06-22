@@ -138,6 +138,7 @@ export async function stripeCheckout(
             })),
             allow_promotion_codes: true,
             mode: 'payment',
+            locale: 'hr',
             cancel_url: getReturnUrl({ status: 'cancel' }),
             success_url: getReturnUrl({ status: 'success' }),
         };
