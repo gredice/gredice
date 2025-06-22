@@ -136,6 +136,7 @@ export async function stripeCheckout(
                 },
                 quantity: item.quantity,
             })),
+            allow_promotion_codes: true,
             mode: 'payment',
             cancel_url: getReturnUrl({ status: 'cancel' }),
             success_url: getReturnUrl({ status: 'success' }),
