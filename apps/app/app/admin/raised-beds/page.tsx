@@ -44,7 +44,7 @@ export default async function RaisedBedsPage() {
                                             {bed.id}
                                         </Link>
                                     </Table.Cell>
-                                    <Table.Cell title={bed.createdAt.toISOString()}>
+                                    <Table.Cell>
                                         <LocaleDateTime time={false}>
                                             {bed.createdAt}
                                         </LocaleDateTime>

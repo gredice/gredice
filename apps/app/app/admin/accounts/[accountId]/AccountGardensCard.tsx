@@ -18,6 +18,7 @@ export async function AccountGardensCard({ accountId }: { accountId: string }) {
                 <Table>
                     <Table.Header>
                         <Table.Row>
+                            <Table.Head>ID</Table.Head>
                             <Table.Head>Naziv</Table.Head>
                             <Table.Head>Datum kreiranja</Table.Head>
                         </Table.Row>
@@ -36,10 +37,15 @@ export async function AccountGardensCard({ accountId }: { accountId: string }) {
                             <Table.Row key={garden.id}>
                                 <Table.Cell>
                                     <Link href={KnownPages.Garden(garden.id)}>
+                                        {garden.id}
+                                    </Link>
+                                </Table.Cell>
+                                <Table.Cell>
+                                    <Link href={KnownPages.Garden(garden.id)}>
                                         {garden.name}
                                     </Link>
                                 </Table.Cell>
-                                <Table.Cell title={garden.createdAt.toISOString()}>
+                                <Table.Cell>
                                     <LocaleDateTime>
                                         {garden.createdAt}
                                     </LocaleDateTime>

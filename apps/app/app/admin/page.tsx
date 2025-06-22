@@ -5,16 +5,35 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { PropsWithChildren } from "react";
 import { KnownPages } from "../../src/KnownPages";
 import { auth } from "../../lib/auth/auth";
+import { Row } from "@signalco/ui-primitives/Row";
+import { cx } from "@signalco/ui-primitives/cx";
 
 export const dynamic = 'force-dynamic';
 
-function FactCard({ header, value, href }: { header: string, value: string | number, href?: string }) {
+function FactCard({ header, value, href, beforeValue }: { header: string, value: string | number, href?: string, beforeValue?: string | number }) {
+    const isNumber = typeof beforeValue === 'number' && typeof value === 'number';
+    const diff = isNumber ? (value - beforeValue) : undefined;
+    const isPositive = isNumber && diff !== undefined && diff > 0;
+    const isNegative = isNumber && diff !== undefined && diff < 0;
     return (
         <Card href={href}>
             <CardOverflow className="p-4">
                 <Stack spacing={1}>
                     <Typography level="body2">{header}</Typography>
-                    <Typography level="h3">{value}</Typography>
+                    <Row justifyContent="space-between">
+                        <Typography level="h3">{value}</Typography>
+                        {beforeValue !== undefined && (
+                            <Typography
+                                level="h4"
+                                className={cx(
+                                    "text-muted-foreground text-right",
+                                    isPositive ? "text-green-600" : "",
+                                    isNegative ? "text-red-600" : "",
+                                )}>
+                                {isNumber ? `${(diff ?? 0) > 0 ? '+' : ''}${diff}` : beforeValue}
+                            </Typography>
+                        )}
+                    </Row>
                 </Stack>
             </CardOverflow>
         </Card>
@@ -43,13 +62,21 @@ async function Dashboard() {
     }));
     const {
         users: usersCount,
+        usersBefore: usersBeforeCount,
         accounts: accountsCount,
+        accountsBefore: accountsBeforeCount,
         gardens: gardensCount,
+        gardensBefore: gardensBeforeCount,
         blocks: blocksCount,
+        blocksBefore: blocksBeforeCount,
         events: eventsCount,
+        eventsBefore: eventsBeforeCount,
         farms: farmsCount,
+        farmsBefore: farmsBeforeCount,
         raisedBeds: raisedBedsCount,
+        raisedBedsBefore: raisedBedsBeforeCount,
         transactions: transactionsCount,
+        transactionsBefore: transactionsBeforeCount
     } = await getAnalyticsTotals();
 
     return (
@@ -65,14 +92,14 @@ async function Dashboard() {
             <Stack spacing={1}>
                 <DashboardDivider>Računi i korisnici</DashboardDivider>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    <FactCard header="Računi" value={accountsCount} href={KnownPages.Accounts} />
-                    <FactCard header="Korisnici" value={usersCount} href={KnownPages.Users} />
-                    <FactCard header="Farme" value={farmsCount} />
-                    <FactCard header="Vrtovi" value={gardensCount} href={KnownPages.Gardens} />
-                    <FactCard header="Blokovi" value={blocksCount} />
-                    <FactCard header="Događaji" value={eventsCount} />
-                    <FactCard header="Gredice" value={raisedBedsCount} href={KnownPages.RaisedBeds} />
-                    <FactCard header="Transakcije" value={transactionsCount} href={KnownPages.Transactions} />
+                    <FactCard header="Računi" value={accountsCount} href={KnownPages.Accounts} beforeValue={accountsBeforeCount} />
+                    <FactCard header="Korisnici" value={usersCount} href={KnownPages.Users} beforeValue={usersBeforeCount} />
+                    <FactCard header="Farme" value={farmsCount} beforeValue={farmsBeforeCount} />
+                    <FactCard header="Vrtovi" value={gardensCount} href={KnownPages.Gardens} beforeValue={gardensBeforeCount} />
+                    <FactCard header="Blokovi" value={blocksCount} beforeValue={blocksBeforeCount} />
+                    <FactCard header="Događaji" value={eventsCount} beforeValue={eventsBeforeCount} />
+                    <FactCard header="Gredice" value={raisedBedsCount} href={KnownPages.RaisedBeds} beforeValue={raisedBedsBeforeCount} />
+                    <FactCard header="Transakcije" value={transactionsCount} href={KnownPages.Transactions} beforeValue={transactionsBeforeCount} />
                 </div>
             </Stack>
         </Stack>

@@ -43,7 +43,7 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                                 </Link>
                             </Table.Cell>
                             <Table.Cell>
-                                <Typography secondary title={entity.updatedAt.toISOString()}>
+                                <Typography secondary>
                                     <LocaleDateTime time={false}>
                                         {entity.updatedAt}
                                     </LocaleDateTime>

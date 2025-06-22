@@ -57,7 +57,7 @@ export default async function FeedbackPage() {
                                     <Table.Cell>
                                         {JSON.stringify(feedback.data)}
                                     </Table.Cell>
-                                    <Table.Cell title={feedback.createdAt.toISOString()}>
+                                    <Table.Cell>
                                         <LocaleDateTime time={false}>
                                             {feedback.createdAt}
                                         </LocaleDateTime>

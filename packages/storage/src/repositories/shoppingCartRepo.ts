@@ -167,15 +167,28 @@ export async function deleteShoppingCart(accountId: string) {
     }
 }
 
-export async function getAllShoppingCarts({ status = 'new' }: { status?: 'new' | 'paid' } = {}) {
+export async function getAllShoppingCarts({ status = 'new' }: { status?: 'new' | 'paid' | null } = {}) {
     return await storage().query.shoppingCarts.findMany({
-        where: and(eq(shoppingCarts.isDeleted, false), eq(shoppingCarts.status, status)),
+        where: and(
+            eq(shoppingCarts.isDeleted, false),
+            status ? eq(shoppingCarts.status, status) : undefined
+        ),
         with: {
+            account: {
+                with: {
+                    accountUsers: {
+                        with: {
+                            user: true
+                        }
+                    }
+                }
+            },
             items: {
                 where: eq(shoppingCartItems.isDeleted, false),
                 orderBy: shoppingCartItems.createdAt,
             }
         },
+        orderBy: shoppingCarts.createdAt,
     });
 }
 

@@ -55,7 +55,7 @@ export default async function GardensPage() {
                                             {garden.accountId}
                                         </Link>
                                     </Table.Cell>
-                                    <Table.Cell title={garden.createdAt.toISOString()}>
+                                    <Table.Cell>
                                         <LocaleDateTime time={false}>
                                             {garden.createdAt}
                                         </LocaleDateTime>

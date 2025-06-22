@@ -52,6 +52,7 @@ export async function getAllTransactions() {
         with: {
             transactionEntities: true,
         },
+        orderBy: transactions.createdAt
     });
 }
 
