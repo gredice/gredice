@@ -29,9 +29,11 @@ export default async function TransactionsPage() {
                         <Table.Header>
                             <Table.Row>
                                 <Table.Head>ID</Table.Head>
+                                <Table.Head>Račun</Table.Head>
                                 <Table.Head>Status</Table.Head>
                                 <Table.Head>Iznos</Table.Head>
                                 <Table.Head>Datum kreiranja</Table.Head>
+                                <Table.Head>Stripe Payment ID</Table.Head>
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
@@ -51,12 +53,38 @@ export default async function TransactionsPage() {
                                             {transaction.id}
                                         </Link>
                                     </Table.Cell>
-                                    <Table.Cell>{transaction.status}</Table.Cell>
-                                    <Table.Cell>{transaction.amount}</Table.Cell>
-                                    <Table.Cell title={transaction.createdAt.toISOString()}>
+                                    <Table.Cell>
+                                        <Link href={KnownPages.Account(transaction.accountId)}>
+                                            {transaction.accountId}
+                                        </Link>
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        <Chip color="info" size="lg" className="w-fit">
+                                            <Typography noWrap>
+                                                {transaction.status}
+                                            </Typography>
+                                        </Chip>
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        <Chip color="success" size="lg" className="w-fit">
+                                            <Typography noWrap>
+                                                €{(transaction.amount / 100).toFixed(2)}
+                                            </Typography>
+                                        </Chip>
+                                    </Table.Cell>
+                                    <Table.Cell>
                                         <LocaleDateTime time={false}>
                                             {transaction.createdAt}
                                         </LocaleDateTime>
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        {transaction.stripePaymentId ? (
+                                            <Link href={KnownPages.StripePayment(transaction.stripePaymentId)}>
+                                                {transaction.stripePaymentId}
+                                            </Link>
+                                        ) : (
+                                            <span className="text-gray-500">Nema Stripe ID</span>
+                                        )}
                                     </Table.Cell>
                                 </Table.Row>
                             ))}

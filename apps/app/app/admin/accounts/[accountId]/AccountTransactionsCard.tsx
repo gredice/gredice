@@ -39,7 +39,7 @@ export async function AccountTransactionsCard({ accountId }: { accountId: string
                                 <Table.Cell>{transaction.amount}</Table.Cell>
                                 <Table.Cell>{transaction.currency}</Table.Cell>
                                 <Table.Cell>{transaction.status}</Table.Cell>
-                                <Table.Cell title={transaction.createdAt.toISOString()}>
+                                <Table.Cell>
                                     <LocaleDateTime>
                                         {transaction.createdAt}
                                     </LocaleDateTime>

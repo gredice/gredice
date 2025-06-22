@@ -78,6 +78,9 @@ export async function getStripeCheckoutSession(sessionId: string) {
             id: session.id,
             customerId: session.customer,
             status: session.status,
+            paymentId: typeof session.payment_link === 'string'
+                ? session.payment_link
+                : session.payment_link?.id,
             paymentStatus: session.payment_status,
             lineItems: line_items,
             amountTotal: session.amount_total,

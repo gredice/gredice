@@ -57,7 +57,7 @@ export default async function UsersPage() {
                                     <Table.Cell title={user.role}>
                                         <SelectUserRole user={user} />
                                     </Table.Cell>
-                                    <Table.Cell title={user.createdAt.toISOString()}>
+                                    <Table.Cell>
                                         <LocaleDateTime time={false}>
                                             {user.createdAt}
                                         </LocaleDateTime>

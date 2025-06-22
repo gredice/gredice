@@ -36,6 +36,9 @@ export default async function ShoppingCartDetailsPage({ params }: { params: { ca
                                 <Table.Head>ID entiteta</Table.Head>
                                 <Table.Head>Tip entiteta</Table.Head>
                                 <Table.Head>Količina</Table.Head>
+                                <Table.Head>Status</Table.Head>
+                                <Table.Head>Vrsta</Table.Head>
+                                <Table.Head>Vrt | Gredica | Pozicija</Table.Head>
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
@@ -53,6 +56,13 @@ export default async function ShoppingCartDetailsPage({ params }: { params: { ca
                                     <Table.Cell>{item.entityId}</Table.Cell>
                                     <Table.Cell>{item.entityTypeName}</Table.Cell>
                                     <Table.Cell>{item.amount}</Table.Cell>
+                                    <Table.Cell>{item.status}</Table.Cell>
+                                    <Table.Cell>{item.type}</Table.Cell>
+                                    <Table.Cell>
+                                        {item.gardenId ? `Vrt ${item.gardenId}` : ''}
+                                        {item.raisedBedId ? ` | Gredica ${item.raisedBedId}` : ''}
+                                        {typeof item.positionIndex === 'number' ? ` | Pozicija ${item.positionIndex}` : ''}
+                                    </Table.Cell>
                                 </Table.Row>
                             ))}
                         </Table.Body>

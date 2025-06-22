@@ -14,6 +14,9 @@ export const accounts = pgTable('accounts', {
 });
 
 export const accountsRelations = relations(accounts, ({ many }) => ({
+    accountUsers: many(accountUsers, {
+        relationName: 'accountAccountUsers',
+    }),
     raisedBeds: many(raisedBeds, {
         relationName: 'raisedBedsAccount',
     }),
@@ -34,12 +37,12 @@ export const accountUsersRelations = relations(accountUsers, ({ one }) => ({
     account: one(accounts, {
         fields: [accountUsers.accountId],
         references: [accounts.id],
-        relationName: 'account',
+        relationName: 'accountAccountUsers',
     }),
     user: one(users, {
         fields: [accountUsers.userId],
         references: [users.id],
-        relationName: 'accountUsers',
+        relationName: 'userAccountUsers',
     })
 }));
 
@@ -60,7 +63,7 @@ export const usersRelations = relations(users, ({ many }) => ({
         relationName: 'usersLogins',
     }),
     accounts: many(accountUsers, {
-        relationName: 'accountUsers',
+        relationName: 'userAccountUsers',
     })
 }));
 

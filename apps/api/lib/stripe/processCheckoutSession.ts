@@ -141,7 +141,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         accountId && session.amountTotal ? createTransaction({
             accountId,
             amount: session.amountTotal,
-            stripePaymentId: session.id,
+            stripePaymentId: session.paymentId ?? session.id,
             status: 'completed',
             currency: 'eur'
         }) : undefined

@@ -6,6 +6,13 @@ import { randomUUID } from 'node:crypto';
 
 export function getAccounts() {
     return storage().query.accounts.findMany({
+        with: {
+            accountUsers: {
+                with: {
+                    user: true
+                }
+            }
+        },
         orderBy: desc(accounts.createdAt),
     });
 }

@@ -84,7 +84,7 @@ export async function AccountSunflowersCard({ accountId }: { accountId: string }
                                     <Table.Cell>
                                         {sunflower.amount}
                                     </Table.Cell>
-                                    <Table.Cell title={sunflower.createdAt.toISOString()}>
+                                    <Table.Cell>
                                         <LocaleDateTime>
                                             {sunflower.createdAt}
                                         </LocaleDateTime>
