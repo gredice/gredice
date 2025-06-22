@@ -10,7 +10,7 @@ export function ProfileAvatar({ variant, className, size }: { variant?: 'transpa
     if (!avatarUrl) {
         return (
             <Avatar
-                className={cx(variant === 'transparentOnMobile' && "border-none bg-transparent md:bg-muted md:border", className)}
+                className={cx(variant === 'transparentOnMobile' && "select-none border-none bg-transparent md:bg-muted md:border", className)}
                 size={size}>
                 {initials(currentUser.data?.displayName ?? '')}
             </Avatar>

@@ -11,13 +11,13 @@ export function GameModeHud() {
         <HudCard
             open
             position="floating"
-            className="static px-0.5">
+            className="static p-0.5">
             <IconButton
                 variant="plain"
-                className="rounded-full"
+                className="rounded-full size-10"
                 title={mode !== 'edit' ? "Uredi vrt" : "Završi uređivanje"}
                 onClick={() => setMode(mode !== 'edit' ? 'edit' : 'normal')}>
-                {mode !== 'edit' ? <Edit /> : <Check className="text-green-600 !stroke-[3px]" />}
+                {mode !== 'edit' ? <Edit className="shrink-0 !stroke-[1.4px]" /> : <Check className="text-green-600 !stroke-[3px] shrink-0" />}
             </IconButton>
         </HudCard>
     )

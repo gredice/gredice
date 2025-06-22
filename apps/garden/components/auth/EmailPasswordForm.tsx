@@ -45,7 +45,7 @@ export function EmailPasswordForm({
                     id="email"
                     type="email"
                     label='Email'
-                    className='sm:[&_input]:text-base [&_input]:text-[16px]'
+                    className='[&_input]:text-base sm:[&_input]:text-[16px]'
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -53,7 +53,7 @@ export function EmailPasswordForm({
                 <Input
                     id="password"
                     type="password"
-                    className='sm:[&_input]:text-base [&_input]:text-[16px]'
+                    className='[&_input]:text-base sm:[&_input]:text-[16px]'
                     label="Zaporka"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
