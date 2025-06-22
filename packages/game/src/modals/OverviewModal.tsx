@@ -19,6 +19,7 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Approved, Empty } from "@signalco/ui-icons";
 import { useMarkAllNotificationsRead } from "../hooks/useMarkAllNotificationsRead";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
+import { Button } from "@signalco/ui-primitives/Button";
 
 export function OverviewModal() {
     const [settingsMode, setProfileModalOpen] = useSearchParam('pregled');
@@ -158,32 +159,36 @@ export function OverviewModal() {
                         </Stack>
                     )}
                     {settingsMode === 'obavijesti' && (
-                        <Stack spacing={4}>
+                        <Stack spacing={1}>
                             <Row justifyContent="space-between">
                                 <Typography level="h4" className="hidden md:block">Obavijesti</Typography>
-                                <Row>
-                                    <SelectItems
-                                        variant="plain"
-                                        value={notificationsFilter}
-                                        onValueChange={setNotificationsFilter}
-                                        items={[
-                                            { label: 'Nepročitane', value: 'unread', icon: <Empty className="size-4" /> },
-                                            { label: 'Sve obavijesti', value: 'all', icon: <Approved className="size-4" /> },
-                                        ]}
-                                    />
-                                    <IconButton
-                                        className="mr-3"
-                                        variant="plain"
-                                        size="sm"
-                                        title="Označi sve kao pročitane"
-                                        onClick={handleMarkAllNotificationsRead}>
-                                        <Approved />
-                                    </IconButton>
-                                </Row>
                             </Row>
-                            <ScrollArea className="basis-56 md:basis-96 rounded-lg text-card-foreground bg-card shadow-sm p-0">
-                                <NotificationList read={notificationsFilter === 'all'} short />
-                            </ScrollArea>
+                            <Stack spacing={1}>
+                                <Card className="bg-card p-1">
+                                    <Row justifyContent="space-between">
+                                        <SelectItems
+                                            value={notificationsFilter}
+                                            onValueChange={setNotificationsFilter}
+                                            items={[
+                                                { label: 'Nepročitane', value: 'unread', icon: <Empty className="size-4" /> },
+                                                { label: 'Sve obavijesti', value: 'all', icon: <Approved className="size-4" /> },
+                                            ]}
+                                        />
+                                        <Button
+                                            variant="plain"
+                                            size="sm"
+                                            onClick={handleMarkAllNotificationsRead}
+                                            startDecorator={
+                                                <Approved className="size-4" />
+                                            }>
+                                            Sve pročitano
+                                        </Button>
+                                    </Row>
+                                </Card>
+                                <ScrollArea className="basis-[calc(100dvh-18rem)] md:basis-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card shadow-sm p-0">
+                                    <NotificationList read={notificationsFilter === 'all'} short />
+                                </ScrollArea>
+                            </Stack>
                         </Stack>
                     )}
                     {settingsMode === 'suncokreti' && (
