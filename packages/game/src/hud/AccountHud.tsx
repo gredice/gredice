@@ -32,7 +32,7 @@ function NotificationsCard() {
     return (
         <Stack>
             <Row className="bg-background px-4 py-2" justifyContent="space-between">
-                <Typography level="body3" bold>Obavijesti</Typography>
+                <Typography level="body2" bold>Obavijesti</Typography>
                 <IconButton
                     variant="plain"
                     size="sm"
@@ -124,21 +124,24 @@ export function AccountHud() {
         <HudCard
             open
             position="floating"
-            className="md:px-2 static">
+            className="p-0.5 md:px-2 static">
             <Row spacing={1}>
                 <DropdownMenu
                     className="overflow-hidden"
                     side="bottom"
                     sideOffset={12}>
                     <DropdownMenuTrigger asChild>
-                        <Button className="relative rounded-full p-0.5 aspect-square hover:outline hover:outline-1 hover:outline-offset-1 hover:outline-primary" size='sm' variant="plain" title="Profil">
+                        <IconButton
+                            className="size-10 md:size-auto relative rounded-full p-0.5 aspect-square shrink-0 md:hover:outline outline-offset-2 outline-tertiary-foreground"
+                            variant="plain"
+                            title="Profil">
                             <ProfileAvatar variant="transparentOnMobile" />
                             {hasUnreadNotifications && (
                                 <div className="md:hidden absolute right-0 -top-1">
                                     <DotIndicator size={14} color={"success"} />
                                 </div>
                             )}
-                        </Button>
+                        </IconButton>
                     </DropdownMenuTrigger>
                     <ProfileCard />
                 </DropdownMenu>
@@ -162,7 +165,7 @@ export function AccountHud() {
                         side="bottom"
                         sideOffset={12}
                         trigger={(
-                            <Button className="relative rounded-full p-0 aspect-square" size='sm' variant="plain" title="Obavijesti">
+                            <Button className="relative rounded-full p-0 aspect-square" variant="plain" title="Obavijesti">
                                 {hasUnreadNotifications && (
                                     <div className="absolute right-1 top-1">
                                         <DotIndicator color={"success"} />

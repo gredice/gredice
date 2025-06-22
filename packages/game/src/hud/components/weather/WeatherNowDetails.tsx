@@ -40,7 +40,7 @@ export function WeatherNowDetails() {
     return (
         <Stack>
             <Row className="bg-background px-4 py-2" justifyContent="space-between">
-                <Typography level="body3" bold>Aktualno vrijeme</Typography>
+                <Typography level="body2" bold>Aktualno vrijeme</Typography>
             </Row>
             <Divider />
             {showForecast && <WeatherForecastDays />}
@@ -81,7 +81,7 @@ export function WeatherNowDetails() {
                     </Row>
                     <div className='border-l block md:hidden'>
                         <Button variant='plain' className='h-full rounded-none' endDecorator={<Navigate />} onClick={() => setShowForecast(true)}>
-                            Prognoza                            
+                            Prognoza
                         </Button>
                     </div>
                 </div>

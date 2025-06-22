@@ -81,7 +81,7 @@ export function WeatherForecastDetails() {
     return (
         <Stack>
             <Row className="bg-background px-4 py-2" justifyContent="space-between">
-                <Typography level="body3" bold>Prognoza</Typography>
+                <Typography level="body2" bold>Prognoza</Typography>
             </Row>
             <Divider />
             <WeatherForecastDays />

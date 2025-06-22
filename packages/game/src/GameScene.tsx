@@ -132,7 +132,7 @@ function GameScene({
             </Scene>
             {!hideHud && (
                 <>
-                    <div className='absolute top-2 left-2 flex flex-row items-start md:flex-col gap-1 md:gap-2'>
+                    <div className='absolute top-2 left-2 flex flex-col items-start gap-2'>
                         <AccountHud />
                         <GameModeHud />
                         {Boolean(flags?.shoppingCartFlag) && (
