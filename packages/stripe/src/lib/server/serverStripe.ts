@@ -151,7 +151,7 @@ export async function stripeCheckout(
         }
 
         if (session) {
-            return { sessionId: session.id, customerId: customerId };
+            return { sessionId: session.id, customerId: customerId, url: session.url };
         }
 
         throw new Error('Unable to create checkout session.');

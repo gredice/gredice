@@ -218,7 +218,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 });
             }
 
-            const { customerId, sessionId } = await stripeCheckout({
+            const { customerId, sessionId, url } = await stripeCheckout({
                 id: account.id,
                 email: user.userName,
                 name: user.userName,
@@ -231,7 +231,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 await assignStripeCustomerId(account.id, customerId);
             }
 
-            return context.json({ sessionId });
+            return context.json({ sessionId, url });
         }
     )
     .delete(
@@ -243,7 +243,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         zValidator('param', z.object({ sessionId: z.string() })),
         async (context) => {
             const { sessionId } = context.req.valid('param');
-            const { accountId } = context.get('authContext');
+            const { accountId, user } = context.get('authContext');
             const account = await getAccount(accountId);
             if (!account) {
                 return context.json({ error: 'Account not found' }, 404);
@@ -255,6 +255,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             try {
                 const session = await getStripeCheckoutSession(sessionId);
+                if (session.customerId !== account.stripeCustomerId) {
+                    return context.json({ error: 'Session does not belong to this account' }, 403);
+                }
                 if (session.status === 'complete') {
                     return context.json({ error: 'Session already completed' }, 400);
                 }
