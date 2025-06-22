@@ -310,7 +310,7 @@ export async function getAllRaisedBeds() {
     });
 }
 
-export async function upsertRaisedBedField(field: Omit<InsertRaisedBedField, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'> & { status?: string }) {
+export async function upsertRaisedBedField(field: Omit<InsertRaisedBedField, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>) {
     // Try to update first
     const updated = await storage()
         .update(raisedBedFields)
