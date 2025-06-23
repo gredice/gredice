@@ -255,7 +255,6 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         const aggregateId = `${field.raisedBedId}|${field.positionIndex}`;
         const events = await getEvents([
             knownEventTypes.raisedBedFields.create,
-            knownEventTypes.raisedBedFields.update,
             knownEventTypes.raisedBedFields.delete,
             knownEventTypes.raisedBedFields.plantPlace,
             knownEventTypes.raisedBedFields.plantUpdate,
@@ -266,30 +265,61 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         let plantStatus = undefined;
         let plantSortId = undefined;
         let plantScheduledDate = undefined;
+        let plantSowDate = undefined;
 
-        // TODO: Implement operations handling
-        let operationId = undefined;
-        let operationStatus = undefined;
+        // TODO: Implement multiple handling
+        // let operationId = undefined;
+        // let operationStatus = undefined;
 
-        for (const event of events.reverse()) {
+        for (const event of events) {
+            console.debug(`Processing event ${raisedBedId}|${field.positionIndex}: ${event.type} data: ${JSON.stringify(event.data)}`);
+
             const data = event.data as Record<string, any> | undefined;
-            if (event.type === 'raisedBedField.update' && data?.status) plantStatus = data.status;
-            if (event.type === 'raisedBedField.plantPlace') {
-                plantSortId = data?.plantSortId ? parseInt(data.plantSortId, 10) : undefined;
+            if (event.type === knownEventTypes.raisedBedFields.plantPlace) {
+                if (data?.plantSortId) {
+                    plantSortId = parseInt(data.plantSortId, 10)
+                }
                 plantScheduledDate = data?.scheduledDate || plantScheduledDate;
                 plantStatus = "new";
             }
-            if (event.type === 'raisedBedField.plantUpdate') {
-                plantStatus = data?.status || plantStatus;
+            else if (event.type === knownEventTypes.raisedBedFields.plantUpdate) {
+                plantStatus = data?.status ?? plantStatus;
+                if (plantStatus === 'sowed') {
+                    plantSowDate = event.createdAt;
+                }
             }
-            if (event.type === 'raisedBedField.operationOrder') {
-                operationId = data?.orderId;
-                operationStatus = data?.status || operationStatus;
+            // else if (event.type === knownEventTypes.raisedBedFields.operationOrder) {
+            //     operationId = data?.orderId;
+            //     operationStatus = data?.status || operationStatus;
+            // }
+            else if (event.type === knownEventTypes.raisedBedFields.delete) {
+                plantStatus = 'deleted';
+                plantSowDate = undefined;
+                plantSortId = undefined;
+                plantScheduledDate = undefined;
             }
-            if (event.type === 'raisedBedField.delete') plantStatus = 'deleted';
+            else {
+                console.warn(`Unhandled event type: ${event.type} for field ${field.id}`);
+            }
         }
 
-        return { ...field, plantStatus, plantSortId, plantScheduledDate };
+        console.log('Final field state:', JSON.stringify({
+            id: field.id,
+            raisedBedId: field.raisedBedId,
+            positionIndex: field.positionIndex,
+            plantStatus,
+            plantSortId,
+            plantScheduledDate,
+            plantSowDate
+        }));
+
+        return {
+            ...field,
+            plantStatus,
+            plantSortId,
+            plantScheduledDate,
+            plantSowDate
+        };
     }));
 }
 

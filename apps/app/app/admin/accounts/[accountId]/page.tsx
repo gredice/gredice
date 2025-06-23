@@ -14,6 +14,7 @@ import { NoDataPlaceholder } from "../../../../components/shared/placeholders/No
 import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
 import { AccountTransactionsCard } from "./AccountTransactionsCard";
 import { NotificationsTableCard } from "../../../../components/notifications/NotificationsTableCard";
+import Link from "next/link";
 
 export const dynamic = 'force-dynamic';
 
@@ -69,7 +70,11 @@ export default async function AccountPage({ params }: { params: Promise<{ accoun
                                 )}
                                 {raisedBeds.map(bed => (
                                     <Table.Row key={bed.id}>
-                                        <Table.Cell>{bed.id}</Table.Cell>
+                                        <Table.Cell>
+                                            <Link href={KnownPages.RaisedBed(bed.id)}>
+                                                {bed.id}
+                                            </Link>
+                                        </Table.Cell>
                                         <Table.Cell>{bed.name}</Table.Cell>
                                         <Table.Cell>{bed.status}</Table.Cell>
                                         <Table.Cell><LocaleDateTime>{bed.createdAt}</LocaleDateTime></Table.Cell>
