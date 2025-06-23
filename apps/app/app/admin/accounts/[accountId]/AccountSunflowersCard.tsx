@@ -12,7 +12,6 @@ import { auth } from "../../../../lib/auth/auth";
 import { KnownPages } from "../../../../src/KnownPages";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Table } from "@signalco/ui-primitives/Table";
-import { ScrollArea } from "@signalco/ui-primitives/ScrollArea";
 import { Add } from "@signalco/ui-icons";
 
 export async function AccountSunflowersCard({ accountId }: { accountId: string }) {
@@ -57,7 +56,7 @@ export async function AccountSunflowersCard({ accountId }: { accountId: string }
             </CardContent>
             <CardOverflow>
                 <Divider />
-                <ScrollArea className="h-80">
+                <div className="max-h-80 overflow-hidden">
                     <Table>
                         <Table.Header>
                             <Table.Row>
@@ -93,7 +92,7 @@ export async function AccountSunflowersCard({ accountId }: { accountId: string }
                             ))}
                         </Table.Body>
                     </Table>
-                </ScrollArea>
+                </div>
             </CardOverflow>
         </Card>
     );
