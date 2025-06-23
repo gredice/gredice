@@ -7,7 +7,8 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { RaisedBedFieldItemButton } from "./RaisedBedFieldItemButton";
-import { ReactElement, ReactNode } from "react";
+import { SegmentedCircularProgress } from "./SegmentedCircularProgress";
+import { ReactNode } from "react";
 
 export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { raisedBedId: number; positionIndex: number; }) {
     const { data: garden, isPending: isGardenPending } = useCurrentGarden();
@@ -88,12 +89,22 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
             title={`Biljka "${plantSort.information.name}"`}
             trigger={(
                 <RaisedBedFieldItemButton>
-                    {/* TODO: Extract into a separate component */}
-                    <img
-                        src={`https://www.gredice.com/${plantSort.image?.cover?.url || plantSort.information.plant.image?.cover?.url}`}
-                        alt={plantSort.information.name}
-                        width={60}
-                        height={60} />
+                    <SegmentedCircularProgress
+                        size={80}
+                        strokeWidth={2}
+                        segments={[
+                            { value: 100, percentage: 20, color: "stroke-yellow-500", trackColor: "stroke-yellow-50" },
+                            { value: 50, percentage: 30, color: "stroke-green-500", trackColor: "stroke-green-50", pulse: true },
+                            { value: 0, percentage: 10, color: "stroke-blue-500", trackColor: "stroke-blue-50" },
+                        ]}
+                    >
+                        <img
+                            src={`https://www.gredice.com/${plantSort.image?.cover?.url || plantSort.information.plant.image?.cover?.url}`}
+                            alt={plantSort.information.name}
+                            className="absolute top-1/2 start-1/2 transform -translate-y-1/2 -translate-x-1/2"
+                            width={60}
+                            height={60} />
+                    </SegmentedCircularProgress>
                 </RaisedBedFieldItemButton>
             )}>
             <Stack spacing={4}>

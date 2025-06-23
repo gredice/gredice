@@ -272,8 +272,6 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         // let operationStatus = undefined;
 
         for (const event of events) {
-            console.debug(`Processing event ${raisedBedId}|${field.positionIndex}: ${event.type} data: ${JSON.stringify(event.data)}`);
-
             const data = event.data as Record<string, any> | undefined;
             if (event.type === knownEventTypes.raisedBedFields.plantPlace) {
                 if (data?.plantSortId) {
@@ -302,16 +300,6 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 console.warn(`Unhandled event type: ${event.type} for field ${field.id}`);
             }
         }
-
-        console.log('Final field state:', JSON.stringify({
-            id: field.id,
-            raisedBedId: field.raisedBedId,
-            positionIndex: field.positionIndex,
-            plantStatus,
-            plantSortId,
-            plantScheduledDate,
-            plantSowDate
-        }));
 
         return {
             ...field,
