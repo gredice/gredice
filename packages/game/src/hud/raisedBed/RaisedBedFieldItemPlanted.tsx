@@ -84,6 +84,35 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
             break;
     }
 
+    const maxDuration =
+        (plantSort.information.plant.attributes?.germinationWindowMax ?? 0) +
+        (plantSort.information.plant.attributes?.growthWindowMax ?? 0) +
+        (plantSort.information.plant.attributes?.harvestWindowMax ?? 0);
+    const germinationPercentage = plantSort.information.plant.attributes?.germinationWindowMax
+        ? Math.max(10, Math.min(100, plantSort.information.plant.attributes.germinationWindowMax / (maxDuration ?? 0) * 100))
+        : 0;
+    const harvestPercentage = plantSort.information.plant.attributes?.harvestWindowMax
+        ? Math.min(100, plantSort.information.plant.attributes.harvestWindowMax / (maxDuration ?? 0) * 100)
+        : 0;
+    const growthPercentage = 100 - germinationPercentage - harvestPercentage;
+    const germinationWindowMs = (plantSort.information.plant.attributes?.germinationWindowMax ?? 0) * 24 * 60 * 60 * 1000;
+    const growthWindowMs = (plantSort.information.plant.attributes?.growthWindowMax ?? 0) * 24 * 60 * 60 * 1000;
+    const germinationValue = field.plantGrowthDate
+        ? 100
+        : (field.plantSowDate
+            ? Math.min(100, ((Date.now() - new Date(field.plantSowDate).getTime())) / (germinationWindowMs || 1) * 100)
+            : 0);
+
+    const growthValue = field.plantReadyDate ?
+        100
+        : (field.plantGrowthDate
+            ? Math.min(100, (Date.now() - new Date(field.plantGrowthDate).getTime()) / (growthWindowMs || 1) * 100)
+            : 0);
+
+    const harvestValue = field.plantReadyDate
+        ? Math.min(100, (Date.now() - new Date(field.plantReadyDate).getTime()) / (plantSort.information.plant.attributes?.harvestWindowMax ?? 1) * 100)
+        : 0;
+
     return (
         <Modal
             title={`Biljka "${plantSort.information.name}"`}
@@ -91,11 +120,11 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
                 <RaisedBedFieldItemButton>
                     <SegmentedCircularProgress
                         size={80}
-                        strokeWidth={2}
+                        strokeWidth={4}
                         segments={[
-                            { value: 100, percentage: 20, color: "stroke-yellow-500", trackColor: "stroke-yellow-50" },
-                            { value: 50, percentage: 30, color: "stroke-green-500", trackColor: "stroke-green-50", pulse: true },
-                            { value: 0, percentage: 10, color: "stroke-blue-500", trackColor: "stroke-blue-50" },
+                            { value: germinationValue, percentage: germinationPercentage, color: "stroke-yellow-500", trackColor: "stroke-yellow-50", pulse: !field.plantGrowthDate },
+                            { value: growthValue, percentage: growthPercentage, color: "stroke-green-500", trackColor: "stroke-green-50", pulse: !field.plantReadyDate },
+                            { value: harvestValue, percentage: harvestPercentage, color: "stroke-blue-500", trackColor: "stroke-blue-50", pulse: Boolean(harvestValue) },
                         ]}
                     >
                         <img
