@@ -7,6 +7,7 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { RaisedBedFieldItemButton } from "./RaisedBedFieldItemButton";
+import { ReactElement, ReactNode } from "react";
 
 export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { raisedBedId: number; positionIndex: number; }) {
     const { data: garden, isPending: isGardenPending } = useCurrentGarden();
@@ -17,6 +18,8 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
 
     const field = raisedBed.fields.find(field => field.positionIndex === positionIndex);
     if (!field || !field.plantSortId) {
+        console.debug('fields', raisedBed.fields)
+        console.log(`Field not found for raised bed ${raisedBedId} at position index ${positionIndex}`);
         return null;
     }
 
@@ -41,21 +44,35 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
         );
     }
 
+    let icon: ReactNode | null = null;
     let localizedStatus = field.plantStatus;
     switch (localizedStatus) {
         case 'new':
-            localizedStatus = 'Nova - čeka na odobrenje';
+            icon = <span className="mr-0.5">{'🌟'}</span>;
+            localizedStatus = 'Nova - čeka na sijanje';
             break;
-        case 'approved':
-            localizedStatus = 'Odobrena - čeka na sadnju';
+        case 'planned':
+            icon = <span className="mr-0.5">{'⌛'}</span>;
+            localizedStatus = 'Planirana - čeka na sijanje';
             break;
-        case 'planted':
-            localizedStatus = 'Zasađena';
+        case 'sowed':
+            icon = <span className="mr-0.5">{'𓇢'}</span>;
+            localizedStatus = 'Posijana';
+            break;
+        case 'sprouted':
+            icon = <span className="mr-0.5">{'🌱'}</span>;
+            localizedStatus = 'Proklijala';
+            break;
+        case 'ready':
+            icon = <span className="mr-0.5">{'🌿'}</span>;
+            localizedStatus = 'Spremna za berbu';
             break;
         case 'harvested':
+            icon = <span className="mr-0.5">{'✅'}</span>;
             localizedStatus = 'Ubrana';
             break;
         case 'died':
+            icon = <span className="mr-0.5">{'💀'}</span>;
             localizedStatus = 'Uginula';
             break;
         case 'uprooted':
@@ -92,7 +109,7 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
                 <div className="grid grid-cols-[auto_1fr] gap-2 items-center">
                     <Typography level="body2">Status</Typography>
                     <div className="flex items-start">
-                        <Chip>{localizedStatus}</Chip>
+                        <Chip startDecorator={icon}>{localizedStatus}</Chip>
                     </div>
                     {plantScheduledDate && (
                         <>
