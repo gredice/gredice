@@ -35,6 +35,9 @@ importers:
       next:
         specifier: canary
         version: 15.4.0-canary.94(@playwright/test@1.53.1)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.89.2)
+      pg:
+        specifier: 8.16.2
+        version: 8.16.2
       prettier:
         specifier: 3.5.3
         version: 3.5.3
@@ -126,9 +129,6 @@ importers:
       next-axiom:
         specifier: 1.9.1
         version: 1.9.1(next@15.4.0-canary.94(@playwright/test@1.53.1)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.89.2))(react@19.1.0)
-      pg:
-        specifier: 8.16.2
-        version: 8.16.2
       postcss:
         specifier: 8.5.6
         version: 8.5.6
@@ -156,6 +156,9 @@ importers:
       next:
         specifier: canary
         version: 15.4.0-canary.94(@babel/core@7.27.4)(@playwright/test@1.53.1)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.89.2)
+      pg:
+        specifier: 8.16.2
+        version: 8.16.2
       react:
         specifier: 19.1.0
         version: 19.1.0
