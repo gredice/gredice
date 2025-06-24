@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { storage } from "../storage";
 import { events } from "../schema";
 
@@ -30,7 +30,6 @@ export const knownEventTypes = {
     },
     raisedBedFields: {
         create: "raisedBedField.create",
-        update: "raisedBedField.update",
         delete: "raisedBedField.delete",
         plantPlace: "raisedBedField.plantPlace",
         plantUpdate: "raisedBedField.plantUpdate",
@@ -100,12 +99,6 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
-        updatedV1: (aggregateId: string, data: { status: string }) => ({
-            type: knownEventTypes.raisedBedFields.update,
-            version: 1,
-            aggregateId,
-            data,
-        }),
         deletedV1: (aggregateId: string) => ({
             type: knownEventTypes.raisedBedFields.delete,
             version: 1,
@@ -118,7 +111,7 @@ export const knownEvents = {
             data,
         }),
         plantUpdateV1: (aggregateId: string, data: { status: string }) => ({
-            type: knownEventTypes.raisedBedFields.plantPlace,
+            type: knownEventTypes.raisedBedFields.plantUpdate,
             version: 1,
             aggregateId,
             data,
@@ -139,7 +132,7 @@ export function getEvents(type: string | string[], aggregateId: string, offset: 
             Array.isArray(type)
                 ? inArray(events.type, type)
                 : eq(events.type, type)),
-        orderBy: [desc(events.createdAt)],
+        orderBy: [asc(events.createdAt)],
         offset,
         limit
     });

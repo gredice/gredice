@@ -22,10 +22,17 @@ export function useCheckout() {
                 console.error("Failed to create checkout session");
                 return;
             }
-            const { sessionId } = responseData;
+            const { sessionId, url } = responseData;
+            if (url) {
+                // If a URL is provided, redirect the user to that URL
+                window.location.href = url;
+                return;
+            }
+
+            // If no URL is provided, use Stripe's redirectToCheckout
             const stripe = await clientStripe();
             const result = await stripe?.redirectToCheckout({
-                sessionId
+                sessionId,
             });
             if (result?.error) {
                 console.error("Stripe checkout error:", result.error);

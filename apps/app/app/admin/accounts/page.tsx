@@ -28,6 +28,7 @@ export default async function AccountsPage() {
                     <Table>
                         <Table.Header>
                             <Table.Row>
+                                <Table.Head>ID</Table.Head>
                                 <Table.Head>Korisnicko ime</Table.Head>
                                 <Table.Head>Datum kreiranja</Table.Head>
                             </Table.Row>
@@ -42,20 +43,28 @@ export default async function AccountsPage() {
                                     </Table.Cell>
                                 </Table.Row>
                             )}
-                            {accounts.map(account => (
-                                <Table.Row key={account.id}>
-                                    <Table.Cell>
-                                        <Link href={KnownPages.Account(account.id)}>
-                                            -
-                                        </Link>
-                                    </Table.Cell>
-                                    <Table.Cell title={account.createdAt.toISOString()}>
-                                        <LocaleDateTime time={false}>
-                                            {account.createdAt}
-                                        </LocaleDateTime>
-                                    </Table.Cell>
-                                </Table.Row>
-                            ))}
+                            {accounts.map(account => {
+                                const user = account.accountUsers.at(0)?.user;
+                                return (
+                                    <Table.Row key={account.id}>
+                                        <Table.Cell>
+                                            <Link href={KnownPages.Account(account.id)}>
+                                                {account.id}
+                                            </Link>
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <Link href={KnownPages.User(user?.id ?? '')}>
+                                                {user?.displayName || user?.userName || 'N/A'}
+                                            </Link>
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <LocaleDateTime time={false}>
+                                                {account.createdAt}
+                                            </LocaleDateTime>
+                                        </Table.Cell>
+                                    </Table.Row>
+                                );
+                            })}
                         </Table.Body>
                     </Table>
                 </CardOverflow>

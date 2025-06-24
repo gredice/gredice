@@ -35,7 +35,7 @@ export function WeatherHud() {
                         <Button
                             title="Trenutno vrijeme"
                             variant="plain"
-                            className="rounded-full px-2 justify-between pr-4 md:pr-2" size="sm">
+                            className="rounded-full px-2 justify-between pr-4 md:pr-2">
                             <Row>
                                 {WeatherIcon && <WeatherIcon.day className="size-6" />}
                                 <Typography level="body2" className="text-base pl-0.5">{weatherData?.temperature}°C</Typography>
@@ -54,7 +54,7 @@ export function WeatherHud() {
                             <Button
                                 title="Prognoza vremena"
                                 variant="plain"
-                                className="rounded-full px-2 justify-between pr-4 md:pr-2 hidden md:flex" size="sm">
+                                className="rounded-full px-2 justify-between pr-4 md:pr-2 hidden md:flex">
                                 <Row spacing={1}>
                                     {forecastData.slice(0, 3).map((day) => {
                                         const ForecastIcon = weatherIcons[day.symbol];

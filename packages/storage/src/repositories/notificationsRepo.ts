@@ -60,3 +60,7 @@ export function setAllNotificationsRead(accountId: string, userId: string, notif
                     eq(notifications.accountId, accountId),
                     eq(notifications.userId, userId))));
 }
+
+export function deleteNotification(id: string) {
+    return storage().delete(notifications).where(eq(notifications.id, id));
+}

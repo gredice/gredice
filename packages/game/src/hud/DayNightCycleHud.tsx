@@ -42,10 +42,10 @@ export function DayNightCycleHud() {
 
     return (
         <div
-            className="absolute w-32 md:w-48 h-12 -top-2 left-1/2 -translate-x-1/2 group"
+            className="absolute w-48 h-12 -top-2 left-1/2 -translate-x-1/2 group"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}>
-            <HudCard open={isHovered} className='w-48 md:w-64 -left-8 top-0' position='top'>
+            <HudCard open={isHovered} className='w-64 -left-8 top-0' position='top'>
                 <Stack className='pt-10 pb-2 px-4'>
                     <Row justifyContent='space-between'>
                         <Typography level='body3'>{(isDaytime ? sunrise : sunset)?.toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}</Typography>

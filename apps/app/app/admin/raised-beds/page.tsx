@@ -24,6 +24,8 @@ export default async function RaisedBedsPage() {
                         <Table.Header>
                             <Table.Row>
                                 <Table.Head>ID</Table.Head>
+                                <Table.Head>Naziv</Table.Head>
+                                <Table.Head>Status</Table.Head>
                                 <Table.Head>Datum Kreiranja</Table.Head>
                             </Table.Row>
                         </Table.Header>
@@ -44,11 +46,9 @@ export default async function RaisedBedsPage() {
                                             {bed.id}
                                         </Link>
                                     </Table.Cell>
-                                    <Table.Cell title={bed.createdAt.toISOString()}>
-                                        <LocaleDateTime time={false}>
-                                            {bed.createdAt}
-                                        </LocaleDateTime>
-                                    </Table.Cell>
+                                    <Table.Cell>{bed.name}</Table.Cell>
+                                    <Table.Cell>{bed.status}</Table.Cell>
+                                    <Table.Cell><LocaleDateTime>{bed.createdAt}</LocaleDateTime></Table.Cell>
                                 </Table.Row>
                             ))}
                         </Table.Body>

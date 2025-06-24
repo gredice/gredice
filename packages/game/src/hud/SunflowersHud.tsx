@@ -17,12 +17,14 @@ function SunflowersCard() {
     return (
         <Stack>
             <Row className="bg-background px-4 py-1" justifyContent="space-between">
-                <Typography level="body3" bold>Suncokreti</Typography>
+                <Typography level="body2" bold>Suncokreti</Typography>
                 <Popper
                     className="min-w-80 border-tertiary border-b-4"
                     trigger={(
-                        <IconButton title="Što su suncokreti?" variant="plain" size="sm">
-                            <Info className="size-4" />
+                        <IconButton
+                            title="Što su suncokreti?"
+                            variant="plain">
+                            <Info className="size-4 shrink-0" />
                         </IconButton>
                     )}>
                     <Row className="p-4" spacing={2}>
@@ -65,8 +67,12 @@ function SunflowersAmount() {
                 <Button
                     variant="plain"
                     title="Suncokreti"
-                    startDecorator={<img src="https://cdn.gredice.com/sunflower-large.svg" alt="Suncokret" className="size-6" />}
-                    className="rounded-full px-2 md:min-w-20 justify-between pr-4" size="sm">
+                    startDecorator={(
+                        <img src="https://cdn.gredice.com/sunflower-large.svg"
+                            alt="Suncokret"
+                            className="size-6" />
+                    )}
+                    className="rounded-full px-2 md:min-w-20 justify-between pr-4">
                     <Typography level="body2" className="text-base pl-0.5">{sunflowerCount}</Typography>
                 </Button>
             )}>

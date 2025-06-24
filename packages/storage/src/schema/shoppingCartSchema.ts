@@ -42,7 +42,11 @@ export const shoppingCartItems = pgTable('shopping_cart_items', {
     index('shopping_cart_items_status_idx').on(table.status),
 ]);
 
-export const shoppingCartRelations = relations(shoppingCarts, ({ many }) => ({
+export const shoppingCartRelations = relations(shoppingCarts, ({ one, many }) => ({
+    account: one(accounts, {
+        fields: [shoppingCarts.accountId],
+        references: [accounts.id],
+    }),
     items: many(shoppingCartItems, {
         relationName: 'shoppingCartItemsCart',
     }),

@@ -27,9 +27,14 @@ async function ensureStripeCustomer(account: UserAccount): Promise<string> {
     // Check if the user already has a Stripe customer ID
     // Ensure customer still exists in Stripe and is not deleted
     if (account.stripeCustomerId && account.stripeCustomerId.length > 0) {
-        const existingCustomerId = await getStripe().customers.retrieve(account.stripeCustomerId);
-        if (existingCustomerId && !existingCustomerId.deleted)
-            return existingCustomerId.id;
+        try {
+            const existingCustomerId = await getStripe().customers.retrieve(account.stripeCustomerId);
+            if (existingCustomerId && !existingCustomerId.deleted)
+                return existingCustomerId.id;
+        } catch (error) {
+            console.error('Error retrieving existing Stripe customer:', error);
+            // If the customer does not exist or is deleted, we will create a new one
+        }
     }
 
     // Try to find customer by email
@@ -78,6 +83,9 @@ export async function getStripeCheckoutSession(sessionId: string) {
             id: session.id,
             customerId: session.customer,
             status: session.status,
+            paymentId: typeof session.payment_link === 'string'
+                ? session.payment_link
+                : session.payment_link?.id,
             paymentStatus: session.payment_status,
             lineItems: line_items,
             amountTotal: session.amount_total,
@@ -136,7 +144,9 @@ export async function stripeCheckout(
                 },
                 quantity: item.quantity,
             })),
+            allow_promotion_codes: true,
             mode: 'payment',
+            locale: 'hr',
             cancel_url: getReturnUrl({ status: 'cancel' }),
             success_url: getReturnUrl({ status: 'success' }),
         };
@@ -151,7 +161,7 @@ export async function stripeCheckout(
         }
 
         if (session) {
-            return { sessionId: session.id, customerId: customerId };
+            return { sessionId: session.id, customerId: customerId, url: session.url };
         }
 
         throw new Error('Unable to create checkout session.');

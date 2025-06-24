@@ -22,4 +22,7 @@ export const KnownPages = {
     Transaction: (transactionId: number) => `/admin/transactions/${transactionId}`,
     ShoppingCarts: '/admin/shopping-carts',
     ShoppingCart: (cartId: number) => `/admin/shopping-carts/${cartId}`,
+
+    // External links
+    StripePayment: (paymentId: string) => `https://dashboard.stripe.com/payments/${paymentId}`,
 }

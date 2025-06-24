@@ -1,6 +1,6 @@
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import { Card, CardContent } from "@signalco/ui-primitives/Card";
-import { List, ListHeader } from "@signalco/ui-primitives/List";
+import { List } from "@signalco/ui-primitives/List";
 import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Stack } from "@signalco/ui-primitives/Stack";
@@ -11,14 +11,13 @@ import { SoundSettingsCard } from "./components/SoundSettingsCard";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import { SunflowersList } from "../shared-ui/sunflowers/SunflowersList";
 import { useCurrentAccount } from "../hooks/useCurrentAccount";
-import { ScrollArea } from "@signalco/ui-primitives/ScrollArea";
 import { UserProfileCard } from "./components/UserProfileCard";
 import { NotificationList } from "../hud/NotificationList";
 import { useState } from "react";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Approved, Empty } from "@signalco/ui-icons";
 import { useMarkAllNotificationsRead } from "../hooks/useMarkAllNotificationsRead";
-import { IconButton } from "@signalco/ui-primitives/IconButton";
+import { Button } from "@signalco/ui-primitives/Button";
 
 export function OverviewModal() {
     const [settingsMode, setProfileModalOpen] = useSearchParam('pregled');
@@ -158,32 +157,36 @@ export function OverviewModal() {
                         </Stack>
                     )}
                     {settingsMode === 'obavijesti' && (
-                        <Stack spacing={4}>
+                        <Stack spacing={1}>
                             <Row justifyContent="space-between">
                                 <Typography level="h4" className="hidden md:block">Obavijesti</Typography>
-                                <Row>
-                                    <SelectItems
-                                        variant="plain"
-                                        value={notificationsFilter}
-                                        onValueChange={setNotificationsFilter}
-                                        items={[
-                                            { label: 'Nepročitane', value: 'unread', icon: <Empty className="size-4" /> },
-                                            { label: 'Sve obavijesti', value: 'all', icon: <Approved className="size-4" /> },
-                                        ]}
-                                    />
-                                    <IconButton
-                                        className="mr-3"
-                                        variant="plain"
-                                        size="sm"
-                                        title="Označi sve kao pročitane"
-                                        onClick={handleMarkAllNotificationsRead}>
-                                        <Approved />
-                                    </IconButton>
-                                </Row>
                             </Row>
-                            <ScrollArea className="basis-56 md:basis-96 rounded-lg text-card-foreground bg-card shadow-sm p-0">
-                                <NotificationList read={notificationsFilter === 'all'} short />
-                            </ScrollArea>
+                            <Stack spacing={1}>
+                                <Card className="bg-card p-1">
+                                    <Row justifyContent="space-between">
+                                        <SelectItems
+                                            value={notificationsFilter}
+                                            onValueChange={setNotificationsFilter}
+                                            items={[
+                                                { label: 'Nepročitane', value: 'unread', icon: <Empty className="size-4" /> },
+                                                { label: 'Sve obavijesti', value: 'all', icon: <Approved className="size-4" /> },
+                                            ]}
+                                        />
+                                        <Button
+                                            variant="plain"
+                                            size="sm"
+                                            onClick={handleMarkAllNotificationsRead}
+                                            startDecorator={
+                                                <Approved className="size-4" />
+                                            }>
+                                            Sve pročitano
+                                        </Button>
+                                    </Row>
+                                </Card>
+                                <div className="overflow-y-auto max-h-[calc(100dvh-18rem)] md:max-h-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card shadow-sm p-0">
+                                    <NotificationList read={notificationsFilter === 'all'} short />
+                                </div>
+                            </Stack>
                         </Stack>
                     )}
                     {settingsMode === 'suncokreti' && (
@@ -204,9 +207,9 @@ export function OverviewModal() {
                                         </CardContent>
                                     </Card>
                                 </div>
-                                <ScrollArea className="basis-56 md:basis-96 rounded-lg text-card-foreground bg-card border shadow-sm p-4">
+                                <div className="overflow-y-auto max-h-[calc(100dvh-20rem)] md:max-h-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card border shadow-sm p-4">
                                     <SunflowersList />
-                                </ScrollArea>
+                                </div>
                             </Stack>
                         </Stack>
                     )}

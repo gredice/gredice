@@ -13,6 +13,9 @@ import DeliveryTruck from '../assets/DeliveryTruck.webp';
 import Image from "next/image";
 import { Row } from "@signalco/ui-primitives/Row";
 import { PlantsShowcase } from "./PlantsShowcase";
+import { FacebookCard } from "../components/social/FacebookCard";
+import { InstagramCard } from "../components/social/InstagramCard";
+import { WhatsAppCard } from "../components/social/WhatsAppCard";
 
 const sectionsData: SectionData[] = [
     {
@@ -49,21 +52,22 @@ const sectionsData: SectionData[] = [
                         <Check className="size-5" />
                         <Stack>
                             <Typography level="h6" component="span">Samo tvoj vrt</Typography>
-                            <Typography level="body2">Tvoja gredica - tvoje povrće</Typography>
+                            <Typography level="body2" secondary>Tvoja gredica - tvoje povrće</Typography>
                         </Stack>
                     </Row>
                     <Row spacing={2}>
                         <Check className="size-5" />
                         <Stack>
                             <Typography level="h6" component="span">Nema pretplate</Typography>
-                            <Typography level="body2">Plaćaš samo ono što zasadiš, odradiš ili kupiš</Typography>
+                            <Typography level="body1" secondary>Plaćaš samo ono što zasadiš, odradiš ili kupiš</Typography>
                         </Stack>
                     </Row>
                     <Row spacing={2}>
                         <Check className="size-5" />
                         <Stack>
                             <Typography level="h6" component="span">Besplatna dostava</Typography>
-                            <Typography level="body2">Prva berba svake biljke uključuje besplatnu dostavu</Typography>
+                            <Typography level="body1" secondary>Prva berba svake biljke uključuje besplatnu dostavu</Typography>
+                            <Typography level="body3">* Besplatna dostava je dostupna samo za područje Zagreba</Typography>
                         </Stack>
                     </Row>
                 </Stack>
@@ -97,8 +101,11 @@ const sectionsData: SectionData[] = [
                     <Row spacing={4}>
                         <Image alt="Dostava povrća" className="w-32 sm:w-[200px]" src={DeliveryTruck} width={200} height={200} />
                         <Stack spacing={2}>
-                            <Typography level="h4" component="h3">Uberi</Typography>
-                            <Typography level="body1" className="text-balance">Zatraži branje svog povrća kad god želiš. Mi beremo i dostavljamo još svježe na kućni prag.</Typography>
+                            <Typography level="h4" component="h3">Uberi i uživaj</Typography>
+                            <Stack>
+                                <Typography level="body1" className="text-balance">Zatraži branje svog povrća kad god želiš. Mi beremo i dostavljamo još svježe na kućni prag.</Typography>
+                                <Typography level="body3">* Besplatna dostava je dostupna samo za područje Zagreba</Typography>
+                            </Stack>
                         </Stack>
                     </Row>
                 )
@@ -123,9 +130,20 @@ export default function Home() {
                 </Typography>
                 <PlantsShowcase />
             </Stack>
-            <div className="bg-white border shadow p-6 rounded-xl mt-20 mb-10">
-                <NewsletterSignUp />
-            </div>
+            <Stack spacing={4} className="mt-20">
+                <Stack spacing={1}>
+                    <Typography level="body1" semiBold tertiary>Zajednica za svakoga</Typography>
+                    <Typography level="h2">Pridruži se našim zajednicama</Typography>
+                </Stack>
+                <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-4 mb-10 grid-rows-3">
+                    <WhatsAppCard />
+                    <InstagramCard />
+                    <FacebookCard />
+                    <div className="bg-white border shadow p-6 rounded-xl lg:col-start-2 lg:row-start-1 lg:row-span-3">
+                        <NewsletterSignUp />
+                    </div>
+                </div>
+            </Stack>
         </Stack>
     );
 }

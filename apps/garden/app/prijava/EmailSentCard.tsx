@@ -3,7 +3,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitive
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Mail } from "@signalco/ui-icons";
-import Link from "next/link";
 
 export function EmailSentCard() {
     return (
@@ -22,11 +21,9 @@ export function EmailSentCard() {
                     <Typography level="body3" center>
                         Poslali smo ti link za promjene zaporke na tvoju email adresu. Molimo te provjeri svoj inbox i slijedi upute za promjenu zaporke.
                     </Typography>
-                    <Link href="/" passHref legacyBehavior>
-                        <Button fullWidth variant='soft'>
-                            Povratak
-                        </Button>
-                    </Link>
+                    <Button href="/" fullWidth variant='soft'>
+                        Povratak
+                    </Button>
                 </Stack>
             </CardContent>
         </Card>
