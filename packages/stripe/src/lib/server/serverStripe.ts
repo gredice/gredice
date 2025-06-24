@@ -27,9 +27,14 @@ async function ensureStripeCustomer(account: UserAccount): Promise<string> {
     // Check if the user already has a Stripe customer ID
     // Ensure customer still exists in Stripe and is not deleted
     if (account.stripeCustomerId && account.stripeCustomerId.length > 0) {
-        const existingCustomerId = await getStripe().customers.retrieve(account.stripeCustomerId);
-        if (existingCustomerId && !existingCustomerId.deleted)
-            return existingCustomerId.id;
+        try {
+            const existingCustomerId = await getStripe().customers.retrieve(account.stripeCustomerId);
+            if (existingCustomerId && !existingCustomerId.deleted)
+                return existingCustomerId.id;
+        } catch (error) {
+            console.error('Error retrieving existing Stripe customer:', error);
+            // If the customer does not exist or is deleted, we will create a new one
+        }
     }
 
     // Try to find customer by email
