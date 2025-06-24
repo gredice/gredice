@@ -243,7 +243,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         zValidator('param', z.object({ sessionId: z.string() })),
         async (context) => {
             const { sessionId } = context.req.valid('param');
-            const { accountId, user } = context.get('authContext');
+            const { accountId } = context.get('authContext');
             const account = await getAccount(accountId);
             if (!account) {
                 return context.json({ error: 'Account not found' }, 404);
