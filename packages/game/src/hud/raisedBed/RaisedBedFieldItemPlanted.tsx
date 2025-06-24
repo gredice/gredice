@@ -102,16 +102,32 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
         : (field.plantSowDate
             ? Math.min(100, ((Date.now() - new Date(field.plantSowDate).getTime())) / (germinationWindowMs || 1) * 100)
             : 0);
+    const germinatingDays = Math.round(((field.plantGrowthDate
+        ? new Date(field.plantGrowthDate).getTime()
+        : Date.now()) - (field.plantSowDate
+            ? new Date(field.plantSowDate).getTime()
+            : Date.now())) / (1000 * 60 * 60 * 24));
+    const germinatingDaysDayPlural = germinatingDays === 1 ? 'dan' : 'dana';
 
     const growthValue = field.plantReadyDate ?
         100
         : (field.plantGrowthDate
             ? Math.min(100, (Date.now() - new Date(field.plantGrowthDate).getTime()) / (growthWindowMs || 1) * 100)
             : 0);
+    const growingDays = Math.round(((field.plantReadyDate
+        ? new Date(field.plantReadyDate).getTime()
+        : Date.now()) - (field.plantGrowthDate
+            ? new Date(field.plantGrowthDate).getTime()
+            : Date.now())) / (1000 * 60 * 60 * 24));
+    const growingDaysDayPlural = growingDays === 1 ? 'dan' : 'dana';
 
     const harvestValue = field.plantReadyDate
         ? Math.min(100, (Date.now() - new Date(field.plantReadyDate).getTime()) / (plantSort.information.plant.attributes?.harvestWindowMax ?? 1) * 100)
         : 0;
+    const readyDays = Math.round(((Date.now() - (field.plantReadyDate
+        ? new Date(field.plantReadyDate).getTime()
+        : Date.now())) / (1000 * 60 * 60 * 24)));
+    const readyDaysDayPlural = readyDays === 1 ? 'dan' : 'dana';
 
     return (
         <Modal
@@ -122,9 +138,9 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
                         size={80}
                         strokeWidth={4}
                         segments={[
-                            { value: germinationValue, percentage: germinationPercentage, color: "stroke-yellow-500", trackColor: "stroke-yellow-200 dark:stroke-yellow-50", pulse: !field.plantGrowthDate },
-                            { value: growthValue, percentage: growthPercentage, color: "stroke-green-500", trackColor: "stroke-green-200 dark:stroke-green-50", pulse: !field.plantReadyDate },
-                            { value: harvestValue, percentage: harvestPercentage, color: "stroke-blue-500", trackColor: "stroke-blue-200 dark:stroke-blue-50", pulse: Boolean(harvestValue) },
+                            { value: germinationValue, percentage: germinationPercentage, color: "stroke-yellow-500", trackColor: "stroke-yellow-50", pulse: !field.plantGrowthDate },
+                            { value: growthValue, percentage: growthPercentage, color: "stroke-green-500", trackColor: "stroke-green-50", pulse: !field.plantReadyDate },
+                            { value: harvestValue, percentage: harvestPercentage, color: "stroke-blue-500", trackColor: "stroke-blue-50", pulse: Boolean(harvestValue) },
                         ]}
                     >
                         <img
@@ -191,11 +207,7 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
                                                         : 'U tijeku...'}
                                                 </Typography>
                                                 <Typography>
-                                                    ({Math.round(((field.plantGrowthDate
-                                                        ? new Date(field.plantGrowthDate).getTime()
-                                                        : Date.now()) - (field.plantSowDate
-                                                            ? new Date(field.plantSowDate).getTime()
-                                                            : Date.now())) / (1000 * 60 * 60 * 24))} dana)
+                                                    ({germinatingDays} {germinatingDaysDayPlural})
                                                 </Typography>
                                             </>
                                         )}
@@ -218,11 +230,7 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
                                                         : 'U tijeku...'}
                                                 </Typography>
                                                 <Typography>
-                                                    ({Math.round(((field.plantReadyDate
-                                                        ? new Date(field.plantReadyDate).getTime()
-                                                        : Date.now()) - (field.plantGrowthDate
-                                                            ? new Date(field.plantGrowthDate).getTime()
-                                                            : Date.now())) / (1000 * 60 * 60 * 24))} dana)
+                                                    ({growingDays} {growingDaysDayPlural})
                                                 </Typography>
                                             </>
                                         )}
@@ -238,9 +246,7 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
                                         </Typography>
                                         {field.plantReadyDate && (
                                             <Typography>
-                                                ({Math.round(((Date.now() - (field.plantReadyDate
-                                                    ? new Date(field.plantReadyDate).getTime()
-                                                    : Date.now())) / (1000 * 60 * 60 * 24)))} dana)
+                                                ({readyDays} {readyDaysDayPlural})
                                             </Typography>
                                         )}
                                     </Row>
