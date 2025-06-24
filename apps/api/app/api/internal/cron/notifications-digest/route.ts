@@ -13,10 +13,17 @@ export async function GET(request: NextRequest) {
     }
 
     const notificationEmails = await notificationsDigest();
-    await Promise.all(notificationEmails.map(n => sendNotificationsBulk(n.email, {
-        email: n.email,
-        notificationsCount: n.newNotificationsCount,
-    })));
+    for (const email of notificationEmails) {
+        if (email.newNotificationsCount === 0 || !email.email) {
+            console.debug(`Skipping email ${email.email} with no new notifications or email.`);
+            continue;
+        }
+
+        await sendNotificationsBulk(email.email, {
+            email: email.email,
+            notificationsCount: email.newNotificationsCount,
+        })
+    }
 
     return Response.json({ success: true, emails: notificationEmails.length });
 }
