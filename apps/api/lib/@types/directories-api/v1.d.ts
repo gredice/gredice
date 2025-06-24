@@ -541,6 +541,17 @@ export interface components {
                 nutrients: string;
                 /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
                 germinationType: string;
+                germinationWindowMin: number;
+                /** @description (u danima) */
+                germinationWindowMax: number;
+                /** @description (u danima) */
+                growthWindowMin: number;
+                /** @description (u danima) */
+                growthWindowMax: number;
+                /** @description (u danima) */
+                harvestWindowMin: number;
+                /** @description (u danima) */
+                harvestWindowMax: number;
             };
             prices: {
                 /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
@@ -781,6 +792,17 @@ export interface components {
                         nutrients: string;
                         /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
                         germinationType: string;
+                        germinationWindowMin: number;
+                        /** @description (u danima) */
+                        germinationWindowMax: number;
+                        /** @description (u danima) */
+                        growthWindowMin: number;
+                        /** @description (u danima) */
+                        growthWindowMax: number;
+                        /** @description (u danima) */
+                        harvestWindowMin: number;
+                        /** @description (u danima) */
+                        harvestWindowMax: number;
                     };
                     prices?: {
                         /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
@@ -990,6 +1012,17 @@ export interface components {
                         nutrients: string;
                         /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
                         germinationType: string;
+                        germinationWindowMin: number;
+                        /** @description (u danima) */
+                        germinationWindowMax: number;
+                        /** @description (u danima) */
+                        growthWindowMin: number;
+                        /** @description (u danima) */
+                        growthWindowMax: number;
+                        /** @description (u danima) */
+                        harvestWindowMin: number;
+                        /** @description (u danima) */
+                        harvestWindowMax: number;
                     };
                     prices?: {
                         /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
@@ -1097,6 +1130,17 @@ export interface components {
                                 nutrients: string;
                                 /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
                                 germinationType: string;
+                                germinationWindowMin: number;
+                                /** @description (u danima) */
+                                germinationWindowMax: number;
+                                /** @description (u danima) */
+                                growthWindowMin: number;
+                                /** @description (u danima) */
+                                growthWindowMax: number;
+                                /** @description (u danima) */
+                                harvestWindowMin: number;
+                                /** @description (u danima) */
+                                harvestWindowMax: number;
                             };
                             prices?: {
                                 /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */

@@ -266,13 +266,15 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         let plantSortId = undefined;
         let plantScheduledDate = undefined;
         let plantSowDate = undefined;
+        let plantGrowthDate = undefined;
+        let plantReadyDate = undefined;
 
         // TODO: Implement multiple handling
         // let operationId = undefined;
         // let operationStatus = undefined;
 
         for (const event of events) {
-            console.debug(`Processing event ${raisedBedId}|${field.positionIndex}: ${event.type} data: ${JSON.stringify(event.data)}`);
+            console.debug(`Processing event for field ${field.id}:`, event);
 
             const data = event.data as Record<string, any> | undefined;
             if (event.type === knownEventTypes.raisedBedFields.plantPlace) {
@@ -286,6 +288,10 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 plantStatus = data?.status ?? plantStatus;
                 if (plantStatus === 'sowed') {
                     plantSowDate = event.createdAt;
+                } else if (plantStatus === 'sprouted') {
+                    plantGrowthDate = event.createdAt;
+                } else if (plantStatus === 'ready') {
+                    plantReadyDate = event.createdAt;
                 }
             }
             // else if (event.type === knownEventTypes.raisedBedFields.operationOrder) {
@@ -303,22 +309,14 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             }
         }
 
-        console.log('Final field state:', JSON.stringify({
-            id: field.id,
-            raisedBedId: field.raisedBedId,
-            positionIndex: field.positionIndex,
-            plantStatus,
-            plantSortId,
-            plantScheduledDate,
-            plantSowDate
-        }));
-
         return {
             ...field,
             plantStatus,
             plantSortId,
             plantScheduledDate,
-            plantSowDate
+            plantSowDate,
+            plantGrowthDate,
+            plantReadyDate,
         };
     }));
 }
