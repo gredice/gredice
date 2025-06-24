@@ -16,6 +16,7 @@ export async function importEntityData(entityType: string, entityId: number, for
     try {
         data = JSON.parse(text);
     } catch (e) {
+        console.error('Failed to parse JSON:', e);
         throw new Error('Invalid JSON');
     }
     const entity = await getEntityRaw(entityId);
