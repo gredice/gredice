@@ -1,5 +1,5 @@
-import { and, eq, isNotNull, or, inArray, desc, isNull } from 'drizzle-orm';
-import { notifications, InsertNotification, SelectNotification } from '../schema';
+import { and, eq, isNotNull, or, inArray, desc, isNull, lt, notExists } from 'drizzle-orm';
+import { notifications, InsertNotification, SelectNotification, notificationEmailLog, users, userNotificationSettings, accountUsers, userLogins } from '../schema';
 import { storage } from '..';
 import { randomUUID } from 'node:crypto';
 
@@ -63,4 +63,91 @@ export function setAllNotificationsRead(accountId: string, userId: string, notif
 
 export function deleteNotification(id: string) {
     return storage().delete(notifications).where(eq(notifications.id, id));
+}
+
+export async function notificationsDigest({ markSent = true }: { markSent?: boolean } = {}) {
+    // 1. Get all users who want daily digests
+    const digestUsers = await storage()
+        .select({
+            id: users.id,
+            email: users.userName
+        })
+        .from(users)
+        .leftJoin(
+            userLogins,
+            eq(users.id, userLogins.userId))
+        .leftJoin(
+            userNotificationSettings,
+            eq(users.id, userNotificationSettings.userId))
+        .where(
+            or(
+                and(
+                    eq(userNotificationSettings.emailEnabled, true),
+                    eq(userNotificationSettings.dailyDigest, true)
+                ),
+                isNull(userNotificationSettings.userId)));
+
+    // Get user accounts
+    const usersAccounts = await storage()
+        .select({
+            accountId: accountUsers.accountId,
+            userId: accountUsers.userId
+        })
+        .from(accountUsers)
+        .where(inArray(accountUsers.userId, digestUsers.map(u => u.id)));
+
+    const bulkEmailData: { userId: string, email: string, newNotificationsCount: number }[] = [];
+    const emailLogEntries: { userId: string, notificationId: string }[] = [];
+
+    for (const user of digestUsers) {
+        const accountIds = usersAccounts
+            .filter(ua => ua.userId === user.id)
+            .map(ua => ua.accountId);
+
+        // 2. Get unread + unemailed notifications targeted to this user or their account
+        const notificationsToEmail = await storage()
+            .select({
+                id: notifications.id
+            })
+            .from(notifications)
+            .where(and(
+                isNull(notifications.readAt), // only unread notifications
+                or(
+                    eq(notifications.userId, user.id), // directly to user
+                    and(
+                        isNull(notifications.userId),     // account-wide
+                        inArray(notifications.accountId, accountIds) // for user's accounts
+                    )
+                ),
+                notExists(
+                    storage().select().from(notificationEmailLog).where(and(
+                        eq(notificationEmailLog.notificationId, notifications.id),
+                        eq(notificationEmailLog.userId, user.id)
+                    ))
+                )
+            ));
+
+        if (notificationsToEmail.length > 0) {
+            // Add to bulk email send
+            bulkEmailData.push({
+                userId: user.id,
+                email: user.email,
+                newNotificationsCount: notificationsToEmail.length
+            });
+
+            // Track these for logging
+            emailLogEntries.push(
+                ...notificationsToEmail.map(n => ({
+                    userId: user.id,
+                    notificationId: n.id
+                }))
+            );
+        }
+    }
+
+    if (markSent && bulkEmailData.length > 0) {
+        await storage().insert(notificationEmailLog).values(emailLogEntries);
+    }
+
+    return bulkEmailData;
 }
