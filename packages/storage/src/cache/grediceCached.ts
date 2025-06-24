@@ -12,27 +12,36 @@ function cacheClient() {
     return redis;
 }
 
-export const cacheKeys = {
-    entity: (entityId: number) => `entity:${entityId}`,
-    entityTypeName: (entityTypeName: string) => `entityTypeName:${entityTypeName}`,
+export const grediceCacheKeys = {
+    forecast: 'forecast',
 }
 
-export async function grediceCached(key: string, fn: () => Promise<any>, ttl: number = 60): Promise<any> {
-    const client = cacheClient();
-    const cachedValue = await client.get(key)
-    if (cachedValue) {
-        try {
-            return cachedValue;
-        } catch (error) {
-            console.error(`Error parsing cached value for key "${key}":`, error);
-            // Optionally, you could delete the corrupted cache entry
-            await client.del(key);
+export async function grediceCached<T>(key: string, fn: () => Promise<T>, ttl: number = 60) {
+    let client: Redis | null = null;
+    let cachedValue: T | null = null;
+    try {
+        client = cacheClient();
+        cachedValue = await client.get<T>(key)
+        if (cachedValue) {
+            try {
+                return cachedValue;
+            } catch (error) {
+                console.error(`Error parsing cached value for key "${key}":`, error);
+                // Optionally, you could delete the corrupted cache entry
+                await client.del(key);
+            }
         }
+    } catch (error) {
+        console.warn(`Error accessing cache for key "${key}":`, error);
     }
 
     if (!cachedValue) {
         const value = await fn();
-        await client.set(key, value, { ex: ttl });
+        try {
+            await client?.set(key, value, { ex: ttl });
+        } catch (error) {
+            console.error(`Error setting cache for key "${key}":`, error);
+        }
         return value;
     }
 }

@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { getBjelovarForecast } from '../../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../../lib/weather/populateWeatherFromSymbol';
 import { describeRoute } from 'hono-openapi';
+import { TZDate } from "@date-fns/tz";
+import { grediceCached, grediceCacheKeys } from '@gredice/storage';
 
 const app = new Hono()
     .get(
@@ -10,7 +12,7 @@ const app = new Hono()
             description: 'Get weather forecast',
         }),
         async (context) => {
-            return context.json(await getBjelovarForecast());
+            return context.json(await grediceCached(grediceCacheKeys.forecast, getBjelovarForecast));
         })
     .get(
         '/now',
@@ -18,29 +20,24 @@ const app = new Hono()
             description: 'Get current weather',
         }),
         async (context) => {
-            const forecast = await getBjelovarForecast();
+            const forecast = await grediceCached(grediceCacheKeys.forecast, getBjelovarForecast);
             if (!forecast || forecast.length === 0) {
                 return context.json({ error: 'Forecast not available' }, { status: 500 });
             }
 
+
             // Find the forecast entry closest to now
-            const now = new Date();
+            const nowLocal = new TZDate(TZDate.now(), 'Europe/Zagreb');
             let closestEntry = null;
             let minDiff = Infinity;
 
             for (const day of forecast) {
-                const date = new Date(day.date); // day.date is assumed to be YYYY-MM-DD
-                console.debug(`Checking date: ${date.toISOString()}`);
                 for (const entry of day.entries) {
-                    // entry.time is hour in 24h format
-                    const entryDate = new Date(date);
-                    entryDate.setHours(entry.time, 0, 0, 0);
-                    const diff = Math.abs(entryDate.getTime() - now.getTime());
-                    console.debug(`Checking entry: ${entryDate.toISOString()} with diff ${diff}`);
+                    const entryDateTime = new TZDate(`${day.date}T${entry.time.toString().padStart(2, "0")}:00:00`, 'Europe/Zagreb');
+                    const diff = Math.abs(entryDateTime.getTime() - nowLocal.getTime());
                     if (diff < minDiff) {
                         minDiff = diff;
                         closestEntry = entry;
-                        console.debug(`Found closer entry: ${entryDate.toISOString()} with diff ${diff}`);
                     }
                 }
             }
