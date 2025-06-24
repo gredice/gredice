@@ -1,19 +1,16 @@
-/* eslint-disable tailwindcss/enforces-shorthand */
-/* eslint-disable tailwindcss/classnames-order */
 import {
     Head,
     Html,
     Preview,
     Section, Tailwind,
 } from '@react-email/components';
-import { PrimaryButton } from '../components/PrimaryButton';
-import { Paragraph } from '../components/Paragraph';
-import { Link } from '../components/Link';
-import { Header } from '../components/Header';
-import { Divider } from '../components/Divider';
-import { Disclaimer } from '../components/Disclaimer';
-import { ContentCard } from '../components/ContentCard';
-import { GrediceLogotype } from '../components/GrediceLogotype';
+import { PrimaryButton } from '../../components/PrimaryButton';
+import { Paragraph } from '../../components/Paragraph';
+import { Header } from '../../components/Header';
+import { Divider } from '../../components/Divider';
+import { ContentCard } from '../../components/ContentCard';
+import { GrediceLogotype } from '../../components/GrediceLogotype';
+import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 
 export interface EmailVerifyEmailTemplateProps {
     email: string;
@@ -51,13 +48,7 @@ export default function EmailVerifyEmailTemplate({
                         Ukoliko ne očekuješ ovu potvrdu, možeš zanemariti ovaj email.
                     </Paragraph>
                     <Divider className="my-[26px]" />
-                    <Disclaimer>
-                        Ovaj email je namjenjen za{' '}
-                        <span className="text-black">{email}</span>. Ako ne očekuješ
-                        ovu potvrdu, možeš zanemariti ovaj email. U slučaju da misliš da je tvoj račun ugrožen,
-                        molimo kontaktiraj nas na{' '}
-                        <Link href={`mailto:security@${appDomain}`}>security@{appDomain}</Link>
-                    </Disclaimer>
+                    <GrediceDisclaimer email={email} appDomain={appDomain} />
                 </ContentCard>
             </Tailwind>
         </Html>
