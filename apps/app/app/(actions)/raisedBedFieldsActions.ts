@@ -24,9 +24,19 @@ export async function raisedBedFieldUpdatePlant({ raisedBedId, positionIndex, st
         const sortData = await getEntityFormatted(field.plantSortId);
         if (sortData) {
             // Create sprouted notification
-            if (status === 'sprouted') {
-                const header = `🌱 Proklijala je ${sortData.information.name}!`;
-                const content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** proklijala je biljka **${sortData.information.name}**.`;
+            let header: string | null = null;
+            let content: string | null = null;
+            if (status === 'sowed') {
+                // TODO: Add seed image
+                header = `Biljka ${sortData.information.name} je posijana!`;
+                content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** posijana je biljka **${sortData.information.name}**.`;
+            } else if (status === 'sprouted') {
+                // TODO: Add sprouted image
+                header = `🌱 Proklijala je biljka ${sortData.information.name}!`;
+                content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** proklijala je biljka **${sortData.information.name}**.`;
+            }
+
+            if (header && content) {
                 await createNotification({
                     accountId: raisedBed.accountId,
                     gardenId: raisedBed.gardenId,

@@ -35,6 +35,7 @@ export function NotificationCreateModal({ accountId, userId, gardenId }: { accou
                             <Input name="userId" defaultValue={userId} label="User ID (opcionalno)" disabled={pending} />
                             <Input name="gardenId" defaultValue={gardenId} label="Garden ID (opcionalno)" type="number" disabled={pending} />
                             <Input name="blockId" label="Block ID (opcionalno)" disabled={pending} />
+                            <Input name="createdAt" type="datetime-local" label="Datum kreiranja (opcionalno)" disabled={pending} />
                         </div>
                         <Button type="submit" loading={pending} disabled={pending}>
                             Pošalji
