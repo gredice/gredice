@@ -5,7 +5,7 @@ import { useStackHeight } from "../utils/getStackHeight";
 import { useGameGLTF } from "../utils/useGameGLTF";
 import { useEntityNeighbors } from "./helpers/useEntityNeighbors";
 import { useHoveredBlockStore } from "../controls/SelectableGroup";
-import { HoverOutline } from "./RaisedBedContruction";
+import { HoverOutline } from "./helpers/HoverOutline";
 
 export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url)

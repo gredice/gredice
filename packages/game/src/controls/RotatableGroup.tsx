@@ -42,9 +42,6 @@ export function RotatableGroup({ children, block }: PropsWithChildren<{ block: B
     }
 
     function handleRotateCancel() {
-        if (!rotateInitiated.current)
-            return;
-
         console.debug("Rotate cancel - leave");
         rotateInitiated.current = null;
     }

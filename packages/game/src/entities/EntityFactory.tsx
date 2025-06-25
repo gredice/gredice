@@ -8,7 +8,6 @@ import { Fence } from "./Fence";
 import { Stool } from "./Stool";
 import { Bucket } from "./Bucket";
 import { RotatableGroup } from "../controls/RotatableGroup";
-import { RaisedBedContruction } from "./RaisedBedContruction";
 import { SelectableGroup } from "../controls/SelectableGroup";
 import { StoneSmall } from "./StoneSmall";
 import { StoneMedium } from "./StoneMedium";
@@ -35,7 +34,6 @@ const entityNameMap: Record<string, any> = {
     "StoneSmall": StoneSmall,
     "StoneMedium": StoneMedium,
     "StoneLarge": StoneLarge,
-    "Raised_Bed_Construction": RaisedBedContruction,
 };
 
 type EntityFactoryProps = {
