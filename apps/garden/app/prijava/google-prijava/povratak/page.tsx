@@ -24,8 +24,10 @@ export default function GoogleCallbackPage() {
             }
 
             const token = searchParams.get('session');
-            localStorage.setItem('gredice-token', token);
-            await queryClient.invalidateQueries();
+            if (token) {
+                localStorage.setItem('gredice-token', token);
+                await queryClient.invalidateQueries();
+            }
             router.push('/');
         }
 
