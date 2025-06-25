@@ -1,7 +1,7 @@
 import { SignedOut } from "@signalco/auth-client/components";
 import LoginModal from "../components/auth/LoginModal";
 import { GameSceneDynamic } from "./GameSceneDynamic";
-import { enableDebugHudFlag, shoppingCartFlag } from "./flags";
+import { enableDebugHudFlag, enableSocialLoginFlag, shoppingCartFlag } from "./flags";
 import { ComponentProps } from "react";
 
 export default async function Home() {
@@ -12,12 +12,13 @@ export default async function Home() {
     allowAddToCartFlag: await shoppingCartFlag(),
     allowRaisedBedSelectionFlag: await shoppingCartFlag(),
   };
+  const socialLoginFlag = await enableSocialLoginFlag();
 
   return (
     <div className="grid grid-cols-1 h-[100dvh] relative overflow-hidden">
       <GameSceneDynamic flags={flags} />
       <SignedOut>
-        <LoginModal />
+        <LoginModal socialLoginFlag={socialLoginFlag} />
       </SignedOut>
     </div>
   );

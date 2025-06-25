@@ -1,11 +1,12 @@
 import { Hono } from 'hono';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from "zod";
-import { blockLogin, changePassword, clearLoginFailedAttempts, createUserWithPassword, getUserWithLogins, incLoginFailedAttempts, loginSuccessful, updateLoginData } from '@gredice/storage';
-import { pbkdf2Sync } from 'node:crypto';
+import { blockLogin, changePassword, clearLoginFailedAttempts, createOrUpdateUserWithOauth, createUserWithPassword, getUserWithLogins, incLoginFailedAttempts, loginSuccessful, updateLoginData } from '@gredice/storage';
+import { pbkdf2Sync, randomUUID } from 'node:crypto';
 import { clearCookie, createJwt, verifyJwt, setCookie } from '../../../lib/auth/auth';
 import { sendChangePassword, sendEmailVerification } from '../../../lib/auth/email';
 import { sendWelcome } from '../../../lib/email/transactional';
+import { exchangeCodeForToken, fetchUserInfo, generateAuthUrl } from '../../../lib/auth/oauth';
 
 const failedAttemptClearTime = 1000 * 60; // 1 minute
 const failedAttemptsBlock = 5;
@@ -101,6 +102,90 @@ const app = new Hono()
             return context.json({
                 token
             });
+        })
+    .get(
+        "/google",
+        async (c) => {
+            const state = randomUUID().replace('-', '');
+            const authUrl = generateAuthUrl("google", state)
+
+            // Store state in cookie for verification
+            c.header("Set-Cookie", `oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Max-Age=600`)
+
+            return c.redirect(authUrl)
+        })
+    .get(
+        "/google/callback",
+        async (context) => {
+            try {
+                const code = context.req.query("code")
+                const state = context.req.query("state")
+                if (!code || !state) {
+                    return context.json({ message: "Missing code or state" }, 400)
+                }
+
+                const tokenData = await exchangeCodeForToken("google", code)
+                const userInfo = await fetchUserInfo("google", tokenData.access_token)
+                const { userId, loginId } = await createOrUpdateUserWithOauth({
+                    name: userInfo.name,
+                    email: userInfo.email,
+                    providerUserId: userInfo.id,
+                    provider: "google",
+                });
+
+                const token = await createJwt(userId);
+                await Promise.all([
+                    setCookie(context, token),
+                    loginSuccessful(loginId)
+                ]);
+
+                return context.redirect(`https://vrt.gredice.com/prijava/google-prijava/povratak?session=${token}`)
+            } catch (error) {
+                console.error("Google OAuth error:", error)
+                return context.redirect("https://vrt.gredice.com/prijava/google-prijava/povratak?error=oauth_error")
+            }
+        })
+    .get(
+        "/facebook",
+        async (c) => {
+            const state = randomUUID().replace('-', '');
+            const authUrl = generateAuthUrl("facebook", state)
+
+            // Store state in cookie for verification
+            c.header("Set-Cookie", `oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Max-Age=600`)
+
+            return c.redirect(authUrl)
+        })
+    .get(
+        "/facebook/callback",
+        async (context) => {
+            try {
+                const code = context.req.query("code")
+                const state = context.req.query("state")
+                if (!code || !state) {
+                    return context.json({ message: "Missing code or state" }, 400)
+                }
+
+                const tokenData = await exchangeCodeForToken("facebook", code)
+                const userInfo = await fetchUserInfo("facebook", tokenData.access_token)
+                const { userId, loginId } = await createOrUpdateUserWithOauth({
+                    name: userInfo.name,
+                    email: userInfo.email,
+                    providerUserId: userInfo.id,
+                    provider: "facebook",
+                });
+
+                const token = await createJwt(userId);
+                await Promise.all([
+                    setCookie(context, token),
+                    loginSuccessful(loginId)
+                ]);
+
+                return context.redirect(`https://vrt.gredice.com/prijava/facebook-prijava/povratak?session=${token}`)
+            } catch (error) {
+                console.error("Facebook OAuth error:", error)
+                return context.redirect("https://vrt.gredice.com/prijava/facebook-prijava/povratak?error=oauth_error")
+            }
         })
     .post(
         '/change-password',
