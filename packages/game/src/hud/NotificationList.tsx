@@ -61,7 +61,7 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
                             />
                         )}
                         <Stack>
-                            <Typography level="body2" bold noWrap className="mr-3">{header}</Typography>
+                            <Typography level="body2" bold className="mr-3">{header}</Typography>
                             <Markdown>
                                 {content}
                             </Markdown>

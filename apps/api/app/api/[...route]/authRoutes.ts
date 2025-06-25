@@ -167,8 +167,14 @@ const app = new Hono()
         })
     .get(
         "/facebook",
+        zValidator(
+            "query",
+            z.object({
+                state: z.string().optional(),
+            })
+        ),
         async (context) => {
-            const state = randomUUID().toString().replace('-', '');
+            const state = context.req.valid('query')?.state ?? randomUUID().toString().replace('-', '');
             const authUrl = generateAuthUrl("facebook", state)
 
             // Store state in cookie for verification
@@ -186,6 +192,20 @@ const app = new Hono()
                     return context.json({ message: "Missing code or state" }, 400)
                 }
 
+                let currentUserId: string | undefined;
+                try {
+                    const { result, error } = await verifyJwt(state);
+                    if (error || !result?.payload.sub) {
+                        throw new Error("Invalid state token");
+                    }
+                    currentUserId = result.payload.sub;
+                    console.debug('User authenticated', currentUserId, 'proceeding with OAuth flow and existing user assignment');
+                } catch {
+                    // Note: this means user is not authenticated, and we can proceed with 
+                    // user creation but will not allow provider assignment to existing user
+                    console.debug('User not authenticated, proceeding with OAuth flow without existing user assignment');
+                }
+
                 const tokenData = await exchangeCodeForToken("facebook", code)
                 const userInfo = await fetchUserInfo("facebook", tokenData.access_token)
                 const { userId, loginId } = await createOrUpdateUserWithOauth({
@@ -193,7 +213,7 @@ const app = new Hono()
                     email: userInfo.email,
                     providerUserId: userInfo.id,
                     provider: "facebook",
-                });
+                }, currentUserId);
 
                 const token = await createJwt(userId);
                 await Promise.all([

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from "zod";
-import { getUser, updateUser } from '@gredice/storage';
+import { getUser, getUserWithLogins, updateUser } from '@gredice/storage';
 import { describeRoute } from 'hono-openapi';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 
@@ -27,6 +27,42 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 createdAt: dbUser.createdAt,
             });
         })
+    .get(
+        '/:userId/logins',
+        describeRoute({
+            description: 'Get the login methods of a user. Only the current user can view their own login methods.',
+        }),
+        zValidator(
+            "param",
+            z.object({
+                userId: z.string(),
+            })
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { userId } = context.req.valid('param');
+            const { userId: authUserId } = context.get('authContext');
+            if (userId !== authUserId) {
+                console.warn(`User ${authUserId} tried to access login methods of user ${userId} without permission`);
+                return context.json({ error: 'User not found' }, { status: 404 });
+            }
+
+            const user = await getUser(userId);
+            if (!user) {
+                return context.json({ error: 'User not found' }, { status: 404 });
+            }
+
+            const loginMethods = await getUserWithLogins(user.userName);
+            return context.json({
+                methods: loginMethods?.usersLogins.map(login => ({
+                    id: login.id,
+                    provider: login.loginType,
+                    providerUserId: login.loginId,
+                    lastLogin: login.lastLogin,
+                })) || [],
+            });
+        }
+    )
     .patch(
         '/:userId',
         describeRoute({

@@ -111,7 +111,7 @@ export function SoundSettingsCard() {
                         startDecorator={<Reset className="size-4" />}
                         size="sm"
                         className="self-end">
-                        Vrati zadani
+                        Vrati zadano
                     </Button>
                 </Stack>
             </CardContent>
