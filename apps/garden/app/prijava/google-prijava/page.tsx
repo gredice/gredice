@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card"
 import { Typography } from '@signalco/ui-primitives/Typography'
 import { Stack } from '@signalco/ui-primitives/Stack'
