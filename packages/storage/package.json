@@ -19,6 +19,9 @@
         "test:node": "pnpm run test:db:start && pnpm run test:db:migrate && tsx --test --env-file=.env.test --conditions=react-server ./tests/**/*.node.spec.ts && pnpm run test:db:stop"
     },
     "devDependencies": {
+        "@eslint/eslintrc": "3.3.1",
+        "@eslint/js": "9.29.0",
+        "eslint": "9.29.0",
         "@neondatabase/serverless": "1.0.1",
         "@signalco/js": "0.1.0",
         "@upstash/redis": "1.35.0",

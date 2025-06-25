@@ -1,10 +1,17 @@
 import 'server-only';
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { createAccount, getFarms, storage } from "..";
 import { accountUsers, UpdateUserInfo, userLogins, users } from "../schema";
 import { createGarden } from "./gardensRepo";
 import { randomUUID, randomBytes as cryptoRandomBytes, pbkdf2Sync } from 'node:crypto';
 import { createEvent, knownEvents } from './eventsRepo';
+
+export interface OAuthUserData {
+    name: string
+    email: string
+    providerUserId: string
+    provider: "google" | "facebook"
+}
 
 export function getUsers() {
     return storage().query.users.findMany({
@@ -49,29 +56,45 @@ export function loginSuccessful(userLoginId: number) {
     }).where(eq(userLogins.id, userLoginId));
 }
 
-/**
- * Creates a user with a password login
- * @param userName The user name
- * @param password The password
- * @returns The user id
- */
-export async function createUserWithPassword(userName: string, password: string) {
-    // Check if user already exists
-    const existingUser = await storage().query.users.findFirst({
-        where: eq(users.userName, userName)
-    });
-    if (existingUser) {
-        throw new Error('User already exists');
+async function createUser(userName: string, displayName?: string) {
+    await ensureUserNameIsUnique(userName);
+    const createdUsers = await storage()
+        .insert(users)
+        .values({
+            id: randomUUID(),
+            userName,
+            displayName,
+            role: 'user'
+        })
+        .returning({ id: users.id });
+    const userId = createdUsers[0].id;
+    if (!userId) {
+        throw new Error('Failed to create user');
     }
+    await createEvent(knownEvents.users.createdV1(userId));
+    return userId;
+}
 
-    // Create account
-    const accountId = await createAccount();
+async function ensureUserNameIsUnique(userName: string) {
+    const userNameExists = Boolean(await storage().query.users.findFirst({
+        where: eq(users.userName, userName)
+    }));
+    if (userNameExists) {
+        throw new Error('User with provided user name already exists');
+    }
+}
 
-    // Create default farm
+async function getDefaultFarm() {
     const farm = (await getFarms())[0];
     if (!farm) {
         throw new Error('No farm found');
     }
+    return farm;
+}
+
+async function createDefaultGarden(accountId: string) {
+    const farm = await getDefaultFarm();
+
     // Create garden and get its ID
     const gardenId = await createGarden({
         farmId: farm.id,
@@ -110,21 +133,12 @@ export async function createUserWithPassword(userName: string, password: string)
             await updateGardenStack(gardenId, { x, y, blocks: blockIds });
         }
     }
+}
 
-    // Create user
-    const createdUsers = await storage()
-        .insert(users)
-        .values({
-            id: randomUUID(),
-            userName,
-            role: 'user'
-        })
-        .returning({ id: users.id });
-    const userId = createdUsers[0].id;
-    if (!userId) {
-        throw new Error('Failed to create user');
-    }
-    await createEvent(knownEvents.users.createdV1(userId));
+async function createUserAndAccount(userName: string, displayName?: string) {
+    const userId = await createUser(userName, displayName);
+    const accountId = await createAccount();
+    await createDefaultGarden(accountId);
 
     // Link user to account
     await storage().insert(accountUsers).values({
@@ -133,17 +147,75 @@ export async function createUserWithPassword(userName: string, password: string)
     });
     await createEvent(knownEvents.accounts.assignedUserV1(accountId, { userId }));
 
-    // Insert the password login
+    return userId;
+}
+
+function passwordHash(password: string) {
     const salt = cryptoRandomBytes(128).toString('base64');
-    const passwordHash = pbkdf2Sync(password, salt, 10000, 512, 'sha512').toString('hex');
+    return {
+        salt,
+        hash: pbkdf2Sync(password, salt, 10000, 512, 'sha512').toString('hex')
+    }
+}
+
+/**
+ * Creates a user with a password login
+ * @param userName The user name
+ * @param password The password
+ * @returns The user id
+ */
+export async function createUserWithPassword(userName: string, password: string) {
+    const userId = await createUserAndAccount(userName);
+
+    // Insert the password login
+    const { salt, hash } = passwordHash(password);
     await storage().insert(userLogins).values({
         userId,
         loginType: 'password',
         loginId: userName,
-        loginData: JSON.stringify({ salt, password: passwordHash, isVerified: false }),
+        loginData: JSON.stringify({ salt, password: hash, isVerified: false }),
     });
 
     return userId;
+}
+
+export async function createOrUpdateUserWithOauth(data: OAuthUserData) {
+    const existingLogin = await storage().query.userLogins.findFirst({
+        where: and(
+            eq(userLogins.loginType, data.provider),
+            eq(userLogins.loginId, data.providerUserId)),
+        with: {
+            user: true
+        },
+    });
+    if (existingLogin) {
+        return {
+            userId: existingLogin.userId,
+            loginId: existingLogin.id
+        }
+    }
+
+    const existingUser = await storage().query.users.findFirst({
+        where: eq(users.userName, data.email),
+    });
+    if (existingUser) {
+        throw new Error("Provider not assigned to the user.")
+    }
+
+    const userId = await createUserAndAccount(data.email, data.name);
+    const loginId = (await storage()
+        .insert(userLogins)
+        .values({
+            userId,
+            loginType: data.provider,
+            loginId: data.providerUserId,
+            loginData: JSON.stringify({ isVerified: true }),
+        })
+        .returning({ id: userLogins.id }))[0].id;
+    return {
+        userId,
+        loginId
+    };
 }
 
 export async function updateUserRole(userId: string, newRole: string) {
@@ -178,9 +250,6 @@ export async function updateLoginData(loginId: number, data: Record<string, any>
 }
 
 export async function changePassword(loginId: number, newPassword: string) {
-    const salt = cryptoRandomBytes(128).toString('base64');
-    const passwordHash = pbkdf2Sync(newPassword, salt, 10000, 512, 'sha512').toString('hex');
-    await storage().update(userLogins).set({
-        loginData: JSON.stringify({ salt, password: passwordHash, isVerified: true })
-    }).where(eq(userLogins.id, loginId));
+    const { salt, hash } = passwordHash(newPassword);
+    await updateLoginData(loginId, { salt, password: hash, isVerified: true });
 }

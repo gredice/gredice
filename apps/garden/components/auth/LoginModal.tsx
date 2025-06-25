@@ -12,8 +12,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Alert } from '@signalco/ui/Alert';
 import { client } from '@gredice/client';
+import { Divider } from '@signalco/ui-primitives/Divider';
+import { FacebookLoginButton } from './FacebookLoginButton';
+import { GoogleLoginButton } from './GoogleLoginButton';
 
-export default function LoginModal() {
+export default function LoginModal({ socialLoginFlag }: { socialLoginFlag?: boolean }) {
     const router = useRouter();
     const queryClient = useQueryClient();
     const [error, setError] = useState<string>();
@@ -65,6 +68,10 @@ export default function LoginModal() {
         router.push('/prijava/registracija-uspijesna');
     }
 
+    const handleOAuthLogin = (provider: "google" | "facebook") => {
+        window.location.href = `https://api.gredice.com/api/auth/${provider}`
+    }
+
     return (
         <Modal
             open
@@ -101,19 +108,24 @@ export default function LoginModal() {
                                     </Alert>
                                 )}
                             </Stack>
-                            {/* <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <Divider />
-                                </div>
-                                <div className="relative flex justify-center">
-                                    <span className="bg-background px-2 text-xs opacity-60">
-                                        ili nastavi sa
-                                    </span>
-                                </div>
-                            </div>
-                            <Link href="/prijava/facebook-prijava" legacyBehavior passHref>
-                                <FacebookLoginButton />
-                            </Link> */}
+                            {socialLoginFlag && (
+                                <>
+                                    <div className="relative">
+                                        <div className="absolute inset-0 flex items-center">
+                                            <Divider />
+                                        </div>
+                                        <div className="relative flex justify-center">
+                                            <span className="bg-background px-2 text-xs rounded-sm">
+                                                ili nastavi sa
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <Stack spacing={1}>
+                                        <FacebookLoginButton onClick={() => handleOAuthLogin('facebook')} />
+                                        <GoogleLoginButton onClick={() => handleOAuthLogin('google')} />
+                                    </Stack>
+                                </>
+                            )}
                         </div>
                     </TabsContent>
                     <TabsContent value="register" className="mt-4">
@@ -130,19 +142,24 @@ export default function LoginModal() {
                                     </Alert>
                                 )}
                             </Stack>
-                            {/* <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <Divider />
-                                </div>
-                                <div className="relative flex justify-center">
-                                    <span className="bg-background px-2 text-xs opacity-60">
-                                        ili nastavi sa
-                                    </span>
-                                </div>
-                            </div>
-                            <Link href="/prijava/facebook-prijava" legacyBehavior passHref>
-                                <FacebookLoginButton />
-                            </Link> */}
+                            {socialLoginFlag && (
+                                <>
+                                    <div className="relative">
+                                        <div className="absolute inset-0 flex items-center">
+                                            <Divider />
+                                        </div>
+                                        <div className="relative flex justify-center">
+                                            <span className="bg-background px-2 text-xs rounded-sm">
+                                                ili nastavi sa
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <Stack spacing={1}>
+                                        <FacebookLoginButton onClick={() => handleOAuthLogin('facebook')} />
+                                        <GoogleLoginButton onClick={() => handleOAuthLogin('google')} />
+                                    </Stack>
+                                </>
+                            )}
                         </div>
                     </TabsContent>
                 </Tabs>

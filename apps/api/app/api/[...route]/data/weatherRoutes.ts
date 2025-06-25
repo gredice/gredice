@@ -12,7 +12,8 @@ const app = new Hono()
             description: 'Get weather forecast',
         }),
         async (context) => {
-            return context.json(await grediceCached(grediceCacheKeys.forecast, getBjelovarForecast));
+            const forecast = await grediceCached(grediceCacheKeys.forecast, getBjelovarForecast);
+            return context.json(forecast ?? []);
         })
     .get(
         '/now',
