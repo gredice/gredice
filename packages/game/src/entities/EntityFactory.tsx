@@ -72,6 +72,18 @@ export function EntityFactory({ name, stack, block, noControl, enableSelection, 
         );
     }
 
+    const isTopBlock = stack.blocks.indexOf(block) === stack.blocks.length - 1;
+    if (!isTopBlock) {
+        return (
+            <RotatableGroup block={block}>
+                <EntityComponent
+                    stack={stack}
+                    block={block}
+                    {...rest} />
+            </RotatableGroup>
+        );
+    }
+
     return (
         <PickableGroup
             stack={stack}
