@@ -105,14 +105,14 @@ const app = new Hono()
         })
     .get(
         "/google",
-        async (c) => {
-            const state = randomUUID().replace('-', '');
+        async (context) => {
+            const state = randomUUID().toString().replace('-', '');
             const authUrl = generateAuthUrl("google", state)
 
             // Store state in cookie for verification
-            c.header("Set-Cookie", `oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Max-Age=600`)
+            context.header("Set-Cookie", `oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Max-Age=600`)
 
-            return c.redirect(authUrl)
+            return context.redirect(authUrl)
         })
     .get(
         "/google/callback",
@@ -147,14 +147,14 @@ const app = new Hono()
         })
     .get(
         "/facebook",
-        async (c) => {
-            const state = randomUUID().replace('-', '');
+        async (context) => {
+            const state = randomUUID().toString().replace('-', '');
             const authUrl = generateAuthUrl("facebook", state)
 
             // Store state in cookie for verification
-            c.header("Set-Cookie", `oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Max-Age=600`)
+            context.header("Set-Cookie", `oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Max-Age=600`)
 
-            return c.redirect(authUrl)
+            return context.redirect(authUrl)
         })
     .get(
         "/facebook/callback",
