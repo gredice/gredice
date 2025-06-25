@@ -1,39 +1,12 @@
-'use client'
-
-import { useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card"
 import { Typography } from '@signalco/ui-primitives/Typography'
 import { Stack } from '@signalco/ui-primitives/Stack'
 import { Row } from '@signalco/ui-primitives/Row'
 import { Spinner } from '@signalco/ui-primitives/Spinner';
-import { useQueryClient } from '@tanstack/react-query'
+import { Suspense } from "react";
+import { UrlAuthForward } from "../../UrlAuthForward";
 
 export default function GoogleCallbackPage() {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const queryClient = useQueryClient();
-
-    useEffect(() => {
-        const handleGoogleCallback = async () => {
-            const error = searchParams.get('error');
-            if (error) {
-                // TODO: Display notification
-                console.error('Google authentication error:', error);
-                router.push('/');
-            }
-
-            const token = searchParams.get('session');
-            if (token) {
-                localStorage.setItem('gredice-token', token);
-                await queryClient.invalidateQueries();
-            }
-            router.push('/');
-        }
-
-        handleGoogleCallback()
-    }, [router])
-
     return (
         <div className="flex items-center justify-center min-h-screen">
             <Card className="w-[350px] p-12">
@@ -75,6 +48,9 @@ export default function GoogleCallbackPage() {
                     </Stack>
                 </CardContent>
             </Card>
+            <Suspense>
+                <UrlAuthForward />
+            </Suspense>
         </div>
     )
 }
