@@ -17,15 +17,15 @@
   "dependencies": {
     "@azure/communication-email": "1.0.0",
     "@gredice/transactional": "workspace:*",
-    "@react-email/components": "0.1.0",
+    "@react-email/components": "0.1.1",
     "hypertune": "2.7.2",
     "next": "canary",
     "pg": "8.16.2",
+    "prettier": "3.6.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-email": "4.0.16",
+    "react-email": "4.0.17",
     "resend": "4.6.0",
-    "prettier": "3.6.1",
     "server-only": "0.0.1"
   },
   "devDependencies": {

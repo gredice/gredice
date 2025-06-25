@@ -17,12 +17,12 @@
     "regenerate:directories-api": "pnpm dlx openapi-typescript http://localhost:3005/api/docs/directories -o ./lib/@types/directories-api/v1.d.ts"
   },
   "dependencies": {
-    "@hono/zod-validator": "0.7.0",
-    "@scalar/api-reference-react": "0.7.23",
-    "@upstash/redis": "1.35.0",
     "@date-fns/tz": "1.2.0",
+    "@hono/zod-validator": "0.7.0",
+    "@scalar/api-reference-react": "0.7.25",
+    "@upstash/redis": "1.35.0",
     "date-fns": "4.1.0",
-    "hono": "4.8.2",
+    "hono": "4.8.3",
     "hono-openapi": "0.4.8",
     "next": "canary",
     "pg": "8.16.2",
