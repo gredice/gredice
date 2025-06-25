@@ -49,9 +49,6 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     flags?: {
         enableDebugHudFlag?: boolean
         enableDebugCloseupFlag?: boolean
-        shoppingCartFlag?: boolean
-        allowAddToCartFlag?: boolean
-        allowRaisedBedSelectionFlag?: boolean
     }
 }
 
@@ -121,7 +118,6 @@ function GameScene({
                                 block={block}
                                 rotation={block.rotation}
                                 variant={block.variant}
-                                enableSelection={Boolean(flags?.allowRaisedBedSelectionFlag)}
                             />
                         ))
                     )}
@@ -135,9 +131,7 @@ function GameScene({
                     <div className='absolute top-2 left-2 flex flex-col items-start gap-2'>
                         <AccountHud />
                         <GameModeHud />
-                        {Boolean(flags?.shoppingCartFlag) && (
-                            <ShoppingCartHud />
-                        )}
+                        <ShoppingCartHud />
                     </div>
                     <div className='absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2'>
                         <WeatherHud />

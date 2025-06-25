@@ -18,7 +18,3 @@ const hypertuneAdapter = createHypertuneAdapter<FlagValues, Context>({
 
 export const enableDebugHudFlag = flag(hypertuneAdapter.declarations.enableDebugHud);
 export const enableDebugCloseupFlag = flag(hypertuneAdapter.declarations.enableDebugCloseup);
-export const shoppingCartFlag = flag(hypertuneAdapter.declarations.shoppingCart);
-export const allowAddToCartFlag = flag(hypertuneAdapter.declarations.allowAddToCart);
-export const allowRaisedBedSelectionFlag = flag(hypertuneAdapter.declarations.allowRaisedBedSelection);
-export const enableSocialLoginFlag = flag(hypertuneAdapter.declarations.socialLogin);

@@ -274,8 +274,6 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         // let operationStatus = undefined;
 
         for (const event of events) {
-            console.debug(`Processing event for field ${field.id}:`, event);
-
             const data = event.data as Record<string, any> | undefined;
             if (event.type === knownEventTypes.raisedBedFields.plantPlace) {
                 if (data?.plantSortId) {
