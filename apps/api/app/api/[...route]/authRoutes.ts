@@ -3,7 +3,7 @@ import { validator as zValidator } from "hono-openapi/zod";
 import { z } from "zod";
 import { blockLogin, changePassword, clearLoginFailedAttempts, createOrUpdateUserWithOauth, createUserWithPassword, getUserWithLogins, incLoginFailedAttempts, loginSuccessful, updateLoginData } from '@gredice/storage';
 import { pbkdf2Sync, randomUUID } from 'node:crypto';
-import { clearCookie, createJwt, verifyJwt, setCookie } from '../../../lib/auth/auth';
+import { clearCookie, createJwt, verifyJwt, setCookie, auth } from '../../../lib/auth/auth';
 import { sendChangePassword, sendEmailVerification } from '../../../lib/auth/email';
 import { sendWelcome } from '../../../lib/email/transactional';
 import { exchangeCodeForToken, fetchUserInfo, generateAuthUrl } from '../../../lib/auth/oauth';
@@ -124,6 +124,17 @@ const app = new Hono()
                     return context.json({ message: "Missing code or state" }, 400)
                 }
 
+                let currentUserId: string | undefined;
+                try {
+                    const { userId } = await auth(["user", "admin"]);
+                    currentUserId = userId;
+                    console.debug('User authenticated', userId, 'proceeding with OAuth flow and existing user assignment');
+                } catch {
+                    // Note: this means user is not authenticated, and we can proceed with 
+                    // user creation but will not allow provider assignment to existing user
+                    console.debug('User not authenticated, proceeding with OAuth flow without existing user assignment');
+                }
+
                 const tokenData = await exchangeCodeForToken("google", code)
                 const userInfo = await fetchUserInfo("google", tokenData.access_token)
                 const { userId, loginId } = await createOrUpdateUserWithOauth({
@@ -131,7 +142,7 @@ const app = new Hono()
                     email: userInfo.email,
                     providerUserId: userInfo.id,
                     provider: "google",
-                });
+                }, currentUserId);
 
                 const token = await createJwt(userId);
                 await Promise.all([

@@ -179,7 +179,7 @@ export async function createUserWithPassword(userName: string, password: string)
     return userId;
 }
 
-export async function createOrUpdateUserWithOauth(data: OAuthUserData) {
+export async function createOrUpdateUserWithOauth(data: OAuthUserData, loggedInUserId?: string) {
     const existingLogin = await storage().query.userLogins.findFirst({
         where: and(
             eq(userLogins.loginType, data.provider),
@@ -195,14 +195,20 @@ export async function createOrUpdateUserWithOauth(data: OAuthUserData) {
         }
     }
 
+    // If user with given email doesn't exist, create a new user
     const existingUser = await storage().query.users.findFirst({
         where: eq(users.userName, data.email),
     });
-    if (existingUser) {
-        throw new Error("Provider not assigned to the user.")
+    let userId = existingUser?.id;
+    if (!existingUser) {
+        userId = await createUserAndAccount(data.email, data.name);
     }
 
-    const userId = await createUserAndAccount(data.email, data.name);
+    // If logged in user is provided, ensure that the provider is assigned to that user
+    if (!userId || loggedInUserId !== userId) {
+        throw new Error("Provider not assigned to the user.");
+    }
+
     const loginId = (await storage()
         .insert(userLogins)
         .values({
