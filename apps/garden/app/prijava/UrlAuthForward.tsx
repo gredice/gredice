@@ -16,18 +16,20 @@ export function UrlAuthForward() {
                 // TODO: Display notification
                 console.error('Authentication error:', error);
                 router.push('/');
+                return;
             }
 
             const token = searchParams.get('session');
             if (token) {
                 localStorage.setItem('gredice-token', token);
                 await queryClient.invalidateQueries();
+                router.push('/');
+                return;
             }
-            router.push('/');
         }
 
         handleGoogleCallback()
-    }, [router]);
+    }, [router, searchParams, queryClient]);
 
     return null;
 }

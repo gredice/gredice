@@ -46,7 +46,7 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
     }),
 }));
 
-export type InsertNotification = Omit<typeof notifications.$inferInsert, 'id' | 'createdAt'>;
+export type InsertNotification = Omit<typeof notifications.$inferInsert, 'id'>;
 export type UpdateNotification = Partial<Omit<typeof notifications.$inferInsert, 'id' | 'createdAt'>> & { id: number };
 export type SelectNotification = typeof notifications.$inferSelect;
 

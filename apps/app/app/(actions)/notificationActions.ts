@@ -15,6 +15,7 @@ export async function createNotificationAction(_prevState: unknown, formData: Fo
         userId: formData.get("userId") as string || undefined,
         gardenId: formData.get("gardenId") ? Number(formData.get("gardenId")) : undefined,
         blockId: formData.get("blockId") as string || undefined,
+        createdAt: formData.get("createdAt") ? new Date(formData.get("createdAt") as string) : new Date(),
         readAt: null,
         readWhere: undefined,
     };

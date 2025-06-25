@@ -3,7 +3,7 @@ import { validator as zValidator } from "hono-openapi/zod";
 import { z } from "zod";
 import { blockLogin, changePassword, clearLoginFailedAttempts, createOrUpdateUserWithOauth, createUserWithPassword, getUserWithLogins, incLoginFailedAttempts, loginSuccessful, updateLoginData } from '@gredice/storage';
 import { pbkdf2Sync, randomUUID } from 'node:crypto';
-import { clearCookie, createJwt, verifyJwt, setCookie, auth } from '../../../lib/auth/auth';
+import { clearCookie, createJwt, verifyJwt, setCookie } from '../../../lib/auth/auth';
 import { sendChangePassword, sendEmailVerification } from '../../../lib/auth/email';
 import { sendWelcome } from '../../../lib/email/transactional';
 import { exchangeCodeForToken, fetchUserInfo, generateAuthUrl } from '../../../lib/auth/oauth';
@@ -105,8 +105,14 @@ const app = new Hono()
         })
     .get(
         "/google",
+        zValidator(
+            "query",
+            z.object({
+                state: z.string().optional(),
+            })
+        ),
         async (context) => {
-            const state = randomUUID().toString().replace('-', '');
+            const state = context.req.valid('query')?.state ?? randomUUID().toString().replace('-', '');
             const authUrl = generateAuthUrl("google", state)
 
             // Store state in cookie for verification
@@ -126,9 +132,12 @@ const app = new Hono()
 
                 let currentUserId: string | undefined;
                 try {
-                    const { userId } = await auth(["user", "admin"]);
-                    currentUserId = userId;
-                    console.debug('User authenticated', userId, 'proceeding with OAuth flow and existing user assignment');
+                    const { result, error } = await verifyJwt(state);
+                    if (error || !result?.payload.sub) {
+                        throw new Error("Invalid state token");
+                    }
+                    currentUserId = result.payload.sub;
+                    console.debug('User authenticated', currentUserId, 'proceeding with OAuth flow and existing user assignment');
                 } catch {
                     // Note: this means user is not authenticated, and we can proceed with 
                     // user creation but will not allow provider assignment to existing user
