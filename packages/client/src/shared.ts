@@ -6,10 +6,18 @@ export function getAppUrl() {
     }
 }
 
+export function getAuthToken() {
+    if (typeof localStorage === 'undefined') {
+        return null;
+    }
+
+    return localStorage.getItem('gredice-token');
+}
+
 export function getAuthHeaders() {
     if (typeof localStorage === 'undefined') {
         return null;
     }
 
-    return `Bearer ${localStorage.getItem('gredice-token')}`;
+    return `Bearer ${getAuthToken()}`;
 }
