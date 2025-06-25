@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card"
 import { Typography } from '@signalco/ui-primitives/Typography'
 import { Stack } from '@signalco/ui-primitives/Stack'
@@ -9,21 +8,15 @@ import { Row } from '@signalco/ui-primitives/Row'
 import { Spinner } from '@signalco/ui-primitives/Spinner';
 
 export default function FacebookLoginPage() {
-    const router = useRouter()
-
     useEffect(() => {
         const handleFacebookCallback = async () => {
-            // Implement Facebook authentication logic here
-            console.log('Handling Facebook callback')
-            // After successful authentication, redirect to the appropriate page
-            // For now, we'll just redirect to the home page after a short delay
-            // setTimeout(() => {
-            //     router.push('/')
-            // }, 3000)
+            setTimeout(() => {
+                window.location.href = `https://api.gredice.com/api/auth/facebook`
+            }, 3000)
         }
 
         handleFacebookCallback()
-    }, [router])
+    }, [])
 
     return (
         <div className="flex items-center justify-center min-h-screen">
