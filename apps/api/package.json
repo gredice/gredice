@@ -26,7 +26,7 @@
     "hono-openapi": "0.4.8",
     "next": "canary",
     "pg": "8.16.2",
-    "prettier": "3.5.3",
+    "prettier": "3.6.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "resend": "4.6.0",

@@ -3,7 +3,7 @@ import { validator as zValidator } from "hono-openapi/zod";
 import { z } from "zod";
 import { blockLogin, changePassword, clearLoginFailedAttempts, createOrUpdateUserWithOauth, createUserWithPassword, getUserWithLogins, incLoginFailedAttempts, loginSuccessful, updateLoginData } from '@gredice/storage';
 import { pbkdf2Sync, randomUUID } from 'node:crypto';
-import { clearCookie, createJwt, verifyJwt, setCookie, auth } from '../../../lib/auth/auth';
+import { clearCookie, createJwt, verifyJwt, setCookie } from '../../../lib/auth/auth';
 import { sendChangePassword, sendEmailVerification } from '../../../lib/auth/email';
 import { sendWelcome } from '../../../lib/email/transactional';
 import { exchangeCodeForToken, fetchUserInfo, generateAuthUrl } from '../../../lib/auth/oauth';

@@ -25,6 +25,7 @@
     "react-dom": "19.1.0",
     "react-email": "4.0.16",
     "resend": "4.6.0",
+    "prettier": "3.6.1",
     "server-only": "0.0.1"
   },
   "devDependencies": {
