@@ -15,7 +15,7 @@ import { UserProfileCard } from "./components/UserProfileCard";
 import { NotificationList } from "../hud/NotificationList";
 import { useState } from "react";
 import { Row } from "@signalco/ui-primitives/Row";
-import { Approved, CompanyFacebook, Empty } from "@signalco/ui-icons";
+import { Approved, CompanyFacebook, Empty, Security } from "@signalco/ui-icons";
 import { useMarkAllNotificationsRead } from "../hooks/useMarkAllNotificationsRead";
 import { Button, ButtonProps } from "@signalco/ui-primitives/Button";
 import { getAuthToken } from "@gredice/client";
@@ -87,6 +87,7 @@ export function OverviewModal() {
     console.log('userLogins', userLogins);
     console.log('currentuser', currentUser.data);
     const token = getAuthToken();
+    const passwordLoginConnected = userLogins?.methods?.some(login => login.provider === 'password');
     const googleConnected = userLogins?.methods?.some(login => login.provider === 'google');
     const facebookConnected = userLogins?.methods?.some(login => login.provider === 'facebook');
 
@@ -169,7 +170,34 @@ export function OverviewModal() {
                             <Stack spacing={2}>
                                 <Card>
                                     <CardContent noHeader>
-                                        <Typography level="body2">Prijavljeni ste putem email adrese: <strong>{currentUser.data?.userName}</strong>.</Typography>
+                                        <Typography level="body2">Prijava putem email adrese: <strong>{currentUser.data?.userName}</strong></Typography>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardContent noHeader>
+                                        <Stack spacing={2}>
+                                            <Stack spacing={2}>
+                                                <Typography level="body2">Prijava putem emaila i zaporke.</Typography>
+                                                {passwordLoginConnected && (
+                                                    <Row spacing={2}>
+                                                        <Security className="size-8" />
+                                                        <Typography level="body1">Tvoj račun ima postavljenu zaporku.</Typography>
+                                                    </Row>
+                                                )}
+                                                {!passwordLoginConnected && (
+                                                    <Typography level="body3">Trenutno nemaš postavljenu zaporku.</Typography>
+                                                )}
+                                            </Stack>
+                                            <Stack spacing={1}>
+                                                <Button
+                                                    variant="outlined"
+                                                    href={`https://vrt.gredice.com/prijava/promjena-zaporke?token=${token}`}
+                                                    fullWidth
+                                                >
+                                                    {passwordLoginConnected ? 'Promijeni zaporku' : 'Postavi zaporku'}
+                                                </Button>
+                                            </Stack>
+                                        </Stack>
                                     </CardContent>
                                 </Card>
                                 <Card>
@@ -180,7 +208,7 @@ export function OverviewModal() {
                                         {!userLoginsLoading && (
                                             <Stack spacing={3}>
                                                 <Stack spacing={3}>
-                                                    <Typography level="body2">Poveži svoj račun s društvenim mrežama za bržu prijavu i bolju sigurnost.</Typography>
+                                                    <Typography level="body2">Poveži svoj račun društvene mrežame za bržu i sigurniju prijavu.</Typography>
                                                     {facebookConnected && (
                                                         <Row spacing={2}>
                                                             <CompanyFacebook className="size-8" />
