@@ -54,7 +54,7 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                 priority
                 sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
             />
-            <div className="absolute top-1 right-1 -m-6">
+            <div className="absolute top-1 right-1 -m-2 md:-m-6">
                 <PlantRecommendedBadge isRecommended={isRecommended} size="sm" />
             </div>
         </ItemCard>

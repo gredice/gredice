@@ -107,7 +107,7 @@ export function PlantPageHeader({ plant, sort }: { plant: PlantData & { isRecomm
                 </Stack>
                 <Stack spacing={1} className="group">
                     <Typography level="h2" className="text-2xl">Informacije</Typography>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <AttributeCard
                             icon={<LayoutGrid />}
                             header="Broj biljaka na 30x30 cm"
