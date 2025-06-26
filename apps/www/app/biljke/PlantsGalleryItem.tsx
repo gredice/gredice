@@ -33,7 +33,7 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                         <Typography>{information.name}</Typography>
                         <PlantYieldTooltip plant={{ information, attributes }}>
                             <Typography level="body3" tertiary className="text-right">
-                                prinos ~{(expectedYieldPerField / 1000).toFixed(1)} kg
+                                ~{(expectedYieldPerField / 1000).toFixed(1)} kg
                             </Typography>
                         </PlantYieldTooltip>
                     </Row>
