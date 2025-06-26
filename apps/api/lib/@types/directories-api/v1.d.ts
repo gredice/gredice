@@ -548,10 +548,16 @@ export interface components {
                 growthWindowMin: number;
                 /** @description (u danima) */
                 growthWindowMax: number;
+                /** @description (u gramima) */
+                yieldMax: number;
                 /** @description (u danima) */
                 harvestWindowMin: number;
+                /** @description (u gramima) */
+                yieldMin: number;
                 /** @description (u danima) */
                 harvestWindowMax: number;
+                /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
+                yieldType: string;
             };
             prices: {
                 /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
@@ -799,10 +805,16 @@ export interface components {
                         growthWindowMin: number;
                         /** @description (u danima) */
                         growthWindowMax: number;
+                        /** @description (u gramima) */
+                        yieldMax: number;
                         /** @description (u danima) */
                         harvestWindowMin: number;
+                        /** @description (u gramima) */
+                        yieldMin: number;
                         /** @description (u danima) */
                         harvestWindowMax: number;
+                        /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
+                        yieldType: string;
                     };
                     prices?: {
                         /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
@@ -1019,10 +1031,16 @@ export interface components {
                         growthWindowMin: number;
                         /** @description (u danima) */
                         growthWindowMax: number;
+                        /** @description (u gramima) */
+                        yieldMax: number;
                         /** @description (u danima) */
                         harvestWindowMin: number;
+                        /** @description (u gramima) */
+                        yieldMin: number;
                         /** @description (u danima) */
                         harvestWindowMax: number;
+                        /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
+                        yieldType: string;
                     };
                     prices?: {
                         /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
@@ -1137,10 +1155,16 @@ export interface components {
                                 growthWindowMin: number;
                                 /** @description (u danima) */
                                 growthWindowMax: number;
+                                /** @description (u gramima) */
+                                yieldMax: number;
                                 /** @description (u danima) */
                                 harvestWindowMin: number;
+                                /** @description (u gramima) */
+                                yieldMin: number;
                                 /** @description (u danima) */
                                 harvestWindowMax: number;
+                                /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
+                                yieldType: string;
                             };
                             prices?: {
                                 /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */

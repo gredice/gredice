@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@signalco/hooks": "0.2.1",
+    "@signalco/ui": "0.2.9",
     "@signalco/ui-icons": "0.2.2",
     "@signalco/ui-primitives": "0.6.1",
     "react": "19.1.0",
