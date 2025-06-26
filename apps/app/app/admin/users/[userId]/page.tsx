@@ -10,12 +10,14 @@ import Link from "next/link";
 import { SelectUserRole } from "../SelectUserRole";
 import { Row } from "@signalco/ui-primitives/Row";
 import { ButtonImpersonateUser } from "../ButtonImpersonateUser";
-import { Disabled, Warning } from "@signalco/ui-icons";
+import { Check, Disabled, Warning } from "@signalco/ui-icons";
 import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
 import { auth } from "../../../../lib/auth/auth";
 import { FieldSet } from "../../../../components/shared/fields/FieldSet";
 import { Field } from "../../../../components/shared/fields/Field";
 import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
+import { ServerActionIconButton } from "../../../../components/shared/ServerActionIconButton";
+import { unblockUserLogin } from "../../../(actions)/userActions";
 
 export default async function UserPage({ params }: { params: Promise<{ userId: string; }> }) {
     const { userId } = await params;
@@ -143,6 +145,12 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                                                             {'Blokiran do '}
                                                             <LocaleDateTime>{userLogin.blockedUntil}</LocaleDateTime>
                                                         </Typography>
+                                                        <ServerActionIconButton
+                                                            onClick={unblockUserLogin.bind(null, userLogin.id)}
+                                                            title="Odblokiraj"
+                                                        >
+                                                            <Check className="size-5" />
+                                                        </ServerActionIconButton>
                                                     </Row>
                                                 ) : userLogin.failedAttempts > 0 ? (
                                                     <Row spacing={1}>

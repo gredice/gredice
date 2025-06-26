@@ -43,6 +43,14 @@ export default function LoginModal() {
                     return;
                 }
             }
+            if ('errorCode' in json && json.errorCode === 'user_blocked' && 'blockedUntil' in json && json.blockedUntil && typeof json.blockedUntil === 'string') {
+                setError(`Korisnik je blokiran do ${new Date(json.blockedUntil).toLocaleString("hr-HR")}. Pokušaj ponovno kasnije.`);
+                return;
+            }
+            if ('leftAttempts' in json) {
+                setError(`Prijava nije uspjela. Preostalo pokušaja: ${json.leftAttempts}.`);
+                return;
+            }
 
             console.error('Login failed with status', response.status);
             setError('Prijava nije uspjela. Pokušaj ponovno.');

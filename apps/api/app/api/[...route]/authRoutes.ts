@@ -45,7 +45,9 @@ const app = new Hono()
             if (login.blockedUntil && login.blockedUntil.getTime() > Date.now()) {
                 console.debug('User blocked', email);
                 return context.json({
-                    error: 'User not found'
+                    error: 'User blocked',
+                    errorCode: 'user_blocked',
+                    blockedUntil: login.blockedUntil.toISOString()
                 }, { status: 404 });
             }
 
@@ -74,7 +76,9 @@ const app = new Hono()
                 await incLoginFailedAttempts(login.id);
 
                 return context.json({
-                    error: 'User not found'
+                    error: 'User login failed attempt',
+                    errorCode: 'login_failed',
+                    leftAttempts: failedAttemptsBlock - login.failedAttempts
                 }, { status: 404 });
             }
 
