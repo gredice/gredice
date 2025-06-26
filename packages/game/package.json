@@ -12,6 +12,7 @@
     "@gredice/client": "workspace:*",
     "@gredice/stripe": "workspace:*",
     "@gredice/ui": "workspace:*",
+    "@gredice/js": "workspace:*",
     "@radix-ui/react-progress": "1.1.7",
     "@radix-ui/react-slider": "1.3.5",
     "@react-spring/three": "10.0.1",

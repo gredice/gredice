@@ -10,6 +10,7 @@ import { PlantData } from "@gredice/client";
 import { PlantListItemSkeleton } from "./PlantListItemSkeleton";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Info } from "@signalco/ui-icons";
+import { PlantRecommendedBadge } from "@gredice/ui/plants";
 import { KnownPages } from "../../knownPages";
 import { Link } from "@signalco/ui-primitives/Link";
 import { Row } from "@signalco/ui-primitives/Row";
@@ -17,9 +18,17 @@ import { Row } from "@signalco/ui-primitives/Row";
 export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void }) {
     const { data: plants, isLoading, isError } = usePlants();
     const [search] = useSearchParam('pretraga', '');
+    // Filter plants based on search query
     const filteredPlants = search.length > 0
         ? plants?.filter(plant => plant.information.name.toLowerCase().includes(search.toLowerCase()))
         : plants;
+
+    // Mark and sort recommended plants
+    const sortedPlants = filteredPlants?.sort((a, b) => {
+        const aRec = a.isRecommended ? 1 : 0;
+        const bRec = b.isRecommended ? 1 : 0;
+        return bRec - aRec;
+    });
 
     return (
         <>
@@ -29,7 +38,7 @@ export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void 
                 </Alert>
             )}
             <List variant="outlined" className="bg-card max-h-96 overflow-y-auto">
-                {!isLoading && filteredPlants?.length === 0 && (
+                {!isLoading && sortedPlants?.length === 0 && (
                     <NoDataPlaceholder className="p-4">
                         Nema rezultata
                     </NoDataPlaceholder>
@@ -37,7 +46,7 @@ export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void 
                 {isLoading && Array.from({ length: 3 }).map((_, index) => (
                     <PlantListItemSkeleton key={index} />
                 ))}
-                {filteredPlants?.map((plant) => {
+                {sortedPlants?.map((plant) => {
                     const price = plant.prices?.perPlant ? plant.prices.perPlant.toFixed(2) : 'Nepoznato';
                     return (
                         <Row key={plant.id}>
@@ -55,7 +64,10 @@ export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void 
                                 )}
                                 label={(
                                     <Stack>
-                                        <Typography level="body1">{plant.information.name}</Typography>
+                                        <Typography level="body1">
+                                            {plant.information.name}{' '}
+                                            <PlantRecommendedBadge isRecommended={plant.isRecommended} size="sm" />
+                                        </Typography>
                                         <Typography level="body2" className="font-normal line-clamp-2 break-words">{plant.information.description}</Typography>
                                     </Stack>
                                 )}
