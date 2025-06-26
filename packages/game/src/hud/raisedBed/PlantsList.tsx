@@ -10,10 +10,11 @@ import { PlantData } from "@gredice/client";
 import { PlantListItemSkeleton } from "./PlantListItemSkeleton";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
 import { Info } from "@signalco/ui-icons";
-import { PlantRecommendedBadge } from "@gredice/ui/plants";
+import { PlantRecommendedBadge, PlantYieldTooltip } from "@gredice/ui/plants";
 import { KnownPages } from "../../knownPages";
 import { Link } from "@signalco/ui-primitives/Link";
 import { Row } from "@signalco/ui-primitives/Row";
+import { Chip } from "@signalco/ui-primitives/Chip";
 
 export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void }) {
     const { data: plants, isLoading, isError } = usePlants();
@@ -47,7 +48,15 @@ export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void 
                     <PlantListItemSkeleton key={index} />
                 ))}
                 {sortedPlants?.map((plant) => {
+                    let plantsPerRow = Math.floor(30 / (plant.attributes?.seedingDistance ?? 30));
+                    if (plantsPerRow < 1) {
+                        console.warn(`Plants per row is less than 1 (${plantsPerRow}) for ${plant.information.name}. Setting to 1.`);
+                        plantsPerRow = 1;
+                    }
+                    const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
                     const price = plant.prices?.perPlant ? plant.prices.perPlant.toFixed(2) : 'Nepoznato';
+                    const expectedYieldAverage = (plant.attributes.yieldMax ?? 0 - plant.attributes.yieldMin ?? 0) / 2 + (plant.attributes.yieldMin ?? 0);
+                    const expectedYieldPerField = plant.attributes.yieldType === 'perField' ? expectedYieldAverage : expectedYieldAverage * totalPlants;
                     return (
                         <Row key={plant.id}>
                             <ListItem
@@ -63,12 +72,24 @@ export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void 
                                         className="size-10" />
                                 )}
                                 label={(
-                                    <Stack>
+                                    <Stack className="pr-1">
                                         <Typography level="body1">
                                             {plant.information.name}{' '}
                                             <PlantRecommendedBadge isRecommended={plant.isRecommended} size="sm" />
                                         </Typography>
-                                        <Typography level="body2" className="font-normal line-clamp-2 break-words">{plant.information.description}</Typography>
+                                        <Typography level="body2" className="font-normal line-clamp-2 break-words">
+                                            {plant.information.description}
+                                        </Typography>
+                                        <Row spacing={1} className="mt-1">
+                                            <PlantYieldTooltip plant={plant}>
+                                                <Chip size="sm">
+                                                    Prinos ~{(expectedYieldPerField / 1000).toFixed(1)} kg
+                                                </Chip>
+                                            </PlantYieldTooltip>
+                                            <Chip size="sm">
+                                                {totalPlants} {totalPlants === 1 ? 'biljka' : (totalPlants < 5 ? 'biljke' : 'biljaka')}
+                                            </Chip>
+                                        </Row>
                                     </Stack>
                                 )}
                                 endDecorator={(

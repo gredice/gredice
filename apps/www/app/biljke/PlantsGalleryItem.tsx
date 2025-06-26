@@ -3,10 +3,9 @@ import { KnownPages } from "../../src/KnownPages";
 import { PlantImage } from "../../components/plants/PlantImage";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { cx } from "@signalco/ui-primitives/cx";
 import { PlantData } from "@gredice/client";
-import { PlantRecommendedBadge } from "@gredice/ui/plants";
+import { PlantYieldTooltip, PlantRecommendedBadge } from "@gredice/ui/plants";
+import { Stack } from "@signalco/ui-primitives/Stack";
 
 export type PlantsGalleryItemProps =
     Pick<PlantData, 'information' | 'attributes' | 'image'> &
@@ -24,25 +23,30 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
     }
     const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
     const pricePerPlant = prices?.perPlant ? (prices.perPlant / totalPlants).toFixed(2) : null;
+    const expectedYieldAverage = (attributes.yieldMax ?? 0 - attributes.yieldMin ?? 0) / 2 + (attributes.yieldMin ?? 0);
+    const expectedYieldPerField = attributes.yieldType === 'perField' ? expectedYieldAverage : expectedYieldAverage * totalPlants;
 
     return (
         <ItemCard
             label={(
-                <Row spacing={1} justifyContent={cx(showPrices ? "space-between" : 'center')}>
-                    <Typography>{information.name}</Typography>
-                    {(showPrices && pricePerPlant) && (
-                        <Stack>
-                            <Typography level="body3" tertiary>
-                                <span>{pricePerPlant}€</span>
-                                <span className="hidden md:inline-block">&nbsp;po biljci</span>
-                                <span className="md:hidden">/biljci</span>
-                            </Typography>
+                <Stack>
+                    <Row justifyContent="space-between">
+                        <Typography>{information.name}</Typography>
+                        <PlantYieldTooltip plant={{ information, attributes }}>
                             <Typography level="body3" tertiary className="text-right">
-                                min. {totalPlants} kom
+                                prinos ~{(expectedYieldPerField / 1000).toFixed(1)} kg
                             </Typography>
-                        </Stack>
-                    )}
-                </Row>
+                        </PlantYieldTooltip>
+                    </Row>
+                    <Row justifyContent="space-between">
+                        <Typography level="body2">{prices?.perPlant?.toFixed(2) ?? 'Nepoznato'}€</Typography>
+                        <Typography level="body3" tertiary>
+                            <span>{pricePerPlant}€</span>
+                            <span className="hidden md:inline-block">&nbsp;po biljci</span>
+                            <span className="md:hidden">/biljci</span>
+                        </Typography>
+                    </Row>
+                </Stack>
             )}
             href={KnownPages.Plant(information.name)}>
             <PlantImage
