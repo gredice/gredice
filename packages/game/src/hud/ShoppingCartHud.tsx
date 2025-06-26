@@ -247,7 +247,7 @@ function ShoppingCart() {
                             fullWidth
                             disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
                             loading={checkout.isPending}
-                            startDecorator={<Info className="size-5 shrink-0 stroke-red-600" />}
+                            startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0 stroke-red-600" /> : undefined}
                             endDecorator={<Navigate className="size-5 shrink-0" />}
                         >
                             Plaćanje
