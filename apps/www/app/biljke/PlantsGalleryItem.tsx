@@ -6,15 +6,17 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { cx } from "@signalco/ui-primitives/cx";
 import { PlantData } from "@gredice/client";
+import { PlantRecommendedBadge } from "@gredice/ui/plants";
 
 export type PlantsGalleryItemProps =
     Pick<PlantData, 'information' | 'attributes' | 'image'> &
     Partial<Pick<PlantData, 'prices'>> & {
         showPrices?: boolean;
+        isRecommended?: boolean;
     }
 
 export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
-    const { information, prices, attributes, showPrices = true } = props;
+    const { information, prices, attributes, showPrices = true, isRecommended } = props;
     let plantsPerRow = Math.floor(30 / (attributes?.seedingDistance ?? 30));
     if (plantsPerRow < 1) {
         console.warn(`Plants per row is less than 1 (${plantsPerRow}) for ${information.name}. Setting to 1.`);
@@ -49,6 +51,9 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                 priority
                 sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
             />
+            <div className="absolute top-1 right-1 -m-6">
+                <PlantRecommendedBadge isRecommended={isRecommended} size="sm" />
+            </div>
         </ItemCard>
     );
 }

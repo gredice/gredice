@@ -1,9 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { directoriesClient } from "@gredice/client";
+import { isPlantRecommended } from "@gredice/js/plants";
 
 async function getPlants() {
     const plants = await directoriesClient().GET("/entities/plant")
-    return plants.data?.sort((a, b) => a.information.name.localeCompare(b.information.name));
+    return plants.data
+        ?.sort((a, b) => a.information.name.localeCompare(b.information.name))
+        .map(plant => ({
+            ...plant,
+            isRecommended: isPlantRecommended(plant),
+        })) || [];
 }
 
 export function usePlants() {

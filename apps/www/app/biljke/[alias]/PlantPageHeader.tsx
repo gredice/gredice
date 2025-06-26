@@ -17,8 +17,9 @@ import { VerifiedInformationBadge } from "./VerifiedInformationBadge";
 import { PlantData, PlantSortData } from "@gredice/client";
 import { getPlantInforationSections } from "./getPlantInforationSections";
 import { Stack } from "@signalco/ui-primitives/Stack";
+import { PlantRecommendedBadge } from "@gredice/ui/plants";
 
-export function PlantPageHeader({ plant, sort }: { plant: PlantData, sort?: PlantSortData }) {
+export function PlantPageHeader({ plant, sort }: { plant: PlantData & { isRecommended: boolean | null | undefined }, sort?: PlantSortData }) {
     const informationSections = getPlantInforationSections(plant);
     let plantsPerRow = Math.floor(30 / (plant.attributes?.seedingDistance ?? 30));
     if (plantsPerRow < 1) {
@@ -64,6 +65,7 @@ export function PlantPageHeader({ plant, sort }: { plant: PlantData, sort?: Plan
                         </Stack>
                     )}
                     {plant.information.verified && <VerifiedInformationBadge />}
+                    <PlantRecommendedBadge isRecommended={plant.isRecommended} size="md" />
                     {informationSections.some((section) => section.avaialble) && (
                         <Stack spacing={1}>
                             <Typography level="body2">Sadržaj</Typography>
