@@ -10,12 +10,11 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 export type PlantsGalleryItemProps =
     Pick<PlantData, 'information' | 'attributes' | 'image'> &
     Partial<Pick<PlantData, 'prices'>> & {
-        showPrices?: boolean;
         isRecommended?: boolean;
     }
 
 export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
-    const { information, prices, attributes, showPrices = true, isRecommended } = props;
+    const { information, prices, attributes, isRecommended } = props;
     let plantsPerRow = Math.floor(30 / (attributes?.seedingDistance ?? 30));
     if (plantsPerRow < 1) {
         console.warn(`Plants per row is less than 1 (${plantsPerRow}) for ${information.name}. Setting to 1.`);
