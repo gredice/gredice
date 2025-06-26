@@ -1,6 +1,7 @@
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import { Info } from '@signalco/ui-icons';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@signalco/ui-primitives/Tooltip';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { PropsWithChildren } from 'react';
@@ -38,7 +39,10 @@ export function PlantYieldTooltip({ plant, children }: PropsWithChildren<{
     return (
         <Tooltip>
             <TooltipTrigger className='cursor-pointer'>
-                {children}
+                <Row>
+                    {children}
+                    <Info className='size-3 shrink-0 ml-1 mt-0.5' />
+                </Row>
             </TooltipTrigger>
             <TooltipContent>
                 <div className="text-sm">

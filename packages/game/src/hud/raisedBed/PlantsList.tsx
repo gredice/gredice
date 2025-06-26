@@ -81,11 +81,11 @@ export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void 
                                             {plant.information.description}
                                         </Typography>
                                         <Row spacing={1} className="mt-1">
-                                            <PlantYieldTooltip plant={plant}>
-                                                <Chip size="sm">
+                                            <Chip size="sm">
+                                                <PlantYieldTooltip plant={plant}>
                                                     Prinos ~{(expectedYieldPerField / 1000).toFixed(1)} kg
-                                                </Chip>
-                                            </PlantYieldTooltip>
+                                                </PlantYieldTooltip>
+                                            </Chip>
                                             <Chip size="sm">
                                                 {totalPlants} {totalPlants === 1 ? 'biljka' : (totalPlants < 5 ? 'biljke' : 'biljaka')}
                                             </Chip>
