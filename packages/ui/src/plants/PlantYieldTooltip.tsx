@@ -1,3 +1,4 @@
+import { Divider } from '@signalco/ui-primitives/Divider';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@signalco/ui-primitives/Tooltip';
@@ -30,6 +31,8 @@ export function PlantYieldTooltip({ plant, children }: PropsWithChildren<{
     const yieldType = plant.attributes.yieldType ?? 'perPlant';
     const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
     const expectedYieldAverage = (yieldMax - yieldMin) / 2 + yieldMin;
+    const minYieldPerField = yieldType === 'perField' ? yieldMin : yieldMin * totalPlants;
+    const maxYieldPerField = yieldType === 'perField' ? yieldMax : yieldMax * totalPlants;
     const expectedYieldPerField = yieldType === 'perField' ? expectedYieldAverage : expectedYieldAverage * totalPlants;
 
     return (
@@ -39,17 +42,27 @@ export function PlantYieldTooltip({ plant, children }: PropsWithChildren<{
             </TooltipTrigger>
             <TooltipContent>
                 <div className="text-sm">
-                    <Row spacing={2}>
-                        <span>Očekivani prinos</span>
-                        <Stack alignItems='center'>
-                            <span>~<strong>{(expectedYieldPerField / 1000).toFixed(1)}</strong> kg</span>
-                            <Row spacing={1}>
-                                <Typography level="body3"><strong>{yieldMin}</strong> g</Typography>
-                                {' - '}
-                                <Typography level="body3"><strong>{yieldMax}</strong> g</Typography>
-                            </Row>
+                    <Stack spacing={1} alignItems='center'>
+                        <Typography level="body2" bold>Očekivani prinos</Typography>
+                        <Divider className='w-20' />
+                        <Stack spacing={1} alignItems='center'>
+                            <span>~<strong>{(expectedYieldPerField / 1000).toFixed(1)}</strong> kg ({totalPlants} {totalPlants > 1 ? (totalPlants > 4 ? 'biljaka' : 'biljke') : 'biljka'})</span>
+                            <Stack alignItems='center'>
+                                {yieldType === 'perPlant' && (
+                                    <Row spacing={1}>
+                                        <Typography level="body3"><strong>{yieldMin}</strong> g</Typography>
+                                        {' - '}
+                                        <Typography level="body3"><strong>{yieldMax}</strong> g po biljci</Typography>
+                                    </Row>
+                                )}
+                                <Row spacing={1}>
+                                    <Typography level="body3"><strong>{minYieldPerField}</strong> g</Typography>
+                                    {' - '}
+                                    <Typography level="body3"><strong>{maxYieldPerField}</strong> g po polju</Typography>
+                                </Row>
+                            </Stack>
                         </Stack>
-                    </Row>
+                    </Stack>
                 </div>
             </TooltipContent>
         </Tooltip>

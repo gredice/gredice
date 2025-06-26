@@ -26,8 +26,8 @@ export function PageHeader({
         )}>
             <div className={cx("flex flex-col md:flex-row gap-4", !visual && "md:col-span-2")}>
                 {visual && (
-                    <Card className="min-w-48 min-h-48 size-48 shadow-lg">
-                        <CardOverflow className="p-6">
+                    <Card className="min-w-48 min-h-48 shadow-lg rounded-none md:rounded-lg -mx-4 md:mx-0 md:size-48">
+                        <CardOverflow className="p-6 flex justify-center">
                             {visual}
                         </CardOverflow>
                     </Card>
@@ -41,7 +41,7 @@ export function PageHeader({
                             alternativeName
                         )
                     )}
-                    {subHeader && <Typography level="body1" secondary className="text-balance">{subHeader}</Typography>}
+                    {subHeader && <Typography level="body1" secondary className="text-pretty sm:text-balance">{subHeader}</Typography>}
                     {headerChildren}
                 </Stack>
             </div>
