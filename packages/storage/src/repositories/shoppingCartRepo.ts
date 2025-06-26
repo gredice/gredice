@@ -65,7 +65,6 @@ export async function upsertOrRemoveCartItem(
     raisedBedId?: number,
     positionIndex?: number,
     additionalData?: string | null,
-    type: 'user' | 'automatic' = 'user', // new param, default to 'user',
     forceDelete: boolean = false
 ) {
     const existingItem = await storage().query.shoppingCartItems.findFirst({
@@ -77,35 +76,12 @@ export async function upsertOrRemoveCartItem(
             raisedBedId ? eq(shoppingCartItems.raisedBedId, raisedBedId) : undefined,
             typeof positionIndex === 'number' ? eq(shoppingCartItems.positionIndex, positionIndex) : undefined,
             eq(shoppingCartItems.isDeleted, false),
-            eq(shoppingCartItems.type, type)
         ),
     });
 
     // Prevent deletion of paid items
     if (!forceDelete && amount <= 0 && existingItem?.status === 'paid') {
         throw new Error('Cannot delete paid shopping cart item via API');
-    }
-
-    // Prevent deletion of automatic items (amount <= 0)
-    if (amount <= 0 && existingItem?.type === 'automatic' && existingItem.raisedBedId) {
-        // Check if this is a raised bed automatic item and if there are any other items for this raised bed
-        const hasOtherItemsForRaisedBed = await storage().query.shoppingCartItems.findFirst({
-            where: and(
-                eq(shoppingCartItems.cartId, cartId),
-                eq(shoppingCartItems.raisedBedId, existingItem.raisedBedId),
-                eq(shoppingCartItems.isDeleted, false),
-                // Exclude the automatic item itself
-                not(eq(shoppingCartItems.id, existingItem.id))
-            ),
-        });
-        if (!forceDelete && hasOtherItemsForRaisedBed) {
-            throw new Error('Cannot delete automatic shopping cart item via API');
-        }
-        // Allow removal if no other items for this raised bed
-        await storage().update(shoppingCartItems).set({
-            isDeleted: true,
-        }).where(eq(shoppingCartItems.id, existingItem.id));
-        return null;
     }
 
     if (amount <= 0) {
@@ -147,8 +123,7 @@ export async function upsertOrRemoveCartItem(
                 gardenId,
                 raisedBedId,
                 positionIndex,
-                additionalData,
-                type
+                additionalData
             })
             .returning({
                 id: shoppingCartItems.id

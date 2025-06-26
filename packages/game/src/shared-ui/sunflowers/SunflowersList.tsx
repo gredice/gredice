@@ -40,7 +40,7 @@ export function SunflowersList({ limit }: { limit?: number }) {
 
     // Group similar items on a daily basis
     const historyGrouped = history.reduce((acc, event) => {
-        const eventDate = new Date(event.createdAt).toLocaleDateString();
+        const eventDate = new Date(event.createdAt).toLocaleDateString("hr-HR");
         const key = `${eventDate}-${event.reason}-${event.amount}`;
 
         if (!acc.has(key)) {

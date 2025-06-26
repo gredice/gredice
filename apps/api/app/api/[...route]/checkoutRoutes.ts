@@ -47,7 +47,7 @@ export type ShoppingCartItemWithShopData = SelectShoppingCartItem & {
 };
 
 // TODO: Move to lib
-export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise<ShoppingCartItemWithShopData[]> {
+export async function getCartInfo(items: SelectShoppingCartItem[]) {
     const entityTypeNames = items.map((item) => item.entityTypeName);
     const uniqueEntityTypeNames = Array.from(new Set(entityTypeNames));
     const entitiesData = await Promise.all(uniqueEntityTypeNames.map(getEntitiesFormatted));
@@ -60,34 +60,7 @@ export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise
         return acc;
     }, {} as Record<string, EntityStandardized[]>);
 
-    // Process auto-discounts for raised beds
-    const mentionedRaisedBeds = Array.from(new Set(items.filter(item => Boolean(item.raisedBedId)).map(item => item.raisedBedId!)));
-    const raisedBeds = await Promise.all(mentionedRaisedBeds.map(id => getRaisedBed(id)));
-    const raisedBedsToAdd = raisedBeds.filter(rb => rb && rb.status === 'new');
     const discounts: ShoppingCartDiscount[] = [];
-    if (raisedBedsToAdd.length > 0) {
-        const operations = await getEntitiesFormatted('operation');
-        const raisedBedOperation = operations.find((block: EntityStandardized) => block.information?.name === 'raisedBed1m');
-        if (!raisedBedOperation) {
-            throw new Error('Raised bed operation not found');
-        }
-
-        for (const raisedBed of raisedBedsToAdd) {
-            const itemsInCartForRaisedBed = items.filter(item => item.type === 'user' && item.raisedBedId === raisedBed?.id).length;
-            // If more than half of the raised bed is filled, apply a discount
-            // Assuming a raised bed is considered "filled" if it has more than 4 items
-            if (itemsInCartForRaisedBed > 4) {
-                discounts.push({
-                    cartItemId: items.find(item =>
-                        item.raisedBedId === raisedBed?.id &&
-                        item.entityTypeName === 'operation' &&
-                        item.entityId === raisedBedOperation.id.toString())?.id ?? 0,
-                    discountPrice: 0,
-                    discountDescription: 'Besplatna podignuta gredica ukoliko je više od pola gredice ispunjeno',
-                });
-            }
-        }
-    }
 
     // Process paid discounts for items that are already paid
     const paidItems = items.filter(item => item.status === 'paid');
@@ -101,7 +74,7 @@ export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise
         }
     }
 
-    return items.map((item) => {
+    const cartItemsWithShopInfo = items.map((item) => {
         const entityData = entitiesByTypeName[item.entityTypeName].find((entity) => entity?.id.toString() === item.entityId);
         if (!entityData) {
             console.warn('Entity not found', { entityId: item.entityId, entityTypeName: item.entityTypeName });
@@ -126,6 +99,40 @@ export async function getCartItemsInfo(items: SelectShoppingCartItem[]): Promise
             }
         };
     }).filter(i => Boolean(i)).map(i => i!).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    // --- Notes logic ---
+    const notes: string[] = [];
+    // Group items by raisedBedId, count items per raised bed (excluding paid items)
+    // Find all 'new' raised beds
+    let allowPurchase = true;
+    const raisedBedItemCounts: Record<number, number> = {};
+    cartItemsWithShopInfo.forEach(item => {
+        if (item.raisedBedId && item.status !== 'paid') {
+            raisedBedItemCounts[item.raisedBedId] = (raisedBedItemCounts[item.raisedBedId] || 0) + 1;
+        }
+    });
+    const mentionedRaisedBedIds = Array.from(new Set(cartItemsWithShopInfo.filter(item => Boolean(item.raisedBedId)).map(item => item.raisedBedId!)));
+    const mentionedRaisedBeds = await Promise.all(mentionedRaisedBedIds.map(id => getRaisedBed(id)));
+
+    const newRaisedBeds = mentionedRaisedBeds.filter(rb => rb && rb.status === 'new');
+    const requiredItemsCount = Math.ceil(newRaisedBeds.length / 2) * 9;
+
+    const cartItemsInNewRaisedBeds = cartItemsWithShopInfo.filter(item => item.status !== 'paid' && item.raisedBedId && newRaisedBeds.some(rb => rb?.id === item.raisedBedId));
+    if (cartItemsInNewRaisedBeds.length < requiredItemsCount) {
+        const missingItemsCount = requiredItemsCount - cartItemsInNewRaisedBeds.length;
+        const neededPlural = missingItemsCount === 1 ? 'Potrebna je' : (missingItemsCount > 4 ? 'Potrebno je' : 'Potrebne su');
+        const plantPlural = missingItemsCount === 1 ? 'biljka' : (missingItemsCount > 4 ? 'biljaka' : 'biljke');
+        const raisedBedsPlural = newRaisedBeds.length === 1 ? 'nove gredice' : 'novih gredica';
+        notes.push(`${neededPlural} još ${missingItemsCount} ${plantPlural} za postavljanje ${raisedBedsPlural}.`);
+        allowPurchase = false;
+    }
+    // --- End notes logic ---
+
+    return {
+        notes,
+        allowPurchase,
+        items: cartItemsWithShopInfo
+    };
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
@@ -161,7 +168,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Retrieve entities data
-            const cartItemsWithShopData = (await getCartItemsInfo(cart.items)).filter(item => item.status !== 'paid');
+            const cartInfo = await getCartInfo(cart.items);
+            if (!cartInfo.allowPurchase) {
+                return context.json({ error: 'Cart in invalid state' }, 400);
+            }
+            const cartItemsWithShopData = cartInfo.items.filter(item => item.status !== 'paid');
 
             // Generate a stripe checkout items from cart items
             const items: CheckoutItem[] = [];

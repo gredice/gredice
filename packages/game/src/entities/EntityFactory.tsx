@@ -39,10 +39,9 @@ const entityNameMap: Record<string, any> = {
 type EntityFactoryProps = {
     name: string;
     noControl?: boolean;
-    enableSelection?: boolean;
 };
 
-export function EntityFactory({ name, stack, block, noControl, enableSelection, ...rest }: EntityFactoryProps & EntityInstanceProps) {
+export function EntityFactory({ name, stack, block, noControl, ...rest }: EntityFactoryProps & EntityInstanceProps) {
     const isEditMode = useIsEditMode();
     const EntityComponent = entityNameMap[name];
     const view = useGameState(state => state.view);
@@ -53,7 +52,7 @@ export function EntityFactory({ name, stack, block, noControl, enableSelection, 
         return null;
     }
 
-    const SelectableGroupWrapper = view !== 'closeup' && enableSelection
+    const SelectableGroupWrapper = view !== 'closeup'
         ? SelectableGroup
         : (props: any) => <>{props.children}</>;
 
