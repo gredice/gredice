@@ -28,7 +28,8 @@ const app = new Hono()
             if (!user) {
                 console.debug('User not found', email);
                 return context.json({
-                    error: 'User not found'
+                    error: 'User not found',
+                    errorCode: 'user_not_found'
                 }, { status: 404 });
             }
 
@@ -36,7 +37,8 @@ const app = new Hono()
             if (!login) {
                 console.debug('User login not found', email);
                 return context.json({
-                    error: 'User not found'
+                    error: 'User not found',
+                    errorCode: 'user_not_found'
                 }, { status: 404 });
             }
 
@@ -56,7 +58,8 @@ const app = new Hono()
             if (!salt || !storedHash) {
                 console.debug('User password login data corrupted', email, login.id);
                 return context.json({
-                    error: 'User not found'
+                    error: 'User not found',
+                    errorCode: 'user_not_found'
                 }, { status: 404 });
             }
 
@@ -93,7 +96,8 @@ const app = new Hono()
             if (isVerified !== true) {
                 console.log('User email not verified', email);
                 return context.json({
-                    error: 'verify_email'
+                    error: 'User email not verified',
+                    errorCode: 'verify_email'
                 }, { status: 403 });
             }
 
