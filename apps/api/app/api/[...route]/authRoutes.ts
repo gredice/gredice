@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from "zod";
-import { blockLogin, changePassword, clearLoginFailedAttempts, createOrUpdateUserWithOauth, createUserWithPassword, getUserWithLogins, incLoginFailedAttempts, loginSuccessful, updateLoginData } from '@gredice/storage';
+import { blockLogin, changePassword, clearLoginFailedAttempts, createOrUpdateUserWithOauth, createUserPasswordLogin, createUserWithPassword, getUser, getUserWithLogins, incLoginFailedAttempts, loginSuccessful, updateLoginData } from '@gredice/storage';
 import { pbkdf2Sync, randomUUID } from 'node:crypto';
 import { clearCookie, createJwt, verifyJwt, setCookie } from '../../../lib/auth/auth';
 import { sendChangePassword, sendEmailVerification } from '../../../lib/auth/email';
@@ -251,34 +251,38 @@ const app = new Hono()
             const { result, error } = await verifyJwt(token, {
                 expiry: '1h'
             });
-            const email = result?.payload.sub;
-            if (!email) {
+            const emailOrUserId = result?.payload.sub;
+            if (!emailOrUserId) {
                 console.warn('Token is invalid', error);
                 return context.json({
                     error: 'Token is invalid'
                 }, { status: 400 });
             }
 
-            // Get user with logins
-            const user = await getUserWithLogins(email);
-            if (!user) {
-                console.debug('User does not exist', email);
-                return context.json({
-                    error: 'User not found'
-                }, { status: 404 });
+            // Get user with logins (via email)
+            let userWithLogins = await getUserWithLogins(emailOrUserId);
+            if (!userWithLogins) {
+                const user = await getUser(emailOrUserId);
+                if (user) {
+                    userWithLogins = await getUserWithLogins(user.userName);
+                }
+                if (!userWithLogins) {
+                    console.debug('User does not exist', emailOrUserId);
+                    return context.json({
+                        error: 'User not found'
+                    }, { status: 404 });
+                }
             }
 
             // Set email as verified
-            const userLogin = user.usersLogins.find(login => login.loginId === email && login.loginType === 'password');
+            const userLogin = userWithLogins.usersLogins.find(login => login.loginId === emailOrUserId && login.loginType === 'password');
             if (!userLogin) {
-                console.debug('User login not found', email);
-                return context.json({
-                    error: 'User not found'
-                }, { status: 404 });
+                console.debug('User password login not found', emailOrUserId, 'creating password login...');
+                await createUserPasswordLogin(userWithLogins.id, emailOrUserId, password);
+            } else {
+                console.debug('User password login found', emailOrUserId, 'updating password...');
+                await changePassword(userLogin.id, password);
             }
-
-            // Send email
-            await changePassword(userLogin.id, password);
 
             return context.json({
                 message: 'Password changed successfully'

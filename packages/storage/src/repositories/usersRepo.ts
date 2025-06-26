@@ -158,6 +158,16 @@ function passwordHash(password: string) {
     }
 }
 
+export async function createUserPasswordLogin(userId: string, userName: string, password: string) {
+    const { salt, hash } = passwordHash(password);
+    await storage().insert(userLogins).values({
+        userId,
+        loginType: 'password',
+        loginId: userName,
+        loginData: JSON.stringify({ salt, password: hash, isVerified: false }),
+    });
+}
+
 /**
  * Creates a user with a password login
  * @param userName The user name
@@ -166,16 +176,7 @@ function passwordHash(password: string) {
  */
 export async function createUserWithPassword(userName: string, password: string) {
     const userId = await createUserAndAccount(userName);
-
-    // Insert the password login
-    const { salt, hash } = passwordHash(password);
-    await storage().insert(userLogins).values({
-        userId,
-        loginType: 'password',
-        loginId: userName,
-        loginData: JSON.stringify({ salt, password: hash, isVerified: false }),
-    });
-
+    await createUserPasswordLogin(userId, userName, password);
     return userId;
 }
 
