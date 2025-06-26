@@ -74,3 +74,8 @@ This will generate a new `game-assets.glb` file in the `/apps/garden/public/asse
 ### Adding new entity
 
 Use [https://gltf.pmnd.rs/](https://gltf.pmnd.rs/) to convert the GLTF file assets to a Three.js compatible components.
+
+# Contributing
+
+![Alt](https://repobeats.axiom.co/api/embed/ba847f4d1fae06c8250692c08295602bca8de554.svg "Repobeats analytics image")
+
