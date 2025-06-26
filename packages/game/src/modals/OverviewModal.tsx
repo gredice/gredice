@@ -83,7 +83,7 @@ export function OverviewModal() {
     const markAllNotificationsRead = useMarkAllNotificationsRead();
 
     // Security
-    const { data: userLogins, isLoading: userLoginsLoading } = useUserLogins(currentUser.data?.id);
+    const { data: userLogins, isPending: userLoginsLoading } = useUserLogins(currentUser.data?.id);
     console.log('userLogins', userLogins);
     console.log('currentuser', currentUser.data);
     const token = getAuthToken();
@@ -175,36 +175,38 @@ export function OverviewModal() {
                                 <Card>
                                     <CardContent noHeader>
                                         {userLoginsLoading && (
-                                            <Spinner loadingLabel="Učitavanje prijava..." />
+                                            <Spinner loading className="size-5" loadingLabel="Učitavanje prijava..." />
                                         )}
-                                        <Stack spacing={3}>
+                                        {!userLoginsLoading && (
                                             <Stack spacing={3}>
-                                                <Typography level="body2">Poveži svoj račun s društvenim mrežama za bržu prijavu i bolju sigurnost.</Typography>
-                                                {facebookConnected && (
-                                                    <Row spacing={2}>
-                                                        <CompanyFacebook className="size-8" />
-                                                        <Typography level="body1">Tvoj Facebook račun je povezan.</Typography>
-                                                    </Row>
-                                                )}
-                                                {googleConnected && (
-                                                    <Row spacing={2}>
-                                                        <CompanyGoogle className="size-8" />
-                                                        <Typography level="body1">Tvoj Google račun je povezan.</Typography>
-                                                    </Row>
-                                                )}
-                                                {!facebookConnected && !googleConnected &&
-                                                    <Typography level="body3">Trenutno nemaš povezanih računa.</Typography>
-                                                }
+                                                <Stack spacing={3}>
+                                                    <Typography level="body2">Poveži svoj račun s društvenim mrežama za bržu prijavu i bolju sigurnost.</Typography>
+                                                    {facebookConnected && (
+                                                        <Row spacing={2}>
+                                                            <CompanyFacebook className="size-8" />
+                                                            <Typography level="body1">Tvoj Facebook račun je povezan.</Typography>
+                                                        </Row>
+                                                    )}
+                                                    {googleConnected && (
+                                                        <Row spacing={2}>
+                                                            <CompanyGoogle className="size-8" />
+                                                            <Typography level="body1">Tvoj Google račun je povezan.</Typography>
+                                                        </Row>
+                                                    )}
+                                                    {!facebookConnected && !googleConnected &&
+                                                        <Typography level="body3">Trenutno nemaš povezanih računa.</Typography>
+                                                    }
+                                                </Stack>
+                                                <Stack spacing={1}>
+                                                    {!facebookConnected && (
+                                                        <FacebookLoginButton href={`https://api.gredice.com/api/auth/facebook?state=${token}`} />
+                                                    )}
+                                                    {!googleConnected && (
+                                                        <GoogleLoginButton href={`https://api.gredice.com/api/auth/google?state=${token}`} />
+                                                    )}
+                                                </Stack>
                                             </Stack>
-                                            <Stack spacing={1}>
-                                                {!facebookConnected && (
-                                                    <FacebookLoginButton href={`https://api.gredice.com/api/auth/facebook?state=${token}`} />
-                                                )}
-                                                {!googleConnected && (
-                                                    <GoogleLoginButton href={`https://api.gredice.com/api/auth/google?state=${token}`} />
-                                                )}
-                                            </Stack>
-                                        </Stack>
+                                        )}
                                     </CardContent>
                                 </Card>
                                 {/* <Card>

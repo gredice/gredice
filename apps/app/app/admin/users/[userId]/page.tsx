@@ -128,7 +128,7 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                                     </Table.Row>
                                 )}
                                 {logins?.usersLogins.map(userLogin => (
-                                    <Table.Row key={user.id}>
+                                    <Table.Row key={userLogin.id}>
                                         <Table.Cell>
                                             <Link href={KnownPages.User(user.id)}>
                                                 {userLogin.loginType}

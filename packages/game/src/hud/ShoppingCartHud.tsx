@@ -43,8 +43,8 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         });
     }
 
-    // Hide delete button for automatic and paid items
-    const isAutomatic = item.type === 'automatic' || item.status === 'paid';
+    // Hide delete button for paid items
+    const isProcessed = item.status === 'paid';
 
     return (
         <Row spacing={2} alignItems="start">
@@ -61,7 +61,7 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         <Typography
                             className={cx(hasDiscount && 'line-through opacity-50 text-sm')}
                             level="body1"
-                            bold>
+                            semiBold>
                             {item.shopData.price?.toFixed(2) ?? "Nevaljan iznos"}
                         </Typography>
                         <Euro className={cx(hasDiscount ? "size-3 opacity-50" : "size-4")} />
@@ -123,14 +123,17 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             <Row>
                                 <Chip startDecorator={<Timer className="size-4" />} className="bg-muted">
                                     <Typography level="body3" secondary>
-                                        {scheduledDate.toLocaleDateString()}
+                                        {scheduledDate.toLocaleDateString("hr-HR", {
+                                            year: 'numeric',
+                                            month: '2-digit',
+                                            day: '2-digit'
+                                        })}
                                     </Typography>
                                 </Chip>
                             </Row>
                         )}
                     </Stack>
-                    {/* Only show delete button if not automatic */}
-                    {!isAutomatic && (
+                    {!isProcessed && (
                         <ModalConfirm
                             title="Potvrdi brisanje stavke"
                             header="Brisanje stavke iz košarice"
@@ -172,7 +175,7 @@ function ShoppingCart() {
     }
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={3}>
             <Row spacing={2}>
                 <div className="rounded-full bg-tertiary/40 p-3 flex items-center justify-center">
                     <ShoppingCartIcon className="size-7 shrink-0" />
@@ -242,8 +245,9 @@ function ShoppingCart() {
                             variant="solid"
                             onClick={handleCheckout}
                             fullWidth
-                            disabled={!cart?.items.length || checkout.isPending}
+                            disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
                             loading={checkout.isPending}
+                            startDecorator={<Info className="size-5 shrink-0 stroke-red-600" />}
                             endDecorator={<Navigate className="size-5 shrink-0" />}
                         >
                             Plaćanje

@@ -68,7 +68,7 @@ export function PlantPickerOptions({ selectedPlantId, selectedSortId, selectedOp
                 type="date"
                 label="Datum sadnje"
                 name="plantDate"
-                className="w-full"
+                className="w-full bg-card"
                 value={plantDate}
                 onChange={(e) => handlePlantDateChange(e.target.value)}
                 min={min}

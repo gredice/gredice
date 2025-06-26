@@ -167,7 +167,7 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
                         <>
                             <Typography level="body2">Planirani datum</Typography>
                             <div className="flex items-start">
-                                <Chip>{plantScheduledDate?.toLocaleDateString() || 'Nepoznato'}</Chip>
+                                <Chip>{plantScheduledDate?.toLocaleDateString("hr-HR") || 'Nepoznato'}</Chip>
                             </div>
                         </>
                     )}
@@ -195,7 +195,7 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
                                     <div className="grid gap-x-2 items-center grid-cols-[auto_auto_auto] md:grid-cols-[repeat(4,auto)]">
                                         <Typography>
                                             {field.plantSowDate
-                                                ? new Date(field.plantSowDate).toLocaleDateString()
+                                                ? new Date(field.plantSowDate).toLocaleDateString("hr-HR")
                                                 : 'Nije posijano'}
                                         </Typography>
                                         {field.plantSowDate && (
@@ -203,7 +203,7 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
                                                 <span>-</span>
                                                 <Typography noWrap>
                                                     {field.plantGrowthDate
-                                                        ? new Date(field.plantGrowthDate).toLocaleDateString()
+                                                        ? new Date(field.plantGrowthDate).toLocaleDateString("hr-HR")
                                                         : 'U tijeku...'}
                                                 </Typography>
                                                 <Typography>
@@ -218,7 +218,7 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
                                     <div className="grid gap-x-2 items-center grid-cols-[auto_auto_auto] md:grid-cols-[repeat(4,auto)]">
                                         <Typography>
                                             {field.plantGrowthDate
-                                                ? new Date(field.plantGrowthDate).toLocaleDateString()
+                                                ? new Date(field.plantGrowthDate).toLocaleDateString("hr-HR")
                                                 : 'Nije u fazi rasta'}
                                         </Typography>
                                         {field.plantGrowthDate && (
@@ -226,7 +226,7 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
                                                 <span>-</span>
                                                 <Typography noWrap>
                                                     {field.plantReadyDate
-                                                        ? new Date(field.plantReadyDate).toLocaleDateString()
+                                                        ? new Date(field.plantReadyDate).toLocaleDateString("hr-HR")
                                                         : 'U tijeku...'}
                                                 </Typography>
                                                 <Typography>
@@ -241,7 +241,7 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
                                     <Row spacing={0.5}>
                                         <Typography>
                                             {field.plantReadyDate
-                                                ? new Date(field.plantReadyDate).toLocaleDateString()
+                                                ? new Date(field.plantReadyDate).toLocaleDateString("hr-HR")
                                                 : 'Nije u fazi berbe'}
                                         </Typography>
                                         {field.plantReadyDate && (

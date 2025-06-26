@@ -77,7 +77,7 @@ export async function getSunflowersHistory(accountId: string, offset: number = 0
     const earnEvents = await getEvents(
         [knownEventTypes.accounts.earnSunflowers, knownEventTypes.accounts.spendSunflowers],
         accountId, offset, limit);
-    return earnEvents.map((event) => ({
+    return earnEvents.reverse().map((event) => ({
         ...event,
         amount: Number((event.data as any).amount),
         reason: (event.data as any).reason,
