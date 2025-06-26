@@ -37,19 +37,22 @@ export default function LoginModal() {
             return;
         } else {
             const json = await response.json();
-            if ('error' in json) {
-                if (error === 'verify_email') {
+            if ('errorCode' in json) {
+                if (json.errorCode === 'verify_email') {
+                    console.debug('User email not verified', email);
                     router.push(`/prijava/potvrda-emaila/posalji?email=${email}`);
                     return;
                 }
-            }
-            if ('errorCode' in json && json.errorCode === 'user_blocked' && 'blockedUntil' in json && json.blockedUntil && typeof json.blockedUntil === 'string') {
-                setError(`Korisnik je blokiran do ${new Date(json.blockedUntil).toLocaleString("hr-HR")}. Pokušaj ponovno kasnije.`);
-                return;
-            }
-            if ('leftAttempts' in json) {
-                setError(`Prijava nije uspjela. Preostalo pokušaja: ${json.leftAttempts}.`);
-                return;
+                if (json.errorCode === 'user_blocked' && 'blockedUntil' in json && json.blockedUntil && typeof json.blockedUntil === 'string') {
+                    console.debug('User is blocked until', json.blockedUntil);
+                    setError(`Korisnik je blokiran do ${new Date(json.blockedUntil).toLocaleString("hr-HR")}. Pokušaj ponovno kasnije.`);
+                    return;
+                }
+                if ('leftAttempts' in json) {
+                    console.debug('Login failed with left attempts', json.leftAttempts);
+                    setError(`Prijava nije uspjela. Preostalo pokušaja: ${json.leftAttempts}.`);
+                    return;
+                }
             }
 
             console.error('Login failed with status', response.status);
