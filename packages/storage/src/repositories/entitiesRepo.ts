@@ -285,6 +285,14 @@ export async function updateEntity(entity: UpdateEntity) {
             .set(entity)
             .where(eq(entities.id, entity.id)),
         bustCached(cacheKeys.entity(entity.id)),
+        entity.id ? storage().select().from(entities).where(eq(entities.id, entity.id)).then(
+            entityToUpdate => {
+                return Promise.all([
+                    entityToUpdate?.[0].id ? bustCached(cacheKeys.entity(entityToUpdate?.[0]?.id)) : undefined,
+                    entityToUpdate?.[0].entityTypeName ? bustCached(cacheKeys.entityTypeName(entityToUpdate?.[0].entityTypeName)) : undefined
+                ]);
+            }
+        ) : undefined,
         entity.entityTypeName ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName)) : null
     ]);
 }

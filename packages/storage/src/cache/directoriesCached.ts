@@ -38,6 +38,7 @@ export async function directoriesCached(key: string, fn: () => Promise<any>, ttl
 }
 
 export async function bustCached(key: string) {
+    console.debug(`Bust cache for key: ${key}`);
     const client = cacheClient();
     await client.del(key);
 }
