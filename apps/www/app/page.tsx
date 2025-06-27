@@ -43,30 +43,30 @@ const sectionsData: SectionData[] = [
     {
         component: 'Feature1',
         tagline: 'Vrt po tvom',
-        header: 'Par koraka do svježeg povrća',
-        description: 'Zasadi, održavaj i uberi. Pomoći ćemo ti u svakom koraku i na kraju ti dostaviti svježe povrće iz tvojih gredica.',
+        header: 'Klikneš, mi sadimo - ti uživaš',
+        description: 'Par klikova i tvoje gredice su spremne. Odaberi povrće, mi ga posadimo, a ti ubrzo uživaš u plodovima svog novog vrta.',
         asset: (
             <div className="h-full items-center flex flex-row mb-8 -mt-4">
                 <Stack spacing={4}>
                     <Row spacing={2}>
-                        <Check className="size-5" />
+                        <Check className="size-5 shrink-0" />
                         <Stack>
                             <Typography level="h6" component="span">Samo tvoj vrt</Typography>
                             <Typography level="body2" secondary>Tvoja gredica - tvoje povrće</Typography>
                         </Stack>
                     </Row>
                     <Row spacing={2}>
-                        <Check className="size-5" />
+                        <Check className="size-5 shrink-0" />
                         <Stack>
-                            <Typography level="h6" component="span">Nema pretplate</Typography>
-                            <Typography level="body1" secondary>Plaćaš samo ono što zasadiš, odradiš ili kupiš</Typography>
+                            <Typography level="h6" component="span">Mi radimo umjesto tebe</Typography>
+                            <Typography level="body1" secondary>Sve što klikneš, mi odradimo. Tvoj zadatak je pratiti svoj vrt preko aplikacije i biti maštovit u biranju iduće biljke za svoj vrt.</Typography>
                         </Stack>
                     </Row>
                     <Row spacing={2}>
-                        <Check className="size-5" />
+                        <Check className="size-5 shrink-0" />
                         <Stack>
-                            <Typography level="h6" component="span">Besplatna dostava</Typography>
-                            <Typography level="body1" secondary>Prva berba svake biljke uključuje besplatnu dostavu</Typography>
+                            <Typography level="h6" component="span">Poželiš plodove - mi dostavljamo</Typography>
+                            <Typography level="body1" secondary>Kad poželiš plodove iz svog vrta, mi ih dostavljamo na kućni prag. Prva dostava po biljci je besplatna.</Typography>
                             <Typography level="body3">* Besplatna dostava je dostupna samo za područje Zagreba</Typography>
                         </Stack>
                     </Row>
@@ -80,7 +80,8 @@ const sectionsData: SectionData[] = [
                         <Image alt="Sjeme i presadnice" className="w-32 sm:w-[200px]" src={SeedsAndTransplants} width={200} height={200} />
                         <Stack spacing={2}>
                             <Typography level="h4" component="h3">Zasadi</Typography>
-                            <Typography level="body1" className="text-balance">Odaberi svoju kombinaciju povrća i zasadi ih u gredice. Mi postavljamo gredice kod jednog od naših partnera i sadimo tvoje biljke.</Typography>
+                            <Typography level="body1" className="text-balance">Odaberi svoju kombinaciju povrća u aplikaciji i zasadi ih u gredice.</Typography>
+                            <Typography level="body1" className="text-balance">Mi postavljamo gredice kod lokalnog OPGa i sadimo tvoje biljke.</Typography>
                         </Stack>
                     </Row>
                 )
@@ -90,7 +91,8 @@ const sectionsData: SectionData[] = [
                     <Row spacing={4}>
                         <Stack spacing={2}>
                             <Typography level="h4" component="h3">Održavaj</Typography>
-                            <Typography level="body1" className="text-balance">Prati stanje svojih gredica i brini se o svojim biljkama. Dobit ćeš obavijesti i savjete kako bi tvoje biljke bile sretne i zdrave.</Typography>
+                            <Typography level="body1" className="text-balance">Prati stanje svojih gredica, naruči zalijevanje, okopavanje ili što god treba tvom vrtu.</Typography>
+                            <Typography level="body1" className="text-balance">U aplikaciji ćeš dobiti obavijesti, slike svojih gredica i savjete kako bi tvoje biljke bile sretne i zdrave.</Typography>
                         </Stack>
                         <Image alt="Održavanje gredice" className="w-32 sm:w-[200px]" src={RaisedBedMaintenance} width={200} height={200} />
                     </Row>
@@ -102,8 +104,9 @@ const sectionsData: SectionData[] = [
                         <Image alt="Dostava povrća" className="w-32 sm:w-[200px]" src={DeliveryTruck} width={200} height={200} />
                         <Stack spacing={2}>
                             <Typography level="h4" component="h3">Uberi i uživaj</Typography>
+                            <Typography level="body1" className="text-balance">Kad poželiš, klikni za branje svog povrća.</Typography>
                             <Stack>
-                                <Typography level="body1" className="text-balance">Zatraži branje svog povrća kad god želiš. Mi beremo i dostavljamo još svježe na kućni prag.</Typography>
+                                <Typography level="body1" className="text-balance">Mi ćemo se ubrati sve plodove tvojih gredica i dostaviti još svježe iz tvog vrta direktno na tvoj kućni prag.</Typography>
                                 <Typography level="body3">* Besplatna dostava je dostupna samo za područje Zagreba</Typography>
                             </Stack>
                         </Stack>
