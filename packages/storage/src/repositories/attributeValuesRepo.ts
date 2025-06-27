@@ -2,6 +2,7 @@ import 'server-only';
 import { eq } from "drizzle-orm";
 import { getAttributeDefinition, storage } from "..";
 import { attributeValues, InsertAttributeValue } from "../schema";
+import { bustCached, cacheKeys } from '../cache/directoriesCached';
 
 export async function upsertAttributeValue(value: InsertAttributeValue) {
     let attributeValue = value.value;
@@ -13,21 +14,41 @@ export async function upsertAttributeValue(value: InsertAttributeValue) {
         }
     }
 
-    return await storage()
-        .insert(attributeValues)
-        .values(value)
-        .onConflictDoUpdate({
-            target: attributeValues.id,
-            set: {
-                ...value,
-                value: attributeValue
-            },
-        });
+    await Promise.all([
+        storage()
+            .insert(attributeValues)
+            .values(value)
+            .onConflictDoUpdate({
+                target: attributeValues.id,
+                set: {
+                    ...value,
+                    value: attributeValue
+                },
+            }),
+        value.id ? storage().select().from(attributeValues).where(eq(attributeValues.id, value.id)).then(
+            attributeValue => {
+                return Promise.all([
+                    attributeValue?.[0].entityId ? bustCached(cacheKeys.entity(attributeValue?.[0]?.entityId)) : undefined,
+                    attributeValue?.[0].entityTypeName ? bustCached(cacheKeys.entityTypeName(attributeValue?.[0].entityTypeName)) : undefined
+                ]);
+            }
+        ) : undefined
+    ]);
 }
 
-export function deleteAttributeValue(id: number) {
-    return storage()
-        .update(attributeValues)
-        .set({ isDeleted: true })
-        .where(eq(attributeValues.id, id));
+export async function deleteAttributeValue(id: number) {
+    await Promise.all([
+        storage()
+            .update(attributeValues)
+            .set({ isDeleted: true })
+            .where(eq(attributeValues.id, id)),
+        storage().select().from(attributeValues).where(eq(attributeValues.id, id)).then(
+            attributeValue => {
+                return Promise.all([
+                    attributeValue?.[0]?.entityId ? bustCached(cacheKeys.entity(attributeValue[0].entityId)) : undefined,
+                    attributeValue?.[0]?.entityTypeName ? bustCached(cacheKeys.entityTypeName(attributeValue[0].entityTypeName)) : undefined
+                ]);
+            }
+        ),
+    ]);
 }
