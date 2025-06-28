@@ -181,6 +181,7 @@ export async function createUserWithPassword(userName: string, password: string)
 }
 
 export async function createOrUpdateUserWithOauth(data: OAuthUserData, loggedInUserId?: string) {
+    // Fast return if user has login provider with given loginId
     const existingLogin = await storage().query.userLogins.findFirst({
         where: and(
             eq(userLogins.loginType, data.provider),
@@ -197,30 +198,39 @@ export async function createOrUpdateUserWithOauth(data: OAuthUserData, loggedInU
     }
 
     // If user with given email doesn't exist, create a new user
-    const existingUser = await storage().query.users.findFirst({
+    let existingUser = await storage().query.users.findFirst({
         where: eq(users.userName, data.email),
+        with: {
+            usersLogins: true
+        }
     });
-    let userId = existingUser?.id;
     if (!existingUser) {
-        userId = await createUserAndAccount(data.email, data.name);
+        const createdUserId = await createUserAndAccount(data.email, data.name);
+        existingUser = await storage().query.users.findFirst({
+            where: eq(users.id, createdUserId),
+            with: {
+                usersLogins: true
+            }
+        });
     }
 
-    // If logged in user is provided, ensure that the provider is assigned to that user
-    if (!userId || loggedInUserId !== userId) {
+    if (!existingUser || // If we failed to create the user by email or retreive existing one
+        (loggedInUserId && loggedInUserId !== existingUser.id) || // If current user does not match the user
+        (loggedInUserId && existingUser.usersLogins.length !== 0)) { // If current user is logged in and it does not match the user or user already has logins
         throw new Error("Provider not assigned to the user.");
     }
 
     const loginId = (await storage()
         .insert(userLogins)
         .values({
-            userId,
+            userId: existingUser.id,
             loginType: data.provider,
             loginId: data.providerUserId,
             loginData: JSON.stringify({ isVerified: true }),
         })
         .returning({ id: userLogins.id }))[0].id;
     return {
-        userId,
+        userId: existingUser.id,
         loginId
     };
 }
