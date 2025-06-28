@@ -1,5 +1,5 @@
-import { and, eq, isNotNull, or, inArray, desc, isNull, lt, notExists } from 'drizzle-orm';
-import { notifications, InsertNotification, SelectNotification, notificationEmailLog, users, userNotificationSettings, accountUsers, userLogins } from '../schema';
+import { and, eq, or, inArray, desc, isNull, notExists } from 'drizzle-orm';
+import { notifications, InsertNotification, SelectNotification, notificationEmailLog, users, userNotificationSettings, accountUsers } from '../schema';
 import { storage } from '..';
 import { randomUUID } from 'node:crypto';
 
@@ -73,9 +73,6 @@ export async function notificationsDigest({ markSent = true }: { markSent?: bool
             email: users.userName
         })
         .from(users)
-        .leftJoin(
-            userLogins,
-            eq(users.id, userLogins.userId))
         .leftJoin(
             userNotificationSettings,
             eq(users.id, userNotificationSettings.userId))
