@@ -43,7 +43,7 @@ export function PlantYieldTooltip({ plant, children }: PropsWithChildren<{
             <TooltipTrigger className='cursor-pointer'>
                 <Row>
                     {children}
-                    <Info className='size-3 shrink-0 ml-1 mt-0.5' />
+                    <Info className='hidden sm:block size-3 shrink-0 ml-1 mt-0.5' />
                 </Row>
             </TooltipTrigger>
             <TooltipContent>
