@@ -21,20 +21,22 @@ export function PlantYieldTooltip({ plant, children }: PropsWithChildren<{
         return null;
     }
 
-    const plantsPerRow = Math.floor(30 / (plant.attributes.seedingDistance ?? 30));
+    let plantsPerRow = Math.floor(30 / (plant.attributes.seedingDistance ?? 30));
     if (plantsPerRow < 1) {
         console.warn(`Plants per row is less than 1 (${plantsPerRow}) for ${plant.information.name}. Setting to 1.`);
-        return null;
+        plantsPerRow = 1;
     }
 
     const yieldMin = plant.attributes.yieldMin ?? 0;
     const yieldMax = plant.attributes.yieldMax ?? 0;
-    const yieldType = plant.attributes.yieldType ?? 'perPlant';
+    const yieldType = plant.attributes.yieldType ?? 'perField';
     const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
     const expectedYieldAverage = (yieldMax - yieldMin) / 2 + yieldMin;
     const minYieldPerField = yieldType === 'perField' ? yieldMin : yieldMin * totalPlants;
     const maxYieldPerField = yieldType === 'perField' ? yieldMax : yieldMax * totalPlants;
     const expectedYieldPerField = yieldType === 'perField' ? expectedYieldAverage : expectedYieldAverage * totalPlants;
+
+    console.log('tooltip', plant.information.name, expectedYieldPerField, yieldMax, yieldMin, yieldType, totalPlants);
 
     return (
         <Tooltip>

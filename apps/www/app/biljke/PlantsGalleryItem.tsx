@@ -22,8 +22,13 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
     }
     const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
     const pricePerPlant = prices?.perPlant ? (prices.perPlant / totalPlants).toFixed(2) : null;
-    const expectedYieldAverage = (attributes.yieldMax ?? 0 - attributes.yieldMin ?? 0) / 2 + (attributes.yieldMin ?? 0);
-    const expectedYieldPerField = attributes.yieldType === 'perField' ? expectedYieldAverage : expectedYieldAverage * totalPlants;
+    const yieldMin = attributes?.yieldMin ?? 0;
+    const yieldMax = attributes?.yieldMax ?? 0;
+    const yieldType = attributes?.yieldType ?? 'perField';
+    const expectedYieldAverage = (yieldMax - yieldMin) / 2 + yieldMin;
+    const expectedYieldPerField = yieldType === 'perField' ? expectedYieldAverage : expectedYieldAverage * totalPlants;
+
+    console.log(information.name, expectedYieldPerField, attributes.yieldMax, attributes.yieldMin, attributes.yieldType, totalPlants);
 
     return (
         <ItemCard
