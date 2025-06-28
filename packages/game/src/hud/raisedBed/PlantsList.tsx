@@ -55,8 +55,11 @@ export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void 
                     }
                     const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
                     const price = plant.prices?.perPlant ? plant.prices.perPlant.toFixed(2) : 'Nepoznato';
-                    const expectedYieldAverage = (plant.attributes.yieldMax ?? 0 - plant.attributes.yieldMin ?? 0) / 2 + (plant.attributes.yieldMin ?? 0);
-                    const expectedYieldPerField = plant.attributes.yieldType === 'perField' ? expectedYieldAverage : expectedYieldAverage * totalPlants;
+                    const yieldMin = plant.attributes?.yieldMin ?? 0;
+                    const yieldMax = plant.attributes?.yieldMax ?? 0;
+                    const yieldType = plant.attributes?.yieldType ?? 'perField';
+                    const expectedYieldAverage = (yieldMax - yieldMin) / 2 + yieldMin;
+                    const expectedYieldPerField = yieldType === 'perField' ? expectedYieldAverage : expectedYieldAverage * totalPlants;
                     return (
                         <Row key={plant.id}>
                             <ListItem
