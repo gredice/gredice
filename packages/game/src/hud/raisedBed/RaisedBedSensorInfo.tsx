@@ -383,7 +383,7 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
         <Row spacing={0.5}>
             <SensorInfoSoilMoisture
                 trigger={(
-                    <Button size="sm" className="rounded-full bg-gradient-to-br from-lime-100/90 to-lime-100/80">
+                    <Button size="sm" className="rounded-full text-primary dark:text-primary-foreground bg-gradient-to-br from-lime-100/90 to-lime-100/80">
                         <Row spacing={0.5}>
                             <Droplet className={cx(
                                 "size-5 shrink-0 stroke-blue-400",
@@ -402,7 +402,7 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
                 type="soil_moisture" />
             <SensorInfoSoilTemperature
                 trigger={(
-                    <Button size="sm" className="rounded-full bg-gradient-to-br from-lime-100/90 to-lime-100/80">
+                    <Button size="sm" className="rounded-full text-primary dark:text-primary-foreground bg-gradient-to-br from-lime-100/90 to-lime-100/80">
                         <Row spacing={0.5}>
                             <Thermometer className={cx(
                                 "size-5 shrink-0 stroke-red-400",
