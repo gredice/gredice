@@ -799,7 +799,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // Fetch sensor data from Signalco
             const history = await signalcoClient().GET('/contact/history', {
                 params: {
-                    // @ts-ignore
+                    // @ts-expect-error
                     query: {
                         entityId: sensor.sensorSignalcoId,
                         channelName: 'zigbee2mqtt',
