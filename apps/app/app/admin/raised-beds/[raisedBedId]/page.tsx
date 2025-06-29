@@ -10,7 +10,6 @@ import { NoDataPlaceholder } from "../../../../components/shared/placeholders/No
 import { notFound } from "next/navigation";
 import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
 import { RaisedBedFieldPlantStatusSelector } from "./RaisedBedFieldPlantStatusSelector";
-import { NotificationCreateModal } from "../../../../components/notifications/NotificationCreateModal";
 import { NotificationsTableCard } from "../../../../components/notifications/NotificationsTableCard";
 
 export const dynamic = 'force-dynamic';

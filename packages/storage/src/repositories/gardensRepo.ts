@@ -38,15 +38,19 @@ export async function getGardens() {
 }
 
 export async function getAccountGardens(accountId: string) {
-    return storage().query.gardens.findMany({
+    const accountGardens = await storage().query.gardens.findMany({
         where: and(
             eq(gardens.accountId, accountId),
             eq(gardens.isDeleted, false)
-        ),
-        with: {
-            raisedBeds: true
-        }
+        )
     });
+    // For each raised bed, fetch and attach fields with event-sourced info
+    return Promise.all(accountGardens.map(async (garden) => {
+        return {
+            ...garden,
+            raisedBeds: await getRaisedBeds(garden.id)
+        };
+    }));
 }
 
 export async function getGarden(gardenId: number) {
