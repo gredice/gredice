@@ -799,7 +799,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // Fetch sensor data from Signalco
             const history = await signalcoClient().GET('/contact/history', {
                 params: {
-                    // @ts-expect-error
+                    // @ts-expect-error Invalid type, but works
                     query: {
                         entityId: sensor.sensorSignalcoId,
                         channelName: 'zigbee2mqtt',
