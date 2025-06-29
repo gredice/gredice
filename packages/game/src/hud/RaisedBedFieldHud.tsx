@@ -6,6 +6,7 @@ import { RaisedBedField } from "./raisedBed/RaisedBedField";
 import { Check, Edit, Tally3 } from "@signalco/ui-icons";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
+import { RaisedBedSensorInfo } from "./raisedBed/RaisedBedSensorInfo";
 
 export function RaisedBedFieldHud() {
     const { data: currentGarden } = useCurrentGarden();
@@ -47,6 +48,13 @@ export function RaisedBedFieldHud() {
                         //     </Popper> */}
                     )}
                 </div>
+                {currentGarden && raisedBed && (
+                    <div className="absolute top-[calc(50%+160px)] left-[calc(50%-156.5px)] md:left-[calc(50%+210px)] md:top-[calc(50%+118px)]">
+                        <RaisedBedSensorInfo
+                            gardenId={currentGarden.id}
+                            raisedBedId={raisedBed.id} />
+                    </div>
+                )}
                 <Button
                     variant='plain'
                     className={cx(

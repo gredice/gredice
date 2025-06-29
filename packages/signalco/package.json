@@ -1,0 +1,24 @@
+{
+  "name": "@gredice/signalco",
+  "version": "0.0.0",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "regenerate": "pnpm run /^regenerate:.*/",
+    "regenerate:directories-api": "pnpm dlx openapi-typescript https://api.signalco.io/api/swagger.yaml -o ./src/lib/signalco-api/v1.d.ts"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.14.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.32",
+    "openapi-typescript": "7.8.0",
+    "server-only": "0.0.1",
+    "typescript": "5.8.3"
+  }
+}

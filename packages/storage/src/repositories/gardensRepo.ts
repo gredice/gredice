@@ -5,7 +5,7 @@ import { gardenBlocks, gardens, gardenStacks, raisedBeds, InsertGarden, UpdateGa
 import { createEvent, knownEvents, knownEventTypes } from './eventsRepo';
 import { v4 as uuidV4 } from 'uuid';
 import { getEvents } from './eventsRepo';
-import { raisedBedFields, InsertRaisedBedField } from '../schema/gardenSchema';
+import { raisedBedFields, InsertRaisedBedField, raisedBedSensors } from '../schema/gardenSchema';
 import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
 
 export async function createGarden(garden: InsertGarden) {
@@ -370,4 +370,13 @@ export async function deleteRaisedBedField(raisedBedId: number, positionIndex: n
         eq(raisedBedFields.positionIndex, positionIndex),
         eq(raisedBedFields.isDeleted, false)
     ));
+}
+
+export function getRaisedBedSensors(raisedBedId: number) {
+    return storage().query.raisedBedSensors.findMany({
+        where: and(
+            eq(raisedBedSensors.raisedBedId, raisedBedId),
+            eq(raisedBedSensors.isDeleted, false)
+        )
+    });
 }
