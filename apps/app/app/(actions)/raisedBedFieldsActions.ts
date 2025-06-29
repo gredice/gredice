@@ -40,8 +40,10 @@ export async function raisedBedFieldUpdatePlant({ raisedBedId, positionIndex, st
                 await createNotification({
                     accountId: raisedBed.accountId,
                     gardenId: raisedBed.gardenId,
+                    raisedBedId: raisedBed.id,
                     header,
-                    content
+                    content,
+                    timestamp: new Date(),
                 });
             }
         } else {

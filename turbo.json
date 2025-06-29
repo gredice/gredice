@@ -28,6 +28,15 @@
                 "^test"
             ]
         },
+        "db-generate": {
+            "cache": false,
+            "outputs": [
+                "packages/storage/src/migrations/**"
+            ]
+        },
+        "db-push": {
+            "cache": false
+        },
         "regenerate": {
             "cache": false,
             "dependsOn": [

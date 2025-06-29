@@ -57,6 +57,27 @@ You can then proceed with pulling the environment variables.
 pnpm dev
 ```
 
+### Database migrations
+
+To manage and run database migrations in development:
+
+1. Generate new migrations (if you have made schema changes):
+
+```bash
+pnpm db-generate
+```
+
+2. Apply migrations to your database (database connection string must be set in the environment variables):
+
+```bash
+pnpm db-push
+```
+
+These commands use the monorepo's Turbo tasks to run the appropriate migration scripts in the relevant packages (typically in `packages/storage`).
+
+- Use `pnpm db-generate` after making changes to your database schema to generate new migration files.
+- Use `pnpm db-push` to apply all pending migrations database (connection string must be set in the environment variables).
+
 ## Assets
 
 Make sure you are the only one editing the game assets file. If you are not, please contact the person who is currently editing the file so you can coordinate the changes after they are done and changes are merged.
@@ -80,6 +101,7 @@ Use [https://gltf.pmnd.rs/](https://gltf.pmnd.rs/) to convert the GLTF file asse
 ![Alt](https://repobeats.axiom.co/api/embed/ba847f4d1fae06c8250692c08295602bca8de554.svg "Repobeats analytics image")
 
 ## License
+
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fgredice%2Fgredice.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fgredice%2Fgredice?ref=badge_shield)
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fgredice%2Fgredice.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fgredice%2Fgredice?ref=badge_large)

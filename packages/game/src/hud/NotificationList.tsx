@@ -26,12 +26,12 @@ type NotificationListItemProps = {
         linkUrl: string | null;
         imageUrl: string | null;
         readAt: Date | null;
-        createdAt: Date;
+        timestamp: Date;
     };
 };
 
 function NotificationListItem({ notification }: NotificationListItemProps) {
-    const { id, header, content, linkUrl, readAt, createdAt } = notification;
+    const { id, header, content, linkUrl, readAt, timestamp } = notification;
     const setNotificationRead = useSetNotificationRead();
 
     function handleSetNotificationRead() {
@@ -65,8 +65,8 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
                             <Markdown>
                                 {content}
                             </Markdown>
-                            <Typography level="body3" className="text-gray-500 mr-3s" title={createdAt.toLocaleString('hr-HR')}>
-                                {`${createdAt.toLocaleDateString('hr-HR', { day: "numeric", month: 'long', year: 'numeric' })}`}
+                            <Typography level="body3" className="text-gray-500 mr-3s" title={timestamp.toLocaleString('hr-HR')}>
+                                {`${timestamp.toLocaleDateString('hr-HR', { day: "numeric", month: 'long', year: 'numeric' })}`}
                             </Typography>
                         </Stack>
                     </Row>

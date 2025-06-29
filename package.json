@@ -5,6 +5,8 @@
         "build": "turbo build",
         "dev": "turbo dev",
         "lint": "turbo lint",
+        "db-generate": "turbo db-generate",
+        "db-push": "turbo db-push",
         "regenerate": "turbo regenerate",
         "test": "turbo test"
     },
