@@ -3,7 +3,7 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { CSSProperties, Fragment } from "react";
 
-const calendarMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
+const plantCalendarMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
 
 const calendarActivityTypes = {
     sowing: {
@@ -37,7 +37,7 @@ export function PlantYearCalendar({ activities, now }: PlantYearCalendarProps) {
     return (
         <div className="grid grid-cols-[100px_repeat(12,1fr)] text-sm rounded-lg overflow-x-auto relative">
             <div></div>
-            {calendarMonths.map((month, monthIndex) => (
+            {plantCalendarMonths.map((month, monthIndex) => (
                 <Typography level="body2" center key={monthIndex} className="py-2 text-center min-w-8 border-l">
                     {month}
                 </Typography>
@@ -55,7 +55,7 @@ export function PlantYearCalendar({ activities, now }: PlantYearCalendarProps) {
                             </Typography>
                             <div className={`size-4 rounded-full inline-block ml-2 ${activityType.color}`}></div>
                         </Row>
-                        {calendarMonths.map((_, index) => {
+                        {plantCalendarMonths.map((_, index) => {
                             const month = index + 1;
                             const currentActivities = activities[activityTypeName as keyof typeof calendarActivityTypes];
                             if (!currentActivities) return null;

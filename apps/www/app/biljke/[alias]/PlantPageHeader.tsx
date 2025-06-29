@@ -1,23 +1,21 @@
 import { slug } from "@signalco/js";
 import { MapPinHouse, LayoutGrid, Sprout, Euro } from "@signalco/ui-icons";
-import { Card } from "@signalco/ui-primitives/Card";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NavigatingButton } from "@signalco/ui/NavigatingButton";
-import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { PlantImage } from "../../../components/plants/PlantImage";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
 import { PageHeader } from "../../../components/shared/PageHeader";
 import { KnownPages } from "../../../src/KnownPages";
 import { PlantAttributeCards } from "./PlantAttributeCards";
-import { PlantYearCalendar } from "./PlantYearCalendar";
 import { VerifiedInformationBadge } from "./VerifiedInformationBadge";
 import { PlantData, PlantSortData } from "@gredice/client";
 import { getPlantInforationSections } from "./getPlantInforationSections";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PlantRecommendedBadge } from "@gredice/ui/plants";
+import { PlantCalendarPicker } from "./PlantCalendarPicker";
 
 export function PlantPageHeader({ plant, sort }: { plant: PlantData & { isRecommended: boolean | null | undefined }, sort?: PlantSortData }) {
     const informationSections = getPlantInforationSections(plant);
@@ -84,27 +82,7 @@ export function PlantPageHeader({ plant, sort }: { plant: PlantData & { isRecomm
                 </Stack>
             )}>
             <Stack>
-                <Stack spacing={1} className="group">
-                    <Typography level="h2" className="text-2xl">Kalendar</Typography>
-                    {(!plant.calendar || Object.keys(plant.calendar).length <= 0) ? (
-                        <NoDataPlaceholder>
-                            Nema podataka o kalendaru
-                        </NoDataPlaceholder>
-                    ) : (
-                        <Card className="p-0">
-                            <PlantYearCalendar activities={plant.calendar} />
-                        </Card>
-                    )}
-                    <FeedbackModal
-                        topic={sort ? "www/plants/sorts/calendar" : "www/plants/calendar"}
-                        data={{
-                            plantId: plant.id,
-                            plantAlias: plant.information.name,
-                            sortId: sort?.id,
-                            sortAlias: sort?.information.name
-                        }}
-                        className="self-end group-hover:opacity-100 opacity-0 transition-opacity" />
-                </Stack>
+                <PlantCalendarPicker plant={plant} sort={sort} />
                 <Stack spacing={1} className="group">
                     <Typography level="h2" className="text-2xl">Informacije</Typography>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
