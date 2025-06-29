@@ -1,6 +1,6 @@
 import { pgTable, serial, text, timestamp, boolean, index, integer } from "drizzle-orm/pg-core";
 import { accounts, users } from "./usersSchema";
-import { gardenBlocks, gardens } from "./gardenSchema";
+import { gardenBlocks, gardens, raisedBeds } from "./gardenSchema";
 import { relations } from "drizzle-orm";
 
 export const notifications = pgTable('notifications', {
@@ -12,9 +12,11 @@ export const notifications = pgTable('notifications', {
     accountId: text('account_id').notNull().references(() => accounts.id),
     userId: text('user_id').references(() => users.id), // optional, for user-specific notifications
     gardenId: integer('garden_id').references(() => gardens.id), // optional, for garden-specific notifications
+    raisedBedId: integer('raised_bed_id').references(() => raisedBeds.id), // optional, for raised bed-specific notifications
     blockId: text('block_id').references(() => gardenBlocks.id), // optional, for block-specific notifications
     readAt: timestamp('read_at'), // null if not read
     readWhere: text('read_where'), // e.g. 'web', 'mobile', ...
+    timestamp: timestamp('timestamp').notNull(), // when the notification was created
     createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => [
     index('notifications_account_id_idx').on(table.accountId),
@@ -39,6 +41,11 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
         references: [gardens.id],
         relationName: 'notificationsGarden',
     }),
+    raisedBed: one(raisedBeds, {
+        fields: [notifications.raisedBedId],
+        references: [raisedBeds.id],
+        relationName: 'notificationsRaisedBed',
+    }),
     block: one(gardenBlocks, {
         fields: [notifications.blockId],
         references: [gardenBlocks.id],
@@ -46,7 +53,7 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
     }),
 }));
 
-export type InsertNotification = Omit<typeof notifications.$inferInsert, 'id'>;
+export type InsertNotification = Omit<typeof notifications.$inferInsert, 'id' | 'createdAt'>;
 export type UpdateNotification = Partial<Omit<typeof notifications.$inferInsert, 'id' | 'createdAt'>> & { id: number };
 export type SelectNotification = typeof notifications.$inferSelect;
 

@@ -332,7 +332,10 @@ export async function getAllRaisedBeds() {
         where: and(
             eq(raisedBeds.isDeleted, false),
             eq(raisedBeds.isDeleted, false)
-        )
+        ),
+        with: {
+            fields: true,
+        }
     });
 }
 

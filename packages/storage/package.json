@@ -9,9 +9,9 @@
         ".": "./src/index.ts"
     },
     "scripts": {
-        "generate": "drizzle-kit generate",
-        "migrate": "tsx --env-file=.env ./src/migrate.ts",
-        "studio": "drizzle-kit studio",
+        "db-generate": "drizzle-kit generate",
+        "db-push": "tsx --env-file=.env ./src/migrate.ts",
+        "dev": "drizzle-kit studio",
         "test": "pnpm run test:node",
         "test:db:start": "zsh ./tests/startTestDb.sh",
         "test:db:migrate": "tsx --env-file=.env.test --conditions=react-server ./src/migrate.ts",

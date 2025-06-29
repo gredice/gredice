@@ -1,15 +1,13 @@
-import { getGarden, getRaisedBeds } from "@gredice/storage";
+import { getGarden } from "@gredice/storage";
 import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
-import { Table } from "@signalco/ui-primitives/Table";
 import { auth } from "../../../../lib/auth/auth";
-import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
-import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
 import { KnownPages } from "../../../../src/KnownPages";
 import { Field } from "../../../../components/shared/fields/Field";
 import { FieldSet } from "../../../../components/shared/fields/FieldSet";
 import Link from "next/link";
+import { RaisedBedsTableCard } from "../../accounts/[accountId]/RaisedBedsTableCard";
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +28,6 @@ export default async function GardenPage({ params }: { params: Promise<{ gardenI
     const { gardenId } = await params;
     await auth(['admin']);
     const garden = await getGarden(gardenId);
-    const raisedBeds = await getRaisedBeds(gardenId);
 
     return (
         <Stack spacing={4}>
@@ -55,37 +52,7 @@ export default async function GardenPage({ params }: { params: Promise<{ gardenI
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <GardenPreviewCard gardenId={gardenId} />
             </div>
-            <Card>
-                <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>ID</Table.Head>
-                                <Table.Head>Datum Kreiranja</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {raisedBeds.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={2}>
-                                        <NoDataPlaceholder>
-                                            Nema gredica
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
-                            {raisedBeds.map(bed => (
-                                <Table.Row key={bed.id}>
-                                    <Table.Cell>{bed.id}</Table.Cell>
-                                    <Table.Cell>
-                                        <LocaleDateTime time={false}>{bed.createdAt}</LocaleDateTime>
-                                    </Table.Cell>
-                                </Table.Row>
-                            ))}
-                        </Table.Body>
-                    </Table>
-                </CardOverflow>
-            </Card>
+            <RaisedBedsTableCard gardenId={gardenId} />
         </Stack>
     );
 }

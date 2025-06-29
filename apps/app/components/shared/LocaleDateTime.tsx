@@ -11,6 +11,8 @@ export function _localeDatetime({ children, date, time }: { children: Date | nul
         throw new Error('At least one of date or time must be true, or leave them undefined to show both');
     }
 
+    console.log(typeof children, children)
+
     if (children) {
         const options: Intl.DateTimeFormatOptions = {
             year: 'numeric',

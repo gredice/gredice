@@ -11,7 +11,14 @@ import { Add } from "@signalco/ui-icons";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Stack } from "@signalco/ui-primitives/Stack";
 
-export function NotificationCreateModal({ accountId, userId, gardenId }: { accountId?: string; userId?: string, gardenId?: number }) {
+type NotificationCreateModalProps = {
+    accountId?: string;
+    userId?: string;
+    gardenId?: number;
+    raisedBedId?: number;
+};
+
+export function NotificationCreateModal({ accountId, userId, gardenId, raisedBedId }: NotificationCreateModalProps) {
     const [state, formAction, pending] = useActionState(createNotificationAction, null);
     const formRef = useRef<HTMLFormElement>(null);
 
@@ -32,10 +39,11 @@ export function NotificationCreateModal({ accountId, userId, gardenId }: { accou
                             <Input name="imageUrl" label="URL slike" disabled={pending} />
                             <Input name="linkUrl" label="Link (opcionalno)" disabled={pending} />
                             <Input name="accountId" defaultValue={accountId} label="Account ID" required disabled={pending} />
-                            <Input name="userId" defaultValue={userId} label="User ID (opcionalno)" disabled={pending} />
-                            <Input name="gardenId" defaultValue={gardenId} label="Garden ID (opcionalno)" type="number" disabled={pending} />
-                            <Input name="blockId" label="Block ID (opcionalno)" disabled={pending} />
-                            <Input name="createdAt" type="datetime-local" label="Datum kreiranja (opcionalno)" disabled={pending} />
+                            <Input name="userId" defaultValue={userId} label="Korisnik ID (opcionalno)" disabled={pending} />
+                            <Input name="gardenId" defaultValue={gardenId} label="Vrt ID (opcionalno)" type="number" disabled={pending} />
+                            <Input name="raisedBedId" defaultValue={raisedBedId} label="Gredica ID (opcionalno)" disabled={pending} />
+                            <Input name="blockId" label="Blok ID (opcionalno)" disabled={pending} />
+                            <Input name="timestamp" type="datetime-local" label="Datum kreiranja (opcionalno)" disabled={pending} />
                         </div>
                         <Button type="submit" loading={pending} disabled={pending}>
                             Pošalji

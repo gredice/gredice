@@ -21,6 +21,7 @@ export function useNotifications(userId: string | undefined, read?: boolean, pag
       }
       return (await response.json()).map((notification) => ({
         ...notification,
+        timestamp: new Date(notification.timestamp),
         createdAt: new Date(notification.createdAt),
         readAt: notification.readAt ? new Date(notification.readAt) : null,
       }));

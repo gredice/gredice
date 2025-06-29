@@ -25,7 +25,7 @@ export function getNotificationsByUser(userId: string, read: boolean, page: numb
             : and(
                 eq(notifications.userId, userId),
                 isNull(notifications.readAt)),
-        orderBy: desc(notifications.createdAt),
+        orderBy: desc(notifications.timestamp),
         limit,
         offset: page * limit,
     });
@@ -38,7 +38,7 @@ export function getNotificationsByAccount(accountId: string, read: boolean, page
             : and(
                 eq(notifications.accountId, accountId),
                 isNull(notifications.readAt)),
-        orderBy: desc(notifications.createdAt),
+        orderBy: desc(notifications.timestamp),
         limit,
         offset: page * limit,
     });

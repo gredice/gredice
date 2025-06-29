@@ -10,6 +10,8 @@ import { NoDataPlaceholder } from "../../../../components/shared/placeholders/No
 import { notFound } from "next/navigation";
 import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
 import { RaisedBedFieldPlantStatusSelector } from "./RaisedBedFieldPlantStatusSelector";
+import { NotificationCreateModal } from "../../../../components/notifications/NotificationCreateModal";
+import { NotificationsTableCard } from "../../../../components/notifications/NotificationsTableCard";
 
 export const dynamic = 'force-dynamic';
 
@@ -74,7 +76,7 @@ export default async function RaisedBedPage({ params }: { params: Promise<{ rais
                                             status={field.plantStatus}
                                         />
                                     </Table.Cell>
-                                    <Table.Cell><LocaleDateTime time={false}>{field.plantScheduledDate}</LocaleDateTime></Table.Cell>
+                                    <Table.Cell><LocaleDateTime time={false}>{new Date(field.plantScheduledDate)}</LocaleDateTime></Table.Cell>
                                     <Table.Cell><LocaleDateTime time={false}>{field.createdAt}</LocaleDateTime></Table.Cell>
                                     <Table.Cell><LocaleDateTime time={false}>{field.updatedAt}</LocaleDateTime></Table.Cell>
                                 </Table.Row>
@@ -83,6 +85,11 @@ export default async function RaisedBedPage({ params }: { params: Promise<{ rais
                     </Table>
                 </CardOverflow>
             </Card>
+            <NotificationsTableCard
+                accountId={raisedBed.accountId}
+                gardenId={raisedBed.gardenId}
+                raisedBedId={raisedBed.id}
+            />
         </Stack>
     );
 }
