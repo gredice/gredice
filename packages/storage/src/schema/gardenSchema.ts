@@ -167,3 +167,29 @@ export type UpdateRaisedBedField =
     Partial<Omit<typeof raisedBedFields.$inferInsert, 'id' | 'raisedBedId' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
     Pick<typeof raisedBedFields.$inferSelect, 'id'>;
 export type SelectRaisedBedField = typeof raisedBedFields.$inferSelect;
+
+export const raisedBedSensors = pgTable('raised_bed_sensors', {
+    id: serial('id').primaryKey(),
+    raisedBedId: integer('raised_bed_id').notNull().references(() => raisedBeds.id),
+    sensorSignalcoId: text('sensor_signalco_id').notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
+    isDeleted: boolean('is_deleted').notNull().default(false),
+}, (table) => [
+    index('raised_bed_sensors_raised_bed_id_idx').on(table.raisedBedId),
+    index('raised_bed_sensors_is_deleted_idx').on(table.isDeleted),
+]);
+
+export const raisedBedSensorRelations = relations(raisedBedSensors, ({ one }) => ({
+    raisedBed: one(raisedBeds, {
+        fields: [raisedBedSensors.raisedBedId],
+        references: [raisedBeds.id],
+        relationName: 'raisedBedSensorsRaisedBed',
+    }),
+}));
+
+export type InsertRaisedBedSensor = typeof raisedBedSensors.$inferInsert;
+export type UpdateRaisedBedSensor =
+    Partial<Omit<typeof raisedBedSensors.$inferInsert, 'id' | 'raisedBedId' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
+    Pick<typeof raisedBedSensors.$inferSelect, 'id'>;
+export type SelectRaisedBedSensor = typeof raisedBedSensors.$inferSelect;

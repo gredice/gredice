@@ -41,6 +41,7 @@
     "react-confetti-boom": "2.0.1",
     "react-dom": "19.1.0",
     "react-markdown": "10.1.0",
+    "recharts": "3.0.2",
     "suncalc": "1.9.0",
     "tailwindcss": "3.4.17",
     "tailwindcss-animate": "1.0.7",

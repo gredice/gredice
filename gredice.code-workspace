@@ -45,6 +45,10 @@
 			"path": "packages/js"
 		},
 		{
+			"name": "📦 @gredice/signalco",
+			"path": "packages/signalco"
+		},
+		{
 			"name": "📦 @gredice/storage",
 			"path": "packages/storage"
 		},

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createGardenBlock, createGardenStack, createRaisedBed, deleteGardenStack, getAccountGardens, getGarden, getGardenBlocks, getGardenStack, getRaisedBed, getRaisedBeds, spendSunflowers, updateGardenBlock, updateGardenStack } from '@gredice/storage';
+import { createGardenBlock, createGardenStack, createRaisedBed, deleteGardenStack, getAccountGardens, getGarden, getGardenBlocks, getGardenStack, getRaisedBed, getRaisedBeds, getRaisedBedSensors, spendSunflowers, updateGardenBlock, updateGardenStack } from '@gredice/storage';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from 'zod';
 import { describeRoute } from 'hono-openapi';
@@ -8,6 +8,7 @@ import { getEvents, knownEventTypes } from '@gredice/storage';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { ContentfulStatusCode } from 'hono/utils/http-status';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
+import { signalcoClient } from '@gredice/signalco';
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -700,6 +701,119 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 updatedAt: raisedBed.updatedAt
             });
         }
-    );
+    )
+    .get(
+        '/:gardenId/raised-beds/:raisedBedId/sensors',
+        describeRoute({
+            description: 'Get sensors for a raised bed',
+        }),
+        zValidator(
+            "param",
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+            })
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId);
+            if (isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            const raisedBedIdNumber = parseInt(raisedBedId);
+            if (isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (!raisedBed || raisedBed.gardenId !== gardenIdNumber || raisedBed.accountId !== accountId) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            const sensors = await getRaisedBedSensors(raisedBedIdNumber);
+
+            // Fetch sensor data from Signalco
+            const data = await Promise.all(sensors.map(sensor =>
+                signalcoClient().GET('/entity/{id}', { params: { path: { id: sensor.sensorSignalcoId } } })
+            ));
+
+            console.log('Fetched sensor data', { data });
+
+            return context.json(sensors.flatMap(sensor => ([
+                {
+                    id: sensor.id,
+                    type: 'soil_moisture',
+                    value: data.find(d => d.data?.id === sensor.sensorSignalcoId)?.data?.contacts?.find(c => c.contactName === "soil_moisture")?.valueSerialized ?? null,
+                    updatedAt: data.find(d => d.data?.id === sensor.sensorSignalcoId)?.data?.contacts?.find(c => c.contactName === "soil_moisture")?.timeStamp ?? null
+                },
+                {
+                    id: sensor.id,
+                    type: 'soil_temperature',
+                    value: data.find(d => d.data?.id === sensor.sensorSignalcoId)?.data?.contacts?.find(c => c.contactName === "temperature")?.valueSerialized ?? null,
+                    updatedAt: data.find(d => d.data?.id === sensor.sensorSignalcoId)?.data?.contacts?.find(c => c.contactName === "temperature")?.timeStamp ?? null
+                }
+            ])));
+        }
+    )
+    .get(
+        '/:gardenId/raised-beds/:raisedBedId/sensors/:sensorId/:type',
+        describeRoute({
+            description: 'Get a specific sensor for a raised bed',
+        }),
+        zValidator(
+            "param",
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                sensorId: z.string(),
+                type: z.string()
+            })
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, sensorId, type } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId);
+            if (isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            const raisedBedIdNumber = parseInt(raisedBedId);
+            if (isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (!raisedBed || raisedBed.gardenId !== gardenIdNumber || raisedBed.accountId !== accountId) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            const sensors = await getRaisedBedSensors(raisedBedIdNumber);
+            const sensorIdNumber = parseInt(sensorId);
+            const sensor = sensors.find(s => s.id === sensorIdNumber);
+            if (!sensor) {
+                return context.json({ error: 'Sensor not found' }, 404);
+            }
+
+            // Fetch sensor data from Signalco
+            const history = await signalcoClient().GET('/contact/history', {
+                params: {
+                    // @ts-ignore
+                    query: {
+                        entityId: sensor.sensorSignalcoId,
+                        channelName: 'zigbee2mqtt',
+                        contactName: type === 'soil_moisture' ? 'soil_moisture' : 'temperature',
+                        duration: "2.00:00"
+                    }
+                }
+            });
+
+            return context.json({
+                id: sensor.id,
+                type,
+                values: history.data?.values || []
+            });
+        });
 
 export default app;
