@@ -1,6 +1,7 @@
 export const KnownPages = {
     Landing: '/',
 
+    Delivery: '/dostava',
     Plants: '/biljke',
     Plant: (alias: string) => `/biljke/${alias}`,
     PlantSort: (alias: string, sortName: string) => `/biljke/${alias}/sorte/${sortName}`,
