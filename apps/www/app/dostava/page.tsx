@@ -35,7 +35,7 @@ export default function DeliveryPage() {
                         </caption>
                         <thead>
                             <tr>
-                                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Grad</th>
+                                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Mjesto</th>
                                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Prva dostava</th>
                                 <th style={{ border: '1px solid #ddd', padding: '8px' }}>Ostale dostave</th>
                             </tr>
@@ -43,7 +43,7 @@ export default function DeliveryPage() {
                         <tbody>
                             <tr>
                                 <td style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Zagreb</strong></td>
-                                <td style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Besplatna</strong></td>
+                                <td style={{ border: '1px solid #ddd', padding: '8px' }}><strong>🎉 Besplatna dostava 🎉</strong></td>
                                 <td style={{ border: '1px solid #ddd', padding: '8px' }}><strong>4,99 €</strong></td>
                             </tr>
                             <tr>
@@ -65,6 +65,11 @@ export default function DeliveryPage() {
                                 <td style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Varaždin</strong> (90 km)</td>
                                 <td style={{ border: '1px solid #ddd', padding: '8px' }}><strong>9,00 €</strong></td>
                                 <td style={{ border: '1px solid #ddd', padding: '8px' }}><strong>13,99 €</strong></td>
+                            </tr>
+                            <tr>
+                                <td style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Ostala mjesta</strong><br />(<em>unutar 200km od lokacije za osobno preuzimanje</em>)</td>
+                                <td style={{ border: '1px solid #ddd', padding: '8px' }}><strong>0,10 €/km</strong></td>
+                                <td style={{ border: '1px solid #ddd', padding: '8px' }}><strong>4,99 €</strong> + <strong>0,10 €/km</strong></td>
                             </tr>
                         </tbody>
                     </table>
