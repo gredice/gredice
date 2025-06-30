@@ -1,4 +1,4 @@
-import { getEntitiesFormatted, getEntityFormatted, getShoppingCart } from "@gredice/storage";
+import { getEntitiesFormatted, getShoppingCart } from "@gredice/storage";
 import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import { Table } from "@signalco/ui-primitives/Table";
 import { auth } from "../../../../lib/auth/auth";
