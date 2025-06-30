@@ -1,13 +1,18 @@
 import { Row } from "@signalco/ui-primitives/Row";
 import { useRaisedBedSensors } from "../../hooks/useRaisedBedSensors";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Thermometer, Droplet, Up, Down, Droplets } from "@signalco/ui-icons";
+import { Thermometer, Droplet, Up, Down, Droplets, ShoppingCart, Check } from "@signalco/ui-icons";
 import { cx } from "@signalco/ui-primitives/cx";
 import { useRaisedBedSensorHistory } from "../../hooks/useRaisedBedSensorHistory";
 import { Card, CardContent } from "@signalco/ui-primitives/Card";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Area, AreaChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, Tooltip } from "recharts"
+import { Stack } from "@signalco/ui-primitives/Stack";
+import { useSetShoppingCartItem } from "../../hooks/useSetShoppingCartItem";
+import { useShoppingCart } from "../../hooks/useShoppingCart";
+import { useNeighboringRaisedBeds } from "./RaisedBedField";
+import { Spinner } from "@signalco/ui-primitives/Spinner";
 
 function CustomTooltip({ active, payload, header, textColor, label, unit }: any) {
     if (active && payload && payload.length) {
@@ -40,7 +45,7 @@ function Metric({ label, value, icon, color }: {
     );
 }
 
-function SensorInfoSoilMoisture({ icon, header, unit, colors, positiveTrend, references, trigger, gardenId, raisedBedId, sensorId, type }: {
+function SensorInfoModal({ icon, header, unit, colors, positiveTrend, references, trigger, gardenId, raisedBedId, status, sensorId, type }: {
     icon: React.ReactNode,
     header: string,
     unit: string,
@@ -55,10 +60,13 @@ function SensorInfoSoilMoisture({ icon, header, unit, colors, positiveTrend, ref
     trigger: React.ReactNode,
     gardenId: number,
     raisedBedId: number,
-    sensorId: number,
+    status: string | undefined,
+    sensorId?: number,
     type: string
 }) {
     const { data: sensorDetails, isLoading, error } = useRaisedBedSensorHistory(gardenId, raisedBedId, sensorId, type);
+    const setShoppingCartItem = useSetShoppingCartItem();
+    const { data: shoppingCart } = useShoppingCart();
 
     // Process and sort the data with smart date/time formatting
     const processedData = sensorDetails?.values
@@ -114,115 +122,193 @@ function SensorInfoSoilMoisture({ icon, header, unit, colors, positiveTrend, ref
     const currentStatus = getStatus(currentMoisture);
     const absoluteStatus = getStatus(avgMoisture);
 
+    const neighboringRaisedBeds = useNeighboringRaisedBeds(raisedBedId);
+    const isSensorInShoppingCart = shoppingCart?.items.some(item =>
+        (item.raisedBedId === raisedBedId || (neighboringRaisedBeds?.some(bed => bed.id === item.raisedBedId) ?? false)) &&
+        item.gardenId === gardenId &&
+        item.entityId === '180' &&
+        item.entityTypeName === 'operation');
+
+    async function handleBuySensor() {
+        await setShoppingCartItem.mutateAsync({
+            amount: 1,
+            entityId: '180', // TODO: Replace with actual operation ID
+            entityTypeName: 'operation',
+            gardenId: gardenId,
+            raisedBedId: raisedBedId
+        });
+    }
+
     return (
-        <Modal trigger={trigger} title="Detalji senzora" className="max-w-3xl">
-            <div className="w-full space-y-1 overflow-hidden">
-                {/* Mobile-Responsive Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 pt-2">
-                    <div className="flex items-center gap-2">
-                        {icon}
-                        <div>
-                            <Typography level="h5">{header}</Typography>
-                            <Typography level="body2">Očitanje senzora tvoje gredice</Typography>
-                        </div>
-                    </div>
-
-                    {/* Stats - Stack on mobile, inline on desktop */}
-                    <div className="grid grid-cols-3 gap-1">
-                        <Metric
-                            label="Trenutno"
-                            value={`${currentMoisture}${unit}`}
-                            color={currentStatus.color}
-                        />
-                        <Metric
-                            label="Trend"
-                            value={`${trend >= 0 ? "+" : ""}${trend}${unit}`}
-                            icon={trend >= 0 ? <Up className={cx("size-5 shrink-0", positiveTrend ? "text-green-500" : "text-red-500")} /> : <Down className={cx("size-5 shrink-0", !positiveTrend ? "text-green-500" : "text-red-500")} />}
-                            color={(positiveTrend ? trend >= 0 : trend <= 0) ? "text-green-500" : "text-red-500"}
-                        />
-                        <Metric
-                            label="Prosijek"
-                            value={`${avgMoisture}${unit}`}
-                            color={absoluteStatus.color}
-                        />
-                    </div>
-                </div>
-
-                {/* Responsive Chart */}
-                <Card>
-                    <CardContent>
-                        <div className="h-[240px] sm:h-[280px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={dataWithSmartLabels} margin={{ top: 8, right: 4, left: 20, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="valueGradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor={colors.areaGradientStart} stopOpacity={0.6} />
-                                            <stop offset="100%" stopColor={colors.areaGradientEnd} stopOpacity={0.1} />
-                                        </linearGradient>
-                                    </defs>
-
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-neutral-200 dark:stroke-neutral-800" />
-
-                                    <XAxis
-                                        dataKey="shortLabel"
-                                        tick={{ fontSize: 9 }}
-                                        angle={-35}
-                                        textAnchor="end"
-                                        height={50}
-                                        interval="preserveStartEnd"
-                                        minTickGap={10}
-                                    />
-
-                                    <YAxis
-                                        domain={[0, 100]}
-                                        tick={{ fontSize: 9 }}
-                                        width={30}
-                                        label={{
-                                            value: `${header} (${unit})`,
-                                            angle: -90,
-                                            position: "insideLeft",
-                                            style: { textAnchor: "middle", fontSize: "10px" },
-                                        }}
-                                    />
-
-                                    {/* Reference lines - lighter on mobile */}
-                                    {references?.map((ref) => (
-                                        <ReferenceLine
-                                            key={ref.value}
-                                            y={ref.value}
-                                            stroke={ref.color}
-                                            strokeDasharray="4 4"
-                                            opacity={0.7}
-                                        />
-                                    ))}
-
-                                    <Tooltip content={<CustomTooltip header={header} unit={unit} textColor={colors.text} />} />
-
-                                    <Area
-                                        type="monotone"
-                                        dataKey="value"
-                                        stroke={colors.area}
-                                        strokeWidth={2}
-                                        fill="url(#valueGradient)"
-                                        fillOpacity={1}
-                                        dot={false}
-                                        activeDot={false}
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Responsive Legend */}
-                {references && (
-                    <div className="grid grid-cols-2 sm:flex sm:justify-center sm:space-x-4 gap-2 sm:gap-0 text-xs">
-                        {references?.map((ref) => (
-                            <div key={ref.value} className="flex items-center space-x-1">
-                                <div className={`w-3 h-2 rounded shrink-0 ${ref.bgColor}`}></div>
-                                <span className={ref.color}>{ref.label}</span>
+        <Modal trigger={trigger} title="Detalji senzora" className="max-w-3xl overflow-hidden">
+            <div className="relative w-full h-full">
+                <div className="w-full space-y-1 overflow-hidden">
+                    {/* Mobile-Responsive Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 pt-2">
+                        <div className="flex items-center gap-2">
+                            {icon}
+                            <div>
+                                <Typography level="h5">{header}</Typography>
+                                <Typography level="body2">Očitanje senzora tvoje gredice</Typography>
                             </div>
-                        ))}
+                        </div>
+
+                        {/* Stats - Stack on mobile, inline on desktop */}
+                        <div className="grid grid-cols-3 gap-1">
+                            <Metric
+                                label="Trenutno"
+                                value={`${currentMoisture}${unit}`}
+                                color={currentStatus.color}
+                            />
+                            <Metric
+                                label="Trend"
+                                value={`${trend >= 0 ? "+" : ""}${trend}${unit}`}
+                                icon={trend >= 0 ? <Up className={cx("size-5 shrink-0", positiveTrend ? "text-green-500" : "text-red-500")} /> : <Down className={cx("size-5 shrink-0", !positiveTrend ? "text-green-500" : "text-red-500")} />}
+                                color={(positiveTrend ? trend >= 0 : trend <= 0) ? "text-green-500" : "text-red-500"}
+                            />
+                            <Metric
+                                label="Prosijek"
+                                value={`${avgMoisture}${unit}`}
+                                color={absoluteStatus.color}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Responsive Chart */}
+                    <Card>
+                        <CardContent>
+                            <div className="h-[240px] sm:h-[280px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={dataWithSmartLabels} margin={{ top: 8, right: 4, left: 20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="valueGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor={colors.areaGradientStart} stopOpacity={0.6} />
+                                                <stop offset="100%" stopColor={colors.areaGradientEnd} stopOpacity={0.1} />
+                                            </linearGradient>
+                                        </defs>
+
+                                        <CartesianGrid strokeDasharray="3 3" className="stroke-neutral-200 dark:stroke-neutral-800" />
+
+                                        <XAxis
+                                            dataKey="shortLabel"
+                                            tick={{ fontSize: 9 }}
+                                            angle={-35}
+                                            textAnchor="end"
+                                            height={50}
+                                            interval="preserveStartEnd"
+                                            minTickGap={10}
+                                        />
+
+                                        <YAxis
+                                            domain={[0, 100]}
+                                            tick={{ fontSize: 9 }}
+                                            width={30}
+                                            label={{
+                                                value: `${header} (${unit})`,
+                                                angle: -90,
+                                                position: "insideLeft",
+                                                style: { textAnchor: "middle", fontSize: "10px" },
+                                            }}
+                                        />
+
+                                        {/* Reference lines - lighter on mobile */}
+                                        {references?.map((ref) => (
+                                            <ReferenceLine
+                                                key={ref.value}
+                                                y={ref.value}
+                                                stroke={ref.color}
+                                                strokeDasharray="4 4"
+                                                opacity={0.7}
+                                            />
+                                        ))}
+
+                                        <Tooltip content={<CustomTooltip header={header} unit={unit} textColor={colors.text} />} />
+
+                                        <Area
+                                            type="monotone"
+                                            dataKey="value"
+                                            stroke={colors.area}
+                                            strokeWidth={2}
+                                            fill="url(#valueGradient)"
+                                            fillOpacity={1}
+                                            dot={false}
+                                            activeDot={false}
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Responsive Legend */}
+                    {references && (
+                        <div className="grid grid-cols-2 sm:flex sm:justify-center sm:space-x-4 gap-2 sm:gap-0 text-xs">
+                            {references?.map((ref) => (
+                                <div key={ref.value} className="flex items-center space-x-1">
+                                    <div className={`w-3 h-2 rounded shrink-0 ${ref.bgColor}`}></div>
+                                    <span className={ref.color}>{ref.label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                {(status === 'new' || !sensorId) && (
+                    <div className="absolute inset-0 bg-background/20 backdrop-blur-md -m-6">
+                        {!status && !isSensorInShoppingCart && (
+                            <div className="flex flex-col items-center justify-center h-full gap-4 p-6">
+                                <Typography level="body1">
+                                    Nemaš postavljen senzor za ovu gredicu.
+                                </Typography>
+                                <Stack>
+                                    <Typography level="body2" className="max-w-md">
+                                        Postavi senzor za praćenje vlažnosti i temperature tla.
+                                        Senzor ti daje u trenutno stanje tla tvoje gredice.
+                                    </Typography>
+                                    <Typography level="body2">
+                                    </Typography>
+                                </Stack>
+                                <Button
+                                    variant="solid"
+                                    startDecorator={<ShoppingCart className="size-5 shrink-0" />}
+                                    endDecorator={<span className="font-semibold ml-1">24.99€</span>}
+                                    onClick={handleBuySensor}
+                                >
+                                    Postavi senzor
+                                </Button>
+                            </div>
+                        )}
+                        {status === 'new' && (
+                            <div className="flex flex-col items-center justify-center h-full gap-4 p-6">
+                                <Typography level="body1">
+                                    Senzor je u procesu instalacije...
+                                </Typography>
+                                <Typography level="body2" className="max-w-md text-balance" center>
+                                    Javit ćemo ti kada bude spreman.
+                                </Typography>
+                                <Spinner loading loadingLabel={"Instalacija u tijeku..."} />
+                            </div>
+                        )}
+                        {!status && isSensorInShoppingCart && (
+                            <div className="flex flex-col items-center justify-center h-full gap-4 p-6">
+                                <Typography level="body1">
+                                    Senzor je već u tvojoj košarici.
+                                </Typography>
+                                <Stack>
+                                    <Typography level="body2" className="max-w-md text-balance" center>
+                                        Senzor za praćenje vlažnosti i temperature tla je već dodan u tvoju košaricu.
+                                    </Typography>
+                                </Stack>
+                                <div className="relative flex flex-col gap-2 items-center justify-center">
+                                    <Row spacing={1}>
+                                        <Check className="size-7 shrink-0 rounded-full bg-green-500" />
+                                        <ShoppingCart className="size-8 shrink-0" />
+                                    </Row>
+                                    <Typography level="body2" className="text-green-500 font-semibold">
+                                        Senzor je u košarici
+                                    </Typography>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -241,7 +327,7 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
 
     return (
         <Row spacing={0.5}>
-            <SensorInfoSoilMoisture
+            <SensorInfoModal
                 icon={<Droplets className="size-7 shrink-0 stroke-blue-500" />}
                 header="Vlažnost tla"
                 unit="%"
@@ -259,7 +345,7 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
                     { value: 0, label: "Nisko (0-20%)", color: "text-red-600", bgColor: "bg-red-600", strokeColor: "stroke-red-600" }
                 ]}
                 trigger={(
-                    <Button size="sm" className="rounded-full text-primary dark:text-primary-foreground bg-gradient-to-br from-lime-100/90 to-lime-100/80">
+                    <Button size="sm" className="rounded-full text-primary dark:text-primary-foreground bg-gradient-to-br from-lime-100/90 to-lime-100/80 hover:bg-white">
                         <Row spacing={0.5}>
                             <Droplet className={cx(
                                 "size-5 shrink-0 stroke-blue-400",
@@ -274,9 +360,10 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
                 )}
                 gardenId={gardenId}
                 raisedBedId={raisedBedId}
-                sensorId={soilMoisture?.id ?? 0}
+                status={soilMoisture?.status}
+                sensorId={soilMoisture?.id}
                 type="soil_moisture" />
-            <SensorInfoSoilMoisture
+            <SensorInfoModal
                 icon={<Thermometer className="size-7 shrink-0 stroke-red-500" />}
                 header="Temperatura tla"
                 unit="°C"
@@ -287,7 +374,7 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
                     areaGradientEnd: "#fca5a5",
                 }}
                 trigger={(
-                    <Button size="sm" className="rounded-full text-primary dark:text-primary-foreground bg-gradient-to-br from-lime-100/90 to-lime-100/80">
+                    <Button size="sm" className="rounded-full text-primary dark:text-primary-foreground bg-gradient-to-br from-lime-100/90 to-lime-100/80 hover:bg-white">
                         <Row spacing={0.5}>
                             <Thermometer className={cx(
                                 "size-5 shrink-0 stroke-red-400",
@@ -302,7 +389,8 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
                 )}
                 gardenId={gardenId}
                 raisedBedId={raisedBedId}
-                sensorId={soilTemperature?.id ?? 0}
+                status={soilTemperature?.status}
+                sensorId={soilTemperature?.id}
                 type="soil_temperature" />
         </Row>
     );
