@@ -744,12 +744,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json(sensors.flatMap(sensor => ([
                 {
                     id: sensor.id,
+                    status: sensor.status,
                     type: 'soil_moisture',
                     value: data.find(d => d.data?.id === sensor.sensorSignalcoId)?.data?.contacts?.find(c => c.contactName === "soil_moisture")?.valueSerialized ?? null,
                     updatedAt: data.find(d => d.data?.id === sensor.sensorSignalcoId)?.data?.contacts?.find(c => c.contactName === "soil_moisture")?.timeStamp ?? null
                 },
                 {
                     id: sensor.id,
+                    status: sensor.status,
                     type: 'soil_temperature',
                     value: data.find(d => d.data?.id === sensor.sensorSignalcoId)?.data?.contacts?.find(c => c.contactName === "temperature")?.valueSerialized ?? null,
                     updatedAt: data.find(d => d.data?.id === sensor.sensorSignalcoId)?.data?.contacts?.find(c => c.contactName === "temperature")?.timeStamp ?? null
