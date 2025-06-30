@@ -77,7 +77,7 @@ export default function DeliveryPage() {
                         Ako ti više odgovara osobno preuzeti svoje povrće, uvijek možeš doći do jedne
                         od naših <strong>lokacija u Zagrebu</strong>. Ova opcija je
                         potpuno <strong>besplatna</strong>, a točne adrese i slobodne termine možeš
-                        pronaći u aplikaciji. Samo prilikom narudžbe odaberi opciju "Osobno preuzimanje" i
+                        pronaći u aplikaciji. Samo prilikom narudžbe odaberi opciju &quot;Osobno preuzimanje&quot; i
                         odaberi lokaciju i termin koji ti najviše odgovara.
                     </p>
                     <h2 id="planiranje-i-zakazivanje">Planiranje i zakazivanje</h2>
