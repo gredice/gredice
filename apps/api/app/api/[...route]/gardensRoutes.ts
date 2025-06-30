@@ -732,7 +732,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
 
-            const sensors = await getRaisedBedSensors(raisedBedIdNumber);
+            // Take only sensors that have a Signalco ID assigned (are installed and configured)
+            const sensors = (await getRaisedBedSensors(raisedBedIdNumber))
+                .filter(sensor => Boolean(sensor.sensorSignalcoId))
+                .map(sensor => ({
+                    ...sensor,
+                    sensorSignalcoId: sensor.sensorSignalcoId!
+                }));
 
             // Fetch sensor data from Signalco
             const data = await Promise.all(sensors.map(sensor =>
