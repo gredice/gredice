@@ -1,4 +1,4 @@
-import { getShoppingCart } from "@gredice/storage";
+import { getEntitiesFormatted, getEntityFormatted, getShoppingCart } from "@gredice/storage";
 import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import { Table } from "@signalco/ui-primitives/Table";
 import { auth } from "../../../../lib/auth/auth";
@@ -8,6 +8,8 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
 import { notFound } from "next/navigation";
+import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
+import { EntityStandardized } from "../../../../lib/@types/EntityStandardized";
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +20,8 @@ export default async function ShoppingCartDetailsPage({ params }: { params: { ca
     if (!cart) {
         notFound();
     }
+
+    const plantSorts = await getEntitiesFormatted('plantSort') as EntityStandardized[];
 
     return (
         <Stack spacing={4}>
@@ -33,11 +37,12 @@ export default async function ShoppingCartDetailsPage({ params }: { params: { ca
                     <Table>
                         <Table.Header>
                             <Table.Row>
-                                <Table.Head>ID entiteta</Table.Head>
-                                <Table.Head>Tip entiteta</Table.Head>
+                                <Table.Head>Entitet</Table.Head>
                                 <Table.Head>Količina</Table.Head>
                                 <Table.Head>Status</Table.Head>
                                 <Table.Head>Vrt | Gredica | Pozicija</Table.Head>
+                                <Table.Head>Stvoreno</Table.Head>
+                                <Table.Head>Ažurirano</Table.Head>
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
@@ -52,14 +57,27 @@ export default async function ShoppingCartDetailsPage({ params }: { params: { ca
                             )}
                             {cart.items.map(item => (
                                 <Table.Row key={item.id}>
-                                    <Table.Cell>{item.entityId}</Table.Cell>
-                                    <Table.Cell>{item.entityTypeName}</Table.Cell>
+                                    <Table.Cell>
+                                        {item.entityTypeName === 'plantSort' && plantSorts.find((sort) => sort.id?.toString() === item.entityId)
+                                            ? <span>{plantSorts.find(sort => sort.id?.toString() === item.entityId)?.information?.name}</span>
+                                            : <span>{item.entityTypeName} | {item.entityId}</span>}
+                                    </Table.Cell>
                                     <Table.Cell>{item.amount}</Table.Cell>
                                     <Table.Cell>{item.status}</Table.Cell>
                                     <Table.Cell>
                                         {item.gardenId ? `Vrt ${item.gardenId}` : ''}
                                         {item.raisedBedId ? ` | Gredica ${item.raisedBedId}` : ''}
                                         {typeof item.positionIndex === 'number' ? ` | Pozicija ${item.positionIndex}` : ''}
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        <LocaleDateTime>
+                                            {item.createdAt}
+                                        </LocaleDateTime>
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        <LocaleDateTime>
+                                            {item.updatedAt}
+                                        </LocaleDateTime>
                                     </Table.Cell>
                                 </Table.Row>
                             ))}
