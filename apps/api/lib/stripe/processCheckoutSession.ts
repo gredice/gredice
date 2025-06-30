@@ -1,4 +1,4 @@
-import { getShoppingCart, setCartItemPaid, upsertRaisedBedField, createEvent, knownEvents, earnSunflowersForPayment, updateRaisedBed, markCartPaidIfAllItemsPaid, createTransaction, getTransactions } from "@gredice/storage";
+import { getShoppingCart, setCartItemPaid, upsertRaisedBedField, createEvent, knownEvents, earnSunflowersForPayment, updateRaisedBed, markCartPaidIfAllItemsPaid, createTransaction, getTransactions, createRaisedBedSensor } from "@gredice/storage";
 import { getStripeCheckoutSession } from "@gredice/stripe/server";
 
 export async function processCheckoutSession(checkoutSessionId?: string) {
@@ -102,6 +102,18 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         if (itemData.entityTypeName === 'operation') {
             // TODO: Handle operation processing
             // TODO: Handle raisedBed operation placement (not currently necessary since we can't buy raised bed operation without planting plants)
+
+            // Handle sensor installation
+            if (itemData.raisedBedId && itemData.entityId === '180') { // TODO: Mitigate hardcoded '180' as place sensor ID
+                try {
+                    await createRaisedBedSensor({
+                        raisedBedId: itemData.raisedBedId,
+                    });
+                    console.debug(`Installed sensor in raised bed ${itemData.raisedBedId} for session ${checkoutSessionId}`);
+                } catch (error) {
+                    console.error(`Failed to install sensor for raised bed ${itemData.raisedBedId} in session ${checkoutSessionId}`, error);
+                }
+            }
         }
 
         // Process plant placement event

@@ -732,7 +732,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
 
-            const sensors = await getRaisedBedSensors(raisedBedIdNumber);
+            // Take only sensors that have a Signalco ID assigned (are installed and configured)
+            const sensors = (await getRaisedBedSensors(raisedBedIdNumber))
+                .filter(sensor => Boolean(sensor.sensorSignalcoId))
+                .map(sensor => ({
+                    ...sensor,
+                    sensorSignalcoId: sensor.sensorSignalcoId!
+                }));
 
             // Fetch sensor data from Signalco
             const data = await Promise.all(sensors.map(sensor =>
@@ -744,12 +750,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json(sensors.flatMap(sensor => ([
                 {
                     id: sensor.id,
+                    status: sensor.status,
                     type: 'soil_moisture',
                     value: data.find(d => d.data?.id === sensor.sensorSignalcoId)?.data?.contacts?.find(c => c.contactName === "soil_moisture")?.valueSerialized ?? null,
                     updatedAt: data.find(d => d.data?.id === sensor.sensorSignalcoId)?.data?.contacts?.find(c => c.contactName === "soil_moisture")?.timeStamp ?? null
                 },
                 {
                     id: sensor.id,
+                    status: sensor.status,
                     type: 'soil_temperature',
                     value: data.find(d => d.data?.id === sensor.sensorSignalcoId)?.data?.contacts?.find(c => c.contactName === "temperature")?.valueSerialized ?? null,
                     updatedAt: data.find(d => d.data?.id === sensor.sensorSignalcoId)?.data?.contacts?.find(c => c.contactName === "temperature")?.timeStamp ?? null

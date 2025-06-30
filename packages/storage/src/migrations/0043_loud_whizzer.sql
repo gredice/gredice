@@ -1,0 +1,1 @@
+ALTER TABLE "raised_bed_sensors" ALTER COLUMN "sensor_signalco_id" DROP NOT NULL;

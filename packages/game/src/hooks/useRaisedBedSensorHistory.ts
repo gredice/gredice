@@ -1,10 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { client } from "@gredice/client";
 
-export function useRaisedBedSensorHistory(gardenId: number, raisedBedId: number, sensorId: number, type: string) {
+export function useRaisedBedSensorHistory(gardenId: number, raisedBedId: number, sensorId: number | null | undefined, type: string) {
     return useQuery({
         queryKey: ['raisedBeds', raisedBedId, 'sensors', sensorId, type],
         queryFn: async () => {
+            if (!gardenId || !raisedBedId || !sensorId || !type) {
+                console.error('Invalid parameters for fetching sensor history');
+                return null;
+            }
+
             const response = await client().api.gardens[":gardenId"]["raised-beds"][":raisedBedId"].sensors[":sensorId"][":type"].$get({
                 param: {
                     gardenId: gardenId.toString(),

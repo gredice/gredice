@@ -171,7 +171,8 @@ export type SelectRaisedBedField = typeof raisedBedFields.$inferSelect;
 export const raisedBedSensors = pgTable('raised_bed_sensors', {
     id: serial('id').primaryKey(),
     raisedBedId: integer('raised_bed_id').notNull().references(() => raisedBeds.id),
-    sensorSignalcoId: text('sensor_signalco_id').notNull(),
+    status: text('status').notNull().default('new'), // Possible values: 'new', 'installed'
+    sensorSignalcoId: text('sensor_signalco_id'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
