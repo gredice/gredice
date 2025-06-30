@@ -19,7 +19,7 @@ export default function DeliveryPage() {
                     <p>Kad tvoje povrće bude spremno za berbu, mi ćemo se pobrinuti da ga sigurno i svježe dostavimo na tvoju adresu - ili te čekamo da ga preuzmeš osobno. U nastavku možeš saznati kako funkcionira dostava, koje su opcije dostupne i koji su uvjeti.</p>
                     <h2 id="kako-funkcionira-dostava-">Kako funkcionira dostava?</h2>
                     <p>
-                        Za svaku biljku koju zasadiš, ostvaruješ pravo na <strong>jednu besplatnu dostavu</strong> na
+                        Za svako polje u gredici sa tvojim biljkama, ostvaruješ pravo na <strong>jednu besplatnu dostavu</strong> na
                         području Zagreba, bez obzira na količinu povrća koju želiš primiti u toj dostavi. Pravo na
                         besplatnu dostavu, možeš iskoristiti <strong>najviše jednu tjedno</strong>.
                         Ako želiš dodatne dostave u istom tjednu možeš ih naručiti po standardnoj cijeni.
@@ -27,11 +27,11 @@ export default function DeliveryPage() {
                     <p>Standardna cijena za dostavu je <strong>4.99 €</strong> po dostavi.</p>
                     <p>
                         Za dostavu izvan Zagreba, cijeni dostave dodaje se dodatak za udaljenost
-                        - <strong>0,10 € po kilometru</strong> od naše najbliže lokacije za preuzimanje.
+                        - <strong>0,10 € po kilometru</strong> od naše najbliže <a href="#osobno-preuzimanje">lokacije za osobno preuzimanje</a>.
                     </p>
                     <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '1rem' }}>
                         <caption>
-                            <strong>Primjeri cijena dostave</strong> - <em>udaljenosti su okvirne</em>
+                            <strong>Cijena dostave</strong> - <em>udaljenost će biti točno izračunata prilikom naručivanja dostave</em>
                         </caption>
                         <thead>
                             <tr>
@@ -69,7 +69,7 @@ export default function DeliveryPage() {
                         </tbody>
                     </table>
                     <p>
-                        Dostava nije moguća na udaljenost veću od <strong>200 km od naše lokacije za preuzimanje</strong>,
+                        Dostava nije moguća na udaljenost veću od <strong>200 km od naše <a href="#osobno-preuzimanje">lokacije za osobno preuzimanje</a></strong>,
                         niti nudimo dostavu <strong>izvan Hrvatske</strong>.
                     </p>
                     <h2 id="osobno-preuzimanje">Osobno preuzimanje</h2>
@@ -80,6 +80,10 @@ export default function DeliveryPage() {
                         pronaći u aplikaciji. Samo prilikom narudžbe odaberi opciju &quot;Osobno preuzimanje&quot; i
                         odaberi lokaciju i termin koji ti najviše odgovara.
                     </p>
+                    <p>Lokacije za osobno preuzimanje:</p>
+                    <ul>
+                        <li><strong>Gredice HQ</strong> - <a href="https://g.co/kgs/8J9Mf9r">Ulica Julija Knifera 3, Zagreb</a></li>
+                    </ul>
                     <h2 id="planiranje-i-zakazivanje">Planiranje i zakazivanje</h2>
                     <p>Dostave se zakazuju unaprijed, minimalno <strong>48 sati</strong> prije željenog termina. Nakon što zatražiš dostavu, obavijestit ćemo te ako je ona potvrđena ili eventualno odbijena, ovisno o trenutačnoj popunjenosti rasporeda.</p>
                     <p>
