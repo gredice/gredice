@@ -56,7 +56,7 @@ export async function AccountSunflowersCard({ accountId }: { accountId: string }
             </CardContent>
             <CardOverflow>
                 <Divider />
-                <div className="max-h-80 overflow-hidden">
+                <div className="max-h-80 overflow-auto">
                     <Table>
                         <Table.Header>
                             <Table.Row>
