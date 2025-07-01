@@ -78,6 +78,7 @@ export async function getStripeCheckoutSession(sessionId: string) {
         const session = await getStripe().checkout.sessions.retrieve(sessionId);
         const line_items = await getStripe().checkout.sessions.listLineItems(sessionId, {
             expand: ['data.price.product'],
+            limit: 100
         });
         return {
             id: session.id,

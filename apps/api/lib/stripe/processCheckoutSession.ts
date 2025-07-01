@@ -109,6 +109,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
                     await createRaisedBedSensor({
                         raisedBedId: itemData.raisedBedId,
                     });
+                    await earnSunflowersForPayment(itemData.accountId, item.amount_total / 100); // Convert cents to dollars
                     console.debug(`Installed sensor in raised bed ${itemData.raisedBedId} for session ${checkoutSessionId}`);
                 } catch (error) {
                     console.error(`Failed to install sensor for raised bed ${itemData.raisedBedId} in session ${checkoutSessionId}`, error);
