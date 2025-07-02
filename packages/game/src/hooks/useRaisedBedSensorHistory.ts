@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { client } from "@gredice/client";
 
-export function useRaisedBedSensorHistory(gardenId: number, raisedBedId: number, sensorId: number | null | undefined, type: string) {
+export function useRaisedBedSensorHistory(gardenId: number, raisedBedId: number, sensorId: number | null | undefined, type: string, duration: number = 5) {
     return useQuery({
-        queryKey: ['raisedBeds', raisedBedId, 'sensors', sensorId, type],
+        queryKey: ['raisedBeds', raisedBedId, 'sensors', sensorId, type, { duration }],
         queryFn: async () => {
             if (!gardenId || !raisedBedId || !sensorId || !type) {
                 console.error('Invalid parameters for fetching sensor history');
@@ -15,8 +15,11 @@ export function useRaisedBedSensorHistory(gardenId: number, raisedBedId: number,
                     gardenId: gardenId.toString(),
                     raisedBedId: raisedBedId.toString(),
                     sensorId: sensorId.toString(),
-                    type: type,
+                    type: type
                 },
+                query: {
+                    duration: duration?.toString() // Duration in days, formatted as "X.00:00"
+                }
             });
             if (response.status === 400) {
                 console.error('Failed to fetch sensor data - bad request', response);

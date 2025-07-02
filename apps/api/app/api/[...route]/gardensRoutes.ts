@@ -776,12 +776,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 gardenId: z.string(),
                 raisedBedId: z.string(),
                 sensorId: z.string(),
-                type: z.string()
+                type: z.string(),
+            })
+        ),
+        zValidator(
+            "query",
+            z.object({
+                duration: z.string().optional().default('5') // Default to 5 days
             })
         ),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId, sensorId, type } = context.req.valid('param');
+            const { duration } = context.req.valid('query');
             const gardenIdNumber = parseInt(gardenId);
             if (isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
@@ -812,7 +819,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         entityId: sensor.sensorSignalcoId,
                         channelName: 'zigbee2mqtt',
                         contactName: type === 'soil_moisture' ? 'soil_moisture' : 'temperature',
-                        duration: "2.00:00"
+                        duration: `${duration}.00:00`
                     }
                 }
             });
