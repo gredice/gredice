@@ -13,12 +13,17 @@ import { useSetShoppingCartItem } from "../../hooks/useSetShoppingCartItem";
 import { useShoppingCart } from "../../hooks/useShoppingCart";
 import { useNeighboringRaisedBeds } from "./RaisedBedField";
 import { Spinner } from "@signalco/ui-primitives/Spinner";
+import { useState } from "react";
+import { Tabs, TabsList, TabsTrigger } from "@signalco/ui-primitives/Tabs";
 
 function CustomTooltip({ active, payload, header, textColor, label, unit }: any) {
     if (active && payload && payload.length) {
+        const payloadFormatted = new Date(label).toLocaleDateString("hr-HR", { month: "short", day: "numeric" }) +
+            " " +
+            new Date(label).toLocaleTimeString("hr-HR", { hour: "2-digit", minute: "2-digit" });
         return (
             <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-                <p className="text-sm font-medium text-gray-900">{`${label}`}</p>
+                <p className="text-sm font-medium text-gray-900">{`${payloadFormatted}`}</p>
                 <p className={cx("text-sm", textColor)}>{`${header}: ${payload[0].value}${unit}`}</p>
             </div>
         );
@@ -45,7 +50,7 @@ function Metric({ label, value, icon, color }: {
     );
 }
 
-function SensorInfoModal({ icon, header, unit, colors, positiveTrend, references, trigger, gardenId, raisedBedId, status, sensorId, type }: {
+function SensorInfoModal({ icon, header, unit, yDomain, colors, positiveTrend, references, trigger, gardenId, raisedBedId, status, sensorId, type }: {
     icon: React.ReactNode,
     header: string,
     unit: string,
@@ -55,8 +60,9 @@ function SensorInfoModal({ icon, header, unit, colors, positiveTrend, references
         areaGradientStart: string,
         areaGradientEnd: string,
     },
+    yDomain: [number, number],
     positiveTrend?: boolean,
-    references?: { value: number, label: string, color: string, bgColor: string, strokeColor: string }[],
+    references?: { value: number, label: string, color: string, bgColor: string, strokeColor: string, refStrokeColor: string }[],
     trigger: React.ReactNode,
     gardenId: number,
     raisedBedId: number,
@@ -64,9 +70,10 @@ function SensorInfoModal({ icon, header, unit, colors, positiveTrend, references
     sensorId?: number,
     type: string
 }) {
-    const { data: sensorDetails, isLoading, error } = useRaisedBedSensorHistory(gardenId, raisedBedId, sensorId, type);
     const setShoppingCartItem = useSetShoppingCartItem();
     const { data: shoppingCart } = useShoppingCart();
+    const [duration, setDuration] = useState(3); // Default duration in days
+    const { data: sensorDetails, isLoading, error } = useRaisedBedSensorHistory(gardenId, raisedBedId, sensorId, type, duration);
 
     // Process and sort the data with smart date/time formatting
     const processedData = sensorDetails?.values
@@ -78,23 +85,18 @@ function SensorInfoModal({ icon, header, unit, colors, positiveTrend, references
 
     // Add smart labeling logic with mobile-friendly labels
     const dataWithSmartLabels = processedData?.map((item, index) => {
-        const currentDate = item.timestamp.toDateString()
-        const previousDate = index > 0 ? processedData[index - 1].timestamp.toDateString() : null
-        const isFirstOfDay = currentDate !== previousDate
-
         return {
             ...item,
-            timeLabel: isFirstOfDay
-                ? item.timestamp.toLocaleDateString("hr-HR", { month: "short", day: "numeric" }) +
+            timestamp: new Date(item.timestamp).getTime(),
+            timeLabel:
+                item.timestamp.toLocaleDateString("hr-HR", { month: "short", day: "numeric" }) +
                 " " +
-                item.timestamp.toLocaleTimeString("hr-HR", { hour: "2-digit", minute: "2-digit" })
-                : item.timestamp.toLocaleTimeString("hr-HR", { hour: "2-digit", minute: "2-digit" }),
+                item.timestamp.toLocaleTimeString("hr-HR", { hour: "2-digit", minute: "2-digit" }),
             // Shorter labels for mobile
-            shortLabel: isFirstOfDay
-                ? item.timestamp.toLocaleDateString("hr-HR", { month: "numeric", day: "numeric" }) +
+            shortLabel:
+                item.timestamp.toLocaleDateString("hr-HR", { month: "numeric", day: "numeric" }) +
                 " " +
                 item.timestamp.toLocaleTimeString("hr-HR", { hour: "numeric", minute: "2-digit" })
-                : item.timestamp.toLocaleTimeString("hr-HR", { hour: "numeric", minute: "2-digit" }),
         }
     })
 
@@ -144,14 +146,46 @@ function SensorInfoModal({ icon, header, unit, colors, positiveTrend, references
             <div className="relative w-full h-full">
                 <div className="w-full space-y-1 overflow-hidden">
                     {/* Mobile-Responsive Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 pt-2">
-                        <div className="flex items-center gap-2">
-                            {icon}
-                            <div>
-                                <Typography level="h5">{header}</Typography>
-                                <Typography level="body2">Očitanje senzora tvoje gredice</Typography>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                        <Stack spacing={1}>
+                            <div className="flex items-center gap-2">
+                                {icon}
+                                <div>
+                                    <Typography level="h5">{header}</Typography>
+                                    <Typography level="body2">Očitanje senzora tvoje gredice</Typography>
+                                </div>
                             </div>
-                        </div>
+                            <div>
+                                <Tabs value={duration.toString()}>
+                                    <TabsList>
+                                        <TabsTrigger
+                                            value="1"
+                                            onClick={() => setDuration(1)}
+                                        >
+                                            1 dan
+                                        </TabsTrigger>
+                                        <TabsTrigger
+                                            value="3"
+                                            onClick={() => setDuration(3)}
+                                        >
+                                            3 dana
+                                        </TabsTrigger>
+                                        <TabsTrigger
+                                            value="10"
+                                            onClick={() => setDuration(10)}
+                                        >
+                                            10 dana
+                                        </TabsTrigger>
+                                        <TabsTrigger
+                                            value="30"
+                                            onClick={() => setDuration(30)}
+                                        >
+                                            30 dana
+                                        </TabsTrigger>
+                                    </TabsList>
+                                </Tabs>
+                            </div>
+                        </Stack>
 
                         {/* Stats - Stack on mobile, inline on desktop */}
                         <div className="grid grid-cols-3 gap-1">
@@ -190,8 +224,16 @@ function SensorInfoModal({ icon, header, unit, colors, positiveTrend, references
                                         <CartesianGrid strokeDasharray="3 3" className="stroke-neutral-200 dark:stroke-neutral-800" />
 
                                         <XAxis
-                                            dataKey="shortLabel"
+                                            dataKey="timestamp"
                                             tick={{ fontSize: 9 }}
+                                            tickFormatter={v => new Date(v).toLocaleDateString("hr-HR", { month: "short", day: "numeric" }) +
+                                                " " +
+                                                new Date(v).toLocaleTimeString("hr-HR", { hour: "2-digit", minute: "2-digit" })}
+                                            type="number"
+                                            domain={[
+                                                new Date(Date.now() - duration * 24 * 60 * 60 * 1000).getTime(),
+                                                new Date().getTime(),
+                                            ]}
                                             angle={-35}
                                             textAnchor="end"
                                             height={50}
@@ -200,7 +242,7 @@ function SensorInfoModal({ icon, header, unit, colors, positiveTrend, references
                                         />
 
                                         <YAxis
-                                            domain={[0, 100]}
+                                            domain={yDomain}
                                             tick={{ fontSize: 9 }}
                                             width={30}
                                             label={{
@@ -216,9 +258,9 @@ function SensorInfoModal({ icon, header, unit, colors, positiveTrend, references
                                             <ReferenceLine
                                                 key={ref.value}
                                                 y={ref.value}
-                                                stroke={ref.color}
-                                                strokeDasharray="4 4"
-                                                opacity={0.7}
+                                                stroke={ref.refStrokeColor}
+                                                strokeDasharray="8 8"
+                                                opacity={0.5}
                                             />
                                         ))}
 
@@ -331,6 +373,7 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
                 icon={<Droplets className="size-7 shrink-0 stroke-blue-500" />}
                 header="Vlažnost tla"
                 unit="%"
+                yDomain={[0, 100]}
                 colors={{
                     text: "text-blue-500",
                     area: "#93c5fd",
@@ -339,10 +382,10 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
                 }}
                 positiveTrend
                 references={[
-                    { value: 61, label: "Visoka (61-100%)", color: "text-blue-500", bgColor: "bg-blue-500", strokeColor: "stroke-blue-500" },
-                    { value: 41, label: "Dobro (41-60%)", color: "text-green-600", bgColor: "bg-green-600", strokeColor: "stroke-green-600" },
-                    { value: 21, label: "Srednje (21-40%)", color: "text-orange-600", bgColor: "bg-orange-600", strokeColor: "stroke-orange-600" },
-                    { value: 0, label: "Nisko (0-20%)", color: "text-red-600", bgColor: "bg-red-600", strokeColor: "stroke-red-600" }
+                    { value: 61, label: "Visoka (61-100%)", color: "text-blue-500", bgColor: "bg-blue-500", strokeColor: "stroke-blue-500", refStrokeColor: "#60a5fa" },
+                    { value: 41, label: "Dobro (41-60%)", color: "text-green-600", bgColor: "bg-green-600", strokeColor: "stroke-green-600", refStrokeColor: "#34d399" },
+                    { value: 21, label: "Srednje (21-40%)", color: "text-orange-600", bgColor: "bg-orange-600", strokeColor: "stroke-orange-600", refStrokeColor: "#f97316" },
+                    { value: 0, label: "Nisko (0-20%)", color: "text-red-600", bgColor: "bg-red-600", strokeColor: "stroke-red-600", refStrokeColor: "#ef4444" }
                 ]}
                 trigger={(
                     <Button size="sm" className="rounded-full text-primary dark:text-primary-foreground bg-gradient-to-br from-lime-100/90 to-lime-100/80 hover:bg-white">
@@ -367,6 +410,7 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
                 icon={<Thermometer className="size-7 shrink-0 stroke-red-500" />}
                 header="Temperatura tla"
                 unit="°C"
+                yDomain={[-5, 40]} // Adjusted for soil temperature range
                 colors={{
                     text: "text-red-500",
                     area: "#fca5a5",
