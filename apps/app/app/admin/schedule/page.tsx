@@ -1,4 +1,4 @@
-import { getAllOperations, getAllRaisedBeds, getEntitiesFormatted, getRaisedBedFieldsWithEvents, SelectRaisedBed } from "@gredice/storage";
+import { getAllOperations, getAllRaisedBeds, getEntitiesFormatted } from "@gredice/storage";
 import { EntityStandardized } from "../../../lib/@types/EntityStandardized";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
@@ -8,7 +8,7 @@ import { auth } from "../../../lib/auth/auth";
 import { completeOperationAction } from "../../(actions)/operationActions";
 import { Divider } from "@signalco/ui-primitives/Divider";
 
-function useDaySchedule(isToday: boolean, date: Date, raisedBeds: Awaited<ReturnType<typeof getAllRaisedBeds>>, operations: Awaited<ReturnType<typeof getAllOperations>>) {
+function getDaySchedule(isToday: boolean, date: Date, raisedBeds: Awaited<ReturnType<typeof getAllRaisedBeds>>, operations: Awaited<ReturnType<typeof getAllOperations>>) {
     const todaysNewFields = raisedBeds.flatMap(rb => rb.fields).filter(field =>
         (field.plantStatus === 'new' || field.plantStatus === 'planned') &&
         ((!field.plantScheduledDate && isToday) ||
@@ -51,7 +51,7 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
     operationsData: Awaited<ReturnType<typeof getEntitiesFormatted<EntityStandardized>>>
 }) {
     const { userId } = await auth(["admin"]);
-    const { newFields, newOperations, affectedRaisedBedPhysicalIds } = useDaySchedule(isToday, date, allRaisedBeds, operations);
+    const { newFields, newOperations, affectedRaisedBedPhysicalIds } = getDaySchedule(isToday, date, allRaisedBeds, operations);
 
     return (
         <Stack spacing={2}>

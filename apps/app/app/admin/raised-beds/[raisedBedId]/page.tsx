@@ -76,13 +76,15 @@ export default async function RaisedBedPage({ params }: { params: Promise<{ rais
                                     <Table.Row key={field.id}>
                                         <Table.Cell>{field.positionIndex + 1}</Table.Cell>
                                         <Table.Cell>
-                                            <RaisedBedFieldPlantStatusSelector
-                                                raisedBedId={raisedBed.id}
-                                                positionIndex={field.positionIndex}
-                                                status={field.plantStatus}
-                                            />
+                                            {field.plantStatus ? (
+                                                <RaisedBedFieldPlantStatusSelector
+                                                    raisedBedId={raisedBed.id}
+                                                    positionIndex={field.positionIndex}
+                                                    status={field.plantStatus}
+                                                />
+                                            ) : '-'}
                                         </Table.Cell>
-                                        <Table.Cell><LocaleDateTime time={false}>{new Date(field.plantScheduledDate)}</LocaleDateTime></Table.Cell>
+                                        <Table.Cell>{field.plantScheduledDate ? <LocaleDateTime time={false}>{new Date(field.plantScheduledDate)}</LocaleDateTime> : '-'}</Table.Cell>
                                         <Table.Cell><LocaleDateTime time={false}>{field.createdAt}</LocaleDateTime></Table.Cell>
                                         <Table.Cell><LocaleDateTime time={false}>{field.updatedAt}</LocaleDateTime></Table.Cell>
                                     </Table.Row>
