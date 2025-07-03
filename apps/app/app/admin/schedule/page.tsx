@@ -7,8 +7,10 @@ import { Checkbox } from "@signalco/ui-primitives/Checkbox";
 import { auth } from "../../../lib/auth/auth";
 import { completeOperationAction } from "../../(actions)/operationActions";
 import { raisedBedPlantedFormHandler } from "../../(actions)/raisedBedFieldsActions";
-import { Divider } from "@signalco/ui-primitives/Divider";
+import { Accordion } from "@signalco/ui/Accordion";
 import { Fragment } from "react";
+import { Row } from "@signalco/ui-primitives/Row";
+import { Divider } from "@signalco/ui-primitives/Divider";
 
 function getDaySchedule(isToday: boolean, date: Date, raisedBeds: Awaited<ReturnType<typeof getAllRaisedBeds>>, operations: Awaited<ReturnType<typeof getAllOperations>>) {
     const todaysNewFields = raisedBeds.flatMap(rb => rb.fields).filter(field =>
@@ -56,75 +58,82 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
     const { newFields, newOperations, affectedRaisedBedPhysicalIds } = getDaySchedule(isToday, date, allRaisedBeds, operations);
 
     return (
-        <Stack spacing={2}>
+        <Stack className="grow">
+            {(!affectedRaisedBedPhysicalIds.length) && (
+                <Typography level="body2" className="leading-[56px]">Trenutno nema zadataka za ovaj dan.</Typography>
+            )}
             {affectedRaisedBedPhysicalIds.map((physicalId) => {
                 const raisedBeds = allRaisedBeds
                     .filter(rb => rb.physicalId === physicalId)
                     .sort((a, b) => a.id - b.id);
-                if (!raisedBeds.length) {
-                    return null; // Skip if no raised bed found for this physical ID
-                }
+
+                const dayFields = newFields
+                    .filter(field => raisedBeds.some(rb => rb.id === field.raisedBedId))
+                    .map((field) => ({
+                        ...field,
+                        physicalPositionIndex: raisedBeds.at(0)?.fields.find(f => f.id === field.id) ? field.positionIndex + 1 : field.positionIndex + 10
+                    }))
+                    .sort((a, b) => a.physicalPositionIndex - b.physicalPositionIndex);
+                const dayOperations = newOperations
+                    .filter(op => raisedBeds.some(rb => rb.id === op.raisedBedId))
+                    .sort((a, b) => a.id - b.id);
+
                 return (
-                    <Stack key={physicalId} spacing={1} className="border rounded-lg p-4 shadow">
-                        <Typography level="body1"><strong>Gr {physicalId}</strong> ({raisedBeds.map(rb => rb.name).join(', ')})</Typography>
+                    <Accordion key={physicalId} variant="plain" className="hover:bg-muted">
+                        <Row spacing={1}>
+                            <div className="rounded-full border-2 bg-background border-neutral-500 size-[19px]" />
+                            <Typography level="body1"><strong>Gr {physicalId}</strong></Typography>
+                        </Row>
                         <Stack spacing={1}>
-                            {newFields
-                                .filter(field => raisedBeds.some(rb => rb.id === field.raisedBedId))
-                                .map((field) => ({
-                                    ...field,
-                                    physicalPositionIndex: raisedBeds.at(0)?.fields.find(f => f.id === field.id) ? field.positionIndex + 1 : field.positionIndex + 10
-                                }))
-                                .sort((a, b) => a.physicalPositionIndex - b.physicalPositionIndex)
-                                .map((field) => {
-                                    const sort = plantSorts?.find(ps => ps.id === field.plantSortId);
-                                    // seedingDistance is not available in EntityStandardized, so default to 1
-                                    const numberOfPlants = Math.pow(Math.floor(30 / (sort?.information?.plant?.attributes?.seedingDistance || 30)), 2);
+                            {(!dayFields.length && !dayOperations.length) && (
+                                <Typography level="body2">Trenutno nema zadataka za ovu gredicu.</Typography>
+                            )}
+                            {dayFields.map((field) => {
+                                const sort = plantSorts?.find(ps => ps.id === field.plantSortId);
+                                const numberOfPlants = Math.pow(Math.floor(30 / (sort?.information?.plant?.attributes?.seedingDistance || 30)), 2);
 
-                                    return (
-                                        <div key={field.id}>
-                                            <form action={raisedBedPlantedFormHandler} className="w-fit">
-                                                <input type="hidden" name="raisedBedId" value={field.raisedBedId} />
-                                                <input type="hidden" name="positionIndex" value={field.positionIndex} />
-                                                <Checkbox
-                                                    type="submit"
-                                                    label={`${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sort?.information?.name}` : '?'}`}
-                                                />
-                                            </form>
-                                        </div>
-                                    );
-                                })}
-                            {newOperations
-                                .filter(op => raisedBeds.some(rb => rb.id === op.raisedBedId))
-                                .sort((a, b) => a.id - b.id)
-                                .map((op) => {
-                                    const operationData = operationsData?.find(data => data.id === op.entityId);
-                                    const isFirstRaisedBed = op.raisedBedId === raisedBeds.at(0)?.id;
-                                    const field = op.raisedBedFieldId
-                                        ? raisedBeds
-                                            .flatMap(rb => rb.fields)
-                                            .find(rbf => rbf.id === op.raisedBedFieldId)
-                                        : undefined;
+                                return (
+                                    <div key={field.id}>
+                                        <form action={raisedBedPlantedFormHandler} className="w-fit">
+                                            <input type="hidden" name="raisedBedId" value={field.raisedBedId} />
+                                            <input type="hidden" name="positionIndex" value={field.positionIndex} />
+                                            <Checkbox
+                                                type="submit"
+                                                label={`${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sort?.information?.name}` : '?'}`}
+                                            />
+                                        </form>
+                                    </div>
+                                );
+                            })}
+                            {dayOperations.map((op) => {
+                                const operationData = operationsData?.find(data => data.id === op.entityId);
+                                const isFirstRaisedBed = op.raisedBedId === raisedBeds.at(0)?.id;
+                                const field = op.raisedBedFieldId
+                                    ? raisedBeds
+                                        .flatMap(rb => rb.fields)
+                                        .find(rbf => rbf.id === op.raisedBedFieldId)
+                                    : undefined;
 
-                                    const positionIndexes = field
-                                        ? (field.positionIndex + 1).toString()
-                                        : (isFirstRaisedBed
-                                            ? '1-9'
-                                            : '10-18');
-                                    return (
-                                        <div key={op.id}>
-                                            <form action={completeOperationAction} className="w-fit">
-                                                <input type="hidden" name="operationId" value={op.id} />
-                                                <input type="hidden" name="completedBy" value={userId} />
-                                                <Checkbox
-                                                    type="submit"
-                                                    label={`${positionIndexes} - ${operationData?.information?.label ?? op.entityId}`}
-                                                />
-                                            </form>
-                                        </div>
-                                    );
-                                })}
+                                const positionIndexes = field
+                                    ? (field.positionIndex + 1).toString()
+                                    : (isFirstRaisedBed
+                                        ? '1-9'
+                                        : '10-18');
+                                return (
+                                    <div key={op.id}>
+                                        <form action={completeOperationAction} className="w-fit">
+                                            <input type="hidden" name="operationId" value={op.id} />
+                                            <input type="hidden" name="completedBy" value={userId} />
+                                            <Checkbox
+                                                type="submit"
+                                                label={`${positionIndexes} - ${operationData?.information?.label ?? op.entityId}`}
+                                            />
+                                        </form>
+                                    </div>
+                                );
+                            })}
                         </Stack>
-                    </Stack>
+                    </Accordion>
                 );
             })}
         </Stack>
@@ -145,16 +154,21 @@ export default async function AdminSchedulePage() {
     });
 
     return (
-        <Stack spacing={4}>
-            <Typography level="h1">Rasprored operacija</Typography>
-            <Stack spacing={4}>
+        <Stack spacing={2}>
+            <Typography level="h4" component="h1">Rasprored operacija</Typography>
+            <Stack spacing={2}>
                 {dates.map((date, dateIndex) => {
                     return (
                         <Fragment key={date.toISOString()}>
-                            <Stack spacing={1}>
-                                <Typography level="h5">
-                                    <LocaleDateTime time={false}>{date}</LocaleDateTime>
-                                </Typography>
+                            <Row spacing={4} alignItems="start">
+                                <Stack className="pt-[18px]">
+                                    <Typography level="body2">
+                                        <LocaleDateTime time={false}>{date}</LocaleDateTime>
+                                    </Typography>
+                                    <Typography level="body1" uppercase semiBold={dateIndex !== 0} bold={dateIndex === 0}>
+                                        {dateIndex === 0 ? 'Danas' : new Intl.DateTimeFormat('hr-HR', { weekday: 'long' }).format(date).substring(0, 3)}
+                                    </Typography>
+                                </Stack>
                                 <ScheduleDay
                                     isToday={dateIndex === 0}
                                     date={date}
@@ -162,7 +176,7 @@ export default async function AdminSchedulePage() {
                                     operations={operations}
                                     plantSorts={plantSorts}
                                     operationsData={operationsData} />
-                            </Stack>
+                            </Row>
                             <Divider />
                         </Fragment>
                     );
