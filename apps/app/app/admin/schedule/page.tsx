@@ -79,10 +79,10 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                     .sort((a, b) => a.id - b.id);
 
                 return (
-                    <Accordion key={physicalId} variant="plain" className="hover:bg-muted">
+                    <Accordion key={physicalId} defaultOpen={isToday} variant="plain" className="hover:bg-muted">
                         <Row spacing={1}>
                             <div className="rounded-full border-2 bg-background border-neutral-500 size-[19px]" />
-                            <Typography level="body1"><strong>Gr {physicalId}</strong></Typography>
+                            <Typography level="body1" className="text-lg"><strong>Gr {physicalId}</strong></Typography>
                         </Row>
                         <Stack spacing={1}>
                             {(!dayFields.length && !dayOperations.length) && (
@@ -97,10 +97,12 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                                         <form action={raisedBedPlantedFormHandler} className="w-fit">
                                             <input type="hidden" name="raisedBedId" value={field.raisedBedId} />
                                             <input type="hidden" name="positionIndex" value={field.positionIndex} />
-                                            <Checkbox
-                                                type="submit"
-                                                label={`${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sort?.information?.name}` : '?'}`}
-                                            />
+                                            <Row spacing={1}>
+                                                <Checkbox type="submit" />
+                                                <Typography>
+                                                    {`${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sort?.information?.name}` : '?'}`}
+                                                </Typography>
+                                            </Row>
                                         </form>
                                     </div>
                                 );
@@ -124,10 +126,10 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                                         <form action={completeOperationAction} className="w-fit">
                                             <input type="hidden" name="operationId" value={op.id} />
                                             <input type="hidden" name="completedBy" value={userId} />
-                                            <Checkbox
-                                                type="submit"
-                                                label={`${positionIndexes} - ${operationData?.information?.label ?? op.entityId}`}
-                                            />
+                                            <Row spacing={1}>
+                                                <Checkbox type="submit" />
+                                                <Typography>{`${positionIndexes} - ${operationData?.information?.label ?? op.entityId}`}</Typography>
+                                            </Row>
                                         </form>
                                     </div>
                                 );
