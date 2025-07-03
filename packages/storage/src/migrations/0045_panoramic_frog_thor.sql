@@ -1,0 +1,1 @@
+ALTER TABLE "raised_beds" ADD COLUMN "physical_id" text;

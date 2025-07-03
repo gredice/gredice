@@ -105,6 +105,7 @@ export const raisedBeds = pgTable('raised_beds', {
     gardenId: integer('garden_id').notNull().references(() => gardens.id),
     blockId: text('block_id').notNull().references(() => gardenBlocks.id),
     status: text('status').notNull().default('new'), // Possible values: 'new', 'approved', 'built'
+    physicalId: text('physical_id'), // Optional physical ID for the raised bed
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),

@@ -17,12 +17,12 @@ export const cacheKeys = {
     entityTypeName: (entityTypeName: string) => `entityTypeName:${entityTypeName}`,
 }
 
-export async function directoriesCached(key: string, fn: () => Promise<any>, ttl: number = 60): Promise<any> {
+export async function directoriesCached<T>(key: string, fn: () => Promise<T>, ttl: number = 60) {
     const client = cacheClient();
-    const cachedValue = await client.get(key)
+    const cachedValue = await client.get<T>(key)
     if (cachedValue) {
         try {
-            return cachedValue;
+            return cachedValue as T;
         } catch (error) {
             console.error(`Error parsing cached value for key "${key}":`, error);
             // Optionally, you could delete the corrupted cache entry

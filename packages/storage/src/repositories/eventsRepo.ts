@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { storage } from "../storage";
 import { events } from "../schema";
 
@@ -33,8 +33,12 @@ export const knownEventTypes = {
         delete: "raisedBedField.delete",
         plantPlace: "raisedBedField.plantPlace",
         plantUpdate: "raisedBedField.plantUpdate",
-        operationOrder: "raisedBedField.operationOrder",
     },
+    operations: {
+        schedule: "operation.schedule",
+        complete: "operation.complete",
+        fail: "operation.fail",
+    }
 }
 
 export const knownEvents = {
@@ -115,20 +119,34 @@ export const knownEvents = {
             version: 1,
             aggregateId,
             data,
-        }),
-        operationOrderV1: (aggregateId: string, data: { orderId: string, status: string }) => ({
-            type: knownEventTypes.raisedBedFields.operationOrder,
+        })
+    },
+    operations: {
+        scheduledV1: (aggregateId: string, data: { scheduledDate: string }) => ({
+            type: knownEventTypes.operations.schedule,
             version: 1,
             aggregateId,
-            data,
+            data
+        }),
+        completedV1: (aggregateId: string, data: { completedBy: string }) => ({
+            type: knownEventTypes.operations.complete,
+            version: 1,
+            aggregateId,
+            data
+        }),
+        failedV1: (aggregateId: string, data: { error: string, errorCode: string }) => ({
+            type: knownEventTypes.operations.fail,
+            version: 1,
+            aggregateId,
+            data
         }),
     },
 }
 
-export function getEvents(type: string | string[], aggregateId: string, offset: number = 0, limit: number = 1000) {
+export function getEvents(type: string | string[], aggregateIds: string[], offset: number = 0, limit: number = 1000) {
     return storage().query.events.findMany({
         where: and(
-            eq(events.aggregateId, aggregateId),
+            inArray(events.aggregateId, aggregateIds),
             Array.isArray(type)
                 ? inArray(events.type, type)
                 : eq(events.type, type)),
