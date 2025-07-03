@@ -76,7 +76,7 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
 
                                 return (
                                     <div key={field.id}>
-                                        <form>
+                                        <form className="w-fit">
                                             <input type="hidden" name="fieldId" value={field.id} />
                                             <input type="hidden" name="completedBy" value={userId} />
                                             <Checkbox
