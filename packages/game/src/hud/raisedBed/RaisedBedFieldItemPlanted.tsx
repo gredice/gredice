@@ -138,9 +138,9 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
                         size={80}
                         strokeWidth={4}
                         segments={[
-                            { value: germinationValue, percentage: germinationPercentage, color: "stroke-yellow-500", trackColor: "stroke-yellow-50", pulse: !field.plantGrowthDate },
-                            { value: growthValue, percentage: growthPercentage, color: "stroke-green-500", trackColor: "stroke-green-50", pulse: !field.plantReadyDate },
-                            { value: harvestValue, percentage: harvestPercentage, color: "stroke-blue-500", trackColor: "stroke-blue-50", pulse: Boolean(harvestValue) },
+                            { value: germinationValue, percentage: germinationPercentage, color: "stroke-yellow-500", trackColor: "stroke-yellow-50 dark:stroke-yellow-50/80", pulse: !field.plantGrowthDate },
+                            { value: growthValue, percentage: growthPercentage, color: "stroke-green-500", trackColor: "stroke-green-50 dark:stroke-green-50/80", pulse: !field.plantReadyDate },
+                            { value: harvestValue, percentage: harvestPercentage, color: "stroke-blue-500", trackColor: "stroke-blue-50 dark:stroke-blue-50/80", pulse: Boolean(harvestValue) },
                         ]}
                     >
                         <img
