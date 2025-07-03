@@ -6,6 +6,7 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { Checkbox } from "@signalco/ui-primitives/Checkbox";
 import { auth } from "../../../lib/auth/auth";
 import { completeOperationAction } from "../../(actions)/operationActions";
+import { raisedBedPlantedFormHandler } from "../../(actions)/raisedBedFieldsActions";
 import { Divider } from "@signalco/ui-primitives/Divider";
 
 function getDaySchedule(isToday: boolean, date: Date, raisedBeds: Awaited<ReturnType<typeof getAllRaisedBeds>>, operations: Awaited<ReturnType<typeof getAllOperations>>) {
@@ -76,9 +77,9 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
 
                                 return (
                                     <div key={field.id}>
-                                        <form className="w-fit">
-                                            <input type="hidden" name="fieldId" value={field.id} />
-                                            <input type="hidden" name="completedBy" value={userId} />
+                                        <form action={raisedBedPlantedFormHandler} className="w-fit">
+                                            <input type="hidden" name="raisedBedId" value={field.raisedBedId} />
+                                            <input type="hidden" name="positionIndex" value={field.positionIndex} />
                                             <Checkbox
                                                 type="submit"
                                                 label={(
@@ -95,7 +96,7 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                                 const operationData = operationsData?.find(data => data.id === op.entityId);
                                 return (
                                     <div key={op.id}>
-                                        <form action={completeOperationAction}>
+                                        <form action={completeOperationAction} className="w-fit">
                                             <input type="hidden" name="operationId" value={op.id} />
                                             <input type="hidden" name="completedBy" value={userId} />
                                             <Checkbox
