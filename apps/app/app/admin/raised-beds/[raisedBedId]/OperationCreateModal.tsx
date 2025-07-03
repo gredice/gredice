@@ -54,6 +54,7 @@ export function OperationCreateModal({ accountId, gardenId, raisedBedId, raisedB
                             <Input name="raisedBedId" defaultValue={raisedBedId} label="Gredica ID (opcionalno)" />
                             <Input name="raisedBedFieldId" defaultValue={raisedBedFieldId} label="Polje gredice ID (opcionalno)" />
                             <Input name="timestamp" type="datetime-local" label="Datum kreiranja (opcionalno)" />
+                            <Input name="scheduledDate" type="datetime-local" label="Planirani datum (opcionalno)" />
                         </div>
                         <Button type="submit">
                             Kreiraj
