@@ -270,12 +270,12 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         const events = fieldsEvents.filter(event => event.aggregateId === aggregateId);
 
         // Reduce events to get latest status, plant info, etc.
-        let plantStatus = undefined;
-        let plantSortId = undefined;
-        let plantScheduledDate = undefined;
-        let plantSowDate = undefined;
-        let plantGrowthDate = undefined;
-        let plantReadyDate = undefined;
+        let plantStatus: string | undefined = undefined;
+        let plantSortId: number | undefined = undefined;
+        let plantScheduledDate: Date | undefined = undefined;
+        let plantSowDate: Date | undefined = undefined;
+        let plantGrowthDate: Date | undefined = undefined;
+        let plantReadyDate: Date | undefined = undefined;
 
         // TODO: Implement multiple handling
         // let operationId = undefined;
@@ -336,15 +336,17 @@ export async function deleteRaisedBed(raisedBedId: number) {
 }
 
 export async function getAllRaisedBeds() {
-    return storage().query.raisedBeds.findMany({
+    const allRaisedBeds = await storage().query.raisedBeds.findMany({
         where: and(
             eq(raisedBeds.isDeleted, false),
             eq(raisedBeds.isDeleted, false)
-        ),
-        with: {
-            fields: true,
-        }
+        )
     });
+    const fields = (await Promise.all(allRaisedBeds.map(r => r.id).map(getRaisedBedFieldsWithEvents))).flatMap(fields => fields);
+    return allRaisedBeds.map(raisedBed => ({
+        ...raisedBed,
+        fields: fields.filter(field => field.raisedBedId === raisedBed.id)
+    }));
 }
 
 export async function upsertRaisedBedField(field: Omit<InsertRaisedBedField, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>) {
