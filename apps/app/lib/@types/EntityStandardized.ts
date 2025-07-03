@@ -9,6 +9,9 @@ export type EntityStandardized = {
         // Parent items
         plant?: EntityStandardized;
     };
+    attributes?: {
+        seedingDistance?: number; // in cm
+    },
     images?: {
         cover?: { url?: string };
     },
