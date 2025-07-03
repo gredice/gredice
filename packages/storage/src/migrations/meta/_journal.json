@@ -316,6 +316,13 @@
       "when": 1751502386623,
       "tag": "0044_shallow_thunderbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1751505196924,
+      "tag": "0045_panoramic_frog_thor",
+      "breakpoints": true
     }
   ]
 }

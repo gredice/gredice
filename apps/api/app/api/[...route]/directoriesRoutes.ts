@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from "zod";
 import { getEntitiesFormatted, getEntityFormatted } from '@gredice/storage';
+import { EntityStandardized } from './checkoutRoutes';
 
 const app = new Hono()
     .get(
@@ -32,7 +33,7 @@ const app = new Hono()
             if (isNaN(entityIdNumber)) {
                 return context.json({ error: 'Invalid entityId' }, { status: 400 });
             }
-            const entity = await getEntityFormatted(entityIdNumber);
+            const entity = await getEntityFormatted<EntityStandardized>(entityIdNumber);
             if (!entity || entity.entityType.name !== entityType) {
                 return context.json({ error: 'Entity not found' }, { status: 404 });
             }

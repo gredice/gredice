@@ -1,5 +1,5 @@
 import { getRaisedBed } from "@gredice/storage";
-import { Card, CardHeader, CardTitle, CardContent, CardOverflow } from "@signalco/ui-primitives/Card";
+import { Card, CardHeader, CardTitle, CardOverflow } from "@signalco/ui-primitives/Card";
 import { auth } from "../../../../lib/auth/auth";
 import { KnownPages } from "../../../../src/KnownPages";
 import { Field } from "../../../../components/shared/fields/Field";

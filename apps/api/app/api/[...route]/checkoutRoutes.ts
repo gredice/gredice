@@ -6,8 +6,13 @@ import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import { CheckoutItem, getStripeCheckoutSession, stripeCheckout, stripeSessionCancel } from "@gredice/stripe/server";
 import { describeRoute } from 'hono-openapi';
 
-type EntityType = Awaited<ReturnType<typeof getEntitiesFormatted>>[0];
-export type EntityStandardized = EntityType & {
+export type EntityStandardized = {
+    id: number;
+    entityType: {
+        id: number;
+        name: string;
+        label: string;
+    }
     information?: {
         name?: string;
         label?: string;

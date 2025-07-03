@@ -61,6 +61,14 @@ export async function getOperations(accountId: string, gardenId?: number, raised
     return await fillOperationAggregares(query);
 }
 
+export async function getAllOperations() {
+    const operationsList = await storage().query.operations.findMany({
+        where: eq(operations.isDeleted, false),
+        orderBy: desc(operations.timestamp)
+    });
+    return await fillOperationAggregares(operationsList);
+}
+
 export async function getOperationById(id: number) {
     const operation = await storage().query.operations.findFirst({
         where: and(

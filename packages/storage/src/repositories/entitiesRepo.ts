@@ -202,19 +202,19 @@ async function resolveRef(
     }
 }
 
-export async function getEntitiesFormatted(entityTypeName: string) {
+export async function getEntitiesFormatted<T extends unknown>(entityTypeName: string) {
     return directoriesCached(cacheKeys.entityTypeName(entityTypeName), async () => {
         const cache: EntityTypeCache = {};
         const entities = await getEntitiesRaw(entityTypeName, 'published') as EntityWithAttributesAndType[];
-        return await Promise.all(entities.map(e => expandEntity(e, cache)));
+        return await Promise.all(entities.map(e => expandEntity(e, cache))) as T[];
     }, 60 * 60);
 }
 
-export async function getEntityFormatted(id: number) {
+export async function getEntityFormatted<T extends unknown>(id: number) {
     return directoriesCached(cacheKeys.entity(id), async () => {
         const cache: EntityTypeCache = {};
         const entity = await getEntityRaw(id) as EntityWithAttributesAndType | undefined;
-        return await expandEntity(entity, cache);
+        return await expandEntity(entity, cache) as T;
     }, 60 * 60);
 }
 

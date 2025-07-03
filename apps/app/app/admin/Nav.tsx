@@ -1,6 +1,6 @@
 import { List, ListHeader } from "@signalco/ui-primitives/List";
 import { KnownPages } from "../../src/KnownPages";
-import { Bank, Fence, Home, Inbox, SmileHappy, User, Tally3, Euro } from "@signalco/ui-icons";
+import { Bank, Fence, Home, Inbox, SmileHappy, User, Tally3, Euro, Calendar } from "@signalco/ui-icons";
 import { NavItem } from "./NavItem";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { EntityTypeCreateModal } from "./EntityTypeCreateModal";
@@ -44,6 +44,12 @@ export async function Nav() {
                     <NavItem href={KnownPages.Users} label="Korisnici" icon={<User className="size-5" />} />
                     <NavItem href={KnownPages.Gardens} label="Vrtovi" icon={<Fence className="size-5" />} />
                     <NavItem href={KnownPages.RaisedBeds} label="Gredice" icon={<Tally3 className="size-5 rotate-90 mt-1" />} />
+                </List>
+            </Stack>
+            <Stack spacing={1}>
+                <ListHeader header="Upravljanje" />
+                <List>
+                    <NavItem href={KnownPages.Schedule} label="Raspored" icon={<Calendar className="size-5" />} />
                 </List>
             </Stack>
             <Stack spacing={1}>
