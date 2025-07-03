@@ -43,6 +43,7 @@ export default async function RaisedBedPage({ params }: { params: Promise<{ rais
                     <FieldSet>
                         <Field name="ID" value={raisedBed?.id} mono />
                         <Field name="Naziv" value={raisedBed?.name} />
+                        <Field name="Fizička oznaka" value={raisedBed?.physicalId} />
                         <Field name="Datum kreiranja" value={raisedBed?.createdAt} />
                     </FieldSet>
                 </Stack>

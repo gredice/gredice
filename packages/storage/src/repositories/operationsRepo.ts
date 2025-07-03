@@ -30,7 +30,7 @@ async function fillOperationAggregares(operations: SelectOperation[]) {
                 error = data?.error;
                 errorCode = data?.errorCode;
             } else if (event.type === knownEventTypes.operations.schedule) {
-                status = 'scheduled';
+                status = 'planned';
                 scheduledDate = data?.scheduledDate;
             }
         }

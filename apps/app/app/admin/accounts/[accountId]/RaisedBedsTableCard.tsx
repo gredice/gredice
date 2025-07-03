@@ -26,6 +26,7 @@ export async function RaisedBedsTableCard({ accountId, gardenId }: { accountId?:
                         <Table.Row>
                             <Table.Head>ID</Table.Head>
                             <Table.Head>Naziv</Table.Head>
+                            <Table.Head>Fizicka oznaka</Table.Head>
                             <Table.Head>Status</Table.Head>
                             <Table.Head>Broj Polja</Table.Head>
                             <Table.Head>Datum Kreiranja</Table.Head>
@@ -49,6 +50,7 @@ export async function RaisedBedsTableCard({ accountId, gardenId }: { accountId?:
                                     </Link>
                                 </Table.Cell>
                                 <Table.Cell>{bed.name}</Table.Cell>
+                                <Table.Cell>{bed.physicalId}</Table.Cell>
                                 <Table.Cell>{bed.status}</Table.Cell>
                                 <Table.Cell>{Array.isArray(bed.fields) ? bed.fields.length : 0}</Table.Cell>
                                 <Table.Cell><LocaleDateTime>{bed.createdAt}</LocaleDateTime></Table.Cell>
