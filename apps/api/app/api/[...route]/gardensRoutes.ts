@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createGardenBlock, createGardenStack, createRaisedBed, deleteGardenStack, getAccountGardens, getGarden, getGardenBlocks, getGardenStack, getRaisedBed, getRaisedBeds, getRaisedBedSensors, spendSunflowers, updateGardenBlock, updateGardenStack } from '@gredice/storage';
+import { createGardenBlock, createGardenStack, createRaisedBed, deleteGardenStack, getAccountGardens, getGarden, getGardenBlocks, getGardenStack, getRaisedBed, getRaisedBeds, getRaisedBedSensors, spendSunflowers, updateGardenBlock, updateGardenStack, updateRaisedBed } from '@gredice/storage';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from 'zod';
 import { describeRoute } from 'hono-openapi';
@@ -699,6 +699,42 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 blockId: raisedBed.blockId,
                 createdAt: raisedBed.createdAt,
                 updatedAt: raisedBed.updatedAt
+            });
+        }
+    )
+    .patch(
+        '/:gardenId/raised-beds/:raisedBedId',
+        describeRoute({
+            description: 'Update a raised bed',
+        }),
+        zValidator(
+            "param",
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+            })
+        ),
+        zValidator(
+            "json",
+            z.object({
+                name: z.string().optional(),
+            })
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId);
+            if (isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            const raisedBedIdNumber = parseInt(raisedBedId);
+            if (isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            await updateRaisedBed({
+                id: raisedBedIdNumber,
+                name: context.req.valid('json').name || undefined,
             });
         }
     )

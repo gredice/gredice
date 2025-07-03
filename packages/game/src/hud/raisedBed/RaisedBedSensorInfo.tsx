@@ -15,6 +15,7 @@ import { useNeighboringRaisedBeds } from "./RaisedBedField";
 import { Spinner } from "@signalco/ui-primitives/Spinner";
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@signalco/ui-primitives/Tabs";
+import { ButtonGreen } from "../../shared-ui/ButtonGreen";
 
 function CustomTooltip({ active, payload, header, textColor, label, unit }: any) {
     if (active && payload && payload.length) {
@@ -388,7 +389,7 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
                     { value: 0, label: "Nisko (0-20%)", color: "text-red-600", bgColor: "bg-red-600", strokeColor: "stroke-red-600", refStrokeColor: "#ef4444" }
                 ]}
                 trigger={(
-                    <Button size="sm" className="rounded-full text-primary dark:text-primary-foreground bg-gradient-to-br from-lime-100/90 to-lime-100/80 hover:bg-white">
+                    <ButtonGreen size="sm" className="rounded-full">
                         <Row spacing={0.5}>
                             <Droplet className={cx(
                                 "size-5 shrink-0 stroke-blue-400",
@@ -399,7 +400,7 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
                                 {soilMoisture?.value ?? "?"}%
                             </span>
                         </Row>
-                    </Button>
+                    </ButtonGreen>
                 )}
                 gardenId={gardenId}
                 raisedBedId={raisedBedId}
@@ -418,7 +419,7 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
                     areaGradientEnd: "#fca5a5",
                 }}
                 trigger={(
-                    <Button size="sm" className="rounded-full text-primary dark:text-primary-foreground bg-gradient-to-br from-lime-100/90 to-lime-100/80 hover:bg-white">
+                    <ButtonGreen size="sm" className="rounded-full">
                         <Row spacing={0.5}>
                             <Thermometer className={cx(
                                 "size-5 shrink-0 stroke-red-400",
@@ -429,7 +430,7 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
                                 {soilTemperature?.value ?? "?"}°C
                             </span>
                         </Row>
-                    </Button>
+                    </ButtonGreen>
                 )}
                 gardenId={gardenId}
                 raisedBedId={raisedBedId}

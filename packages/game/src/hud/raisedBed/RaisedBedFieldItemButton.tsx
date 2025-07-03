@@ -1,5 +1,6 @@
 import { cx } from "@signalco/ui-primitives/cx";
 import { Spinner } from "@signalco/ui-primitives/Spinner";
+import { ButtonGreen } from "../../shared-ui/ButtonGreen";
 
 type RaisedBedFieldItemButtonProps =
     React.ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -8,13 +9,9 @@ type RaisedBedFieldItemButtonProps =
 
 export function RaisedBedFieldItemButton({ isLoading, children, className, ...rest }: RaisedBedFieldItemButtonProps) {
     return (
-        <button
-            type="button"
+        <ButtonGreen
             className={cx(
-                'relative',
-                "bg-gradient-to-br from-lime-100/90 to-lime-100/80 size-full flex items-center justify-center rounded-sm",
-                "hover:bg-white",
-                "transition-colors",
+                'p-0 relative size-full flex items-center justify-center rounded-sm',
                 className
             )} {...rest}>
             {isLoading && (
@@ -23,6 +20,6 @@ export function RaisedBedFieldItemButton({ isLoading, children, className, ...re
                 </div>
             )}
             {children}
-        </button>
+        </ButtonGreen>
     );
 }
