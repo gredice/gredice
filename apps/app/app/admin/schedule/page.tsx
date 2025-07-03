@@ -8,6 +8,7 @@ import { auth } from "../../../lib/auth/auth";
 import { completeOperationAction } from "../../(actions)/operationActions";
 import { raisedBedPlantedFormHandler } from "../../(actions)/raisedBedFieldsActions";
 import { Divider } from "@signalco/ui-primitives/Divider";
+import { Fragment } from "react";
 
 function getDaySchedule(isToday: boolean, date: Date, raisedBeds: Awaited<ReturnType<typeof getAllRaisedBeds>>, operations: Awaited<ReturnType<typeof getAllOperations>>) {
     const todaysNewFields = raisedBeds.flatMap(rb => rb.fields).filter(field =>
@@ -64,62 +65,66 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                     return null; // Skip if no raised bed found for this physical ID
                 }
                 return (
-                    <div key={physicalId}>
-                        <Typography level="body1">Gr {physicalId} ({raisedBeds.map(rb => rb.name).join(', ')})</Typography>
-                        <Stack>
-                            {newFields.filter(field => raisedBeds.some(rb => rb.id === field.raisedBedId)).map((field) => {
-                                const sort = plantSorts?.find(ps => ps.id === field.plantSortId);
-                                // seedingDistance is not available in EntityStandardized, so default to 1
-                                const numberOfPlants = Math.pow(Math.floor(30 / (sort?.information?.plant?.attributes?.seedingDistance || 30)), 2);
-                                // For first raised bed, use positionIndex + 1, second will continue where the first left off
-                                // This assumes that positionIndex is unique across all fields in the same raised bed
-                                const fieldPositionIndex = raisedBeds.at(0)?.fields.find(f => f.id === field.id) ? field.positionIndex + 1 : field.positionIndex + 10;
+                    <Stack key={physicalId} spacing={1} className="border rounded-lg p-4 shadow">
+                        <Typography level="body1"><strong>Gr {physicalId}</strong> ({raisedBeds.map(rb => rb.name).join(', ')})</Typography>
+                        <Stack spacing={1}>
+                            {newFields
+                                .filter(field => raisedBeds.some(rb => rb.id === field.raisedBedId))
+                                .map((field) => ({
+                                    ...field,
+                                    physicalPositionIndex: raisedBeds.at(0)?.fields.find(f => f.id === field.id) ? field.positionIndex + 1 : field.positionIndex + 10
+                                }))
+                                .sort((a, b) => a.physicalPositionIndex - b.physicalPositionIndex)
+                                .map((field) => {
+                                    const sort = plantSorts?.find(ps => ps.id === field.plantSortId);
+                                    // seedingDistance is not available in EntityStandardized, so default to 1
+                                    const numberOfPlants = Math.pow(Math.floor(30 / (sort?.information?.plant?.attributes?.seedingDistance || 30)), 2);
 
-                                return (
-                                    <div key={field.id}>
-                                        <form action={raisedBedPlantedFormHandler} className="w-fit">
-                                            <input type="hidden" name="raisedBedId" value={field.raisedBedId} />
-                                            <input type="hidden" name="positionIndex" value={field.positionIndex} />
-                                            <Checkbox
-                                                type="submit"
-                                                label={(
-                                                    <Stack>
-                                                        <span>{fieldPositionIndex} - sijanje: {numberOfPlants} {field.plantSortId ? `${sort?.information?.name}` : '?'}</span>
-                                                    </Stack>
-                                                )}
-                                            />
-                                        </form>
-                                    </div>
-                                );
-                            })}
-                            {newOperations.filter(op => raisedBeds.some(rb => rb.id === op.raisedBedId)).map((op) => {
-                                const operationData = operationsData?.find(data => data.id === op.entityId);
-                                return (
-                                    <div key={op.id}>
-                                        <form action={completeOperationAction} className="w-fit">
-                                            <input type="hidden" name="operationId" value={op.id} />
-                                            <input type="hidden" name="completedBy" value={userId} />
-                                            <Checkbox
-                                                type="submit"
-                                                label={(
-                                                    <Stack>
-                                                        {op.scheduledDate && (
-                                                            <Typography level="body2">
-                                                                <LocaleDateTime>
-                                                                    {typeof op.scheduledDate === 'string' ? new Date(op.scheduledDate) : op.scheduledDate}
-                                                                </LocaleDateTime>
-                                                            </Typography>
-                                                        )}
-                                                        <span>{operationData?.information?.label ?? op.entityId}</span>
-                                                    </Stack>
-                                                )}
-                                            />
-                                        </form>
-                                    </div>
-                                );
-                            })}
+                                    return (
+                                        <div key={field.id}>
+                                            <form action={raisedBedPlantedFormHandler} className="w-fit">
+                                                <input type="hidden" name="raisedBedId" value={field.raisedBedId} />
+                                                <input type="hidden" name="positionIndex" value={field.positionIndex} />
+                                                <Checkbox
+                                                    type="submit"
+                                                    label={`${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sort?.information?.name}` : '?'}`}
+                                                />
+                                            </form>
+                                        </div>
+                                    );
+                                })}
+                            {newOperations
+                                .filter(op => raisedBeds.some(rb => rb.id === op.raisedBedId))
+                                .sort((a, b) => a.id - b.id)
+                                .map((op) => {
+                                    const operationData = operationsData?.find(data => data.id === op.entityId);
+                                    const isFirstRaisedBed = op.raisedBedId === raisedBeds.at(0)?.id;
+                                    const field = op.raisedBedFieldId
+                                        ? raisedBeds
+                                            .flatMap(rb => rb.fields)
+                                            .find(rbf => rbf.id === op.raisedBedFieldId)
+                                        : undefined;
+
+                                    const positionIndexes = field
+                                        ? (field.positionIndex + 1).toString()
+                                        : (isFirstRaisedBed
+                                            ? '1-9'
+                                            : '10-18');
+                                    return (
+                                        <div key={op.id}>
+                                            <form action={completeOperationAction} className="w-fit">
+                                                <input type="hidden" name="operationId" value={op.id} />
+                                                <input type="hidden" name="completedBy" value={userId} />
+                                                <Checkbox
+                                                    type="submit"
+                                                    label={`${positionIndexes} - ${operationData?.information?.label ?? op.entityId}`}
+                                                />
+                                            </form>
+                                        </div>
+                                    );
+                                })}
                         </Stack>
-                    </div>
+                    </Stack>
                 );
             })}
         </Stack>
@@ -145,19 +150,21 @@ export default async function AdminSchedulePage() {
             <Stack spacing={4}>
                 {dates.map((date, dateIndex) => {
                     return (
-                        <Stack key={date.toISOString()} spacing={1}>
-                            <Typography level="h5">
-                                <LocaleDateTime>{date}</LocaleDateTime>
-                            </Typography>
-                            <ScheduleDay
-                                isToday={dateIndex === 0}
-                                date={date}
-                                allRaisedBeds={allRaisedBeds}
-                                operations={operations}
-                                plantSorts={plantSorts}
-                                operationsData={operationsData} />
+                        <Fragment key={date.toISOString()}>
+                            <Stack spacing={1}>
+                                <Typography level="h5">
+                                    <LocaleDateTime time={false}>{date}</LocaleDateTime>
+                                </Typography>
+                                <ScheduleDay
+                                    isToday={dateIndex === 0}
+                                    date={date}
+                                    allRaisedBeds={allRaisedBeds}
+                                    operations={operations}
+                                    plantSorts={plantSorts}
+                                    operationsData={operationsData} />
+                            </Stack>
                             <Divider />
-                        </Stack>
+                        </Fragment>
                     );
                 })}
             </Stack>

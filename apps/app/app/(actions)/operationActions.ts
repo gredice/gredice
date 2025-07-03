@@ -17,6 +17,10 @@ export async function createOperationAction(formData: FormData) {
         throw new Error("Account ID is required");
     }
 
+    const scheduledDate = formData.get("scheduledDate")
+        ? new Date(formData.get("scheduledDate") as string)
+        : undefined;
+
     const operation: InsertOperation = {
         entityId,
         entityTypeName: formData.get("entityTypeName") as string,
@@ -26,7 +30,12 @@ export async function createOperationAction(formData: FormData) {
         raisedBedFieldId: formData.get("raisedBedFieldId") ? Number(formData.get("raisedBedFieldId")) : undefined,
         timestamp: formData.get("timestamp") ? new Date(formData.get("timestamp") as string) : undefined,
     };
-    await createOperation(operation);
+    const operationId = await createOperation(operation);
+    await Promise.all([
+        scheduledDate && createEvent(knownEvents.operations.scheduledV1(operationId.toString(), {
+            scheduledDate: scheduledDate.toISOString()
+        })),
+    ]);
     revalidatePath(KnownPages.Schedule);
     if (operation.accountId)
         revalidatePath(KnownPages.Account(operation.accountId));
