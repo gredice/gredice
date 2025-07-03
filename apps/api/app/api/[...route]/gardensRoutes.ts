@@ -154,7 +154,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // TODO: Refactor to use a single function for public and non-public garden retrieval
             const [garden, blockPlaceEventsRaw, blocks] = await Promise.all([
                 getGarden(gardenIdNumber),
-                getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 10000),
+                getEvents(knownEventTypes.gardens.blockPlace, [gardenId], 0, 10000),
                 getGardenBlocks(gardenIdNumber)
             ]);
             if (!garden) {

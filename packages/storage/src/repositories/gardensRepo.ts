@@ -254,16 +254,20 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             eq(raisedBedFields.isDeleted, false)
         ),
     });
+
+    // Retrieve all events in bulk
+    const fieldAggregateIds = fields.map(field => `${field.raisedBedId}|${field.positionIndex}`);
+    const fieldsEvents = await getEvents([
+        knownEventTypes.raisedBedFields.create,
+        knownEventTypes.raisedBedFields.delete,
+        knownEventTypes.raisedBedFields.plantPlace,
+        knownEventTypes.raisedBedFields.plantUpdate,
+    ], fieldAggregateIds, 0, 10000);
+
     // For each field, fetch and apply events
-    return Promise.all(fields.map(async (field) => {
+    return fields.map((field) => {
         const aggregateId = `${field.raisedBedId}|${field.positionIndex}`;
-        const events = await getEvents([
-            knownEventTypes.raisedBedFields.create,
-            knownEventTypes.raisedBedFields.delete,
-            knownEventTypes.raisedBedFields.plantPlace,
-            knownEventTypes.raisedBedFields.plantUpdate,
-            knownEventTypes.raisedBedFields.operationOrder,
-        ], aggregateId);
+        const events = fieldsEvents.filter(event => event.aggregateId === aggregateId);
 
         // Reduce events to get latest status, plant info, etc.
         let plantStatus = undefined;
@@ -320,7 +324,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             plantGrowthDate,
             plantReadyDate,
         };
-    }));
+    });
 }
 
 export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {

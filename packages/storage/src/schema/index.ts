@@ -7,3 +7,4 @@ export * from './feedbackSchema';
 export * from './transactionSchema';
 export * from './shoppingCartSchema';
 export * from './notificationsSchema';
+export * from './operationsSchema';

@@ -64,7 +64,7 @@ export async function getSunflowers(accountId: string) {
     let currentSunflowers = 0;
     const events = await getEvents(
         [knownEventTypes.accounts.earnSunflowers, knownEventTypes.accounts.spendSunflowers],
-        accountId);
+        [accountId]);
     for (const event of events) {
         currentSunflowers += event.type === knownEventTypes.accounts.spendSunflowers
             ? -Number((event.data as any).amount ?? 0)
@@ -76,7 +76,7 @@ export async function getSunflowers(accountId: string) {
 export async function getSunflowersHistory(accountId: string, offset: number = 0, limit: number = 10) {
     const earnEvents = await getEvents(
         [knownEventTypes.accounts.earnSunflowers, knownEventTypes.accounts.spendSunflowers],
-        accountId, offset, limit);
+        [accountId], offset, limit);
     return earnEvents.reverse().map((event) => ({
         ...event,
         amount: Number((event.data as any).amount),

@@ -25,7 +25,7 @@ export default async function AccountPage({ params }: { params: Promise<{ accoun
                         { label: 'Računi', href: KnownPages.Accounts },
                         { label: accountId }
                     ]} />
-                    <Typography level="h1" className="text-2xl" semiBold>Račun</Typography>
+                    <Typography level="h1" semiBold>Račun</Typography>
                 </Stack>
                 <Stack spacing={2}>
                     <Field name="ID računa" value={accountId} />

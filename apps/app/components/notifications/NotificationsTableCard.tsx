@@ -44,7 +44,7 @@ export async function NotificationsTableCard({ accountId, userId, gardenId, rais
                     />
                 </Row>
             </CardHeader>
-            <CardOverflow>
+            <CardOverflow className="max-h-96 overflow-auto">
                 <Table>
                     <Table.Header>
                         <Table.Row>
