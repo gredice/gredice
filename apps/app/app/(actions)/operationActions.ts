@@ -27,6 +27,7 @@ export async function createOperationAction(formData: FormData) {
         timestamp: formData.get("timestamp") ? new Date(formData.get("timestamp") as string) : undefined,
     };
     await createOperation(operation);
+    revalidatePath(KnownPages.Schedule);
     if (operation.accountId)
         revalidatePath(KnownPages.Account(operation.accountId));
     if (operation.gardenId)
@@ -80,4 +81,12 @@ export async function completeOperationAction(formData: FormData) {
                 timestamp: new Date(),
             }) : undefined
     ]);
+
+    revalidatePath(KnownPages.Schedule);
+    if (operation.accountId)
+        revalidatePath(KnownPages.Account(operation.accountId));
+    if (operation.gardenId)
+        revalidatePath(KnownPages.Garden(operation.gardenId));
+    if (operation.raisedBedId)
+        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
 }
