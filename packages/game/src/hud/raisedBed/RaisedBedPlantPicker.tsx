@@ -9,11 +9,19 @@ import { PlantData, PlantSortData } from "@gredice/client";
 import { useShoppingCart } from "../../hooks/useShoppingCart";
 import { PlantsList } from "./PlantsList";
 import { PlantsSortList } from "./PlantsSortList";
-import { PlantPickerOptions } from "./PlantPickerOptions";
 import { useSetShoppingCartItem } from "../../hooks/useSetShoppingCartItem";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Left, ShoppingCart } from "@signalco/ui-icons";
+import { Input } from "@signalco/ui-primitives/Input";
+
+// Helper to format date as YYYY-MM-DD in local time
+function formatLocalDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
 type PlantPickerProps = {
     positionIndex: number;
@@ -41,7 +49,6 @@ export function PlantPicker({
     const steps = [
         { label: 'Odabir biljke', subHeader: 'Odaberi biljku koju želiš posaditi' },
         { label: 'Odabir sorte', subHeader: 'Odaberi sortu biljke koju želiš posaditi' },
-        { label: 'Opcije', subHeader: 'Dodatne opcije sadnje biljke' },
     ];
     const { data: cart } = useShoppingCart();
     const setCartItem = useSetShoppingCartItem();
@@ -50,9 +57,7 @@ export function PlantPicker({
     const [plantOptions, setPlantOptions] = useState<{ scheduledDate: Date | null | undefined } | null>(preselectedPlantOptions ?? null);
 
     let currentStep = 0;
-    if (selectedPlantId && selectedSortId) {
-        currentStep = 2;
-    } else if (selectedPlantId) {
+    if (selectedPlantId) {
         currentStep = 1;
     }
 
@@ -65,10 +70,6 @@ export function PlantPicker({
     function handleSortSelect(sort: PlantSortData) {
         setSelectedSortId(sort.id);
         setSearch(undefined);
-    }
-
-    function handlePlantOptionsChange(options: { scheduledDate: Date | null | undefined }) {
-        setPlantOptions(options);
     }
 
     async function removeFromCart() {
@@ -121,7 +122,24 @@ export function PlantPicker({
 
     function handleOpenChange(open: boolean) {
         setOpen(open);
+        setSelectedPlantId(preselectedPlantId ?? null);
+        setSelectedSortId(preselectedSortId ?? null);
+        setPlantOptions(preselectedPlantOptions ?? null);
     }
+
+    // Plant options
+    // Use local time for tomorrow and 3 months from now
+    const today = new Date();
+    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    const threeMonthsFromTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth() + 3, tomorrow.getDate());
+    const plantDate = formatLocalDate(plantOptions?.scheduledDate ?? tomorrow);
+    function handlePlantDateChange(date: string) {
+        const parsedDate = date ? new Date(date) : null;
+        setPlantOptions({ scheduledDate: parsedDate });
+    }
+
+    const min = formatLocalDate(tomorrow);
+    const max = formatLocalDate(threeMonthsFromTomorrow);
 
     return (
         <Modal
@@ -129,14 +147,19 @@ export function PlantPicker({
             open={open}
             onOpenChange={handleOpenChange}
             title={"Sijanje biljke"}
-            className="z-[99999999] md:border-tertiary md:border-b-4">
+            className="md:border-tertiary md:border-b-4 md:max-w-2xl">
             <Stack spacing={2}>
                 <SegmentedProgress
-                    className="pb-4 pl-4 pr-8"
+                    className="pb-4 pr-8 w-full md:w-80 self-center"
                     segments={steps.map((step, stepIndex) => ({
                         value: currentStep > stepIndex ? 100 : (currentStep < stepIndex ? 0 : 99),
                         highlighted: stepIndex === currentStep,
                         label: step.label,
+                        onClick: selectedPlantId && stepIndex === 0 ? () => {
+                            setSelectedPlantId(null);
+                            setSelectedSortId(null);
+                            setSearch(undefined);
+                        } : undefined
                     }))} />
                 <Stack>
                     <Typography level="h3" className="text-xl">
@@ -146,7 +169,7 @@ export function PlantPicker({
                         {steps[currentStep].subHeader}
                     </Typography>
                 </Stack>
-                {currentStep < 2 && <FilterInput searchParamName={"pretraga"} fieldName={"search"} />}
+                {currentStep < 1 && <FilterInput searchParamName={"pretraga"} fieldName={"search"} />}
                 {currentStep === 0 && (
                     <>
                         <PlantsList onChange={handlePlantSelect} />
@@ -165,13 +188,26 @@ export function PlantPicker({
                 )}
                 {(currentStep === 1 && selectedPlantId) && (
                     <>
-                        <PlantsSortList
-                            plantId={selectedPlantId}
-                            onChange={(sort) => {
-                                handleSortSelect(sort);
-                                setSearch(undefined);
-                            }} />
-                        <Row>
+                        <Stack spacing={2}>
+                            <PlantsSortList
+                                plantId={selectedPlantId}
+                                selectedSortId={selectedSortId}
+                                onChange={(sort) => {
+                                    handleSortSelect(sort);
+                                    setSearch(undefined);
+                                }} />
+                            <Input
+                                type="date"
+                                label="Datum sijanja"
+                                name="plantDate"
+                                className="w-full bg-card"
+                                value={plantDate}
+                                onChange={(e) => handlePlantDateChange(e.target.value)}
+                                min={min}
+                                max={max}
+                            />
+                        </Stack>
+                        <Row justifyContent="space-between">
                             <Button
                                 variant="plain"
                                 onClick={() => {
@@ -182,41 +218,24 @@ export function PlantPicker({
                             >
                                 Odabir biljke
                             </Button>
-                        </Row>
-                    </>
-                )}
-                {currentStep === 2 && selectedPlantId && selectedSortId && (
-                    <>
-                        <PlantPickerOptions
-                            selectedPlantId={selectedPlantId}
-                            selectedSortId={selectedSortId}
-                            selectedOptions={plantOptions}
-                            onChange={handlePlantOptionsChange} />
-                        <Row justifyContent="space-between">
-                            <Button
-                                variant="plain"
-                                onClick={() => {
-                                    setSelectedSortId(null);
-                                    setSearch(undefined);
-                                }}
-                                startDecorator={<Left className="size-5" />}
-                            >
-                                Odabir sorte
-                            </Button>
                             <Row spacing={1}>
                                 {inShoppingCart && (
                                     <Button
                                         variant="plain"
+                                        loading={setCartItem.isPending}
                                         onClick={handleRemove}>
                                         Ukloni
                                     </Button>
                                 )}
                                 <Button
                                     variant="solid"
+                                    disabled={!selectedSortId}
+                                    title={!selectedSortId ? "Odaberi sortu prije potvrde" : undefined}
+                                    loading={setCartItem.isPending}
                                     onClick={handleConfirm}
                                     startDecorator={<ShoppingCart className="shrink-0 size-5" />}
                                 >
-                                    Potvrdi sadnju
+                                    Potvrdi sijanje
                                 </Button>
                             </Row>
                         </Row>

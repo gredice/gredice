@@ -5,6 +5,8 @@ import tailwindcssTypography from '@tailwindcss/typography';
 const tailwindConfig: Config = {
   content: [
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
+    "./node_modules/@signalco/ui-primitives/**/*.{js,ts,jsx,tsx,mdx}",
+    "./node_modules/@signalco/ui/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   presets: [config],
   extend: {

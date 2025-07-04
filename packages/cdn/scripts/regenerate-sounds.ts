@@ -6,7 +6,7 @@ import path from 'path';
 import { mkdir, unlink } from 'fs/promises';
 import stream from 'stream';
 
-console.log('Regenerating sound effects...');
+console.info('Regenerating sound effects...');
 
 ffmpeg.setFfmpegPath(ffmpegPath.path);
 
@@ -29,10 +29,10 @@ async function convertWavToMp3(bucketName: string, prefix: string) {
         const localWav = path.join('.', 'temp', path.basename(obj.Key));
         const localMp3 = localWav.replace('.wav', '.mp3');
 
-        console.log('Converting', localWav, ' > ', localMp3);
+        console.info('Converting', localWav, ' > ', localMp3);
 
         // Download file
-        console.log('Downloading', localWav);
+        console.info('Downloading', localWav);
         await mkdir('temp', { recursive: true });
         const wavStream = createWriteStream(localWav);
         const wavData = await s3.send(new GetObjectCommand({ Bucket: bucketName, Key: obj.Key }));
@@ -55,7 +55,7 @@ async function convertWavToMp3(bucketName: string, prefix: string) {
         });
 
         // Upload converted file
-        console.log('Uploading', localMp3);
+        console.info('Uploading', localMp3);
         const mp3Stream = createReadStream(localMp3);
         await s3.send(
             new PutObjectCommand({
@@ -75,7 +75,7 @@ async function convertWavToMp3(bucketName: string, prefix: string) {
 (async () => {
     try {
         await convertWavToMp3('gredice-cdn', 'sounds/');
-        console.log('Done converting files.');
+        console.info('Done converting files.');
     } catch (err) {
         console.error('Error:', err);
     }

@@ -46,7 +46,7 @@ export default async function PlantSortPage({ params }: { params: Promise<{ alia
     const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
     const sort = sortAliasUnescaped ? decodeURIComponent(sortAliasUnescaped) : null;
     if (!alias || !sort) {
-        console.log("Invalid parameters for plant sort page:", params);
+        console.warn("Invalid parameters for plant sort page:", params);
         notFound();
     }
 
@@ -54,7 +54,7 @@ export default async function PlantSortPage({ params }: { params: Promise<{ alia
     const basePlantData = plants?.find(p => p.information.name.toLowerCase() === alias.toLowerCase());
     const sortData = sorts?.find(s => s.information.name.toLowerCase() === sort.toLowerCase() && s.information.plant.information?.name?.toLowerCase() === alias.toLowerCase());
     if (!basePlantData || !sortData) {
-        console.log("Base plant or sort not found:", { basePlantData, sortData });
+        console.error("Base plant or sort not found:", { basePlantData, sortData });
         notFound();
     }
 

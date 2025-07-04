@@ -84,8 +84,6 @@ export function OverviewModal() {
 
     // Security
     const { data: userLogins, isPending: userLoginsLoading } = useUserLogins(currentUser.data?.id);
-    console.log('userLogins', userLogins);
-    console.log('currentuser', currentUser.data);
     const token = getAuthToken();
     const passwordLoginConnected = userLogins?.methods?.some(login => login.provider === 'password');
     const googleConnected = userLogins?.methods?.some(login => login.provider === 'google');

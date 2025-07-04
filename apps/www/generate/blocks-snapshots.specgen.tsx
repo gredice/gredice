@@ -10,7 +10,7 @@ test.describe('block screenshots', async () => {
     const entities = JSON.parse(readFileSync('./generate/test-cases.json', 'utf8')) as BlockData[];
     for (const entity of entities) {
         test(entity.information.name, async ({ mount }) => {
-            console.log('Taking screenshot of', entity.information.name, entity.attributes.height > 1.5 ? '(zoomed)' : '(normal)');
+            console.info('Taking screenshot of', entity.information.name, entity.attributes.height > 1.5 ? '(zoomed)' : '(normal)');
             const component = await mount(
                 <EntityViewer
                     className='size-80'

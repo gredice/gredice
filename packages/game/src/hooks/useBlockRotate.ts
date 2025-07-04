@@ -54,7 +54,7 @@ export function useBlockRotate() {
             };
         },
         onError: (error, _variables, context) => {
-            console.log('Error creating block', error);
+            console.error('Error creating block', error);
             if (context?.previousItem) {
                 queryClient.setQueryData(currentGardenKeys, context.previousItem);
             }

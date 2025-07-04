@@ -36,13 +36,11 @@ export function PlantYieldTooltip({ plant, children }: PropsWithChildren<{
     const maxYieldPerField = yieldType === 'perField' ? yieldMax : yieldMax * totalPlants;
     const expectedYieldPerField = yieldType === 'perField' ? expectedYieldAverage : expectedYieldAverage * totalPlants;
 
-    console.log('tooltip', plant.information.name, expectedYieldPerField, yieldMax, yieldMin, yieldType, totalPlants);
-
     return (
         <Tooltip>
             <TooltipTrigger className='cursor-pointer'>
                 <Row>
-                    {children}
+                    {children} ~{(expectedYieldPerField / 1000).toFixed(1)} kg
                     <Info className='hidden sm:block size-3 shrink-0 ml-1 mt-0.5' />
                 </Row>
             </TooltipTrigger>

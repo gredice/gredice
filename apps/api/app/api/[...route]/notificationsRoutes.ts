@@ -23,8 +23,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Unauthorized access to notifications' }, 403);
             }
 
-            console.log(`Fetching notifications for user: ${userId}, account: ${accountId}, read: ${read}, page: ${page}, limit: ${limit}`);
-
             const [userNotifications, accountNotifications] = await Promise.all([
                 getNotificationsByUser(userId, read ?? false, page, limit),
                 getNotificationsByAccount(accountId, read ?? false, page, limit)

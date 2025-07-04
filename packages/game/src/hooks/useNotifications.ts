@@ -5,7 +5,7 @@ export const notificationsQueryKey = ['notifications'];
 
 export function useNotifications(userId: string | undefined, read?: boolean, page?: number, limit?: number) {
   return useQuery({
-    queryKey: [...notificationsQueryKey, { read, page, limit }],
+    queryKey: (read || page || limit) ? [...notificationsQueryKey, { read, page, limit }] : notificationsQueryKey,
     queryFn: async () => {
       if (!userId) return [];
       const response = await client().api.notifications.$get({

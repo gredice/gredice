@@ -83,8 +83,8 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
             <button
                 title={isRead ? "Označi kao nepročitano" : "Označi kao pročitano"}
                 className={cx(
-                    "size-4 rounded-full hover:outline absolute top-2.5 right-2 group",
-                    isRead ? "border hover:outline" : "bg-green-600"
+                    "size-4 rounded-full hover:outline outline-offset-2 outline-2 absolute top-2.5 right-2 group",
+                    isRead ? "border" : "bg-green-600"
                 )}
                 onClick={handleSetNotificationRead}>
                 {!isRead && <Check className="size-4 shrink-0 hidden group-hover:block" />}
@@ -96,13 +96,17 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
 
 export function NotificationList({ read, short }: NotificationProps) {
     const { data: currentUser } = useCurrentUser();
-    const { data: notifications, isLoading, error } = useNotifications(currentUser?.id, read, 0, short ? 10 : undefined);
-
+    const { data: notifications, error } = useNotifications(currentUser?.id, read, 0, short ? 10 : undefined);
+    const isLoading = false;
     if (isLoading) {
         return (
-            <Stack spacing={2}>
+            <Stack spacing={1}>
                 {[...Array(3)].map((_, i) => (
-                    <Skeleton key={i} className="h-10 w-full" />
+                    <Stack key={i} spacing={1} className="p-4">
+                        <Skeleton className="h-5 w-2/3" />
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-5 w-20" />
+                    </Stack>
                 ))}
             </Stack>
         );
@@ -121,7 +125,7 @@ export function NotificationList({ read, short }: NotificationProps) {
     }
 
     return (
-        <List variant="outlined">
+        <List variant="outlined" className="border-none">
             {notifications.map((notification) => (
                 <NotificationListItem key={notification.id} notification={notification} />
             ))}
