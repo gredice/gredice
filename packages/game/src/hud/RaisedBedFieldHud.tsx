@@ -66,7 +66,7 @@ function RaisedBedFieldSuggestions({ gardenId, raisedBedId }: { gardenId: number
     }
 
     return (
-        <div className="absolute top-[calc(50%+160px)] left-[calc(50%+36px)] md:top-[calc(50%-150px)] md:left-[calc(50%+210px)]">
+        <div className="absolute top-[calc(50%+160px)] left-[calc(50%+36px)] md:top-[calc(50%-162px)] md:left-[calc(50%+210px)]">
             <div className="flex items-center flex-col gap-1 md:gap-2 bg-gradient-to-br from-lime-100/90 dark:from-lime-200/80 to-lime-100/80 dark:to-lime-200/70 hover:bg-white dark:hover:bg-white/50 dark:text-green-950 rounded-3xl px-4 py-2 md:px-4 md:pb-4 md:pt-3">
                 <Typography level="body1" bold className="dark:text-primary-foreground" noWrap>
                     Brzo sijanje
