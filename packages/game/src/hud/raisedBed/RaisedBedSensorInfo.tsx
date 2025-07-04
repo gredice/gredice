@@ -147,18 +147,18 @@ function SensorInfoModal({ icon, header, unit, yDomain, colors, positiveTrend, r
             <div className="relative w-full h-full">
                 <div className="w-full space-y-1 overflow-hidden">
                     {/* Mobile-Responsive Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between space-y-1.5 sm:space-y-0">
                         <Stack spacing={1}>
-                            <div className="flex items-center gap-2">
+                            <Row spacing={1}>
                                 {icon}
                                 <div>
                                     <Typography level="h5">{header}</Typography>
                                     <Typography level="body2">Očitanje senzora tvoje gredice</Typography>
                                 </div>
-                            </div>
+                            </Row>
                             <div>
                                 <Tabs value={duration.toString()}>
-                                    <TabsList>
+                                    <TabsList className="border">
                                         <TabsTrigger
                                             value="1"
                                             onClick={() => setDuration(1)}
@@ -188,7 +188,7 @@ function SensorInfoModal({ icon, header, unit, yDomain, colors, positiveTrend, r
                             </div>
                         </Stack>
 
-                        {/* Stats - Stack on mobile, inline on desktop */}
+                        {/* Stats */}
                         <div className="grid grid-cols-3 gap-1">
                             <Metric
                                 label="Trenutno"

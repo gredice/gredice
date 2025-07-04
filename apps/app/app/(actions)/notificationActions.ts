@@ -11,6 +11,7 @@ export async function createNotificationAction(_prevState: unknown, formData: Fo
     const notification: InsertNotification = {
         header: formData.get("header") as string,
         content: formData.get("content") as string,
+        iconUrl: formData.get("iconUrl") as string || undefined,
         imageUrl: formData.get("imageUrl") as string || undefined,
         linkUrl: formData.get("linkUrl") as string || undefined,
         accountId: formData.get("accountId") as string,

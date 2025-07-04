@@ -12,6 +12,7 @@ import { Markdown } from "../content/Markdown";
 import { cx } from "@signalco/ui-primitives/cx";
 import { Check } from "@signalco/ui-icons";
 import { Row } from "@signalco/ui-primitives/Row";
+import { ImageViewer } from "@gredice/ui/ImageViewer";
 
 interface NotificationProps {
     read?: boolean;
@@ -23,6 +24,7 @@ type NotificationListItemProps = {
         id: string;
         header: string;
         content: string;
+        iconUrl: string | null;
         linkUrl: string | null;
         imageUrl: string | null;
         readAt: Date | null;
@@ -51,15 +53,22 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
                 className="rounded-none p-4"
                 label={(
                     <Row spacing={2}>
-                        {notification.imageUrl && (
+                        {notification.iconUrl ? (
                             <img
-                                src={notification.imageUrl}
+                                src={notification.iconUrl}
                                 alt={header}
                                 width={80}
                                 height={80}
                                 className="w-20 h-20 object-cover rounded"
                             />
-                        )}
+                        ) : (notification.imageUrl && (
+                            <ImageViewer
+                                src={notification.imageUrl}
+                                alt={header}
+                                previewWidth={80}
+                                previewHeight={80}
+                            />
+                        ))}
                         <Stack>
                             <Typography level="body2" bold className="mr-3">{header}</Typography>
                             <Markdown>

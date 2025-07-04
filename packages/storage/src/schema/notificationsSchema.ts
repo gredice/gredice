@@ -7,6 +7,7 @@ export const notifications = pgTable('notifications', {
     id: text('id').primaryKey(),
     header: text('header').notNull(),
     content: text('content').notNull(), // markdown content
+    iconUrl: text('icon_url'), // URL to an icon image
     imageUrl: text('image'),
     linkUrl: text('link_url'), // optional link to more details
     accountId: text('account_id').notNull().references(() => accounts.id),
