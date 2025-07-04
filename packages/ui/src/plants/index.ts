@@ -1,2 +1,2 @@
-export * from './PlantRecommendedBadge';
 export * from './PlantYieldTooltip';
+export * from './SeedTimeInformationBadge';

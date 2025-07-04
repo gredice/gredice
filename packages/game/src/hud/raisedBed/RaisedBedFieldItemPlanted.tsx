@@ -19,8 +19,7 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
 
     const field = raisedBed.fields.find(field => field.positionIndex === positionIndex);
     if (!field || !field.plantSortId) {
-        console.debug('fields', raisedBed.fields)
-        console.log(`Field not found for raised bed ${raisedBedId} at position index ${positionIndex}`);
+        console.error(`Field not found for raised bed ${raisedBedId} at position index ${positionIndex}`, raisedBed.fields);
         return null;
     }
 

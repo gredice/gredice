@@ -302,18 +302,18 @@ function SensorInfoModal({ icon, header, unit, yDomain, colors, positiveTrend, r
                                 <Typography level="body1">
                                     Nemaš postavljen senzor za ovu gredicu.
                                 </Typography>
-                                <Stack>
-                                    <Typography level="body2" className="max-w-md">
+                                <Stack spacing={1}>
+                                    <Typography level="body2" className="max-w-md" center>
                                         Postavi senzor za praćenje vlažnosti i temperature tla.
-                                        Senzor ti daje u trenutno stanje tla tvoje gredice.
                                     </Typography>
-                                    <Typography level="body2">
+                                    <Typography level="body2" className="max-w-md" center>
+                                        Senzor će ti pomoći da bolje razumiješ uvjete u tlu tvoje gredice i dovedeš brigu o svojim biljkama na višu razinu.
                                     </Typography>
                                 </Stack>
                                 <Button
                                     variant="solid"
                                     startDecorator={<ShoppingCart className="size-5 shrink-0" />}
-                                    endDecorator={<span className="font-semibold ml-1">24.99€</span>}
+                                    endDecorator={<Typography level="body1" className="ml-1 bg-background rounded-full px-2">24.99 €</Typography>}
                                     onClick={handleBuySensor}
                                 >
                                     Postavi senzor

@@ -4,22 +4,29 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { List } from "@signalco/ui-primitives/List";
 import { Alert } from "@signalco/ui/Alert";
 import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
-import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { PlantSortData } from "@gredice/client";
 import { usePlantSorts } from "../../hooks/usePlantSorts";
 import { PlantListItemSkeleton } from "./PlantListItemSkeleton";
 import { KnownPages } from "../../knownPages";
-import { Link } from "@signalco/ui-primitives/Link";
-import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Info } from "@signalco/ui-icons";
+import { Check } from "@signalco/ui-icons";
 import { Row } from "@signalco/ui-primitives/Row";
+import { Button } from "@signalco/ui-primitives/Button";
+import { useEffect } from "react";
+import { cx } from "@signalco/ui-primitives/cx";
 
-export function PlantsSortList({ plantId, onChange }: { plantId: number, onChange: (plant: PlantSortData) => void }) {
+export function PlantsSortList({ plantId, selectedSortId, onChange }: { plantId: number, selectedSortId: number | null, onChange: (plant: PlantSortData) => void }) {
     const { data: plantSorts, isLoading, isError } = usePlantSorts(plantId);
     const [search] = useSearchParam('pretraga', '');
     const filteredPlantSorts = search.length > 0
         ? plantSorts?.filter(sort => sort.information.name.toLowerCase().includes(search.toLowerCase()))
         : plantSorts;
+
+    // Select first sort if only one is available
+    useEffect(() => {
+        if (filteredPlantSorts?.length === 1 && !selectedSortId) {
+            onChange(filteredPlantSorts[0]);
+        }
+    }, [filteredPlantSorts, selectedSortId, onChange]);
 
     return (
         <>
@@ -38,35 +45,46 @@ export function PlantsSortList({ plantId, onChange }: { plantId: number, onChang
                     <PlantListItemSkeleton key={index} />
                 ))}
                 {filteredPlantSorts?.map((sort) => (
-                    <Row key={sort.id}>
-                        <ListItem
-                            className="rounded-none rounded-r"
-                            nodeId={sort.id.toString()}
-                            onSelected={() => onChange(sort)}
-                            startDecorator={(
+                    <Stack key={sort.id} className={cx(
+                        selectedSortId === sort.id && 'bg-muted'
+                    )}>
+                        <Button
+                            // variant={selectedSortId === sort.id ? "soft" : "plain"}
+                            variant="plain"
+                            className={cx(
+                                "justify-between text-start p-0 h-auto py-2 gap-3 px-4 rounded-none font-normal"
+                            )}
+                            onClick={() => onChange(sort)}>
+                            <Row spacing={1.5}>
                                 <img
                                     src={'https://www.gredice.com/' + (sort.image?.cover?.url ?? sort.information.plant.image?.cover?.url)}
                                     alt={sort.information.name}
-                                    width={40}
-                                    height={40}
-                                    className="size-10" />
-                            )}
-                            label={(
+                                    width={48}
+                                    height={48}
+                                    className="size-12" />
                                 <Stack>
-                                    <Typography level="body1">{sort.information.name}</Typography>
-                                    <Typography level="body2" className="font-normal line-clamp-2 break-words">{sort.information.shortDescription}</Typography>
+                                    <Typography level="body1" semiBold>{sort.information.name}</Typography>
+                                    <Typography level="body2" className="font-normal line-clamp-2 break-words">{sort.information.shortDescription ?? sort.information.plant.information?.description}</Typography>
                                 </Stack>
-                            )} />
-                        <Link
-                            href={KnownPages.GredicePlantSort(sort.information.plant.information?.name ?? 'nepoznato', sort.information.name)}
-                            className="mx-2">
-                            <IconButton
+                            </Row>
+                            {selectedSortId === sort.id && (
+                                <Check
+                                    className="size-5 shrink-0"
+                                    title="Odabrano"
+                                />
+                            )}
+                        </Button>
+                        <Row justifyContent="end" className="px-4">
+                            <Button
                                 title="Više informacija"
-                                variant="soft">
-                                <Info className="size-5" />
-                            </IconButton>
-                        </Link>
-                    </Row>
+                                href={KnownPages.GredicePlantSort(sort.information.plant.information?.name ?? 'nepoznato', sort.information.name)}
+                                variant="link"
+                                size="sm"
+                            >
+                                Više informacija...
+                            </Button>
+                        </Row>
+                    </Stack>
                 ))}
             </List>
         </>

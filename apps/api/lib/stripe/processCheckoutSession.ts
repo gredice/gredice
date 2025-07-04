@@ -26,7 +26,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
     const affectedCartIds: number[] = [];
     let accountId: string | undefined = undefined;
     for (const item of session.lineItems?.data ?? []) {
-        console.log(`Item: ${item.id} Quantity: ${item.quantity}`);
+        console.debug(`Item: ${item.id} Quantity: ${item.quantity}`);
 
         const product = item.price?.product;
         if (typeof product === 'string') {

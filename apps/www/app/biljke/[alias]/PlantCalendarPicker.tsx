@@ -1,5 +1,5 @@
 import { PlantData, PlantSortData } from "@gredice/client";
-import { Card } from "@signalco/ui-primitives/Card";
+import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
 import { PlantYearCalendar } from "./PlantYearCalendar";
@@ -7,11 +7,12 @@ import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal
 import { PlantGrowthCalendar } from "./PlantGrowthCalendar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@signalco/ui-primitives/Tabs";
 import { Calendar, Sprout } from "@signalco/ui-icons";
+import { Typography } from "@signalco/ui-primitives/Typography";
 
 export function PlantCalendarPicker({ plant, sort }: { plant: PlantData, sort?: PlantSortData }) {
     return (
         <Tabs defaultValue="year">
-            <Stack spacing={1} className="group">
+            <Stack spacing={0} className="group">
                 <TabsList className="grid grid-cols-2 border w-fit">
                     <TabsTrigger value="year" className="flex gap-2"><Calendar className="size-5 shrink-0" /><span>Kalendar sijanja</span></TabsTrigger>
                     <TabsTrigger value="growth" className="flex gap-2"><Sprout className="size-5 shrink-0" /><span>Kalendar rasta</span></TabsTrigger>
@@ -21,14 +22,28 @@ export function PlantCalendarPicker({ plant, sort }: { plant: PlantData, sort?: 
                         Nema podataka o kalendaru
                     </NoDataPlaceholder>
                 ) : (
-                    <Card className="p-0">
+                    <>
                         <TabsContent value="year">
-                            <PlantYearCalendar activities={plant.calendar} />
+                            <Card>
+                                <CardOverflow>
+                                    <PlantYearCalendar activities={plant.calendar} />
+                                </CardOverflow>
+                            </Card>
+                            <Typography level="body2" className="italic pl-3 text-right">
+                                Kalendar sijanja prikazuje smjernice za sjetvu i razvoj biljke kroz godinu.
+                            </Typography>
                         </TabsContent>
                         <TabsContent value="growth">
-                            <PlantGrowthCalendar windows={plant.attributes} />
+                            <Card>
+                                <CardOverflow>
+                                    <PlantGrowthCalendar windows={plant.attributes} />
+                                </CardOverflow>
+                            </Card>
+                            <Typography level="body2" className="italic pl-3 text-right">
+                                Kalendar rasta prikazuje faze biljke ako se biljka sije danas.
+                            </Typography>
                         </TabsContent>
-                    </Card>
+                    </>
                 )}
                 <FeedbackModal
                     topic={sort ? "www/plants/sorts/calendar" : "www/plants/calendar"}

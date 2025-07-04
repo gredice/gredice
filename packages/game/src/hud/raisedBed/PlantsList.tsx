@@ -5,16 +5,13 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { List } from "@signalco/ui-primitives/List";
 import { Alert } from "@signalco/ui/Alert";
 import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
-import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { PlantData } from "@gredice/client";
 import { PlantListItemSkeleton } from "./PlantListItemSkeleton";
-import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Info } from "@signalco/ui-icons";
-import { PlantRecommendedBadge, PlantYieldTooltip } from "@gredice/ui/plants";
+import { PlantYieldTooltip, SeedTimeInformationBadge } from "@gredice/ui/plants";
 import { KnownPages } from "../../knownPages";
-import { Link } from "@signalco/ui-primitives/Link";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Chip } from "@signalco/ui-primitives/Chip";
+import { Button } from "@signalco/ui-primitives/Button";
 
 export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void }) {
     const { data: plants, isLoading, isError } = usePlants();
@@ -55,61 +52,47 @@ export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void 
                     }
                     const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
                     const price = plant.prices?.perPlant ? plant.prices.perPlant.toFixed(2) : 'Nepoznato';
-                    const yieldMin = plant.attributes?.yieldMin ?? 0;
-                    const yieldMax = plant.attributes?.yieldMax ?? 0;
-                    const yieldType = plant.attributes?.yieldType ?? 'perField';
-                    const expectedYieldAverage = (yieldMax - yieldMin) / 2 + yieldMin;
-                    const expectedYieldPerField = yieldType === 'perField' ? expectedYieldAverage : expectedYieldAverage * totalPlants;
                     return (
-                        <Row key={plant.id}>
-                            <ListItem
-                                className="rounded-none rounded-r"
-                                nodeId={plant.id.toString()}
-                                onSelected={() => onChange(plant)}
-                                startDecorator={(
-                                    <img
-                                        src={'https://www.gredice.com/' + plant.image.cover.url}
-                                        alt={plant.information.name}
-                                        width={40}
-                                        height={40}
-                                        className="size-10" />
-                                )}
-                                label={(
-                                    <Stack className="pr-1">
-                                        <Typography level="body1">
-                                            {plant.information.name}{' '}
-                                            <PlantRecommendedBadge isRecommended={plant.isRecommended} size="sm" />
+                        <Stack key={plant.id}>
+                            <Button
+                                variant="plain"
+                                className="justify-start text-start p-0 h-auto py-2 gap-3 px-4 rounded-none font-normal"
+                                onClick={() => onChange(plant)}>
+                                <img
+                                    src={'https://www.gredice.com/' + plant.image.cover.url}
+                                    alt={plant.information.name}
+                                    width={48}
+                                    height={48}
+                                    className="size-12" />
+                                <Stack>
+                                    <Row spacing={1} justifyContent="space-between">
+                                        <Typography level="body1" semiBold>
+                                            {plant.information.name}
                                         </Typography>
-                                        <Typography level="body2" className="font-normal line-clamp-2 break-words">
-                                            {plant.information.description}
-                                        </Typography>
-                                        <Row spacing={1} className="mt-1">
-                                            <Chip size="sm">
-                                                <PlantYieldTooltip plant={plant}>
-                                                    Prinos ~{(expectedYieldPerField / 1000).toFixed(1)} kg
-                                                </PlantYieldTooltip>
-                                            </Chip>
-                                            <Chip size="sm">
-                                                {totalPlants} {totalPlants === 1 ? 'biljka' : (totalPlants < 5 ? 'biljke' : 'biljaka')}
-                                            </Chip>
-                                        </Row>
-                                    </Stack>
-                                )}
-                                endDecorator={(
-                                    <span>{price}€</span>
-                                )} />
-                            <Link href={KnownPages.GredicePlant(plant.information.name)}
-                                className="mx-2">
-                                <IconButton
+                                        <Typography level="body1" semiBold>{price} €</Typography>
+                                    </Row>
+                                    <Typography level="body2" className="line-clamp-2 break-words">
+                                        {plant.information.description}
+                                    </Typography>
+                                </Stack>
+                            </Button>
+                            <Row spacing={1} justifyContent="end" className="px-4">
+                                <Chip size="sm">
+                                    <PlantYieldTooltip plant={plant}>Prinos</PlantYieldTooltip>
+                                </Chip>
+                                <Chip size="sm">
+                                    {totalPlants} {totalPlants === 1 ? 'biljka' : (totalPlants < 5 ? 'biljke' : 'biljaka')}
+                                </Chip>
+                                {plant.isRecommended && <SeedTimeInformationBadge size="sm" />}
+                                <Button
                                     title="Više informacija"
-                                    variant="soft"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                    }}>
-                                    <Info className="size-5" />
-                                </IconButton>
-                            </Link>
-                        </Row>
+                                    variant="link"
+                                    size="sm"
+                                    href={KnownPages.GredicePlant(plant.information.name)}>
+                                    Više informacija...
+                                </Button>
+                            </Row>
+                        </Stack>
                     );
                 })}
             </List>

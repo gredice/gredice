@@ -20,18 +20,25 @@ export function useSetNotificationRead() {
             }
         },
         onMutate: async (variables) => {
-            await queryClient.cancelQueries({ queryKey: notificationsQueryKey });
-            const previousNotifications = queryClient.getQueryData<any[]>(notificationsQueryKey);
-            if (previousNotifications) {
-                queryClient.setQueryData(notificationsQueryKey, previousNotifications.map(n =>
-                    n.id === variables.id ? { ...n, read: variables.read } : n
-                ));
-            }
-            return { previousNotifications };
+            const previousQueries = new Map<readonly unknown[], any>();
+            const queries = queryClient.getQueriesData({});
+            queries.forEach(([queryKey, data]) => {
+                if (Array.isArray(queryKey) && queryKey[0] === notificationsQueryKey[0]) {
+                    queryClient.cancelQueries({ queryKey });
+                    queryClient.setQueryData(queryKey, (data as any[]).map(n =>
+                        n.id === variables.id ? { ...n, readAt: variables.read ? new Date() : null } : n
+                    ));
+                    previousQueries.set(queryKey, data);
+                }
+            });
+
+            return { previousQueries };
         },
         onError: (err, variables, context) => {
-            if (context?.previousNotifications) {
-                queryClient.setQueryData(notificationsQueryKey, context.previousNotifications);
+            if (context?.previousQueries) {
+                context.previousQueries.forEach((notifications, queryKey) => {
+                    queryClient.setQueryData(queryKey, notifications);
+                });
             }
         },
         onSettled: () => {

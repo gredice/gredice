@@ -42,7 +42,7 @@ export function WelcomeMessage() {
     const show = useMemo(() => {
         let showWelcomeMessage = false;
         const now = new Date();
-        
+
         // Today 6am (yesterday if before 6am)
         const today6am = new Date(now);
         today6am.setHours(6, 0, 0, 0);
@@ -76,7 +76,7 @@ export function WelcomeMessage() {
 
     const timeOfDay = useGameState(state => state.timeOfDay);
     const isDay = timeOfDay > 0.2 && timeOfDay < 0.8;
-    const isMorning = timeOfDay < 0.5;
+    const isMorning = timeOfDay < 0.4;
     const title = isDay ? (isMorning ? "Dobro jutro" : "Dobar dan!") : "Dobra večer!";
 
     let messageType: keyof typeof messageTypes;
@@ -108,7 +108,7 @@ export function WelcomeMessage() {
                         <img
                             src="https://cdn.gredice.com/sunflower-large.svg"
                             alt="Suncokret"
-                             />
+                        />
                     </div>
                 </div>
             </div>
