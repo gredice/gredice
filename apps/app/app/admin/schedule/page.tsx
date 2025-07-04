@@ -76,7 +76,26 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                     .sort((a, b) => a.physicalPositionIndex - b.physicalPositionIndex);
                 const dayOperations = newOperations
                     .filter(op => raisedBeds.some(rb => rb.id === op.raisedBedId))
-                    .sort((a, b) => a.id - b.id);
+                    .map((op) => {
+                        const isFirstRaisedBed = op.raisedBedId === raisedBeds.at(0)?.id;
+                        const field = op.raisedBedFieldId
+                            ? raisedBeds
+                                .flatMap(rb => rb.fields)
+                                .find(rbf => rbf.id === op.raisedBedFieldId)
+                            : undefined;
+
+                        const physicalPositionIndex = field
+                            ? (field.positionIndex + 1).toString()
+                            : (isFirstRaisedBed
+                                ? '1-9'
+                                : '10-18');
+
+                        return {
+                            ...op,
+                            physicalPositionIndex,
+                        };
+                    })
+                    .sort((a, b) => a.physicalPositionIndex.localeCompare(b.physicalPositionIndex, undefined, { numeric: true }));
 
                 return (
                     <Accordion key={physicalId} defaultOpen={isToday} variant="plain" className="hover:bg-muted">
@@ -89,8 +108,8 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                                 <Typography level="body2">Trenutno nema zadataka za ovu gredicu.</Typography>
                             )}
                             {dayFields.map((field) => {
-                                const sort = plantSorts?.find(ps => ps.id === field.plantSortId);
-                                const numberOfPlants = Math.pow(Math.floor(30 / (sort?.information?.plant?.attributes?.seedingDistance || 30)), 2);
+                                const sortData = plantSorts?.find(ps => ps.id === field.plantSortId);
+                                const numberOfPlants = Math.pow(Math.floor(30 / (sortData?.information?.plant?.attributes?.seedingDistance || 30)), 2);
 
                                 return (
                                     <div key={field.id}>
@@ -100,7 +119,7 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                                             <Row spacing={1}>
                                                 <Checkbox type="submit" />
                                                 <Typography>
-                                                    {`${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sort?.information?.name}` : '?'}`}
+                                                    {`${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : '?'}`}
                                                 </Typography>
                                             </Row>
                                         </form>
@@ -109,18 +128,6 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                             })}
                             {dayOperations.map((op) => {
                                 const operationData = operationsData?.find(data => data.id === op.entityId);
-                                const isFirstRaisedBed = op.raisedBedId === raisedBeds.at(0)?.id;
-                                const field = op.raisedBedFieldId
-                                    ? raisedBeds
-                                        .flatMap(rb => rb.fields)
-                                        .find(rbf => rbf.id === op.raisedBedFieldId)
-                                    : undefined;
-
-                                const positionIndexes = field
-                                    ? (field.positionIndex + 1).toString()
-                                    : (isFirstRaisedBed
-                                        ? '1-9'
-                                        : '10-18');
                                 return (
                                     <div key={op.id}>
                                         <form action={completeOperationAction} className="w-fit">
@@ -128,7 +135,7 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                                             <input type="hidden" name="completedBy" value={userId} />
                                             <Row spacing={1}>
                                                 <Checkbox type="submit" />
-                                                <Typography>{`${positionIndexes} - ${operationData?.information?.label ?? op.entityId}`}</Typography>
+                                                <Typography>{`${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}`}</Typography>
                                             </Row>
                                         </form>
                                     </div>
