@@ -129,7 +129,7 @@ export async function processItem(itemData: {
     gardenId?: number | null | undefined;
     raisedBedId?: number | null | undefined;
     positionIndex?: number | null | undefined;
-    additionalData?: any | null | undefined;
+    additionalData?: unknown | null | undefined;
     currency?: string | null;
     amount_total: number; // Amount in cents or sunflowers
 }) {
@@ -170,7 +170,9 @@ export async function processItem(itemData: {
                 `${itemData.raisedBedId}|${itemData.positionIndex}`,
                 {
                     plantSortId: itemData.entityId,
-                    scheduledDate: itemData.additionalData?.scheduledDate || null,
+                    scheduledDate: typeof itemData.additionalData === 'object' && itemData.additionalData != null && 'scheduledDate' in itemData.additionalData && typeof itemData.additionalData.scheduledDate === 'string'
+                        ? itemData.additionalData.scheduledDate
+                        : null,
                 }
             )),
             updateRaisedBed({

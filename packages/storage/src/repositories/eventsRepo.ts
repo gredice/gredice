@@ -108,7 +108,7 @@ export const knownEvents = {
             version: 1,
             aggregateId,
         }),
-        plantPlaceV1: (aggregateId: string, data: { plantSortId: string, scheduledDate: string }) => ({
+        plantPlaceV1: (aggregateId: string, data: { plantSortId: string, scheduledDate: string | null | undefined }) => ({
             type: knownEventTypes.raisedBedFields.plantPlace,
             version: 1,
             aggregateId,
