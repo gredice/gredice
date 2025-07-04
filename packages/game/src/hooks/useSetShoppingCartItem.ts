@@ -13,7 +13,8 @@ export function useSetShoppingCartItem() {
             gardenId?: number,
             raisedBedId?: number,
             positionIndex?: number,
-            additionalData?: string | null
+            additionalData?: string | null,
+            currency?: string | null
         }) => {
             if (!cart) {
                 throw new Error('Shopping cart is not available');

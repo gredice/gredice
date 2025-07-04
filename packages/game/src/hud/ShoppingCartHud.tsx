@@ -13,10 +13,42 @@ import { useCurrentGarden } from "../hooks/useCurrentGarden";
 import { client } from "@gredice/client";
 import { ModalConfirm } from "@signalco/ui/ModalConfirm";
 import { Chip } from "@signalco/ui-primitives/Chip";
-import { cx } from "@signalco/ui-primitives/cx";
 import { useSetShoppingCartItem } from "../hooks/useSetShoppingCartItem";
 import { useCheckout } from "../hooks/useCheckout";
 import { Alert } from "@signalco/ui/Alert";
+
+function ButtonPricePickPaymentMethod({ price, isSunflower, onChange }: { price: number | null | undefined, isSunflower: boolean, onChange?: (isSunflower: boolean) => void }) {
+    function handleToggle() {
+        onChange?.(!isSunflower);
+    }
+
+    if (price == null || price === undefined) {
+        return <Typography level="body1">Nevaljan iznos</Typography>
+    }
+
+    const displayPrice = isSunflower ? price * 1000 : price
+
+    return (
+        <Row spacing={1} className="overflow-hidden px-0.5 py-1">
+            {/* Price Display */}
+            <Typography level="body1" semiBold>
+                {displayPrice.toFixed(2)}
+            </Typography>
+
+            {/* Custom Switch */}
+            <button
+                onClick={handleToggle}
+                className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#2f6e40] focus:ring-offset-2 ${isSunflower ? "bg-yellow-200 dark:bg-yellow-400" : "bg-gray-300 dark:bg-slate-600"}`}
+                role="switch"
+                aria-checked={isSunflower}
+            >
+                <span className={`size-5 transform rounded-full bg-white text-black shadow-lg transition-transform flex items-center justify-center text-md font-medium ${isSunflower ? "translate-x-5" : "translate-x-0.5"}`}>
+                    {isSunflower ? "🌻" : "€"}
+                </span>
+            </button>
+        </Row>
+    )
+}
 
 function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
@@ -29,10 +61,24 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const raisedBed = hasRaisedBed ? garden?.raisedBeds.find(rb => rb.id === item.raisedBedId) : null;
     const scheduledDateString = item.additionalData ? JSON.parse(item.additionalData).scheduledDate : null;
     const scheduledDate = scheduledDateString ? new Date(scheduledDateString) : null;
-    const setShoppingCartItem = useSetShoppingCartItem();
+    const changeCurrencyShoppingCartItem = useSetShoppingCartItem();
+    const removeShoppingCartItem = useSetShoppingCartItem();
+
+    async function handleChangePaymentType(isSunflower: boolean) {
+        await changeCurrencyShoppingCartItem.mutateAsync({
+            amount: item.amount,
+            entityId: item.entityId,
+            entityTypeName: item.entityTypeName,
+            gardenId: item.gardenId ?? undefined,
+            raisedBedId: item.raisedBedId ?? undefined,
+            positionIndex: item.positionIndex ?? undefined,
+            additionalData: item.additionalData,
+            currency: isSunflower ? 'sunflower' : 'euro'
+        });
+    }
 
     async function handleRemoveItem() {
-        await setShoppingCartItem.mutateAsync({
+        await removeShoppingCartItem.mutateAsync({
             amount: 0,
             entityId: item.entityId,
             entityTypeName: item.entityTypeName,
@@ -57,15 +103,13 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
             <Stack className="grow">
                 <Row alignItems="start" justifyContent="space-between" spacing={1}>
                     <Typography level="body1" noWrap>{item.shopData.name}</Typography>
-                    <Row>
-                        <Typography
-                            className={cx(hasDiscount && 'line-through opacity-50 text-sm')}
-                            level="body1"
-                            semiBold>
-                            {item.shopData.price?.toFixed(2) ?? "Nevaljan iznos"}
-                        </Typography>
-                        <Euro className={cx(hasDiscount ? "size-3 opacity-50" : "size-4")} />
-                    </Row>
+                    {!hasDiscount && (
+                        <ButtonPricePickPaymentMethod
+                            price={item.shopData.price}
+                            isSunflower={item.currency === 'sunflower'}
+                            onChange={handleChangePaymentType}
+                        />
+                    )}
                 </Row>
                 {hasDiscount && (
                     <Row justifyContent="space-between" spacing={1}>
@@ -142,7 +186,7 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 <IconButton
                                     title="Makni s popisa"
                                     variant="plain"
-                                    loading={setShoppingCartItem.isPending}
+                                    loading={removeShoppingCartItem.isPending}
                                     className="rounded-full aspect-square p-1 text-red-600"
                                     size="sm">
                                     <Delete className="size-4 shrink-0" />
@@ -156,6 +200,7 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         </Row>
     );
 }
+
 function ShoppingCart() {
     const { data: cart, isLoading, isError, refetch } = useShoppingCart();
     const checkout = useCheckout();
@@ -211,16 +256,18 @@ function ShoppingCart() {
                     )}
                 </Stack>
                 <Stack className="border-t pt-4" spacing={4}>
-                    <Row justifyContent="space-between">
-                        <Typography>
+                    <Row justifyContent="space-between" alignItems="start" spacing={2}>
+                        <Typography level="body1">
                             Ukupno
                         </Typography>
-                        <Row>
+                        <Stack>
                             <Typography level="body1" bold>
-                                {cart?.total.toFixed(2)}
+                                {cart?.total.toFixed(2)} €
                             </Typography>
-                            <Euro className="size-4" />
-                        </Row>
+                            <Typography level="body1" bold>
+                                {(cart?.totalSunflowers ?? 0) > 0 ? `-${cart?.totalSunflowers ?? 0}` : '0'} <span className={"text-lg"}>🌻</span>
+                            </Typography>
+                        </Stack>
                     </Row>
                     <Row spacing={2}>
                         {/* TODO: Localize */}
@@ -250,7 +297,7 @@ function ShoppingCart() {
                             startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0 stroke-red-600" /> : undefined}
                             endDecorator={<Navigate className="size-5 shrink-0" />}
                         >
-                            Plaćanje
+                            Potvrdi i plati
                         </Button>
                     </Row>
                 </Stack>
@@ -273,7 +320,7 @@ export function ShoppingCartHud() {
             <Row spacing={1}>
                 <Modal
                     title="Košarica"
-                    className='bg-card border-tertiary border-b-4'
+                    className='bg-card border-tertiary border-b-4 md:max-w-2xl'
                     trigger={(
                         <IconButton
                             title="Košarica"

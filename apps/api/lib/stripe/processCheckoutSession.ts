@@ -99,50 +99,10 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
             continue;
         }
 
-        if (itemData.entityTypeName === 'operation') {
-            // TODO: Handle operation processing
-            // TODO: Handle raisedBed operation placement (not currently necessary since we can't buy raised bed operation without planting plants)
-
-            // Handle sensor installation
-            if (itemData.raisedBedId && itemData.entityId === '180') { // TODO: Mitigate hardcoded '180' as place sensor ID
-                try {
-                    await createRaisedBedSensor({
-                        raisedBedId: itemData.raisedBedId,
-                    });
-                    await earnSunflowersForPayment(itemData.accountId, item.amount_total / 100); // Convert cents to dollars
-                    console.debug(`Installed sensor in raised bed ${itemData.raisedBedId} for session ${checkoutSessionId}`);
-                } catch (error) {
-                    console.error(`Failed to install sensor for raised bed ${itemData.raisedBedId} in session ${checkoutSessionId}`, error);
-                }
-            }
-        }
-
-        // Process plant placement event
-        if (itemData.entityTypeName === 'plantSort' &&
-            itemData.raisedBedId &&
-            typeof itemData.positionIndex === 'number') {
-            await Promise.all([
-                upsertRaisedBedField({
-                    positionIndex: itemData.positionIndex,
-                    raisedBedId: itemData.raisedBedId
-                }),
-                createEvent(knownEvents.raisedBedFields.plantPlaceV1(
-                    `${itemData.raisedBedId}|${itemData.positionIndex}`,
-                    {
-                        plantSortId: itemData.entityId,
-                        scheduledDate: itemData.additionalData?.scheduledDate || null,
-                    }
-                )),
-                earnSunflowersForPayment(itemData.accountId, item.amount_total / 100), // Convert cents to dollars
-                updateRaisedBed({
-                    id: itemData.raisedBedId,
-                    status: 'active'
-                })
-            ]);
-            console.debug(`Placed plant sort ${itemData.entityId} in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex} for session ${checkoutSessionId}`);
-        } else {
-            console.error(`Unsupported item type for entityId ${itemData.entityId} in session ${checkoutSessionId}`, itemData);
-        }
+        await processItem({
+            ...itemData,
+            amount_total: item.amount_total,
+        });
 
         // TODO: Send email to customer
         // TODO: Send invoice to customer
@@ -159,4 +119,70 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
             currency: 'eur'
         }) : undefined
     ]);
+}
+
+export async function processItem(itemData: {
+    entityId: string | null | undefined;
+    entityTypeName: string | null | undefined;
+    accountId: string | null | undefined;
+    cartId: number | null | undefined;
+    gardenId?: number | null | undefined;
+    raisedBedId?: number | null | undefined;
+    positionIndex?: number | null | undefined;
+    additionalData?: unknown | null | undefined;
+    currency?: string | null;
+    amount_total: number; // Amount in cents or sunflowers
+}) {
+    const earnSunflowerPromise = itemData.accountId && itemData.currency === 'euro' ?
+        earnSunflowersForPayment(itemData.accountId, itemData.amount_total / 100) :
+        Promise.resolve();
+
+    // TODO: Move this logic to a separate function
+    if (itemData.entityTypeName === 'operation') {
+        // TODO: Handle operation processing
+        // TODO: Handle raisedBed operation placement (not currently necessary since we can't buy raised bed operation without planting plants)
+
+        // Handle sensor installation
+        if (itemData.raisedBedId && itemData.entityId === '180') { // TODO: Mitigate hardcoded '180' as place sensor ID
+            try {
+                await Promise.all([
+                    createRaisedBedSensor({
+                        raisedBedId: itemData.raisedBedId,
+                    }),
+                    earnSunflowerPromise
+                ]);
+                console.debug(`Installed sensor in raised bed ${itemData.raisedBedId}.`);
+            } catch (error) {
+                console.error(`Failed to install sensor for raised bed ${itemData.raisedBedId}.`, error);
+            }
+        }
+    } else if (
+        itemData.entityId &&
+        itemData.entityTypeName === 'plantSort' &&
+        itemData.raisedBedId &&
+        typeof itemData.positionIndex === 'number') {
+        await Promise.all([
+            upsertRaisedBedField({
+                positionIndex: itemData.positionIndex,
+                raisedBedId: itemData.raisedBedId
+            }),
+            createEvent(knownEvents.raisedBedFields.plantPlaceV1(
+                `${itemData.raisedBedId}|${itemData.positionIndex}`,
+                {
+                    plantSortId: itemData.entityId,
+                    scheduledDate: typeof itemData.additionalData === 'object' && itemData.additionalData != null && 'scheduledDate' in itemData.additionalData && typeof itemData.additionalData.scheduledDate === 'string'
+                        ? itemData.additionalData.scheduledDate
+                        : null,
+                }
+            )),
+            updateRaisedBed({
+                id: itemData.raisedBedId,
+                status: 'active'
+            }),
+            earnSunflowerPromise,
+        ]);
+        console.debug(`Placed plant sort ${itemData.entityId} in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`);
+    } else {
+        console.error(`Unsupported item type for entityId ${itemData.entityId} in order.`, itemData);
+    }
 }

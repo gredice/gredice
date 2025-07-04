@@ -1,0 +1,1 @@
+ALTER TABLE "shopping_cart_items" ADD COLUMN "currency" text DEFAULT 'euro' NOT NULL;

@@ -67,8 +67,8 @@ function RaisedBedFieldSuggestions({ gardenId, raisedBedId }: { gardenId: number
 
     return (
         <div className="absolute top-[calc(50%-150px)] md:left-[calc(50%+210px)]">
-            <Stack spacing={1} className="bg-white/40 backdrop-blur-lg rounded-2xl px-4 pb-4 pt-3">
-                <Typography level="body1" className="font-bold">
+            <Stack spacing={1} className="bg-white/40 dark:bg-lime-100/50 dark:text-green-950 backdrop-blur-lg rounded-2xl px-4 pb-4 pt-3">
+                <Typography level="body1" className="font-bold dark:text-primary-foreground">
                     Brzo sijanje
                 </Typography>
                 <ButtonGreen
