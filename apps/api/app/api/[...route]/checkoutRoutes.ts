@@ -123,7 +123,11 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
     const newRaisedBeds = mentionedRaisedBeds.filter(rb => rb && rb.status === 'new');
     const requiredItemsCount = Math.ceil(newRaisedBeds.length / 2) * 9;
 
-    const cartItemsInNewRaisedBeds = cartItemsWithShopInfo.filter(item => item.status !== 'paid' && item.raisedBedId && newRaisedBeds.some(rb => rb?.id === item.raisedBedId));
+    const cartItemsInNewRaisedBeds = cartItemsWithShopInfo.filter(item =>
+        item.status !== 'paid' &&
+        item.raisedBedId &&
+        item.entityTypeName === 'plantSort' &&
+        newRaisedBeds.some(rb => rb?.id === item.raisedBedId));
     if (cartItemsInNewRaisedBeds.length < requiredItemsCount) {
         const missingItemsCount = requiredItemsCount - cartItemsInNewRaisedBeds.length;
         const neededPlural = missingItemsCount === 1 ? 'Potrebna je' : (missingItemsCount > 4 ? 'Potrebno je' : 'Potrebne su');
