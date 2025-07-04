@@ -2,13 +2,31 @@ import { useGameState } from "../useGameState";
 import { cx } from "@signalco/ui-primitives/cx";
 import { useCurrentGarden } from "../hooks/useCurrentGarden";
 import { RaisedBedField } from "./raisedBed/RaisedBedField";
-import { Check, Edit } from "@signalco/ui-icons";
+import { Check } from "@signalco/ui-icons";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { RaisedBedSensorInfo } from "./raisedBed/RaisedBedSensorInfo";
 import { ButtonGreen } from "../shared-ui/ButtonGreen";
 import { RaisedBedInfo } from "../controls/components/RaisedBedInfo";
 import { Modal } from "@signalco/ui-primitives/Modal";
+import { SVGProps } from "react";
+
+const RaisedBedIcon = (props: SVGProps<SVGSVGElement>) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width={24}
+        height={24}
+        fill="none"
+        viewBox="0 0 500 500"
+        {...props}
+    >
+        <path
+            stroke="currentColor"
+            strokeWidth={20}
+            d="M42 191v118.5l208 122M42 191 250 68l210.5 123M42 191l208 118.5M460.5 191v118.5L250 431.5M460.5 191 250 309.5m0 122v-122m0-199L111.5 191l29 17.2M250 110.5 391.5 191l-31 17.2M250 110.5V143m-109.5 65.2L250 270.5l110.5-62.3m-220 0L250 143m0 0 110.5 65.2"
+        />
+    </svg>
+)
 
 export function RaisedBedFieldHud() {
     const { data: currentGarden } = useCurrentGarden();
@@ -30,7 +48,7 @@ export function RaisedBedFieldHud() {
                             trigger={(
                                 <ButtonGreen fullWidth>
                                     <Row spacing={1}>
-                                        <Edit className="size-5 shrink-0" />
+                                        <RaisedBedIcon className="size-6" />
                                         <Typography semiBold noWrap>{raisedBed?.name}</Typography>
                                     </Row>
                                 </ButtonGreen>

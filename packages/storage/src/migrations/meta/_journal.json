@@ -323,6 +323,13 @@
       "when": 1751505196924,
       "tag": "0045_panoramic_frog_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1751583614475,
+      "tag": "0046_serious_boomerang",
+      "breakpoints": true
     }
   ]
 }

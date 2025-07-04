@@ -36,7 +36,8 @@ export function NotificationCreateModal({ accountId, userId, gardenId, raisedBed
                         <div className="grid grid-cols-2 gap-4">
                             <Input name="header" label="Naslov" required disabled={pending} className="col-span-2" />
                             <Input name="content" label="Sadržaj" required disabled={pending} className="col-span-2" />
-                            <Input name="imageUrl" label="URL slike" disabled={pending} />
+                            <Input name="iconUrl" label="URL ikone (opcionalno)" disabled={pending} />
+                            <Input name="imageUrl" label="URL slike (opcionalno)" disabled={pending} />
                             <Input name="linkUrl" label="Link (opcionalno)" disabled={pending} />
                             <Input name="accountId" defaultValue={accountId} label="Account ID" required disabled={pending} />
                             <Input name="userId" defaultValue={userId} label="Korisnik ID (opcionalno)" disabled={pending} />
