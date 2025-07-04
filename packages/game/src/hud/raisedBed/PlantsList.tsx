@@ -76,7 +76,7 @@ export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void 
                                     </Typography>
                                 </Stack>
                             </Button>
-                            <Row spacing={1} justifyContent="end" className="px-4">
+                            <div className="flex flex-wrap gap-y-1 gap-x-2 px-4 items-center justify-end">
                                 <Chip size="sm">
                                     <PlantYieldTooltip plant={plant}>Prinos</PlantYieldTooltip>
                                 </Chip>
@@ -91,7 +91,7 @@ export function PlantsList({ onChange }: { onChange: (plant: PlantData) => void 
                                     href={KnownPages.GredicePlant(plant.information.name)}>
                                     Više informacija...
                                 </Button>
-                            </Row>
+                            </div>
                         </Stack>
                     );
                 })}

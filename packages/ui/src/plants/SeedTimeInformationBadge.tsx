@@ -38,14 +38,14 @@ export function SeedTimeInformationBadge({ size = "md" }: { size?: "sm" | "md" |
             <Stack spacing={2}>
                 <Row spacing={2}>
                     <ThumbsUp className="size-10 text-secondary-foreground" />
-                    <Typography level="body2" semiBold>&quot;Vrijeme za sijanje&quot; označava da trenutno vrijeme optimalno za sjetvu.</Typography>
+                    <Typography level="body2" semiBold>&quot;Vrijeme za sijanje&quot; označava da je upravo sad optimalno vrijeme za sjetvu.</Typography>
                 </Row>
                 <Stack spacing={1}>
                     <Typography>
-                        Prema kalendaru sjetve, trenutno je sijanje ove biljke u gredicama preporučeno.
+                        Prema kalendaru sjetve, sijanje ove biljke u gredicama je preporučeno.
                     </Typography>
                     <Typography>
-                        Ovaj period se može razlikovati ovisno o vremenskim uvjetima i lokaciji, ali općenito označava da je vrijeme za početak rasta biljke.
+                        Ovaj period se može razlikovati ovisno o vremenskim uvjetima i lokaciji, ali općenito označava da je vrijeme za sjetvu ove biljke.
                     </Typography>
                     <Typography>
                         Biljke koje <strong>nemaju</strong> oznaku &quot;Vrijeme za sijanje&quot; i dalje se mogu sijati ali će vjerojatno zahtijevati dodatnu njegu i pažnju.
