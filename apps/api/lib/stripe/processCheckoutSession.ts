@@ -49,7 +49,8 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
             gardenId: product?.metadata.gardenId ? parseInt(product.metadata.gardenId, 10) : undefined,
             raisedBedId: product?.metadata.raisedBedId ? parseInt(product.metadata.raisedBedId, 10) : undefined,
             positionIndex: product?.metadata.positionIndex ? parseInt(product.metadata.positionIndex, 10) : undefined,
-            additionalData: product?.metadata.additionalData ? JSON.parse(product.metadata.additionalData) : undefined
+            additionalData: product?.metadata.additionalData ? JSON.parse(product.metadata.additionalData) : undefined,
+            currency: 'euro'
         };
 
         // Save accountId from metadata if not already set
