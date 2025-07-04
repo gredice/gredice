@@ -66,36 +66,38 @@ function RaisedBedFieldSuggestions({ gardenId, raisedBedId }: { gardenId: number
     }
 
     return (
-        <div className="absolute top-[calc(50%-150px)] md:left-[calc(50%+210px)]">
-            <Stack spacing={1} className="bg-white/40 dark:bg-lime-100/50 dark:text-green-950 backdrop-blur-lg rounded-2xl px-4 pb-4 pt-3">
-                <Typography level="body1" className="font-bold dark:text-primary-foreground">
+        <div className="absolute top-[calc(50%+160px)] left-[calc(50%+36px)] md:top-[calc(50%-150px)] md:left-[calc(50%+210px)]">
+            <div className="flex items-center flex-col gap-1 md:gap-2 bg-gradient-to-br from-lime-100/90 dark:from-lime-200/80 to-lime-100/80 dark:to-lime-200/70 hover:bg-white dark:hover:bg-white/50 dark:text-green-950 rounded-3xl px-4 py-2 md:px-4 md:pb-4 md:pt-3">
+                <Typography level="body1" bold className="dark:text-primary-foreground" noWrap>
                     Brzo sijanje
                 </Typography>
-                <ButtonGreen
-                    variant='plain'
-                    className={cx(
-                        "md:size-auto",
-                        "rounded-full size-10 left-[calc(50%+118px)]",
-                    )}
-                    startDecorator={<span className="text-xl">☀️</span>}
-                    onClick={() => handleQuickPick('summer')}
-                    loading={setCartItem.isPending}
-                >
-                    <span className="hidden md:block">Ljetni mix</span>
-                </ButtonGreen>
-                <ButtonGreen
-                    variant='plain'
-                    className={cx(
-                        "md:size-auto",
-                        "rounded-full size-10 left-[calc(50%+118px)]",
-                    )}
-                    startDecorator={<span className="text-xl">🥬</span>}
-                    onClick={() => handleQuickPick('salad')}
-                    loading={setCartItem.isPending}
-                >
-                    <span className="hidden md:block">Salatni mix</span>
-                </ButtonGreen>
-            </Stack>
+                <div className="flex flex-row md:flex-col gap-2">
+                    <ButtonGreen
+                        variant='plain'
+                        className={cx(
+                            "md:size-auto",
+                            "rounded-full size-10 left-[calc(50%+118px)]",
+                        )}
+                        startDecorator={<span className="text-xl">☀️</span>}
+                        onClick={() => handleQuickPick('summer')}
+                        loading={setCartItem.isPending}
+                    >
+                        <span className="hidden md:block">Ljetni mix</span>
+                    </ButtonGreen>
+                    <ButtonGreen
+                        variant='plain'
+                        className={cx(
+                            "md:size-auto",
+                            "rounded-full size-10 left-[calc(50%+118px)]",
+                        )}
+                        startDecorator={<span className="text-xl">🥬</span>}
+                        onClick={() => handleQuickPick('salad')}
+                        loading={setCartItem.isPending}
+                    >
+                        <span className="hidden md:block">Salatni mix</span>
+                    </ButtonGreen>
+                </div>
+            </div>
         </div>
     );
 }
