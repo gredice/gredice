@@ -72,7 +72,7 @@ export function useBlockMove() {
             };
         },
         onError: (error, _variables, context) => {
-            console.log('Error moving block', error);
+            console.error('Error moving block', error);
             if (context?.previousItem) {
                 queryClient.setQueryData(currentGardenKeys, context.previousItem);
             }

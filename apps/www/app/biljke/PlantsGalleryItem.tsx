@@ -4,7 +4,7 @@ import { PlantImage } from "../../components/plants/PlantImage";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { PlantData } from "@gredice/client";
-import { PlantYieldTooltip, PlantRecommendedBadge } from "@gredice/ui/plants";
+import { PlantYieldTooltip, SeedTimeInformationBadge } from "@gredice/ui/plants";
 import { Stack } from "@signalco/ui-primitives/Stack";
 
 export type PlantsGalleryItemProps =
@@ -22,13 +22,6 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
     }
     const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
     const pricePerPlant = prices?.perPlant ? (prices.perPlant / totalPlants).toFixed(2) : null;
-    const yieldMin = attributes?.yieldMin ?? 0;
-    const yieldMax = attributes?.yieldMax ?? 0;
-    const yieldType = attributes?.yieldType ?? 'perField';
-    const expectedYieldAverage = (yieldMax - yieldMin) / 2 + yieldMin;
-    const expectedYieldPerField = yieldType === 'perField' ? expectedYieldAverage : expectedYieldAverage * totalPlants;
-
-    console.log(information.name, expectedYieldPerField, attributes.yieldMax, attributes.yieldMin, attributes.yieldType, totalPlants);
 
     return (
         <ItemCard
@@ -36,11 +29,9 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                 <Stack>
                     <Row justifyContent="space-between">
                         <Typography>{information.name}</Typography>
-                        <PlantYieldTooltip plant={{ information, attributes }}>
-                            <Typography level="body3" tertiary className="text-right">
-                                ~{(expectedYieldPerField / 1000).toFixed(1)} kg
-                            </Typography>
-                        </PlantYieldTooltip>
+                        <Typography level="body3" tertiary className="text-right">
+                            <PlantYieldTooltip plant={{ information, attributes }} />
+                        </Typography>
                     </Row>
                     <Row justifyContent="space-between">
                         <Typography level="body2">{prices?.perPlant?.toFixed(2) ?? 'Nepoznato'}€</Typography>
@@ -59,9 +50,11 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                 priority
                 sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
             />
-            <div className="absolute top-1 right-1 -m-2 md:-m-6">
-                <PlantRecommendedBadge isRecommended={isRecommended} size="sm" />
-            </div>
+            {isRecommended && (
+                <div className="absolute top-1 right-1 -m-2 md:-m-6">
+                    <SeedTimeInformationBadge size="sm" />
+                </div>
+            )}
         </ItemCard>
     );
 }

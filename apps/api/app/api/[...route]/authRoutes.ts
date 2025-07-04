@@ -94,7 +94,7 @@ const app = new Hono()
             // Check email verified
             const { isVerified } = JSON.parse(login.loginData)
             if (isVerified !== true) {
-                console.log('User email not verified', email);
+                console.warn('User email not verified', email);
                 return context.json({
                     error: 'User email not verified',
                     errorCode: 'verify_email'

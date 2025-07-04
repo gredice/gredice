@@ -781,8 +781,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 signalcoClient().GET('/entity/{id}', { params: { path: { id: sensor.sensorSignalcoId } } })
             ));
 
-            console.log('Fetched sensor data', { data });
-
             return context.json(sensors.flatMap(sensor => ([
                 {
                     id: sensor.id,

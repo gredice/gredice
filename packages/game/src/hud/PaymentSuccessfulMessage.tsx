@@ -13,7 +13,6 @@ import Confetti from 'react-confetti-boom';
 export function PaymentSuccessfulMessage() {
     const [showSuccessMessage, setShowSuccessMessage] = useSearchParam('placanje');
     const isSuccess = showSuccessMessage === 'uspijesno';
-    console.log("PaymentSuccessfulMessage", { showSuccessMessage, isSuccess });
 
     const [open, setOpen] = useState(isSuccess);
     const { resumeIfNeeded } = useGameAudio();
