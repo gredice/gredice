@@ -265,7 +265,7 @@ function ShoppingCart() {
                                 {cart?.total.toFixed(2)} €
                             </Typography>
                             <Typography level="body1" bold>
-                                {cart?.totalSunflowers} <span className={"text-lg"}>🌻</span>
+                                {(cart?.totalSunflowers ?? 0) > 0 ? `-${cart?.totalSunflowers ?? 0}` : '0'} <span className={"text-lg"}>🌻</span>
                             </Typography>
                         </Stack>
                     </Row>
