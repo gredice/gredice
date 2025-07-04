@@ -65,6 +65,7 @@ export async function upsertOrRemoveCartItem(
     raisedBedId?: number,
     positionIndex?: number,
     additionalData?: string | null,
+    currency?: string | null,
     forceDelete: boolean = false
 ) {
     const existingItem = await storage().query.shoppingCartItems.findFirst({
@@ -106,7 +107,8 @@ export async function upsertOrRemoveCartItem(
             .update(shoppingCartItems)
             .set({
                 amount,
-                additionalData
+                additionalData,
+                currency: currency ? currency : undefined // Update only if provided
             })
             .where(eq(shoppingCartItems.id, existingItem.id))
             .returning({
@@ -123,7 +125,8 @@ export async function upsertOrRemoveCartItem(
                 gardenId,
                 raisedBedId,
                 positionIndex,
-                additionalData
+                additionalData,
+                currency: currency ?? 'euro'
             })
             .returning({
                 id: shoppingCartItems.id

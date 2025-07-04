@@ -18,10 +18,16 @@ export function useCheckout() {
 
             const responseData = await response.json();
 
-            if (!responseData || !responseData.sessionId) {
+            if (!responseData) {
                 console.error("Failed to create checkout session");
                 return;
             }
+
+            if ('success' in responseData) {
+                window.location.href = '/?placanje=uspijesno';
+                return;
+            }
+
             const { sessionId, url } = responseData;
             if (url) {
                 // If a URL is provided, redirect the user to that URL

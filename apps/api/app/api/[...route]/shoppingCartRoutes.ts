@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { validator as zValidator } from 'hono-openapi/zod';
 import { z } from 'zod';
-import { getOrCreateShoppingCart, upsertOrRemoveCartItem, deleteShoppingCart } from '@gredice/storage';
+import { getOrCreateShoppingCart, upsertOrRemoveCartItem, deleteShoppingCart, getSunflowers } from '@gredice/storage';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import { describeRoute } from 'hono-openapi';
 import { getCartInfo } from './checkoutRoutes';
@@ -24,19 +24,35 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // Calculate total amount of items in the cart (exclude paid items)
             const cartInfo = (await getCartInfo(cart.items));
             const total = cartInfo.items
-                .filter(item => item.status !== 'paid')
+                .filter(item => item.status !== 'paid' && item.currency === 'euro')
                 .reduce((sum, item) =>
                     sum + (typeof item.shopData.discountPrice === "number"
                         ? item.shopData.discountPrice
                         : item.shopData.price ?? 0),
                     0);
+            const totalSunflowers = Math.round(cartInfo.items
+                .filter(item => item.status !== 'paid' && item.currency === 'sunflower')
+                .reduce((sum, item) =>
+                    sum + (typeof item.shopData.discountPrice === "number"
+                        ? item.shopData.discountPrice
+                        : item.shopData.price ?? 0),
+                    0) * 1000);
+
+            // Check if there are enough sunflowers in the account
+            let enoughSunflowers = true;
+            let enoughSunflowersNote: string | null = null;
+            if (totalSunflowers > await getSunflowers(accountId)) {
+                enoughSunflowers = false;
+                enoughSunflowersNote = `Nedovoljno suncokreta. Potrebno je ${totalSunflowers} 🌻, a imaš samo ${await getSunflowers(accountId)} 🌻.`;
+            }
 
             return context.json({
                 ...cart,
                 items: cartInfo.items,
                 total,
-                notes: cartInfo.notes,
-                allowPurchase: cartInfo.allowPurchase
+                totalSunflowers,
+                notes: enoughSunflowersNote ? [...cartInfo.notes, enoughSunflowersNote] : cartInfo.notes,
+                allowPurchase: cartInfo.allowPurchase && enoughSunflowers,
             });
         })
     .post(
@@ -54,11 +70,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
             raisedBedId: z.number().optional(),
             positionIndex: z.number().int().optional(),
             additionalData: z.string().optional().nullable(),
-            // status is intentionally omitted to prevent updates from API
+            currency: z.string().optional().nullable()
         })),
         async (context) => {
-            const { cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData } = context.req.valid('json');
-            await upsertOrRemoveCartItem(cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData);
+            const { cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData, currency } = context.req.valid('json');
+            await upsertOrRemoveCartItem(cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData, currency);
             return context.json({ success: true });
         }
     )

@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
 import { validator as zValidator } from 'hono-openapi/zod';
 import { z } from 'zod';
-import { assignStripeCustomerId, getAccount, getEntitiesFormatted, getRaisedBed, getShoppingCart, getUser, SelectShoppingCartItem } from '@gredice/storage';
+import { markCartPaidIfAllItemsPaid, assignStripeCustomerId, getAccount, getEntitiesFormatted, getRaisedBed, getShoppingCart, getUser, SelectShoppingCartItem, setCartItemPaid, spendSunflowers } from '@gredice/storage';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import { CheckoutItem, getStripeCheckoutSession, stripeCheckout, stripeSessionCancel } from "@gredice/stripe/server";
 import { describeRoute } from 'hono-openapi';
+import { processItem } from '../../../lib/stripe/processCheckoutSession';
 
 export type EntityStandardized = {
     id: number;
@@ -177,11 +178,43 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!cartInfo.allowPurchase) {
                 return context.json({ error: 'Cart in invalid state' }, 400);
             }
-            const cartItemsWithShopData = cartInfo.items.filter(item => item.status !== 'paid');
+            const stripeCartItemsWithShopData = cartInfo.items
+                .filter(item => item.status !== 'paid' && item.currency === 'euro') // Exclude paid items and sunflowers
+
+            // Handle sunflower items
+            const sunflowerCartItemsWithShopData = cartInfo.items
+                .filter(item => item.status !== 'paid' && item.currency === 'sunflower');
+            if (sunflowerCartItemsWithShopData.length > 0) {
+                // Check if there are enough sunflowers in the account
+                for (const item of sunflowerCartItemsWithShopData) {
+                    const sunflowerAmount = Math.round((typeof item.shopData.discountPrice === "number"
+                        ? item.shopData.discountPrice
+                        : item.shopData.price ?? 0) * 1000);
+                    let didPaySunflowers = false;
+                    try {
+                        await spendSunflowers(accountId, sunflowerAmount, `shoppingCartItem:${item.id}`);
+                        didPaySunflowers = true;
+                    } catch (error) {
+                        console.error('Error spending sunflowers', { error, accountId, sunflowerAmount, item });
+                    }
+
+                    if (didPaySunflowers) {
+                        await setCartItemPaid(item.id);
+                        await processItem({
+                            accountId,
+                            ...item,
+                            amount_total: sunflowerAmount
+                        });
+                    }
+                }
+
+                // After processing sunflower items, check if all items are paid
+                await markCartPaidIfAllItemsPaid(cart.id);
+            }
 
             // Generate a stripe checkout items from cart items
             const items: CheckoutItem[] = [];
-            for (const item of cartItemsWithShopData) {
+            for (const item of stripeCartItemsWithShopData) {
                 // TODO: Apply discounted price if available
 
                 const name = item.shopData?.name;
@@ -234,20 +267,23 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 });
             }
 
-            const { customerId, sessionId, url } = await stripeCheckout({
-                id: account.id,
-                email: user.userName,
-                name: user.userName,
-                stripeCustomerId: account.stripeCustomerId ?? undefined
-            }, {
-                items
-            });
+            if (stripeCartItemsWithShopData.length) {
+                const { customerId, sessionId, url } = await stripeCheckout({
+                    id: account.id,
+                    email: user.userName,
+                    name: user.userName,
+                    stripeCustomerId: account.stripeCustomerId ?? undefined
+                }, {
+                    items
+                });
 
-            if (account.stripeCustomerId !== customerId) {
-                await assignStripeCustomerId(account.id, customerId);
+                if (account.stripeCustomerId !== customerId) {
+                    await assignStripeCustomerId(account.id, customerId);
+                }
+
+                return context.json({ sessionId, url });
             }
-
-            return context.json({ sessionId, url });
+            return context.json({ success: true });
         }
     )
     .delete(
