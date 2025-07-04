@@ -10,17 +10,20 @@ import { Empty } from "@signalco/ui-icons";
 
 function sunflowerReasonToDescription(reason: string) {
     if (reason === 'registration') {
-        return { icon: <span className="text-4xl size-10">🎉</span>, label: 'Nagrada za registraciju' };
+        return { icon: <span className="text-4xl text-center size-10">🎉</span>, label: 'Nagrada za registraciju' };
     }
 
     if (reason.startsWith('block')) {
         return { icon: <BlockImage blockName={reason.split(':')[1]} className="size-10" />, label: 'Postavljanje bloka' };
     }
     if (reason === 'gift') {
-        return { icon: <span className="text-4xl size-10">🎁</span>, label: 'Poklon' };
+        return { icon: <span className="text-4xl text-center size-10">🎁</span>, label: 'Poklon' };
     }
     if (reason === 'payment') {
         return { icon: <span className="text-4xl text-center size-10">💰</span>, label: 'Plaćanje' };
+    }
+    if (reason.startsWith('shoppingCartItem')) {
+        return { icon: <span className="text-4xl text-center size-10">🛒</span>, label: 'Kupnja' };
     }
 
     console.warn('Unknown sunflower reason:', reason);
@@ -41,7 +44,8 @@ export function SunflowersList({ limit }: { limit?: number }) {
     // Group similar items on a daily basis
     const historyGrouped = history.reduce((acc, event) => {
         const eventDate = new Date(event.createdAt).toLocaleDateString("hr-HR");
-        const key = `${eventDate}-${event.reason}-${event.amount}`;
+        const eventReasonGroup = event.reason.split(':')[0];
+        const key = `${eventDate}-${eventReasonGroup}-${event.amount}`;
 
         if (!acc.has(key)) {
             acc.set(key, {
