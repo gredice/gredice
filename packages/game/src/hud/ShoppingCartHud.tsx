@@ -101,7 +101,7 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                 alt={item.shopData.name}
                 src={"https://www.gredice.com" + (item.shopData.image ?? '/assets/plants/placeholder.png')} />
             <Stack className="grow">
-                <Row alignItems="start" justifyContent="space-between" spacing={1}>
+                <div className="grid grid-cols-[1fr_auto] items-center gap-2">
                     <Typography level="body1" noWrap>{item.shopData.name}</Typography>
                     {!hasDiscount && (
                         <ButtonPricePickPaymentMethod
@@ -110,7 +110,7 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             onChange={handleChangePaymentType}
                         />
                     )}
-                </Row>
+                </div>
                 {hasDiscount && (
                     <Row justifyContent="space-between" spacing={1}>
                         <Typography level="body3" secondary className="text-green-600">
@@ -220,7 +220,7 @@ function ShoppingCart() {
     }
 
     return (
-        <Stack spacing={3}>
+        <Stack spacing={2}>
             <Row spacing={2}>
                 <div className="rounded-full bg-tertiary/40 p-3 flex items-center justify-center">
                     <ShoppingCartIcon className="size-7 shrink-0" />
@@ -264,12 +264,14 @@ function ShoppingCart() {
                             <Typography level="body1" bold>
                                 {cart?.total.toFixed(2)} €
                             </Typography>
-                            <Typography level="body1" bold>
-                                {(cart?.totalSunflowers ?? 0) > 0 ? `-${cart?.totalSunflowers ?? 0}` : '0'} <span className={"text-lg"}>🌻</span>
-                            </Typography>
+                            {(cart?.totalSunflowers ?? 0) > 0 && (
+                                <Typography level="body1" bold>
+                                    {(cart?.totalSunflowers ?? 0) > 0 ? `-${cart?.totalSunflowers ?? 0}` : '0'} <span className={"text-lg"}>🌻</span>
+                                </Typography>
+                            )}
                         </Stack>
                     </Row>
-                    <Row spacing={2}>
+                    <div className="flex flex-col sm:flex-row gap-2">
                         {/* TODO: Localize */}
                         <ModalConfirm
                             title="Potvrdi brisanje košarice"
@@ -288,18 +290,39 @@ function ShoppingCart() {
                         >
                             <Typography>Jeste li sigurni da želite obrisati sve stavke iz košarice?</Typography>
                         </ModalConfirm>
-                        <Button
-                            variant="solid"
-                            onClick={handleCheckout}
-                            fullWidth
-                            disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
-                            loading={checkout.isPending}
-                            startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0 stroke-red-600" /> : undefined}
-                            endDecorator={<Navigate className="size-5 shrink-0" />}
-                        >
-                            Potvrdi i plati
-                        </Button>
-                    </Row>
+                        {cart?.totalSunflowers ? (
+                            <ModalConfirm
+                                title="Potvrdi plaćanje"
+                                header={`Potvrđuješ plaćanje ${cart?.totalSunflowers ?? 0} 🌻 i ${cart?.total.toFixed(2) ?? 0} €?`}
+                                onConfirm={handleCheckout}
+                                trigger={(
+                                    <Button
+                                        variant="solid"
+                                        fullWidth
+                                        disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
+                                        loading={checkout.isPending}
+                                        startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0 stroke-blue-600" /> : undefined}
+                                        endDecorator={<Navigate className="size-5 shrink-0" />}
+                                    >
+                                        Potvrdi i plati
+                                    </Button>
+                                )}
+                            />
+                        ) : (
+                            <Button
+                                variant="solid"
+                                onClick={handleCheckout}
+                                fullWidth
+                                disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
+                                loading={checkout.isPending}
+                                startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0 stroke-blue-600" /> : undefined}
+                                endDecorator={<Navigate className="size-5 shrink-0" />}
+                            >
+                                Plati
+                            </Button>
+                        )}
+
+                    </div>
                 </Stack>
             </Stack>
         </Stack>
