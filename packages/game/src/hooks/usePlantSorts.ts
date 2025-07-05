@@ -7,25 +7,49 @@ async function getPlantSorts() {
 }
 
 export function usePlantSorts(plantId: number | null | undefined) {
+    const { data: sorts } = useAllSorts();
     return useQuery({
         queryKey: ['plants', plantId, 'sorts'],
         queryFn: async () => {
-            const sorts = await getPlantSorts();
             return sorts?.filter(sort => sort.information.plant.id === plantId) ?? [];
         },
-        enabled: Boolean(plantId),
+        enabled: Boolean(sorts) && Boolean(plantId),
         staleTime: 1000 * 60 * 60, // 1 hour
     });
 }
 
 export function usePlantSort(sortId: number | null | undefined) {
+    const { data: sorts } = useAllSorts();
     return useQuery({
         queryKey: ['plants', 'sorts', sortId],
         queryFn: async () => {
-            const sorts = await getPlantSorts();
             return sorts?.find(sort => sort.id === sortId) ?? null;
         },
-        enabled: Boolean(sortId),
+        enabled: Boolean(sorts) && Boolean(sortId),
+        staleTime: 1000 * 60 * 60, // 1 hour
+    });
+}
+
+export function useAllSorts() {
+    return useQuery({
+        queryKey: ['sorts'],
+        queryFn: async () => {
+            const sorts = await getPlantSorts();
+            return sorts ?? [];
+        },
+        staleTime: 1000 * 60 * 60, // 1 hour
+    });
+}
+
+export function useSorts(sortIds: number[] | null | undefined) {
+    const { data: sorts } = useAllSorts();
+    return useQuery({
+        queryKey: ['sorts', sortIds],
+        queryFn: async () => {
+            if (!sortIds || sortIds.length === 0) return [];
+            return sorts?.filter(sort => sortIds.includes(sort.id)) ?? [];
+        },
+        enabled: Boolean(sorts) && Boolean(sortIds && sortIds.length > 0),
         staleTime: 1000 * 60 * 60, // 1 hour
     });
 }
