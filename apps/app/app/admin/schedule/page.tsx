@@ -36,7 +36,10 @@ function getDaySchedule(isToday: boolean, date: Date, raisedBeds: Awaited<Return
 
     // Unique physical IDs from raised beds from the new operations and fields
     const physicalIds = [...new Set([
-        ...raisedBeds.filter(rb => todayAffectedRaisedBedIds.includes(rb.id)).map(rb => rb.physicalId).filter(id => id !== null),
+        ...raisedBeds
+            .filter(rb => todayAffectedRaisedBedIds.includes(rb.id))
+            .map(rb => rb.physicalId)
+            .filter(id => id !== null),
     ])].sort((a, b) => Number(a) - Number(b));
 
     return {
@@ -158,6 +161,7 @@ export default async function AdminSchedulePage() {
     ]);
     const dates = Array.from({ length: 7 }, (_, i) => {
         const date = new Date();
+        date.setHours(0, 0, 0, 0); // Reset time to midnight
         date.setDate(date.getDate() + i);
         return date;
     });
