@@ -32,13 +32,19 @@ const sectionsData: SectionData[] = [
             {
                 header: 'Informacije',
                 ctas: [
-                    { label: 'Podignuta gredica', href: KnownPages.RaisedBeds },
                     { label: 'Dostava', href: KnownPages.Delivery },
+                    { label: 'Česta pitanja', href: KnownPages.FAQ },
+                    { label: 'Kontaktiraj nas', href: KnownPages.Contact },
+                    { label: 'O nama', href: KnownPages.AboutUs },
+                ]
+            },
+            {
+                header: "Aplikacija",
+                ctas: [
+                    { label: 'Podignuta gredica', href: KnownPages.RaisedBeds },
                     { label: 'Biljke', href: KnownPages.Plants },
                     { label: 'Blokovi', href: KnownPages.Blocks },
                     { label: 'Suncokreti', href: KnownPages.Sunflowers },
-                    { label: 'Česta pitanja', href: KnownPages.FAQ },
-                    { label: 'O nama', href: KnownPages.AboutUs },
                 ]
             },
             {

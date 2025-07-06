@@ -14,7 +14,7 @@ import { ProfileInfo } from "../shared-ui/ProfileInfo";
 import { ProfileAvatar } from "../shared-ui/ProfileAvatar";
 import { Skeleton } from "@signalco/ui-primitives/Skeleton";
 import { KnownPages } from "../knownPages";
-import { Check, User, Inbox, ExternalLink, Approved, Configuration, Sprout, LogOut } from "@signalco/ui-icons";
+import { Check, User, Inbox, ExternalLink, Approved, Configuration, Sprout, LogOut, Comment } from "@signalco/ui-icons";
 import { NotificationList } from "./NotificationList";
 import { useMarkAllNotificationsRead } from "../hooks/useMarkAllNotificationsRead";
 import { useNotifications } from "../hooks/useNotifications";
@@ -102,6 +102,13 @@ function ProfileCard() {
                 <Row spacing={1.5}>
                     <Sprout className="size-4" />
                     <span>Baza biljaka</span>
+                </Row>
+                <ExternalLink className="size-4 self-end" />
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-3 justify-between" href={KnownPages.GrediceContact}>
+                <Row spacing={1.5}>
+                    <Comment className="size-4" />
+                    <span>Kontaktiraj nas</span>
                 </Row>
                 <ExternalLink className="size-4 self-end" />
             </DropdownMenuItem>
