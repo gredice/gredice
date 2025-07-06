@@ -11,6 +11,7 @@ export const KnownPages = {
     Block: (alias: string) => `/blokovi/${alias}`,
     AboutUs: '/o-nama',
     FAQ: '/cesta-pitanja',
+    Contact: '/kontakt',
 
     LegalPrivacy: '/legalno/politika-privatnosti',
     LegalTerms: '/legalno/uvjeti-koristenja',
