@@ -29,7 +29,7 @@ export function PlantCalendarPicker({ plant, sort }: { plant: PlantData, sort?: 
                                     <PlantYearCalendar activities={plant.calendar} />
                                 </CardOverflow>
                             </Card>
-                            <Typography level="body2" className="italic pl-3 text-right">
+                            <Typography level="body2" className="italic text-right text-balance">
                                 Kalendar sijanja prikazuje smjernice za sjetvu i razvoj biljke kroz godinu.
                             </Typography>
                         </TabsContent>
@@ -39,7 +39,7 @@ export function PlantCalendarPicker({ plant, sort }: { plant: PlantData, sort?: 
                                     <PlantGrowthCalendar windows={plant.attributes} />
                                 </CardOverflow>
                             </Card>
-                            <Typography level="body2" className="italic pl-3 text-right">
+                            <Typography level="body2" className="italic text-right text-balance">
                                 Kalendar rasta prikazuje faze biljke ako se biljka sije danas.
                             </Typography>
                         </TabsContent>
