@@ -55,7 +55,7 @@
     "@vercel/analytics": "1.5.0",
     "@zxing/library": "0.21.3",
     "babel-plugin-react-compiler": "19.1.0-rc.2",
-    "eslint": "9.30.0",
+    "eslint": "9.30.1",
     "eslint-config-next": "15.3.4",
     "next-axiom": "1.9.1",
     "postcss": "8.5.6",
