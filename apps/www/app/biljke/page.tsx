@@ -58,10 +58,10 @@ export default async function PlantsPage({ searchParams }: { searchParams: Promi
                             </TabsTrigger>
                         </Link>
                     </TabsList>
-                    <TabsContent value="popis" className="mt-4">
+                    <TabsContent value="popis" className="mt-2">
                         <PlantsGallery plants={entities} />
                     </TabsContent>
-                    <TabsContent value="kalendar" className="mt-4">
+                    <TabsContent value="kalendar" className="mt-2">
                         <Card>
                             <CardOverflow>
                                 <PlantsCalendar plants={entities} />
