@@ -5,6 +5,7 @@ import { NoDataPlaceholder } from "../../../../components/shared/placeholders/No
 import Link from "next/link";
 import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
 import { KnownPages } from "../../../../src/KnownPages";
+import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
 
 export async function RaisedBedsTableCard({ accountId, gardenId }: { accountId?: string; gardenId?: number }) {
     const raisedBeds = accountId ?
@@ -42,20 +43,47 @@ export async function RaisedBedsTableCard({ accountId, gardenId }: { accountId?:
                                 </Table.Cell>
                             </Table.Row>
                         )}
-                        {raisedBeds.map(bed => (
-                            <Table.Row key={bed.id}>
-                                <Table.Cell>
-                                    <Link href={KnownPages.RaisedBed(bed.id)}>
-                                        {bed.id}
-                                    </Link>
-                                </Table.Cell>
-                                <Table.Cell>{bed.name}</Table.Cell>
-                                <Table.Cell>{bed.physicalId}</Table.Cell>
-                                <Table.Cell>{bed.status}</Table.Cell>
-                                <Table.Cell>{Array.isArray(bed.fields) ? bed.fields.length : 0}</Table.Cell>
-                                <Table.Cell><LocaleDateTime>{bed.createdAt}</LocaleDateTime></Table.Cell>
-                            </Table.Row>
-                        ))}
+                        {raisedBeds
+                            .sort((a, b) => {
+                                if (a.physicalId && b.physicalId)
+                                    return a.physicalId.localeCompare(b.physicalId, 'hr-HR', { numeric: true });
+                                if (a.physicalId) return -1;
+                                if (b.physicalId) return 1;
+                                return a.id - b.id;
+                            })
+                            .sort((a, b) => {
+                                if (a.physicalId === b.physicalId)
+                                    return a.id - b.id;
+                                return 0;
+                            })
+                            .map(bed => (
+                                <Table.Row key={bed.id}>
+                                    <Table.Cell>
+                                        <Link href={KnownPages.RaisedBed(bed.id)}>
+                                            {bed.id}
+                                        </Link>
+                                    </Table.Cell>
+                                    <Table.Cell>{bed.name}</Table.Cell>
+                                    <Table.Cell>{bed.physicalId}</Table.Cell>
+                                    <Table.Cell>{bed.status}</Table.Cell>
+                                    <Table.Cell>
+                                        <SegmentedCircularProgress
+                                            segments={[
+                                                {
+                                                    percentage: 100,
+                                                    color: 'stroke-yellow-500',
+                                                    trackColor: 'bg-gray-200',
+                                                    value: (bed.fields.filter(field => field.plantStatus === 'sprouted').length / 9) * 100
+                                                }
+                                            ]}
+                                            size={24}
+                                        >
+                                            {Array.isArray(bed.fields) ? bed.fields.length : 0}
+                                        </SegmentedCircularProgress>
+                                    </Table.Cell>
+                                    <Table.Cell><LocaleDateTime>{bed.createdAt}</LocaleDateTime></Table.Cell>
+                                </Table.Row>
+                            ))}
                     </Table.Body>
                 </Table>
             </CardOverflow>

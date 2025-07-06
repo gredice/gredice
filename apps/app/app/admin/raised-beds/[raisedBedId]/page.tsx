@@ -1,4 +1,4 @@
-import { getRaisedBed } from "@gredice/storage";
+import { getEntitiesFormatted, getRaisedBed } from "@gredice/storage";
 import { Card, CardHeader, CardTitle, CardOverflow } from "@signalco/ui-primitives/Card";
 import { auth } from "../../../../lib/auth/auth";
 import { KnownPages } from "../../../../src/KnownPages";
@@ -14,6 +14,7 @@ import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
 import { RaisedBedFieldPlantStatusSelector } from "./RaisedBedFieldPlantStatusSelector";
 import { NotificationsTableCard } from "../../../../components/notifications/NotificationsTableCard";
 import { OperationsTableCard } from "./OperationsTableCard";
+import { EntityStandardized } from "../../../../lib/@types/EntityStandardized";
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,8 @@ export default async function RaisedBedPage({ params }: { params: Promise<{ rais
     if (!raisedBed) {
         notFound();
     }
+
+    const sortsData = await getEntitiesFormatted<EntityStandardized>('plantSort');
 
     return (
         <Stack spacing={4}>
@@ -58,6 +61,7 @@ export default async function RaisedBedPage({ params }: { params: Promise<{ rais
                             <Table.Header>
                                 <Table.Row>
                                     <Table.Head>Lokacija</Table.Head>
+                                    <Table.Head>Biljka</Table.Head>
                                     <Table.Head>Status</Table.Head>
                                     <Table.Head>Planirani datum sadnje</Table.Head>
                                     <Table.Head>Datum kreiranja</Table.Head>
@@ -72,23 +76,26 @@ export default async function RaisedBedPage({ params }: { params: Promise<{ rais
                                         </Table.Cell>
                                     </Table.Row>
                                 )}
-                                {raisedBed?.fields?.sort((fa, fb) => fa.positionIndex - fb.positionIndex).map((field) => (
-                                    <Table.Row key={field.id}>
-                                        <Table.Cell>{field.positionIndex + 1}</Table.Cell>
-                                        <Table.Cell>
-                                            {field.plantStatus ? (
-                                                <RaisedBedFieldPlantStatusSelector
-                                                    raisedBedId={raisedBed.id}
-                                                    positionIndex={field.positionIndex}
-                                                    status={field.plantStatus}
-                                                />
-                                            ) : '-'}
-                                        </Table.Cell>
-                                        <Table.Cell>{field.plantScheduledDate ? <LocaleDateTime time={false}>{new Date(field.plantScheduledDate)}</LocaleDateTime> : '-'}</Table.Cell>
-                                        <Table.Cell><LocaleDateTime time={false}>{field.createdAt}</LocaleDateTime></Table.Cell>
-                                        <Table.Cell><LocaleDateTime time={false}>{field.updatedAt}</LocaleDateTime></Table.Cell>
-                                    </Table.Row>
-                                ))}
+                                {raisedBed?.fields?.sort((fa, fb) => fa.positionIndex - fb.positionIndex).map((field) => {
+                                    const sortData = sortsData?.find(sort => sort.id === field.plantSortId);
+                                    return (
+                                        <Table.Row key={field.id}>
+                                            <Table.Cell>{field.positionIndex + 1}</Table.Cell>
+                                            <Table.Cell>{sortData?.information?.name}</Table.Cell>
+                                            <Table.Cell>
+                                                {field.plantStatus ? (
+                                                    <RaisedBedFieldPlantStatusSelector
+                                                        raisedBedId={raisedBed.id}
+                                                        positionIndex={field.positionIndex}
+                                                        status={field.plantStatus} />
+                                                ) : '-'}
+                                            </Table.Cell>
+                                            <Table.Cell>{field.plantScheduledDate ? <LocaleDateTime time={false}>{new Date(field.plantScheduledDate)}</LocaleDateTime> : '-'}</Table.Cell>
+                                            <Table.Cell><LocaleDateTime time={false}>{field.createdAt}</LocaleDateTime></Table.Cell>
+                                            <Table.Cell><LocaleDateTime time={false}>{field.updatedAt}</LocaleDateTime></Table.Cell>
+                                        </Table.Row>
+                                    );
+                                })}
                             </Table.Body>
                         </Table>
                     </CardOverflow>
