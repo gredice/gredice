@@ -35,6 +35,7 @@
     "@gredice/js": "workspace:*",
     "@gredice/storage": "workspace:*",
     "@gredice/stripe": "workspace:*",
+    "@gredice/ui": "workspace:*",
     "@mdxeditor/editor": "3.38.0",
     "@playwright/experimental-ct-react": "1.53.2",
     "@playwright/test": "1.53.2",

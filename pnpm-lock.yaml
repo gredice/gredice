@@ -205,6 +205,9 @@ importers:
       '@gredice/stripe':
         specifier: workspace:*
         version: link:../../packages/stripe
+      '@gredice/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@mdxeditor/editor':
         specifier: 3.38.0
         version: 3.38.0(@codemirror/language@6.11.2)(@lezer/highlight@1.2.1)(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(yjs@13.6.20)

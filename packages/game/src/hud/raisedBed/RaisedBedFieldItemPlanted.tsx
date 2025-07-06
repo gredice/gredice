@@ -7,7 +7,7 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { RaisedBedFieldItemButton } from "./RaisedBedFieldItemButton";
-import { SegmentedCircularProgress } from "./SegmentedCircularProgress";
+import { SegmentedCircularProgress } from "@gredice/ui/SegmentedCircularProgress";
 import { ReactNode } from "react";
 
 export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { raisedBedId: number; positionIndex: number; }) {
