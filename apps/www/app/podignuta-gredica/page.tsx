@@ -14,10 +14,12 @@ export default function RaisedBedPage() {
         <Container maxWidth="md">
             <Stack>
                 <PageHeader
-                    visual={<BlockImage
-                        blockName="Raised_Bed"
-                        width={160}
-                        height={160} />}
+                    visual={(
+                        <BlockImage
+                            blockName="Raised_Bed"
+                            width={160}
+                            height={160} />
+                    )}
                     header="Podignuta gredica"
                     subHeader="Sve što trebaš znati o podignutim gredicama i korištenju aplikacije Gredice za planiranje vrta."
                     padded />
@@ -40,34 +42,93 @@ export default function RaisedBedPage() {
                         veliki vrt, malu okućnicu ili samo balkon. Estetski su privlačne i mogu unijeti red i strukturu u
                         vaš zeleni kutak. Ukratko, podignute gredice omogućuju zdraviji, organiziraniji i produktivniji vrt.
                     </p>
-                    <h2>
-                        Tvoja podignuta gredica
-                    </h2>
-                    <p>
-                        Sijanjem biljaka u gredice u aplikaciji Gredice možeš iskoristiti sve prednosti
-                        podignutih gredica. Gredica u koju siješ je samo tvoja i nije dijeljena s drugim
-                        korisnicima. To znači da možeš slobodno planirati i saditi biljke prema svojim
-                        željama i potrebama.
-                    </p>
-                    <h3>
-                        Dimenzije i veličina
-                    </h3>
-                    <p>
-                        Dimenzije tvoje podignute gredice su 2x1 metar, odnosno 2 m², što je idealno za sadnju
-                        različitih biljaka. Ova veličina omogućava dovoljno prostora za rast i razvoj biljaka,
-                        a istovremeno olakšava održavanje.
-                    </p>
-                    <ul>
-                        <li><strong>Dimenzije:</strong> 2 m x 1 m x 20 cm</li>
-                        <li><strong>Zapremina:</strong> 400 L (600 L zemlje)</li>
-                        <li><strong>Površina:</strong> 2 m²</li>
-                        <li><strong>Broj polja:</strong> 18</li>
-                    </ul>
-                    <p>
-                        Takva gredica je unutar aplikacije prikazana kao dvije podignute gredice dimenzija 1x1 m,
-                        što omogućava lakše upravljanje i pregledavanje. Usto, u planu nam je omogućiti korisnicima
-                        da kreiraju gredice različitih dimenzija i oblika, ovisno o njihovim potrebama i prostoru.
-                    </p>
+                    <div className="grid grid-rows-[auto_1fr] grid-cols-1 sm:grid-rows-1 sm:grid-cols-[1fr_1fr] gap-8 relative">
+                        <div>
+                            <h2>
+                                Tvoja podignuta gredica
+                            </h2>
+                            <p>
+                                Sijanjem biljaka u gredice u aplikaciji Gredice možeš iskoristiti sve prednosti
+                                podignutih gredica. Gredica u koju siješ je samo tvoja i nije dijeljena s drugim
+                                korisnicima. To znači da možeš slobodno planirati i saditi biljke prema svojim
+                                željama i potrebama.
+                            </p>
+                            <p>
+                                Svaka gredica je jedinstvena i dobiva svoj kod koji možeš vidjeti na svim slikama
+                                koje dobiješ putem aplikacije Gredice. Ovaj kod ti omogućuje da lako prepoznaš
+                                svoju gredicu i pratiš njen rast i razvoj. Kod je ujedno vidljiv i u aplikaciji.
+                            </p>
+                        </div>
+                        <div>
+                            <Image
+                                src={'https://myegtvromcktt2y7.public.blob.vercel-storage.com/raised-beds/raised-beds-field-001-3BHUG42MQeRFFVQuvYh5FJSLk6lPGM.jpg'}
+                                width={1280}
+                                height={800}
+                                className="rounded-xl shadow-lg"
+                                alt={"Podignuta gredica 2x1 m"}
+                            />
+                        </div>
+                    </div>
+                    <div className="grid overflo grid-rows-[auto_1fr] grid-cols-1 sm:grid-rows-1 sm:grid-cols-[1fr_1fr] gap-8 relative">
+                        <div>
+                            <h3>
+                                Dimenzije i veličina
+                            </h3>
+                            <p>
+                                Dimenzije tvoje podignute gredice su 2x1 metar, odnosno 2 m², što je idealno za sadnju
+                                različitih biljaka. Ova veličina omogućava dovoljno prostora za rast i razvoj biljaka,
+                                a istovremeno olakšava održavanje.
+                            </p>
+                            <ul>
+                                <li><strong>Dimenzije:</strong> 2 m x 1 m x 20 cm</li>
+                                <li><strong>Zapremina:</strong> 400 L (600 L zemlje)</li>
+                                <li><strong>Površina:</strong> 2 m²</li>
+                                <li><strong>Broj polja:</strong> 18</li>
+                            </ul>
+                            <p>
+                                Gredica je unutar aplikacije prikazana kao dvije podignute gredice dimenzija 1x1 m,
+                                što omogućava lakše upravljanje i pregledavanje. Usto, u planu nam je omogućiti korisnicima
+                                da kreiraju gredice različitih dimenzija i oblika, ovisno o njihovim potrebama i prostoru.
+                            </p>
+                        </div>
+                        <Image
+                            src={'https://myegtvromcktt2y7.public.blob.vercel-storage.com/raised-beds/3-built-2025-06-12-oydN81kGjjf0rGlF3CpQ5iqRN0QFdW.jpg'}
+                            width={1280}
+                            height={800}
+                            className="rounded-xl shadow-lg"
+                            alt={"Podignuta gredica 2x1 m"}
+                        />
+                    </div>
+                    <div className="grid grid-rows-[auto_1fr] grid-cols-1 sm:grid-rows-1 sm:grid-cols-[1fr_1fr] gap-8 relative">
+                        <div>
+                            <h3>Lokacija</h3>
+                            <p>
+                                Tvoja podignuta gredica će biti postavljena na lokaciji jednog od OPGa s kojim
+                                surađujemo. OPG izvršavati radnje na gredici, uključujući sadnju, održavanje
+                                i berbu, mi ćemo ti omogućiti da sve to pratiš putem aplikacije Gredice i dostaviti
+                                svo povrće i plodove tvoje gredice na tvoju adresu.
+                            </p>
+                            <p>
+                                Trenutno surađujemo sa jednim OPG-om, a planiramo proširiti suradnju s
+                                drugim OPG-ima kako bismo ti omogućili veći izbor i fleksibilnost
+                                u odabiru lokacije i vrsta biljaka koje želiš saditi.
+                            </p>
+                            <p>
+                                OPG koji će brinuti o tvojoj gredici:
+                            </p>
+                            <ul>
+                                <li>Bosiljevo, Bjelovarsko-bilogorska županija</li>
+                            </ul>
+                            <em>Uskoro više informacija o OPG-u na stranici OPGa</em>
+                        </div>
+                        <Image
+                            src={'https://myegtvromcktt2y7.public.blob.vercel-storage.com/raised-beds/raised-beds-field-002-ONlEvebgrNCwJOCZdFI2bEXDgjfShz.jpg'}
+                            width={1280}
+                            height={800}
+                            className="rounded-xl shadow-lg"
+                            alt={"Podignuta gredica 2x1 m"}
+                        />
+                    </div>
                     <h3>Sastav tla</h3>
                     <div className="grid grid-cols-1 grid-rows-[auto_400px] sm:grid-rows-1 sm:grid-cols-[2fr_1fr] gap-4">
                         <div>
@@ -126,6 +187,29 @@ export default function RaisedBedPage() {
                         informacije o sadnji, uključujući preporučeno vrijeme sadnje, razmak između biljaka
                         i druge važne detalje.
                     </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 sm:gap-2">
+                        <Image
+                            src={'https://myegtvromcktt2y7.public.blob.vercel-storage.com/plants/plant-closeup-001-OgsXPDLObcprJVGx1lsaF4eeae1eov.jpg'}
+                            width={1280}
+                            height={800}
+                            className="rounded-xl shadow-lg"
+                            alt={"Podignuta gredica 2x1 m"}
+                        />
+                        <Image
+                            src={'https://myegtvromcktt2y7.public.blob.vercel-storage.com/plants/plant-closeup-003-wXZ0Wbe70URA2ZeqhtSYEsurNInBM3.jpg'}
+                            width={1280}
+                            height={800}
+                            className="rounded-xl shadow-lg"
+                            alt={"Podignuta gredica 2x1 m"}
+                        />
+                        <Image
+                            src={'https://myegtvromcktt2y7.public.blob.vercel-storage.com/plants/plant-closeup-002-3mIj5S8iEa1qKDmhferRTomx0OZRMX.jpg'}
+                            width={1280}
+                            height={800}
+                            className="rounded-xl shadow-lg"
+                            alt={"Podignuta gredica 2x1 m"}
+                        />
+                    </div>
                     <p>
                         Imaj na umu da nije nužno pratiti sve preporuke vezane uz sadnju biljaka.
                         Možeš eksperimentirati s različitim biljkama i njihovim kombinacijama
@@ -143,7 +227,25 @@ export default function RaisedBedPage() {
                     </p>
                     <p>
                         Preporučuje se korištenje malča kako bi se smanjila potreba za zalijevanjem i kontrolom korova.
+                        Također, za neke biljke može biti korisno koristiti potporne strukture
+                        kako bi se spriječilo njihovo savijanje ili lomljenje.
                     </p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <Image
+                            src={'https://myegtvromcktt2y7.public.blob.vercel-storage.com/plants/plant-growing-002-8ev5nCKH203QY9WX8C3AdUNND55xsM.jpg'}
+                            width={1280}
+                            height={800}
+                            className="rounded-xl shadow-lg"
+                            alt={"Podignuta gredica 2x1 m"}
+                        />
+                        <Image
+                            src={'https://myegtvromcktt2y7.public.blob.vercel-storage.com/plants/plant-growing-001-z0VGjFxT0SPRhiJdHFLMyA3hhz0uRd.jpg'}
+                            width={1280}
+                            height={800}
+                            className="rounded-xl shadow-lg"
+                            alt={"Podignuta gredica 2x1 m"}
+                        />
+                    </div>
                     <p>
                         Također, važno je redovito provjeravati stanje tla i biljaka kako bi se osiguralo da su
                         biljke zdrave i da rastu prema očekivanjima.
