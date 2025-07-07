@@ -36,8 +36,9 @@ export default function PolitikaPrivatnostiPage() {
                         <li><strong>Obrada narudžbi</strong>: kako bismo ispunili vašu narudžbu i osigurali kvalitetnu uslugu.</li>
                         <li><strong>Komunikacija:</strong> za slanje obavijesti o vašim narudžbama, sustavnih e-poruka i za odgovaranje na vaše upite.</li>
                         <li><strong>Poboljšanje usluga</strong>: analizom podataka možemo unaprijediti našu ponudu i web stranicu.</li>
+                        <li><strong>Planiranje marketinških aktivnosti</strong>: ako ste nam dali izričiti pristanak, vaši kontakt podaci (npr. adresa e-pošte) mogu se interno dijeliti s našim ovlaštenim suradnicima radi osmišljavanja marketinških kampanja i poboljšanja korisničkog iskustva. Ove aktivnosti nikada ne uključuju slanje poruka bez vašeg pristanka.</li>
+                        <li><strong>Interna komunikacija sa suradnicima</strong>: vaši podaci mogu se koristiti za internu komunikaciju s našim suradnicima kako bismo osigurali kvalitetnu uslugu.</li>
                     </ul>
-                    <p>Ne šaljemo marketinške ili informativne newslettere bez vašeg pristanka.</p>
                     <h2>Mjere Zaštite</h2>
                     <p>
                         Razumijemo važnost zaštite vaših osobnih podataka. Poduzeli smo sve moguće mjere zaštite, uključujući:
@@ -58,22 +59,35 @@ export default function PolitikaPrivatnostiPage() {
                     </ul>
                     <h2>Treće Strane</h2>
                     <p>
-                        Možemo dijeliti vaše osobne podatke s trećim stranama isključivo u svrhu opskrbe naših usluga, uključujući pružatelje usluga dostave i analitičke alate. Uvijek ćemo se pobrinuti da te treće strane poštuju vašu privatnost u skladu s ovom politikom.
+                        Možemo dijeliti vaše osobne podatke s trećim stranama isključivo u svrhu opskrbe
+                        naših usluga, uključujući pružatelje usluga dostave i analitičke alate. Uvijek ćemo
+                        se pobrinuti da te treće strane poštuju vašu privatnost u skladu s ovom politikom.
+                    </p>
+                    <p>
+                        U ograničenim slučajevima, samo osnovni osobni podaci mogu biti podijeljeni s našim
+                        suradnicima (npr. marketinški savjetnici ili kreatori kampanja) radi planiranja i razvoja
+                        marketinških strategija i unapređenja korisničkog iskustva. Ove aktivnosti
+                        nikada ne uključuju slanje marketinških poruka bez vašeg izričitog pristanka. Niti
+                        dijeljenje osobnih podataka s trećim stranama u svrhu slanja marketinških
+                        poruka bez vašeg pristanka.
                     </p>
                     <h2>Promjene Politike</h2>
                     <p>
-                        Ova Politika privatnosti može se povremeno ažurirati. Sve promjene objavit ćemo na ovoj stranici, a datumi kada je politika posljednji put ažurirana bit će navedeni na dnu dokumenta.
+                        Ova Politika privatnosti može se povremeno ažurirati. Sve promjene objavit ćemo na
+                        ovoj stranici, a datumi kada je politika posljednji put ažurirana bit će navedeni na
+                        dnu dokumenta.
                     </p>
                     <h2>Kontakt</h2>
                     <p>
-                        Ako imate bilo kakva pitanja ili brige u vezi s ovom politikom privatnosti, slobodno nas kontaktirajte putem e-pošte na <a href="mailto:kontakt@gredice.com">kontakt@gredice.com</a>.
+                        Ako imate bilo kakva pitanja ili brige u vezi s ovom politikom privatnosti, slobodno
+                        nas kontaktirajte putem e-pošte na <a href="mailto:kontakt@gredice.com">kontakt@gredice.com</a>.
                     </p>
                     <p>
                         Zahvaljujemo vam na povjerenju i što koristite Gredice!
                     </p>
                 </StyledHtml>
                 <Typography level="body2" secondary className="mt-8">
-                    Zadnja izmjena: 28. Veljača 2025.
+                    Zadnja izmjena: 7. kolovoza 2025.
                 </Typography>
             </Stack>
         </Container>
