@@ -71,6 +71,7 @@ export default async function RootLayout({
                                 <Logotype className="w-[140px] h-[38px]" aria-label="Gredice" />
                             )}
                             links={[
+                                { href: KnownPages.RaisedBeds, text: 'Gredice' },
                                 { href: KnownPages.Plants, text: 'Biljke' },
                                 { href: KnownPages.FAQ, text: 'Česta pitanja' },
                             ]}>
