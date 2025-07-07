@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { Row } from "@signalco/ui-primitives/Row";
 import { PlantImage } from "../../../components/plants/PlantImage";
 import { slug } from "@signalco/js";
+import { AiWatermark } from "@gredice/ui/AiWatermark";
 
 async function PlantSortsListContent({ basePlantName }: { basePlantName: string }) {
     const allSorts = await getPlantSortsData();
@@ -28,18 +29,24 @@ async function PlantSortsListContent({ basePlantName }: { basePlantName: string 
                 {sorts.map(sort => (
                     <Card key={sort.id} href={KnownPages.PlantSort(basePlantName, sort.information.name)}>
                         <Row spacing={2}>
-                            <PlantImage
-                                plant={{
-                                    image: {
-                                        cover: sort.image?.cover ?? sort.information.plant.image?.cover
-                                    },
-                                    information: {
-                                        name: sort.information.name
-                                    }
-                                }}
-                                width={72}
-                                height={72} />
-                            <Stack>
+                            <AiWatermark
+                                className="size-20 aspect-square"
+                                reason="Primjer ploda biljke visoke rezolucije bez nedostataka."
+                                aiPrompt={`Realistic and not perfect image of requested plant on white background. No Text Or Banners. Square image. ${sort.information.plant.information?.name}`}
+                                aiModel="ChatGPT-4o">
+                                <PlantImage
+                                    plant={{
+                                        image: {
+                                            cover: sort.image?.cover ?? sort.information.plant.image?.cover
+                                        },
+                                        information: {
+                                            name: sort.information.name
+                                        }
+                                    }}
+                                    width={72}
+                                    height={72} />
+                            </AiWatermark>
+                            <Stack className="grow">
                                 <Typography level="h5">{sort.information.name}</Typography>
                                 {sort.information.shortDescription && <Typography level="body1">{sort.information.shortDescription}</Typography>}
                             </Stack>

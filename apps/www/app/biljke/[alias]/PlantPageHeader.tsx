@@ -16,6 +16,7 @@ import { getPlantInforationSections } from "./getPlantInforationSections";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PlantCalendarPicker } from "./PlantCalendarPicker";
 import { SeedTimeInformationBadge } from "@gredice/ui/plants";
+import { AiWatermark } from "@gredice/ui/AiWatermark";
 
 export function PlantPageHeader({ plant, sort }: { plant: PlantData & { isRecommended: boolean | null | undefined }, sort?: PlantSortData }) {
     const informationSections = getPlantInforationSections(plant);
@@ -32,14 +33,19 @@ export function PlantPageHeader({ plant, sort }: { plant: PlantData & { isRecomm
     return (
         <PageHeader
             visual={(
-                <PlantImage plant={{
-                    information: {
-                        name: sort?.information?.name ?? plant.information.name,
-                    },
-                    image: {
-                        cover: sort?.image?.cover ?? plant.image?.cover
-                    }
-                }} priority width={142} height={142} />
+                <AiWatermark
+                    reason="Primjer ploda biljke visoke rezolucije bez nedostataka."
+                    aiPrompt={`Realistic and not perfect image of requested plant on white background. No Text Or Banners. Square image. ${plant.information.name}`}
+                    aiModel="ChatGPT-4o">
+                    <PlantImage plant={{
+                        information: {
+                            name: sort?.information?.name ?? plant.information.name,
+                        },
+                        image: {
+                            cover: sort?.image?.cover ?? plant.image?.cover
+                        }
+                    }} priority width={142} height={142} />
+                </AiWatermark>
             )}
             header={sort?.information?.name ?? plant.information.name}
             alternativeName={(

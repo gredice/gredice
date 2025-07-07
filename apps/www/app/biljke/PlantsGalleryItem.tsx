@@ -6,6 +6,7 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { PlantData } from "@gredice/client";
 import { PlantYieldTooltip, SeedTimeInformationBadge } from "@gredice/ui/plants";
 import { Stack } from "@signalco/ui-primitives/Stack";
+import { AiWatermark } from "@gredice/ui/AiWatermark";
 
 export type PlantsGalleryItemProps =
     Pick<PlantData, 'information' | 'attributes' | 'image'> &
@@ -44,12 +45,18 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                 </Stack>
             )}
             href={KnownPages.Plant(information.name)}>
-            <PlantImage
-                plant={props}
-                fill
-                priority
-                sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
-            />
+            <AiWatermark
+                reason="Primjer ploda biljke visoke rezolucije bez nedostataka."
+                aiPrompt={`Realistic and not perfect image of requested plant on white background. No Text Or Banners. Square image. ${information.name}`}
+                aiModel="ChatGPT-4o"
+            >
+                <PlantImage
+                    plant={props}
+                    fill
+                    priority
+                    sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
+                />
+            </AiWatermark>
             {isRecommended && (
                 <div className="absolute top-1 right-1 -m-2 md:-m-6">
                     <SeedTimeInformationBadge size="sm" />
