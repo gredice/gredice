@@ -62,6 +62,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         }),
         authValidator(['user', 'admin']),
         zValidator('json', z.object({
+            id: z.number().optional(),
             cartId: z.number(),
             entityId: z.string(),
             entityTypeName: z.string(),
@@ -70,11 +71,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
             raisedBedId: z.number().optional(),
             positionIndex: z.number().int().optional(),
             additionalData: z.string().optional().nullable(),
-            currency: z.string().optional().nullable()
+            currency: z.string().optional().nullable(),
+            forceCreate: z.boolean().optional().default(false),
         })),
         async (context) => {
-            const { cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData, currency } = context.req.valid('json');
-            await upsertOrRemoveCartItem(cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData, currency);
+            const { id, cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData, currency, forceCreate } = context.req.valid('json');
+            await upsertOrRemoveCartItem(id, cartId, entityId, entityTypeName, amount, gardenId, raisedBedId, positionIndex, additionalData, currency, forceCreate);
             return context.json({ success: true });
         }
     )

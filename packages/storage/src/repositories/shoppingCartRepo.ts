@@ -57,6 +57,7 @@ export async function setCartItemPaid(itemId: number) {
 }
 
 export async function upsertOrRemoveCartItem(
+    id: number | null | undefined,
     cartId: number,
     entityId: string,
     entityTypeName: string,
@@ -66,19 +67,33 @@ export async function upsertOrRemoveCartItem(
     positionIndex?: number,
     additionalData?: string | null,
     currency?: string | null,
+    forceCreate?: boolean,
     forceDelete: boolean = false
 ) {
-    const existingItem = await storage().query.shoppingCartItems.findFirst({
-        where: and(
-            eq(shoppingCartItems.cartId, cartId),
-            eq(shoppingCartItems.entityTypeName, entityTypeName),
-            eq(shoppingCartItems.entityId, entityId),
-            gardenId ? eq(shoppingCartItems.gardenId, gardenId) : undefined,
-            raisedBedId ? eq(shoppingCartItems.raisedBedId, raisedBedId) : undefined,
-            typeof positionIndex === 'number' ? eq(shoppingCartItems.positionIndex, positionIndex) : undefined,
-            eq(shoppingCartItems.isDeleted, false),
-        ),
-    });
+    if (forceCreate && id) {
+        throw new Error('Cannot create an item with an existing ID');
+    }
+
+    const existingItem = id
+        ? await storage().query.shoppingCartItems.findFirst({
+            where: and(
+                eq(shoppingCartItems.id, id),
+                eq(shoppingCartItems.isDeleted, false)
+            ),
+        })
+        : (!forceCreate
+            ? await storage().query.shoppingCartItems.findFirst({
+                where: and(
+                    eq(shoppingCartItems.cartId, cartId),
+                    eq(shoppingCartItems.entityTypeName, entityTypeName),
+                    eq(shoppingCartItems.entityId, entityId),
+                    gardenId ? eq(shoppingCartItems.gardenId, gardenId) : undefined,
+                    raisedBedId ? eq(shoppingCartItems.raisedBedId, raisedBedId) : undefined,
+                    typeof positionIndex === 'number' ? eq(shoppingCartItems.positionIndex, positionIndex) : undefined,
+                    eq(shoppingCartItems.isDeleted, false),
+                ),
+            })
+            : null);
 
     // Prevent deletion of paid items
     if (!forceDelete && amount <= 0 && existingItem?.status === 'paid') {

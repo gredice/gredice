@@ -48,7 +48,13 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     // Development purposes
     flags?: {
         enableDebugHudFlag?: boolean
-        enableDebugCloseupFlag?: boolean
+        enableDebugCloseupFlag?: boolean,
+        enableRaisedBedWateringFlag?: boolean,
+        enableRaisedBedDiaryFlag?: boolean,
+        enableRaisedBedOperationsFlag?: boolean,
+        enableRaisedBedFieldOperationsFlag?: boolean,
+        enableRaisedBedFieldWateringFlag?: boolean,
+        enableRaisedBedFieldDiaryFlag?: boolean,
     }
 }
 
@@ -146,7 +152,9 @@ function GameScene({
                         <ItemsHud />
                         <div className='hidden md:block' />
                     </div>
-                    <RaisedBedFieldHud />
+                    <RaisedBedFieldHud
+                        flags={flags}
+                    />
                     <OverviewModal />
                     <WelcomeMessage />
                     <PaymentSuccessfulMessage />

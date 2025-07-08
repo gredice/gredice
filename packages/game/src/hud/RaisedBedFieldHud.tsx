@@ -10,9 +10,9 @@ import { ButtonGreen } from "../shared-ui/ButtonGreen";
 import { RaisedBedInfo } from "../controls/components/RaisedBedInfo";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { SVGProps } from "react";
-import { Stack } from "@signalco/ui-primitives/Stack";
 import { useShoppingCart } from "../hooks/useShoppingCart";
 import { useSetShoppingCartItem } from "../hooks/useSetShoppingCartItem";
+import { RaisedBedWatering } from "./raisedBed/RaisedBedWatering";
 
 const RaisedBedIcon = (props: SVGProps<SVGSVGElement>) => (
     <svg
@@ -102,7 +102,18 @@ function RaisedBedFieldSuggestions({ gardenId, raisedBedId }: { gardenId: number
     );
 }
 
-export function RaisedBedFieldHud() {
+export function RaisedBedFieldHud({
+    flags
+}: {
+    flags?: {
+        enableRaisedBedWateringFlag?: boolean;
+        enableRaisedBedDiaryFlag?: boolean;
+        enableRaisedBedOperationsFlag?: boolean;
+        enableRaisedBedFieldOperationsFlag?: boolean;
+        enableRaisedBedFieldWateringFlag?: boolean;
+        enableRaisedBedFieldDiaryFlag?: boolean;
+    }
+}) {
     const { data: currentGarden } = useCurrentGarden();
     const view = useGameState(state => state.view);
     const setView = useGameState(state => state.setView);
@@ -145,17 +156,24 @@ export function RaisedBedFieldHud() {
                     )}
                 </div>
                 {currentGarden && raisedBed && (
-                    <div className="absolute top-[calc(50%+160px)] left-[calc(50%-156.5px)] md:left-[calc(50%+210px)] md:top-[calc(50%+118px)]">
-                        <RaisedBedSensorInfo
+                    <>
+                        {flags?.enableRaisedBedWateringFlag && (
+                            <div className="absolute top-[calc(50%+200px)] left-[calc(50%-156.5px)] md:left-[calc(50%+210px)] md:top-[calc(50%+74px)]">
+                                <RaisedBedWatering
+                                    gardenId={currentGarden.id}
+                                    raisedBedId={raisedBed.id} />
+                            </div>
+                        )}
+                        <div className="absolute top-[calc(50%+160px)] left-[calc(50%-156.5px)] md:left-[calc(50%+210px)] md:top-[calc(50%+118px)]">
+                            <RaisedBedSensorInfo
+                                gardenId={currentGarden.id}
+                                raisedBedId={raisedBed.id} />
+                        </div>
+                        <RaisedBedFieldSuggestions
                             gardenId={currentGarden.id}
-                            raisedBedId={raisedBed.id} />
-                    </div>
-                )}
-                {currentGarden && raisedBed && (
-                    <RaisedBedFieldSuggestions
-                        gardenId={currentGarden.id}
-                        raisedBedId={raisedBed.id}
-                    />
+                            raisedBedId={raisedBed.id}
+                        />
+                    </>
                 )}
                 <ButtonGreen
                     variant='plain'
