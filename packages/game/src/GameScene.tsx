@@ -28,7 +28,6 @@ import { Environment } from './scene/Environment';
 import { ShoppingCartHud } from './hud/ShoppingCartHud';
 import { RaisedBedFieldHud } from './hud/RaisedBedFieldHud';
 import { useBlockData } from './hooks/useBlockData';
-import { useWeatherForecast } from './hooks/useWeatherForecast';
 import { useWeatherNow } from './hooks/useWeatherNow';
 import { PaymentSuccessfulMessage } from './hud/PaymentSuccessfulMessage';
 

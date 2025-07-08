@@ -11,8 +11,6 @@ import { RaisedBedInfo } from "../controls/components/RaisedBedInfo";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { SVGProps } from "react";
 import { RaisedBedFieldSuggestions } from "./raisedBed/RaisedBedFieldSuggestions";
-import { useShoppingCart } from "../hooks/useShoppingCart";
-import { useSetShoppingCartItem } from "../hooks/useSetShoppingCartItem";
 import { RaisedBedWatering } from "./raisedBed/RaisedBedWatering";
 
 const RaisedBedIcon = (props: SVGProps<SVGSVGElement>) => (

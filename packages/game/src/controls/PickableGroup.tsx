@@ -1,14 +1,14 @@
 'use client';
 
-import { Vector3, Plane, Raycaster, Vector2, TextureLoader } from 'three';
-import { useLoader, useThree } from '@react-three/fiber';
-import { PointerEvent, PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react';
+import { Vector3, Plane, Raycaster, Vector2 } from 'three';
+import { useThree } from '@react-three/fiber';
+import { PointerEvent, PropsWithChildren, Suspense, useEffect, useRef, useState } from 'react';
 import { Handler, useDrag } from '@use-gesture/react';
 import { useSpring, animated } from '@react-spring/three';
 import { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { getBlockDataByName, getStackHeight, useStackHeight } from '../utils/getStackHeight';
 import { useGameState } from '../useGameState';
-import { Shadow } from '@react-three/drei';
+import { Shadow, useTexture, Billboard } from '@react-three/drei';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockMove } from '../hooks/useBlockMove';
@@ -20,8 +20,25 @@ type PickableGroupProps = PropsWithChildren<
     Pick<EntityInstanceProps, 'stack' | 'block'> &
     { noControl?: boolean }>;
 
+export function RecycleIndicator() {
+    const appBaseUrl = useGameState(state => state.appBaseUrl);
+    const recycleTexture = useTexture((appBaseUrl ?? '') + '/assets/textures/recycle.png');
+    return (
+        <Billboard
+            follow={true}
+            lockX={false}
+            lockY={false}
+            lockZ={false}
+        >
+            <animated.mesh position={[0, 0, 0]} scale={[1, 1, 1]}>
+                <planeGeometry />
+                <meshBasicMaterial transparent map={recycleTexture} depthTest={false} />
+            </animated.mesh>
+        </Billboard>
+    );
+}
+
 export function PickableGroup({ children, stack, block, noControl }: PickableGroupProps) {
-    const recycleTexture = useLoader(TextureLoader, 'https://vrt.gredice.com/assets/textures/recycle.png');
     const [dragSprings, dragSpringsApi] = useSpring(() => ({
         from: { internalPosition: [0, 0, 0], scale: 1 },
         config: {
@@ -201,25 +218,31 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
     const blockedPosition: [number, number, number] = [stack.position.x, currentStackHeight, stack.position.z];
 
     // Handle recycle indicator
-    const recyclePosition: [number, number, number] = [stack.position.x, currentStackHeight, stack.position.z];
+    const recyclePosition: [number, number, number] = [stack.position.x, currentStackHeight + 0.2, stack.position.z];
 
     return (
-        <animated.group
-            position={dragSprings.internalPosition as unknown as [number, number, number]}
-            scale={dragSprings.scale}
-            {...customBindProps}>
-            <animated.group scale={blockedScaleSprings.scale} position={blockedPosition}>
-                <Shadow
-                    color={0xff0000}
-                    opacity={1}
-                    colorStop={0.5}
-                    scale={2}
-                />
+        <>
+            <animated.group
+                position={dragSprings.internalPosition as unknown as [number, number, number]}
+                scale={dragSprings.scale}
+                {...customBindProps}>
+                <animated.group scale={blockedScaleSprings.scale} position={blockedPosition}>
+                    <Shadow
+                        color={0xff0000}
+                        opacity={1}
+                        colorStop={0.5}
+                        scale={2}
+                    />
+                </animated.group>
+                {children}
+                {isOverRecycler && (
+                    <Suspense>
+                        <animated.group position={recyclePosition}>
+                            <RecycleIndicator />
+                        </animated.group>
+                    </Suspense>
+                )}
             </animated.group>
-            <animated.group position={recyclePosition}>
-                <text>Recycling...♻️</text>
-            </animated.group>
-            {children}
-        </animated.group>
+        </>
     )
 }
