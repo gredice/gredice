@@ -25,7 +25,7 @@ export const knownEventTypes = {
     },
     raisedBeds: {
         create: "raisedBed.create",
-        update: "raisedBed.update",
+        place: "raisedBed.place",
         delete: "raisedBed.delete",
     },
     raisedBedFields: {
@@ -84,12 +84,7 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
-        updatedV1: (aggregateId: string, data: { blockId?: string }) => ({
-            type: knownEventTypes.raisedBeds.update,
-            version: 1,
-            aggregateId,
-            data,
-        }),
+
         deletedV1: (aggregateId: string) => ({
             type: knownEventTypes.raisedBeds.delete,
             version: 1,
