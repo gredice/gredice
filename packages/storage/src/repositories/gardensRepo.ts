@@ -1,12 +1,13 @@
 import 'server-only';
 import { and, count, desc, eq } from "drizzle-orm";
-import { storage } from "..";
+import { getEntitiesFormatted, getOperations, storage } from "..";
 import { gardenBlocks, gardens, gardenStacks, raisedBeds, InsertGarden, UpdateGarden, UpdateGardenBlock, UpdateGardenStack, InsertRaisedBed, UpdateRaisedBed } from "../schema";
 import { createEvent, knownEvents, knownEventTypes } from './eventsRepo';
 import { v4 as uuidV4 } from 'uuid';
 import { getEvents } from './eventsRepo';
 import { raisedBedFields, InsertRaisedBedField, raisedBedSensors, UpdateRaisedBedSensor, InsertRaisedBedSensor } from '../schema/gardenSchema';
 import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
+import { EntityStandardized } from '../@types/EntityStandardized';
 
 export async function createGarden(garden: InsertGarden) {
     const createdGarden = (await storage()
@@ -325,6 +326,43 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             plantReadyDate,
         };
     });
+}
+
+export async function getRaisedBedDiaryEntries(raisedBedId: number) {
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (!raisedBed) {
+        throw new Error(`Raised bed with ID ${raisedBedId} not found`);
+    }
+
+    const raisedBedsEventDiaryEntries = (await getEvents([
+        knownEventTypes.raisedBeds.create,
+        knownEventTypes.raisedBeds.delete,
+    ], [raisedBedId.toString()], 0, 10000))
+        .map((event) => ({
+            id: event.id,
+            name: event.type === knownEventTypes.raisedBeds.create ? 'Gredica stvorena' : 'Gredica obrisana',
+            description: '',
+            status: null,
+            timestamp: event.createdAt,
+        }))
+        .filter(op => op.name);
+    const operationsData = await getEntitiesFormatted<EntityStandardized>('operation');
+    const operations = await getOperations(raisedBed.accountId, raisedBed.gardenId, raisedBedId);
+    const operationsDiaryEntries = operations
+        .map(op => ({
+            id: op.id,
+            name: operationsData?.find(opData => opData.id === op.entityId)?.information?.label,
+            description: operationsData?.find(opData => opData.id === op.entityId)?.information?.shortDescription,
+            status: op.status === 'completed' ? 'Završeno' : op.status === 'planned' ? 'Planirano' : 'U tijeku...',
+            timestamp: op.completedAt ?? op.scheduledDate ?? op.createdAt,
+        }))
+        .filter(op => op.name)
+        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+    return [
+        ...raisedBedsEventDiaryEntries,
+        ...operationsDiaryEntries
+    ];
 }
 
 export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createGardenBlock, createGardenStack, createRaisedBed, deleteGardenStack, getAccountGardens, getGarden, getGardenBlocks, getGardenStack, getRaisedBed, getRaisedBeds, getRaisedBedSensors, spendSunflowers, updateGardenBlock, updateGardenStack, updateRaisedBed } from '@gredice/storage';
+import { createGardenBlock, createGardenStack, createRaisedBed, deleteGardenStack, getAccountGardens, getGarden, getGardenBlocks, getGardenStack, getRaisedBed, getRaisedBedDiaryEntries, getRaisedBeds, getRaisedBedSensors, spendSunflowers, updateGardenBlock, updateGardenStack, updateRaisedBed } from '@gredice/storage';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from 'zod';
 import { describeRoute } from 'hono-openapi';
@@ -736,6 +736,40 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 id: raisedBedIdNumber,
                 name: context.req.valid('json').name || undefined,
             });
+        }
+    )
+    .get(
+        '/:gardenId/raised-beds/:raisedBedId/diary-entries',
+        describeRoute({
+            description: 'Get diary entries for a raised bed',
+        }),
+        zValidator(
+            "param",
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+            })
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId);
+            if (isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            const raisedBedIdNumber = parseInt(raisedBedId);
+            if (isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (!raisedBed || raisedBed.gardenId !== gardenIdNumber || raisedBed.accountId !== accountId) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            const diaryEntries = await getRaisedBedDiaryEntries(raisedBedIdNumber);
+            return context.json(diaryEntries);
         }
     )
     .get(
