@@ -51,7 +51,11 @@ async function OperationsTable({ accountId, gardenId, raisedBedId, raisedBedFiel
                         <Table.Cell>{operation.completedBy}</Table.Cell>
                         <Table.Cell>{operation.error}</Table.Cell>
                         <Table.Cell>{operation.errorCode}</Table.Cell>
-                        <Table.Cell>{operation.scheduledDate}</Table.Cell>
+                        <Table.Cell>
+                            <LocaleDateTime time={false}>
+                                {operation.scheduledDate}
+                            </LocaleDateTime>
+                        </Table.Cell>
                     </Table.Row>
                 ))}
             </Table.Body>

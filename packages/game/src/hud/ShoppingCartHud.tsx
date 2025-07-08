@@ -66,26 +66,20 @@ function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
 
     async function handleChangePaymentType(isSunflower: boolean) {
         await changeCurrencyShoppingCartItem.mutateAsync({
+            id: item.id,
             amount: item.amount,
             entityId: item.entityId,
             entityTypeName: item.entityTypeName,
-            gardenId: item.gardenId ?? undefined,
-            raisedBedId: item.raisedBedId ?? undefined,
-            positionIndex: item.positionIndex ?? undefined,
-            additionalData: item.additionalData,
             currency: isSunflower ? 'sunflower' : 'euro'
         });
     }
 
     async function handleRemoveItem() {
         await removeShoppingCartItem.mutateAsync({
+            id: item.id,
             amount: 0,
             entityId: item.entityId,
-            entityTypeName: item.entityTypeName,
-            gardenId: item.gardenId ?? undefined,
-            raisedBedId: item.raisedBedId ?? undefined,
-            positionIndex: item.positionIndex ?? undefined,
-            additionalData: item.additionalData,
+            entityTypeName: item.entityTypeName
         });
     }
 

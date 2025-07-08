@@ -11,6 +11,9 @@ import { RaisedBedInfo } from "../controls/components/RaisedBedInfo";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { SVGProps } from "react";
 import { RaisedBedFieldSuggestions } from "./raisedBed/RaisedBedFieldSuggestions";
+import { useShoppingCart } from "../hooks/useShoppingCart";
+import { useSetShoppingCartItem } from "../hooks/useSetShoppingCartItem";
+import { RaisedBedWatering } from "./raisedBed/RaisedBedWatering";
 
 const RaisedBedIcon = (props: SVGProps<SVGSVGElement>) => (
     <svg
@@ -29,7 +32,18 @@ const RaisedBedIcon = (props: SVGProps<SVGSVGElement>) => (
     </svg>
 )
 
-export function RaisedBedFieldHud() {
+export function RaisedBedFieldHud({
+    flags
+}: {
+    flags?: {
+        enableRaisedBedWateringFlag?: boolean;
+        enableRaisedBedDiaryFlag?: boolean;
+        enableRaisedBedOperationsFlag?: boolean;
+        enableRaisedBedFieldOperationsFlag?: boolean;
+        enableRaisedBedFieldWateringFlag?: boolean;
+        enableRaisedBedFieldDiaryFlag?: boolean;
+    }
+}) {
     const { data: currentGarden } = useCurrentGarden();
     const view = useGameState(state => state.view);
     const setView = useGameState(state => state.setView);
@@ -72,19 +86,26 @@ export function RaisedBedFieldHud() {
                     )}
                 </div>
                 {currentGarden && raisedBed && (
-                    <div className="absolute top-[calc(50%+160px)] left-[calc(50%-156.5px)] md:left-[calc(50%+210px)] md:top-[calc(50%+118px)]">
-                        <RaisedBedSensorInfo
-                            gardenId={currentGarden.id}
-                            raisedBedId={raisedBed.id} />
-                    </div>
-                )}
-                {currentGarden && raisedBed && (
-                    <div className="absolute top-[calc(50%+160px)] left-[calc(50%+36px)] md:top-[calc(50%-158px)] md:left-[calc(50%+210px)]">
-                        <RaisedBedFieldSuggestions
-                            gardenId={currentGarden.id}
-                            raisedBedId={raisedBed.id}
-                        />
-                    </div>
+                    <>
+                        {flags?.enableRaisedBedWateringFlag && (
+                            <div className="absolute top-[calc(50%+200px)] left-[calc(50%-156.5px)] md:left-[calc(50%+210px)] md:top-[calc(50%+74px)]">
+                                <RaisedBedWatering
+                                    gardenId={currentGarden.id}
+                                    raisedBedId={raisedBed.id} />
+                            </div>
+                        )}
+                        <div className="absolute top-[calc(50%+160px)] left-[calc(50%-156.5px)] md:left-[calc(50%+210px)] md:top-[calc(50%+118px)]">
+                            <RaisedBedSensorInfo
+                                gardenId={currentGarden.id}
+                                raisedBedId={raisedBed.id} />
+                        </div>
+                        <div className="absolute top-[calc(50%+160px)] left-[calc(50%+36px)] md:top-[calc(50%-158px)] md:left-[calc(50%+210px)]">
+                            <RaisedBedFieldSuggestions
+                                gardenId={currentGarden.id}
+                                raisedBedId={raisedBed.id}
+                            />
+                        </div>
+                    </>
                 )}
                 <ButtonGreen
                     variant='plain'

@@ -18,3 +18,9 @@ const hypertuneAdapter = createHypertuneAdapter<FlagValues, Context>({
 
 export const enableDebugHudFlag = flag(hypertuneAdapter.declarations.enableDebugHud);
 export const enableDebugCloseupFlag = flag(hypertuneAdapter.declarations.enableDebugCloseup);
+export const enableRaisedBedWateringFlag = flag(hypertuneAdapter.declarations.raisedBedWatering);
+export const enableRaisedBedDiaryFlag = flag(hypertuneAdapter.declarations.raisedBedDiary);
+export const enableRaisedBedOperationsFlag = flag(hypertuneAdapter.declarations.raisedBedOperations);
+export const enableRaisedBedFieldOperationsFlag = flag(hypertuneAdapter.declarations.raisedBedFieldOperations);
+export const enableRaisedBedFieldWateringFlag = flag(hypertuneAdapter.declarations.raisedBedFieldWatering);
+export const enableRaisedBedFieldDiaryFlag = flag(hypertuneAdapter.declarations.raisedBedFieldDiary);

@@ -15,7 +15,8 @@ async function fillOperationAggregares(operations: SelectOperation[]) {
         const events = aggregaresEvents.filter(event => event.aggregateId === op.id.toString());
 
         let status = 'new';
-        let scheduledDate: string | undefined = undefined;
+        let scheduledDate: Date | undefined = undefined;
+        let completedAt: Date | undefined = undefined;
         let completedBy: string | undefined = undefined;
         let error: string | undefined = undefined;
         let errorCode: string | undefined = undefined;
@@ -25,19 +26,21 @@ async function fillOperationAggregares(operations: SelectOperation[]) {
             if (event.type === knownEventTypes.operations.complete) {
                 status = 'completed';
                 completedBy = data?.completedBy;
+                completedAt = data?.completedAt ? new Date(data.completedAt) : undefined;
             } else if (event.type === knownEventTypes.operations.fail) {
                 status = 'failed';
                 error = data?.error;
                 errorCode = data?.errorCode;
             } else if (event.type === knownEventTypes.operations.schedule) {
                 status = 'planned';
-                scheduledDate = data?.scheduledDate;
+                scheduledDate = data?.scheduledDate ? new Date(data.scheduledDate) : undefined;
             }
         }
 
         return {
             ...op,
             status,
+            completedAt,
             completedBy,
             error,
             errorCode,
