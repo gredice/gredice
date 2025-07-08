@@ -7,7 +7,6 @@ import { Container } from "@signalco/ui-primitives/Container";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageNav } from "@signalco/ui/Nav";
 import { KnownPages } from "../src/KnownPages";
-import Link from "next/link";
 import { NavigatingButton } from "@signalco/ui/NavigatingButton";
 import { ClientAppProvider } from "../components/providers/ClientAppProvider";
 import { ReactNode } from "react";
@@ -71,15 +70,13 @@ export default async function RootLayout({
                                 <Logotype className="w-[140px] h-[38px]" aria-label="Gredice" />
                             )}
                             links={[
-                                { href: KnownPages.RaisedBeds, text: 'Gredice' },
+                                { href: KnownPages.RaisedBeds, text: 'Podignuta gredica' },
                                 { href: KnownPages.Plants, text: 'Biljke' },
                                 { href: KnownPages.FAQ, text: 'Česta pitanja' },
                             ]}>
-                            <Link href={KnownPages.GardenApp}>
-                                <NavigatingButton className="bg-green-800 hover:bg-green-700">
-                                    Vrt
-                                </NavigatingButton>
-                            </Link>
+                            <NavigatingButton href={KnownPages.GardenApp} className="bg-green-800 hover:bg-green-700">
+                                Vrt
+                            </NavigatingButton>
                         </PageNav>
                         <main className="mt-16 relative">
                             <Container>

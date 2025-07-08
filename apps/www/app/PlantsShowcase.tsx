@@ -24,10 +24,12 @@ export async function PlantsShowcase() {
                         />
                     </div>
                 ))}
-                <Link href={KnownPages.Plants} className="flex flex-col justify-center items-center hover:border-muted-foreground/50 hover:bg-white/30 bg-white/70 rounded-lg border border-dashed p-4 transition-all">
+                <Link
+                    href={KnownPages.Plants}
+                    className="flex flex-col justify-center items-center hover:border-muted-foreground/50 hover:bg-white/30 bg-white/70 rounded-lg border border-dashed p-4 transition-all">
                     <Row spacing={1}>
                         <span>Sve biljke</span>
-                        <Navigate className="size-5" />
+                        <Navigate className="size-5 shrink-0" />
                     </Row>
                 </Link>
             </div>

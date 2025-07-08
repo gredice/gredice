@@ -127,6 +127,12 @@ export const entityTypes = pgTable('entity_types', {
     index('cms_et_is_deleted_idx').on(table.isDeleted),
 ]);
 
+export const entityTypesRelation = relations(entityTypes, ({ many }) => ({
+    attributeDefinitions: many(attributeDefinitions),
+    attributeDefinitionCategories: many(attributeDefinitionCategories),
+    entities: many(entities),
+}));
+
 export type InsertEntityType = typeof entityTypes.$inferInsert;
 export type UpdateEntityType =
     Partial<Omit<typeof entityTypes.$inferInsert, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &

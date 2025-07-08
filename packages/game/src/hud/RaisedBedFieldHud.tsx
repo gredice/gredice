@@ -10,9 +10,7 @@ import { ButtonGreen } from "../shared-ui/ButtonGreen";
 import { RaisedBedInfo } from "../controls/components/RaisedBedInfo";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { SVGProps } from "react";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { useShoppingCart } from "../hooks/useShoppingCart";
-import { useSetShoppingCartItem } from "../hooks/useSetShoppingCartItem";
+import { RaisedBedFieldSuggestions } from "./raisedBed/RaisedBedFieldSuggestions";
 
 const RaisedBedIcon = (props: SVGProps<SVGSVGElement>) => (
     <svg
@@ -30,77 +28,6 @@ const RaisedBedIcon = (props: SVGProps<SVGSVGElement>) => (
         />
     </svg>
 )
-
-function RaisedBedFieldSuggestions({ gardenId, raisedBedId }: { gardenId: number; raisedBedId: number }) {
-    const { data: currentGarden } = useCurrentGarden();
-    const raisedBed = currentGarden?.raisedBeds.find(bed => bed.id === raisedBedId);
-    const { data: shoppingCart } = useShoppingCart();
-    const setCartItem = useSetShoppingCartItem();
-    if (!currentGarden || !raisedBed || !shoppingCart) return null;
-
-    // Check if there are already 9 plants in the cart or planted for this raised bed
-    const cartItems = shoppingCart?.items.filter(item => item.raisedBedId === raisedBedId);
-    const cartPlantItems = cartItems?.filter(item => item.entityTypeName === 'plantSort' && item.status === 'new');
-    if (raisedBed.fields.length + (cartPlantItems?.length ?? 0) >= 9)
-        return null;
-
-    async function handleQuickPick(type: 'summer' | 'salad') {
-        const layouts = {
-            summer: [222, 227, 279, 223, 294, 230, 223, 215, 230],
-            salad: [282, 229, 209, 299, 234, 221, 281, 215, 204]
-        }
-
-        await Promise.all(Array.from({ length: 9 }).map(async (_, index) => {
-            if (!raisedBed || !shoppingCart) return;
-            if (raisedBed.fields.find(field => field.positionIndex === index)) return;
-            if (shoppingCart.items.find(item => item.raisedBedId === raisedBedId && item.positionIndex === index && item.entityTypeName === 'plantSort' && item.status === 'new')) return;
-            setCartItem.mutateAsync({
-                entityTypeName: "plantSort",
-                entityId: layouts[type][index].toString(),
-                amount: 1,
-                gardenId,
-                raisedBedId,
-                positionIndex: index
-            });
-        }));
-    }
-
-    return (
-        <div className="absolute top-[calc(50%+160px)] left-[calc(50%+36px)] md:top-[calc(50%-162px)] md:left-[calc(50%+210px)]">
-            <div className="flex items-center flex-col gap-1 md:gap-2 bg-gradient-to-br from-lime-100/90 dark:from-lime-200/80 to-lime-100/80 dark:to-lime-200/70 dark:text-green-950 rounded-3xl px-4 py-2 md:px-4 md:pb-4 md:pt-3">
-                <Typography level="body1" bold className="dark:text-primary-foreground" noWrap>
-                    Brzo sijanje
-                </Typography>
-                <div className="flex flex-row md:flex-col gap-2">
-                    <ButtonGreen
-                        variant='plain'
-                        className={cx(
-                            "md:size-auto bg-black/80 hover:bg-black/50",
-                            "rounded-full size-10 left-[calc(50%+118px)]",
-                        )}
-                        startDecorator={<span className="text-xl">☀️</span>}
-                        onClick={() => handleQuickPick('summer')}
-                        loading={setCartItem.isPending}
-                    >
-                        <span className="hidden md:block">Ljetni mix</span>
-                    </ButtonGreen>
-                    <ButtonGreen
-                        variant='plain'
-                        className={cx(
-                            "md:size-auto bg-black/80 hover:bg-black/50",
-                            "rounded-full size-10 left-[calc(50%+118px)]",
-                        )}
-                        startDecorator={<span className="text-xl">🥬</span>}
-                        onClick={() => handleQuickPick('salad')}
-                        loading={setCartItem.isPending}
-                    >
-                        <span className="hidden md:block">Salatni mix</span>
-                    </ButtonGreen>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 export function RaisedBedFieldHud() {
     const { data: currentGarden } = useCurrentGarden();
@@ -152,10 +79,12 @@ export function RaisedBedFieldHud() {
                     </div>
                 )}
                 {currentGarden && raisedBed && (
-                    <RaisedBedFieldSuggestions
-                        gardenId={currentGarden.id}
-                        raisedBedId={raisedBed.id}
-                    />
+                    <div className="absolute top-[calc(50%+160px)] left-[calc(50%+36px)] md:top-[calc(50%-158px)] md:left-[calc(50%+210px)]">
+                        <RaisedBedFieldSuggestions
+                            gardenId={currentGarden.id}
+                            raisedBedId={raisedBed.id}
+                        />
+                    </div>
                 )}
                 <ButtonGreen
                     variant='plain'

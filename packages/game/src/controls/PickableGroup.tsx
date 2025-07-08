@@ -21,7 +21,7 @@ type PickableGroupProps = PropsWithChildren<
 
 export function PickableGroup({ children, stack, block, noControl }: PickableGroupProps) {
     const [dragSprings, dragSpringsApi] = useSpring(() => ({
-        from: { internalPosition: [0, 0, 0] },
+        from: { internalPosition: [0, 0, 0], scale: 1 },
         config: {
             mass: 0.1,
             tension: 200,
@@ -52,13 +52,14 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
             : 'https://cdn.gredice.com/sounds/effects/Drop Grass 01.mp3'
     );
 
-    const [isBlocked, setIsBlocked] = useState<boolean | null>(null);
+    const [isBlocked, setIsBlocked] = useState(false);
+    const [isOverRecycler, setIsOverRecycler] = useState(false);
     const moveBlock = useBlockMove();
 
     // Reset position animation when block is moved
     useEffect(() => {
         dragSpringsApi.set({ internalPosition: [0, 0, 0] });
-        setIsBlocked(null);
+        setIsBlocked(false);
     }, [stack.position]);
 
     if (noControl) {
@@ -69,7 +70,7 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
     useEffect(() => {
         if (isDraggingWorld) {
             dragSpringsApi.start({ internalPosition: [0, 0, 0] });
-            setIsBlocked(null);
+            setIsBlocked(false);
         }
     }, [isDraggingWorld]);
 
@@ -105,14 +106,21 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
             : getStackHeight(blockData, hoveredStack) - (currentStackHeight ?? 0);
 
         // Check if under current hovered stack is stackable and mark as blocked or not
-        const lastBlock = hoveredStack?.position === stack.position
+        // Ignore starting position stack (since that's where the block is picked up from and is valid location)
+        const blockUnder = hoveredStack?.position === stack.position
             ? null
             : hoveredStack?.blocks.at(-1);
-        const lastBlockDataBlocked = lastBlock
-            ? !(getBlockDataByName(blockData, lastBlock.name)?.attributes.stackable ?? false)
-            : false;
-        if (lastBlockDataBlocked !== isBlocked && isBlocked !== null) {
-            setIsBlocked(lastBlockDataBlocked);
+        const blockUnderData = blockUnder
+            ? getBlockDataByName(blockData, blockUnder.name)
+            : null;
+        const blockUnderRecycler = blockUnderData?.functions?.recycler ?? false;
+        const blockUnderStackable = blockUnderData?.attributes?.stackable ?? true;
+        const newIsBlocked = !blockUnderStackable && !blockUnderRecycler;
+        if (isOverRecycler !== blockUnderRecycler) {
+            setIsOverRecycler(blockUnderRecycler);
+        }
+        if (newIsBlocked !== isBlocked) {
+            setIsBlocked(newIsBlocked);
         }
 
         if (!pressed) {
@@ -120,11 +128,21 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
                 return;
             }
             didDrag.current = false;
-            setIsBlocked(null);
+            setIsBlocked(false);
+            setIsOverRecycler(false);
 
             if (isBlocked) {
                 // Revert to start position if released above blocked stack
                 dragSpringsApi.start({ internalPosition: [0, 0, 0] });
+            } else if (isOverRecycler) {
+                dragSpringsApi.start({
+                    internalPosition: [
+                        relative.x,
+                        hoveredStackHeight - (blockUnderData?.attributes?.height ?? 0),
+                        relative.z
+                    ],
+                    scale: 0
+                });
             } else {
                 dragSpringsApi.start({ internalPosition: [relative.x, hoveredStackHeight, relative.z] });
                 dropSound.play();
@@ -137,8 +155,8 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
         } else {
             if (!didDrag.current) {
                 pickupSound.play();
-                if (lastBlockDataBlocked !== isBlocked) {
-                    setIsBlocked(lastBlockDataBlocked);
+                if (newIsBlocked !== isBlocked) {
+                    setIsBlocked(newIsBlocked);
                 }
             }
             didDrag.current = true;
@@ -172,6 +190,7 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
     return (
         <animated.group
             position={dragSprings.internalPosition as unknown as [number, number, number]}
+            scale={dragSprings.scale}
             {...customBindProps}>
             <animated.group scale={blockedScaleSprings.scale} position={blockedPosition}>
                 <Shadow

@@ -1,6 +1,6 @@
 import { client } from "@gredice/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useShoppingCart } from "./useShoppingCart";
+import { useShoppingCart, useShoppingCartQueryKey } from "./useShoppingCart";
 
 export function useSetShoppingCartItem() {
     const queryClient = useQueryClient();
@@ -19,6 +19,7 @@ export function useSetShoppingCartItem() {
             if (!cart) {
                 throw new Error('Shopping cart is not available');
             }
+
             const response = await client().api["shopping-cart"].$post({
                 json: {
                     ...item,
@@ -28,12 +29,14 @@ export function useSetShoppingCartItem() {
             if (response.status !== 200) {
                 throw new Error('Failed to set shopping cart item');
             }
-            return await response.json();
         },
-        onSuccess: () => {
+        onSettled: () => {
             queryClient.invalidateQueries({
-                queryKey: ['shopping-cart']
+                queryKey: useShoppingCartQueryKey
             })
         },
+        scope: {
+            id: 'setShoppingCartItem'
+        }
     });
 }
