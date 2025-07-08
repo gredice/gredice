@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createGardenBlock, createGardenStack, createRaisedBed, deleteGardenStack, getAccountGardens, getGarden, getGardenBlocks, getGardenStack, getRaisedBed, getRaisedBeds, getRaisedBedSensors, spendSunflowers, updateGardenBlock, updateGardenStack, updateRaisedBed } from '@gredice/storage';
+import { createGardenBlock, createGardenStack, createRaisedBed, deleteGardenStack, earnSunflowers, getAccountGardens, getGarden, getGardenBlock, getGardenBlocks, getGardenStack, getRaisedBed, getRaisedBeds, getRaisedBedSensors, spendSunflowers, updateGardenBlock, updateGardenStack, updateRaisedBed } from '@gredice/storage';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from 'zod';
 import { describeRoute } from 'hono-openapi';
@@ -364,7 +364,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
             }
 
-            async function removeStack(path: string) {
+            async function removeStack(path: string, permanent = false) {
                 const stackPosition = parsePath(path);
                 if (stackPosition.index === undefined) {
                     await deleteGardenStack(gardenIdNumber, stackPosition);
@@ -374,12 +374,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         return context.json({ error: `Stack ${path} not found` }, 400);
                     }
 
-                    stack.blocks.splice(stackPosition.index, 1);
-                    await updateGardenStack(gardenIdNumber, {
-                        x: stackPosition.x,
-                        y: stackPosition.y,
-                        blocks: stack.blocks
-                    });
+                    if (!permanent) {
+                        stack.blocks.splice(stackPosition.index, 1);
+                        await updateGardenStack(gardenIdNumber, {
+                            x: stackPosition.x,
+                            y: stackPosition.y,
+                            blocks: stack.blocks
+                        });
+                    } else {
+                        const blockId = stack.blocks[stackPosition.index];
+                        await deleteGardenBlock(accountId, gardenIdNumber, blockId);
+                    }
                 }
             }
 
@@ -417,7 +422,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     }
                 } else if (operation.op === 'remove') {
                     const { path } = operation;
-                    const resp = await removeStack(path);
+                    const resp = await removeStack(path, true);
                     if (resp) {
                         return resp;
                     }

@@ -51,7 +51,7 @@ export async function deleteGardenBlock(accountId: string, gardenId: number, blo
 
     // Prepare block refund operation
     const refundBlockPromise = price > 0
-        ? earnSunflowers(garden.accountId, price, `block:${blockData.information.name}`)
+        ? earnSunflowers(garden.accountId, price, `recycle:${blockData.information.name}`)
         : Promise.resolve();
 
     await Promise.all([

@@ -12,6 +12,7 @@ import { Shadow } from '@react-three/drei';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockMove } from '../hooks/useBlockMove';
+import { useBlockRecycle } from '../hooks/useBlockRecycle';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 
@@ -55,11 +56,13 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
     const [isBlocked, setIsBlocked] = useState(false);
     const [isOverRecycler, setIsOverRecycler] = useState(false);
     const moveBlock = useBlockMove();
+    const recycleBlock = useBlockRecycle();
 
     // Reset position animation when block is moved
     useEffect(() => {
         dragSpringsApi.set({ internalPosition: [0, 0, 0] });
         setIsBlocked(false);
+        setIsOverRecycler(false);
     }, [stack.position]);
 
     if (noControl) {
@@ -71,6 +74,7 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
         if (isDraggingWorld) {
             dragSpringsApi.start({ internalPosition: [0, 0, 0] });
             setIsBlocked(false);
+            setIsOverRecycler(false);
         }
     }, [isDraggingWorld]);
 
@@ -135,13 +139,18 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
                 // Revert to start position if released above blocked stack
                 dragSpringsApi.start({ internalPosition: [0, 0, 0] });
             } else if (isOverRecycler) {
+                console.debug('Recycling block', isOverRecycler);
                 dragSpringsApi.start({
                     internalPosition: [
                         relative.x,
-                        hoveredStackHeight - (blockUnderData?.attributes?.height ?? 0),
+                        -1.5,
                         relative.z
                     ],
-                    scale: 0
+                    scale: 0.1
+                });
+                await recycleBlock.mutateAsync({
+                    position: stack.position,
+                    blockIndex: stack.blocks.indexOf(block)
                 });
             } else {
                 dragSpringsApi.start({ internalPosition: [relative.x, hoveredStackHeight, relative.z] });
@@ -157,6 +166,9 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
                 pickupSound.play();
                 if (newIsBlocked !== isBlocked) {
                     setIsBlocked(newIsBlocked);
+                }
+                if (blockUnderRecycler !== isOverRecycler) {
+                    setIsOverRecycler(blockUnderRecycler);
                 }
             }
             didDrag.current = true;
@@ -187,6 +199,9 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
     });
     const blockedPosition: [number, number, number] = [stack.position.x, currentStackHeight, stack.position.z];
 
+    // Handle recycle indicator
+    const recyclePosition: [number, number, number] = [stack.position.x, currentStackHeight, stack.position.z];
+
     return (
         <animated.group
             position={dragSprings.internalPosition as unknown as [number, number, number]}
@@ -199,6 +214,9 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
                     colorStop={0.5}
                     scale={2}
                 />
+            </animated.group>
+            <animated.group position={recyclePosition}>
+                <text>Recycling...♻️</text>
             </animated.group>
             {children}
         </animated.group>

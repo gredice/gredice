@@ -16,6 +16,16 @@ function sunflowerReasonToDescription(reason: string) {
     if (reason.startsWith('block')) {
         return { icon: <BlockImage blockName={reason.split(':')[1]} className="size-10" />, label: 'Postavljanje bloka' };
     }
+    if (reason.startsWith('recycle')) {
+        return {
+            icon: (
+                <div className="relative size-10">
+                    <span className="text-4xl text-center size-8 absolute inset-0 -ml-[5px] opacity-50">♻️</span>
+                    <BlockImage blockName={reason.split(':')[1]} className="absolute inset-0 size-10 w-full h-full" />
+                </div>
+            ), label: 'Recikliranje bloka'
+        };
+    }
     if (reason === 'gift') {
         return { icon: <span className="text-4xl text-center size-10">🎁</span>, label: 'Poklon' };
     }
