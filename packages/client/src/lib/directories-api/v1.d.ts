@@ -614,8 +614,8 @@ export interface components {
             attributes: {
                 /** @description (jedan od: decoration, raisedBed, raisedBedPart, plant, plantPart) */
                 type: string;
-                stackable?: boolean;
                 height: number;
+                stackable: boolean;
             };
             information: {
                 shortDescription: string;
@@ -627,6 +627,9 @@ export interface components {
                 sunflowers: number;
             };
             functions: {
+                /** @description Blokovi koji predstavljaju podignutu gredicu */
+                raisedBed: boolean;
+                /** @description Blokovi koji mogu reciklirati druge blokove */
                 recycler: boolean;
             };
             /** Format: date-time */
