@@ -1,7 +1,7 @@
 'use client';
 
-import { Vector3, Plane, Raycaster, Vector2 } from 'three';
-import { useThree } from '@react-three/fiber';
+import { Vector3, Plane, Raycaster, Vector2, TextureLoader } from 'three';
+import { useLoader, useThree } from '@react-three/fiber';
 import { PointerEvent, PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react';
 import { Handler, useDrag } from '@use-gesture/react';
 import { useSpring, animated } from '@react-spring/three';
@@ -21,6 +21,7 @@ type PickableGroupProps = PropsWithChildren<
     { noControl?: boolean }>;
 
 export function PickableGroup({ children, stack, block, noControl }: PickableGroupProps) {
+    const recycleTexture = useLoader(TextureLoader, 'https://vrt.gredice.com/assets/textures/recycle.png');
     const [dragSprings, dragSpringsApi] = useSpring(() => ({
         from: { internalPosition: [0, 0, 0], scale: 1 },
         config: {
