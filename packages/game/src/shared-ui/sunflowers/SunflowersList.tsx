@@ -16,6 +16,21 @@ function sunflowerReasonToDescription(reason: string) {
     if (reason.startsWith('block')) {
         return { icon: <BlockImage blockName={reason.split(':')[1]} className="size-10" />, label: 'Postavljanje bloka' };
     }
+    if (reason.startsWith('recycle')) {
+        return {
+            icon: (
+                <div className="relative size-10">
+                    <BlockImage blockName={reason.split(':')[1]} className="absolute inset-0 size-10" />
+                    <img
+                        src={'https://vrt.gredice.com/assets/textures/recycle.png'}
+                        alt="Recikliranje"
+                        width={20}
+                        height={20}
+                        className="absolute top-0 right-0 size-5 opacity-50" />
+                </div>
+            ), label: 'Recikliranje bloka'
+        };
+    }
     if (reason === 'gift') {
         return { icon: <span className="text-4xl text-center size-10">🎁</span>, label: 'Poklon' };
     }

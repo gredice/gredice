@@ -13,6 +13,7 @@ export async function EntityAttributeProgress({ entityTypeName, entity }: { enti
     const numberOfRequiredAttributes = definitions.filter(d => d.required).length;
     const notPopulatedRequiredAttributes = definitions.filter(d =>
         d.required &&
+        !d.defaultValue &&
         !entity.attributes.some(a => a.attributeDefinitionId === d.id && (a.value?.length ?? 0) > 0));
     const progress = numberOfRequiredAttributes > 0
         ? ((numberOfRequiredAttributes - notPopulatedRequiredAttributes.length) / numberOfRequiredAttributes) * 100

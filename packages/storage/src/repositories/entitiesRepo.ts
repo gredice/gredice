@@ -12,8 +12,49 @@ import {
 } from "..";
 import { bustCached, cacheKeys, directoriesCached } from '../cache/directoriesCached';
 
-export function getEntitiesRaw(entityTypeName: string, state?: string) {
-    return storage().query.entities.findMany({
+function populateMissingAttributes(entity: SelectEntity & {
+    attributes: (SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition })[];
+    entityType: SelectEntityType & {
+        attributeDefinitions: SelectAttributeDefinition[];
+    };
+}) {
+    // Construct map of owned attributes by category and name
+    const ownedAttributes = new Map<string, SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition }>();
+    for (const attribute of entity.attributes) {
+        ownedAttributes.set(attribute.attributeDefinition.category + "|" + attribute.attributeDefinition.name, attribute);
+    }
+
+    // Create missing attributes based on entity type definitions
+    for (const definition of entity.entityType.attributeDefinitions) {
+        if (!ownedAttributes.has(definition.category + "|" + definition.name)) {
+            // If attribute is missing, create a default one
+            ownedAttributes.set(definition.category + "|" + definition.name, {
+                entityId: entity.id,
+                entityTypeName: entity.entityType.name,
+                attributeDefinitionId: definition.id,
+                attributeDefinition: definition,
+                value: definition.defaultValue ?? null,
+                order: definition.order,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                isDeleted: false,
+                id: 0 // Placeholder ID, will be replaced by database
+            });
+        }
+    }
+
+    // Convert map back to array
+    entity.attributes = Array.from(ownedAttributes.values()).sort((a, b) => {
+        const orderA = a.attributeDefinition.order ?? 0;
+        const orderB = b.attributeDefinition.order ?? 0;
+        return Number(orderA) - Number(orderB);
+    });
+
+    return entity;
+}
+
+export async function getEntitiesRaw(entityTypeName: string, state?: string) {
+    const rawEntities = await storage().query.entities.findMany({
         where: state
             ? and(eq(entities.entityTypeName, entityTypeName), eq(entities.state, state), eq(entities.isDeleted, false))
             : and(eq(entities.entityTypeName, entityTypeName), eq(entities.isDeleted, false)),
@@ -25,9 +66,15 @@ export function getEntitiesRaw(entityTypeName: string, state?: string) {
                     attributeDefinition: true
                 }
             },
-            entityType: true
+            entityType: {
+                with: {
+                    attributeDefinitions: true
+                }
+            }
         }
     });
+
+    return rawEntities.map(populateMissingAttributes);
 }
 
 // Add a type for the cache, ensuring attributes and entityType are included
@@ -219,7 +266,7 @@ export async function getEntityFormatted<T extends unknown>(id: number) {
 }
 
 export async function getEntityRaw(id: number) {
-    return storage().query.entities.findFirst({
+    const entity = await storage().query.entities.findFirst({
         where: and(eq(entities.id, id), eq(entities.isDeleted, false)),
         with: {
             attributes: {
@@ -228,9 +275,17 @@ export async function getEntityRaw(id: number) {
                     attributeDefinition: true
                 }
             },
-            entityType: true
+            entityType: {
+                with: {
+                    attributeDefinitions: true
+                }
+            }
         }
     });
+    if (!entity) {
+        return undefined;
+    }
+    return populateMissingAttributes(entity);
 }
 
 export async function createEntity(entityTypeName: string) {

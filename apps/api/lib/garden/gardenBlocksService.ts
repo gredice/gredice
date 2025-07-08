@@ -1,4 +1,4 @@
-import { earnSunflowers, getGarden, getGardenBlock, deleteGardenBlock as storageDeleteGardenBlock, getGardenStacks, updateGardenStack } from "@gredice/storage";
+import { earnSunflowers, getGarden, getGardenBlock, deleteGardenBlock as storageDeleteGardenBlock, getGardenStacks, updateGardenStack, getRaisedBeds } from "@gredice/storage";
 import { getBlockData } from "../blocks/blockDataService";
 
 export async function deleteGardenBlock(accountId: string, gardenId: number, blockId: string) {
@@ -25,7 +25,7 @@ export async function deleteGardenBlock(accountId: string, gardenId: number, blo
         };
     }
 
-    // Retrieve block price
+    // Retrieve block data
     const blockData = blocksData.find(bd => bd.information.name === block.name);
     if (!blockData) {
         console.warn("Block data not found", { blockId });
@@ -34,6 +34,21 @@ export async function deleteGardenBlock(accountId: string, gardenId: number, blo
             errorStatus: 404
         };
     }
+
+    // Don't allow deletion of active raised beds
+    if (blockData.functions?.raisedBed) {
+        const raisedBeds = await getRaisedBeds(gardenId);
+        const raisedBed = raisedBeds.find(rb => rb.blockId === blockId);
+        if (raisedBed && raisedBed.status !== 'new') {
+            console.warn("Cannot delete active raised bed", { blockId, raisedBed });
+            return {
+                errorMessage: 'Cannot delete active raised bed',
+                errorStatus: 400
+            };
+        }
+    }
+
+    // Retrieve block price
     const price = blockData.prices.sunflowers ?? 0;
     if (price <= 0) {
         console.warn("Block not for sale so we can't refund. Will continue with removal.", { blockId });
@@ -51,7 +66,7 @@ export async function deleteGardenBlock(accountId: string, gardenId: number, blo
 
     // Prepare block refund operation
     const refundBlockPromise = price > 0
-        ? earnSunflowers(garden.accountId, price, `block:${blockData.information.name}`)
+        ? earnSunflowers(garden.accountId, price, `recycle:${blockData.information.name}`)
         : Promise.resolve();
 
     await Promise.all([

@@ -133,7 +133,7 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
         const neededPlural = missingItemsCount === 1 ? 'Potrebna je' : (missingItemsCount > 4 ? 'Potrebno je' : 'Potrebne su');
         const plantPlural = missingItemsCount === 1 ? 'biljka' : (missingItemsCount > 4 ? 'biljaka' : 'biljke');
         const raisedBedsPlural = newRaisedBeds.length === 1 ? 'nove gredice' : 'novih gredica';
-        notes.push(`${neededPlural} još ${missingItemsCount} ${plantPlural} za postavljanje ${raisedBedsPlural}.`);
+        notes.push(`${neededPlural} još ${missingItemsCount} ${plantPlural} u ovoj ili susjednoj gredici za postavljanje ${raisedBedsPlural}.`);
         allowPurchase = false;
     }
     // --- End notes logic ---

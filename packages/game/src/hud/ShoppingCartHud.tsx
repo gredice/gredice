@@ -221,18 +221,6 @@ function ShoppingCart() {
                 </div>
                 <Typography level="h3">Košarica</Typography>
             </Row>
-            {/* Display notes if present */}
-            {cart && (cart?.notes?.length ?? 0) > 0 && (
-                <Stack spacing={1}>
-                    {cart.notes.map((note) => (
-                        <Alert key={note} color="info" startDecorator={<Info className="opacity-80 stroke-blue-900 dark:stroke-blue-100 mt-px" />}>
-                            <Typography level="body2" className="text-primary/90 text-blue-900 dark:text-blue-100">
-                                {note}
-                            </Typography>
-                        </Alert>
-                    ))}
-                </Stack>
-            )}
             <Stack spacing={2}>
                 <Stack spacing={2} className="max-h-[50vh] overflow-y-auto">
                     {isLoading && <Typography level="body1">Učitavanje...</Typography>}
@@ -265,58 +253,72 @@ function ShoppingCart() {
                             )}
                         </Stack>
                     </Row>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                        {/* TODO: Localize */}
-                        <ModalConfirm
-                            title="Potvrdi brisanje košarice"
-                            header="Brisanje košarice"
-                            onConfirm={confirmClearCart}
-                            trigger={
-                                <Button
-                                    variant="plain"
-                                    fullWidth
-                                    disabled={!cart?.items.length}
-                                    startDecorator={<Delete className="size-5 shrink-0" />}
-                                >
-                                    Očisti košaricu
-                                </Button>
-                            }
-                        >
-                            <Typography>Jeste li sigurni da želite obrisati sve stavke iz košarice?</Typography>
-                        </ModalConfirm>
-                        {cart?.totalSunflowers ? (
-                            <ModalConfirm
-                                title="Potvrdi plaćanje"
-                                header={`Potvrđuješ plaćanje ${cart?.totalSunflowers ?? 0} 🌻 i ${cart?.total.toFixed(2) ?? 0} €?`}
-                                onConfirm={handleCheckout}
-                                trigger={(
-                                    <Button
-                                        variant="solid"
-                                        fullWidth
-                                        disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
-                                        loading={checkout.isPending}
-                                        startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0 stroke-blue-600" /> : undefined}
-                                        endDecorator={<Navigate className="size-5 shrink-0" />}
-                                    >
-                                        Potvrdi i plati
-                                    </Button>
-                                )}
-                            />
-                        ) : (
-                            <Button
-                                variant="solid"
-                                onClick={handleCheckout}
-                                fullWidth
-                                disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
-                                loading={checkout.isPending}
-                                startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0 stroke-blue-600" /> : undefined}
-                                endDecorator={<Navigate className="size-5 shrink-0" />}
-                            >
-                                Plati
-                            </Button>
+                    <Stack spacing={1}>
+                        {/* Display notes if present */}
+                        {cart && (cart?.notes?.length ?? 0) > 0 && (
+                            <Stack spacing={1}>
+                                {cart.notes.map((note) => (
+                                    <Alert key={note} color="info" startDecorator={<Info className="opacity-80 stroke-blue-900 dark:stroke-blue-100 mt-px" />}>
+                                        <Typography level="body2" className="text-primary/90 text-blue-900 dark:text-blue-100">
+                                            {note}
+                                        </Typography>
+                                    </Alert>
+                                ))}
+                            </Stack>
                         )}
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            {/* TODO: Localize */}
+                            <ModalConfirm
+                                title="Potvrdi brisanje košarice"
+                                header="Brisanje košarice"
+                                onConfirm={confirmClearCart}
+                                trigger={
+                                    <Button
+                                        variant="plain"
+                                        fullWidth
+                                        disabled={!cart?.items.length}
+                                        startDecorator={<Delete className="size-5 shrink-0" />}
+                                    >
+                                        Očisti košaricu
+                                    </Button>
+                                }
+                            >
+                                <Typography>Jeste li sigurni da želite obrisati sve stavke iz košarice?</Typography>
+                            </ModalConfirm>
+                            {cart?.totalSunflowers ? (
+                                <ModalConfirm
+                                    title="Potvrdi plaćanje"
+                                    header={`Potvrđuješ plaćanje ${cart?.totalSunflowers ?? 0} 🌻 i ${cart?.total.toFixed(2) ?? 0} €?`}
+                                    onConfirm={handleCheckout}
+                                    trigger={(
+                                        <Button
+                                            variant="solid"
+                                            fullWidth
+                                            disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
+                                            loading={checkout.isPending}
+                                            startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0 stroke-blue-600" /> : undefined}
+                                            endDecorator={<Navigate className="size-5 shrink-0" />}
+                                        >
+                                            Potvrdi i plati
+                                        </Button>
+                                    )}
+                                />
+                            ) : (
+                                <Button
+                                    variant="solid"
+                                    onClick={handleCheckout}
+                                    fullWidth
+                                    disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
+                                    loading={checkout.isPending}
+                                    startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0 stroke-blue-600" /> : undefined}
+                                    endDecorator={<Navigate className="size-5 shrink-0" />}
+                                >
+                                    Plati
+                                </Button>
+                            )}
 
-                    </div>
+                        </div>
+                    </Stack>
                 </Stack>
             </Stack>
         </Stack>
