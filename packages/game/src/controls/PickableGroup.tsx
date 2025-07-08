@@ -48,7 +48,7 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
         }
     }));
     const { data: garden } = useCurrentGarden();
-    const { data: blockData } = useBlockData();
+    const { data: blocksData } = useBlockData();
     const getStack = ({ x, z }: { x: number, z: number }) => {
         return garden?.stacks.find(stack => stack.position.x === x && stack.position.z === z);
     };
@@ -72,9 +72,13 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
     );
 
     const [isBlocked, setIsBlocked] = useState(false);
-    const [isOverRecycler, setIsOverRecycler] = useState(false);
     const moveBlock = useBlockMove();
+
+    // Recycle block functionality
+    const [isOverRecycler, setIsOverRecycler] = useState(false);
     const recycleBlock = useBlockRecycle();
+    const canRecycleRaisedBed = garden?.raisedBeds.find(rb => rb.blockId === block.id)?.status === 'new';
+    const canRecycle = canRecycleRaisedBed;
 
     // Reset position animation when block is moved
     useEffect(() => {
@@ -125,7 +129,7 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
         const hoveredStack = getStack(dest);
         const hoveredStackHeight = hoveredStack === stack
             ? 0
-            : getStackHeight(blockData, hoveredStack) - (currentStackHeight ?? 0);
+            : getStackHeight(blocksData, hoveredStack) - (currentStackHeight ?? 0);
 
         // Check if under current hovered stack is stackable and mark as blocked or not
         // Ignore starting position stack (since that's where the block is picked up from and is valid location)
@@ -133,9 +137,9 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
             ? null
             : hoveredStack?.blocks.at(-1);
         const blockUnderData = blockUnder
-            ? getBlockDataByName(blockData, blockUnder.name)
+            ? getBlockDataByName(blocksData, blockUnder.name)
             : null;
-        const blockUnderRecycler = blockUnderData?.functions?.recycler ?? false;
+        const blockUnderRecycler = canRecycle && (blockUnderData?.functions?.recycler ?? false);
         const blockUnderStackable = blockUnderData?.attributes?.stackable ?? true;
         const newIsBlocked = !blockUnderStackable && !blockUnderRecycler;
         if (isOverRecycler !== blockUnderRecycler) {

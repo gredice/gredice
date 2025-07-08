@@ -20,13 +20,13 @@ function sunflowerReasonToDescription(reason: string) {
         return {
             icon: (
                 <div className="relative size-10">
+                    <BlockImage blockName={reason.split(':')[1]} className="absolute inset-0 size-10" />
                     <img
                         src={'https://vrt.gredice.com/assets/textures/recycle.png'}
                         alt="Recikliranje"
-                        width={40}
-                        height={40}
-                        className="absolute inset-0 size-10 opacity-50" />
-                    <BlockImage blockName={reason.split(':')[1]} className="absolute inset-0 size-10" />
+                        width={20}
+                        height={20}
+                        className="absolute top-0 right-0 size-5 opacity-50" />
                 </div>
             ), label: 'Recikliranje bloka'
         };
