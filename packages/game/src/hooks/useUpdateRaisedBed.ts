@@ -12,7 +12,7 @@ export function useUpdateRaisedBed(gardenId: number, raisedBedId: number) {
                 throw new Error('Current user data is not available');
             }
 
-            const response = await client().api.gardens[":gardenId"]["raised-beds"][":raisedBedId"].$patch({
+            await client().api.gardens[":gardenId"]["raised-beds"][":raisedBedId"].$patch({
                 param: {
                     gardenId: gardenId.toString(),
                     raisedBedId: raisedBedId.toString()
