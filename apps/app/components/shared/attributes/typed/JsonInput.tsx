@@ -20,7 +20,7 @@ const MarkdownInput = dynamic(() => import('./MarkdownInput').then(mod => ({
 });
 
 export function JsonInput({ value, onChange, schema }: AttributeInputProps) {
-    const [inputValue, setInputValue] = useState<Record<string, unknown>>(JSON.parse(value ?? '{}'));
+    const [inputValue, setInputValue] = useState<Record<string, unknown>>(!value || !value?.length ? {} : JSON.parse(value ?? '{}'));
 
     const handleOnChange = (newValue: Record<string, unknown>) => {
         setInputValue(newValue);
