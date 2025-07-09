@@ -83,7 +83,9 @@ export function PlantGrowthCalendar({ windows, now }: PlantYearCalendarProps) {
                             const maxEnd = windowEndDate.getMonth() > month ? 1 : windowEndDate.getDate() / 30;
                             const isActivityStart = month === Math.floor(windowStartDate.getMonth());
                             const isActivityEnd = month === Math.floor(windowEndDate.getMonth());
-                            const isActivityActive = month >= Math.floor(windowStartDate.getMonth()) && month <= Math.floor(windowEndDate.getMonth());
+                            // Account for case when start or end dates are in next year
+                            const isActivityActive = (month >= windowStartDate.getMonth() && month <= windowEndDate.getMonth())
+                                || (windowStartDate.getMonth() > windowEndDate.getMonth() && (month >= windowStartDate.getMonth() || month <= windowEndDate.getMonth()));
 
                             return (
                                 <div key={index} className="relative border-l">
@@ -91,7 +93,7 @@ export function PlantGrowthCalendar({ windows, now }: PlantYearCalendarProps) {
                                         <div
                                             className={`absolute inset-y-1 left-[--activity-left] -ml-[1px] right-[--activity-right] ${window.color} ${isActivityStart ? 'rounded-l-full' : ''} ${isActivityEnd ? 'rounded-r-full' : ''}`}
                                             style={{
-                                                '--activity-left': isActivityStart ? `${(minStart) * 100}%` : '0px',
+                                                '--activity-left': isActivityStart ? `${Math.min(75, (minStart) * 100)}%` : '0px',
                                                 '--activity-right': isActivityEnd ? `${Math.min(75, (1 - maxEnd) * 100)}%` : '0px'
                                             } as CSSProperties}
                                         ></div>
