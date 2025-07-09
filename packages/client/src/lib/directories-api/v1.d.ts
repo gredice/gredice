@@ -43,6 +43,240 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/entities/plantSort": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/plantSort
+         * @description Get all entities of type plantSort.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-plantSort"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/entities/plantStage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/plantStage
+         * @description Get all entities of type plantStage.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-plantStage"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/entities/seed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/seed
+         * @description Get all entities of type seed.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-seed"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/entities/brand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/brand
+         * @description Get all entities of type brand.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-brand"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/entities/operation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/operation
+         * @description Get all entities of type operation.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-operation"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/entities/operationFrequency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/operationFrequency
+         * @description Get all entities of type operationFrequency.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-operationFrequency"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/entities/faq": {
         parameters: {
             query?: never;
@@ -70,6 +304,45 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["entity-faq"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/entities/faq-category": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/faq-category
+         * @description Get all entities of type faq-category.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-faq-category"][];
                     };
                 };
             };
@@ -160,279 +433,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/entities/operation": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * /entities/operation
-         * @description Get all entities of type operation.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["entity-operation"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/entities/plantSort": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * /entities/plantSort
-         * @description Get all entities of type plantSort.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["entity-plantSort"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/entities/plantStage": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * /entities/plantStage
-         * @description Get all entities of type plantStage.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["entity-plantStage"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/entities/operationFrequency": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * /entities/operationFrequency
-         * @description Get all entities of type operationFrequency.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["entity-operationFrequency"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/entities/faq-category": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * /entities/faq-category
-         * @description Get all entities of type faq-category.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["entity-faq-category"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/entities/brand": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * /entities/brand
-         * @description Get all entities of type brand.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["entity-brand"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/entities/seed": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * /entities/seed
-         * @description Get all entities of type seed.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["entity-seed"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -475,10 +475,16 @@ export interface components {
                     attributes?: {
                         /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
                         relativeDays?: number;
+                        /** @description (na koji stadij biljke se primjenjuje radnja) */
+                        stage: {
+                            id?: number;
+                            information?: {
+                                name: string;
+                                label: string;
+                            };
+                        };
                         /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                         frequency?: string;
-                        /** @description (jedno od: sowing, soilPreparationm, planting, growth, maintenance, watering, flowering, harvest, storage) */
-                        stage: string;
                         /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
                         application: string;
                     };
@@ -571,133 +577,6 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        "entity-faq": {
-            id: number;
-            entityType: {
-                /** @default 2 */
-                id: number;
-                /** @default faq */
-                name: string;
-                /** @default FAQ */
-                label: string;
-            };
-            information: {
-                header: string;
-                name: string;
-                content: string;
-            };
-            attributes: {
-                tags?: string[];
-                category: {
-                    id?: number;
-                    information?: {
-                        name: string;
-                        label: string;
-                    };
-                };
-            };
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        "entity-block": {
-            id: number;
-            entityType: {
-                /** @default 8 */
-                id: number;
-                /** @default block */
-                name: string;
-                /** @default Blok */
-                label: string;
-            };
-            attributes: {
-                /** @description (jedan od: decoration, raisedBed, raisedBedPart, plant, plantPart) */
-                type: string;
-                height: number;
-                stackable: boolean;
-            };
-            information: {
-                shortDescription: string;
-                fullDescription: string;
-                name: string;
-                label: string;
-            };
-            prices: {
-                sunflowers: number;
-            };
-            functions: {
-                /** @description Blokovi koji predstavljaju podignutu gredicu */
-                raisedBed: boolean;
-                /** @description Blokovi koji mogu reciklirati druge blokove */
-                recycler: boolean;
-            };
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        "entity-test": {
-            id: number;
-            entityType: {
-                /** @default 9 */
-                id: number;
-                /** @default test */
-                name: string;
-                /** @default test */
-                label: string;
-            };
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        "entity-operation": {
-            id: number;
-            entityType: {
-                /** @default 10 */
-                id: number;
-                /** @default operation */
-                name: string;
-                /** @default Operacije na gredicama */
-                label: string;
-            };
-            attributes: {
-                /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
-                relativeDays?: number;
-                /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
-                frequency?: string;
-                /** @description (jedno od: sowing, soilPreparationm, planting, growth, maintenance, watering, flowering, harvest, storage) */
-                stage: string;
-                /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
-                application: string;
-            };
-            image: {
-                cover: components["schemas"]["image"];
-            };
-            information: {
-                /** @description (prevedeni naziv operacije) */
-                label: string;
-                /** @description (kratki opis operacije) */
-                shortDescription: string;
-                /** @description (puni opis operacije) */
-                description: string;
-                /** @description (tehnički naziv operacije - jednom postavljen ne smije se mjenjati!) */
-                name: string;
-            };
-            prices: {
-                /** @description (EUR cijena za jednu operaciju) */
-                perOperation: number;
-                /** @description (EUR cijena s popustom) */
-                discounted?: number;
-                /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
-                discountDescription?: string;
-            };
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
         "entity-plantSort": {
             id: number;
             entityType: {
@@ -738,10 +617,16 @@ export interface components {
                             attributes?: {
                                 /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
                                 relativeDays?: number;
+                                /** @description (na koji stadij biljke se primjenjuje radnja) */
+                                stage: {
+                                    id?: number;
+                                    information?: {
+                                        name: string;
+                                        label: string;
+                                    };
+                                };
                                 /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                                 frequency?: string;
-                                /** @description (jedno od: sowing, soilPreparationm, planting, growth, maintenance, watering, flowering, harvest, storage) */
-                                stage: string;
                                 /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
                                 application: string;
                             };
@@ -860,58 +745,9 @@ export interface components {
                 /** @default Stadij biljke */
                 label: string;
             };
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        "entity-operationFrequency": {
-            id: number;
-            entityType: {
-                /** @default 13 */
-                id: number;
-                /** @default operationFrequency */
-                name: string;
-                /** @default Učestalost operacije */
-                label: string;
-            };
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        "entity-faq-category": {
-            id: number;
-            entityType: {
-                /** @default 14 */
-                id: number;
-                /** @default faq-category */
-                name: string;
-                /** @default FAQ Kategorija */
-                label: string;
-            };
             information: {
                 name: string;
                 label: string;
-            };
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        "entity-brand": {
-            id: number;
-            entityType: {
-                /** @default 16 */
-                id: number;
-                /** @default brand */
-                name: string;
-                /** @default Brend */
-                label: string;
-            };
-            information: {
-                website?: string;
-                name: string;
             };
             /** Format: date-time */
             createdAt: string;
@@ -964,10 +800,16 @@ export interface components {
                             attributes?: {
                                 /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
                                 relativeDays?: number;
+                                /** @description (na koji stadij biljke se primjenjuje radnja) */
+                                stage: {
+                                    id?: number;
+                                    information?: {
+                                        name: string;
+                                        label: string;
+                                    };
+                                };
                                 /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                                 frequency?: string;
-                                /** @description (jedno od: sowing, soilPreparationm, planting, growth, maintenance, watering, flowering, harvest, storage) */
-                                stage: string;
                                 /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
                                 application: string;
                             };
@@ -1088,10 +930,16 @@ export interface components {
                                     attributes?: {
                                         /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
                                         relativeDays?: number;
+                                        /** @description (na koji stadij biljke se primjenjuje radnja) */
+                                        stage: {
+                                            id?: number;
+                                            information?: {
+                                                name: string;
+                                                label: string;
+                                            };
+                                        };
                                         /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                                         frequency?: string;
-                                        /** @description (jedno od: sowing, soilPreparationm, planting, growth, maintenance, watering, flowering, harvest, storage) */
-                                        stage: string;
                                         /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
                                         application: string;
                                     };
@@ -1205,6 +1053,192 @@ export interface components {
                 germinationPercentage?: number;
                 /** @description (težina pakiranja u gramima) */
                 weight: number;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-brand": {
+            id: number;
+            entityType: {
+                /** @default 16 */
+                id: number;
+                /** @default brand */
+                name: string;
+                /** @default Brend */
+                label: string;
+            };
+            information: {
+                website?: string;
+                name: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-operation": {
+            id: number;
+            entityType: {
+                /** @default 10 */
+                id: number;
+                /** @default operation */
+                name: string;
+                /** @default Radnje */
+                label: string;
+            };
+            attributes: {
+                /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
+                relativeDays?: number;
+                /** @description (na koji stadij biljke se primjenjuje radnja) */
+                stage: {
+                    id?: number;
+                    information?: {
+                        name: string;
+                        label: string;
+                    };
+                };
+                /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
+                frequency?: string;
+                /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
+                application: string;
+            };
+            image: {
+                cover: components["schemas"]["image"];
+            };
+            information: {
+                /** @description (prevedeni naziv operacije) */
+                label: string;
+                /** @description (kratki opis operacije) */
+                shortDescription: string;
+                /** @description (puni opis operacije) */
+                description: string;
+                /** @description (tehnički naziv operacije - jednom postavljen ne smije se mjenjati!) */
+                name: string;
+            };
+            prices: {
+                /** @description (EUR cijena za jednu operaciju) */
+                perOperation: number;
+                /** @description (EUR cijena s popustom) */
+                discounted?: number;
+                /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
+                discountDescription?: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-operationFrequency": {
+            id: number;
+            entityType: {
+                /** @default 13 */
+                id: number;
+                /** @default operationFrequency */
+                name: string;
+                /** @default Učestalost operacije */
+                label: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-faq": {
+            id: number;
+            entityType: {
+                /** @default 2 */
+                id: number;
+                /** @default faq */
+                name: string;
+                /** @default FAQ */
+                label: string;
+            };
+            information: {
+                header: string;
+                name: string;
+                content: string;
+            };
+            attributes: {
+                tags?: string[];
+                category: {
+                    id?: number;
+                    information?: {
+                        name: string;
+                        label: string;
+                    };
+                };
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-faq-category": {
+            id: number;
+            entityType: {
+                /** @default 14 */
+                id: number;
+                /** @default faq-category */
+                name: string;
+                /** @default FAQ Kategorija */
+                label: string;
+            };
+            information: {
+                name: string;
+                label: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-block": {
+            id: number;
+            entityType: {
+                /** @default 8 */
+                id: number;
+                /** @default block */
+                name: string;
+                /** @default Blok */
+                label: string;
+            };
+            attributes: {
+                /** @description (jedan od: decoration, raisedBed, raisedBedPart, plant, plantPart) */
+                type: string;
+                height: number;
+                stackable: boolean;
+            };
+            information: {
+                shortDescription: string;
+                fullDescription: string;
+                name: string;
+                label: string;
+            };
+            prices: {
+                sunflowers: number;
+            };
+            functions: {
+                /** @description Blokovi koji predstavljaju podignutu gredicu */
+                raisedBed: boolean;
+                /** @description Blokovi koji mogu reciklirati druge blokove */
+                recycler: boolean;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-test": {
+            id: number;
+            entityType: {
+                /** @default 9 */
+                id: number;
+                /** @default test */
+                name: string;
+                /** @default Test */
+                label: string;
             };
             /** Format: date-time */
             createdAt: string;
