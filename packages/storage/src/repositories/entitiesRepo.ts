@@ -1,6 +1,7 @@
 import 'server-only';
 import { and, desc, eq } from "drizzle-orm";
 import {
+    attributeDefinitions,
     attributeValues,
     entities,
     type SelectAttributeDefinition,
@@ -24,9 +25,11 @@ function populateMissingAttributes(entity: SelectEntity & {
         ownedAttributes.set(attribute.attributeDefinition.category + "|" + attribute.attributeDefinition.name, attribute);
     }
 
-    // Create missing attributes based on entity type definitions
+    // Create missing attributes that have default value based on entity type definitions
     for (const definition of entity.entityType.attributeDefinitions) {
-        if (!ownedAttributes.has(definition.category + "|" + definition.name)) {
+        if (!ownedAttributes.has(definition.category + "|" + definition.name) &&
+            typeof definition.defaultValue !== "undefined" &&
+            definition.defaultValue !== null) {
             // If attribute is missing, create a default one
             ownedAttributes.set(definition.category + "|" + definition.name, {
                 entityId: entity.id,
@@ -61,14 +64,16 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
         orderBy: desc(entities.updatedAt),
         with: {
             attributes: {
-                where: eq(entities.isDeleted, false),
+                where: eq(attributeValues.isDeleted, false),
                 with: {
                     attributeDefinition: true
                 }
             },
             entityType: {
                 with: {
-                    attributeDefinitions: true
+                    attributeDefinitions: {
+                        where: eq(attributeDefinitions.isDeleted, false)
+                    }
                 }
             }
         }
@@ -172,6 +177,7 @@ async function expandValue(
         return value === 'true';
     }
     else if (attributeDefinition.dataType.startsWith('json')) {
+        if (!value) return null;
         return JSON.parse(value);
     }
     else if (attributeDefinition.dataType === 'image') {
@@ -270,14 +276,16 @@ export async function getEntityRaw(id: number) {
         where: and(eq(entities.id, id), eq(entities.isDeleted, false)),
         with: {
             attributes: {
-                where: eq(entities.isDeleted, false),
+                where: eq(attributeValues.isDeleted, false),
                 with: {
                     attributeDefinition: true
                 }
             },
             entityType: {
                 with: {
-                    attributeDefinitions: true
+                    attributeDefinitions: {
+                        where: eq(attributeDefinitions.isDeleted, false)
+                    }
                 }
             }
         }

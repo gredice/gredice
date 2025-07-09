@@ -58,11 +58,11 @@ export default async function AttributeDefinitionPage({ params }: { params: Prom
                         <FormInput definition={definition} name="label" label="Naziv" value={label} />
                         <FormInput definition={definition} name="name" label="Oznaka" value={name} />
                     </Row>
-                    <FormInput definition={definition} name="description" label="Opis" value={definition.description || ''} />
+                    <FormInput definition={definition} name="description" label="Opis" value={definition.description || ''} placeholder="-" />
                     <Stack spacing={2}>
                         <Row spacing={2}>
                             <FormInput definition={definition} name="dataType" label="Tip podatka" value={dataType} />
-                            <FormInput definition={definition} name="defaultValue" label="Zadana vrijednost" value={defaultValue || ''} />
+                            <FormInput definition={definition} name="defaultValue" label="Zadana vrijednost" value={defaultValue || ''} placeholder="-" />
                         </Row>
                         <FormCheckbox definition={definition} name="multiple" value={multiple ? 'true' : 'false'} label="Više vrijednosti" />
                     </Stack>
