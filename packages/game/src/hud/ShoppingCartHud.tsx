@@ -199,7 +199,7 @@ function ShoppingCart() {
     const { data: cart, isLoading, isError, refetch } = useShoppingCart();
     const checkout = useCheckout();
 
-    const handleCheckout = async () => {
+    async function handleCheckout() {
         if (!cart || !cart.id) {
             console.error("No cart available for checkout");
             return;
@@ -316,7 +316,6 @@ function ShoppingCart() {
                                     Plati
                                 </Button>
                             )}
-
                         </div>
                     </Stack>
                 </Stack>
