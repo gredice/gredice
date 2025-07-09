@@ -16,6 +16,7 @@ import { useBlockData } from "../hooks/useBlockData";
 import { useIsEditMode } from "../hooks/useIsEditMode";
 import { Info, Up } from "@signalco/ui-icons";
 import { BlockData } from "@gredice/client";
+import { BlockImage } from "@gredice/ui/BlockImage";
 
 type HudItemEntity = {
     type: 'entity',
@@ -76,16 +77,6 @@ const items: HudItem[] = [
         ]
     },
 ];
-
-function BlockImage({ name, label, ...rest }: HTMLAttributes<HTMLImageElement> & { name: string, label: string }) {
-    return (
-        <img
-            src={`https://www.gredice.com/assets/blocks/${name}.png`}
-            alt={name}
-            {...rest}
-        />
-    )
-}
 
 /**
  * Get the position in a spiral
@@ -236,12 +227,12 @@ function EntityItem({ name }: HudItemEntity) {
                         size='lg'
                         className="size-16"
                         variant="plain">
-                        <BlockImage name={name} label={block.information.label} />
+                        <BlockImage blockName={name} alt={block.information.label} width={64} height={64} />
                     </IconButton>
                 )}>
                 <Stack>
                     <Row spacing={2} alignItems="start">
-                        <BlockImage name={name} label={block.information.label} className="size-24 z-10 border rounded-lg" />
+                        <BlockImage blockName={name} alt={block.information.label} width={96} height={96} className="size-24 z-10 border rounded-lg" />
                         <Stack spacing={1} className="w-full">
                             <Typography semiBold>{block.information.label}</Typography>
                             <Typography level="body2">

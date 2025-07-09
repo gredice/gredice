@@ -5,7 +5,7 @@ import { List } from "@signalco/ui-primitives/List";
 import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { useCurrentAccount } from "../../hooks/useCurrentAccount";
 import { NoSunflowersPlaceholder } from "./NoSunflowersPlaceholder";
-import { BlockImage } from "../BlockImage";
+import { BlockImage } from "@gredice/ui/BlockImage";
 import { Empty } from "@signalco/ui-icons";
 
 function sunflowerReasonToDescription(reason: string) {

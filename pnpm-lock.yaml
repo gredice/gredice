@@ -426,6 +426,9 @@ importers:
       '@gredice/game':
         specifier: workspace:*
         version: link:../../packages/game
+      '@gredice/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@playwright/experimental-ct-react':
         specifier: 1.53.2
         version: 1.53.2(@types/node@22.16.0)(jiti@2.4.2)(sass@1.89.2)(terser@5.37.0)(tsx@4.20.3)(vite@6.3.5(@types/node@22.16.0)(jiti@2.4.2)(sass@1.89.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.0))(yaml@2.8.0)
@@ -947,16 +950,19 @@ importers:
     dependencies:
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@15.4.0-canary.94(@playwright/test@1.53.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.89.2))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: 0.2.1(next@15.3.5(@playwright/test@1.53.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.89.2))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@signalco/ui':
         specifier: 0.2.9
-        version: 0.2.9(@signalco/ui-primitives@0.6.1(next@15.4.0-canary.94(@playwright/test@1.53.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.89.2))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.2.9(@signalco/ui-primitives@0.6.1(next@15.3.5(@playwright/test@1.53.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.89.2))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@signalco/ui-primitives':
         specifier: 0.6.1
-        version: 0.6.1(next@15.4.0-canary.94(@playwright/test@1.53.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.89.2))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.6.1(next@15.3.5(@playwright/test@1.53.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.89.2))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+      next:
+        specifier: 15.3.5
+        version: 15.3.5(@playwright/test@1.53.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.89.2)
       react:
         specifier: 19.1.0
         version: 19.1.0

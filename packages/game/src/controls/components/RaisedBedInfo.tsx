@@ -1,8 +1,7 @@
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
-import { Divider } from "@signalco/ui-primitives/Divider";
-import { BlockImage } from "../../shared-ui/BlockImage";
+import { BlockImage } from "@gredice/ui/BlockImage";
 import { useCurrentGarden } from "../../hooks/useCurrentGarden";
 import { EditableInput } from "@signalco/ui/EditableInput";
 import { useUpdateRaisedBed } from "../../hooks/useUpdateRaisedBed";
@@ -40,7 +39,7 @@ export function RaisedBedInfo({ gardenId, raisedBed }: { gardenId: number, raise
     return (
         <Stack spacing={2}>
             <Row spacing={3}>
-                <BlockImage blockName="Raised_Bed" className="size-20" />
+                <BlockImage blockName="Raised_Bed" width={80} height={80} className="size-20" />
                 <Stack>
                     <Typography level="body2">Naziv gredice</Typography>
                     <EditableInput value={raisedBed.name} onChange={handleNameChange} className="w-full" />

@@ -1,6 +1,6 @@
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { useCurrentGarden } from "../../hooks/useCurrentGarden";
-import { BlockImage } from "../../shared-ui/BlockImage";
+import { BlockImage } from "@gredice/ui/BlockImage";
 import { RaisedBedFieldItemButton } from "./RaisedBedFieldItemButton";
 import { RaisedBedFieldItemEmpty } from "./RaisedBedFieldItemEmpty";
 import { RaisedBedFieldItemPlanted } from "./RaisedBedFieldItemPlanted";
@@ -80,8 +80,8 @@ export function RaisedBedField({
                         Gredice trenutno mogu biti samo u obliku 1x2 ili 2x1.
                     </Typography>
                     <div className="relative left-14">
-                        <BlockImage blockName="Raised_Bed" className="size-36 absolute" />
-                        <BlockImage blockName="Raised_Bed" className="size-36 absolute left-[60px] top-[33px]" />
+                        <BlockImage blockName="Raised_Bed" width={144} height={144} className="size-36 absolute" />
+                        <BlockImage blockName="Raised_Bed" width={144} height={144} className="size-36 absolute left-[60px] top-[33px]" />
                     </div>
                 </Stack>
             </div>
