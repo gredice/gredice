@@ -1,4 +1,4 @@
-import { getShoppingCart, setCartItemPaid, upsertRaisedBedField, createEvent, knownEvents, earnSunflowersForPayment, updateRaisedBed, markCartPaidIfAllItemsPaid, createTransaction, getTransactions, createRaisedBedSensor } from "@gredice/storage";
+import { getShoppingCart, setCartItemPaid, upsertRaisedBedField, createEvent, knownEvents, earnSunflowersForPayment, updateRaisedBed, markCartPaidIfAllItemsPaid, createTransaction, getTransactions, createRaisedBedSensor, createOperation, getRaisedBedFieldsWithEvents } from "@gredice/storage";
 import { getStripeCheckoutSession } from "@gredice/stripe/server";
 
 export async function processCheckoutSession(checkoutSessionId?: string) {
@@ -127,14 +127,14 @@ export async function processItem(itemData: {
     entityTypeName: string | null | undefined;
     accountId: string | null | undefined;
     cartId: number | null | undefined;
-    gardenId?: number | null | undefined;
-    raisedBedId?: number | null | undefined;
-    positionIndex?: number | null | undefined;
-    additionalData?: unknown | null | undefined;
-    currency?: string | null;
+    gardenId: number | null | undefined;
+    raisedBedId: number | null | undefined;
+    positionIndex: number | null | undefined;
+    additionalData: unknown | null | undefined;
+    currency: string | null;
     amount_total: number; // Amount in cents or sunflowers
 }) {
-    const earnSunflowerPromise = itemData.accountId && itemData.currency === 'euro' ?
+    const earnSunflowers = () => itemData.accountId && itemData.currency === 'euro' ?
         earnSunflowersForPayment(itemData.accountId, itemData.amount_total / 100) :
         Promise.resolve();
 
@@ -143,18 +143,65 @@ export async function processItem(itemData: {
         // TODO: Handle operation processing
         // TODO: Handle raisedBed operation placement (not currently necessary since we can't buy raised bed operation without planting plants)
 
-        // Handle sensor installation
+        // Special cases: Handle sensor installation
         if (itemData.raisedBedId && itemData.entityId === '180') { // TODO: Mitigate hardcoded '180' as place sensor ID
             try {
                 await Promise.all([
                     createRaisedBedSensor({
                         raisedBedId: itemData.raisedBedId,
                     }),
-                    earnSunflowerPromise
+                    earnSunflowers
                 ]);
                 console.debug(`Installed sensor in raised bed ${itemData.raisedBedId}.`);
             } catch (error) {
                 console.error(`Failed to install sensor for raised bed ${itemData.raisedBedId}.`, error);
+            }
+        } else {
+            if (!itemData.accountId || !itemData.entityId || !itemData.entityTypeName) {
+                console.error(`Missing required metadata for operation item in order.`, itemData);
+                return;
+            }
+            const entityIdNumber = parseInt(itemData.entityId, 10);
+            if (isNaN(entityIdNumber)) {
+                console.error(`Invalid entityId ${itemData.entityId} for operation item in order.`, itemData);
+                return;
+            }
+
+            // Try to resolve field ID from position index
+            let fieldId: number | undefined = undefined;
+            if (typeof itemData.positionIndex === 'number' && itemData.raisedBedId) {
+                const raisedBedFields = await getRaisedBedFieldsWithEvents(itemData.raisedBedId);
+                fieldId = raisedBedFields.find(field => field.positionIndex === itemData.positionIndex)?.id;
+            }
+
+            // Try to extract scheduled date from additional data
+            let scheduledDate: string | null = null;
+            const additionalData = typeof itemData.additionalData === 'string' ? JSON.parse(itemData.additionalData) : itemData.additionalData;
+            if (typeof additionalData === 'object' && additionalData != null && 'scheduledDate' in additionalData && typeof additionalData.scheduledDate === 'string') {
+                scheduledDate = additionalData.scheduledDate;
+            }
+
+            const [operationId] = await Promise.all([
+                createOperation({
+                    accountId: itemData.accountId,
+                    entityId: entityIdNumber,
+                    entityTypeName: itemData.entityTypeName,
+                    gardenId: itemData.gardenId,
+                    raisedBedId: itemData.raisedBedId,
+                    raisedBedFieldId: fieldId
+                }),
+                earnSunflowers
+            ]);
+            console.debug(`Created operation ${itemData.entityId} of type ${itemData.entityTypeName} for account ${itemData.accountId} in garden ${itemData.gardenId ?? 'N/A'} with raised bed ${itemData.raisedBedId ?? 'N/A'} and field ${fieldId ?? 'N/A'}.`);
+
+            if (scheduledDate) {
+                await createEvent(knownEvents.operations.scheduledV1(
+                    operationId.toString(),
+                    {
+                        scheduledDate
+                    }
+                ));
+                console.debug(`Scheduled operation ${operationId} for date ${scheduledDate}.`);
             }
         }
     } else if (
@@ -180,7 +227,7 @@ export async function processItem(itemData: {
                 id: itemData.raisedBedId,
                 status: 'active'
             }),
-            earnSunflowerPromise,
+            earnSunflowers,
         ]);
         console.debug(`Placed plant sort ${itemData.entityId} in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`);
     } else {

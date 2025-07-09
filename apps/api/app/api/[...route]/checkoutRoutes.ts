@@ -182,8 +182,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!cartInfo.allowPurchase) {
                 return context.json({ error: 'Cart in invalid state' }, 400);
             }
-            const stripeCartItemsWithShopData = cartInfo.items
-                .filter(item => item.status !== 'paid' && item.currency === 'euro') // Exclude paid items and sunflowers
 
             // Handle sunflower items
             const sunflowerCartItemsWithShopData = cartInfo.items
@@ -203,12 +201,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     }
 
                     if (didPaySunflowers) {
-                        await setCartItemPaid(item.id);
-                        await processItem({
-                            accountId,
-                            ...item,
-                            amount_total: sunflowerAmount
-                        });
+                        await Promise.all([
+                            setCartItemPaid(item.id),
+                            processItem({
+                                accountId,
+                                ...item,
+                                amount_total: sunflowerAmount
+                            })
+                        ]);
                     }
                 }
 
@@ -217,6 +217,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Generate a stripe checkout items from cart items
+            const stripeCartItemsWithShopData = cartInfo.items
+                .filter(item => item.status !== 'paid' && item.currency === 'euro') // Exclude paid items and sunflowers
             const items: CheckoutItem[] = [];
             for (const item of stripeCartItemsWithShopData) {
                 // TODO: Apply discounted price if available

@@ -22,5 +22,5 @@ export const operations = pgTable('operations', {
     index('operations_is_deleted_idx').on(table.isDeleted),
 ]);
 
-export type InsertOperation = typeof operations.$inferInsert;
+export type InsertOperation = Omit<typeof operations.$inferInsert, 'id' | 'createdAt'>;
 export type SelectOperation = typeof operations.$inferSelect;
