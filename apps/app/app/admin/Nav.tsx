@@ -59,6 +59,12 @@ export async function Nav() {
                     <NavItem href={KnownPages.Feedback} label="Povratne informacije" icon={<SmileHappy className="size-5" />} />
                 </List>
             </Stack>
+            <Stack spacing={1}>
+                <ListHeader header="Sustavi" />
+                <List>
+                    <NavItem href={KnownPages.Cache} label="Cache" icon={<File className="size-5" />} />
+                </List>
+            </Stack>
         </Stack>
     );
 }

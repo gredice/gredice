@@ -12,6 +12,8 @@ import { Fragment } from "react";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Divider } from "@signalco/ui-primitives/Divider";
 
+export const dynamic = 'force-dynamic';
+
 function getDaySchedule(isToday: boolean, date: Date, raisedBeds: Awaited<ReturnType<typeof getAllRaisedBeds>>, operations: Awaited<ReturnType<typeof getAllOperations>>) {
     const todaysNewFields = raisedBeds.flatMap(rb => rb.fields).filter(field =>
         (field.plantStatus === 'new' || field.plantStatus === 'planned') &&
@@ -153,6 +155,7 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
 }
 
 export default async function AdminSchedulePage() {
+    await auth(['admin']);
     const [allRaisedBeds, operations, plantSorts, operationsData] = await Promise.all([
         getAllRaisedBeds(),
         getAllOperations(),
