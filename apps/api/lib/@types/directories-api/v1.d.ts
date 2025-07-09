@@ -511,11 +511,11 @@ export interface components {
                     start?: number;
                     end?: number;
                 }[];
-                harvest: {
+                propagating?: {
                     start?: number;
                     end?: number;
                 }[];
-                propagating?: {
+                harvest: {
                     start?: number;
                     end?: number;
                 }[];
@@ -774,11 +774,11 @@ export interface components {
                             start?: number;
                             end?: number;
                         }[];
-                        harvest: {
+                        propagating?: {
                             start?: number;
                             end?: number;
                         }[];
-                        propagating?: {
+                        harvest: {
                             start?: number;
                             end?: number;
                         }[];
@@ -1000,11 +1000,11 @@ export interface components {
                             start?: number;
                             end?: number;
                         }[];
-                        harvest: {
+                        propagating?: {
                             start?: number;
                             end?: number;
                         }[];
-                        propagating?: {
+                        harvest: {
                             start?: number;
                             end?: number;
                         }[];
@@ -1124,11 +1124,11 @@ export interface components {
                                     start?: number;
                                     end?: number;
                                 }[];
-                                harvest: {
+                                propagating?: {
                                     start?: number;
                                     end?: number;
                                 }[];
-                                propagating?: {
+                                harvest: {
                                     start?: number;
                                     end?: number;
                                 }[];
@@ -1198,13 +1198,13 @@ export interface components {
                 };
                 countryOfOrigin?: string;
             };
-            attributes: {
-                /** @description (težina pakiranja u gramima) */
-                weight: number;
-                germinationPercentage?: number;
-            };
             application: {
                 applicationArea?: number;
+            };
+            attributes: {
+                germinationPercentage?: number;
+                /** @description (težina pakiranja u gramima) */
+                weight: number;
             };
             /** Format: date-time */
             createdAt: string;
