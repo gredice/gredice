@@ -2,7 +2,7 @@
 
 import { Gallery } from "@signalco/ui/Gallery";
 import { ItemCard } from "../../components/shared/ItemCard";
-import { BlockImage } from "../../components/blocks/BlockImage";
+import { BlockImage } from "@gredice/ui/BlockImage";
 import { orderBy } from "@signalco/js";
 import { useSearchParam } from "@signalco/hooks/useSearchParam";
 import { Typography } from "@signalco/ui-primitives/Typography";

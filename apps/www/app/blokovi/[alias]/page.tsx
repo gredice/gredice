@@ -4,7 +4,7 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { ListHeader } from "@signalco/ui-primitives/List";
 import { SplitView } from "@signalco/ui/SplitView";
 import { BlocksList } from "./BlocksList";
-import { BlockImage } from "../../../components/blocks/BlockImage";
+import { BlockImage } from "@gredice/ui/BlockImage";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { Layers, Ruler } from "@signalco/ui-icons";

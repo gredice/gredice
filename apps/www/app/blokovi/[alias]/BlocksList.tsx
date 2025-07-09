@@ -3,7 +3,7 @@
 import { KnownPages } from "../../../src/KnownPages";
 import { useParams } from "next/navigation";
 import { orderBy } from "@signalco/js";
-import { BlockImage } from "../../../components/blocks/BlockImage";
+import { BlockImage } from "@gredice/ui/BlockImage";
 import { ListCollapsable } from "../../../components/shared/ListCollapsable";
 import { BlockData } from "@gredice/client";
 

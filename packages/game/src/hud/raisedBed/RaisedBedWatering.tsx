@@ -1,6 +1,6 @@
 import { Popper } from "@signalco/ui-primitives/Popper";
 import { ButtonGreen } from "../../shared-ui/ButtonGreen";
-import { BlockImage } from "../../shared-ui/BlockImage";
+import { BlockImage } from "@gredice/ui/BlockImage";
 import { useOperations } from "../../hooks/useOperations";
 import { useSetShoppingCartItem } from "../../hooks/useSetShoppingCartItem";
 import { Button } from "@signalco/ui-primitives/Button";
@@ -131,6 +131,9 @@ export function RaisedBedWatering({ gardenId, raisedBedId }: { gardenId: number;
                 <ButtonGreen
                     className="rounded-full p-0 pr-4 gap-0">
                     <BlockImage
+                        width={56}
+                        height={56}
+                        alt="Zalijevanje"
                         blockName="Bucket"
                         className="size-14 -mt-3"
                     />

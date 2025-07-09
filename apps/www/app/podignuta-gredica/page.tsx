@@ -6,7 +6,7 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
 import { Container } from "@signalco/ui-primitives/Container";
 import { KnownPages } from "../../src/KnownPages";
-import { BlockImage } from "../../components/blocks/BlockImage";
+import { BlockImage } from "@gredice/ui/BlockImage";
 import Image from "next/image";
 
 export default function RaisedBedPage() {
