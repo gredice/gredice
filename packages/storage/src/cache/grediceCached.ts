@@ -13,7 +13,8 @@ function cacheClient() {
 }
 
 export const grediceCacheKeys = {
-    forecast: 'forecast',
+    forecastBjelovar: 'forecastBjelovar',
+    airSensorOpgIb: 'airSensorOpgIb',
 }
 
 export async function grediceCached<T>(key: string, fn: () => Promise<T>, ttl: number = 60) {
