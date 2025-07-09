@@ -177,6 +177,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Cart not found' }, 404);
             }
 
+            // Validate cart status
+            if (cart.status === 'paid') {
+                return context.json({ error: 'Cart already paid' }, 400);
+            }
+
             // Retrieve entities data
             const cartInfo = await getCartInfo(cart.items);
             if (!cartInfo.allowPurchase) {

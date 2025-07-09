@@ -17,7 +17,6 @@ export function useCheckout() {
             }
 
             const responseData = await response.json();
-
             if (!responseData) {
                 console.error("Failed to create checkout session");
                 return;
@@ -44,6 +43,10 @@ export function useCheckout() {
                 console.error("Stripe checkout error:", result.error);
                 // TODO: Show notification to user
             }
+        },
+        // Prevent the mutation from being run in parallel
+        scope: {
+            id: 'checkout',
         }
-    })
+    });
 }

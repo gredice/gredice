@@ -134,6 +134,8 @@ export async function processItem(itemData: {
     currency: string | null;
     amount_total: number; // Amount in cents or sunflowers
 }) {
+    console.debug(`Processing item with entityId ${itemData.entityId} and entityTypeName ${itemData.entityTypeName} for account ${itemData.accountId}`);
+
     const earnSunflowers = () => itemData.accountId && itemData.currency === 'euro' ?
         earnSunflowersForPayment(itemData.accountId, itemData.amount_total / 100) :
         Promise.resolve();
