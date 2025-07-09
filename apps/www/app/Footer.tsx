@@ -43,6 +43,7 @@ const sectionsData: SectionData[] = [
                 ctas: [
                     { label: 'Podignuta gredica', href: KnownPages.RaisedBeds },
                     { label: 'Biljke', href: KnownPages.Plants },
+                    { label: 'Radnje', href: KnownPages.Operations },
                     { label: 'Blokovi', href: KnownPages.Blocks },
                     { label: 'Suncokreti', href: KnownPages.Sunflowers },
                 ]
