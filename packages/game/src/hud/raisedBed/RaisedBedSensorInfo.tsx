@@ -106,7 +106,7 @@ function SensorInfoModal({ icon, header, unit, yDomain, colors, positiveTrend, r
     const previousMoisture = dataWithSmartLabels?.[dataWithSmartLabels.length - 2]?.value || 0
     const trend = currentMoisture - previousMoisture
     const avgMoisture = dataWithSmartLabels ? Math.round(
-        dataWithSmartLabels.reduce((sum, item) => sum + item.value, 0) / dataWithSmartLabels.length,
+        dataWithSmartLabels.reduce((sum, item) => sum + item.value, 0) / (dataWithSmartLabels.length || 1),
     ) : 0;
 
     // Determine moisture status
@@ -202,7 +202,7 @@ function SensorInfoModal({ icon, header, unit, yDomain, colors, positiveTrend, r
                                 color={(positiveTrend ? trend >= 0 : trend <= 0) ? "text-green-500" : "text-red-500"}
                             />
                             <Metric
-                                label="Prosijek"
+                                label="Prosjek"
                                 value={`${avgMoisture}${unit}`}
                                 color={absoluteStatus.color}
                             />

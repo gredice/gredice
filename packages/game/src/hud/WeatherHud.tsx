@@ -30,7 +30,7 @@ export function WeatherHud() {
                 <Popper
                     side="bottom"
                     sideOffset={12}
-                    className="overflow-hidden border-tertiary border-b-4"
+                    className="overflow-hidden border-tertiary border-b-4 w-full"
                     trigger={(
                         <Button
                             title="Trenutno vrijeme"
@@ -38,7 +38,7 @@ export function WeatherHud() {
                             className="rounded-full px-2 justify-between pr-4 md:pr-2">
                             <Row>
                                 {WeatherIcon && <WeatherIcon.day className="size-6" />}
-                                <Typography level="body2" className="text-base pl-0.5">{weatherData?.temperature}°C</Typography>
+                                <Typography level="body2" className="text-base pl-0.5">{weatherData?.measuredTemperature?.toFixed(1) ?? weatherData?.temperature}°C</Typography>
                             </Row>
                         </Button>
                     )}>

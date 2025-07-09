@@ -77,7 +77,7 @@ export function PickableGroup({ children, stack, block, noControl }: PickableGro
     // Recycle block functionality
     const [isOverRecycler, setIsOverRecycler] = useState(false);
     const recycleBlock = useBlockRecycle();
-    const canRecycleRaisedBed = garden?.raisedBeds.find(rb => rb.blockId === block.id)?.status === 'new';
+    const canRecycleRaisedBed = (garden?.raisedBeds.find(rb => rb.blockId === block.id)?.status ?? 'new') === 'new';
     const canRecycle = canRecycleRaisedBed;
 
     // Reset position animation when block is moved

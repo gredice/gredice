@@ -4,6 +4,7 @@ import { populateWeatherFromSymbol } from '../../../../lib/weather/populateWeath
 import { describeRoute } from 'hono-openapi';
 import { TZDate } from "@date-fns/tz";
 import { grediceCached, grediceCacheKeys } from '@gredice/storage';
+import { signalcoClient } from '@gredice/signalco';
 
 const app = new Hono()
     .get(
@@ -12,7 +13,7 @@ const app = new Hono()
             description: 'Get weather forecast',
         }),
         async (context) => {
-            const forecast = await grediceCached(grediceCacheKeys.forecast, getBjelovarForecast);
+            const forecast = await grediceCached(grediceCacheKeys.forecastBjelovar, getBjelovarForecast, 60 * 60);
             return context.json(forecast ?? []);
         })
     .get(
@@ -21,11 +22,25 @@ const app = new Hono()
             description: 'Get current weather',
         }),
         async (context) => {
-            const forecast = await grediceCached(grediceCacheKeys.forecast, getBjelovarForecast);
+            const forecast = await grediceCached(grediceCacheKeys.forecastBjelovar, getBjelovarForecast, 60 * 60);
             if (!forecast || forecast.length === 0) {
                 return context.json({ error: 'Forecast not available' }, { status: 500 });
             }
 
+            const measurements = await grediceCached(grediceCacheKeys.airSensorOpgIb, async () => {
+                const airSensorData = await signalcoClient().GET('/entity/{id}', { params: { path: { id: '565c2653-b3eb-4a7e-9399-bf5734128e03' } } });
+                const temperatureContact = airSensorData.data?.contacts?.find((contact) => contact.contactName === 'temperature');
+                const actualTemperature =
+                    temperatureContact &&
+                        temperatureContact.timeStamp &&
+                        typeof temperatureContact.valueSerialized === 'string' &&
+                        TZDate.now() - new Date(temperatureContact.timeStamp).getTime() < 1000 * 60 * 60 * 6 // within the last 6 hours
+                        ? parseFloat(temperatureContact.valueSerialized)
+                        : null;
+                return {
+                    actualTemperature
+                };
+            }, 60 * 60);
 
             // Find the forecast entry closest to now
             const nowLocal = new TZDate(TZDate.now(), 'Europe/Zagreb');
@@ -50,6 +65,7 @@ const app = new Hono()
             const weather = {
                 symbol: closestEntry.symbol,
                 temperature: closestEntry?.temperature,
+                measuredTemperature: measurements?.actualTemperature,
                 rain: closestEntry.rain,
                 windDirection: closestEntry.windDirection,
                 windSpeed: closestEntry.windStrength,
