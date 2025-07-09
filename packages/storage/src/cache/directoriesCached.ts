@@ -37,6 +37,27 @@ export async function directoriesCached<T>(key: string, fn: () => Promise<T>, tt
     }
 }
 
+export async function directoriesCachedInfo() {
+    try {
+        const client = cacheClient();
+        const keys: string[] = [];
+        let cursor = "0";
+
+        do {
+            const scanResult = await client.scan(cursor);
+            cursor = scanResult[0];
+            keys.push(...scanResult[1]);
+        } while (cursor !== "0");
+
+        return {
+            keys
+        }
+    } catch (error) {
+        console.error('Error fetching Redis info:', error);
+        return null;
+    }
+}
+
 export async function bustCached(key: string) {
     console.debug(`Bust cache for key: ${key}`);
     const client = cacheClient();

@@ -16,3 +16,4 @@ export * from './repositories/shoppingCartRepo';
 export * from './repositories/notificationsRepo';
 export * from './repositories/operationsRepo';
 export * from './cache/grediceCached';
+export * from './cache/directoriesCached';

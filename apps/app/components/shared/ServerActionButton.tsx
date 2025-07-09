@@ -1,7 +1,7 @@
 'use client';
 
 import { Button, ButtonButtonProps } from "@signalco/ui-primitives/Button";
-import { startTransition, useState } from "react";
+import { useState } from "react";
 
 export type ServerActionButtonProps = Omit<ButtonButtonProps, 'onClick'> & {
     onClick?: () => Promise<void>;
@@ -12,7 +12,8 @@ export function ServerActionButton({ onClick, loading, ...props }: ServerActionB
     const handleClick = async () => {
         setIsLoading(true);
         if (onClick)
-            startTransition(onClick);
+            await onClick();
+        setIsLoading(false);
     }
 
     return (

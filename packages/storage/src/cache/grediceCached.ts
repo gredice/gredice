@@ -47,6 +47,27 @@ export async function grediceCached<T>(key: string, fn: () => Promise<T>, ttl: n
     }
 }
 
+export async function grediceCachedInfo() {
+    try {
+        const client = cacheClient();
+        const keys: string[] = [];
+        let cursor = "0";
+
+        do {
+            const scanResult = await client.scan(cursor);
+            cursor = scanResult[0];
+            keys.push(...scanResult[1]);
+        } while (cursor !== "0");
+
+        return {
+            keys
+        }
+    } catch (error) {
+        console.error('Error fetching Redis info:', error);
+        return null;
+    }
+}
+
 export async function bustGrediceCached(key: string) {
     const client = cacheClient();
     await client.del(key);
