@@ -268,6 +268,10 @@ export async function openApiDocs(config?: OpenApiDocsConfig): Promise<OpenAPIV3
             {
                 url: 'https://api.gredice.com/api/directories',
                 description: 'Production API'
+            },
+            {
+                url: 'http://localhost:3005/api/directories',
+                description: 'Local API'
             }
         ],
         security: [],

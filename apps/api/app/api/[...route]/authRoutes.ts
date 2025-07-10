@@ -7,6 +7,7 @@ import { clearCookie, createJwt, verifyJwt, setCookie } from '../../../lib/auth/
 import { sendChangePassword, sendEmailVerification } from '../../../lib/auth/email';
 import { sendWelcome } from '../../../lib/email/transactional';
 import { exchangeCodeForToken, fetchUserInfo, generateAuthUrl } from '../../../lib/auth/oauth';
+import { describeRoute } from 'hono-openapi';
 
 const failedAttemptClearTime = 1000 * 60; // 1 minute
 const failedAttemptsBlock = 5;
@@ -15,6 +16,9 @@ const failedAttemptsBlockTime = 1000 * 60 * 60; // 1 hour
 const app = new Hono()
     .post(
         '/login',
+        describeRoute({
+            description: 'Login with email and password',
+        }),
         zValidator(
             "json",
             z.object({
@@ -113,6 +117,9 @@ const app = new Hono()
         })
     .get(
         "/google",
+        describeRoute({
+            description: 'Redirect to Google OAuth login',
+        }),
         zValidator(
             "query",
             z.object({
@@ -130,6 +137,9 @@ const app = new Hono()
         })
     .get(
         "/google/callback",
+        describeRoute({
+            description: 'Google OAuth callback',
+        }),
         async (context) => {
             try {
                 const code = context.req.query("code")
@@ -175,6 +185,9 @@ const app = new Hono()
         })
     .get(
         "/facebook",
+        describeRoute({
+            description: 'Redirect to Facebook OAuth login',
+        }),
         zValidator(
             "query",
             z.object({
@@ -192,6 +205,9 @@ const app = new Hono()
         })
     .get(
         "/facebook/callback",
+        describeRoute({
+            description: 'Facebook OAuth callback',
+        }),
         async (context) => {
             try {
                 const code = context.req.query("code")
@@ -237,6 +253,9 @@ const app = new Hono()
         })
     .post(
         '/change-password',
+        describeRoute({
+            description: 'Change password using token from email',
+        }),
         zValidator(
             "json",
             z.object({
@@ -290,6 +309,9 @@ const app = new Hono()
         })
     .post(
         '/logout',
+        describeRoute({
+            description: 'Logout user by clearing the session cookie',
+        }),
         async (context) => {
             await clearCookie(context);
             return context.json({
@@ -298,6 +320,9 @@ const app = new Hono()
         })
     .post(
         '/register',
+        describeRoute({
+            description: 'Register a new user with email and password',
+        }),
         zValidator(
             "json",
             z.object({
@@ -327,6 +352,9 @@ const app = new Hono()
         })
     .post(
         '/send-change-password-email',
+        describeRoute({
+            description: 'Send change password email to user',
+        }),
         zValidator(
             "json",
             z.object({
@@ -352,6 +380,9 @@ const app = new Hono()
         })
     .post(
         '/send-verify-email',
+        describeRoute({
+            description: 'Send email verification to user',
+        }),
         zValidator(
             "json",
             z.object({
@@ -377,6 +408,9 @@ const app = new Hono()
         })
     .post(
         '/verify-email',
+        describeRoute({
+            description: 'Verify user email using token from email',
+        }),
         zValidator(
             "json",
             z.object({

@@ -2,6 +2,12 @@
 
 ## Development
 
+### API
+
+See [API Reference](https://api.gredice.com) for the official API documentation.
+
+You can use the API to interact with the Gredice platform, including managing your garden, farm, and other app-related features. Feel free to explore the API endpoints and integrate them into your applications.
+
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/en/)

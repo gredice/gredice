@@ -41,17 +41,17 @@ app
         documentation: {
             info: {
                 title: 'Auth API',
-                version: '0.1.0',
+                version: '1.0.0',
             },
             servers: [
+                {
+                    url: 'https://api.gredice.com/api/auth',
+                    description: 'Production server'
+                },
                 {
                     url: 'http://localhost:3005/api/auth',
                     description: 'Local development server'
                 },
-                {
-                    url: 'https://api.gredice.com/api/auth',
-                    description: 'Production server'
-                }
             ]
         }
     }))
@@ -59,17 +59,17 @@ app
         documentation: {
             info: {
                 title: 'Accounts API',
-                version: '0.1.0',
+                version: '1.0.0',
             },
             servers: [
+                {
+                    url: 'https://api.gredice.com/api/accounts',
+                    description: 'Production server'
+                },
                 {
                     url: 'http://localhost:3005/api/accounts',
                     description: 'Local development server'
                 },
-                {
-                    url: 'https://api.gredice.com/api/accounts',
-                    description: 'Production server'
-                }
             ]
         }
     }))
@@ -77,17 +77,17 @@ app
         documentation: {
             info: {
                 title: 'Users API',
-                version: '0.1.0',
+                version: '1.0.0',
             },
             servers: [
+                {
+                    url: 'https://api.gredice.com/api/users',
+                    description: 'Production server'
+                },
                 {
                     url: 'http://localhost:3005/api/users',
                     description: 'Local development server'
                 },
-                {
-                    url: 'https://api.gredice.com/api/users',
-                    description: 'Production server'
-                }
             ]
         }
     }))
@@ -95,17 +95,17 @@ app
         documentation: {
             info: {
                 title: 'Gardens API',
-                version: '0.1.0',
+                version: '1.0.0',
             },
             servers: [
+                {
+                    url: 'https://api.gredice.com/api/gardens',
+                    description: 'Production server'
+                },
                 {
                     url: 'http://localhost:3005/api/gardens',
                     description: 'Local development server'
                 },
-                {
-                    url: 'https://api.gredice.com/api/gardens',
-                    description: 'Production server'
-                }
             ]
         }
     }))
@@ -114,17 +114,17 @@ app
         documentation: {
             info: {
                 title: 'Data API',
-                version: '0.1.0',
+                version: '1.0.0',
             },
             servers: [
+                {
+                    url: 'https://api.gredice.com/api/data',
+                    description: 'Production server'
+                },
                 {
                     url: 'http://localhost:3005/api/data',
                     description: 'Local development server'
                 },
-                {
-                    url: 'https://api.gredice.com/api/data',
-                    description: 'Production server'
-                }
             ]
         }
     }))

@@ -19,7 +19,7 @@
   "dependencies": {
     "@date-fns/tz": "1.2.0",
     "@hono/zod-validator": "0.7.0",
-    "@scalar/api-reference-react": "0.7.29",
+    "@scalar/api-reference-react": "0.7.30",
     "@upstash/redis": "1.35.1",
     "date-fns": "4.1.0",
     "hono": "4.8.4",
@@ -33,7 +33,7 @@
     "server-only": "0.0.1",
     "xml2js": "0.6.2",
     "zod": "3.25.76",
-    "zod-openapi": "5.1.0"
+    "zod-openapi": "4.2.4"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",
@@ -43,7 +43,7 @@
     "@gredice/storage": "workspace:*",
     "@gredice/stripe": "workspace:*",
     "@gredice/transactional": "workspace:*",
-    "@playwright/test": "1.53.2",
+    "@playwright/test": "1.54.0",
     "@signalco/auth-server": "0.5.3",
     "@signalco/hooks": "0.2.1",
     "@signalco/js": "0.1.0",
