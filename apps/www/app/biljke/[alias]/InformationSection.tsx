@@ -25,10 +25,10 @@ export async function InformationSection({ plantId, id, header, content, sortCon
 
     // Filter operations based on stage
     const allOperations = await getOperationsData();
-    const gardenOperations = allOperations?.filter((operation) => operation.attributes?.application === "garden" && operation.attributes?.stage === id);
-    const raisedBedFullOperations = allOperations?.filter((operation) => operation.attributes?.application === "raisedBedFull" && operation.attributes?.stage === id);
-    const raisedBedSquareOperations = allOperations?.filter((operation) => operation.attributes?.application === "raisedBed1m" && operation.attributes?.stage === id);
-    const plantOperations = operations?.filter((operation) => operation.attributes?.application === "plant" && operation.attributes?.stage === id);
+    const gardenOperations = allOperations?.filter((operation) => operation.attributes?.application === "garden" && operation.attributes?.stage.information?.name === id);
+    const raisedBedFullOperations = allOperations?.filter((operation) => operation.attributes?.application === "raisedBedFull" && operation.attributes?.stage.information?.name === id);
+    const raisedBedSquareOperations = allOperations?.filter((operation) => operation.attributes?.application === "raisedBed1m" && operation.attributes?.stage.information?.name === id);
+    const plantOperations = operations?.filter((operation) => operation.attributes?.application === "plant" && operation.attributes?.stage.information?.name === id);
     const applicableOperations = [
         ...(gardenOperations ?? []),
         ...(raisedBedFullOperations ?? []),

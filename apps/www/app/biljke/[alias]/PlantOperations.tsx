@@ -2,16 +2,15 @@ import { Card, CardContent } from "@signalco/ui-primitives/Card";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
-import Image from "next/image";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Markdown } from "../../../components/shared/Markdown";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { NavigatingButton } from "@signalco/ui/NavigatingButton";
 import { KnownPages } from "../../../src/KnownPages";
-import { Euro, Hammer, Info } from "@signalco/ui-icons";
-import { OperationData } from "../../../lib/plants/getOperationsData";
+import { Euro, Info } from "@signalco/ui-icons";
 import { PlantData } from "@gredice/client";
+import { OperationImage } from "../../../components/operations/OperationImage";
 
 function operationFrequencyLabel(frequency: string) {
     switch (frequency) {
@@ -32,27 +31,6 @@ function operationFrequencyLabel(frequency: string) {
         default:
             return frequency;
     }
-}
-
-function OperationImage({ operation }: { operation: Partial<Pick<OperationData, "image" | "information">> }) {
-    if (!operation.image?.cover?.url) {
-        return (
-            <Hammer className="size-[32px] min-w-[32px]" />
-        );
-    }
-
-    return (
-        <Image
-            src={operation.image.cover.url}
-            width={32}
-            height={32}
-            style={{
-                objectFit: 'contain',
-                width: '32px',
-                height: '32px'
-            }}
-            alt={operation.information?.label ?? "Slika operacije"} />
-    );
 }
 
 export function PlantOperations({ operations }: { operations?: PlantData["information"]["operations"] }) {

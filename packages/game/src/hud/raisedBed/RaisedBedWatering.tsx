@@ -105,7 +105,7 @@ function OperationScheduleModal({ operationId, onConfirm, disabled }: { operatio
 
 export function RaisedBedWatering({ gardenId, raisedBedId }: { gardenId: number; raisedBedId: number }) {
     const operations = useOperations();
-    const wateringOperations = operations.data?.filter(op => op.attributes.stage === 'watering' && op.attributes.application === 'raisedBed1m');
+    const wateringOperations = operations.data?.filter(op => op.attributes.stage.information?.name === 'watering' && op.attributes.application === 'raisedBed1m');
     const setShoppingCartItem = useSetShoppingCartItem();
 
     async function handleWateringOperation(operationId: number, scheduledDate?: Date) {

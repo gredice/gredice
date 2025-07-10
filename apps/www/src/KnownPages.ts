@@ -9,6 +9,8 @@ export const KnownPages = {
     Sunflowers: '/suncokreti',
     RaisedBeds: '/podignuta-gredica',
     Block: (alias: string) => `/blokovi/${alias}`,
+    Operations: '/radnje',
+    Operation: (alias: string) => `/radnje/${alias}`,
     AboutUs: '/o-nama',
     FAQ: '/cesta-pitanja',
     Contact: '/kontakt',

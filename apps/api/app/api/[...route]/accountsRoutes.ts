@@ -2,7 +2,6 @@ import { Hono } from 'hono';
 import { getAccount, getSunflowers, getSunflowersHistory } from '@gredice/storage';
 import { describeRoute } from 'hono-openapi';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
-import "zod-openapi/extend";
 import { knownEventTypes } from '@gredice/storage';
 
 const app = new Hono<{ Variables: AuthVariables }>()
@@ -43,8 +42,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 history: accountSunflowersHistory.map((event) => ({
                     id: event.id,
                     createdAt: event.createdAt.toISOString(),
-                    amount: event.type === knownEventTypes.accounts.spendSunflowers 
-                        ? -event.amount 
+                    amount: event.type === knownEventTypes.accounts.spendSunflowers
+                        ? -event.amount
                         : event.amount,
                     reason: event.reason
                 }))
