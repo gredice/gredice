@@ -25,12 +25,16 @@ export default function RootLayout({
         <meta name="theme-color" content="#2e6f40" />
         <title>API | Gredice</title>
       </Head>
-      <body className="antialiased min-h-screen flex">
+      <body className="antialiased min-h-screen flex bg-[#0f0f0f]">
         <Stack className='w-full'>
           <div className="h-[62px]" />
-          <div className='border-b px-4 py-2 fixed top-0 left-0 w-full z-10' style={{ backgroundColor: '#000' }}>
+          <div className='border-b px-4 py-2 fixed top-0 left-0 w-full z-10 bg-[#0f0f0f]'>
             <Link href="/">
-              <Image alt='Logo' src="https://cdn.gredice.com/Logotype-gredice_2x.png" width={163} height={44} />
+              <Image
+                alt='Gredice Logotype'
+                src="https://cdn.gredice.com/Logotype-gredice_2x.png"
+                width={163}
+                height={44} />
             </Link>
           </div>
           {children}
