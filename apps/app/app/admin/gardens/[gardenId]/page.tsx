@@ -8,19 +8,18 @@ import { Field } from "../../../../components/shared/fields/Field";
 import { FieldSet } from "../../../../components/shared/fields/FieldSet";
 import Link from "next/link";
 import { RaisedBedsTableCard } from "../../accounts/[accountId]/RaisedBedsTableCard";
-import Image from "next/image";
+import { notFound } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 
-function GardenPreviewCard({ gardenId }: { gardenId: number }) {
+function GardenPreviewCard({ gardenId, gardenName }: { gardenId: number, gardenName: string }) {
     return (
         <Card className="overflow-hidden">
             <CardOverflow>
-                <Image
+                <img
                     src={`https://vrt.gredice.com/vrtovi/${gardenId}/opengraph-image?fullscreen=true`}
-                    alt="Vrt"
-                    fill
-                    className="w-full h-auto" />
+                    alt={gardenName}
+                />
             </CardOverflow>
         </Card>
     );
