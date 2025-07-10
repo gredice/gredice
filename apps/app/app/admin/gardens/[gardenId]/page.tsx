@@ -31,6 +31,10 @@ export default async function GardenPage({ params }: { params: Promise<{ gardenI
     await auth(['admin']);
     const garden = await getGarden(gardenId);
 
+    if (!garden) {
+        notFound();
+    }
+
     return (
         <Stack spacing={4}>
             <Stack spacing={2}>
@@ -52,7 +56,7 @@ export default async function GardenPage({ params }: { params: Promise<{ gardenI
                 </Stack>
             </Stack>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <GardenPreviewCard gardenId={gardenId} />
+                <GardenPreviewCard gardenId={gardenId} gardenName={garden.name} />
             </div>
             <RaisedBedsTableCard gardenId={gardenId} />
         </Stack>
