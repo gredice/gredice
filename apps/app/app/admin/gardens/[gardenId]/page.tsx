@@ -8,19 +8,18 @@ import { Field } from "../../../../components/shared/fields/Field";
 import { FieldSet } from "../../../../components/shared/fields/FieldSet";
 import Link from "next/link";
 import { RaisedBedsTableCard } from "../../accounts/[accountId]/RaisedBedsTableCard";
-import Image from "next/image";
+import { notFound } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 
-function GardenPreviewCard({ gardenId }: { gardenId: number }) {
+function GardenPreviewCard({ gardenId, gardenName }: { gardenId: number, gardenName: string }) {
     return (
         <Card className="overflow-hidden">
             <CardOverflow>
-                <Image
+                <img
                     src={`https://vrt.gredice.com/vrtovi/${gardenId}/opengraph-image?fullscreen=true`}
-                    alt="Vrt"
-                    fill
-                    className="w-full h-auto" />
+                    alt={gardenName}
+                />
             </CardOverflow>
         </Card>
     );
@@ -30,6 +29,10 @@ export default async function GardenPage({ params }: { params: Promise<{ gardenI
     const { gardenId } = await params;
     await auth(['admin']);
     const garden = await getGarden(gardenId);
+
+    if (!garden) {
+        notFound();
+    }
 
     return (
         <Stack spacing={4}>
@@ -52,7 +55,7 @@ export default async function GardenPage({ params }: { params: Promise<{ gardenI
                 </Stack>
             </Stack>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <GardenPreviewCard gardenId={gardenId} />
+                <GardenPreviewCard gardenId={gardenId} gardenName={garden.name} />
             </div>
             <RaisedBedsTableCard gardenId={gardenId} />
         </Stack>

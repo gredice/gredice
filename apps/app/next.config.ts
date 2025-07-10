@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
             {
                 hostname: 'www.gredice.com',
                 protocol: 'https'
+            },
+            {
+                hostname: 'vrt.gredice.com',
+                protocol: 'https'
             }
         ]
     },
