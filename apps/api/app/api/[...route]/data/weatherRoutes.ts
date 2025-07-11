@@ -65,7 +65,7 @@ const app = new Hono()
             const weather = {
                 symbol: closestEntry.symbol,
                 temperature: closestEntry?.temperature,
-                measuredTemperature: null,//measurements?.actualTemperature,
+                measuredTemperature: null as number | null,//measurements?.actualTemperature,
                 rain: closestEntry.rain,
                 windDirection: closestEntry.windDirection,
                 windSpeed: closestEntry.windStrength,
