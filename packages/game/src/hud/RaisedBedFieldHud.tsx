@@ -12,6 +12,7 @@ import { Modal } from "@signalco/ui-primitives/Modal";
 import { SVGProps } from "react";
 import { RaisedBedFieldSuggestions } from "./raisedBed/RaisedBedFieldSuggestions";
 import { RaisedBedWatering } from "./raisedBed/RaisedBedWatering";
+import { Stack } from "@signalco/ui-primitives/Stack";
 
 const RaisedBedIcon = (props: SVGProps<SVGSVGElement>) => (
     <svg
@@ -85,17 +86,15 @@ export function RaisedBedFieldHud({
                 </div>
                 {currentGarden && raisedBed && (
                     <>
-                        {flags?.enableRaisedBedWateringFlag && (
-                            <div className="absolute top-[calc(50%+200px)] left-[calc(50%-156.5px)] md:left-[calc(50%+210px)] md:top-[calc(50%+74px)]">
+                        <div className="absolute top-[calc(50%+160px)] left-[calc(50%-156.5px)] md:left-[calc(50%+210px)] md:top-[calc(50%+74px)]">
+                            <Stack spacing={0.5}>
                                 <RaisedBedWatering
                                     gardenId={currentGarden.id}
                                     raisedBedId={raisedBed.id} />
-                            </div>
-                        )}
-                        <div className="absolute top-[calc(50%+160px)] left-[calc(50%-156.5px)] md:left-[calc(50%+210px)] md:top-[calc(50%+118px)]">
-                            <RaisedBedSensorInfo
-                                gardenId={currentGarden.id}
-                                raisedBedId={raisedBed.id} />
+                                <RaisedBedSensorInfo
+                                    gardenId={currentGarden.id}
+                                    raisedBedId={raisedBed.id} />
+                            </Stack>
                         </div>
                         <div className="absolute top-[calc(50%+160px)] left-[calc(50%+36px)] md:top-[calc(50%-158px)] md:left-[calc(50%+210px)]">
                             <RaisedBedFieldSuggestions
