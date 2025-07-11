@@ -141,6 +141,11 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                                             <Row spacing={1}>
                                                 <Checkbox type="submit" />
                                                 <Typography>{`${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}`}</Typography>
+                                                {op.scheduledDate && (
+                                                    <Typography level="body2" className="select-none">
+                                                        <LocaleDateTime time={false}>{op.scheduledDate}</LocaleDateTime>
+                                                    </Typography>
+                                                )}
                                             </Row>
                                         </form>
                                     </div>
