@@ -1,4 +1,4 @@
-import { getAccounts, getAllOperations, getAllRaisedBeds, getEntitiesFormatted, getGardens, getRaisedBeds } from '@gredice/storage';
+import { getAccounts, getAllOperations, getAllRaisedBeds, getEntitiesFormatted, getGardens } from '@gredice/storage';
 import { Table } from '@signalco/ui-primitives/Table';
 import { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
