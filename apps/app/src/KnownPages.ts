@@ -23,6 +23,7 @@ export const KnownPages = {
     Transaction: (transactionId: number) => `/admin/transactions/${transactionId}`,
     ShoppingCarts: '/admin/shopping-carts',
     ShoppingCart: (cartId: number) => `/admin/shopping-carts/${cartId}`,
+    Operations: '/admin/operations',
     Cache: '/admin/cache',
 
     // External links
