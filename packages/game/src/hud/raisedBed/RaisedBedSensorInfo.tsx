@@ -1,7 +1,7 @@
 import { Row } from "@signalco/ui-primitives/Row";
 import { useRaisedBedSensors } from "../../hooks/useRaisedBedSensors";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Thermometer, Droplet, Up, Down, Droplets, ShoppingCart, Check } from "@signalco/ui-icons";
+import { Thermometer, Droplet, Up, Down, Droplets, ShoppingCart, Check, Warning } from "@signalco/ui-icons";
 import { cx } from "@signalco/ui-primitives/cx";
 import { useRaisedBedSensorHistory } from "../../hooks/useRaisedBedSensorHistory";
 import { Card, CardContent } from "@signalco/ui-primitives/Card";
@@ -16,6 +16,7 @@ import { Spinner } from "@signalco/ui-primitives/Spinner";
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@signalco/ui-primitives/Tabs";
 import { ButtonGreen } from "../../shared-ui/ButtonGreen";
+import { Skeleton } from "@signalco/ui-primitives/Skeleton";
 
 function CustomTooltip({ active, payload, header, textColor, label, unit }: any) {
     if (active && payload && payload.length) {
@@ -364,10 +365,6 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
     const soilMoisture = sensors?.find(sensor => sensor.type === 'soil_moisture');
     const soilTemperature = sensors?.find(sensor => sensor.type === 'soil_temperature');
 
-    if (isLoading || error) {
-        return null;
-    }
-
     return (
         <Row spacing={0.5}>
             <SensorInfoModal
@@ -396,9 +393,17 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
                                 Number(soilMoisture?.value ?? '0') >= 20 && "fill-blue-300"
                             )}
                             />
-                            <span>
-                                {soilMoisture?.value ?? "?"}%
-                            </span>
+                            {isLoading && (
+                                <Skeleton className="w-6 h-4" />
+                            )}
+                            {!isLoading && error && (
+                                <Warning className="size-5 shrink-0 text-red-500" />
+                            )}
+                            {!isLoading && !error && (
+                                <span>
+                                    {soilMoisture?.value ?? "-"}%
+                                </span>
+                            )}
                         </Row>
                     </ButtonGreen>
                 )}
@@ -426,9 +431,17 @@ export function RaisedBedSensorInfo({ gardenId, raisedBedId }: { gardenId: numbe
                                 Number(soilTemperature?.value ?? '0') >= 20 && "fill-red-300"
                             )}
                             />
-                            <span>
-                                {soilTemperature?.value ?? "?"}°C
-                            </span>
+                            {isLoading && (
+                                <Skeleton className="w-6 h-4" />
+                            )}
+                            {!isLoading && error && (
+                                <Warning className="size-5 shrink-0 text-red-500" />
+                            )}
+                            {!isLoading && !error && (
+                                <span>
+                                    {soilTemperature?.value ?? "-"}°C
+                                </span>
+                            )}
                         </Row>
                     </ButtonGreen>
                 )}
