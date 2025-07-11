@@ -27,20 +27,20 @@ const app = new Hono()
                 return context.json({ error: 'Forecast not available' }, { status: 500 });
             }
 
-            const measurements = await grediceCached(grediceCacheKeys.airSensorOpgIb, async () => {
-                const airSensorData = await signalcoClient().GET('/entity/{id}', { params: { path: { id: '565c2653-b3eb-4a7e-9399-bf5734128e03' } } });
-                const temperatureContact = airSensorData.data?.contacts?.find((contact) => contact.contactName === 'temperature');
-                const actualTemperature =
-                    temperatureContact &&
-                        temperatureContact.timeStamp &&
-                        typeof temperatureContact.valueSerialized === 'string' &&
-                        TZDate.now() - new Date(temperatureContact.timeStamp).getTime() < 1000 * 60 * 60 * 6 // within the last 6 hours
-                        ? parseFloat(temperatureContact.valueSerialized)
-                        : null;
-                return {
-                    actualTemperature
-                };
-            }, 60 * 60);
+            // const measurements = await grediceCached(grediceCacheKeys.airSensorOpgIb, async () => {
+            //     const airSensorData = await signalcoClient().GET('/entity/{id}', { params: { path: { id: '565c2653-b3eb-4a7e-9399-bf5734128e03' } } });
+            //     const temperatureContact = airSensorData.data?.contacts?.find((contact) => contact.contactName === 'temperature');
+            //     const actualTemperature =
+            //         temperatureContact &&
+            //             temperatureContact.timeStamp &&
+            //             typeof temperatureContact.valueSerialized === 'string' &&
+            //             TZDate.now() - new Date(temperatureContact.timeStamp).getTime() < 1000 * 60 * 60 * 6 // within the last 6 hours
+            //             ? parseFloat(temperatureContact.valueSerialized)
+            //             : null;
+            //     return {
+            //         actualTemperature
+            //     };
+            // }, 60 * 60);
 
             // Find the forecast entry closest to now
             const nowLocal = new TZDate(TZDate.now(), 'Europe/Zagreb');
