@@ -4,7 +4,7 @@ import { populateWeatherFromSymbol } from '../../../../lib/weather/populateWeath
 import { describeRoute } from 'hono-openapi';
 import { TZDate } from "@date-fns/tz";
 import { grediceCached, grediceCacheKeys } from '@gredice/storage';
-import { signalcoClient } from '@gredice/signalco';
+// import { signalcoClient } from '@gredice/signalco';
 
 const app = new Hono()
     .get(
