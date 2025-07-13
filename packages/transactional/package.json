@@ -9,7 +9,7 @@
         "dev": "email dev -p 4001"
     },
     "devDependencies": {
-        "@types/node": "22.16.0",
+        "@types/node": "22.16.1",
         "@types/react": "19.1.8",
         "typescript": "5.8.3"
     },

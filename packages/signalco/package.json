@@ -16,7 +16,7 @@
     "openapi-fetch": "0.14.0"
   },
   "devDependencies": {
-    "@types/node": "22.16.0",
+    "@types/node": "22.16.1",
     "openapi-typescript": "7.8.0",
     "server-only": "0.0.1",
     "typescript": "5.8.3"
