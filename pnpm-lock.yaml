@@ -199,6 +199,9 @@ importers:
       '@gredice/js':
         specifier: workspace:*
         version: link:../../packages/js
+      '@gredice/signalco':
+        specifier: workspace:*
+        version: link:../../packages/signalco
       '@gredice/storage':
         specifier: workspace:*
         version: link:../../packages/storage

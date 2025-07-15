@@ -63,6 +63,7 @@ export async function Nav() {
             <Stack spacing={1}>
                 <ListHeader header="Sustavi" />
                 <List>
+                    <NavItem href={KnownPages.Sensors} label="Senzori" icon={<File className="size-5" />} />
                     <NavItem href={KnownPages.Cache} label="Cache" icon={<File className="size-5" />} />
                 </List>
             </Stack>

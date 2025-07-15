@@ -24,6 +24,7 @@ export const KnownPages = {
     ShoppingCarts: '/admin/shopping-carts',
     ShoppingCart: (cartId: number) => `/admin/shopping-carts/${cartId}`,
     Operations: '/admin/operations',
+    Sensors: '/admin/sensors',
     Cache: '/admin/cache',
 
     // External links
