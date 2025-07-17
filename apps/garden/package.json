@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",
-    "@eslint/js": "9.30.1",
+    "@eslint/js": "9.31.0",
     "@gredice/client": "workspace:*",
     "@gredice/game": "workspace:*",
     "@gredice/ui": "workspace:*",
@@ -49,7 +49,7 @@
     "@types/react-dom": "19.1.6",
     "@vercel/analytics": "1.5.0",
     "babel-plugin-react-compiler": "19.1.0-rc.2",
-    "eslint": "9.30.1",
+    "eslint": "9.31.0",
     "eslint-config-next": "15.3.5",
     "next-axiom": "1.9.1",
     "postcss": "8.5.6",
