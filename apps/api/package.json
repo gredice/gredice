@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@date-fns/tz": "1.2.0",
-    "@hono/zod-validator": "0.7.0",
+    "@hono/zod-validator": "0.7.1",
     "@scalar/api-reference-react": "0.7.30",
     "@upstash/redis": "1.35.1",
     "date-fns": "4.1.0",
