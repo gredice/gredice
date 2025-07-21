@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@signalco/js": "0.1.0",
-    "@stripe/stripe-js": "7.4.0",
+    "@stripe/stripe-js": "7.5.0",
     "react": "19.1.0",
     "stripe": "18.3.0",
     "typescript": "5.8.3"
