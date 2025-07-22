@@ -1,0 +1,19 @@
+{
+  "name": "@gredice/email",
+  "version": "1.0.0",
+  "private": true,
+  "exports": {
+    "./*": "./src/*/index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "22.16.4",
+    "@types/react": "19.1.8",
+    "typescript": "5.8.3"
+  },
+  "dependencies": {
+    "@react-email/components": "0.3.2",
+    "react": "19.1.0",
+    "react-email": "4.2.3",
+    "@azure/communication-email": "1.0.0"
+  }
+}

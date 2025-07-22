@@ -62,7 +62,9 @@ export function setAllNotificationsRead(accountId: string, userId: string, notif
 }
 
 export function deleteNotification(id: string) {
-    return storage().delete(notifications).where(eq(notifications.id, id));
+    return storage()
+        .delete(notifications)
+        .where(eq(notifications.id, id));
 }
 
 export async function notificationsDigest({ markSent = true }: { markSent?: boolean } = {}) {

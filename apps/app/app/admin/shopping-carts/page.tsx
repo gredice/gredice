@@ -44,7 +44,7 @@ export default async function ShoppingCartsPage() {
                                 </Table.Row>
                             )}
                             {shoppingCarts.map(cart => {
-                                const user = cart.account.accountUsers.at(0)?.user;
+                                const user = cart.account?.accountUsers.at(0)?.user;
                                 return (
                                     <Table.Row key={cart.id}>
                                         <Table.Cell>

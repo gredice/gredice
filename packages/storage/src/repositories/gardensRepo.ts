@@ -205,6 +205,13 @@ export async function deleteGardenStack(gardenId: number, { x, y }: { x: number,
         );
 }
 
+export async function deleteGardenStacks(gardenId: number) {
+    await storage()
+        .update(gardenStacks)
+        .set({ isDeleted: true })
+        .where(eq(gardenStacks.gardenId, gardenId));
+}
+
 export async function createRaisedBed(raisedBed: Omit<InsertRaisedBed, 'name'>) {
     return (await storage()
         .insert(raisedBeds)

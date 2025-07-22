@@ -6,6 +6,7 @@ export * from './repositories/attributeValuesRepo';
 export * from './repositories/attributeDefinitionsRepo';
 export * from './repositories/usersRepo';
 export * from './repositories/accountsRepo';
+export * from './repositories/accountDeletionRepo';
 export * from './repositories/gardensRepo';
 export * from './repositories/farmsRepo';
 export * from './repositories/eventsRepo';

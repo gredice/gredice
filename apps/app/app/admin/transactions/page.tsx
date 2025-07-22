@@ -54,9 +54,11 @@ export default async function TransactionsPage() {
                                         </Link>
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <Link href={KnownPages.Account(transaction.accountId)}>
-                                            {transaction.accountId}
-                                        </Link>
+                                        {transaction.accountId && (
+                                            <Link href={KnownPages.Account(transaction.accountId)}>
+                                                {transaction.accountId}
+                                            </Link>
+                                        )}
                                     </Table.Cell>
                                     <Table.Cell>
                                         <Chip color="info" size="lg" className="w-fit">

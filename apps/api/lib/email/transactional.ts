@@ -1,4 +1,4 @@
-import { Resend } from 'resend';
+import { sendEmail } from '@gredice/email/acs';
 import ResetPasswordEmailTemplate from '@gredice/transactional/emails/Account/reset-password';
 import { ResetPasswordEmailTemplateProps } from '@gredice/transactional/emails/Account/reset-password';
 import WelcomeEmailTemplate from '@gredice/transactional/emails/Account/welcome';
@@ -7,70 +7,40 @@ import EmailNotificationsBulkTemplate from '@gredice/transactional/emails/Notifi
 import { EmailNotificationsBulkTemplateProps } from '@gredice/transactional/emails/Notifications/notifications-bulk';
 import EmailVerifyEmailTemplate from '@gredice/transactional/emails/Account/email-verify';
 import { EmailVerifyEmailTemplateProps } from '@gredice/transactional/emails/Account/email-verify';
-import { ReactNode } from 'react';
-
-let resend: Resend | null = null;
-
-function getResend() {
-    if (!resend) {
-        resend = new Resend(process.env.RESEND_API_KEY);
-    }
-    return resend;
-}
-
-export async function sendEmail(options: {
-    from: string,
-    to: string | string[],
-    cc?: string | string[],
-    subject: string,
-    text?: string,
-    html?: string,
-    react?: ReactNode,
-}) {
-    const { from, to, cc, subject, text, html, react } = options;
-    return await getResend().emails.send({
-        from: from,
-        to: Array.isArray(to) ? to : [to],
-        cc: !cc || Array.isArray(cc) ? cc : [cc],
-        subject,
-        text,
-        html,
-        react,
-    });
-}
+;
 
 export async function sendEmailVerify(to: string, config: EmailVerifyEmailTemplateProps) {
-    return await getResend().emails.send({
+    return await sendEmail({
         from: 'Gredice <suncokret@obavijesti.gredice.com>',
-        to: [to],
+        to,
         subject: 'Gredice - potvrda email adrese',
-        react: EmailVerifyEmailTemplate(config),
+        template: EmailVerifyEmailTemplate(config),
     });
 }
 
 export async function sendResetPassword(to: string, config: ResetPasswordEmailTemplateProps) {
-    return await getResend().emails.send({
+    return await sendEmail({
         from: 'Gredice <suncokret@obavijesti.gredice.com>',
-        to: [to],
+        to,
         subject: 'Gredice - promjena zaporke',
-        react: ResetPasswordEmailTemplate(config),
+        template: ResetPasswordEmailTemplate(config),
     });
 }
 
 export async function sendWelcome(to: string, config: WelcomeEmailTemplateProps) {
-    return await getResend().emails.send({
+    return await sendEmail({
         from: 'Gredice <suncokret@obavijesti.gredice.com>',
-        to: [to],
+        to,
         subject: 'Dobrodošli u Gredice',
-        react: WelcomeEmailTemplate(config),
+        template: WelcomeEmailTemplate(config),
     });
 }
 
 export async function sendNotificationsBulk(to: string, config: EmailNotificationsBulkTemplateProps) {
-    return await getResend().emails.send({
+    return await sendEmail({
         from: 'Gredice <suncokret@obavijesti.gredice.com>',
-        to: [to],
+        to,
         subject: 'Gredice - nove obavijesti',
-        react: EmailNotificationsBulkTemplate(config),
+        template: EmailNotificationsBulkTemplate(config),
     });
 }

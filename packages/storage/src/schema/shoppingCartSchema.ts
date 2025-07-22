@@ -5,7 +5,7 @@ import { gardens, raisedBeds } from "./gardenSchema";
 
 export const shoppingCarts = pgTable('shopping_carts', {
     id: serial('id').primaryKey(),
-    accountId: text('account_id').notNull().references(() => accounts.id),
+    accountId: text('account_id').references(() => accounts.id),
     expiresAt: timestamp('expires_at').notNull(),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),

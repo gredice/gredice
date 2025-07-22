@@ -5,6 +5,10 @@ import { storage } from "../storage";
 import { createEvent, knownEvents } from "./eventsRepo";
 
 export async function createTransaction(transaction: InsertTransaction, entities?: InsertTransactionEntity[]) {
+    if (!transaction.accountId) {
+        throw new Error("Transaction must have an accountId");
+    }
+
     const transactionId = (await storage()
         .insert(transactions)
         .values(transaction)

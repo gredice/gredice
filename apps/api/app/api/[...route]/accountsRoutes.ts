@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
-import { getAccount, getSunflowers, getSunflowersHistory } from '@gredice/storage';
+import { deleteAccountWithDependencies, getAccount, getAccountUsers, getSunflowers, getSunflowersHistory, getUser } from '@gredice/storage';
 import { describeRoute } from 'hono-openapi';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import { knownEventTypes } from '@gredice/storage';
+import { verifyJwt } from '../../../lib/auth/auth';
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -48,6 +49,53 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     reason: event.reason
                 }))
             });
-        });
+        })
+    .delete(
+        '/',
+        describeRoute({
+            description: 'Deletes the account.'
+        }),
+        async (context) => {
+            // TODO: Use zod
+            const token = context.req.query('token');
+            console.info(`[AccountDelete] Deleting account with token=${token}`);
+            let currentUserId: string | undefined;
+            try {
+                const { result, error } = await verifyJwt(typeof token === 'string' ? token : '', {
+                    expiry: '72h',
+                });
+                if (error || !result?.payload.sub) {
+                    console.warn('JWT verify returned error:', error);
+                    throw new Error("Invalid state token");
+                }
+                currentUserId = result.payload.sub;
+            } catch (error) {
+                console.warn('Error verifying JWT:', error);
+                return context.json({ error: 'Invalid or expired link.' }, 400);
+            }
+
+            try {
+                const user = await getUser(currentUserId);
+                const accountId = user?.accounts?.at(0)?.accountId;
+                if (!accountId) {
+                    return context.json({ error: 'Account not found.' }, 404);
+                }
+
+                // TODO: Move check to delete function (repo)
+                // Check preconditions again
+                const users = await getAccountUsers(accountId);
+                if (!users || users.length !== 1) {
+                    return context.json({ error: 'Account must have exactly one user.' }, 400);
+                }
+
+                await deleteAccountWithDependencies(accountId, currentUserId);
+
+                return context.json({ success: true, message: 'Account deleted successfully.' });
+            } catch (error) {
+                console.error('[AccountDelete] Error deleting account:', error);
+                return context.json({ error: 'Invalid or expired link.' }, 500);
+            }
+        }
+    );
 
 export default app;

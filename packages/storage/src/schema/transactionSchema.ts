@@ -5,8 +5,8 @@ import { gardens } from "./gardenSchema";
 
 export const transactions = pgTable('transactions', {
     id: serial('id').primaryKey(),
-    accountId: text('account_id').notNull().references(() => accounts.id),
-    gardenId: integer('garden_id').references(() => gardens.id), 
+    accountId: text('account_id').references(() => accounts.id),
+    gardenId: integer('garden_id').references(() => gardens.id),
     stripePaymentId: text('stripe_payment_id').notNull(),
     amount: integer('amount').notNull(),
     currency: text('currency').notNull(),

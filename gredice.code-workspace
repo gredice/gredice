@@ -37,6 +37,10 @@
 			"path": "packages/cdn"
 		},
 		{
+			"name": "📦 @gredice/email",
+			"path": "packages/email"
+		},
+		{
 			"name": "📦 @gredice/game",
 			"path": "packages/game"
 		},
