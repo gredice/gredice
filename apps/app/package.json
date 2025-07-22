@@ -24,14 +24,14 @@
     "prettier": "3.6.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-email": "4.2.1",
-    "resend": "4.6.0",
+    "react-email": "4.2.3",
     "server-only": "0.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",
     "@eslint/js": "9.31.0",
     "@gredice/apidocs": "workspace:*",
+    "@gredice/email": "workspace:*",
     "@gredice/js": "workspace:*",
     "@gredice/storage": "workspace:*",
     "@gredice/stripe": "workspace:*",

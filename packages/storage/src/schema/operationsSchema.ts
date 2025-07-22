@@ -4,7 +4,7 @@ export const operations = pgTable('operations', {
     id: serial('id').primaryKey(),
     entityId: integer('entity_id').notNull(),
     entityTypeName: text('entity_type_name').notNull(),
-    accountId: text('account_id').notNull(),
+    accountId: text('account_id'),
     gardenId: integer('garden_id'),
     raisedBedId: integer('raised_bed_id'),
     raisedBedFieldId: integer('raised_bed_field_id'),

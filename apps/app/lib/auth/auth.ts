@@ -35,6 +35,7 @@ export const { withAuth, createJwt, setCookie, auth, clearCookie } = initRbac(in
     jwt: {
         namespace: 'gredice',
         issuer: 'api',
+        audience: 'web',
         jwtSecretFactory,
     },
     cookie: {

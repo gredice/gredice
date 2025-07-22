@@ -15,7 +15,6 @@ const thirdPartyPlatforms = [
     { name: "GitHub", description: "platforma za upravljanje izvornim kodom i suradnju na projektima." },
     { name: "Hypertune", description: "platforma za upravljanje značajkama sustava." },
     { name: "MailerLite", description: "alat za slanje e-pošte i upravljanje pretplatnicima." },
-    { name: "Resend", description: "platforma za slanje e-pošte i upravljanje pretplatnicima." },
     { name: "Stripe", description: "platforma za online plaćanja i naplatu." },
     { name: "Vercel Analytics", description: "alat za analitiku koji nam pomaže razumjeti kako korisnici koriste našu web stranicu." },
     { name: "Vercel Hosting", description: "platforma za hosting i distribuciju web stranica." }

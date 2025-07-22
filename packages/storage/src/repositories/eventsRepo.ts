@@ -27,12 +27,14 @@ export const knownEventTypes = {
         create: "raisedBed.create",
         place: "raisedBed.place",
         delete: "raisedBed.delete",
+        abandon: "raisedBed.abandon",
     },
     raisedBedFields: {
         create: "raisedBedField.create",
         delete: "raisedBedField.delete",
         plantPlace: "raisedBedField.plantPlace",
         plantUpdate: "raisedBedField.plantUpdate",
+        plantAbandon: "raisedBedField.plantAbandon",
     },
     operations: {
         schedule: "operation.schedule",
@@ -84,11 +86,16 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
-
         deletedV1: (aggregateId: string) => ({
             type: knownEventTypes.raisedBeds.delete,
             version: 1,
             aggregateId,
+        }),
+        abandonV1: (aggregateId: string) => ({
+            type: knownEventTypes.raisedBeds.abandon,
+            version: 1,
+            aggregateId,
+            data: { status: "abandoned" },
         }),
     },
     raisedBedFields: {
@@ -102,6 +109,12 @@ export const knownEvents = {
             type: knownEventTypes.raisedBedFields.delete,
             version: 1,
             aggregateId,
+        }),
+        plantAbandonV1: (aggregateId: string) => ({
+            type: knownEventTypes.raisedBedFields.plantAbandon,
+            version: 1,
+            aggregateId,
+            data: { status: "abandoned" },
         }),
         plantPlaceV1: (aggregateId: string, data: { plantSortId: string, scheduledDate: string | null | undefined }) => ({
             type: knownEventTypes.raisedBedFields.plantPlace,

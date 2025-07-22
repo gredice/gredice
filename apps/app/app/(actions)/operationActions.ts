@@ -80,7 +80,7 @@ export async function completeOperationAction(formData: FormData) {
         createEvent(knownEvents.operations.completedV1(operationId.toString(), {
             completedBy
         })),
-        (header && content) ?
+        (header && content && operation.accountId) ?
             createNotification({
                 accountId: operation.accountId,
                 gardenId: operation.gardenId,
