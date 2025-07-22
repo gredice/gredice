@@ -25,7 +25,7 @@
     "@eslint/eslintrc": "3.3.1",
     "@eslint/js": "9.31.0",
     "@gredice/storage": "workspace:*",
-    "@mdxeditor/editor": "3.39.1",
+    "@mdxeditor/editor": "3.40.0",
     "@playwright/experimental-ct-react": "1.54.1",
     "@playwright/test": "1.54.1",
     "@signalco/auth-client": "0.3.0",
