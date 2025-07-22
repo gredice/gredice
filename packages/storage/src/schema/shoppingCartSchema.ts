@@ -6,14 +6,12 @@ import { gardens, raisedBeds } from "./gardenSchema";
 export const shoppingCarts = pgTable('shopping_carts', {
     id: serial('id').primaryKey(),
     accountId: text('account_id').references(() => accounts.id),
-    expiresAt: timestamp('expires_at').notNull(),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
     status: text('status').notNull().default('new'), // 'new' | 'paid'
 }, (table) => [
     index('shopping_carts_account_id_idx').on(table.accountId),
-    index('shopping_carts_expires_at_idx').on(table.expiresAt),
     index('shopping_carts_is_deleted_idx').on(table.isDeleted),
     index('shopping_carts_status_idx').on(table.status),
 ]);

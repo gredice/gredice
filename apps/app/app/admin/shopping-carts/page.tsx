@@ -30,7 +30,6 @@ export default async function ShoppingCartsPage() {
                                 <Table.Head>Broj stavki</Table.Head>
                                 <Table.Head>Status</Table.Head>
                                 <Table.Head>Datum kreiranja</Table.Head>
-                                <Table.Head>Datum isteka</Table.Head>
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
@@ -73,11 +72,6 @@ export default async function ShoppingCartsPage() {
                                         <Table.Cell>
                                             <LocaleDateTime time={false}>
                                                 {cart.createdAt}
-                                            </LocaleDateTime>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <LocaleDateTime time={false}>
-                                                {cart.expiresAt}
                                             </LocaleDateTime>
                                         </Table.Cell>
                                     </Table.Row>

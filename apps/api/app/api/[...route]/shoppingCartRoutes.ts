@@ -16,7 +16,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { accountId } = context.get('authContext');
             const status = context.req.query('status') as 'new' | 'paid' | undefined;
-            const cart = await getOrCreateShoppingCart(accountId, undefined, status || 'new');
+            const cart = await getOrCreateShoppingCart(accountId, status || 'new');
             if (!cart) {
                 return context.json({ error: 'Cart not found' }, 404);
             }

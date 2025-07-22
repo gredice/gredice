@@ -2,7 +2,7 @@ import { and, eq, not } from "drizzle-orm";
 import { shoppingCarts, shoppingCartItems } from "../schema";
 import { storage } from "../storage";
 
-export async function getOrCreateShoppingCart(accountId: string, expiresAt?: Date, status: 'new' | 'paid' = 'new') {
+export async function getOrCreateShoppingCart(accountId: string, status: 'new' | 'paid' = 'new') {
     let cart = await storage().query.shoppingCarts.findFirst({
         where: and(
             eq(shoppingCarts.accountId, accountId),
@@ -24,7 +24,6 @@ export async function getOrCreateShoppingCart(accountId: string, expiresAt?: Dat
         .insert(shoppingCarts)
         .values({
             accountId,
-            expiresAt: expiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             status: 'new',
         })
         .returning({
