@@ -88,7 +88,14 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
                 i.entityTypeName === itemData.entityTypeName &&
                 (i.gardenId ?? null) === (itemData.gardenId ?? null) &&
                 (i.raisedBedId ?? null) === (itemData.raisedBedId ?? null) &&
-                (i.positionIndex ?? null) === (itemData.positionIndex ?? null));
+                (i.positionIndex ?? null) === (itemData.positionIndex ?? null) &&
+                (i.additionalData ?? null) === (itemData.additionalData ?? null) &&
+                (i.currency ?? null) === (itemData.currency ?? null)
+            );
+            if (cartItem?.status === 'paid') {
+                console.warn(`Cart item ${cartItem.id} is already paid. Skipping so we don't double process.`);
+                continue;
+            }
             if (!cartItem) {
                 console.warn(`No existing item found in cart for entityId ${itemData.entityId} in session ${checkoutSessionId}`);
                 continue;
