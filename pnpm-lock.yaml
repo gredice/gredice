@@ -964,8 +964,8 @@ importers:
         specifier: 19.1.0
         version: 19.1.0
       react-email:
-        specifier: 4.2.2
-        version: 4.2.2(bufferutil@4.0.9)
+        specifier: 4.2.3
+        version: 4.2.3(bufferutil@4.0.9)
     devDependencies:
       '@types/node':
         specifier: 22.16.5
@@ -6989,11 +6989,6 @@ packages:
     engines: {node: '>= 10.13'}
     peerDependencies:
       react: '>= 16.8'
-
-  react-email@4.2.2:
-    resolution: {integrity: sha512-Ch4n9oJJ5FGQTcrRe8qJV6ZQGwGwBj7UAuLMXvEggAHR00i/TkKSRNXeMcUdaIhcDo3iJflQOL7VTw8cMV9zag==}
-    engines: {node: '>=18.0.0'}
-    hasBin: true
 
   react-email@4.2.3:
     resolution: {integrity: sha512-LUKyk9nNVFuTqAyp4yCEQFQjBe+s8nl3VauMWuOhBZ4VhGnimbrnv01U8yD2YwzaHKtytS0U659x5dc/0+xu+Q==}
@@ -15527,30 +15522,6 @@ snapshots:
       file-selector: 0.5.0
       prop-types: 15.8.1
       react: 19.1.0
-
-  react-email@4.2.2(bufferutil@4.0.9):
-    dependencies:
-      '@babel/parser': 7.28.0
-      '@babel/traverse': 7.28.0
-      chalk: 5.4.1
-      chokidar: 4.0.3
-      commander: 13.1.0
-      debounce: 2.2.0
-      esbuild: 0.25.6
-      glob: 11.0.3
-      jiti: 2.4.2
-      log-symbols: 7.0.1
-      mime-types: 3.0.1
-      normalize-path: 3.0.0
-      nypm: 0.6.0
-      ora: 8.2.0
-      prompts: 2.4.2
-      socket.io: 4.8.1(bufferutil@4.0.9)
-      tsconfig-paths: 4.2.0
-    transitivePeerDependencies:
-      - bufferutil
-      - supports-color
-      - utf-8-validate
 
   react-email@4.2.3(bufferutil@4.0.9):
     dependencies:
