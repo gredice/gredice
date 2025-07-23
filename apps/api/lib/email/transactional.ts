@@ -11,7 +11,7 @@ import { EmailVerifyEmailTemplateProps } from '@gredice/transactional/emails/Acc
 
 export async function sendEmailVerify(to: string, config: EmailVerifyEmailTemplateProps) {
     return await sendEmail({
-        from: 'Gredice <suncokret@obavijesti.gredice.com>',
+        from: 'suncokret@obavijesti.gredice.com',
         to,
         subject: 'Gredice - potvrda email adrese',
         template: EmailVerifyEmailTemplate(config),
@@ -20,7 +20,7 @@ export async function sendEmailVerify(to: string, config: EmailVerifyEmailTempla
 
 export async function sendResetPassword(to: string, config: ResetPasswordEmailTemplateProps) {
     return await sendEmail({
-        from: 'Gredice <suncokret@obavijesti.gredice.com>',
+        from: 'suncokret@obavijesti.gredice.com',
         to,
         subject: 'Gredice - promjena zaporke',
         template: ResetPasswordEmailTemplate(config),
@@ -29,7 +29,7 @@ export async function sendResetPassword(to: string, config: ResetPasswordEmailTe
 
 export async function sendWelcome(to: string, config: WelcomeEmailTemplateProps) {
     return await sendEmail({
-        from: 'Gredice <suncokret@obavijesti.gredice.com>',
+        from: 'suncokret@obavijesti.gredice.com',
         to,
         subject: 'Dobrodošli u Gredice',
         template: WelcomeEmailTemplate(config),
@@ -38,7 +38,7 @@ export async function sendWelcome(to: string, config: WelcomeEmailTemplateProps)
 
 export async function sendNotificationsBulk(to: string, config: EmailNotificationsBulkTemplateProps) {
     return await sendEmail({
-        from: 'Gredice <suncokret@obavijesti.gredice.com>',
+        from: 'suncokret@obavijesti.gredice.com',
         to,
         subject: 'Gredice - nove obavijesti',
         template: EmailNotificationsBulkTemplate(config),
