@@ -136,6 +136,19 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
         notes.push(`${neededPlural} još ${missingItemsCount} ${plantPlural} u ovoj ili susjednoj gredici za postavljanje ${raisedBedsPlural}.`);
         allowPurchase = false;
     }
+
+    // Minimum order (0.5 EUR)
+    const totalCartValue = cartItemsWithShopInfo.reduce((sum, item) => {
+        if (item.status !== 'paid' && item.currency === 'euro') {
+            const price = item.shopData.discountPrice ?? item.shopData.price ?? 0;
+            return sum + (price * item.amount);
+        }
+        return sum;
+    }, 0);
+    if (totalCartValue < 0.5) {
+        notes.push('Minimalna vrijednost narudžbe je 0,50 €.');
+        allowPurchase = false;
+    }
     // --- End notes logic ---
 
     return {
