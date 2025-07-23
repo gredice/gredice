@@ -26,7 +26,7 @@
         }
     ],
     "dependencyDashboard": true,
-    "baseBranches": [
+    "baseBranchPatterns": [
         "main"
     ],
     "minimumReleaseAge": "5 days",
