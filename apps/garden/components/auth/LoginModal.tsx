@@ -88,7 +88,8 @@ export default function LoginModal() {
             open
             title="Prijava"
             className='bg-card border-tertiary border-b-4 rounded-lg shadow-2xl'
-            hideClose>
+            hideClose
+            dismissible={false}>
             <Stack spacing={2}>
                 <Row spacing={2} justifyContent='start'>
                     <Image
