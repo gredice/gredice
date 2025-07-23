@@ -145,7 +145,7 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
         }
         return sum;
     }, 0);
-    if (totalCartValue < 0.5) {
+    if (totalCartValue > 0 && totalCartValue < 0.5) {
         notes.push('Minimalna vrijednost narudžbe je 0,50 €.');
         allowPurchase = false;
     }
