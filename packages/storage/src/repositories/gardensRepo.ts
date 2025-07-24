@@ -354,7 +354,10 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
         }))
         .filter(op => op.name);
     const operationsData = await getEntitiesFormatted<EntityStandardized>('operation');
-    const operations = await getOperations(raisedBed.accountId, raisedBed.gardenId, raisedBedId);
+    // TODO: Maybe retrieve operations from other accounts as well, but anonimized
+    const operations = raisedBed.accountId && raisedBed.gardenId
+        ? await getOperations(raisedBed.accountId, raisedBed.gardenId, raisedBedId)
+        : [];
     const operationsDiaryEntries = operations
         .map(op => ({
             id: op.id,

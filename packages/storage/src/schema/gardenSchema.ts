@@ -101,9 +101,9 @@ export type SelectGardenBlock = typeof gardenBlocks.$inferSelect;
 export const raisedBeds = pgTable('raised_beds', {
     id: serial('id').primaryKey(),
     name: text('name').notNull(),
-    accountId: text('account_id').notNull().references(() => accounts.id),
-    gardenId: integer('garden_id').notNull().references(() => gardens.id),
-    blockId: text('block_id').notNull().references(() => gardenBlocks.id),
+    accountId: text('account_id').references(() => accounts.id),
+    gardenId: integer('garden_id').references(() => gardens.id),
+    blockId: text('block_id').references(() => gardenBlocks.id),
     status: text('status').notNull().default('new'), // Possible values: 'new', 'approved', 'built'
     physicalId: text('physical_id'), // Optional physical ID for the raised bed
     createdAt: timestamp('created_at').notNull().defaultNow(),

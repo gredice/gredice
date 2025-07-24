@@ -26,9 +26,9 @@ export async function deleteAccountWithDependencies(accountId: string, userId: s
                 console.info(`[AccountDelete] Abandoning and detaching raised bedId=${raisedBed.id}`);
                 await storage().update(dbRaisedBeds).set({
                     status: 'abandoned',
-                    accountId: undefined,
-                    gardenId: undefined,
-                    blockId: undefined,
+                    accountId: null,
+                    gardenId: null,
+                    blockId: null,
                 }).where(eq(dbRaisedBeds.id, raisedBed.id));
 
                 console.info(`[AccountDelete] Deactivating raised bed sensors for raisedBedId=${raisedBed.id}`);
