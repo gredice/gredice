@@ -59,7 +59,7 @@ export async function raisedBedFieldUpdatePlant({ raisedBedId, positionIndex, st
                 content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** proklijala je biljka **${sortData.information?.name}**.`;
             }
 
-            if (header && content) {
+            if (header && content && raisedBed.accountId) {
                 await createNotification({
                     accountId: raisedBed.accountId,
                     gardenId: raisedBed.gardenId,

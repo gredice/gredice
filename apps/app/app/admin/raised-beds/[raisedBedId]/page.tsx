@@ -34,9 +34,9 @@ export default async function RaisedBedPage({ params }: { params: Promise<{ rais
                 <Stack spacing={2}>
                     <Breadcrumbs items={[
                         { label: 'Računi', href: KnownPages.Accounts },
-                        { label: raisedBed.accountId, href: KnownPages.Account(raisedBed.accountId) },
+                        { label: raisedBed.accountId ?? 'Nepoznato', href: raisedBed.accountId ? KnownPages.Account(raisedBed.accountId) : undefined },
                         { label: 'Vrtovi', href: KnownPages.Gardens },
-                        { label: raisedBed.gardenId, href: KnownPages.Garden(raisedBed.gardenId) },
+                        { label: raisedBed.gardenId ?? 'Nepoznato', href: raisedBed.gardenId ? KnownPages.Garden(raisedBed.gardenId) : undefined },
                         { label: 'Gredice', href: KnownPages.RaisedBeds },
                         { label: raisedBed?.id }
                     ]} />
@@ -100,15 +100,19 @@ export default async function RaisedBedPage({ params }: { params: Promise<{ rais
                         </Table>
                     </CardOverflow>
                 </Card>
-                <OperationsTableCard
-                    accountId={raisedBed.accountId}
-                    gardenId={raisedBed.gardenId}
-                    raisedBedId={raisedBed.id} />
-                <NotificationsTableCard
-                    accountId={raisedBed.accountId}
-                    gardenId={raisedBed.gardenId}
-                    raisedBedId={raisedBed.id}
-                />
+                {raisedBed.accountId && raisedBed.gardenId && (
+                    <>
+                        <OperationsTableCard
+                            accountId={raisedBed.accountId}
+                            gardenId={raisedBed.gardenId}
+                            raisedBedId={raisedBed.id} />
+                        <NotificationsTableCard
+                            accountId={raisedBed.accountId}
+                            gardenId={raisedBed.gardenId}
+                            raisedBedId={raisedBed.id}
+                        />
+                    </>
+                )}
             </div>
         </Stack>
     );
