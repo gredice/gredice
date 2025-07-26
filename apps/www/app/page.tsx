@@ -6,7 +6,7 @@ import { SectionData } from "@signalco/cms-core/SectionData";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NewsletterSignUp } from "./NewsletterSignUp";
-import { GameSceneDynamic } from "./GameSceneDynamic";
+import { GameScene } from "@gredice/game";
 import SeedsAndTransplants from '../assets/SeedsAndTransplants.webp';
 import RaisedBedMaintenance from '../assets/RaisedBedMaintenance.webp';
 import DeliveryTruck from '../assets/DeliveryTruck.webp';
@@ -25,7 +25,7 @@ const sectionsData: SectionData[] = [
         description: 'Dobiješ povrće iz svojih gredica - nit oro, nit kopo!',
         asset: (
             <div className="min-h-96 relative rounded-xl overflow-hidden">
-                <GameSceneDynamic
+                <GameScene
                     appBaseUrl="https://vrt.gredice.com"
                     freezeTime={new Date(2024, 5, 21, 11, 30)}
                     noBackground
