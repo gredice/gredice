@@ -38,7 +38,7 @@ function ButtonPricePickPaymentMethod({ price, isSunflower, onChange }: { price:
             {/* Custom Switch */}
             <button
                 onClick={handleToggle}
-                className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#2f6e40] focus:ring-offset-2 ${isSunflower ? "bg-yellow-200 dark:bg-yellow-400" : "bg-gray-300 dark:bg-slate-600"}`}
+                className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#2f6e40] focus:ring-offset-0 ${isSunflower ? "bg-yellow-200 dark:bg-yellow-400" : "bg-gray-300 dark:bg-slate-600"}`}
                 role="switch"
                 aria-checked={isSunflower}
             >
