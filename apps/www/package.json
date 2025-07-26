@@ -49,7 +49,7 @@
     "@types/react": "19.1.8",
     "@types/react-dom": "19.1.6",
     "@vercel/analytics": "1.5.0",
-    "dotenv": "17.2.0",
+    "dotenv": "17.2.1",
     "eslint": "9.31.0",
     "eslint-config-next": "15.3.5",
     "next-axiom": "1.9.2",
