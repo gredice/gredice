@@ -23,7 +23,7 @@ import { models } from './data/models';
 import { WelcomeMessage } from './hud/WelcomeMessage';
 import { EntityFactory } from './entities/EntityFactory';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
-import { GardenLoadingIndicator } from './GardenLoadingIndicator';
+import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { Environment } from './scene/Environment';
 import { ShoppingCartHud } from './hud/ShoppingCartHud';
 import { RaisedBedFieldHud } from './hud/RaisedBedFieldHud';

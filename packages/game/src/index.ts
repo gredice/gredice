@@ -1,5 +1,4 @@
-export { GameSceneWrapper as GameScene } from './GameScene';
+export { GameSceneDynamic as GameScene } from './GameSceneDynamic';
 export type { GameSceneProps } from './GameScene';
-export { GardenLoadingIndicator } from './GardenLoadingIndicator';
 export { EntityViewer } from './viewers/EntityViewer';
 export type { EntityViewerProps } from './viewers/EntityViewer';
