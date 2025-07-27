@@ -296,7 +296,7 @@ function SensorInfoModal({ icon, header, unit, yDomain, colors, positiveTrend, r
                         </div>
                     )}
                 </div>
-                {(status === 'new' || !sensorId) && (
+                {(status !== 'active' || !sensorId) && (
                     <div className="absolute inset-0 bg-background/20 backdrop-blur-md -m-6">
                         {!status && !isSensorInShoppingCart && (
                             <div className="flex flex-col items-center justify-center h-full gap-4 p-6">
@@ -321,7 +321,7 @@ function SensorInfoModal({ icon, header, unit, yDomain, colors, positiveTrend, r
                                 </Button>
                             </div>
                         )}
-                        {status === 'new' && (
+                        {(status === 'new' || status === 'installed') && (
                             <div className="flex flex-col items-center justify-center h-full gap-4 p-6">
                                 <Typography level="body1">
                                     Senzor je u procesu instalacije...
