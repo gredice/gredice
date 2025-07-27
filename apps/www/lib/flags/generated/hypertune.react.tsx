@@ -53,22 +53,14 @@ export function HypertuneSourceProvider({
   createSourceOptions: hypertune.CreateSourceOptions;
   children: React.ReactNode;
 }): React.ReactElement {
-  const hypertuneSource = React.useMemo(
-    () => {
-      return hypertune.createSource({
-        initDataProvider: typeof window === "undefined" ? null : undefined,
-        remoteLogging: {
-          mode: typeof window === "undefined" ? "off" : undefined,
-        },
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        localLogger: typeof window === "undefined" ? () => {} : undefined,
-        ...createSourceOptions,
-      });
-    },
-    // Don't recreate the source even if createSourceOptions changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
+  const hypertuneSource = hypertune.createSource({
+    key: typeof window === "undefined" ? "ssr" : "client",
+    initDataProvider: typeof window === "undefined" ? null : undefined,
+    remoteLogging: { mode: typeof window === "undefined" ? "off" : undefined },
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    localLogger: typeof window === "undefined" ? () => {} : undefined,
+    ...createSourceOptions,
+  });
 
   const [stateHash, setStateHash] = React.useState(
     hypertuneSource.getStateHash()

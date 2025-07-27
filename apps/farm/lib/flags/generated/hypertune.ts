@@ -184,27 +184,37 @@ export class SourceNode extends sdk.Node {
 }
 
 export type DehydratedState = sdk.DehydratedState<Source, VariableValues>
-export type CreateSourceOptions = { 
+
+const sources: { [key: string]: SourceNode } = {};
+
+export type CreateSourceOptions = {
   token: string; 
   variableValues?: VariableValues;
   override?: sdk.DeepPartial<Source> | null;
+  key?: string;
 } & sdk.CreateOptions
 
 export function createSource({
   token,
   variableValues = {},
   override,
+  key,
   ...options
 }: CreateSourceOptions): SourceNode {
-  return sdk.create({
-    NodeConstructor: SourceNode,
-    token,
-    query,
-    queryCode,
-    variableValues,
-    override,
-    options: {initData: initData as unknown as sdk.InitData, ...options },
-  });
+  const sourceKey =
+    key ?? (typeof window === "undefined" ? "server" : "client");
+
+  if (!sources[sourceKey]) {
+    sources[sourceKey] = sdk.create({
+      NodeConstructor: SourceNode,
+      token,
+      variableValues,
+      override,
+      options: {initData: initData as unknown as sdk.InitData, ...options },
+    });
+  }
+
+  return sources[sourceKey];
 }
 
 export const emptySource = new SourceNode({
@@ -220,6 +230,7 @@ export function createSourceForServerOnly({
   token,
   variableValues = {},
   override,
+  key,
   ...options
 }: CreateSourceOptions): SourceNode {
   return typeof window === "undefined"
