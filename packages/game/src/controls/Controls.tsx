@@ -132,7 +132,7 @@ export function Controls({ debugCloseup }: { debugCloseup?: boolean }) {
                 onStart={() => setIsDragging(true)}
                 onEnd={() => setIsDragging(false)}
                 minZoom={50}
-                maxZoom={200}
+                maxZoom={500}
                 mouseButtons={{
                     LEFT: isEditMode ? undefined : MOUSE.PAN,
                     MIDDLE: MOUSE.DOLLY,
