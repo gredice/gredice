@@ -807,9 +807,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
 
-            // Take only sensors that have a Signalco ID assigned (are installed and configured)
+            // Take only sensors that have a Signalco ID assigned (are installed and configured - eg. status = 'active')
             const sensors = (await getRaisedBedSensors(raisedBedIdNumber))
-                .filter(sensor => Boolean(sensor.sensorSignalcoId))
+                .filter(sensor => Boolean(sensor.sensorSignalcoId) && sensor.status === 'active')
                 .map(sensor => ({
                     ...sensor,
                     sensorSignalcoId: sensor.sensorSignalcoId!
