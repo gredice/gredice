@@ -7,17 +7,14 @@ import { useEntityNeighbors } from "./helpers/useEntityNeighbors";
 import { useHoveredBlockStore } from "../controls/SelectableGroup";
 import { HoverOutline } from "./helpers/HoverOutline";
 import { useCurrentGarden } from "../hooks/useCurrentGarden";
-import { useControls } from "leva";
 import { usePlantSort } from "../hooks/usePlantSorts";
 
 export function RaisedBedPlantField({ positionIndex, plantSortId }: { positionIndex: number, plantSortId: number }) {
     const { data: sortData } = usePlantSort(plantSortId);
-    const { offsetX, offsetY, multiplierX, multiplierY } = useControls({
-        offsetX: { value: 0.28, min: 0, max: 1, step: 0.01 },
-        offsetY: { value: 0.28, min: 0, max: 1, step: 0.01 },
-        multiplierX: { value: 0.27, min: 0.1, max: 1, step: 0.01 },
-        multiplierY: { value: 0.27, min: 0.1, max: 1, step: 0.01 },
-    });
+    const offsetX = 0.28;
+    const offsetY = 0.28;
+    const multiplierX = 0.27;
+    const multiplierY = 0.27;
 
     let plantsPerRow = Math.floor(30 / (sortData?.information.plant.attributes?.seedingDistance ?? 30));
     if (plantsPerRow < 1) {
