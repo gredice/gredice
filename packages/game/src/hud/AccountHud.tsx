@@ -42,7 +42,7 @@ function NotificationsCard() {
                 </IconButton>
             </Row>
             <Divider />
-            <div className=" overflow-y-auto max-h-96">
+            <div className="overflow-y-auto max-h-[50vh]">
                 <NotificationList short />
             </div>
             <Divider />

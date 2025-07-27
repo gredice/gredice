@@ -149,13 +149,12 @@ export async function upsertOrRemoveCartItem(
 }
 
 export async function deleteShoppingCart(accountId: string) {
-    const cart = await storage().query.shoppingCarts.findFirst({
-        where: and(eq(shoppingCarts.accountId, accountId), eq(shoppingCarts.isDeleted, false)),
-    });
-
+    const cart = await getOrCreateShoppingCart(accountId);
     if (cart) {
-        await storage().update(shoppingCarts).set({ isDeleted: true }).where(eq(shoppingCarts.id, cart.id));
-        await storage().update(shoppingCartItems).set({ isDeleted: true }).where(eq(shoppingCartItems.cartId, cart.id));
+        await Promise.all([
+            storage().update(shoppingCarts).set({ isDeleted: true }).where(eq(shoppingCarts.id, cart.id)),
+            storage().update(shoppingCartItems).set({ isDeleted: true }).where(eq(shoppingCartItems.cartId, cart.id))
+        ]);
     }
 }
 
