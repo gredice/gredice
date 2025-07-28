@@ -69,6 +69,7 @@ export function UserProfileCard() {
                                 <Input
                                     name="displayName"
                                     label="Prikazano ime"
+                                    className='[&_input]:text-base sm:[&_input]:text-[16px]'
                                     defaultValue={currentUser.data?.displayName}
                                     type="text"
                                     placeholder="Unesite ime..."
