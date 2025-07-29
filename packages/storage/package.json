@@ -23,7 +23,7 @@
         "@eslint/js": "9.32.0",
         "@neondatabase/serverless": "1.0.1",
         "@signalco/js": "0.1.0",
-        "@upstash/redis": "1.35.1",
+        "@upstash/redis": "1.35.2",
         "dotenv": "17.2.1",
         "drizzle-kit": "0.31.4",
         "drizzle-orm": "0.44.4",
