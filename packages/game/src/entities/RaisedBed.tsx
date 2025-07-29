@@ -1,4 +1,4 @@
-import { animated } from "@react-spring/three";
+import { animated, useSpring } from "@react-spring/three";
 import { models } from "../data/models";
 import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
 import { useStackHeight } from "../utils/getStackHeight";
@@ -8,8 +8,10 @@ import { useHoveredBlockStore } from "../controls/SelectableGroup";
 import { HoverOutline } from "./helpers/HoverOutline";
 import { useCurrentGarden } from "../hooks/useCurrentGarden";
 import { usePlantSort } from "../hooks/usePlantSorts";
+import { GardenResponse } from "@gredice/client";
 
-export function RaisedBedPlantField({ positionIndex, plantSortId }: { positionIndex: number, plantSortId: number }) {
+export function RaisedBedPlantField({ field }: { field: GardenResponse['raisedBeds'][number]['fields'][number] }) {
+    const { positionIndex, plantSortId, plantSowDate } = field;
     const { data: sortData } = usePlantSort(plantSortId);
     const offsetX = 0.28;
     const offsetY = 0.28;
@@ -31,7 +33,17 @@ export function RaisedBedPlantField({ positionIndex, plantSortId }: { positionIn
         { multiplier: 0.07, offset: 0.0225, scale: 1.4 }
     ];
 
-    const seedColor = 'black';
+    const seedColor = plantSowDate ? 'black' : '#6495ED';
+    const seedOpacityToMax = useSpring({
+        from: { opacity: 1 },
+        to: [
+            { opacity: 0.5 },
+            { opacity: 1 }
+        ],
+        duration: 1000,
+        loop: true,
+        cancel: Boolean(plantSowDate)
+    });
 
     const { nodes }: any = useGameGLTF(models.GameAssets.url);
     const resolvedPositionX = Math.floor(positionIndex / 3);
@@ -41,6 +53,12 @@ export function RaisedBedPlantField({ positionIndex, plantSortId }: { positionIn
         -0.75,
         (2 - resolvedPositionY) * multiplierY - offsetY
     ] as const;
+
+    // If no plant sort is defined, don't render
+    if (!plantSortId) {
+        return null;
+    }
+
     return (
         <group position={fieldPosition}>
             {Array.from({ length: seedsCount }).map((_, index) => {
@@ -58,7 +76,10 @@ export function RaisedBedPlantField({ positionIndex, plantSortId }: { positionIn
                         scale={seedMap[plantsPerRow].scale}
                         geometry={nodes.Seed.geometry}
                     >
-                        <meshStandardMaterial color={seedColor} transparent />
+                        <animated.meshStandardMaterial
+                            color={seedColor}
+                            transparent
+                            {...seedOpacityToMax} />
                     </mesh>
                 );
             })}
@@ -73,14 +94,9 @@ export function RiasedBedFields({ blockId }: { blockId: string }) {
     return (
         <>
             {raisedBed?.fields?.map(field => (
-                <>
-                    {field.plantSortId && (
-                        <RaisedBedPlantField
-                            key={field.id}
-                            positionIndex={field.positionIndex}
-                            plantSortId={field.plantSortId} />
-                    )}
-                </>
+                <RaisedBedPlantField
+                    key={field.id}
+                    field={field} />
             ))}
         </>
     );
