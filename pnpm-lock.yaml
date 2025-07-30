@@ -178,8 +178,8 @@ importers:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
       react-email:
-        specifier: 4.2.4
-        version: 4.2.4(bufferutil@4.0.9)
+        specifier: 4.2.5
+        version: 4.2.5(bufferutil@4.0.9)
       server-only:
         specifier: 0.0.1
         version: 0.0.1
@@ -702,8 +702,8 @@ importers:
         specifier: 19.1.0
         version: 19.1.0
       react-email:
-        specifier: 4.2.4
-        version: 4.2.4(bufferutil@4.0.9)
+        specifier: 4.2.5
+        version: 4.2.5(bufferutil@4.0.9)
     devDependencies:
       '@types/node':
         specifier: 22.16.5
@@ -967,8 +967,8 @@ importers:
         specifier: 19.1.0
         version: 19.1.0
       react-email:
-        specifier: 4.2.4
-        version: 4.2.4(bufferutil@4.0.9)
+        specifier: 4.2.5
+        version: 4.2.5(bufferutil@4.0.9)
     devDependencies:
       '@types/node':
         specifier: 22.16.5
@@ -6981,8 +6981,8 @@ packages:
     peerDependencies:
       react: '>= 16.8'
 
-  react-email@4.2.4:
-    resolution: {integrity: sha512-r5x1nlWUXKZWoIU7l9jx5jkq43RuDUlroH0FRA5MMrCOaLqAfg3vOsAxAadNkG47L0iTeDkkqTKzaV6dTaYf/A==}
+  react-email@4.2.5:
+    resolution: {integrity: sha512-LESJxw/Lt3pD+IlziIDfSUGBhwq+4XrwEyxjLKP4piBpqqfUzOQT9VpFDby1kyWSgFrOhABNymVgLQF5HRpmQg==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -15486,7 +15486,7 @@ snapshots:
       prop-types: 15.8.1
       react: 19.1.0
 
-  react-email@4.2.4(bufferutil@4.0.9):
+  react-email@4.2.5(bufferutil@4.0.9):
     dependencies:
       '@babel/parser': 7.28.0
       '@babel/traverse': 7.28.0
