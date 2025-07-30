@@ -12,7 +12,8 @@
         "test:run": "playwright test",
         "test-ui": "playwright test --ui",
         "regenerate": "pnpm run /^regenerate:.*/",
-        "regenerate:feature-flags": "hypertune"
+        "regenerate:feature-flags": "hypertune",
+        "regenerate:models": "pnpm dlx gltfjsx ./public/assets/models/GameAssets.glb --types"
     },
     "dependencies": {
         "@flags-sdk/hypertune": "0.2.0",
