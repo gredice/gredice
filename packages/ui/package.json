@@ -7,7 +7,7 @@
   },
   "devDependencies": {
     "@types/node": "22.16.5",
-    "@types/react": "19.1.8",
+    "@types/react": "19.1.9",
     "typescript": "5.8.3"
   },
   "dependencies": {
@@ -16,8 +16,8 @@
     "@signalco/ui-icons": "0.2.2",
     "@signalco/ui-primitives": "0.6.3",
     "next": "15.3.5",
-    "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
   },
   "peerDependencies": {
     "next": "15.x",
