@@ -5,6 +5,11 @@
   "exports": {
     "./*": "./src/*/index.ts"
   },
+  "scripts": {
+    "regenerate": "pnpm run /^regenerate:/",
+    "regenerate:1-9-0-educ": "wsdl-tsclient ./external/1-9-0-educ/wsdl/FiskalizacijaService.wsdl -o ./src/generated/1-9-0-educ",
+    "regenerate:1-9-0-prod": "wsdl-tsclient ./external/1-9-0-prod/wsdl/FiskalizacijaService.wsdl -o ./src/generated/1-9-0-prod"
+  },
   "devDependencies": {
     "@types/node": "22.17.0",
     "typescript": "5.8.3",
