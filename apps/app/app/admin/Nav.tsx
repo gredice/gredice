@@ -7,8 +7,10 @@ import { EntityTypeCreateModal } from "./EntityTypeCreateModal";
 import { getEntityTypes } from "@gredice/storage";
 import { ProfileNavItem } from "./ProfileNavItem";
 import { File, ShoppingCart } from "@signalco/ui-icons";
+import { auth } from "../../lib/auth/auth";
 
 export async function Nav() {
+    auth(['admin']);
     const entityTypes = await getEntityTypes();
 
     return (
