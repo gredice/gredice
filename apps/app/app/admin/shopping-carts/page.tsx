@@ -14,7 +14,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function ShoppingCartsPage() {
     await auth(['admin']);
-    const shoppingCarts = await getAllShoppingCarts({ status: null });
+    const allShoppingCarts = await getAllShoppingCarts({ status: null });
+
+    // Sort shopping carts by newest first (createdAt descending)
+    const shoppingCarts = (allShoppingCarts || []).sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
     return (
         <Stack spacing={2}>

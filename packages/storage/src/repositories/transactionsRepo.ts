@@ -1,10 +1,10 @@
 import 'server-only';
 import { and, eq } from "drizzle-orm";
-import { transactions, transactionEntities, InsertTransaction, UpdateTransaction, InsertTransactionEntity } from "../schema";
+import { transactions, InsertTransaction, UpdateTransaction } from "../schema";
 import { storage } from "../storage";
 import { createEvent, knownEvents } from "./eventsRepo";
 
-export async function createTransaction(transaction: InsertTransaction, entities?: InsertTransactionEntity[]) {
+export async function createTransaction(transaction: InsertTransaction) {
     if (!transaction.accountId) {
         throw new Error("Transaction must have an accountId");
     }
@@ -13,14 +13,6 @@ export async function createTransaction(transaction: InsertTransaction, entities
         .insert(transactions)
         .values(transaction)
         .returning({ id: transactions.id }))[0].id;
-
-    if (entities && entities.length > 0) {
-        const transactionEntitiesData = entities.map(entity => ({
-            ...entity,
-            transactionId,
-        }));
-        await storage().insert(transactionEntities).values(transactionEntitiesData);
-    }
 
     await createEvent(knownEvents.transactions.createdV1(transactionId.toString(), {
         accountId: transaction.accountId,
@@ -36,7 +28,7 @@ export async function getTransaction(transactionId: number) {
     return storage().query.transactions.findFirst({
         where: and(eq(transactions.id, transactionId), eq(transactions.isDeleted, false)),
         with: {
-            transactionEntities: true,
+            invoices: true,
         },
     });
 }
@@ -45,7 +37,7 @@ export async function getTransactions(accountId: string) {
     return storage().query.transactions.findMany({
         where: and(eq(transactions.accountId, accountId), eq(transactions.isDeleted, false)),
         with: {
-            transactionEntities: true,
+            invoices: true,
         },
     });
 }
@@ -54,7 +46,7 @@ export async function getAllTransactions() {
     return storage().query.transactions.findMany({
         where: eq(transactions.isDeleted, false),
         with: {
-            transactionEntities: true,
+            invoices: true,
         },
         orderBy: transactions.createdAt
     });
@@ -64,7 +56,7 @@ export async function getTransactionByStripeId(stripePaymentId: string) {
     return storage().query.transactions.findFirst({
         where: and(eq(transactions.stripePaymentId, stripePaymentId), eq(transactions.isDeleted, false)),
         with: {
-            transactionEntities: true,
+            invoices: true,
         },
     });
 }

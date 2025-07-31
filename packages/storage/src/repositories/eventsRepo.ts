@@ -23,6 +23,17 @@ export const knownEventTypes = {
         update: "transaction.update",
         delete: "transaction.delete",
     },
+    invoices: {
+        create: "invoice.create",
+        update: "invoice.update",
+        delete: "invoice.delete",
+        paid: "invoice.paid",
+    },
+    receipts: {
+        create: "receipt.create",
+        update: "receipt.update",
+        fiscalize: "receipt.fiscalize",
+    },
     raisedBeds: {
         create: "raisedBed.create",
         place: "raisedBed.place",
@@ -77,6 +88,50 @@ export const knownEvents = {
             type: knownEventTypes.transactions.delete,
             version: 1,
             aggregateId,
+        }),
+    },
+    invoices: {
+        createdV1: (aggregateId: string, data: { accountId: string; invoiceNumber: string; totalAmount: string; status: string }) => ({
+            type: knownEventTypes.invoices.create,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        updatedV1: (aggregateId: string, data: { status?: string }) => ({
+            type: knownEventTypes.invoices.update,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        paidV1: (aggregateId: string, data: { paidDate: string; receiptId?: string; receiptNumber?: string }) => ({
+            type: knownEventTypes.invoices.paid,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        deletedV1: (aggregateId: string) => ({
+            type: knownEventTypes.invoices.delete,
+            version: 1,
+            aggregateId,
+        }),
+    },
+    receipts: {
+        createdV1: (aggregateId: string, data: { invoiceId: string; receiptNumber: string; totalAmount: string; paymentMethod: string }) => ({
+            type: knownEventTypes.receipts.create,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        updatedV1: (aggregateId: string) => ({
+            type: knownEventTypes.receipts.update,
+            version: 1,
+            aggregateId,
+        }),
+        fiscalizedV1: (aggregateId: string, data: { jir?: string; zki?: string; cisStatus: string }) => ({
+            type: knownEventTypes.receipts.fiscalize,
+            version: 1,
+            aggregateId,
+            data,
         }),
     },
     raisedBeds: {

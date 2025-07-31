@@ -5,6 +5,7 @@ export * from './farmsSchema';
 export * from './eventsSchema';
 export * from './feedbackSchema';
 export * from './transactionSchema';
+export * from './invoiceSchema';
 export * from './shoppingCartSchema';
 export * from './notificationsSchema';
 export * from './operationsSchema';
