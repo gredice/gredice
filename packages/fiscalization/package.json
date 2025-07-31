@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "exports": {
-    "./*": "./src/*/index.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "regenerate": "pnpm run /^regenerate:/",

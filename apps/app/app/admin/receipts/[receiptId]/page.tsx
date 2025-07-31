@@ -12,6 +12,8 @@ import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
 import { FieldSet } from "../../../../components/shared/fields/FieldSet";
 import { Field } from "../../../../components/shared/fields/Field";
 import { ReceiptActions } from "./ReceiptActions";
+import { ServerActionButton } from "../../../../components/shared/ServerActionButton";
+import { fiscalizeReceiptAction } from "./actions";
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +37,6 @@ function getCisStatusLabel(cisStatus: string) {
 
 export default async function ReceiptPage({ params }: { params: { receiptId: string } }) {
     await auth(['admin']);
-
     const receiptId = parseInt(params.receiptId);
     if (isNaN(receiptId)) {
         notFound();
@@ -45,6 +46,8 @@ export default async function ReceiptPage({ params }: { params: { receiptId: str
     if (!receipt) {
         notFound();
     }
+
+    const fiscalizeReceiptActionBound = fiscalizeReceiptAction.bind(null, receiptId);
 
     return (
         <Stack spacing={2}>
@@ -78,7 +81,14 @@ export default async function ReceiptPage({ params }: { params: { receiptId: str
                     {/* Receipt Details */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Fiskalni podaci</CardTitle>
+                            <Row spacing={2} justifyContent="space-between">
+                                <CardTitle>Fiskalni podaci</CardTitle>
+                                <ServerActionButton
+                                    onClick={fiscalizeReceiptActionBound}
+                                >
+                                    Fiskaliziraj račun
+                                </ServerActionButton>
+                            </Row>
                         </CardHeader>
                         <CardContent>
                             <Stack spacing={2}>

@@ -196,6 +196,9 @@ importers:
       '@gredice/email':
         specifier: workspace:*
         version: link:../../packages/email
+      '@gredice/fiscalization':
+        specifier: workspace:*
+        version: link:../../packages/fiscalization
       '@gredice/js':
         specifier: workspace:*
         version: link:../../packages/js
