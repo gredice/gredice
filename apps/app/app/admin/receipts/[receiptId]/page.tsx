@@ -1,5 +1,5 @@
 import { getReceipt } from "@gredice/storage";
-import { Card, CardContent, CardHeader } from "@signalco/ui-primitives/Card";
+import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
@@ -9,6 +9,9 @@ import { KnownPages } from "../../../../src/KnownPages";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
+import { FieldSet } from "../../../../components/shared/fields/FieldSet";
+import { Field } from "../../../../components/shared/fields/Field";
+import { ReceiptActions } from "./ReceiptActions";
 
 export const dynamic = 'force-dynamic';
 
@@ -45,52 +48,57 @@ export default async function ReceiptPage({ params }: { params: { receiptId: str
 
     return (
         <Stack spacing={2}>
-            <Row spacing={2} alignItems="center">
-                <Typography level="h1" className="text-2xl" semiBold>
-                    Fiskalni račun #{receipt.id}
-                </Typography>
-                <Chip color={getCisStatusColor(receipt.cisStatus)} size="sm">
-                    {getCisStatusLabel(receipt.cisStatus)}
-                </Chip>
+            <Row spacing={2} justifyContent="space-between">
+                <Row spacing={2} alignItems="center">
+                    <Typography level="h1" className="text-2xl" semiBold>
+                        Fiskalni račun #{receipt.id}
+                    </Typography>
+                    <Chip color={getCisStatusColor(receipt.cisStatus)} size="sm">
+                        {getCisStatusLabel(receipt.cisStatus)}
+                    </Chip>
+                </Row>
+
+                {/* Actions */}
+                <ReceiptActions receipt={receipt} />
             </Row>
 
+            <Stack spacing={2}>
+                <FieldSet>
+                    <Field name="Račun ID" value={receipt.id} mono />
+                    <Field name="Broj računa" value={receipt.receiptNumber} mono />
+                    <Field name="Kreiran" value={<LocaleDateTime>{receipt.createdAt}</LocaleDateTime>} />
+                    <Field name="Ažuriran" value={<LocaleDateTime>{receipt.updatedAt}</LocaleDateTime>} />
+                </FieldSet>
+                <FieldSet>
+                    <Field name="Ponuda broj" value={receipt.invoice?.invoiceNumber || `#${receipt.invoiceId}`} />
+                </FieldSet>
+            </Stack>
             <Row spacing={2} alignItems="stretch">
                 <Stack spacing={2} className="flex-1">
                     {/* Receipt Details */}
                     <Card>
                         <CardHeader>
-                            <Typography level="h2" semiBold>Fiskalni podaci</Typography>
+                            <CardTitle>Fiskalni podaci</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Stack spacing={2}>
-                                <Row spacing={4}>
-                                    <Stack spacing={1} className="flex-1">
-                                        <Typography level="body2" className="text-gray-600">JIR (Jedinstveni identifikator računa)</Typography>
-                                        <Typography className="font-mono">{receipt.jir || 'N/A'}</Typography>
-                                    </Stack>
-                                    <Stack spacing={1} className="flex-1">
-                                        <Typography level="body2" className="text-gray-600">ZKI (Zaštitni kod izdavatelja)</Typography>
-                                        <Typography className="font-mono">{receipt.zki || 'N/A'}</Typography>
-                                    </Stack>
-                                </Row>
-                                <Row spacing={4}>
-                                    <Stack spacing={1} className="flex-1">
-                                        <Typography level="body2" className="text-gray-600">CIS Status</Typography>
+                                <FieldSet>
+                                    <Field name="JIR" value={receipt.jir || '-'} mono />
+                                    <Field name="ZKI" value={receipt.zki || '-'} mono />
+                                    <Field name="CIS Status" value={
                                         <Chip color={getCisStatusColor(receipt.cisStatus)} size="sm" className="w-fit">
                                             {getCisStatusLabel(receipt.cisStatus)}
                                         </Chip>
-                                    </Stack>
-                                    <Stack spacing={1} className="flex-1">
-                                        <Typography level="body2" className="text-gray-600">Datum fiskaalizacije</Typography>
-                                        <LocaleDateTime>{receipt.cisTimestamp}</LocaleDateTime>
-                                    </Stack>
-                                </Row>
-                                {receipt.cisErrorMessage && (
-                                    <Stack spacing={1}>
-                                        <Typography level="body2" className="text-gray-600">CIS poruka</Typography>
-                                        <Typography>{receipt.cisErrorMessage}</Typography>
-                                    </Stack>
-                                )}
+                                    } />
+                                    <Field name="Datum fiskalizacije" value={
+                                        receipt.cisTimestamp ? (
+                                            <LocaleDateTime>{receipt.cisTimestamp}</LocaleDateTime>
+                                        ) : '-'
+                                    } />
+                                    {receipt.cisErrorMessage && (
+                                        <Field name="CIS poruka" value={receipt.cisErrorMessage} />
+                                    )}
+                                </FieldSet>
                             </Stack>
                         </CardContent>
                     </Card>
@@ -98,22 +106,15 @@ export default async function ReceiptPage({ params }: { params: { receiptId: str
                     {/* Business Information */}
                     <Card>
                         <CardHeader>
-                            <Typography level="h2" semiBold>Podaci o poslovnom subjektu</Typography>
+                            <CardTitle>Podaci o poslovnom subjektu</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Stack spacing={2}>
-                                <Stack spacing={1}>
-                                    <Typography level="body2" className="text-gray-600">OIB</Typography>
-                                    <Typography className="font-mono">{receipt.businessPin || 'N/A'}</Typography>
-                                </Stack>
-                                <Stack spacing={1}>
-                                    <Typography level="body2" className="text-gray-600">Lokacija</Typography>
-                                    <Typography>{receipt.businessAddress || 'N/A'}</Typography>
-                                </Stack>
-                                <Stack spacing={1}>
-                                    <Typography level="body2" className="text-gray-600">Naziv tvrtke</Typography>
-                                    <Typography>{receipt.businessName || 'N/A'}</Typography>
-                                </Stack>
+                                <FieldSet>
+                                    <Field name="Naziv tvrtke" value={receipt.businessName || '-'} />
+                                    <Field name="OIB" value={receipt.businessPin || '-'} mono />
+                                    <Field name="Adresa" value={receipt.businessAddress || '-'} />
+                                </FieldSet>
                             </Stack>
                         </CardContent>
                     </Card>
@@ -123,21 +124,21 @@ export default async function ReceiptPage({ params }: { params: { receiptId: str
                     {/* Amount Summary */}
                     <Card>
                         <CardHeader>
-                            <Typography level="h2" semiBold>Iznosi</Typography>
+                            <CardTitle>Iznosi</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <Stack spacing={2}>
+                            <Stack spacing={1}>
                                 <Row justifyContent="space-between">
                                     <Typography level="body2" className="text-gray-600">Osnovica</Typography>
-                                    <Typography>€ {receipt.subtotal}</Typography>
+                                    <Typography>{receipt.subtotal}{receipt.currency === 'eur' ? ' €' : receipt.currency}</Typography>
                                 </Row>
                                 <Row justifyContent="space-between">
                                     <Typography level="body2" className="text-gray-600">PDV</Typography>
-                                    <Typography>€ {receipt.taxAmount}</Typography>
+                                    <Typography>{receipt.taxAmount}{receipt.currency === 'eur' ? ' €' : receipt.currency}</Typography>
                                 </Row>
                                 <Row justifyContent="space-between" className="border-t pt-2">
                                     <Typography semiBold>Ukupno</Typography>
-                                    <Typography level="h3" semiBold>€ {receipt.totalAmount}</Typography>
+                                    <Typography level="h3" semiBold>{receipt.totalAmount}{receipt.currency === 'eur' ? ' €' : receipt.currency}</Typography>
                                 </Row>
                             </Stack>
                         </CardContent>
@@ -146,47 +147,24 @@ export default async function ReceiptPage({ params }: { params: { receiptId: str
                     {/* Related Links */}
                     <Card>
                         <CardHeader>
-                            <Typography level="h2" semiBold>Povezano</Typography>
+                            <CardTitle>Povezano</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <Stack spacing={2}>
+                            <Stack spacing={1}>
                                 <Row spacing={2} alignItems="center">
-                                    <Typography level="body2" className="text-gray-600 w-20">Račun:</Typography>
+                                    <Typography level="body2" className="text-gray-600 w-20">Ponuda:</Typography>
                                     <Link href={KnownPages.Invoice(receipt.invoiceId)}>
-                                        <Typography className="text-blue-600 hover:underline">
-                                            {receipt.invoice?.invoiceNumber || `#${receipt.invoiceId}`}
-                                        </Typography>
+                                        {receipt.invoice?.invoiceNumber || `#${receipt.invoiceId}`}
                                     </Link>
                                 </Row>
                                 {receipt.invoice?.transactionId && (
                                     <Row spacing={2} alignItems="center">
                                         <Typography level="body2" className="text-gray-600 w-20">Transakcija:</Typography>
                                         <Link href={KnownPages.Transaction(receipt.invoice.transactionId)}>
-                                            <Typography className="text-blue-600 hover:underline">
-                                                #{receipt.invoice.transactionId}
-                                            </Typography>
+                                            #{receipt.invoice.transactionId}
                                         </Link>
                                     </Row>
                                 )}
-                            </Stack>
-                        </CardContent>
-                    </Card>
-
-                    {/* Timestamps */}
-                    <Card>
-                        <CardHeader>
-                            <Typography level="h2" semiBold>Timestamp podaci</Typography>
-                        </CardHeader>
-                        <CardContent>
-                            <Stack spacing={2}>
-                                <Stack spacing={1}>
-                                    <Typography level="body2" className="text-gray-600">Kreiran</Typography>
-                                    <LocaleDateTime>{receipt.createdAt}</LocaleDateTime>
-                                </Stack>
-                                <Stack spacing={1}>
-                                    <Typography level="body2" className="text-gray-600">Ažuriran</Typography>
-                                    <LocaleDateTime>{receipt.updatedAt}</LocaleDateTime>
-                                </Stack>
                             </Stack>
                         </CardContent>
                     </Card>

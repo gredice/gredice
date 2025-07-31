@@ -6,8 +6,8 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { ModalConfirm } from "@signalco/ui/ModalConfirm";
 import { Edit, Delete, Send, Check, Clear, FileText } from "@signalco/ui-icons";
-import { useState, useTransition } from "react";
-import { changeInvoiceStatusAction, cancelInvoiceAction, deleteInvoiceAction } from "./actions";
+import { useState, useTransition, useEffect } from "react";
+import { changeInvoiceStatusAction, cancelInvoiceAction, deleteInvoiceAction, createReceiptAction, getInvoiceReceiptAction } from "./actions";
 import { canEditInvoice, canDeleteInvoice, canCancelInvoice, InvoiceStatus } from "./invoiceUtils";
 import Link from "next/link";
 import { KnownPages } from "../../../../src/KnownPages";
@@ -25,11 +25,26 @@ interface InvoiceActionsProps {
 export function InvoiceActions({ invoice }: InvoiceActionsProps) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
+    const [existingReceipt, setExistingReceipt] = useState<any>(null);
+    const [receiptChecked, setReceiptChecked] = useState(false);
 
     const status = invoice.status as InvoiceStatus;
     const canEdit = canEditInvoice(status);
     const canDelete = canDeleteInvoice(status);
     const canCancel = canCancelInvoice(status);
+
+    // Check for existing receipt when invoice is paid
+    useEffect(() => {
+        if (status === 'paid' && !receiptChecked) {
+            startTransition(async () => {
+                const result = await getInvoiceReceiptAction(invoice.id);
+                if (result.success) {
+                    setExistingReceipt(result.receipt);
+                }
+                setReceiptChecked(true);
+            });
+        }
+    }, [status, invoice.id, receiptChecked]);
 
     const handleStatusChange = (newStatus: InvoiceStatus) => {
         startTransition(async () => {
@@ -55,6 +70,16 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
         startTransition(async () => {
             setError(null);
             await deleteInvoiceAction(invoice.id);
+        });
+    };
+
+    const handleCreateReceipt = () => {
+        startTransition(async () => {
+            setError(null);
+            const result = await createReceiptAction(invoice.id);
+            if (result && !result.success) {
+                setError(result.error || 'Failed to create receipt');
+            }
         });
     };
 
@@ -113,6 +138,32 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
                         onClick={() => handleStatusChange('paid')}
                     >
                         Označi kao plaćeno
+                    </Button>
+                )}
+
+                {/* Create Receipt Button - only when invoice is paid */}
+                {status === 'paid' && receiptChecked && !existingReceipt && (
+                    <Button
+                        variant="soft"
+                        color="primary"
+                        startDecorator={<FileText className="size-4" />}
+                        disabled={isPending}
+                        onClick={handleCreateReceipt}
+                    >
+                        Stvori račun
+                    </Button>
+                )}
+
+                {/* View Receipt Button - when receipt already exists */}
+                {status === 'paid' && existingReceipt && (
+                    <Button
+                        variant="outlined"
+                        startDecorator={<FileText className="size-4" />}
+                        disabled={isPending}
+                    >
+                        <Link href={KnownPages.Receipt(existingReceipt.id)}>
+                            Prikaži račun
+                        </Link>
                     </Button>
                 )}
 

@@ -41,6 +41,10 @@
 			"path": "packages/email"
 		},
 		{
+			"name": "📦 @gredice/fiscalization",
+			"path": "packages/fiscalization"
+		},
+		{
 			"name": "📦 @gredice/game",
 			"path": "packages/game"
 		},
