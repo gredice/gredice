@@ -1,0 +1,580 @@
+import 'server-only';
+import { and, eq, desc, isNull, lte, like } from "drizzle-orm";
+import {
+    invoices,
+    invoiceItems,
+    receipts,
+    InsertInvoice,
+    UpdateInvoice,
+    InsertInvoiceItem,
+    UpdateInvoiceItem,
+    InsertReceipt,
+    UpdateReceipt
+} from "../schema";
+import { storage } from "../storage";
+import { createEvent, knownEvents } from "./eventsRepo";
+
+// Receipt creation data interface
+export interface ReceiptCreationData {
+    paymentMethod: string; // 'card', 'cash', 'bank_transfer', etc.
+    paymentReference?: string; // External payment reference (e.g., Stripe payment ID)
+    businessPin?: string; // Croatian business tax number
+    businessName?: string;
+    businessAddress?: string;
+    customerPin?: string; // Customer's PIN for B2B transactions
+    customerName?: string;
+    customerAddress?: string; // Customer's address for B2B transactions
+    // JIR and ZKI are optional - provided later during fiscalization
+    jir?: string;
+    zki?: string;
+}
+
+// Invoice CRUD operations
+export async function createInvoice(invoice: InsertInvoice, items?: Omit<InsertInvoiceItem, 'invoiceId'>[]) {
+    if (!invoice.accountId) {
+        throw new Error("Invoice must have an accountId");
+    }
+
+    const invoiceId = (await storage()
+        .insert(invoices)
+        .values(invoice)
+        .returning({ id: invoices.id }))[0].id;
+
+    if (items && items.length > 0) {
+        const invoiceItemsData = items.map(item => ({
+            ...item,
+            invoiceId,
+        }));
+        await storage().insert(invoiceItems).values(invoiceItemsData);
+    }
+
+    await createEvent(knownEvents.invoices.createdV1(invoiceId.toString(), {
+        accountId: invoice.accountId,
+        invoiceNumber: invoice.invoiceNumber,
+        totalAmount: invoice.totalAmount,
+        status: invoice.status || 'draft',
+    }));
+
+    return invoiceId;
+}
+
+export async function getInvoice(invoiceId: number) {
+    return storage().query.invoices.findFirst({
+        where: and(eq(invoices.id, invoiceId), eq(invoices.isDeleted, false)),
+        with: {
+            invoiceItems: true,
+            account: true,
+            transaction: true,
+        },
+    });
+}
+
+export async function getInvoiceByNumber(invoiceNumber: string) {
+    return storage().query.invoices.findFirst({
+        where: and(eq(invoices.invoiceNumber, invoiceNumber), eq(invoices.isDeleted, false)),
+        with: {
+            invoiceItems: true,
+            account: true,
+            transaction: true,
+        },
+    });
+}
+
+export async function getInvoices(accountId: string) {
+    return storage().query.invoices.findMany({
+        where: and(eq(invoices.accountId, accountId), eq(invoices.isDeleted, false)),
+        with: {
+            invoiceItems: true,
+            transaction: true,
+        },
+        orderBy: desc(invoices.issueDate),
+    });
+}
+
+export async function getAllInvoices() {
+    return storage().query.invoices.findMany({
+        where: eq(invoices.isDeleted, false),
+        with: {
+            invoiceItems: true,
+            account: true,
+            transaction: true,
+        },
+        orderBy: desc(invoices.issueDate),
+    });
+}
+
+export async function getInvoicesByTransaction(transactionId: number) {
+    return storage().query.invoices.findMany({
+        where: and(eq(invoices.transactionId, transactionId), eq(invoices.isDeleted, false)),
+        with: {
+            invoiceItems: true,
+        },
+        orderBy: desc(invoices.issueDate),
+    });
+}
+
+export async function getInvoicesByStatus(status: string, accountId?: string) {
+    const whereConditions = [
+        eq(invoices.status, status),
+        eq(invoices.isDeleted, false)
+    ];
+
+    if (accountId) {
+        whereConditions.push(eq(invoices.accountId, accountId));
+    }
+
+    return storage().query.invoices.findMany({
+        where: and(...whereConditions),
+        with: {
+            invoiceItems: true,
+            account: true,
+            transaction: true,
+        },
+        orderBy: desc(invoices.issueDate),
+    });
+}
+
+export async function getOverdueInvoices(accountId?: string) {
+    const today = new Date();
+    const whereConditions = [
+        eq(invoices.status, 'sent'),
+        lte(invoices.dueDate, today),
+        isNull(invoices.paidDate),
+        eq(invoices.isDeleted, false)
+    ];
+
+    if (accountId) {
+        whereConditions.push(eq(invoices.accountId, accountId));
+    }
+
+    return storage().query.invoices.findMany({
+        where: and(...whereConditions),
+        with: {
+            invoiceItems: true,
+            account: true,
+            transaction: true,
+        },
+        orderBy: invoices.dueDate,
+    });
+}
+
+export async function updateInvoice(invoice: UpdateInvoice) {
+    await storage()
+        .update(invoices)
+        .set(invoice)
+        .where(
+            and(
+                eq(invoices.id, invoice.id),
+                eq(invoices.isDeleted, false)
+            ));
+
+    // Only create status update event if status is being updated
+    if (invoice.status) {
+        await createEvent(knownEvents.invoices.updatedV1(invoice.id.toString(), {
+            status: invoice.status,
+        }));
+    }
+}
+
+// Invoice status validation and transition functions
+export type InvoiceStatus = 'draft' | 'pending' | 'sent' | 'paid' | 'cancelled';
+
+export function isValidStatusTransition(currentStatus: InvoiceStatus, newStatus: InvoiceStatus): boolean {
+    const validTransitions: Record<InvoiceStatus, InvoiceStatus[]> = {
+        'draft': ['pending', 'cancelled'],
+        'pending': ['sent', 'cancelled'],
+        'sent': ['paid'],
+        'paid': [], // Cannot transition from paid
+        'cancelled': [] // Cannot transition from cancelled
+    };
+
+    return validTransitions[currentStatus]?.includes(newStatus) ?? false;
+}
+
+export function canEditInvoice(status: InvoiceStatus): boolean {
+    return status === 'draft' || status === 'pending';
+}
+
+export function canDeleteInvoice(status: InvoiceStatus): boolean {
+    return status === 'draft' || status === 'pending';
+}
+
+export function canCancelInvoice(status: InvoiceStatus): boolean {
+    return status === 'draft' || status === 'pending' || status === 'sent';
+}
+
+export function isOverdue(invoice: { status: string; dueDate: Date; paidDate?: Date | null }): boolean {
+    if (invoice.status === 'paid' || invoice.paidDate) {
+        return false;
+    }
+    return invoice.status === 'sent' && new Date() > new Date(invoice.dueDate);
+}
+
+export async function changeInvoiceStatus(invoiceId: number, newStatus: InvoiceStatus) {
+    const invoice = await getInvoice(invoiceId);
+    if (!invoice) {
+        throw new Error(`Invoice with id ${invoiceId} not found`);
+    }
+
+    const currentStatus = invoice.status as InvoiceStatus;
+
+    if (!isValidStatusTransition(currentStatus, newStatus)) {
+        throw new Error(`Invalid status transition from ${currentStatus} to ${newStatus}`);
+    }
+
+    // Special validation for cancelling paid invoices
+    if (newStatus === 'cancelled' && currentStatus === 'paid') {
+        throw new Error('Cannot cancel a paid invoice');
+    }
+
+    await updateInvoice({
+        id: invoiceId,
+        status: newStatus
+    });
+
+    return invoice;
+}
+
+export async function cancelInvoice(invoiceId: number) {
+    const invoice = await getInvoice(invoiceId);
+    if (!invoice) {
+        throw new Error(`Invoice with id ${invoiceId} not found`);
+    }
+
+    const currentStatus = invoice.status as InvoiceStatus;
+
+    if (!canCancelInvoice(currentStatus)) {
+        throw new Error(`Cannot cancel invoice with status ${currentStatus}`);
+    }
+
+    if (currentStatus === 'paid') {
+        throw new Error('Cannot cancel a paid invoice');
+    }
+
+    await updateInvoice({
+        id: invoiceId,
+        status: 'cancelled'
+    });
+
+    await createEvent(knownEvents.invoices.updatedV1(invoiceId.toString(), {
+        status: 'cancelled',
+    }));
+
+    return invoice;
+}
+
+export async function softDeleteInvoice(invoiceId: number) {
+    const invoice = await getInvoice(invoiceId);
+    if (!invoice) {
+        throw new Error(`Invoice with id ${invoiceId} not found`);
+    }
+
+    const currentStatus = invoice.status as InvoiceStatus;
+
+    if (!canDeleteInvoice(currentStatus)) {
+        throw new Error(`Cannot delete invoice with status ${currentStatus}. Only draft and pending invoices can be deleted.`);
+    }
+
+    await deleteInvoice(invoiceId);
+    return invoice;
+}
+
+export async function markInvoiceAsPaid(
+    invoiceId: number,
+    receiptData: ReceiptCreationData,
+    paidDate: Date = new Date()
+) {
+    // First get the invoice to copy financial data to receipt
+    const invoice = await getInvoice(invoiceId);
+    if (!invoice) {
+        throw new Error(`Invoice with id ${invoiceId} not found`);
+    }
+
+    if (invoice.status === 'paid') {
+        throw new Error(`Invoice ${invoiceId} is already marked as paid`);
+    }
+
+    // Update invoice status to paid
+    await storage()
+        .update(invoices)
+        .set({
+            status: 'paid',
+            paidDate,
+            updatedAt: new Date()
+        })
+        .where(
+            and(
+                eq(invoices.id, invoiceId),
+                eq(invoices.isDeleted, false)
+            ));
+
+    // Create receipt
+    const receiptNumber = await generateReceiptNumber();
+    const receiptId = await createReceipt({
+        invoiceId,
+        receiptNumber,
+        subtotal: invoice.subtotal,
+        taxAmount: invoice.taxAmount,
+        totalAmount: invoice.totalAmount,
+        currency: invoice.currency,
+        paymentMethod: receiptData.paymentMethod,
+        paymentReference: receiptData.paymentReference,
+        businessPin: receiptData.businessPin,
+        businessName: receiptData.businessName,
+        businessAddress: receiptData.businessAddress,
+        customerPin: receiptData.customerPin,
+        customerName: receiptData.customerName,
+        customerAddress: receiptData.customerAddress,
+        jir: receiptData.jir,
+        zki: receiptData.zki,
+        issuedAt: paidDate,
+    });
+
+    await createEvent(knownEvents.invoices.paidV1(invoiceId.toString(), {
+        paidDate: paidDate.toISOString(),
+        receiptId: receiptId.toString(),
+        receiptNumber,
+    }));
+
+    return receiptId;
+}
+
+export async function deleteInvoice(invoiceId: number) {
+    await storage()
+        .update(invoices)
+        .set({ isDeleted: true })
+        .where(eq(invoices.id, invoiceId));
+
+    await createEvent(knownEvents.invoices.deletedV1(invoiceId.toString()));
+}
+
+// Invoice Items CRUD operations
+export async function addInvoiceItem(item: InsertInvoiceItem) {
+    return (await storage()
+        .insert(invoiceItems)
+        .values(item)
+        .returning({ id: invoiceItems.id }))[0].id;
+}
+
+export async function updateInvoiceItem(item: UpdateInvoiceItem) {
+    await storage()
+        .update(invoiceItems)
+        .set(item)
+        .where(eq(invoiceItems.id, item.id));
+}
+
+export async function deleteInvoiceItem(itemId: number) {
+    await storage()
+        .delete(invoiceItems)
+        .where(eq(invoiceItems.id, itemId));
+}
+
+export async function getInvoiceItems(invoiceId: number) {
+    return storage().query.invoiceItems.findMany({
+        where: eq(invoiceItems.invoiceId, invoiceId),
+        orderBy: invoiceItems.id,
+    });
+}
+
+// Utility functions
+export async function generateInvoiceNumber(): Promise<string> {
+    const year = new Date().getFullYear();
+    const prefix = `PON-${year}-`;
+
+    // Get the latest invoice number for this year
+    const latestInvoice = await storage().query.invoices.findFirst({
+        where: and(
+            eq(invoices.isDeleted, false),
+            like(invoices.invoiceNumber, `${prefix}%`)
+        ),
+        orderBy: desc(invoices.invoiceNumber),
+    });
+
+    let nextNumber = 1;
+    if (latestInvoice?.invoiceNumber.startsWith(prefix)) {
+        const lastNumber = latestInvoice.invoiceNumber.replace(prefix, '');
+        nextNumber = parseInt(lastNumber) + 1;
+    }
+
+    return `${prefix}${nextNumber.toString().padStart(4, '0')}`;
+}
+
+export async function calculateInvoiceTotals(invoiceId: number) {
+    const items = await getInvoiceItems(invoiceId);
+
+    const subtotal = items.reduce((sum, item) => {
+        return sum + parseFloat(item.totalPrice);
+    }, 0);
+
+    // You can implement tax calculation logic here
+    // For now, we'll assume tax is already included in the invoice
+
+    return {
+        subtotal: subtotal.toFixed(2),
+        itemCount: items.length,
+    };
+}
+
+// Receipt CRUD operations
+async function createReceipt(receipt: InsertReceipt) {
+    const receiptId = (await storage()
+        .insert(receipts)
+        .values(receipt)
+        .returning({ id: receipts.id }))[0].id;
+
+    await createEvent(knownEvents.receipts?.createdV1?.(receiptId.toString(), {
+        invoiceId: receipt.invoiceId.toString(),
+        receiptNumber: receipt.receiptNumber,
+        totalAmount: receipt.totalAmount,
+        paymentMethod: receipt.paymentMethod,
+    }) ?? {
+        name: 'receipt.created.v1',
+        entityId: receiptId.toString(),
+        entityTypeName: 'receipt',
+        eventData: {
+            invoiceId: receipt.invoiceId.toString(),
+            receiptNumber: receipt.receiptNumber,
+            totalAmount: receipt.totalAmount,
+            paymentMethod: receipt.paymentMethod,
+        }
+    });
+
+    return receiptId;
+}
+
+export async function getReceipt(receiptId: number) {
+    return storage().query.receipts.findFirst({
+        where: and(eq(receipts.id, receiptId), eq(receipts.isDeleted, false)),
+        with: {
+            invoice: {
+                with: {
+                    invoiceItems: true,
+                }
+            },
+        },
+    });
+}
+
+export async function getReceiptByInvoice(invoiceId: number) {
+    return storage().query.receipts.findFirst({
+        where: and(eq(receipts.invoiceId, invoiceId), eq(receipts.isDeleted, false)),
+    });
+}
+
+export async function getReceiptByNumber(receiptNumber: string) {
+    return storage().query.receipts.findFirst({
+        where: and(eq(receipts.receiptNumber, receiptNumber), eq(receipts.isDeleted, false)),
+        with: {
+            invoice: {
+                with: {
+                    invoiceItems: true,
+                }
+            },
+        },
+    });
+}
+
+export async function updateReceipt(receipt: UpdateReceipt) {
+    await storage()
+        .update(receipts)
+        .set(receipt)
+        .where(
+            and(
+                eq(receipts.id, receipt.id),
+                eq(receipts.isDeleted, false)
+            ));
+
+    await createEvent(knownEvents.receipts?.updatedV1?.(receipt.id.toString()) ?? {
+        name: 'receipt.updated.v1',
+        entityId: receipt.id.toString(),
+        entityTypeName: 'receipt',
+        eventData: {}
+    });
+}
+
+// Croatian fiscalization functions
+export async function updateReceiptFiscalization(
+    receiptId: number,
+    fiscalizationData: {
+        jir?: string;
+        zki?: string;
+        cisStatus: 'sent' | 'confirmed' | 'failed';
+        cisReference?: string;
+        cisErrorMessage?: string;
+        cisTimestamp?: Date;
+    }
+) {
+    await storage()
+        .update(receipts)
+        .set({
+            jir: fiscalizationData.jir,
+            zki: fiscalizationData.zki,
+            cisStatus: fiscalizationData.cisStatus,
+            cisReference: fiscalizationData.cisReference,
+            cisErrorMessage: fiscalizationData.cisErrorMessage,
+            cisTimestamp: fiscalizationData.cisTimestamp,
+            updatedAt: new Date(),
+        })
+        .where(
+            and(
+                eq(receipts.id, receiptId),
+                eq(receipts.isDeleted, false)
+            ));
+
+    await createEvent(knownEvents.receipts?.fiscalizedV1?.(receiptId.toString(), {
+        jir: fiscalizationData.jir,
+        zki: fiscalizationData.zki,
+        cisStatus: fiscalizationData.cisStatus,
+    }) ?? {
+        name: 'receipt.fiscalized.v1',
+        entityId: receiptId.toString(),
+        entityTypeName: 'receipt',
+        eventData: {
+            jir: fiscalizationData.jir,
+            zki: fiscalizationData.zki,
+            cisStatus: fiscalizationData.cisStatus,
+        }
+    });
+}
+
+export async function getReceiptsByStatus(cisStatus: string) {
+    return storage().query.receipts.findMany({
+        where: and(eq(receipts.cisStatus, cisStatus), eq(receipts.isDeleted, false)),
+        with: {
+            invoice: true,
+        },
+        orderBy: desc(receipts.issuedAt),
+    });
+}
+
+export async function getReceiptsByBusinessPin(businessPin: string) {
+    return storage().query.receipts.findMany({
+        where: and(eq(receipts.businessPin, businessPin), eq(receipts.isDeleted, false)),
+        with: {
+            invoice: true,
+        },
+        orderBy: desc(receipts.issuedAt),
+    });
+}
+
+export async function generateReceiptNumber(): Promise<string> {
+    const year = new Date().getFullYear();
+    const prefix = `${year}`;
+
+    // Get the latest receipt number for this year
+    const latestReceipt = await storage().query.receipts.findFirst({
+        where: and(
+            eq(receipts.isDeleted, false),
+            like(receipts.receiptNumber, `${prefix}%`)
+        ),
+        orderBy: desc(receipts.receiptNumber),
+    });
+
+    let nextNumber = 1;
+    if (latestReceipt?.receiptNumber.startsWith(prefix)) {
+        const lastNumber = latestReceipt.receiptNumber.replace(prefix, '');
+        nextNumber = parseInt(lastNumber) + 1;
+    }
+
+    return `${prefix}${nextNumber.toString().padStart(6, '0')}`;
+}

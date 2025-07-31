@@ -38,9 +38,11 @@ export async function Nav() {
             <Stack spacing={1}>
                 <ListHeader header="Administracija" />
                 <List>
-                    <NavItem href={KnownPages.Accounts} label="Računi" icon={<Bank className="size-5" />} />
+                    <NavItem href={KnownPages.Accounts} label="Korisnički računi" icon={<Bank className="size-5" />} />
                     <NavItem href={KnownPages.ShoppingCarts} label="Košarice" icon={<ShoppingCart className="size-5" />} />
+                    <NavItem href={KnownPages.Invoices} label="Ponude" icon={<File className="size-5" />} />
                     <NavItem href={KnownPages.Transactions} label="Transakcije" icon={<Euro className="size-5" />} />
+                    <NavItem href={KnownPages.Receipts} label="Fiskalni računi" icon={<File className="size-5" />} />
                     <NavItem href={KnownPages.Users} label="Korisnici" icon={<User className="size-5" />} />
                     <NavItem href={KnownPages.Gardens} label="Vrtovi" icon={<Fence className="size-5" />} />
                     <NavItem href={KnownPages.RaisedBeds} label="Gredice" icon={<Tally3 className="size-5 rotate-90 mt-1" />} />
