@@ -37,7 +37,7 @@ export async function createInvoiceAction(data: InvoiceCreationData) {
     try {
         // Generate invoice number based on current year
         const year = new Date().getFullYear();
-        const invoiceNumber = `INV-${year}-${Date.now().toString().slice(-6)}`;
+        const invoiceNumber = `PON-${year}-${Date.now().toString().slice(-6)}`;
 
         // Prepare invoice data
         const invoiceData = {
