@@ -1,6 +1,5 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
 import { Input } from "@signalco/ui-primitives/Input";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Stack } from "@signalco/ui-primitives/Stack";
@@ -9,6 +8,9 @@ import { authCurrentUserQueryKeys } from "@signalco/auth-client";
 import { queryClient } from "../../components/providers/ClientAppProvider";
 import { useActionState } from "react";
 import { Warning } from "@signalco/ui-icons";
+import { Modal } from "@signalco/ui-primitives/Modal";
+import { Typography } from "@signalco/ui-primitives/Typography";
+import { invalidatePage } from "../(actions)/sharedActions";
 
 export function LoginDialog() {
     const [error, submitAction, isPending] = useActionState(async (_previousState: unknown, formData: FormData) => {
@@ -32,16 +34,14 @@ export function LoginDialog() {
         localStorage.setItem('gredice-token', token);
 
         await queryClient.invalidateQueries({ queryKey: authCurrentUserQueryKeys });
-        window.location.reload();
+        await invalidatePage();
     }, null);
 
     return (
         <div className="h-[100vh] flex items-center justify-center">
-            <Card className="p-8 shadow-2xl">
-                <CardHeader className="mb-4">
-                    <CardTitle>Prijava</CardTitle>
-                </CardHeader>
-                <CardContent className="min-w-96">
+            <Modal open dismissible={false} hideClose title="Prijava" className="max-w-96">
+                <Stack spacing={4}>
+                    <Typography level="h4" component="p">Prijava</Typography>
                     <form action={submitAction}>
                         <Stack spacing={4}>
                             <Stack spacing={1}>
@@ -56,8 +56,8 @@ export function LoginDialog() {
                             )}
                         </Stack>
                     </form>
-                </CardContent>
-            </Card>
+                </Stack>
+            </Modal>
         </div>
     )
 }

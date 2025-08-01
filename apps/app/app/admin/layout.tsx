@@ -13,22 +13,26 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
         <AuthAppProvider>
             <div className="grow bg-secondary">
                 <main className="relative h-full">
-                    <AuthProtectedSection auth={authAdmin}>
-                        <div className="flex flex-row min-h-full">
-                            <div className="p-4 min-w-64">
+                    <div className="flex flex-row min-h-full">
+                        <div className="p-4 min-w-64">
+                            <AuthProtectedSection auth={authAdmin}>
                                 <Nav />
-                            </div>
-                            <div className="min-h-full grow pt-2">
-                                <div className="p-4 bg-white border-l border-t rounded-tl-xl min-h-full">
-                                <Suspense>
-                                    {children}
-                                </Suspense>
-                                </div>
+                            </AuthProtectedSection>
+                        </div>
+                        <div className="min-h-full grow pt-2">
+                            <div className="p-4 bg-white border-l border-t rounded-tl-xl min-h-full">
+                                <AuthProtectedSection auth={authAdmin}>
+                                    <Suspense>
+                                        {children}
+                                    </Suspense>
+                                </AuthProtectedSection>
                             </div>
                         </div>
-                    </AuthProtectedSection>
+                    </div>
                     <SignedOut auth={authAdmin}>
-                        <LoginDialog />
+                        <div className="absolute inset-0 bg-white/10 backdrop-blur">
+                            <LoginDialog />
+                        </div>
                     </SignedOut>
                 </main>
             </div>
