@@ -139,7 +139,7 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
 
     // Minimum order (0.5 EUR)
     const totalCartValue = cartItemsWithShopInfo.reduce((sum, item) => {
-        if (item.status !== 'paid' && item.currency === 'euro') {
+        if (item.status !== 'paid' && item.currency === 'eur') {
             const price = item.shopData.discountPrice ?? item.shopData.price ?? 0;
             return sum + (price * item.amount);
         }
@@ -236,8 +236,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Generate a stripe checkout items from cart items
             const stripeCartItemsWithShopData = cartInfo.items
-                .filter(item => item.status !== 'paid' && item.currency === 'euro') // Exclude paid items and sunflowers
-            const items: CheckoutItem[] = [];
+                .filter(item => item.status !== 'paid' && item.currency === 'eur') // Exclude paid items and sunflowers
+            const stripeItems: CheckoutItem[] = [];
             for (const item of stripeCartItemsWithShopData) {
                 // TODO: Apply discounted price if available
 
@@ -265,7 +265,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     continue;
                 }
 
-                items.push({
+                stripeItems.push({
                     product: {
                         name,
                         description,
@@ -285,7 +285,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     },
                     price: {
                         valueInCents,
-                        currency: 'EUR',
+                        currency: 'eur',
                     },
                     quantity
                 });
@@ -298,7 +298,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     name: user.userName,
                     stripeCustomerId: account.stripeCustomerId ?? undefined
                 }, {
-                    items
+                    items: stripeItems
                 });
 
                 if (account.stripeCustomerId !== customerId) {

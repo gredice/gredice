@@ -23,7 +23,7 @@
         "@eslint/js": "9.32.0",
         "@neondatabase/serverless": "1.0.1",
         "@signalco/js": "0.1.0",
-        "@upstash/redis": "1.35.2",
+        "@upstash/redis": "1.35.3",
         "dotenv": "17.2.1",
         "drizzle-kit": "0.31.4",
         "drizzle-orm": "0.44.4",
@@ -32,7 +32,7 @@
         "pg": "8.16.3",
         "server-only": "0.0.1",
         "tsx": "4.20.3",
-        "typescript": "5.8.3",
+        "typescript": "5.9.2",
         "uuid": "11.1.0"
     }
 }

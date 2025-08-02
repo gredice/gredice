@@ -1,15 +1,21 @@
 import { MDXEditor, UndoRedo, BoldItalicUnderlineToggles, toolbarPlugin, markdownShortcutPlugin, headingsPlugin, listsPlugin, quotePlugin, thematicBreakPlugin, BlockTypeSelect, CreateLink, InsertThematicBreak, ListsToggle, Separator, linkPlugin, linkDialogPlugin } from "@mdxeditor/editor";
 import { useState } from "react";
 import { AttributeInputProps } from '../AttributeInputProps';
+import { useTheme } from "next-themes";
+import { cx } from "@signalco/ui-primitives/cx";
 import '@mdxeditor/editor/style.css'
 
 export function MarkdownInput({ value, onChange }: AttributeInputProps) {
+    const { resolvedTheme } = useTheme();
     const [inputValue, setInputValue] = useState<string>(value || '');
     return (
         <div className="rounded-md border">
             <MDXEditor
                 placeholder="Nema informacija..."
-                className="[&_.mdxeditor-toolbar]:bg-background [&_.mdxeditor-toolbar]:text-muted-foreground"
+                className={cx(
+                    "[&_.mdxeditor-toolbar]:bg-transparent",
+                    resolvedTheme === 'dark' && "dark-theme"
+                )}
                 contentEditableClassName="prose prose-p:my-2 prose-sm max-w-none"
                 plugins={[
                     headingsPlugin(),

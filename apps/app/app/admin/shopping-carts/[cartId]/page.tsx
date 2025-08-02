@@ -61,7 +61,6 @@ export default async function ShoppingCartDetailsPage({ params }: { params: { ca
     // Helper function to format currency
     const formatCurrency = (amount: number, currency: string) => {
         const currencyMap: Record<string, { symbol: string; code?: string }> = {
-            'euro': { symbol: '€', code: 'EUR' },
             'eur': { symbol: '€', code: 'EUR' },
             'usd': { symbol: '$', code: 'USD' },
             'sunflower': { symbol: '🌻' }
@@ -133,7 +132,7 @@ export default async function ShoppingCartDetailsPage({ params }: { params: { ca
                                     {Object.entries(currencyTotals).map(([currency, total]) => (
                                         <Stack key={currency} spacing={1}>
                                             <Typography level="body2">
-                                                {currency === 'euro' || currency === 'eur' ? 'Ukupno (€)' :
+                                                {currency === 'eur' ? 'Ukupno (€)' :
                                                     currency === 'sunflower' ? 'Ukupno (🌻)' :
                                                         `Ukupno (${currency.toUpperCase()})`}
                                             </Typography>

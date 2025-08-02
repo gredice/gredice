@@ -15,6 +15,7 @@ import { Button } from "@signalco/ui-primitives/Button";
 import { sendDeleteAccountEmail } from "../../../(actions)/accountsActions";
 import { Delete } from "@signalco/ui-icons";
 import { Row } from "@signalco/ui-primitives/Row";
+import { FieldSet } from "../../../../components/shared/fields/FieldSet";
 
 export const dynamic = 'force-dynamic';
 
@@ -32,11 +33,8 @@ export default async function AccountPage({ params }: { params: Promise<{ accoun
                         { label: 'Računi', href: KnownPages.Accounts },
                         { label: accountId }
                     ]} />
-                    <Typography level="h1" semiBold>Račun</Typography>
-                </Stack>
-                <Stack spacing={2}>
-                    <Field name="ID računa" value={accountId} />
-                    <Row>
+                    <Row justifyContent="space-between">
+                        <Typography level="h1" semiBold>Račun</Typography>
                         <ModalConfirm
                             title="Potvrda brisanja računa"
                             header="Jeste li sigurni da želite izbrisati račun?"
@@ -48,6 +46,11 @@ export default async function AccountPage({ params }: { params: Promise<{ accoun
                                 </Button>
                             )} />
                     </Row>
+                </Stack>
+                <Stack spacing={2}>
+                    <FieldSet>
+                        <Field name="ID računa" value={accountId} />
+                    </FieldSet>
                 </Stack>
             </Stack>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

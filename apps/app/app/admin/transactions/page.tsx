@@ -64,7 +64,7 @@ export default async function TransactionsPage() {
                                 const hasNoInvoices = invoiceCount === 0;
 
                                 return (
-                                    <Table.Row key={transaction.id} className={hasNoInvoices ? 'bg-green-50' : ''}>
+                                    <Table.Row key={transaction.id} className={hasNoInvoices ? 'bg-green-50 dark:bg-green-950' : ''}>
                                         <Table.Cell>
                                             <Link href={KnownPages.Transaction(transaction.id)}>
                                                 {transaction.id}
