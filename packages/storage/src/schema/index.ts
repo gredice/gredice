@@ -9,3 +9,4 @@ export * from './invoiceSchema';
 export * from './shoppingCartSchema';
 export * from './notificationsSchema';
 export * from './operationsSchema';
+export * from './fiscalizationSchema';

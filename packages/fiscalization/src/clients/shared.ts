@@ -1,3 +1,5 @@
+import { Agent, request } from 'undici';
+
 /**
  * Sends raw XML to the SOAP endpoint using HTTP POST
  */
@@ -9,17 +11,22 @@ export async function sendSoapRequest(signedXml: string, endpoint: string) {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-    const response = await fetch(endpoint, {
-        method: "POST",
+    const response = await request(endpoint, {
+        method: 'POST',
+        body: soapEnvelope,
         headers: {
-            "Content-Type": "text/xml; charset=utf-8",
+            'Content-Type': 'text/xml; charset=utf-8',
         },
-        body: soapEnvelope
+        dispatcher: new Agent({
+            connect: {
+                rejectUnauthorized: false,
+            },
+        }),
     });
 
-    const responseText = await response.text();
+    const responseText = await response.body.text();
 
-    if (!response.ok) {
+    if (!response.statusCode || response.statusCode < 200 || response.statusCode >= 300) {
         if (responseText.includes("<tns:PorukaGreske>")) {
             const errorMatch = responseText.match(/<tns:PorukaGreske>([^<]+)<\/tns:PorukaGreske>/)
             if (errorMatch) {
@@ -27,7 +34,7 @@ export async function sendSoapRequest(signedXml: string, endpoint: string) {
             }
         }
 
-        throw new Error(`Error! Status: ${response.status}. Response: ${responseText}`);
+        throw new Error(`Error! Status: ${response.statusCode}. Response: ${responseText}`);
     }
 
     return responseText;

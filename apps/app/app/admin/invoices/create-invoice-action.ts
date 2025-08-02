@@ -30,7 +30,7 @@ export async function createInvoiceServerAction(formData: FormData) {
 
         // Generate invoice number
         const year = new Date().getFullYear();
-        const invoiceNumber = `PON-${year}-${Date.now().toString().slice(-6)}`;
+        const invoiceNumber = `PON-${year}-${Date.now().toString()}`;
 
         // Prepare invoice data
         const invoiceData = {

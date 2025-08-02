@@ -17,8 +17,9 @@ export type Receipt = {
 }
 
 const testEndpoint = 'https://cistest.apis-it.hr:8449/FiskalizacijaServiceTest';
+const prodEndpoint = 'https://cis.porezna-uprava.hr:8449/FiskalizacijaServic';
 function getEndpoint(env: "educ" | "prod") {
-    return env === "educ" ? testEndpoint : 'https://cistest.apis-it.hr:8449/FiskalizacijaServiceTest';
+    return env === "educ" ? testEndpoint : prodEndpoint;
 }
 
 export async function receiptRequest(receipt: Receipt, settings: {

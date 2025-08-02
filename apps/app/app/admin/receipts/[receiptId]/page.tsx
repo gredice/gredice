@@ -35,19 +35,20 @@ function getCisStatusLabel(cisStatus: string) {
     }
 }
 
-export default async function ReceiptPage({ params }: { params: { receiptId: string } }) {
+export default async function ReceiptPage({ params }: { params: Promise<{ receiptId: string }> }) {
     await auth(['admin']);
-    const receiptId = parseInt(params.receiptId);
-    if (isNaN(receiptId)) {
+    const { receiptId } = await params;
+    const receiptIdNumber = parseInt(receiptId);
+    if (isNaN(receiptIdNumber)) {
         notFound();
     }
 
-    const receipt = await getReceipt(receiptId);
+    const receipt = await getReceipt(receiptIdNumber);
     if (!receipt) {
         notFound();
     }
 
-    const fiscalizeReceiptActionBound = fiscalizeReceiptAction.bind(null, receiptId);
+    const fiscalizeReceiptActionBound = fiscalizeReceiptAction.bind(null, receiptIdNumber);
 
     return (
         <Stack spacing={2}>
@@ -95,6 +96,8 @@ export default async function ReceiptPage({ params }: { params: { receiptId: str
                                 <FieldSet>
                                     <Field name="JIR" value={receipt.jir || '-'} mono />
                                     <Field name="ZKI" value={receipt.zki || '-'} mono />
+                                </FieldSet>
+                                <FieldSet>
                                     <Field name="CIS Status" value={
                                         <Chip color={getCisStatusColor(receipt.cisStatus)} size="sm" className="w-fit">
                                             {getCisStatusLabel(receipt.cisStatus)}
@@ -107,6 +110,9 @@ export default async function ReceiptPage({ params }: { params: { receiptId: str
                                     } />
                                     {receipt.cisErrorMessage && (
                                         <Field name="CIS poruka" value={receipt.cisErrorMessage} />
+                                    )}
+                                    {receipt.cisReference && (
+                                        <Field name="CIS referenca" value={receipt.cisReference} />
                                     )}
                                 </FieldSet>
                             </Stack>

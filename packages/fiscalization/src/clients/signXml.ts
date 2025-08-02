@@ -1,36 +1,36 @@
 import { SignedXml } from "xml-crypto";
 import { getPkcs12KeyPair } from "../crypto";
-import { WSDL } from 'soap';
-import { readFileSync } from "node:fs";
 import { RacunZahtjev } from "../generated/1-9-0-educ/fiskalizacijaservice";
+import { Builder } from "xml2js";
 
-async function wsdlObjectToXml(object: object) {
-    // Load WSDL schema
-    const version = '1-9-0';
-    const env = 'educ';
-    const wsdlPath = `./external/${version}-${env}/wsdl/FiskalizacijaService.wsdl`;
-    const wsdl = new WSDL(readFileSync(wsdlPath, 'utf8'), wsdlPath, {
-        strict: true,
-        ignoredNamespaces: {
-            override: true,
-            namespaces: ['targetNamespace', 'typedNamespace'] // Default excluding `tns` namespace
-        }
-    });
+const TNS = "http://www.apis-it.hr/fin/2012/types/f73"
 
-    // Wait for WSDL to be ready
-    await new Promise((resolve, reject) => wsdl.onReady((error) => {
-        if (error) {
-            console.error('WSDL error:', error);
-            reject(error);
-        } else {
-            console.log('WSDL is ready');
-            resolve(true);
-        }
-    }));
+async function wsdlObjectToXml(request: RacunZahtjev) {
+    const racunZahtjevObject = {
+        "tns:RacunZahtjev": {
+            $: { "xmlns:tns": TNS, Id: "racun-zahtjev" },
+            "tns:Zaglavlje": { "tns:IdPoruke": request.Zaglavlje?.IdPoruke, "tns:DatumVrijeme": request.Zaglavlje?.DatumVrijeme },
+            "tns:Racun": {
+                "tns:Oib": request.Racun?.Oib,
+                "tns:USustPdv": request.Racun?.USustPdv,
+                "tns:DatVrijeme": request.Racun?.DatVrijeme,
+                "tns:OznSlijed": request.Racun?.OznSlijed,
+                "tns:BrRac": {
+                    "tns:BrOznRac": request.Racun?.BrRac?.BrOznRac,
+                    "tns:OznPosPr": request.Racun?.BrRac?.OznPosPr,
+                    "tns:OznNapUr": request.Racun?.BrRac?.OznNapUr,
+                },
+                "tns:IznosUkupno": request.Racun?.IznosUkupno,
+                "tns:NacinPlac": request.Racun?.NacinPlac,
+                "tns:OibOper": request.Racun?.OibOper,
+                "tns:ZastKod": request.Racun?.ZastKod,
+                "tns:NakDost": request.Racun?.NakDost ?? false, // Default to false if not provided
+            },
+        },
+    }
 
-    return wsdl
-        .objectToXML({ RacunZahtjev: object }, '', 'tns', 'http://www.apis-it.hr/fin/2012/types/f73', true)
-        .replace('xmlns="http://www.apis-it.hr/fin/2012/types/f73"', '')
+    const builder = new Builder({ headless: true, renderOpts: { pretty: false } })
+    return builder.buildObject(racunZahtjevObject);
 }
 
 export async function signXml(request: RacunZahtjev, creds: { cert: string, password: string }) {

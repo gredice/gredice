@@ -548,7 +548,7 @@ export async function updateReceiptFiscalization(
         zki?: string;
         cisStatus: 'sent' | 'confirmed' | 'failed';
         cisReference?: string;
-        cisErrorMessage?: string;
+        cisErrorMessage?: string | null;
         cisTimestamp?: Date;
     }
 ) {

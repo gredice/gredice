@@ -738,6 +738,9 @@ importers:
       xml-crypto:
         specifier: 6.1.2
         version: 6.1.2
+      xml2js:
+        specifier: 0.6.2
+        version: 0.6.2
     devDependencies:
       '@microsoft/api-extractor':
         specifier: ^7.52.9
@@ -751,6 +754,9 @@ importers:
       '@types/qrcode':
         specifier: ^1.5.5
         version: 1.5.5
+      '@types/xml2js':
+        specifier: 0.4.14
+        version: 0.4.14
       typescript:
         specifier: 5.8.3
         version: 5.8.3
