@@ -26,7 +26,7 @@ export const shoppingCartItems = pgTable('shopping_cart_items', {
     positionIndex: integer('position_index'),
     additionalData: text('additional_data').$type<string | null>().default(null),
     amount: integer('amount').notNull(),
-    currency: text('currency').notNull().default('euro'),
+    currency: text('currency').notNull().default('eur'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),

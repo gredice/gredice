@@ -817,7 +817,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                                     </Stack>
                                                     <Stack spacing={1} alignItems="start">
                                                         <Typography semiBold>
-                                                            {((cart.items?.reduce((sum: number, item) => sum + (item.amount || 0), 0) || 0) / 100).toFixed(2)} EUR
+                                                            {((cart.items?.reduce((sum: number, item) => sum + (item.amount || 0), 0) || 0) / 100).toFixed(2)}€
                                                         </Typography>
                                                         <Chip className="w-fit" color={cart.status === 'paid' ? 'success' : 'neutral'}>
                                                             {cart.status === 'paid' ? 'Plaćena' : (cart.status === 'new' ? 'Nova' : cart.status)}

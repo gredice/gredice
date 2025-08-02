@@ -22,11 +22,11 @@ const sectionsData: SectionData[] = [
             },
             {
                 header: "Kako skupljam suncokrete?",
-                description: "Suncokrete dobiješ prilikom registracije, redovnim posjetima svog vrta, te za svaku odrađenu akciju u vrtu. Također, za svaku kupnju od 1 EUR dobivaš 🌻 10."
+                description: "Suncokrete dobiješ prilikom registracije, redovnim posjetima svog vrta, te za svaku odrađenu akciju u vrtu. Također, za svaku kupnju od 1€ dobivaš 🌻 10."
             },
             {
                 header: "Za što se mogu koristiti suncokreti?",
-                description: "Suncokrete možeš koristiti za ukrašavanje svog vrta te brigu o gredicama i biljkama. Suncokrete možeš koristiti umjesto plaćanja pojedinih akcija. 1 EUR je jednako 🌻 1000 prilikom korištenja za akcije u svom vrtu."
+                description: "Suncokrete možeš koristiti za ukrašavanje svog vrta te brigu o gredicama i biljkama. Suncokrete možeš koristiti umjesto plaćanja pojedinih akcija. 1€ je jednako 🌻 1000 prilikom korištenja za akcije u svom vrtu."
             }
         ]
     }

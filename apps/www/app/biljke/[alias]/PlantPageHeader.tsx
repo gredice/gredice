@@ -102,8 +102,8 @@ export function PlantPageHeader({ plant, sort }: { plant: PlantData & { isRecomm
                             navigateHref={KnownPages.RaisedBeds}
                             navigateLabel="Više o gredicama"
                         />
-                        {pricePerPlant && <AttributeCard icon={<Sprout />} header="Cijena po biljci" value={`${pricePerPlant} EUR`} />}
-                        {plant.prices?.perPlant && <AttributeCard icon={<Euro />} header="Cijena za sadnju" value={`${plant.prices.perPlant.toFixed(2)} EUR`} />}
+                        {pricePerPlant && <AttributeCard icon={<Sprout />} header="Cijena po biljci" value={`${pricePerPlant}€`} />}
+                        {plant.prices?.perPlant && <AttributeCard icon={<Euro />} header="Cijena za sadnju" value={`${plant.prices.perPlant.toFixed(2)}€`} />}
                     </div>
                     <FeedbackModal
                         topic={sort ? "www/plants/sorts/information" : "www/plants/information"}

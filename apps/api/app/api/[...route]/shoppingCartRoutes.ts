@@ -24,7 +24,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // Calculate total amount of items in the cart (exclude paid items)
             const cartInfo = (await getCartInfo(cart.items));
             const total = cartInfo.items
-                .filter(item => item.status !== 'paid' && item.currency === 'euro')
+                .filter(item => item.status !== 'paid' && item.currency === 'eur')
                 .reduce((sum, item) =>
                     sum + (typeof item.shopData.discountPrice === "number"
                         ? item.shopData.discountPrice
