@@ -20,9 +20,9 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
             <Table.Header>
                 <Table.Row>
                     <Table.Head>Naziv</Table.Head>
-                    <Table.Head>Zadnja izmjena</Table.Head>
-                    <Table.Head>Status</Table.Head>
                     <Table.Head>Ispunjenost</Table.Head>
+                    <Table.Head>Status</Table.Head>
+                    <Table.Head>Zadnja izmjena</Table.Head>
                     <Table.Head></Table.Head>
                 </Table.Row>
             </Table.Header>
@@ -43,11 +43,11 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                                 </Link>
                             </Table.Cell>
                             <Table.Cell>
-                                <Typography secondary>
-                                    <LocaleDateTime time={false}>
-                                        {entity.updatedAt}
-                                    </LocaleDateTime>
-                                </Typography>
+                                <div className='w-24'>
+                                    <EntityAttributeProgress
+                                        entityTypeName={entityTypeName}
+                                        entity={entity} />
+                                </div>
                             </Table.Cell>
                             <Table.Cell>
                                 <div className='flex'>
@@ -57,11 +57,11 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                                 </div>
                             </Table.Cell>
                             <Table.Cell>
-                                <div className='w-24'>
-                                    <EntityAttributeProgress
-                                        entityTypeName={entityTypeName}
-                                        entity={entity} />
-                                </div>
+                                <Typography secondary>
+                                    <LocaleDateTime time={false}>
+                                        {entity.updatedAt}
+                                    </LocaleDateTime>
+                                </Typography>
                             </Table.Cell>
                             <Table.Cell>
                                 <ServerActionIconButton

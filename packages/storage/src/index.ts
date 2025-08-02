@@ -2,6 +2,7 @@ export * from './storage';
 export * from './schema';
 export * from './repositories/entitiesRepo';
 export * from './repositories/entityTypesRepo';
+export * from './repositories/entityTypeCategoriesRepo';
 export * from './repositories/attributeValuesRepo';
 export * from './repositories/attributeDefinitionsRepo';
 export * from './repositories/usersRepo';

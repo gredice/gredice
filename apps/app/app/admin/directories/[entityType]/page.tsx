@@ -5,13 +5,10 @@ import { EntitiesTable } from "./EntitiesTable";
 import { createEntity } from "../../../(actions)/entityActions";
 import { Add } from "@signalco/ui-icons";
 import { ServerActionIconButton } from "../../../../components/shared/ServerActionIconButton";
-import Link from "next/link";
-import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { BookA } from "@signalco/ui-icons";
-import { KnownPages } from "../../../../src/KnownPages";
 import { auth } from "../../../../lib/auth/auth";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Stack } from "@signalco/ui-primitives/Stack";
+import { EntityTypeMenu } from "./EntityTypeMenu";
 
 export const dynamic = 'force-dynamic';
 
@@ -26,17 +23,15 @@ export default async function EntitiesPage({ params }: { params: Promise<{ entit
             <Row spacing={1} justifyContent="space-between">
                 <Typography level="h1" className="text-2xl" semiBold>{entityType?.label}</Typography>
                 <Row>
-                    <Link href={KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName)}>
-                        <IconButton variant="plain" title="Atributi">
-                            <BookA className='size-5' />
-                        </IconButton>
-                    </Link>
                     <ServerActionIconButton
                         variant="plain"
                         title="Dodaj zapis"
                         onClick={createEntityBound}>
                         <Add className='size-5' />
                     </ServerActionIconButton>
+                    {entityType && (
+                        <EntityTypeMenu entityType={entityType} />
+                    )}
                 </Row>
             </Row>
             <Card>

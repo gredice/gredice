@@ -4,7 +4,9 @@ import { Bank, Fence, Home, Inbox, SmileHappy, User, Tally3, Euro, Calendar, Ham
 import { NavItem } from "./NavItem";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { EntityTypeCreateModal } from "./EntityTypeCreateModal";
-import { getEntityTypes } from "@gredice/storage";
+import { EntityTypeCategoryCreateModal } from "./EntityTypeCategoryCreateModal";
+import { EntityTypeCategoryEditModal } from "./EntityTypeCategoryEditModal";
+import { getEntityTypesOrganizedByCategories } from "@gredice/storage";
 import { ProfileNavItem } from "./ProfileNavItem";
 import { File, ShoppingCart } from "@signalco/ui-icons";
 import { auth } from "../../lib/auth/auth";
@@ -12,23 +14,51 @@ import { AuthProtectedSection } from "@signalco/auth-server/components";
 
 async function NavEntityTypesList() {
     auth(['admin']);
-    const entityTypes = await getEntityTypes();
+    const { categorizedTypes, uncategorizedTypes } = await getEntityTypesOrganizedByCategories();
 
     return (
-        <List>
-            {entityTypes.map(entityType => (
-                <NavItem
-                    key={entityType.id}
-                    href={KnownPages.DirectoryEntityType(entityType.name)}
-                    label={entityType.label}
-                    icon={<File className="size-5" />}
-                />
+        <>
+            {/* Entity types without category come first */}
+            {uncategorizedTypes.length > 0 && (
+                <List>
+                    {uncategorizedTypes.map(entityType => (
+                        <NavItem
+                            key={entityType.id}
+                            href={KnownPages.DirectoryEntityType(entityType.name)}
+                            label={entityType.label}
+                            icon={<File className="size-5" />}
+                        />
+                    ))}
+                </List>
+            )}
+
+            {/* Categories with their entity types */}
+            {categorizedTypes.map(category => (
+                <Stack key={category.id} spacing={1}>
+                    <ListHeader
+                        header={category.label}
+                        actions={[
+                            <EntityTypeCategoryEditModal key={`edit-${category.id}`} category={category} />
+                        ]}
+                    />
+                    <List>
+                        {category.entityTypes.map(entityType => (
+                            <NavItem
+                                key={entityType.id}
+                                href={KnownPages.DirectoryEntityType(entityType.name)}
+                                label={entityType.label}
+                                icon={<File className="size-5" />}
+                            />
+                        ))}
+                    </List>
+                </Stack>
             ))}
-        </List>
-    );
+        </>
+    )
 }
 
-export function Nav() {
+export async function Nav() {
+    const authAdmin = auth.bind(null, ['admin']);
     return (
         <Stack spacing={2}>
             <List>
@@ -39,10 +69,11 @@ export function Nav() {
                 <ListHeader
                     header="Zapisi"
                     actions={[
-                        <EntityTypeCreateModal key="modal" />
+                        <EntityTypeCategoryCreateModal key="category-modal" />,
+                        <EntityTypeCreateModal key="entity-modal" />
                     ]}
                 />
-                <AuthProtectedSection auth={auth.bind(null, ['admin'])}>
+                <AuthProtectedSection auth={authAdmin}>
                     <NavEntityTypesList />
                 </AuthProtectedSection>
             </Stack>
