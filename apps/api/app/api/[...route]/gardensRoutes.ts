@@ -124,6 +124,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 raisedBeds: freshGarden.raisedBeds.map(raisedBed => ({
                     id: raisedBed.id,
                     name: raisedBed.name,
+                    physicalId: raisedBed.physicalId,
                     blockId: raisedBed.blockId,
                     status: raisedBed.status,
                     fields: raisedBed.fields,

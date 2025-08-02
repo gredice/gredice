@@ -154,6 +154,7 @@ function mockGarden() {
                 id: 1,
                 name: 'Raised Bed 1',
                 blockId: '3',
+                physicalId: '42',
                 fields: [],
                 status: 'new',
                 updatedAt: new Date().toISOString(),
@@ -162,6 +163,7 @@ function mockGarden() {
             {
                 id: 2,
                 name: 'Raised Bed 2',
+                physicalId: '42',
                 blockId: '4',
                 fields: [],
                 status: 'new',
