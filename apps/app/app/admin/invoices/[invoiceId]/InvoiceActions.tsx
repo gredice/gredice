@@ -25,7 +25,7 @@ interface InvoiceActionsProps {
 export function InvoiceActions({ invoice }: InvoiceActionsProps) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
-    const [existingReceipt, setExistingReceipt] = useState<any>(null);
+    const [existingReceipt, setExistingReceipt] = useState<Awaited<ReturnType<typeof getInvoiceReceiptAction>> | null>(null);
     const [receiptChecked, setReceiptChecked] = useState(false);
 
     const status = invoice.status as InvoiceStatus;

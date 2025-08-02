@@ -73,7 +73,7 @@ export default async function ReceiptsPage() {
                                     </Table.Cell>
                                 </Table.Row>
                             )}
-                            {receipts.map((receipt: any) => (
+                            {receipts.map((receipt) => (
                                 <Table.Row key={receipt.id}>
                                     <Table.Cell>
                                         <Link href={KnownPages.Receipt(receipt.id)}>

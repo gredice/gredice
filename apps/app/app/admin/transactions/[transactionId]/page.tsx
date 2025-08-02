@@ -77,7 +77,7 @@ export default async function TransactionDetailsPage({ params }: { params: Promi
                                     </Table.Cell>
                                 </Table.Row>
                             )}
-                            {transaction.invoices.map((invoice: any) => (
+                            {transaction.invoices.map((invoice) => (
                                 <Table.Row key={invoice.id}>
                                     <Table.Cell>
                                         <Link href={KnownPages.Invoice(invoice.id)}>

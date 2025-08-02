@@ -205,29 +205,20 @@ export default async function InvoicePage({ params }: { params: { invoiceId: str
                                         <Table.Head>Opis</Table.Head>
                                         <Table.Head className="text-right">Količina</Table.Head>
                                         <Table.Head className="text-right">Jedinična cijena</Table.Head>
-                                        <Table.Head className="text-right">PDV stopa</Table.Head>
                                         <Table.Head className="text-right">Ukupno</Table.Head>
                                     </Table.Row>
                                 </Table.Header>
                                 <Table.Body>
-                                    {invoice.invoiceItems.map((item: any, index: number) => (
+                                    {invoice.invoiceItems.map((item, index) => (
                                         <Table.Row key={index}>
                                             <Table.Cell>
-                                                <div>
-                                                    <Typography>{item.description}</Typography>
-                                                    {item.sku && (
-                                                        <Typography level="body2" className="text-gray-600">SKU: {item.sku}</Typography>
-                                                    )}
-                                                </div>
+                                                <Typography>{item.description}</Typography>
                                             </Table.Cell>
                                             <Table.Cell className="text-right">
-                                                <Typography>{item.quantity} {item.unit || 'kom'}</Typography>
+                                                <Typography>{item.quantity} kom</Typography>
                                             </Table.Cell>
                                             <Table.Cell className="text-right">
                                                 <Typography>{item.unitPrice}{invoice.currency === 'eur' ? '€' : invoice.currency}</Typography>
-                                            </Table.Cell>
-                                            <Table.Cell className="text-right">
-                                                <Typography>{item.taxRate ? `${item.taxRate}%` : '0%'}</Typography>
                                             </Table.Cell>
                                             <Table.Cell className="text-right">
                                                 <Typography>{item.totalPrice}{invoice.currency === 'eur' ? '€' : invoice.currency}</Typography>

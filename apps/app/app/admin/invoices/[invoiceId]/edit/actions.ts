@@ -43,7 +43,7 @@ export async function updateInvoiceAction(data: UpdateInvoiceData) {
         await updateInvoice({
             id: data.id,
             currency: data.currency,
-            status: data.status as any,
+            status: data.status,
             billToName: data.billToName,
             billToEmail: data.billToEmail || undefined,
             billToAddress: data.billToAddress || undefined,

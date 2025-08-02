@@ -21,7 +21,7 @@ export default async function EditInvoicePage({ params }: { params: { invoiceId:
     }
 
     // Check if invoice can be edited
-    if (!canEditInvoice(invoice.status as any)) {
+    if (!canEditInvoice(invoice.status)) {
         redirect(KnownPages.Invoice(invoiceId));
     }
 

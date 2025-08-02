@@ -17,6 +17,7 @@ import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
 // Import actions based on mode
 import { createInvoiceAction, getTransactionsAction, getShoppingCartsAction, getAccountDetailsAction, getShoppingCartItemsWithEntityNamesAction } from "../create/actions";
 import { updateInvoiceAction } from "../[invoiceId]/edit/actions";
+import { getInvoice } from "@gredice/storage";
 
 const statusOptions = [
     { value: 'draft', label: 'Nacrt' },
@@ -41,7 +42,7 @@ interface InvoiceItem {
 
 interface InvoiceFormProps {
     mode: 'create' | 'edit';
-    invoice?: any; // For edit mode
+    invoice?: Awaited<ReturnType<typeof getInvoice>>;
     onSuccess?: (invoiceId: number) => void;
 }
 
@@ -71,7 +72,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
         billToCountry: mode === 'edit' ? (invoice?.billToCountry || '') : '',
         notes: mode === 'edit' ? (invoice?.notes || '') : '',
         terms: mode === 'edit' ? (invoice?.terms || '') : '',
-        issueDate: mode === 'edit' 
+        issueDate: mode === 'edit'
             ? (invoice?.issueDate ? new Date(invoice.issueDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0])
             : new Date().toISOString().split('T')[0],
         dueDate: mode === 'edit'
@@ -82,8 +83,8 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
 
     // Initialize items based on mode
     const [items, setItems] = useState<InvoiceItem[]>(
-        mode === 'edit' && invoice?.invoiceItems?.length > 0
-            ? invoice.invoiceItems.map((item: any) => ({
+        mode === 'edit' && (invoice?.invoiceItems?.length ?? 0) > 0
+            ? invoice?.invoiceItems.map((item: any) => ({
                 id: item.id,
                 description: item.description || '',
                 quantity: item.quantity?.toString() || '1',
@@ -92,7 +93,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                 sku: item.sku || '',
                 unit: item.unit || '',
                 taxRate: item.taxRate?.toString() || '',
-            }))
+            })) ?? []
             : [{ description: '', quantity: '1', unitPrice: '0', totalPrice: '0' }]
     );
 
@@ -312,6 +313,11 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                     alert('Greška prilikom kreiranja ponude: ' + result.error);
                 }
             } else {
+                if (!invoice) {
+                    console.error('Invoice data is required for edit mode');
+                    return;
+                }
+
                 // Edit mode
                 const invoiceData = {
                     ...formData,
@@ -352,7 +358,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
     };
 
     // Filter status options for edit mode
-    const availableStatusOptions = mode === 'edit' 
+    const availableStatusOptions = mode === 'edit'
         ? statusOptions.filter(option => option.value === 'draft' || option.value === 'pending')
         : statusOptions;
 
@@ -369,7 +375,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                 type="button"
                                 variant="outlined"
                                 color="neutral"
-                                onClick={() => router.push(mode === 'create' ? KnownPages.Invoices : KnownPages.Invoice(invoice.id))}
+                                onClick={() => router.push(mode === 'create' || !invoice ? KnownPages.Invoices : KnownPages.Invoice(invoice.id))}
                             >
                                 Odustani
                             </Button>
@@ -378,8 +384,8 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                 disabled={isSubmitting}
                                 color="primary"
                             >
-                                {isSubmitting 
-                                    ? (mode === 'create' ? 'Kreiranje...' : 'Ažuriranje...') 
+                                {isSubmitting
+                                    ? (mode === 'create' ? 'Kreiranje...' : 'Ažuriranje...')
                                     : (mode === 'create' ? 'Kreiraj ponudu' : 'Ažuriraj ponudu')
                                 }
                             </Button>
