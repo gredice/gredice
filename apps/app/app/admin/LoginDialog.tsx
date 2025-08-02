@@ -39,7 +39,7 @@ export function LoginDialog() {
 
     return (
         <div className="h-[100vh] flex items-center justify-center">
-            <Modal open dismissible={false} hideClose title="Prijava" className="max-w-96">
+            <Modal open dismissible={false} hideClose title="Prijava" className="md:max-w-md">
                 <Stack spacing={4}>
                     <Typography level="h4" component="p">Prijava</Typography>
                     <form action={submitAction}>

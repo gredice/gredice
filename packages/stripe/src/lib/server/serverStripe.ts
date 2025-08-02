@@ -12,7 +12,7 @@ export type UserAccount = {
 export type CheckoutItem = {
     price: {
         valueInCents: number;
-        currency: 'EUR';
+        currency: 'eur';
     };
     product: {
         name: string;

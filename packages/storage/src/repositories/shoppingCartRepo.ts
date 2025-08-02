@@ -140,7 +140,7 @@ export async function upsertOrRemoveCartItem(
                 raisedBedId,
                 positionIndex,
                 additionalData,
-                currency: currency ?? 'euro'
+                currency: currency ?? 'eur'
             })
             .returning({
                 id: shoppingCartItems.id

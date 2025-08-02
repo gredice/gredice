@@ -1,5 +1,5 @@
 import { getInvoice } from "@gredice/storage";
-import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
+import { Card, CardContent, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";

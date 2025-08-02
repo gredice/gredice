@@ -8,11 +8,27 @@ import { getEntityTypes } from "@gredice/storage";
 import { ProfileNavItem } from "./ProfileNavItem";
 import { File, ShoppingCart } from "@signalco/ui-icons";
 import { auth } from "../../lib/auth/auth";
+import { AuthProtectedSection } from "@signalco/auth-server/components";
 
-export async function Nav() {
+async function NavEntityTypesList() {
     auth(['admin']);
     const entityTypes = await getEntityTypes();
 
+    return (
+        <List>
+            {entityTypes.map(entityType => (
+                <NavItem
+                    key={entityType.id}
+                    href={KnownPages.DirectoryEntityType(entityType.name)}
+                    label={entityType.label}
+                    icon={<File className="size-5" />}
+                />
+            ))}
+        </List>
+    );
+}
+
+export function Nav() {
     return (
         <Stack spacing={2}>
             <List>
@@ -26,16 +42,9 @@ export async function Nav() {
                         <EntityTypeCreateModal key="modal" />
                     ]}
                 />
-                <List>
-                    {entityTypes.map(entityType => (
-                        <NavItem
-                            key={entityType.id}
-                            href={KnownPages.DirectoryEntityType(entityType.name)}
-                            label={entityType.label}
-                            icon={<File className="size-5" />}
-                        />
-                    ))}
-                </List>
+                <AuthProtectedSection auth={auth.bind(null, ['admin'])}>
+                    <NavEntityTypesList />
+                </AuthProtectedSection>
             </Stack>
             <Stack spacing={1}>
                 <ListHeader header="Administracija" />

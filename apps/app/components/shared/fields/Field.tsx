@@ -7,7 +7,12 @@ export function Field({ name, value, mono }: { name: string; value: Date | boole
     return (
         <Stack>
             <Typography level="body2" semiBold>{name}</Typography>
-            <Typography level="body1" mono={mono} component={typeof value !== 'object' ? 'p' : 'div'}>
+            <Typography
+                level="body1"
+                mono={mono}
+                component={typeof value !== 'object' ? 'p' : 'div'}
+                noWrap={typeof value === 'string' || typeof value === 'number'}
+                title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}>
                 {value instanceof Date
                     ? <LocaleDateTime>{value}</LocaleDateTime>
                     : (typeof value === 'boolean'

@@ -15,12 +15,10 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                 <main className="relative h-full">
                     <div className="flex flex-row min-h-full">
                         <div className="p-4 min-w-64">
-                            <AuthProtectedSection auth={authAdmin}>
-                                <Nav />
-                            </AuthProtectedSection>
+                            <Nav />
                         </div>
                         <div className="min-h-full grow pt-2">
-                            <div className="p-4 bg-white border-l border-t rounded-tl-xl min-h-full">
+                            <div className="p-4 bg-background border-l border-t rounded-tl-xl min-h-full">
                                 <AuthProtectedSection auth={authAdmin}>
                                     <Suspense>
                                         {children}
@@ -30,9 +28,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                         </div>
                     </div>
                     <SignedOut auth={authAdmin}>
-                        <div className="absolute inset-0 bg-white/10 backdrop-blur">
-                            <LoginDialog />
-                        </div>
+                        <LoginDialog />
                     </SignedOut>
                 </main>
             </div>
