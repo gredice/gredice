@@ -52,7 +52,7 @@ async function baseInvoice(transactionId?: number): Promise<InsertInvoice> {
         subtotal: '100.00',
         taxAmount: '8.00',
         totalAmount: '108.00',
-        currency: 'USD',
+        currency: 'usd',
         status: 'draft',
         issueDate: currentDate,
         dueDate,
@@ -72,7 +72,7 @@ async function baseTransaction(): Promise<InsertTransaction> {
     return {
         accountId: await createTestAccount(),
         amount: 10800, // $108.00 in cents
-        currency: 'USD',
+        currency: 'usd',
         status: 'completed',
         stripePaymentId: 'stripe-test-' + Date.now()
     };
