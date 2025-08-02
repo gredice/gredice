@@ -1,0 +1,1 @@
+ALTER TABLE "shopping_cart_items" ALTER COLUMN "currency" SET DEFAULT 'eur';
