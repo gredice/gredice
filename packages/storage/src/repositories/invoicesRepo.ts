@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq, desc, isNull, lte, like } from "drizzle-orm";
+import { and, eq, desc, isNull, lte, like, gte } from "drizzle-orm";
 import {
     invoices,
     invoiceItems,
@@ -415,11 +415,59 @@ export async function calculateInvoiceTotals(invoiceId: number) {
     };
 }
 
+export async function createReceiptFromInvoice(
+    invoiceId: number,
+    receiptData: Omit<ReceiptCreationData, 'jir' | 'zki'>
+) {
+    // Get the invoice details
+    const invoice = await getInvoice(invoiceId);
+    if (!invoice) {
+        throw new Error("Invoice not found");
+    }
+
+    if (invoice.status !== 'paid') {
+        throw new Error("Can only create receipt for paid invoices");
+    }
+
+    // Check if receipt already exists for this invoice
+    const existingReceipt = await getReceiptByInvoice(invoiceId);
+    if (existingReceipt) {
+        throw new Error("Receipt already exists for this invoice");
+    }
+
+    // Generate receipt number
+    const receiptNumber = await generateReceiptNumber();
+
+    const receiptToInsert = {
+        invoiceId,
+        receiptNumber,
+        subtotal: invoice.subtotal,
+        taxAmount: invoice.taxAmount,
+        totalAmount: invoice.totalAmount,
+        currency: invoice.currency,
+        paymentMethod: receiptData.paymentMethod,
+        paymentReference: receiptData.paymentReference,
+        businessPin: receiptData.businessPin,
+        businessName: receiptData.businessName,
+        businessAddress: receiptData.businessAddress,
+        customerPin: receiptData.customerPin,
+        customerName: receiptData.customerName,
+        customerAddress: receiptData.customerAddress,
+        cisStatus: 'pending', // Start as pending, not fiscalized yet
+    } satisfies Omit<InsertReceipt, 'yearReceiptNumber'>;
+
+    const receiptId = await createReceipt(receiptToInsert);
+    return receiptId;
+}
+
 // Receipt CRUD operations
-async function createReceipt(receipt: InsertReceipt) {
+export async function createReceipt(receipt: Omit<InsertReceipt, 'yearReceiptNumber'>) {
     const receiptId = (await storage()
         .insert(receipts)
-        .values(receipt)
+        .values({
+            ...receipt,
+            yearReceiptNumber: `${new Date().getFullYear()}-${receipt.receiptNumber}`
+        })
         .returning({ id: receipts.id }))[0].id;
 
     await createEvent(knownEvents.receipts?.createdV1?.(receiptId.toString(), {
@@ -500,7 +548,7 @@ export async function updateReceiptFiscalization(
         zki?: string;
         cisStatus: 'sent' | 'confirmed' | 'failed';
         cisReference?: string;
-        cisErrorMessage?: string;
+        cisErrorMessage?: string | null;
         cisTimestamp?: Date;
     }
 ) {
@@ -558,23 +606,49 @@ export async function getReceiptsByBusinessPin(businessPin: string) {
 }
 
 export async function generateReceiptNumber(): Promise<string> {
-    const year = new Date().getFullYear();
-    const prefix = `${year}`;
+    const firstDateOfYear = new Date(new Date().getFullYear(), 0, 1);
 
     // Get the latest receipt number for this year
     const latestReceipt = await storage().query.receipts.findFirst({
         where: and(
             eq(receipts.isDeleted, false),
-            like(receipts.receiptNumber, `${prefix}%`)
+            gte(receipts.issuedAt, firstDateOfYear),
         ),
         orderBy: desc(receipts.receiptNumber),
     });
 
     let nextNumber = 1;
-    if (latestReceipt?.receiptNumber.startsWith(prefix)) {
-        const lastNumber = latestReceipt.receiptNumber.replace(prefix, '');
-        nextNumber = parseInt(lastNumber) + 1;
+    if (latestReceipt?.receiptNumber) {
+        nextNumber = parseInt(latestReceipt.receiptNumber) + 1;
     }
 
-    return `${prefix}${nextNumber.toString().padStart(6, '0')}`;
+    return `${nextNumber}`;
+}
+
+export async function softDeleteReceipt(receiptId: number) {
+    const receipt = await getReceipt(receiptId);
+    if (!receipt) {
+        throw new Error(`Receipt with id ${receiptId} not found`);
+    }
+
+    await storage()
+        .update(receipts)
+        .set({
+            isDeleted: true,
+            updatedAt: new Date(),
+            yearReceiptNumber: `${receipt.yearReceiptNumber}-deleted-${new Date().toISOString()}`
+        })
+        .where(
+            and(
+                eq(receipts.id, receiptId),
+                eq(receipts.isDeleted, false)
+            ));
+
+    // Create event using the same pattern as other receipt operations
+    await createEvent(knownEvents.receipts?.updatedV1?.(receiptId.toString()) ?? {
+        name: 'receipt.deleted.v1',
+        entityId: receiptId.toString(),
+        entityTypeName: 'receipt',
+        eventData: {}
+    });
 }

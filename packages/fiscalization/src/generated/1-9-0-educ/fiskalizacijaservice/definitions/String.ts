@@ -1,0 +1,4 @@
+
+/** string */
+export interface String {
+}

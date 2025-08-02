@@ -289,8 +289,8 @@ test('generateInvoiceNumber creates unique numbers', async () => {
     const number1 = await generateInvoiceNumber();
     const number2 = await generateInvoiceNumber();
 
-    assert.ok(number1.startsWith('INV-'));
-    assert.ok(number2.startsWith('INV-'));
+    assert.ok(number1.startsWith('PON-'));
+    assert.ok(number2.startsWith('PON-'));
     assert.notStrictEqual(number1, number2);
 });
 

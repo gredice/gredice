@@ -1,5 +1,5 @@
 import { pgTable, serial, integer, text, timestamp, boolean, index, decimal } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, eq } from "drizzle-orm";
 import { accounts } from "./usersSchema";
 import { transactions } from "./transactionSchema";
 
@@ -110,10 +110,11 @@ export type SelectInvoiceItem = typeof invoiceItems.$inferSelect;
 // Receipts table for Croatian fiscalization
 export const receipts = pgTable('receipts', {
     id: serial('id').primaryKey(),
-    invoiceId: integer('invoice_id').notNull().references(() => invoices.id).unique(), // One receipt per invoice
+    invoiceId: integer('invoice_id').notNull().references(() => invoices.id), // Allow multiple receipts per invoice (for soft-deleted ones)
 
     // Receipt identification
-    receiptNumber: text('receipt_number').notNull().unique(),
+    receiptNumber: text('receipt_number').notNull(),
+    yearReceiptNumber: text('year_receipt_number').notNull().unique(), // e.g. "2023-1"
 
     // Financial details (copied from invoice when paid)
     subtotal: decimal('subtotal', { precision: 10, scale: 2 }).notNull(),

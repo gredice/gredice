@@ -102,7 +102,7 @@ export default async function InvoicesPage() {
                                     <Table.Cell>
                                         <Chip color="success" size="sm" className="w-fit">
                                             <Typography noWrap>
-                                                {invoice.currency === 'EUR' ? '€' : invoice.currency} {invoice.totalAmount}
+                                                {invoice.totalAmount}{invoice.currency === 'eur' ? '€' : invoice.currency}
                                             </Typography>
                                         </Chip>
                                     </Table.Cell>
@@ -119,7 +119,7 @@ export default async function InvoicesPage() {
                                     <Table.Cell>
                                         {invoice.transactionId ? (
                                             <Link href={KnownPages.Transaction(invoice.transactionId)}>
-                                                {invoice.transactionId}
+                                                #{invoice.transactionId}
                                             </Link>
                                         ) : (
                                             <span className="text-gray-500">Nema transakcije</span>

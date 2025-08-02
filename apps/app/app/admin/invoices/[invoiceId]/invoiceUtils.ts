@@ -1,7 +1,7 @@
 // Client-safe invoice utility functions
 export type InvoiceStatus = 'draft' | 'pending' | 'sent' | 'paid' | 'cancelled';
 
-export function isValidStatusTransition(currentStatus: InvoiceStatus, newStatus: InvoiceStatus): boolean {
+export function isValidStatusTransition(currentStatus: InvoiceStatus | string, newStatus: InvoiceStatus): boolean {
     const validTransitions: Record<InvoiceStatus, InvoiceStatus[]> = {
         'draft': ['pending', 'cancelled'],
         'pending': ['sent', 'cancelled'],
@@ -13,15 +13,15 @@ export function isValidStatusTransition(currentStatus: InvoiceStatus, newStatus:
     return validTransitions[currentStatus]?.includes(newStatus) ?? false;
 }
 
-export function canEditInvoice(status: InvoiceStatus): boolean {
+export function canEditInvoice(status: InvoiceStatus | string): boolean {
     return status === 'draft' || status === 'pending';
 }
 
-export function canDeleteInvoice(status: InvoiceStatus): boolean {
+export function canDeleteInvoice(status: InvoiceStatus | string): boolean {
     return status === 'draft' || status === 'pending';
 }
 
-export function canCancelInvoice(status: InvoiceStatus): boolean {
+export function canCancelInvoice(status: InvoiceStatus | string): boolean {
     return status === 'draft' || status === 'pending' || status === 'sent';
 }
 
