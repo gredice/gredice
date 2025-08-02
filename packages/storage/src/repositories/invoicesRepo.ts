@@ -91,23 +91,16 @@ export async function getInvoices(accountId: string) {
     });
 }
 
-export async function getAllInvoices() {
+export async function getAllInvoices(filters?: { transactionId?: number }) {
     return storage().query.invoices.findMany({
-        where: eq(invoices.isDeleted, false),
+        where: and(
+            filters?.transactionId ? eq(invoices.transactionId, filters.transactionId) : undefined,
+            eq(invoices.isDeleted, false)
+        ),
         with: {
             invoiceItems: true,
             account: true,
             transaction: true,
-        },
-        orderBy: desc(invoices.issueDate),
-    });
-}
-
-export async function getInvoicesByTransaction(transactionId: number) {
-    return storage().query.invoices.findMany({
-        where: and(eq(invoices.transactionId, transactionId), eq(invoices.isDeleted, false)),
-        with: {
-            invoiceItems: true,
         },
         orderBy: desc(invoices.issueDate),
     });

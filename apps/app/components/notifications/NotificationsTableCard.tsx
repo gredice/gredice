@@ -7,6 +7,7 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { ServerActionIconButton } from "../shared/ServerActionIconButton";
 import { Delete } from "@signalco/ui-icons";
 import { deleteNotification } from "./(actions)/notificationActions";
+import { NoDataPlaceholder } from "../shared/placeholders/NoDataPlaceholder";
 
 type NotificationTableCardProps = {
     accountId?: string;
@@ -16,7 +17,7 @@ type NotificationTableCardProps = {
 };
 
 export async function NotificationsTableCard({ accountId, userId, gardenId, raisedBedId }: NotificationTableCardProps) {
-    const accountNotificaitons = accountId
+    const accountNotifications = accountId
         ? await getNotificationsByAccount(accountId, true, 0, 10000)
         : [];
 
@@ -25,7 +26,7 @@ export async function NotificationsTableCard({ accountId, userId, gardenId, rais
         : [];
 
     // Filter notifications by gardenId or raisedBedId if provided
-    const filteredNotifications = [...accountNotificaitons, ...userNotifications].filter(notification => {
+    const filteredNotifications = [...accountNotifications, ...userNotifications].filter(notification => {
         if (gardenId && notification.gardenId !== gardenId) return false;
         if (raisedBedId && notification.raisedBedId !== raisedBedId) return false;
         return true;
@@ -108,10 +109,10 @@ export async function NotificationsTableCard({ accountId, userId, gardenId, rais
                                 <Table.Cell><LocaleDateTime>{notification.createdAt}</LocaleDateTime></Table.Cell>
                             </Table.Row>
                         ))}
-                        {accountNotificaitons.length === 0 && userNotifications.length === 0 && (
+                        {accountNotifications.length === 0 && userNotifications.length === 0 && (
                             <Table.Row>
-                                <Table.Cell colSpan={3}>
-                                    <div className="text-center text-gray-500">Nema obavijesti</div>
+                                <Table.Cell colSpan={12}>
+                                    <NoDataPlaceholder>Nema obavjesti</NoDataPlaceholder>
                                 </Table.Cell>
                             </Table.Row>
                         )}

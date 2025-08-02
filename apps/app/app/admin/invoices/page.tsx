@@ -11,6 +11,7 @@ import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
+import { ExternalLink, LinkOff } from "@signalco/ui-icons";
 
 export const dynamic = 'force-dynamic';
 
@@ -38,16 +39,91 @@ function getStatusLabel(status: string) {
     }
 }
 
+export async function InvoicesTable({ transactionId }: { transactionId?: number }) {
+    const invoices = await getAllInvoices({ transactionId });
+
+    return (
+        <Table>
+            <Table.Header>
+                <Table.Row>
+                    <Table.Head>Broj ponude</Table.Head>
+                    <Table.Head>Klijent</Table.Head>
+                    <Table.Head>Status</Table.Head>
+                    <Table.Head>Iznos</Table.Head>
+                    <Table.Head>Datum izdavanja</Table.Head>
+                    <Table.Head>Datum dospijeća</Table.Head>
+                    <Table.Head>Transakcija</Table.Head>
+                </Table.Row>
+            </Table.Header>
+            <Table.Body>
+                {invoices.length === 0 && (
+                    <Table.Row>
+                        <Table.Cell colSpan={7}>
+                            <NoDataPlaceholder>
+                                Nema ponuda
+                            </NoDataPlaceholder>
+                        </Table.Cell>
+                    </Table.Row>
+                )}
+                {invoices.map(invoice => (
+                    <Table.Row key={invoice.id}>
+                        <Table.Cell>
+                            <Link href={KnownPages.Invoice(invoice.id)}>
+                                {invoice.invoiceNumber}
+                            </Link>
+                        </Table.Cell>
+                        <Table.Cell>
+                            <div>
+                                <div className="font-medium">{invoice.billToName}</div>
+                                <div className="text-sm text-gray-500">{invoice.billToEmail}</div>
+                            </div>
+                        </Table.Cell>
+                        <Table.Cell>
+                            <Chip color={getStatusColor(invoice.status)} className="w-fit">
+                                {getStatusLabel(invoice.status)}
+                            </Chip>
+                        </Table.Cell>
+                        <Table.Cell>
+                            <Chip color="success" className="w-fit">
+                                {invoice.totalAmount}{invoice.currency === 'eur' ? '€' : invoice.currency}
+                            </Chip>
+                        </Table.Cell>
+                        <Table.Cell>
+                            <LocaleDateTime time={false}>
+                                {invoice.issueDate}
+                            </LocaleDateTime>
+                        </Table.Cell>
+                        <Table.Cell>
+                            <LocaleDateTime time={false}>
+                                {invoice.dueDate}
+                            </LocaleDateTime>
+                        </Table.Cell>
+                        <Table.Cell>
+                            {invoice.transactionId ? (
+                                <Link href={KnownPages.Transaction(invoice.transactionId)}>
+                                    <Chip startDecorator={<ExternalLink className="size-4 shrink-0" />} className="w-fit">
+                                        #{invoice.transactionId}
+                                    </Chip>
+                                </Link>
+                            ) : (
+                                <span className="text-gray-500">Nema transakcije</span>
+                            )}
+                        </Table.Cell>
+                    </Table.Row>
+                ))}
+            </Table.Body>
+        </Table>
+    );
+}
+
 export default async function InvoicesPage() {
     await auth(['admin']);
-    const invoices = await getAllInvoices();
 
     return (
         <Stack spacing={2}>
             <Row spacing={1} justifyContent="space-between" alignItems="center">
                 <Row spacing={1}>
                     <Typography level="h1" className="text-2xl" semiBold>Ponude</Typography>
-                    <Chip color="primary" size="sm">{invoices.length}</Chip>
                 </Row>
                 <Link href={KnownPages.CreateInvoice}>
                     <Button variant="solid" color="primary">

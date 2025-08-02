@@ -4,11 +4,11 @@ import { AxiomWebVitals } from 'next-axiom';
 import "./globals.css";
 import Head from "next/head";
 import { ClientAppProvider } from "../components/providers/ClientAppProvider";
-import {ReactNode} from "react";
+import { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "Admin | Gredice",
-  description: "Gredice admin - upravljanje gredicama.",
+  description: "Gredice admin - upravljanje gredicama",
 };
 
 export default function RootLayout({
@@ -17,7 +17,7 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="hr">
+    <html lang="hr" suppressHydrationWarning={true}>
       <Head>
         <meta name="apple-mobile-web-app-title" content="Gredice" />
         <meta name="theme-color" content="#2e6f40" />
