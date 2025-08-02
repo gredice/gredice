@@ -28,7 +28,7 @@ export default function UvjetiKoristenjaPage() {
                         Trgovački sud u Zagrebu, pod brojem: Tt-25/2168-2 (23.01.2025.)<br />
                         MBS: <span>081628528</span><br />
                         EUID: <span>HRSR.081628528</span><br />
-                        Temeljni kapital u iznosu od 2.500,00 euro je uplaćen u cijelosti.<br/>
+                        Temeljni kapital u iznosu od 2.500,00€ je uplaćen u cijelosti.<br />
                         <a href="https://sudreg.pravosudje.hr/registar/f?p=150:28:0::NO:28:P28_SBT_MBS:081628528">Sudski registar - Podaci o poslovnom subjektu</a>
                     </p>
 

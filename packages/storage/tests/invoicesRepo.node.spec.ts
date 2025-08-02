@@ -7,7 +7,6 @@ import {
     getInvoices,
     getAllInvoices,
     getInvoiceByNumber,
-    getInvoicesByTransaction,
     getInvoicesByStatus,
     getOverdueInvoices,
     updateInvoice,
@@ -192,7 +191,7 @@ test('getInvoicesByTransaction', async () => {
     const invoiceData = await baseInvoice(transactionId);
     const invoiceId = await createInvoice(invoiceData);
 
-    const invoices = await getInvoicesByTransaction(transactionId);
+    const invoices = await getAllInvoices({ transactionId });
     assert.ok(Array.isArray(invoices));
     assert.strictEqual(invoices.length, 1);
     assert.strictEqual(invoices[0].id, invoiceId);
@@ -460,7 +459,7 @@ test('receipt contains all financial data from invoice', async () => {
     invoiceData.subtotal = '150.00';
     invoiceData.taxAmount = '15.00';
     invoiceData.totalAmount = '165.00';
-    invoiceData.currency = 'EUR';
+    invoiceData.currency = 'eur';
 
     const invoiceId = await createInvoice(invoiceData);
 
@@ -476,7 +475,7 @@ test('receipt contains all financial data from invoice', async () => {
     assert.strictEqual(receipt.subtotal, '150.00');
     assert.strictEqual(receipt.taxAmount, '15.00');
     assert.strictEqual(receipt.totalAmount, '165.00');
-    assert.strictEqual(receipt.currency, 'EUR');
+    assert.strictEqual(receipt.currency, 'eur');
 });
 
 // New invoice status management tests

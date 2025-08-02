@@ -119,7 +119,7 @@ export async function getShoppingCartsAction(accountId?: string) {
             ...cart,
             items: cart.items.filter(item =>
                 item.status === 'paid' &&
-                (item.currency === 'euro' || item.currency === 'eur' || !item.currency) // Default to EUR if no currency specified
+                (item.currency === 'eur' || !item.currency) // Default to EUR if no currency specified
             )
         })).filter(cart => cart.items.length > 0); // Only include carts that have EUR paid items
 
