@@ -35,9 +35,6 @@ interface InvoiceItem {
     quantity: string;
     unitPrice: string;
     totalPrice: string;
-    sku?: string;
-    unit?: string;
-    taxRate?: string;
 }
 
 interface InvoiceFormProps {
@@ -84,15 +81,12 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
     // Initialize items based on mode
     const [items, setItems] = useState<InvoiceItem[]>(
         mode === 'edit' && (invoice?.invoiceItems?.length ?? 0) > 0
-            ? invoice?.invoiceItems.map((item: any) => ({
+            ? invoice?.invoiceItems.map((item) => ({
                 id: item.id,
                 description: item.description || '',
                 quantity: item.quantity?.toString() || '1',
                 unitPrice: item.unitPrice?.toString() || '0',
                 totalPrice: item.totalPrice?.toString() || '0',
-                sku: item.sku || '',
-                unit: item.unit || '',
-                taxRate: item.taxRate?.toString() || '',
             })) ?? []
             : [{ description: '', quantity: '1', unitPrice: '0', totalPrice: '0' }]
     );
@@ -332,9 +326,6 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                         quantity: parseFloat(item.quantity),
                         unitPrice: parseFloat(item.unitPrice),
                         totalPrice: parseFloat(item.totalPrice),
-                        sku: item.sku || null,
-                        unit: item.unit || null,
-                        taxRate: item.taxRate ? parseFloat(item.taxRate) : null,
                     }))
                 };
 
@@ -681,17 +672,6 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                                             required
                                                         />
                                                     </Stack>
-                                                    {mode === 'edit' && (
-                                                        <Stack spacing={1}>
-                                                            <Typography level="body2">SKU</Typography>
-                                                            <Input
-                                                                value={item.sku || ''}
-                                                                onChange={(e) => handleItemChange(index, 'sku', e.target.value)}
-                                                                placeholder="SKU"
-                                                                className="w-24"
-                                                            />
-                                                        </Stack>
-                                                    )}
                                                     <IconButton
                                                         onClick={() => removeItem(index)}
                                                         disabled={items.length === 1}
@@ -713,16 +693,6 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                                             required
                                                         />
                                                     </Stack>
-                                                    {mode === 'edit' && (
-                                                        <Stack spacing={1} className="flex-1">
-                                                            <Typography level="body2">Jedinica</Typography>
-                                                            <Input
-                                                                value={item.unit || ''}
-                                                                onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
-                                                                placeholder="kom, kg, h..."
-                                                            />
-                                                        </Stack>
-                                                    )}
                                                     <Stack spacing={1} className="flex-1">
                                                         <Typography level="body2">Jedinična cijena (€) *</Typography>
                                                         <Input
@@ -734,20 +704,6 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                                             required
                                                         />
                                                     </Stack>
-                                                    {mode === 'edit' && (
-                                                        <Stack spacing={1} className="flex-1">
-                                                            <Typography level="body2">PDV stopa (%)</Typography>
-                                                            <Input
-                                                                type="number"
-                                                                step="0.01"
-                                                                min="0"
-                                                                max="100"
-                                                                value={item.taxRate || ''}
-                                                                onChange={(e) => handleItemChange(index, 'taxRate', e.target.value)}
-                                                                placeholder="25"
-                                                            />
-                                                        </Stack>
-                                                    )}
                                                     <Stack spacing={1} className="flex-1">
                                                         <Typography level="body2">Ukupno (€)</Typography>
                                                         <Input
@@ -861,7 +817,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                                     </Stack>
                                                     <Stack spacing={1} alignItems="start">
                                                         <Typography semiBold>
-                                                            {((cart.items?.reduce((sum: number, item: any) => sum + (item.amount || 0), 0) || 0) / 100).toFixed(2)} EUR
+                                                            {((cart.items?.reduce((sum: number, item) => sum + (item.amount || 0), 0) || 0) / 100).toFixed(2)} EUR
                                                         </Typography>
                                                         <Chip className="w-fit" color={cart.status === 'paid' ? 'success' : 'neutral'}>
                                                             {cart.status === 'paid' ? 'Plaćena' : (cart.status === 'new' ? 'Nova' : cart.status)}
