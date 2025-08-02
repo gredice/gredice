@@ -18,7 +18,7 @@ async function baseTransaction(): Promise<InsertTransaction> {
     return {
         accountId: await createTestAccount(),
         amount: 100,
-        currency: 'EUR',
+        currency: 'eur',
         status: 'pending',
         stripePaymentId: 'stripe-123'
     };
@@ -36,6 +36,7 @@ test('getTransactions returns transactions for account', async () => {
     createTestDb();
     const transaction = await baseTransaction()
     const txId = await createTransaction(transaction);
+    assert.ok(transaction.accountId != null);
     const txs = await getTransactions(transaction.accountId);
     assert.ok(Array.isArray(txs));
     assert.ok(txs.some(t => t.id === txId));

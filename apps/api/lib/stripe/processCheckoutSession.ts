@@ -50,7 +50,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
             raisedBedId: product?.metadata.raisedBedId ? parseInt(product.metadata.raisedBedId, 10) : undefined,
             positionIndex: product?.metadata.positionIndex ? parseInt(product.metadata.positionIndex, 10) : undefined,
             additionalData: product?.metadata.additionalData ? JSON.parse(product.metadata.additionalData) : undefined,
-            currency: 'euro'
+            currency: 'eur'
         };
 
         // Save accountId from metadata if not already set
@@ -143,7 +143,7 @@ export async function processItem(itemData: {
 }) {
     console.debug(`Processing item with entityId ${itemData.entityId} and entityTypeName ${itemData.entityTypeName} for account ${itemData.accountId}`);
 
-    const earnSunflowers = () => itemData.accountId && itemData.currency === 'euro' ?
+    const earnSunflowers = () => itemData.accountId && itemData.currency === 'eur' ?
         earnSunflowersForPayment(itemData.accountId, itemData.amount_total / 100) :
         Promise.resolve();
 

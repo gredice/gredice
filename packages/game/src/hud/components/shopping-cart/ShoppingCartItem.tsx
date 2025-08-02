@@ -30,7 +30,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
             amount: item.amount,
             entityId: item.entityId,
             entityTypeName: item.entityTypeName,
-            currency: isSunflower ? 'sunflower' : 'euro'
+            currency: isSunflower ? 'sunflower' : 'eur'
         });
     }
 

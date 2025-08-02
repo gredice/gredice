@@ -100,7 +100,7 @@ export default async function ReceiptsPage() {
                                     <Table.Cell>
                                         <Chip color="success" size="sm" className="w-fit">
                                             <Typography noWrap>
-                                                {receipt.invoice?.currency === 'EUR' ? '€' : receipt.invoice?.currency || 'EUR'} {receipt.totalAmount}
+                                                {receipt.invoice?.currency === 'eur' ? '€' : receipt.invoice?.currency || 'eur'} {receipt.totalAmount}
                                             </Typography>
                                         </Chip>
                                     </Table.Cell>
