@@ -62,7 +62,10 @@ export function RaisedBedFieldHud({
                             trigger={(
                                 <ButtonGreen fullWidth>
                                     <Row spacing={1}>
-                                        <RaisedBedIcon className="size-6" />
+                                        <div className="relative h-6 min-w-4" title="Identifikator gredice">
+                                            <span className="absolute -top-2 left-1/2 -translate-x-1/2 font-bold">{raisedBed.physicalId}</span>
+                                            <RaisedBedIcon className="absolute top-1 left-1/2 -translate-x-1/2 size-6" />
+                                        </div>
                                         <Typography semiBold noWrap>{raisedBed?.name}</Typography>
                                     </Row>
                                 </ButtonGreen>
