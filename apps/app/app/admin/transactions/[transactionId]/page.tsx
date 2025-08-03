@@ -9,7 +9,7 @@ import { Card, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitiv
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { FieldSet } from "../../../../components/shared/fields/FieldSet";
 import { Field } from "../../../../components/shared/fields/Field";
-import { InvoicesTable } from "../../invoices/page";
+import { InvoicesTable } from "../../invoices/InvoicesTable";
 
 export const dynamic = 'force-dynamic';
 

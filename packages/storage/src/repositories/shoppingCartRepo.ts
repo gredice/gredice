@@ -158,11 +158,17 @@ export async function deleteShoppingCart(accountId: string) {
     }
 }
 
-export async function getAllShoppingCarts({ status = 'new' }: { status?: 'new' | 'paid' | null } = {}) {
+export async function getAllShoppingCarts({ status = 'new', filter }: {
+    status?: 'new' | 'paid' | null
+    filter?: {
+        accountId?: string
+    }
+} = {}) {
     return await storage().query.shoppingCarts.findMany({
         where: and(
             eq(shoppingCarts.isDeleted, false),
-            status ? eq(shoppingCarts.status, status) : undefined
+            status ? eq(shoppingCarts.status, status) : undefined,
+            filter?.accountId ? eq(shoppingCarts.accountId, filter.accountId) : undefined
         ),
         with: {
             account: {

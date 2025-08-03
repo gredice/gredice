@@ -4,7 +4,6 @@ import { createTestDb } from './testDb';
 import {
     createTransaction,
     getTransaction,
-    getTransactions,
     getAllTransactions,
     getTransactionByStripeId,
     updateTransaction,
@@ -32,12 +31,12 @@ test('createTransaction and getTransaction', async () => {
     assert.strictEqual(tx.id, txId);
 });
 
-test('getTransactions returns transactions for account', async () => {
+test('getAllTransactions with account filter returns transactions for account', async () => {
     createTestDb();
     const transaction = await baseTransaction()
     const txId = await createTransaction(transaction);
     assert.ok(transaction.accountId != null);
-    const txs = await getTransactions(transaction.accountId);
+    const txs = await getAllTransactions({ filter: { accountId: transaction.accountId } });
     assert.ok(Array.isArray(txs));
     assert.ok(txs.some(t => t.id === txId));
 });
