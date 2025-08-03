@@ -5,7 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { KnownPages } from "../../src/KnownPages";
 import { LogOut, UserCircle } from "@signalco/ui-icons";
 
-export function ProfileNavItem() {
+export function ProfileNavItem({ onItemClick }: { onItemClick?: () => void } = {}) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -14,7 +14,11 @@ export function ProfileNavItem() {
                     label="Korisnik" />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-                <DropdownMenuItem startDecorator={<LogOut className="size-5" />} href={KnownPages.Logout}>
+                <DropdownMenuItem
+                    startDecorator={<LogOut className="size-5" />}
+                    href={KnownPages.Logout}
+                    onClick={onItemClick}
+                >
                     Odjava
                 </DropdownMenuItem>
             </DropdownMenuContent>

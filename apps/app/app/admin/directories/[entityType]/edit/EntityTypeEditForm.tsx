@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from "react";
 import { Button } from "@signalco/ui-primitives/Button";
 import { Input } from "@signalco/ui-primitives/Input";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
@@ -15,6 +16,8 @@ interface EntityTypeEditFormProps {
 }
 
 export function EntityTypeEditForm({ entityType, categories }: EntityTypeEditFormProps) {
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
     const categoryItems = [
         { value: 'none', label: 'Bez kategorije' },
         ...categories.map(category => ({
@@ -22,6 +25,13 @@ export function EntityTypeEditForm({ entityType, categories }: EntityTypeEditFor
             label: category.label,
         })),
     ];
+
+    const handleDelete = async () => {
+        const formData = new FormData();
+        formData.set('id', entityType.id.toString());
+        await deleteEntityTypeFromEditPage(formData);
+        setShowDeleteConfirm(false);
+    };
 
     return (
         <div className="max-w-2xl mx-auto p-6">
@@ -73,18 +83,25 @@ export function EntityTypeEditForm({ entityType, categories }: EntityTypeEditFor
                     </Stack>
                 </form>
 
-                <form action={deleteEntityTypeFromEditPage}>
-                    <input type="hidden" name="id" value={entityType.id} />
-                    <ModalConfirm
-                        title="Potvrdi brisanje"
-                        header={`Jeste li sigurni da želite obrisati tip zapisa "${entityType.label}"? Ova akcija se ne može poništiti.`}
-                        trigger={
-                            <Button variant="outlined" color="danger">
-                                Obriši tip zapisa
-                            </Button>
-                        }
-                    />
-                </form>
+                <ModalConfirm
+                    header="Brisanje tipa zapisa"
+                    title="Potvrda brisanja"
+                    open={showDeleteConfirm}
+                    onOpenChange={setShowDeleteConfirm}
+                    onConfirm={handleDelete}
+                >
+                    <Typography>
+                        Jeste li sigurni da želite obrisati tip zapisa <strong>{entityType.label}</strong>? Ova akcija se ne može poništiti.
+                    </Typography>
+                </ModalConfirm>
+
+                <Button
+                    variant="outlined"
+                    color="danger"
+                    onClick={() => setShowDeleteConfirm(true)}
+                >
+                    Obriši tip zapisa
+                </Button>
             </Stack>
         </div>
     );
