@@ -19,11 +19,12 @@ export default function RootLayout({
   return (
     <html lang="hr" suppressHydrationWarning={true}>
       <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="apple-mobile-web-app-title" content="Gredice" />
         <meta name="theme-color" content="#2e6f40" />
         <title>Admin | Gredice</title>
       </Head>
-      <body className="antialiased min-h-screen flex">
+      <body className="antialiased min-h-screen flex bg-muted">
         <ClientAppProvider>
           {children}
         </ClientAppProvider>
