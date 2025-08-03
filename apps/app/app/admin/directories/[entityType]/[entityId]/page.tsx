@@ -67,7 +67,7 @@ export default async function EntityDetailsPage(props: { params: Promise<{ entit
                     </Row>
                 </div>
                 {/* Import JSON form */}
-                <form action={importAction} className="mb-4 flex items-center gap-2" encType="multipart/form-data">
+                <form action={importAction} className="mb-4 flex items-center gap-2">
                     <input type="file" name="entityJson" accept="application/json" required />
                     <button type="submit" className="btn btn-primary">Import JSON</button>
                 </form>

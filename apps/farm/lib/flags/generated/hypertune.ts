@@ -80,7 +80,11 @@ export class RootNode extends sdk.Node {
   }
 
   get({ fallback = rootFallback as Root}: { fallback?: Root } = {}): Root {
-    const getQuery = null;
+    const getQuery = sdk.mergeFieldQueryAndArgs(
+      query.fragmentDefinitions,
+      sdk.getFieldQueryForPath(query.fragmentDefinitions, query.fieldQuery, ["Query", "root"]), 
+      null,
+    );
     return this.getValue({ query: getQuery, fallback }) as Root;
   }
 

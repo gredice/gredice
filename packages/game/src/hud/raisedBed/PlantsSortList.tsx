@@ -17,9 +17,10 @@ import { cx } from "@signalco/ui-primitives/cx";
 export function PlantsSortList({ plantId, selectedSortId, onChange }: { plantId: number, selectedSortId: number | null, onChange: (plant: PlantSortData) => void }) {
     const { data: plantSorts, isLoading, isError } = usePlantSorts(plantId);
     const [search] = useSearchParam('pretraga', '');
+    const storePlants = plantSorts?.filter(sort => sort.store.availableInStore);
     const filteredPlantSorts = search.length > 0
-        ? plantSorts?.filter(sort => sort.information.name.toLowerCase().includes(search.toLowerCase()))
-        : plantSorts;
+        ? storePlants?.filter(sort => sort.information.name.toLowerCase().includes(search.toLowerCase()))
+        : storePlants;
 
     // Select first sort if only one is available
     useEffect(() => {

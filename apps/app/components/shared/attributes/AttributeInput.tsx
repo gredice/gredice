@@ -34,15 +34,19 @@ export function AttributeInput({
     attributeValue: SelectAttributeValue | undefined | null
 }) {
     const handleChange = async (value: string | null) => {
+        console.debug('AttributeInput handleChange', value, attributeValue?.entityTypeName, attributeValue?.entityId);
+
         // Ignore if not changed or empty/null value
         if (value === attributeValue?.value ||
             (value === '' && !attributeValue?.value)) {
+            console.debug('AttributeInput handleChange: no change');
             return;
         }
 
         try {
             await handleValueSave(entityType, entityId, attributeDefinition, attributeValue?.id, value);
-        } catch {
+        } catch (error) {
+            console.error('AttributeInput handleChange error', error);
             // TODO: Display error notification
         }
     }
