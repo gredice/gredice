@@ -8,6 +8,9 @@ export async function submitCreateForm(formData: FormData) {
 
     const name = formData.get('name') as string;
     const label = formData.get('label') as string;
+    const categoryId = formData.get('categoryId') as string === 'none'
+        ? undefined
+        : formData.get('categoryId') as string;
 
-    await createEntityType(name, label);
+    await createEntityType(name, label, categoryId ? parseInt(categoryId) : undefined);
 }

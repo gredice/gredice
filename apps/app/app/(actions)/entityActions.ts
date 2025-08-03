@@ -17,12 +17,55 @@ import { redirect } from "next/navigation";
 import { auth } from "../../lib/auth/auth";
 import { KnownPages } from "../../src/KnownPages";
 
-export async function createEntityType(entityTypeName: string, label: string) {
+export async function createEntityType(entityTypeName: string, label: string, categoryId?: number) {
     await auth(['admin']);
 
-    await upsertEntityType({ name: entityTypeName, label: label });
+    await upsertEntityType({ name: entityTypeName, label: label, categoryId });
     revalidatePath(KnownPages.Directories);
     redirect(KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName));
+}
+
+export async function updateEntityType(id: number, entityTypeName: string, label: string, categoryId?: number) {
+    await auth(['admin']);
+
+    await upsertEntityType({ id, name: entityTypeName, label, categoryId });
+    revalidatePath(KnownPages.Directories);
+    revalidatePath(KnownPages.DirectoryEntityType(entityTypeName));
+}
+
+export async function deleteEntityType(id: number) {
+    await auth(['admin']);
+
+    const { deleteEntityType: storageDeleteEntityType } = await import('@gredice/storage');
+    await storageDeleteEntityType(id);
+    revalidatePath(KnownPages.Directories);
+    redirect(KnownPages.Directories);
+}
+
+export async function updateEntityTypeFromEditPage(formData: FormData) {
+    await auth(['admin']);
+
+    const id = parseInt(formData.get('id') as string);
+    const name = formData.get('name') as string;
+    const label = formData.get('label') as string;
+    const categoryId = formData.get('categoryId') as string === 'none'
+        ? undefined
+        : formData.get('categoryId') as string;
+    const originalName = formData.get('originalName') as string;
+
+    await updateEntityType(id, name, label, categoryId ? parseInt(categoryId) : undefined);
+
+    revalidatePath(KnownPages.Directories);
+    revalidatePath(KnownPages.DirectoryEntityType(originalName));
+    revalidatePath(KnownPages.DirectoryEntityType(name));
+    redirect(KnownPages.DirectoryEntityType(name));
+}
+
+export async function deleteEntityTypeFromEditPage(formData: FormData) {
+    await auth(['admin']);
+
+    const id = parseInt(formData.get('id') as string);
+    await deleteEntityType(id);
 }
 
 export async function createEntity(entityTypeName: string) {

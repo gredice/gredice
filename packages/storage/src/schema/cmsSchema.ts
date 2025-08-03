@@ -114,7 +114,7 @@ export const attributeValuesDefinitionRelation = relations(attributeValues, ({ o
 export type InsertAttributeValue = typeof attributeValues.$inferInsert;
 export type SelectAttributeValue = typeof attributeValues.$inferSelect;
 
-export const entityTypes = pgTable('entity_types', {
+export const entityTypeCategories = pgTable('entity_type_categories', {
     id: serial('id').primaryKey(),
     name: text('name').notNull(),
     label: text('label').notNull(),
@@ -123,11 +123,41 @@ export const entityTypes = pgTable('entity_types', {
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
     isDeleted: boolean('is_deleted').notNull().default(false),
 }, (table) => [
+    index('cms_etc_order_idx').on(table.order),
+    index('cms_etc_is_deleted_idx').on(table.isDeleted),
+]);
+
+export const entityTypeCategoriesRelation = relations(entityTypeCategories, ({ many }) => ({
+    entityTypes: many(entityTypes),
+}));
+
+export type InsertEntityTypeCategory = typeof entityTypeCategories.$inferInsert;
+export type UpdateEntityTypeCategory =
+    Partial<Omit<typeof entityTypeCategories.$inferInsert, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
+    Pick<typeof entityTypeCategories.$inferSelect, 'id'>;
+export type SelectEntityTypeCategory = typeof entityTypeCategories.$inferSelect;
+
+export const entityTypes = pgTable('entity_types', {
+    id: serial('id').primaryKey(),
+    name: text('name').notNull(),
+    label: text('label').notNull(),
+    categoryId: integer('category_id').references(() => entityTypeCategories.id),
+    order: text('order'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
+    isDeleted: boolean('is_deleted').notNull().default(false),
+}, (table) => [
+    index('cms_et_category_id_idx').on(table.categoryId),
     index('cms_et_order_idx').on(table.order),
     index('cms_et_is_deleted_idx').on(table.isDeleted),
 ]);
 
-export const entityTypesRelation = relations(entityTypes, ({ many }) => ({
+export const entityTypesRelation = relations(entityTypes, ({ one, many }) => ({
+    category: one(entityTypeCategories, {
+        fields: [entityTypes.categoryId],
+        references: [entityTypeCategories.id],
+        relationName: 'category',
+    }),
     attributeDefinitions: many(attributeDefinitions),
     attributeDefinitionCategories: many(attributeDefinitionCategories),
     entities: many(entities),
