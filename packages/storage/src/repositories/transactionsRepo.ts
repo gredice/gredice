@@ -1,6 +1,6 @@
 import 'server-only';
 import { and, eq } from "drizzle-orm";
-import { transactions, InsertTransaction, UpdateTransaction } from "../schema";
+import { transactions, InsertTransaction, UpdateTransaction, invoices } from "../schema";
 import { storage } from "../storage";
 import { createEvent, knownEvents } from "./eventsRepo";
 
@@ -33,20 +33,16 @@ export async function getTransaction(transactionId: number) {
     });
 }
 
-export async function getTransactions(accountId: string) {
+export async function getAllTransactions({ filter }: { filter?: { accountId?: string } } = {}) {
     return storage().query.transactions.findMany({
-        where: and(eq(transactions.accountId, accountId), eq(transactions.isDeleted, false)),
+        where: and(
+            filter?.accountId ? eq(transactions.accountId, filter.accountId) : undefined,
+            eq(transactions.isDeleted, false),
+        ),
         with: {
-            invoices: true,
-        },
-    });
-}
-
-export async function getAllTransactions() {
-    return storage().query.transactions.findMany({
-        where: eq(transactions.isDeleted, false),
-        with: {
-            invoices: true,
+            invoices: {
+                where: eq(invoices.isDeleted, false),
+            },
         },
         orderBy: transactions.createdAt
     });

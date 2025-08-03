@@ -19,8 +19,8 @@ export const dynamic = 'force-dynamic';
 
 function getCisStatusColor(cisStatus: string) {
     switch (cisStatus) {
-        case 'sent': return 'success';
         case 'pending': return 'warning';
+        case 'confirmed': return 'success';
         case 'failed': return 'error';
         default: return 'neutral';
     }
@@ -28,8 +28,8 @@ function getCisStatusColor(cisStatus: string) {
 
 function getCisStatusLabel(cisStatus: string) {
     switch (cisStatus) {
-        case 'sent': return 'Poslano';
         case 'pending': return 'Na čekanju';
+        case 'confirmed': return 'Potvrđeno';
         case 'failed': return 'Neuspješno';
         default: return cisStatus;
     }
@@ -57,7 +57,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
                     <Typography level="h1" className="text-2xl" semiBold>
                         Fiskalni račun #{receipt.id}
                     </Typography>
-                    <Chip color={getCisStatusColor(receipt.cisStatus)} size="sm">
+                    <Chip color={getCisStatusColor(receipt.cisStatus)}>
                         {getCisStatusLabel(receipt.cisStatus)}
                     </Chip>
                 </Row>
@@ -99,7 +99,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
                                 </FieldSet>
                                 <FieldSet>
                                     <Field name="CIS Status" value={
-                                        <Chip color={getCisStatusColor(receipt.cisStatus)} size="sm" className="w-fit">
+                                        <Chip color={getCisStatusColor(receipt.cisStatus)} className="w-fit">
                                             {getCisStatusLabel(receipt.cisStatus)}
                                         </Chip>
                                     } />
@@ -145,11 +145,11 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
                         <CardContent>
                             <Stack spacing={1}>
                                 <Row justifyContent="space-between">
-                                    <Typography level="body2" className="text-gray-600">Osnovica</Typography>
+                                    <Typography level="body2">Osnovica</Typography>
                                     <Typography>{receipt.subtotal}{receipt.currency === 'eur' ? ' €' : receipt.currency}</Typography>
                                 </Row>
                                 <Row justifyContent="space-between">
-                                    <Typography level="body2" className="text-gray-600">PDV</Typography>
+                                    <Typography level="body2">PDV</Typography>
                                     <Typography>{receipt.taxAmount}{receipt.currency === 'eur' ? ' €' : receipt.currency}</Typography>
                                 </Row>
                                 <Row justifyContent="space-between" className="border-t pt-2">
@@ -168,14 +168,14 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
                         <CardContent>
                             <Stack spacing={1}>
                                 <Row spacing={2} alignItems="center">
-                                    <Typography level="body2" className="text-gray-600 w-20">Ponuda:</Typography>
+                                    <Typography level="body2" className="w-20">Ponuda:</Typography>
                                     <Link href={KnownPages.Invoice(receipt.invoiceId)}>
                                         {receipt.invoice?.invoiceNumber || `#${receipt.invoiceId}`}
                                     </Link>
                                 </Row>
                                 {receipt.invoice?.transactionId && (
                                     <Row spacing={2} alignItems="center">
-                                        <Typography level="body2" className="text-gray-600 w-20">Transakcija:</Typography>
+                                        <Typography level="body2" className="w-20">Transakcija:</Typography>
                                         <Link href={KnownPages.Transaction(receipt.invoice.transactionId)}>
                                             #{receipt.invoice.transactionId}
                                         </Link>

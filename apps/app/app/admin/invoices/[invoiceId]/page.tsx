@@ -78,38 +78,38 @@ export default async function InvoicePage({ params }: { params: { invoiceId: str
                                 <Stack spacing={2}>
                                     <Row spacing={4}>
                                         <Stack spacing={1} className="flex-1">
-                                            <Typography level="body2" className="text-gray-600">Broj ponude</Typography>
+                                            <Typography level="body2" >Broj ponude</Typography>
                                             <Typography>{invoice.invoiceNumber}</Typography>
                                         </Stack>
                                         <Stack spacing={1} className="flex-1">
-                                            <Typography level="body2" className="text-gray-600">Valuta</Typography>
+                                            <Typography level="body2" >Valuta</Typography>
                                             <Typography>{invoice.currency}</Typography>
                                         </Stack>
                                     </Row>
                                     <Row spacing={4}>
                                         <Stack spacing={1} className="flex-1">
-                                            <Typography level="body2" className="text-gray-600">Datum izdavanja</Typography>
+                                            <Typography level="body2" >Datum izdavanja</Typography>
                                             <LocaleDateTime time={false}>{invoice.issueDate}</LocaleDateTime>
                                         </Stack>
                                         <Stack spacing={1} className="flex-1">
-                                            <Typography level="body2" className="text-gray-600">Datum dospijeća</Typography>
+                                            <Typography level="body2" >Datum dospijeća</Typography>
                                             <LocaleDateTime time={false}>{invoice.dueDate}</LocaleDateTime>
                                         </Stack>
                                     </Row>
                                     {invoice.notes && (
                                         <Stack spacing={1}>
-                                            <Typography level="body2" className="text-gray-600">Napomene</Typography>
+                                            <Typography level="body2" >Napomene</Typography>
                                             <Typography>{invoice.notes}</Typography>
                                         </Stack>
                                     )}
                                     <Stack spacing={1} className="flex-1">
-                                        <Typography level="body2" className="text-gray-600">Status</Typography>
+                                        <Typography level="body2" >Status</Typography>
                                         <Row spacing={2} alignItems="center">
-                                            <Chip color={getStatusColor(invoice.status)} size="sm">
+                                            <Chip color={getStatusColor(invoice.status)} >
                                                 {getStatusLabel(invoice.status)}
                                             </Chip>
                                             {isOverdue(invoice) && (
-                                                <Chip color="error" size="sm">
+                                                <Chip color="error" >
                                                     Dospio
                                                 </Chip>
                                             )}
@@ -127,18 +127,18 @@ export default async function InvoicePage({ params }: { params: { invoiceId: str
                             <CardContent>
                                 <Stack spacing={2}>
                                     <Stack spacing={1}>
-                                        <Typography level="body2" className="text-gray-600">Naziv</Typography>
+                                        <Typography level="body2" >Naziv</Typography>
                                         <Typography>{invoice.billToName}</Typography>
                                     </Stack>
                                     {invoice.billToEmail && (
                                         <Stack spacing={1}>
-                                            <Typography level="body2" className="text-gray-600">Email</Typography>
+                                            <Typography level="body2" >Email</Typography>
                                             <Typography>{invoice.billToEmail}</Typography>
                                         </Stack>
                                     )}
                                     {invoice.billToAddress && (
                                         <Stack spacing={1}>
-                                            <Typography level="body2" className="text-gray-600">Adresa</Typography>
+                                            <Typography level="body2" >Adresa</Typography>
                                             <Typography className="whitespace-pre-line">{invoice.billToAddress}</Typography>
                                         </Stack>
                                     )}
@@ -156,11 +156,11 @@ export default async function InvoicePage({ params }: { params: { invoiceId: str
                             <CardContent>
                                 <Stack spacing={2}>
                                     <Row justifyContent="space-between">
-                                        <Typography level="body2" className="text-gray-600">Osnovica</Typography>
+                                        <Typography level="body2" >Osnovica</Typography>
                                         <Typography>{invoice.subtotal}{invoice.currency === 'eur' ? '€' : invoice.currency}</Typography>
                                     </Row>
                                     <Row justifyContent="space-between">
-                                        <Typography level="body2" className="text-gray-600">PDV</Typography>
+                                        <Typography level="body2" >PDV</Typography>
                                         <Typography>{invoice.taxAmount}{invoice.currency === 'eur' ? '€' : invoice.currency}</Typography>
                                     </Row>
                                     <Row justifyContent="space-between" className="border-t pt-2">

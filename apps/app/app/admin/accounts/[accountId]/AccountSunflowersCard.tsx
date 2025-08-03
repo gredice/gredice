@@ -61,6 +61,7 @@ export async function AccountSunflowersCard({ accountId }: { accountId: string }
                         <Table.Header>
                             <Table.Row>
                                 <Table.Head>Tip</Table.Head>
+                                <Table.Head>Podaci</Table.Head>
                                 <Table.Head>Iznos</Table.Head>
                                 <Table.Head>Datum kreiranja</Table.Head>
                             </Table.Row>
@@ -79,6 +80,9 @@ export async function AccountSunflowersCard({ accountId }: { accountId: string }
                                 <Table.Row key={sunflower.id}>
                                     <Table.Cell>
                                         {sunflower.type}
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        {JSON.stringify(sunflower.data)}
                                     </Table.Cell>
                                     <Table.Cell>
                                         {sunflower.amount}

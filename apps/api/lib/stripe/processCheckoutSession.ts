@@ -1,4 +1,4 @@
-import { getShoppingCart, setCartItemPaid, upsertRaisedBedField, createEvent, knownEvents, earnSunflowersForPayment, updateRaisedBed, markCartPaidIfAllItemsPaid, createTransaction, getTransactions, createRaisedBedSensor, createOperation, getRaisedBedFieldsWithEvents } from "@gredice/storage";
+import { getShoppingCart, setCartItemPaid, upsertRaisedBedField, createEvent, knownEvents, earnSunflowersForPayment, updateRaisedBed, markCartPaidIfAllItemsPaid, createTransaction, createRaisedBedSensor, createOperation, getRaisedBedFieldsWithEvents, getAllTransactions } from "@gredice/storage";
 import { getStripeCheckoutSession } from "@gredice/stripe/server";
 
 export async function processCheckoutSession(checkoutSessionId?: string) {
@@ -59,7 +59,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         // Check if transaction was already precessed
         if (accountId) {
             // TODO: Use paginatino and retrieve last N transactions or match via date
-            const transactions = await getTransactions(accountId);
+            const transactions = await getAllTransactions({ filter: { accountId } });
             const existingTransaction = transactions.find(t =>
                 t.stripePaymentId === session.id &&
                 t.status === 'completed'

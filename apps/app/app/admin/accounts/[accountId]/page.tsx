@@ -16,6 +16,7 @@ import { sendDeleteAccountEmail } from "../../../(actions)/accountsActions";
 import { Delete } from "@signalco/ui-icons";
 import { Row } from "@signalco/ui-primitives/Row";
 import { FieldSet } from "../../../../components/shared/fields/FieldSet";
+import { AccountShoppingCartsCard } from "./AccountShoppingCartsCard";
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +61,7 @@ export default async function AccountPage({ params }: { params: Promise<{ accoun
                 <AccountTransactionsCard accountId={accountId} />
                 <RaisedBedsTableCard accountId={accountId} />
                 <NotificationsTableCard accountId={accountId} />
+                <AccountShoppingCartsCard accountId={accountId} />
             </div>
         </Stack>
     );
