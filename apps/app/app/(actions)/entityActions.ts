@@ -106,7 +106,7 @@ export async function handleValueSave(
 
     const newAttributeValueValue = (newValue?.length ?? 0) <= 0 ? null : newValue;
     await upsertAttributeValue({
-        id: attributeValueId,
+        id: !attributeValueId ? undefined : attributeValueId,
         attributeDefinitionId: attributeDefinition.id,
         entityTypeName: entityTypeName,
         entityId: entityId,

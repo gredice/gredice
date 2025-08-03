@@ -394,45 +394,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/entities/test": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * /entities/test
-         * @description Get all entities of type test.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["entity-test"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -571,6 +532,9 @@ export interface components {
             };
             image: {
                 cover: components["schemas"]["image"];
+            };
+            store: {
+                availableInStore: boolean;
             };
             /** Format: date-time */
             createdAt: string;
@@ -714,6 +678,9 @@ export interface components {
                     image?: {
                         cover: components["schemas"]["image"];
                     };
+                    store?: {
+                        availableInStore: boolean;
+                    };
                 };
                 name: string;
                 description?: string;
@@ -729,6 +696,9 @@ export interface components {
             };
             image: {
                 cover?: components["schemas"]["image"];
+            };
+            store: {
+                availableInStore: boolean;
             };
             /** Format: date-time */
             createdAt: string;
@@ -897,6 +867,9 @@ export interface components {
                     image?: {
                         cover: components["schemas"]["image"];
                     };
+                    store?: {
+                        availableInStore: boolean;
+                    };
                 };
                 plantSort: {
                     id?: number;
@@ -1027,6 +1000,9 @@ export interface components {
                             image?: {
                                 cover: components["schemas"]["image"];
                             };
+                            store?: {
+                                availableInStore: boolean;
+                            };
                         };
                         name: string;
                         description?: string;
@@ -1043,6 +1019,9 @@ export interface components {
                     image?: {
                         cover?: components["schemas"]["image"];
                     };
+                    store?: {
+                        availableInStore: boolean;
+                    };
                 };
                 countryOfOrigin?: string;
             };
@@ -1051,6 +1030,8 @@ export interface components {
             };
             attributes: {
                 germinationPercentage?: number;
+                /** @description (cijena pakiranja u EUR) */
+                price: number;
                 /** @description (težina pakiranja u gramima) */
                 weight: number;
             };
@@ -1066,7 +1047,7 @@ export interface components {
                 id: number;
                 /** @default brand */
                 name: string;
-                /** @default Brend */
+                /** @default Brend sjemena */
                 label: string;
             };
             information: {
@@ -1137,7 +1118,7 @@ export interface components {
                 id: number;
                 /** @default operationFrequency */
                 name: string;
-                /** @default Učestalost operacije */
+                /** @default Učestalost radnje */
                 label: string;
             };
             /** Format: date-time */
@@ -1224,21 +1205,6 @@ export interface components {
                 raisedBed: boolean;
                 /** @description Blokovi koji mogu reciklirati druge blokove */
                 recycler: boolean;
-            };
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        "entity-test": {
-            id: number;
-            entityType: {
-                /** @default 9 */
-                id: number;
-                /** @default test */
-                name: string;
-                /** @default Test */
-                label: string;
             };
             /** Format: date-time */
             createdAt: string;
