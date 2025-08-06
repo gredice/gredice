@@ -228,7 +228,7 @@ importers:
         version: 1.54.2
       '@signalco/auth-client':
         specifier: 0.3.0
-        version: 0.3.0(@signalco/ui-primitives@0.6.3(next@15.3.5(@babel/core@7.28.0)(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.84.0(react@19.1.1))(next@15.3.5(@babel/core@7.28.0)(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+        version: 0.3.0(@signalco/ui-primitives@0.6.3(next@15.3.5(@babel/core@7.28.0)(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.84.1(react@19.1.1))(next@15.3.5(@babel/core@7.28.0)(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       '@signalco/auth-server':
         specifier: 0.5.3
         version: 0.5.3(next@15.3.5(@babel/core@7.28.0)(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -254,8 +254,8 @@ importers:
         specifier: 0.5.16
         version: 0.5.16(tailwindcss@3.4.17)
       '@tanstack/react-query':
-        specifier: 5.84.0
-        version: 5.84.0(react@19.1.1)
+        specifier: 5.84.1
+        version: 5.84.1(react@19.1.1)
       '@types/node':
         specifier: 22.17.0
         version: 22.17.0
@@ -331,7 +331,7 @@ importers:
         version: 1.54.2
       '@signalco/auth-client':
         specifier: 0.3.0
-        version: 0.3.0(@signalco/ui-primitives@0.6.3(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.84.0(react@19.1.1))(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+        version: 0.3.0(@signalco/ui-primitives@0.6.3(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.84.1(react@19.1.1))(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       '@signalco/auth-server':
         specifier: 0.5.3
         version: 0.5.3(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -357,8 +357,8 @@ importers:
         specifier: 0.5.16
         version: 0.5.16(tailwindcss@3.4.17)
       '@tanstack/react-query':
-        specifier: 5.84.0
-        version: 5.84.0(react@19.1.1)
+        specifier: 5.84.1
+        version: 5.84.1(react@19.1.1)
       '@types/node':
         specifier: 22.17.0
         version: 22.17.0
@@ -446,7 +446,7 @@ importers:
         version: 1.54.2
       '@signalco/auth-client':
         specifier: 0.3.0
-        version: 0.3.0(@signalco/ui-primitives@0.6.3(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.84.0(react@19.1.1))(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+        version: 0.3.0(@signalco/ui-primitives@0.6.3(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.84.1(react@19.1.1))(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       '@signalco/auth-server':
         specifier: 0.5.3
         version: 0.5.3(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -475,8 +475,8 @@ importers:
         specifier: 0.5.16
         version: 0.5.16(tailwindcss@3.4.17)
       '@tanstack/react-query':
-        specifier: 5.84.0
-        version: 5.84.0(react@19.1.1)
+        specifier: 5.84.1
+        version: 5.84.1(react@19.1.1)
       '@types/node':
         specifier: 22.17.0
         version: 22.17.0
@@ -596,8 +596,8 @@ importers:
         specifier: 0.5.16
         version: 0.5.16(tailwindcss@3.4.17)
       '@tanstack/react-query':
-        specifier: 5.84.0
-        version: 5.84.0(react@19.1.1)
+        specifier: 5.84.1
+        version: 5.84.1(react@19.1.1)
       '@types/node':
         specifier: 22.17.0
         version: 22.17.0
@@ -821,8 +821,8 @@ importers:
         specifier: 0.5.16
         version: 0.5.16(tailwindcss@3.4.17)
       '@tanstack/react-query':
-        specifier: 5.84.0
-        version: 5.84.0(react@19.1.1)
+        specifier: 5.84.1
+        version: 5.84.1(react@19.1.1)
       '@types/chroma-js':
         specifier: 3.1.1
         version: 3.1.1
@@ -3834,8 +3834,8 @@ packages:
   '@tanstack/query-core@5.83.1':
     resolution: {integrity: sha512-OG69LQgT7jSp+5pPuCfzltq/+7l2xoweggjme9vlbCPa/d7D7zaqv5vN/S82SzSYZ4EDLTxNO1PWrv49RAS64Q==}
 
-  '@tanstack/react-query@5.84.0':
-    resolution: {integrity: sha512-iPycFGLq5lltDE16Jf13Nx7SOvtfoopfOH/+Ahbdd+z4QqOfYu/SOkY86AVYVcKjneuqPxTm8e85lSGhwe0cog==}
+  '@tanstack/react-query@5.84.1':
+    resolution: {integrity: sha512-zo7EUygcWJMQfFNWDSG7CBhy8irje/XY0RDVKKV4IQJAysb+ZJkkJPcnQi+KboyGUgT+SQebRFoTqLuTtfoDLw==}
     peerDependencies:
       react: ^18 || ^19
 
@@ -11766,18 +11766,18 @@ snapshots:
       domhandler: 5.0.3
       selderee: 0.11.0
 
-  '@signalco/auth-client@0.3.0(@signalco/ui-primitives@0.6.3(next@15.3.5(@babel/core@7.28.0)(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.84.0(react@19.1.1))(next@15.3.5(@babel/core@7.28.0)(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
+  '@signalco/auth-client@0.3.0(@signalco/ui-primitives@0.6.3(next@15.3.5(@babel/core@7.28.0)(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.84.1(react@19.1.1))(next@15.3.5(@babel/core@7.28.0)(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
     dependencies:
       '@signalco/ui-primitives': 0.6.3(next@15.3.5(@babel/core@7.28.0)(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
-      '@tanstack/react-query': 5.84.0(react@19.1.1)
+      '@tanstack/react-query': 5.84.1(react@19.1.1)
       next: 15.3.5(@babel/core@7.28.0)(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2)
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
 
-  '@signalco/auth-client@0.3.0(@signalco/ui-primitives@0.6.3(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.84.0(react@19.1.1))(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
+  '@signalco/auth-client@0.3.0(@signalco/ui-primitives@0.6.3(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.84.1(react@19.1.1))(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
     dependencies:
       '@signalco/ui-primitives': 0.6.3(next@15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
-      '@tanstack/react-query': 5.84.0(react@19.1.1)
+      '@tanstack/react-query': 5.84.1(react@19.1.1)
       next: 15.3.5(@playwright/test@1.54.2)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.89.2)
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
@@ -12246,7 +12246,7 @@ snapshots:
 
   '@tanstack/query-core@5.83.1': {}
 
-  '@tanstack/react-query@5.84.0(react@19.1.1)':
+  '@tanstack/react-query@5.84.1(react@19.1.1)':
     dependencies:
       '@tanstack/query-core': 5.83.1
       react: 19.1.1
