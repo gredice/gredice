@@ -25,11 +25,7 @@ function OperationScheduleModal({
     trigger
 }: {
     operation: OperationData;
-    gardenId: number;
-    raisedBedId?: number;
-    positionIndex?: number;
     onConfirm: (date: Date) => Promise<void>;
-    disabled?: boolean;
     trigger: React.ReactElement;
 }) {
     const [open, setOpen] = useState(false);
@@ -182,10 +178,6 @@ function OperationsListItem({
             <div className="flex flex-wrap gap-y-1 gap-x-2 pr-4 items-center justify-between">
                 <OperationScheduleModal
                     operation={operation}
-                    gardenId={gardenId}
-                    raisedBedId={raisedBedId}
-                    positionIndex={positionIndex}
-                    disabled={setShoppingCartItem.isPending}
                     onConfirm={async (date) => {
                         await handleOperationPicked(operation, date);
                     }}
