@@ -1,22 +1,27 @@
 import Image from "next/image";
 import { OperationData } from "../../lib/plants/getOperationsData";
+import { Hammer } from "@signalco/ui-icons";
 
-export function OperationImage({ operation }: { operation: Partial<Pick<OperationData, "image" | "information">> }) {
+export function OperationImage({ operation, size }: { operation: Partial<Pick<OperationData, "image" | "information">>, size?: number }) {
     if (!operation.image?.cover?.url) {
         return (
-            <span className="size-[32px] text-3xl">🪏</span>
+            <Hammer
+                style={{
+                    "--imageSize": size ? `${size}px` : '32px',
+                } as React.CSSProperties}
+                className="size-[--imageSize]" />
         );
     }
 
     return (
         <Image
             src={operation.image.cover.url}
-            width={32}
-            height={32}
+            width={size ?? 32}
+            height={size ?? 32}
             style={{
                 objectFit: 'contain',
-                width: '32px',
-                height: '32px'
+                width: `${size ?? 32}px`,
+                height: `${size ?? 32}px`
             }}
             alt={operation.information?.label ?? "Slika operacije"} />
     );

@@ -11,8 +11,9 @@ import { KnownPages } from "../../../src/KnownPages";
 import { Euro, Info } from "@signalco/ui-icons";
 import { PlantData } from "@gredice/client";
 import { OperationImage } from "../../../components/operations/OperationImage";
+import Link from "next/link";
 
-function operationFrequencyLabel(frequency: string) {
+export function operationFrequencyLabel(frequency: string | undefined) {
     switch (frequency) {
         case 'optional':
             return 'Opcionalno/po potrebi';
@@ -29,7 +30,7 @@ function operationFrequencyLabel(frequency: string) {
         case 'monthly':
             return 'Svakog mjeseca';
         default:
-            return frequency;
+            return "Nepoznato";
     }
 }
 
@@ -61,43 +62,15 @@ export function PlantOperations({ operations }: { operations?: PlantData["inform
                                 <span>
                                     {operation.prices?.perOperation.toFixed(2)}€
                                 </span>
-                                <Modal
-                                    title={operation.information?.label ?? 'Informacije o operaciji'}
-                                    className="border border-tertiary border-b-4 max-w-xl"
-                                    trigger={(
-                                        <IconButton
-                                            size="lg"
-                                            variant="plain"
-                                            aria-label={`Više informacija o ${operation.information?.label}`}
-                                        >
-                                            <Info />
-                                        </IconButton>
-                                    )}>
-                                    <Stack spacing={4}>
-                                        <Row spacing={2}>
-                                            <OperationImage operation={operation} />
-                                            <Stack spacing={1}>
-                                                <Typography level="h4">{operation.information?.label}</Typography>
-                                                <p>{operation.information?.shortDescription}</p>
-                                            </Stack>
-                                        </Row>
-                                        {operation.information?.description && (
-                                            <Card>
-                                                <CardContent>
-                                                    <Markdown>{operation.information.description}</Markdown>
-                                                </CardContent>
-                                            </Card>
-                                        )}
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <AttributeCard header="Cijena" icon={<Euro />} value={operation.prices?.perOperation.toFixed(2)} />
-                                        </div>
-                                        <NavigatingButton
-                                            href={KnownPages.GardenApp}
-                                            className="bg-green-800 hover:bg-green-700 self-end">
-                                            Moj vrt
-                                        </NavigatingButton>
-                                    </Stack>
-                                </Modal>
+                                <Link href={operation.information?.label ? KnownPages.Operation(operation.information?.label) : KnownPages.Operations}>
+                                    <IconButton
+                                        size="lg"
+                                        variant="plain"
+                                        aria-label={`Više informacija o ${operation.information?.label}`}
+                                    >
+                                        <Info />
+                                    </IconButton>
+                                </Link>
                             </Row>
                         </CardContent>
                     </Card>

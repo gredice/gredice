@@ -6,6 +6,7 @@ import { OperationImage } from "../../components/operations/OperationImage";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Card, CardContent } from "@signalco/ui-primitives/Card";
 import { KnownPages } from "../../src/KnownPages";
+import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
 
 function OperationCard({ operation }: { operation: OperationData }) {
     return (
@@ -33,27 +34,36 @@ export default async function OperationsPage() {
     const stagesLabels = [...new Set(operationsData?.map(op => op.attributes.stage?.information?.label) || [])];
 
     return (
-        <Stack>
+        <Stack spacing={4}>
             <PageHeader
                 header="Radnje"
                 subHeader={`Sve što trebaš znati o radnjama koje možeš obavljati u svojim gredicama 🪏`}
                 padded
             />
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 {!operationsData?.length && (
                     <div>Nema dostupnih radnji.</div>
                 )}
                 {stagesLabels.map((stageLabel) => (
                     <Stack key={stageLabel} spacing={1}>
-                        <Typography level="h2">{stageLabel}</Typography>
-                        {operationsData
-                            ?.filter(op => op.attributes.stage?.information?.label === stageLabel)
-                            .map((operation) => (
-                                <OperationCard key={operation.id} operation={operation} />
-                            ))}
+                        <Typography level="h3">{stageLabel}</Typography>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {operationsData
+                                ?.filter(op => op.attributes.stage?.information?.label === stageLabel)
+                                .sort((a, b) => a.information.label.localeCompare(b.information.label))
+                                .map((operation) => (
+                                    <OperationCard key={operation.id} operation={operation} />
+                                ))}
+                        </div>
                     </Stack>
                 ))}
             </Stack>
+            <Row spacing={2}>
+                <Typography level="body1">Jesu li ti informacije o radnjama korisne?</Typography>
+                <FeedbackModal
+                    topic="www/operations"
+                />
+            </Row>
         </Stack>
     );
 }
