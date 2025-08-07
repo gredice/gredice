@@ -53,7 +53,7 @@ export function ShoppingCart() {
                     showSunflowersSuggestion && "opacity-100 h-auto mb-4"
                 )}>
                     <Alert color="primary">
-                        Dio košarice moćeš platiti u <span className="text-yellow-500">🌻</span>. Odaberi željeni način plaćanja desno od cijene.
+                        Dio košarice možeš platiti u <span className="text-yellow-500">🌻</span>. Odaberi željeni način plaćanja desno od cijene.
                     </Alert>
                 </div>
                 <Stack>
