@@ -9,7 +9,7 @@ export function OperationImage({ operation, size }: { operation: Partial<Pick<Op
                 style={{
                     "--imageSize": size ? `${size}px` : '32px',
                 } as React.CSSProperties}
-                className="size-[--imageSize]">🪏</Hammer>
+                className="size-[--imageSize]" />
         );
     }
 
