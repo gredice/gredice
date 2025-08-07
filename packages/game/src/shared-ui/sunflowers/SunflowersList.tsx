@@ -14,13 +14,13 @@ function sunflowerReasonToDescription(reason: string) {
     }
 
     if (reason.startsWith('block')) {
-        return { icon: <BlockImage blockName={reason.split(':')[1]} className="size-10" />, label: 'Postavljanje bloka' };
+        return { icon: <BlockImage blockName={reason.split(':')[1]} className="size-10" width={40} height={40} />, label: 'Postavljanje bloka' };
     }
     if (reason.startsWith('recycle')) {
         return {
             icon: (
                 <div className="relative size-10">
-                    <BlockImage blockName={reason.split(':')[1]} className="absolute inset-0 size-10" />
+                    <BlockImage blockName={reason.split(':')[1]} className="absolute inset-0 size-10" width={40} height={40} />
                     <img
                         src={'https://vrt.gredice.com/assets/textures/recycle.png'}
                         alt="Recikliranje"
