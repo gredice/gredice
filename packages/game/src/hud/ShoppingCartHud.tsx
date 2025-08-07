@@ -176,6 +176,7 @@ export function ShoppingCartHud() {
                 <Modal
                     title="Košarica"
                     className='bg-card border-tertiary border-b-4 md:max-w-2xl'
+                    modal={false}
                     trigger={(
                         <IconButton
                             title="Košarica"

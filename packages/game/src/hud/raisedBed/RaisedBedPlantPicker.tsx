@@ -56,6 +56,7 @@ export function PlantPicker({
     const [selectedPlantId, setSelectedPlantId] = useState<number | null>(preselectedPlantId ?? null);
     const [selectedSortId, setSelectedSortId] = useState<number | null>(preselectedSortId ?? null);
     const [plantOptions, setPlantOptions] = useState<{ scheduledDate: Date | null | undefined } | null>(preselectedPlantOptions ?? null);
+    const [flyToShoppingCart, setFlyToShoppingCart] = useState(false);
 
     let currentStep = 0;
     if (selectedPlantId) {
@@ -107,6 +108,7 @@ export function PlantPicker({
         }
 
         // Add new item to cart
+        setFlyToShoppingCart(true);
         await setCartItem.mutateAsync({
             entityTypeName: "plantSort",
             entityId: selectedSortId?.toString(),
@@ -118,7 +120,9 @@ export function PlantPicker({
                 scheduledDate: plantOptions?.scheduledDate?.toISOString(),
             })
         });
+        await new Promise(resolve => setTimeout(resolve, 800)); // Wait for animation to finish
         setOpen(false);
+        setFlyToShoppingCart(false);
     }
 
     function handleOpenChange(open: boolean) {
@@ -148,6 +152,7 @@ export function PlantPicker({
             open={open}
             onOpenChange={handleOpenChange}
             title={"Sijanje biljke"}
+            modal={false}
             className="md:border-tertiary md:border-b-4 md:max-w-2xl">
             <Stack spacing={2}>
                 <SegmentedProgress
@@ -196,7 +201,9 @@ export function PlantPicker({
                                 onChange={(sort) => {
                                     handleSortSelect(sort);
                                     setSearch(undefined);
-                                }} />
+                                }}
+                                flyToShoppingCart={flyToShoppingCart}
+                            />
                             <Input
                                 type="date"
                                 label="Datum sijanja"
