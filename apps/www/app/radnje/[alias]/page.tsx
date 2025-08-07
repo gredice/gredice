@@ -37,7 +37,7 @@ export default async function OperationPage({ params }: { params: Promise<{ alia
                 >
                     <Stack>
                         <Stack spacing={1} className="group">
-                            <Typography level="h2" className="text-2xl">Svojstva</Typography>
+                            <Typography level="h2" className="text-2xl">Informacije</Typography>
                             <div className="grid grid-cols-2 gap-2">
                                 <AttributeCard
                                     icon={<Euro />}
