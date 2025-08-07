@@ -19,6 +19,13 @@ import { Calendar } from "@signalco/ui-icons";
 import { formatLocalDate } from "../RaisedBedPlantPicker";
 import { useState } from "react";
 
+function formatPrice(price?: number | null): string {
+    if (price == null || price === undefined) {
+        return 'Nepoznato';
+    }
+    return `${price.toFixed(2)} €`;
+}
+
 function OperationScheduleModal({
     operation,
     onConfirm,
@@ -129,7 +136,7 @@ function OperationsListItem({
     const setShoppingCartItem = useSetShoppingCartItem();
     const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
 
-    const price = operation.prices?.perOperation ? operation.prices.perOperation.toFixed(2) : 'Nepoznato';
+    const price = formatPrice(operation.prices?.perOperation);
 
     async function handleOperationPicked(operation: OperationData, scheduledDate?: Date) {
         setShoppingCartItem.mutate({
@@ -161,7 +168,7 @@ function OperationsListItem({
                     <Typography level="body1" semiBold>
                         {operation.information.label}
                     </Typography>
-                    <Typography level="body1" semiBold>{price} €</Typography>
+                    <Typography level="body1" semiBold>{price}</Typography>
                 </Row>
                 {operation.information.shortDescription && (
                     <Typography level="body2" className="line-clamp-2 break-words">
