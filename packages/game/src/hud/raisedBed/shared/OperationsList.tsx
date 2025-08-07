@@ -18,6 +18,7 @@ import { Card } from "@signalco/ui-primitives/Card";
 import { Calendar } from "@signalco/ui-icons";
 import { formatLocalDate } from "../RaisedBedPlantPicker";
 import { useState } from "react";
+import { OperationImage } from "@gredice/ui/OperationImage";
 
 function formatPrice(price?: number | null): string {
     if (price == null || price === undefined) {
@@ -161,7 +162,7 @@ function OperationsListItem({
             className="justify-start text-start p-0 h-auto py-2 gap-3 px-4 rounded-none font-normal"
             onClick={() => handleOperationPicked(operation)}>
             <AnimateFlyToItem {...animateFlyToShoppingCart.props}>
-                <span className="size-8 text-3xl">🪏</span>
+                <OperationImage operation={operation} size={32} />
             </AnimateFlyToItem>
             <Stack className="w-full">
                 <Row spacing={1} justifyContent="space-between">

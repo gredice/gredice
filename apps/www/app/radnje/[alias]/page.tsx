@@ -7,7 +7,7 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
 import { OperationAttributesCards } from "./OperationAttributesCards";
-import { OperationImage } from "../../../components/operations/OperationImage";
+import { OperationImage } from "@gredice/ui/OperationImage";
 import { KnownPages } from "../../../src/KnownPages";
 import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
 import { Euro } from "@signalco/ui-icons";

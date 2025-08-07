@@ -5,7 +5,7 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { KnownPages } from "../../../src/KnownPages";
 import { Info } from "@signalco/ui-icons";
 import { PlantData } from "@gredice/client";
-import { OperationImage } from "../../../components/operations/OperationImage";
+import { OperationImage } from "@gredice/ui/OperationImage";
 import Link from "next/link";
 
 export function operationFrequencyLabel(frequency: string | undefined) {
