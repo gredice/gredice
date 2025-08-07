@@ -58,11 +58,11 @@ export function GameScene({
     useThemeManager();
 
     // Prelaod all required data 
-    const { isPending: blockDataPending } = useBlockData();
-    const { data: garden, isPending: gardenPending } = useCurrentGarden();
-    const { isPending: weatherPending } = useWeatherNow();
-    const isPending = gardenPending || blockDataPending || weatherPending;
-    if (isPending) {
+    const { isLoading: blockDataPending } = useBlockData();
+    const { data: garden, isLoading: gardenPending } = useCurrentGarden();
+    const { isLoading: weatherPending } = useWeatherNow();
+    const isLoading = gardenPending || blockDataPending || weatherPending;
+    if (isLoading) {
         return (
             <GardenLoadingIndicator />
         );

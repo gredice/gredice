@@ -125,7 +125,7 @@ function ProfileCard() {
 
 export function AccountHud() {
     const { data: currentUser } = useCurrentUser();
-    const { data: currentGarden, isPending } = useCurrentGarden();
+    const { data: currentGarden, isLoading } = useCurrentGarden();
     const { data: notifications } = useNotifications(currentUser?.id, false);
     const hasUnreadNotifications = notifications?.some(notification => !notification.readAt);
 
@@ -155,7 +155,7 @@ export function AccountHud() {
                     <ProfileCard />
                 </DropdownMenu>
                 <div className="hidden md:block">
-                    {isPending ? (
+                    {isLoading ? (
                         <Skeleton className="w-32 h-7" />
                     ) : (currentGarden && (
                         <SelectItems

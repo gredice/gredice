@@ -83,7 +83,7 @@ export function OverviewModal() {
     const markAllNotificationsRead = useMarkAllNotificationsRead();
 
     // Security
-    const { data: userLogins, isPending: userLoginsLoading } = useUserLogins(currentUser.data?.id);
+    const { data: userLogins, isLoading: userLoginsLoading } = useUserLogins(currentUser.data?.id);
     const token = getAuthToken();
     const passwordLoginConnected = userLogins?.methods?.some(login => login.provider === 'password');
     const googleConnected = userLogins?.methods?.some(login => login.provider === 'google');
