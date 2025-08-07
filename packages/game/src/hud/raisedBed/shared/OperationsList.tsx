@@ -75,7 +75,7 @@ function OperationScheduleModal({
                                     {operation.information.shortDescription}
                                 </Typography>
                                 <Typography level="body2" semiBold>
-                                    {operation.prices?.perOperation ? `${operation.prices.perOperation.toFixed(2)} €` : 'Nepoznato'}
+                                    {formatPrice(operation.prices?.perOperation)}
                                 </Typography>
                             </Stack>
                         </Row>
