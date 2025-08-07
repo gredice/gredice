@@ -58,10 +58,10 @@ function SunflowersCard() {
 }
 
 function SunflowersAmount() {
-    const { data: account, isPending } = useCurrentAccount();
+    const { data: account, isLoading } = useCurrentAccount();
     const sunflowerCount = account?.sunflowers.amount;
 
-    if (isPending) {
+    if (isLoading) {
         return null;
     }
 

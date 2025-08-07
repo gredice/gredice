@@ -2,7 +2,7 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { getOperationsData, OperationData } from "../../lib/plants/getOperationsData";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { OperationImage } from "../../components/operations/OperationImage";
+import { OperationImage } from "@gredice/ui/OperationImage";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Card, CardContent } from "@signalco/ui-primitives/Card";
 import { KnownPages } from "../../src/KnownPages";

@@ -7,7 +7,7 @@ import { RaisedBedFieldItemPlanted } from "./RaisedBedFieldItemPlanted";
 import { Stack } from "@signalco/ui-primitives/Stack";
 
 function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBedId: number; gardenId: number; positionIndex: number }) {
-    const { data: garden, isPending: isGardenPending } = useCurrentGarden();
+    const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
     if (!raisedBed) {
         return null;
@@ -16,7 +16,7 @@ function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBe
     const field = raisedBed.fields.find(field => field.positionIndex === positionIndex);
     const hasField = Boolean(field);
 
-    if (isGardenPending) {
+    if (isGardenLoading) {
         return (
             <RaisedBedFieldItemButton isLoading={true} />
         );

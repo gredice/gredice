@@ -7,7 +7,7 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { RaisedBedSensorInfo } from "./raisedBed/RaisedBedSensorInfo";
 import { ButtonGreen } from "../shared-ui/ButtonGreen";
-import { RaisedBedInfo } from "../controls/components/RaisedBedInfo";
+import { RaisedBedInfo } from "./raisedBed/RaisedBedInfo";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { SVGProps } from "react";
 import { RaisedBedFieldSuggestions } from "./raisedBed/RaisedBedFieldSuggestions";
@@ -59,6 +59,8 @@ export function RaisedBedFieldHud({
                     <div className="absolute max-w-64 md:max-w-[312px] top-[calc(50%-203.5px)] left-[calc(50%-156.5px)]">
                         <Modal
                             title="Informacije o gredici"
+                            modal={false}
+                            className="md:border-tertiary md:border-b-4"
                             trigger={(
                                 <ButtonGreen fullWidth>
                                     <Row spacing={1}>

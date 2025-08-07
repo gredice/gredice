@@ -1,8 +1,21 @@
 import Image from "next/image";
-import { OperationData } from "../../lib/plants/getOperationsData";
 import { Hammer } from "@signalco/ui-icons";
 
-export function OperationImage({ operation, size }: { operation: Partial<Pick<OperationData, "image" | "information">>, size?: number }) {
+export type OperationImageProps = {
+    operation: {
+        image?: {
+            cover?: {
+                url?: string;
+            };
+        };
+        information?: {
+            label?: string;
+        };
+    };
+    size?: number;
+};
+
+export function OperationImage({ operation, size }: OperationImageProps) {
     if (!operation.image?.cover?.url) {
         return (
             <Hammer

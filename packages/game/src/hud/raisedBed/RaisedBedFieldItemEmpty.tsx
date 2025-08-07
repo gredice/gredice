@@ -8,8 +8,8 @@ import { usePlantSort } from "../../hooks/usePlantSorts";
 import { RaisedBedFieldItemButton } from "./RaisedBedFieldItemButton";
 
 export function RaisedBedFieldItemEmpty({ gardenId, raisedBedId, positionIndex }: { raisedBedId: number; gardenId: number; positionIndex: number }) {
-    const { data: cart, isPending: isCartPending } = useShoppingCart();
-    const { data: garden, isPending: isGardenPending } = useCurrentGarden();
+    const { data: cart, isLoading: isCartPending } = useShoppingCart();
+    const { data: garden, isLoading: isGardenPending } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
     if (!raisedBed) {
         return null;
@@ -20,7 +20,7 @@ export function RaisedBedFieldItemEmpty({ gardenId, raisedBedId, positionIndex }
         item.positionIndex === positionIndex);
     const cartPlantItem = cartItems?.find(item => item.entityTypeName === 'plantSort' && item.status === 'new');
     const cartPlantSortId = cartPlantItem ? Number(cartPlantItem.entityId) : null;
-    const { data: cartPlantSort, isPending: isCartPlantSortPending } = usePlantSort(cartPlantSortId);
+    const { data: cartPlantSort, isLoading: isCartPlantSortPending } = usePlantSort(cartPlantSortId);
     const cartPlantId = cartPlantSort?.information.plant.id;
     const additionalDataRaw = cartPlantItem?.additionalData ? JSON.parse(cartPlantItem.additionalData) : null;
     const cartPlantOptions = {
