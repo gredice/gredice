@@ -179,7 +179,7 @@ function OperationsListItem({
     return (
         <Stack key={operation.id}>
             {operationButton}
-            <div className="flex flex-wrap gap-y-1 gap-x-2 px-4 items-center justify-between">
+            <div className="flex flex-wrap gap-y-1 gap-x-2 pr-4 items-center justify-between">
                 <OperationScheduleModal
                     operation={operation}
                     gardenId={gardenId}
