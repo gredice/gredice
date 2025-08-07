@@ -19,19 +19,16 @@ function populateMissingAttributes(entity: SelectEntity & {
         attributeDefinitions: SelectAttributeDefinition[];
     };
 }) {
-    // Construct map of owned attributes by category and name
-    const ownedAttributes = new Map<string, SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition }>();
-    for (const attribute of entity.attributes) {
-        ownedAttributes.set(attribute.attributeDefinition.category + "|" + attribute.attributeDefinition.name, attribute);
-    }
-
     // Create missing attributes that have default value based on entity type definitions
     for (const definition of entity.entityType.attributeDefinitions) {
-        if (!ownedAttributes.has(definition.category + "|" + definition.name) &&
+        const hasAtleastOneAttributeValue = entity.attributes.some(
+            (a) => a.attributeDefinition.id === definition.id && !a.isDeleted
+        );
+        // If attribute is missing and we have default defined, create a default one
+        if (!hasAtleastOneAttributeValue &&
             typeof definition.defaultValue !== "undefined" &&
             definition.defaultValue !== null) {
-            // If attribute is missing, create a default one
-            ownedAttributes.set(definition.category + "|" + definition.name, {
+            entity.attributes.push({
                 entityId: entity.id,
                 entityTypeName: entity.entityType.name,
                 attributeDefinitionId: definition.id,
@@ -46,8 +43,8 @@ function populateMissingAttributes(entity: SelectEntity & {
         }
     }
 
-    // Convert map back to array
-    entity.attributes = Array.from(ownedAttributes.values()).sort((a, b) => {
+    // Sort attributes by order, if order is not defined, default to 0
+    entity.attributes = entity.attributes.sort((a, b) => {
         const orderA = a.attributeDefinition.order ?? 0;
         const orderB = b.attributeDefinition.order ?? 0;
         return Number(orderA) - Number(orderB);
@@ -144,10 +141,14 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
             }
             const array = category[attribute.attributeDefinition.name] as unknown[];
             const result = await expandValue(attribute.value, attribute.attributeDefinition, cache);
-            if (Array.isArray(result)) {
-                array.push(...result);
-            } else {
-                array.push(result);
+
+            // When expanding to array, ignore the null values
+            if (typeof result !== 'undefined' && result !== null) {
+                if (Array.isArray(result)) {
+                    array.push(...result);
+                } else {
+                    array.push(result);
+                }
             }
         } else {
             category[attribute.attributeDefinition.name] = await expandValue(attribute.value, attribute.attributeDefinition, cache);

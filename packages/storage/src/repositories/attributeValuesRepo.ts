@@ -4,35 +4,44 @@ import { getAttributeDefinition, storage } from "..";
 import { attributeValues, InsertAttributeValue } from "../schema";
 import { bustCached, cacheKeys } from '../cache/directoriesCached';
 
-export async function upsertAttributeValue(value: InsertAttributeValue) {
-    let attributeValue = value.value;
-    const definition = await getAttributeDefinition(value.attributeDefinitionId);
-    if (Boolean(definition)) {
-        // Handle default value
-        if (definition?.defaultValue && !value.value) {
-            attributeValue = definition.defaultValue;
+export async function upsertAttributeValue(attributeValue: InsertAttributeValue) {
+    let value = attributeValue.value;
+
+    // Handle default value - assign default value if value is not provided
+    if (!value) {
+        const definition = await getAttributeDefinition(attributeValue.attributeDefinitionId);
+        if (definition?.defaultValue) {
+            value = definition.defaultValue;
         }
     }
 
     await Promise.all([
         storage()
             .insert(attributeValues)
-            .values(value)
+            .values({
+                ...attributeValue,
+                value
+            })
             .onConflictDoUpdate({
                 target: attributeValues.id,
                 set: {
-                    ...value,
-                    value: attributeValue
+                    ...attributeValue,
+                    value
                 },
             }),
-        value.id ? storage().select().from(attributeValues).where(eq(attributeValues.id, value.id)).then(
-            attributeValue => {
-                return Promise.all([
-                    attributeValue?.[0].entityId ? bustCached(cacheKeys.entity(attributeValue?.[0]?.entityId)) : undefined,
-                    attributeValue?.[0].entityTypeName ? bustCached(cacheKeys.entityTypeName(attributeValue?.[0].entityTypeName)) : undefined
-                ]);
-            }
-        ) : undefined
+        // Bust cache if value exists
+        attributeValue.id ? storage()
+            .select()
+            .from(attributeValues)
+            .where(eq(attributeValues.id, attributeValue.id))
+            .then(
+                attributeValue => {
+                    return Promise.all([
+                        attributeValue?.[0].entityId ? bustCached(cacheKeys.entity(attributeValue?.[0]?.entityId)) : undefined,
+                        attributeValue?.[0].entityTypeName ? bustCached(cacheKeys.entityTypeName(attributeValue?.[0].entityTypeName)) : undefined
+                    ]);
+                }
+            ) : undefined
     ]);
 }
 
