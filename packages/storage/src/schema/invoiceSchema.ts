@@ -64,7 +64,7 @@ export const invoiceRelations = relations(invoices, ({ one, many }) => ({
     }),
 }));
 
-export type InsertInvoice = typeof invoices.$inferInsert;
+export type InsertInvoice = Omit<typeof invoices.$inferInsert, 'invoiceNumber'>;
 export type UpdateInvoice =
     Partial<Omit<typeof invoices.$inferInsert, 'id' | 'accountId' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
     Pick<typeof invoices.$inferSelect, 'id'>;
@@ -170,7 +170,7 @@ export const receiptRelations = relations(receipts, ({ one }) => ({
     }),
 }));
 
-export type InsertReceipt = typeof receipts.$inferInsert;
+export type InsertReceipt = Omit<typeof receipts.$inferInsert, 'receiptNumber'>;
 export type UpdateReceipt =
     Partial<Omit<typeof receipts.$inferInsert, 'id' | 'invoiceId' | 'createdAt' | 'updatedAt' | 'isDeleted'>> &
     Pick<typeof receipts.$inferSelect, 'id'>;

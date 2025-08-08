@@ -13,6 +13,7 @@ import {
 } from "../schema";
 import { storage } from "../storage";
 import { createEvent, knownEvents } from "./eventsRepo";
+import { PgTransaction } from 'drizzle-orm/pg-core';
 
 // Receipt creation data interface
 export interface ReceiptCreationData {
@@ -35,27 +36,64 @@ export async function createInvoice(invoice: InsertInvoice, items?: Omit<InsertI
         throw new Error("Invoice must have an accountId");
     }
 
-    const invoiceId = (await storage()
-        .insert(invoices)
-        .values(invoice)
-        .returning({ id: invoices.id }))[0].id;
+    const maxRetries = 10;
+    let attempt = 0;
+    let lastError: Error | null = null;
 
-    if (items && items.length > 0) {
-        const invoiceItemsData = items.map(item => ({
-            ...item,
-            invoiceId,
-        }));
-        await storage().insert(invoiceItems).values(invoiceItemsData);
+    while (attempt < maxRetries) {
+        try {
+            const invoiceNumber = await generateInvoiceNumber();
+            const invoiceId = (await storage()
+                .insert(invoices)
+                .values({
+                    ...invoice,
+                    invoiceNumber
+                })
+                .returning({ id: invoices.id }))[0].id;
+
+            if (typeof invoiceId !== "number") {
+                throw new Error("Failed to create invoice");
+            }
+
+            if (items && items.length > 0) {
+                const invoiceItemsData = items.map(item => ({
+                    ...item,
+                    invoiceId: invoiceId as number,
+                }));
+                await storage().insert(invoiceItems).values(invoiceItemsData);
+            }
+
+            await createEvent(knownEvents.invoices.createdV1(invoiceId.toString(), {
+                accountId: invoice.accountId,
+                invoiceNumber: invoiceNumber,
+                totalAmount: invoice.totalAmount,
+                status: invoice.status || 'draft',
+            }));
+
+            return invoiceId;
+        } catch (error) {
+            attempt++;
+            lastError = error as Error;
+
+            // Check if the error is a unique constraint violation for invoice_number
+            const isUniqueConstraintError = error instanceof Error &&
+                (error.message.includes('unique constraint') ||
+                    error.message.includes('duplicate key') ||
+                    error.message.includes('UNIQUE violation') ||
+                    error.message.includes('invoice_number'));
+
+            if (!isUniqueConstraintError || attempt >= maxRetries) {
+                break;
+            }
+
+            console.warn(`Retrying invoice creation (${attempt}/${maxRetries}) due to unique constraint violation: ${error.message}`);
+
+            // Wait a small random amount before retrying to reduce collision chances
+            await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
+        }
     }
 
-    await createEvent(knownEvents.invoices.createdV1(invoiceId.toString(), {
-        accountId: invoice.accountId,
-        invoiceNumber: invoice.invoiceNumber,
-        totalAmount: invoice.totalAmount,
-        status: invoice.status || 'draft',
-    }));
-
-    return invoiceId;
+    throw new Error(`Failed to create invoice after ${attempt} attempts. Last error: ${lastError?.message}`);
 }
 
 export async function getInvoice(invoiceId: number) {
@@ -240,10 +278,6 @@ export async function cancelInvoice(invoiceId: number) {
         throw new Error(`Cannot cancel invoice with status ${currentStatus}`);
     }
 
-    if (currentStatus === 'paid') {
-        throw new Error('Cannot cancel a paid invoice');
-    }
-
     await updateInvoice({
         id: invoiceId,
         status: 'cancelled'
@@ -302,10 +336,8 @@ export async function markInvoiceAsPaid(
             ));
 
     // Create receipt
-    const receiptNumber = await generateReceiptNumber();
     const receiptId = await createReceipt({
         invoiceId,
-        receiptNumber,
         subtotal: invoice.subtotal,
         taxAmount: invoice.taxAmount,
         totalAmount: invoice.totalAmount,
@@ -323,10 +355,15 @@ export async function markInvoiceAsPaid(
         issuedAt: paidDate,
     });
 
+    const receipt = await getReceipt(receiptId);
+    if (!receipt) {
+        throw new Error(`Failed to create receipt for invoice ${invoiceId}`);
+    }
+
     await createEvent(knownEvents.invoices.paidV1(invoiceId.toString(), {
         paidDate: paidDate.toISOString(),
         receiptId: receiptId.toString(),
-        receiptNumber,
+        receiptNumber: receipt.receiptNumber,
     }));
 
     return receiptId;
@@ -370,26 +407,40 @@ export async function getInvoiceItems(invoiceId: number) {
 }
 
 // Utility functions
-export async function generateInvoiceNumber(): Promise<string> {
+async function generateInvoiceNumber(): Promise<string> {
     const year = new Date().getFullYear();
     const prefix = `PON-${year}-`;
 
     // Get the latest invoice number for this year
+    // Pull the deleted invoices too so we don't run into unique constraint issues
     const latestInvoice = await storage().query.invoices.findFirst({
         where: and(
-            eq(invoices.isDeleted, false),
             like(invoices.invoiceNumber, `${prefix}%`)
         ),
-        orderBy: desc(invoices.invoiceNumber),
+        orderBy: desc(invoices.id),
     });
 
-    let nextNumber = 1;
-    if (latestInvoice?.invoiceNumber.startsWith(prefix)) {
-        const lastNumber = latestInvoice.invoiceNumber.replace(prefix, '');
-        nextNumber = parseInt(lastNumber) + 1;
+    const nextNumber = parseInt(latestInvoice?.invoiceNumber.substring(prefix.length) ?? "0", 10) + 1;
+
+    // Check if the incremented number already exists, retry up to 100 times to find next available
+    const maxAttempts = 100;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const candidateNumber = `${prefix}${(nextNumber + attempt).toString().padStart(4, '0')}`;
+
+        // Check if this number already exists
+        const existingInvoice = await storage().query.invoices.findFirst({
+            where: and(
+                eq(invoices.invoiceNumber, candidateNumber)
+            ),
+        });
+
+        if (!existingInvoice) {
+            // Number is available, use it
+            return candidateNumber;
+        }
     }
 
-    return `${prefix}${nextNumber.toString().padStart(4, '0')}`;
+    throw new Error(`Failed to generate unique invoice number after ${maxAttempts} attempts`);
 }
 
 export async function calculateInvoiceTotals(invoiceId: number) {
@@ -429,11 +480,8 @@ export async function createReceiptFromInvoice(
     }
 
     // Generate receipt number
-    const receiptNumber = await generateReceiptNumber();
-
     const receiptToInsert = {
         invoiceId,
-        receiptNumber,
         subtotal: invoice.subtotal,
         taxAmount: invoice.taxAmount,
         totalAmount: invoice.totalAmount,
@@ -455,32 +503,64 @@ export async function createReceiptFromInvoice(
 
 // Receipt CRUD operations
 export async function createReceipt(receipt: Omit<InsertReceipt, 'yearReceiptNumber'>) {
-    const receiptId = (await storage()
-        .insert(receipts)
-        .values({
-            ...receipt,
-            yearReceiptNumber: `${new Date().getFullYear()}-${receipt.receiptNumber}`
-        })
-        .returning({ id: receipts.id }))[0].id;
+    const maxRetries = 10;
+    let attempt = 0;
+    let lastError: Error | null = null;
 
-    await createEvent(knownEvents.receipts?.createdV1?.(receiptId.toString(), {
-        invoiceId: receipt.invoiceId.toString(),
-        receiptNumber: receipt.receiptNumber,
-        totalAmount: receipt.totalAmount,
-        paymentMethod: receipt.paymentMethod,
-    }) ?? {
-        name: 'receipt.created.v1',
-        entityId: receiptId.toString(),
-        entityTypeName: 'receipt',
-        eventData: {
-            invoiceId: receipt.invoiceId.toString(),
-            receiptNumber: receipt.receiptNumber,
-            totalAmount: receipt.totalAmount,
-            paymentMethod: receipt.paymentMethod,
+    while (attempt < maxRetries) {
+        try {
+            const receiptNumber = await generateReceiptNumber();
+            const yearReceiptNumber = `${new Date().getFullYear()}-${receiptNumber}`;
+
+            const receiptId = (await storage()
+                .insert(receipts)
+                .values({
+                    ...receipt,
+                    receiptNumber,
+                    yearReceiptNumber
+                })
+                .returning({ id: receipts.id }))[0].id;
+
+            await createEvent(knownEvents.receipts?.createdV1?.(receiptId.toString(), {
+                invoiceId: receipt.invoiceId.toString(),
+                receiptNumber,
+                totalAmount: receipt.totalAmount,
+                paymentMethod: receipt.paymentMethod,
+            }) ?? {
+                name: 'receipt.created.v1',
+                entityId: receiptId.toString(),
+                entityTypeName: 'receipt',
+                eventData: {
+                    invoiceId: receipt.invoiceId.toString(),
+                    receiptNumber,
+                    totalAmount: receipt.totalAmount,
+                    paymentMethod: receipt.paymentMethod,
+                }
+            });
+
+            return receiptId;
+        } catch (error) {
+            attempt++;
+            lastError = error as Error;
+
+            // Check if the error is a unique constraint violation for year_receipt_number or receipt_number
+            const isUniqueConstraintError = error instanceof Error &&
+                (error.message.includes('unique constraint') ||
+                    error.message.includes('duplicate key') ||
+                    error.message.includes('UNIQUE violation') ||
+                    error.message.includes('year_receipt_number') ||
+                    error.message.includes('receipt_number'));
+
+            if (!isUniqueConstraintError || attempt >= maxRetries) {
+                break;
+            }
+
+            // Wait a small random amount before retrying to reduce collision chances
+            await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
         }
-    });
+    }
 
-    return receiptId;
+    throw new Error(`Failed to create receipt after ${maxRetries} attempts. Last error: ${lastError?.message}`);
 }
 
 export async function getReceipt(receiptId: number) {
@@ -598,24 +678,41 @@ export async function getReceiptsByBusinessPin(businessPin: string) {
     });
 }
 
-export async function generateReceiptNumber(): Promise<string> {
+async function generateReceiptNumber(): Promise<string> {
     const firstDateOfYear = new Date(new Date().getFullYear(), 0, 1);
 
     // Get the latest receipt number for this year
+    // Order by id desc to get the most recently created receipt, which should have the highest number
+    // Pull the deleted invoices too so we don't run into unique constraint issues
     const latestReceipt = await storage().query.receipts.findFirst({
         where: and(
-            eq(receipts.isDeleted, false),
             gte(receipts.issuedAt, firstDateOfYear),
         ),
-        orderBy: desc(receipts.receiptNumber),
+        orderBy: desc(receipts.id),
     });
 
-    let nextNumber = 1;
-    if (latestReceipt?.receiptNumber) {
-        nextNumber = parseInt(latestReceipt.receiptNumber) + 1;
+    const nextNumber = parseInt(latestReceipt?.receiptNumber ?? '0', 10) + 1;
+
+    // Check if the incremented number already exists, retry up to 100 times to find next available
+    const maxAttempts = 100;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const candidateNumber = `${nextNumber + attempt}`;
+
+        // Check if this number already exists
+        const existingReceipt = await storage().query.receipts.findFirst({
+            where: and(
+                eq(receipts.receiptNumber, candidateNumber),
+                gte(receipts.issuedAt, firstDateOfYear),
+            ),
+        });
+
+        if (!existingReceipt) {
+            // Number is available, use it
+            return candidateNumber;
+        }
     }
 
-    return `${nextNumber}`;
+    throw new Error(`Failed to generate unique receipt number after ${maxAttempts} attempts`);
 }
 
 export async function softDeleteReceipt(receiptId: number) {
