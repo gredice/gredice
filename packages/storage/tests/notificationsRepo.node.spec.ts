@@ -7,8 +7,8 @@ import { createTestAccount } from './helpers/testHelpers';
 test('createNotification and getNotificationsByAccount basic usage', async () => {
     createTestDb();
     const accountId = await createTestAccount();
-    const notificationId = await createNotification({ accountId, header: 'Test', content: 'Test notification' });
-    const notifications = await getNotificationsByAccount(accountId);
+    const notificationId = await createNotification({ accountId, header: 'Test', content: 'Test notification', timestamp: new Date() });
+    const notifications = await getNotificationsByAccount(accountId, false, 0, 10000);
     assert.ok(Array.isArray(notifications));
     assert.ok(notifications.some((n: any) => n.id === notificationId));
 });

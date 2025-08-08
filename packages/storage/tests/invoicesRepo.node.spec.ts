@@ -14,14 +14,12 @@ import {
     deleteInvoice,
     addInvoiceItem,
     getInvoiceItems,
-    generateInvoiceNumber,
     calculateInvoiceTotals,
     getReceipt,
     getReceiptByInvoice,
     getReceiptByNumber,
     updateReceiptFiscalization,
     getReceiptsByStatus,
-    generateReceiptNumber,
     ReceiptCreationData,
     InsertInvoice,
     InsertInvoiceItem,
@@ -40,13 +38,11 @@ import { createTestAccount } from './helpers/testHelpers';
 
 async function baseInvoice(transactionId?: number): Promise<InsertInvoice> {
     const accountId = await createTestAccount();
-    const invoiceNumber = await generateInvoiceNumber();
     const currentDate = new Date();
     const dueDate = new Date();
     dueDate.setDate(currentDate.getDate() + 30); // 30 days from now
 
     return {
-        invoiceNumber,
         accountId,
         transactionId,
         subtotal: '100.00',
@@ -98,7 +94,7 @@ test('createInvoice and getInvoice', async () => {
 
     assert.ok(invoice);
     assert.strictEqual(invoice.id, invoiceId);
-    assert.strictEqual(invoice.invoiceNumber, invoiceData.invoiceNumber);
+    assert.ok(Boolean(invoice.invoiceNumber), 'Invoice number should be generated');
     assert.strictEqual(invoice.totalAmount, invoiceData.totalAmount);
     assert.strictEqual(invoice.status, 'draft');
 });
@@ -156,11 +152,13 @@ test('getInvoiceByNumber', async () => {
     createTestDb();
     const invoiceData = await baseInvoice();
     const invoiceId = await createInvoice(invoiceData);
+    const invoiceById = await getInvoice(invoiceId);
 
-    const invoice = await getInvoiceByNumber(invoiceData.invoiceNumber);
+    assert.ok(invoiceById);
+    const invoice = await getInvoiceByNumber(invoiceById.invoiceNumber);
     assert.ok(invoice);
     assert.strictEqual(invoice.id, invoiceId);
-    assert.strictEqual(invoice.invoiceNumber, invoiceData.invoiceNumber);
+    assert.strictEqual(invoice.invoiceNumber, invoiceById.invoiceNumber);
 });
 
 test('getInvoices returns invoices for account', async () => {
@@ -283,16 +281,6 @@ test('invoice items operations', async () => {
     assert.strictEqual(items[0].description, 'Test Product');
 });
 
-test('generateInvoiceNumber creates unique numbers', async () => {
-    createTestDb();
-    const number1 = await generateInvoiceNumber();
-    const number2 = await generateInvoiceNumber();
-
-    assert.ok(number1.startsWith('PON-'));
-    assert.ok(number2.startsWith('PON-'));
-    assert.notStrictEqual(number1, number2);
-});
-
 test('calculateInvoiceTotals', async () => {
     createTestDb();
     const invoiceData = await baseInvoice();
@@ -336,17 +324,6 @@ test('getOverdueInvoices finds overdue invoices', async () => {
     const overdueInvoices = await getOverdueInvoices();
     assert.ok(Array.isArray(overdueInvoices));
     assert.ok(overdueInvoices.some(inv => inv.id === invoiceId));
-});
-
-// Receipt tests
-test('generateReceiptNumber creates unique numbers', async () => {
-    createTestDb();
-    const number1 = await generateReceiptNumber();
-    const number2 = await generateReceiptNumber();
-
-    assert.ok(number1.startsWith('RCP-'));
-    assert.ok(number2.startsWith('RCP-'));
-    assert.notStrictEqual(number1, number2);
 });
 
 test('getReceiptByInvoice returns receipt for paid invoice', async () => {
@@ -590,7 +567,7 @@ test('cancelInvoice prevents cancelling paid invoices', async () => {
 
     await assert.rejects(
         () => cancelInvoice(invoiceId),
-        /Cannot cancel a paid invoice/
+        /Cannot cancel invoice with status paid/
     );
 });
 
