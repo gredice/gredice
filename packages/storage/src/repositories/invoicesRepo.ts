@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq, desc, isNull, lte, like, gte } from "drizzle-orm";
+import { and, eq, desc, isNull, lte, like, gte, sql } from "drizzle-orm";
 import {
     invoices,
     invoiceItems,
@@ -417,7 +417,7 @@ async function generateInvoiceNumber(): Promise<string> {
         where: and(
             like(invoices.invoiceNumber, `${prefix}%`)
         ),
-        orderBy: desc(invoices.id),
+        orderBy: sql`CAST(SUBSTRING(${invoices.invoiceNumber} FROM ${prefix.length + 1}) AS INTEGER) DESC`,
     });
 
     const nextNumber = parseInt(latestInvoice?.invoiceNumber.substring(prefix.length) ?? "0", 10) + 1;
@@ -688,7 +688,7 @@ async function generateReceiptNumber(): Promise<string> {
         where: and(
             gte(receipts.issuedAt, firstDateOfYear),
         ),
-        orderBy: desc(receipts.id),
+        orderBy: sql`CAST(${receipts.receiptNumber} AS INTEGER) DESC`
     });
 
     const nextNumber = parseInt(latestReceipt?.receiptNumber ?? '0', 10) + 1;
