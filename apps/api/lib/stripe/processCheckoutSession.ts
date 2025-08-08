@@ -41,6 +41,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
 
         // Extract metadata from the product
         const itemData = {
+            cartItemId: product?.metadata.cartItemId ? parseInt(product.metadata.cartItemId, 10) : undefined,
             entityId: product?.metadata.entityId,
             entityTypeName: product?.metadata.entityTypeName,
             accountId: product?.metadata.accountId,
@@ -71,7 +72,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         }
 
         // Validate required metadata
-        if (!itemData.entityId || !itemData.entityTypeName || !itemData.accountId || !itemData.cartId) {
+        if (!itemData.cartItemId || !itemData.entityId || !itemData.entityTypeName || !itemData.accountId || !itemData.cartId) {
             console.warn(`Missing required metadata for item ${item.id} in session ${checkoutSessionId}`);
             continue;
         }
@@ -83,27 +84,29 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
                 console.warn(`No cart found for ID ${itemData.cartId} in session ${checkoutSessionId}`);
                 continue;
             }
-            const cartItem = cart.items.find(i =>
-                i.entityId === itemData.entityId &&
-                i.entityTypeName === itemData.entityTypeName &&
-                (i.gardenId ?? null) === (itemData.gardenId ?? null) &&
-                (i.raisedBedId ?? null) === (itemData.raisedBedId ?? null) &&
-                (i.positionIndex ?? null) === (itemData.positionIndex ?? null) &&
-                (i.additionalData ?? null) === (itemData.additionalData ?? null) &&
-                (i.currency ?? null) === (itemData.currency ?? null)
-            );
+
+            // Find cart item by cartItemId for more reliable matching
+            const cartItem = cart.items.find(i => i.id === itemData.cartItemId);
+
             if (cartItem?.status === 'paid') {
                 console.warn(`Cart item ${cartItem.id} is already paid. Skipping so we don't double process.`);
                 continue;
             }
             if (!cartItem) {
-                console.warn(`No existing item found in cart for entityId ${itemData.entityId} in session ${checkoutSessionId}`);
+                console.warn(`No cart item found with ID ${itemData.cartItemId} in cart ${itemData.cartId} for session ${checkoutSessionId}`);
                 continue;
             }
+
+            // Additional validation: ensure the cart item matches the expected entity details
+            if (cartItem.entityId !== itemData.entityId || cartItem.entityTypeName !== itemData.entityTypeName) {
+                console.warn(`Cart item ${itemData.cartItemId} entity mismatch. Expected: ${itemData.entityId}/${itemData.entityTypeName}, Found: ${cartItem.entityId}/${cartItem.entityTypeName}`);
+                continue;
+            }
+
             await setCartItemPaid(cartItem.id);
             affectedCartIds.push(cart.id);
         } catch (error) {
-            console.error(`Error processing cart item for entityId ${itemData.entityId} in session ${checkoutSessionId}`, error);
+            console.error(`Error processing cart item ${itemData.cartItemId} in session ${checkoutSessionId}`, error);
             continue;
         }
 

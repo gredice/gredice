@@ -272,6 +272,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         imageUrls,
                         // TODO: Construct/deconstruct functions
                         metadata: {
+                            cartItemId: item.id.toString(),
                             entityId: item.entityId,
                             entityTypeName: item.entityTypeName,
                             accountId: account.id,
