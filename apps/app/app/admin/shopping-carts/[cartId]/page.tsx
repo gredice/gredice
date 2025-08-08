@@ -210,7 +210,7 @@ export default async function ShoppingCartDetailsPage({ params }: { params: { ca
                                     </Table.Cell>
                                     <Table.Cell>
                                         {item.gardenId ? <Link href={KnownPages.Garden(item.gardenId)}>Vrt {item.gardenId}</Link> : ''}
-                                        {item.raisedBedId ? <Link href={KnownPages.RaisedBed(item.raisedBedId)}> | Gr {item.raisedBedId}</Link> : ''}
+                                        {item.raisedBedId ? <> | <Link href={KnownPages.RaisedBed(item.raisedBedId)}>Gr {item.raisedBedId}</Link></> : ''}
                                         {typeof item.positionIndex === 'number' ? ` | Pozicija ${item.positionIndex}` : ''}
                                     </Table.Cell>
                                     <Table.Cell>
