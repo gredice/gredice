@@ -22,7 +22,7 @@
     "@vercel/toolbar": "0.1.38",
     "flags": "4.0.1",
     "hypertune": "2.7.2",
-    "next": "15.3.5",
+    "next": "15.4.5",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "server-only": "0.0.1"
