@@ -11,7 +11,7 @@
     "regenerate:1-9-0-prod": "wsdl-tsclient ./external/1-9-0-prod/wsdl/FiskalizacijaService.wsdl -o ./src/generated/1-9-0-prod"
   },
   "devDependencies": {
-    "@types/node": "22.17.0",
+    "@types/node": "22.17.1",
     "typescript": "5.9.2",
     "@microsoft/api-extractor": "7.52.10",
     "@types/node-forge": "1.3.13",
