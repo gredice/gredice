@@ -668,16 +668,6 @@ export async function getReceiptsByStatus(cisStatus: string) {
     });
 }
 
-export async function getReceiptsByBusinessPin(businessPin: string) {
-    return storage().query.receipts.findMany({
-        where: and(eq(receipts.businessPin, businessPin), eq(receipts.isDeleted, false)),
-        with: {
-            invoice: true,
-        },
-        orderBy: desc(receipts.issuedAt),
-    });
-}
-
 async function generateReceiptNumber(): Promise<string> {
     const firstDateOfYear = new Date(new Date().getFullYear(), 0, 1);
 
