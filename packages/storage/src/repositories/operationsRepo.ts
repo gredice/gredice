@@ -9,6 +9,7 @@ async function fillOperationAggregares(operations: SelectOperation[]) {
         knownEventTypes.operations.schedule,
         knownEventTypes.operations.complete,
         knownEventTypes.operations.fail,
+        knownEventTypes.operations.cancel,
     ], aggregateIds, 0, 10000);
 
     return operations.map(op => {
@@ -20,6 +21,9 @@ async function fillOperationAggregares(operations: SelectOperation[]) {
         let completedBy: string | undefined = undefined;
         let error: string | undefined = undefined;
         let errorCode: string | undefined = undefined;
+        let canceledBy: string | undefined = undefined;
+        let canceledAt: Date | undefined = undefined;
+        let cancelReason: string | undefined = undefined;
 
         for (const event of events) {
             const data = event.data as Record<string, any> | undefined;
@@ -31,6 +35,11 @@ async function fillOperationAggregares(operations: SelectOperation[]) {
                 status = 'failed';
                 error = data?.error;
                 errorCode = data?.errorCode;
+            } else if (event.type === knownEventTypes.operations.cancel) {
+                status = 'canceled';
+                canceledBy = data?.canceledBy;
+                cancelReason = data?.reason;
+                canceledAt = event.createdAt ? new Date(event.createdAt) : undefined;
             } else if (event.type === knownEventTypes.operations.schedule) {
                 status = 'planned';
                 scheduledDate = data?.scheduledDate ? new Date(data.scheduledDate) : undefined;
@@ -44,7 +53,10 @@ async function fillOperationAggregares(operations: SelectOperation[]) {
             completedBy,
             error,
             errorCode,
-            scheduledDate
+            scheduledDate,
+            canceledBy,
+            canceledAt,
+            cancelReason
         };
     });
 }

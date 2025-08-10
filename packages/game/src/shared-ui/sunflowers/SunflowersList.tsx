@@ -40,6 +40,9 @@ function sunflowerReasonToDescription(reason: string) {
     if (reason.startsWith('shoppingCartItem')) {
         return { icon: <span className="text-4xl text-center size-10">🛒</span>, label: 'Kupnja' };
     }
+    if (reason.startsWith('refund:operation')) {
+        return { icon: <span className="text-4xl text-center size-10">↩️</span>, label: 'Povrat sredstava za radnju' };
+    }
 
     console.warn('Unknown sunflower reason:', reason);
     return { icon: <Empty className="size-10" />, label: 'Nepoznato' };

@@ -14,9 +14,10 @@ import { Divider } from "@signalco/ui-primitives/Divider";
 import Link from "next/link";
 import { KnownPages } from "../../../src/KnownPages";
 import { CopyTasksButton } from "./CopyTasksButton";
-import { Tally3, Calendar } from "@signalco/ui-icons";
+import { Tally3, Calendar, Close } from "@signalco/ui-icons";
 import { Button } from "@signalco/ui-primitives/Button";
 import { RescheduleOperationModal } from "./RescheduleOperationModal";
+import { CancelOperationModal } from "./CancelOperationModal";
 
 export const dynamic = 'force-dynamic';
 
@@ -200,7 +201,26 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                                                             className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                                                             title={op.scheduledDate ? "Prerasporedi operaciju" : "Zakaži operaciju"}
                                                         >
-                                                            <Calendar className="size-3" />
+                                                            <Calendar className="size-4 shrink-0" />
+                                                        </Button>
+                                                    }
+                                                />
+                                                <CancelOperationModal
+                                                    operation={{
+                                                        id: op.id,
+                                                        entityId: op.entityId,
+                                                        scheduledDate: op.scheduledDate,
+                                                        status: op.status
+                                                    }}
+                                                    operationLabel={operationData?.information?.label ?? op.entityId.toString()}
+                                                    trigger={
+                                                        <Button
+                                                            variant="plain"
+                                                            size="sm"
+                                                            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                                            title="Otkaži operaciju"
+                                                        >
+                                                            <Close className="size-4 shrink-0" />
                                                         </Button>
                                                     }
                                                 />

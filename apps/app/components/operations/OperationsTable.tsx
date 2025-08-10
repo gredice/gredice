@@ -8,6 +8,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Calendar, Tally3 } from '@signalco/ui-icons';
 import { OperationRescheduleButton } from './OperationRescheduleButton';
+import { OperationCancelButton } from './OperationCancelButton';
 
 export async function OperationsTable() {
     const [operationsData, operations, accounts, gardens, raisedBeds] = await Promise.all([
@@ -61,7 +62,9 @@ export async function OperationsTable() {
                                 <Stack>
                                     <Chip
                                         className='w-fit'
-                                        color={operation.status === 'completed' ? 'success' : (operation.status === 'planned' ? 'info' : 'warning')}>
+                                        color={operation.status === 'completed' ? 'success' :
+                                            operation.status === 'planned' ? 'info' :
+                                                operation.status === 'canceled' ? 'neutral' : 'warning'}>
                                         {operation.status}
                                     </Chip>
                                     {operation.status === 'planned' && (
@@ -107,15 +110,26 @@ export async function OperationsTable() {
                                 </LocaleDateTime>
                             </Table.Cell>
                             <Table.Cell>
-                                <OperationRescheduleButton
-                                    operation={{
-                                        id: operation.id,
-                                        entityId: operation.entityId,
-                                        scheduledDate: operation.scheduledDate,
-                                        status: operation.status
-                                    }}
-                                    operationLabel={operation.details.label || operation.entityId.toString()}
-                                />
+                                <Row spacing={1}>
+                                    <OperationRescheduleButton
+                                        operation={{
+                                            id: operation.id,
+                                            entityId: operation.entityId,
+                                            scheduledDate: operation.scheduledDate,
+                                            status: operation.status
+                                        }}
+                                        operationLabel={operation.details.label || operation.entityId.toString()}
+                                    />
+                                    <OperationCancelButton
+                                        operation={{
+                                            id: operation.id,
+                                            entityId: operation.entityId,
+                                            scheduledDate: operation.scheduledDate,
+                                            status: operation.status
+                                        }}
+                                        operationLabel={operation.details.label || operation.entityId.toString()}
+                                    />
+                                </Row>
                             </Table.Cell>
                         </Table.Row>
                     );
