@@ -49,6 +49,7 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
                 {transactions.map(transaction => {
                     const invoiceCount = transaction.invoices?.length || 0;
                     const hasNoInvoices = invoiceCount === 0;
+                    const isTest = transaction.stripePaymentId.startsWith('cs_test_');
 
                     return (
                         <Table.Row key={transaction.id} className={hasNoInvoices ? 'bg-green-50 dark:bg-green-950' : ''}>
@@ -105,12 +106,15 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
                             <Table.Cell>
                                 {transaction.stripePaymentId ? (
                                     <Link href={KnownPages.StripePayment(transaction.stripePaymentId)}>
-                                        <Chip startDecorator={<ExternalLink className="size-4" />}>
-                                            Stripe
+                                        <Chip
+                                            className="w-fit"
+                                            color={isTest ? 'warning' : 'neutral'}
+                                            startDecorator={<ExternalLink className="size-4" />}>
+                                            Stripe{isTest && ' (test)'}
                                         </Chip>
                                     </Link>
                                 ) : (
-                                    <span className="text-gray-500">Nema Stripe poveznicu</span>
+                                    <Typography level="body3">Nema Stripe poveznicu</Typography>
                                 )}
                             </Table.Cell>
                         </Table.Row>
