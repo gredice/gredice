@@ -7,6 +7,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Calendar, Tally3 } from '@signalco/ui-icons';
+import { OperationRescheduleButton } from './OperationRescheduleButton';
 
 export async function OperationsTable() {
     const [operationsData, operations, accounts, gardens, raisedBeds] = await Promise.all([
@@ -36,12 +37,13 @@ export async function OperationsTable() {
                     <Table.Head>Mjesto</Table.Head>
                     <Table.Head>Datum</Table.Head>
                     <Table.Head>Datum stvaranja</Table.Head>
+                    <Table.Head>Akcije</Table.Head>
                 </Table.Row>
             </Table.Header>
             <Table.Body>
                 {!operationsWithDetails.length && (
                     <Table.Row>
-                        <Table.Cell colSpan={4}>
+                        <Table.Cell colSpan={7}>
                             <NoDataPlaceholder />
                         </Table.Cell>
                     </Table.Row>
@@ -103,6 +105,17 @@ export async function OperationsTable() {
                                 <LocaleDateTime time={false}>
                                     {operation.createdAt ? new Date(operation.createdAt) : null}
                                 </LocaleDateTime>
+                            </Table.Cell>
+                            <Table.Cell>
+                                <OperationRescheduleButton
+                                    operation={{
+                                        id: operation.id,
+                                        entityId: operation.entityId,
+                                        scheduledDate: operation.scheduledDate,
+                                        status: operation.status
+                                    }}
+                                    operationLabel={operation.details.label || operation.entityId.toString()}
+                                />
                             </Table.Cell>
                         </Table.Row>
                     );
