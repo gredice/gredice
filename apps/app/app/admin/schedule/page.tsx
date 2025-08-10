@@ -11,6 +11,10 @@ import { Accordion } from "@signalco/ui/Accordion";
 import { Fragment } from "react";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Divider } from "@signalco/ui-primitives/Divider";
+import Link from "next/link";
+import { KnownPages } from "../../../src/KnownPages";
+import { CopyTasksButton } from "./CopyTasksButton";
+import { Tally3 } from "@signalco/ui-icons";
 
 export const dynamic = 'force-dynamic';
 
@@ -102,11 +106,37 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                     })
                     .sort((a, b) => a.physicalPositionIndex.localeCompare(b.physicalPositionIndex, undefined, { numeric: true }));
 
+                // Prepare tasks for copy functionality
+                const copyTasks = [
+                    ...dayFields.map((field) => {
+                        const sortData = plantSorts?.find(ps => ps.id === field.plantSortId);
+                        const numberOfPlants = Math.pow(Math.floor(30 / (sortData?.information?.plant?.attributes?.seedingDistance || 30)), 2);
+                        return {
+                            id: `field-${field.id}`,
+                            text: `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : '?'}`,
+                        };
+                    }),
+                    ...dayOperations.map((op) => {
+                        const operationData = operationsData?.find(data => data.id === op.entityId);
+                        return {
+                            id: `operation-${op.id}`,
+                            text: `${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}`,
+                            link: operationData?.information?.label ? KnownPages.GrediceOperation(operationData?.information?.label) : KnownPages.GrediceOperations,
+                        };
+                    })
+                ];
+
                 return (
                     <Accordion key={physicalId} defaultOpen={isToday} variant="plain" className="hover:bg-muted">
                         <Row spacing={1}>
-                            <div className="rounded-full border-2 bg-background border-neutral-500 size-[19px]" />
-                            <Typography level="body1" className="text-lg"><strong>Gr {physicalId}</strong></Typography>
+                            <Tally3 className="size-5 rotate-90 mt-1" />
+                            <Typography level="h5" component="p"><strong>Gr {physicalId}</strong></Typography>
+                            {copyTasks.length > 0 && (
+                                <CopyTasksButton
+                                    physicalId={physicalId.toString()}
+                                    tasks={copyTasks}
+                                />
+                            )}
                         </Row>
                         <Stack spacing={1}>
                             {(!dayFields.length && !dayOperations.length) && (
@@ -140,7 +170,11 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                                             <input type="hidden" name="completedBy" value={userId} />
                                             <Row spacing={1}>
                                                 <Checkbox type="submit" />
-                                                <Typography>{`${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}`}</Typography>
+                                                <Link
+                                                    href={operationData?.information?.label ? KnownPages.GrediceOperation(operationData?.information?.label) : KnownPages.GrediceOperations}
+                                                    target="_blank">
+                                                    <Typography>{`${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}`}</Typography>
+                                                </Link>
                                                 {op.scheduledDate && (
                                                     <Typography level="body2" className="select-none">
                                                         <LocaleDateTime time={false}>{op.scheduledDate}</LocaleDateTime>

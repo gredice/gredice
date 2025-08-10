@@ -38,4 +38,6 @@ export const KnownPages = {
 
     // External links
     StripePayment: (paymentId: string) => `https://dashboard.stripe.com/payments/${paymentId}`,
+    GrediceOperations: `https://www.gredice.com/radnje`,
+    GrediceOperation: (operationAlias: string) => `https://www.gredice.com/radnje/${encodeURIComponent(operationAlias)}`,
 }
