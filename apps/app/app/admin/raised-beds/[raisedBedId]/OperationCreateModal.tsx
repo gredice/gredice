@@ -9,6 +9,9 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { createOperationAction } from "../../../(actions)/operationActions";
 import { SelectEntity } from "./SelectEntity";
+import { SelectRaisedBed } from "./SelectRaisedBed";
+import { SelectRaisedBedField } from "./SelectRaisedBedField";
+import { useState } from "react";
 
 type OperationCreateModalProps = {
     accountId: string;
@@ -18,6 +21,8 @@ type OperationCreateModalProps = {
 };
 
 export function OperationCreateModal({ accountId, gardenId, raisedBedId, raisedBedFieldId }: OperationCreateModalProps) {
+    const [selectedRaisedBedId, setSelectedRaisedBedId] = useState<string | null>(raisedBedId?.toString() ?? null);
+
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
@@ -33,8 +38,8 @@ export function OperationCreateModal({ accountId, gardenId, raisedBedId, raisedB
         <Modal
             title={"Nova operacija"}
             trigger={(
-                <IconButton title="Nova operacija">
-                    <Add className="size-5" />
+                <IconButton title="Nova operacija" variant="outlined">
+                    <Add className="size-4" />
                 </IconButton>
             )}>
             <Stack spacing={4}>
@@ -51,8 +56,23 @@ export function OperationCreateModal({ accountId, gardenId, raisedBedId, raisedB
                             />
                             <Input name="accountId" defaultValue={accountId} label="Account ID" required />
                             <Input name="gardenId" defaultValue={gardenId} label="Vrt ID (opcionalno)" type="number" />
-                            <Input name="raisedBedId" defaultValue={raisedBedId} label="Gredica ID (opcionalno)" />
-                            <Input name="raisedBedFieldId" defaultValue={raisedBedFieldId} label="Polje gredice ID (opcionalno)" />
+                            <SelectRaisedBed
+                                name="raisedBedId"
+                                label="Gredica"
+                                accountId={accountId}
+                                gardenId={gardenId}
+                                value={selectedRaisedBedId}
+                                onChange={setSelectedRaisedBedId}
+                                disabled={!gardenId}
+                            />
+                            <SelectRaisedBedField
+                                name="raisedBedFieldId"
+                                label="Polje gredice"
+                                raisedBedId={selectedRaisedBedId ? parseInt(selectedRaisedBedId) : undefined}
+                                gardenId={gardenId}
+                                defaultValue={raisedBedFieldId?.toString()}
+                                disabled={!selectedRaisedBedId}
+                            />
                             <Input name="timestamp" type="datetime-local" label="Datum kreiranja (opcionalno)" />
                             <Input name="scheduledDate" type="datetime-local" label="Planirani datum (opcionalno)" />
                         </div>

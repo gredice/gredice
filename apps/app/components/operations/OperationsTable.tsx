@@ -10,7 +10,14 @@ import { Calendar, Tally3 } from '@signalco/ui-icons';
 import { OperationRescheduleButton } from './OperationRescheduleButton';
 import { OperationCancelButton } from './OperationCancelButton';
 
-export async function OperationsTable() {
+export async function OperationsTable({
+    accountId, gardenId, raisedBedId, raisedBedFieldId
+}: {
+    accountId?: string;
+    gardenId?: number;
+    raisedBedId?: number;
+    raisedBedFieldId?: number;
+}) {
     const [operationsData, operations, accounts, gardens, raisedBeds] = await Promise.all([
         getEntitiesFormatted<EntityStandardized>('operation'),
         getAllOperations(),
@@ -18,7 +25,14 @@ export async function OperationsTable() {
         getGardens(),
         getAllRaisedBeds()
     ]);
-    const operationsWithDetails = operations.map(operation => {
+    const filteredOperations = operations.filter(op => {
+        if (accountId && op.accountId !== accountId) return false;
+        if (gardenId && op.gardenId !== gardenId) return false;
+        if (raisedBedId && op.raisedBedId !== raisedBedId) return false;
+        if (raisedBedFieldId && op.raisedBedFieldId !== raisedBedFieldId) return false;
+        return true;
+    });
+    const operationsWithDetails = filteredOperations.map(operation => {
         const operationDetails = operationsData?.find(op => op.id === operation.entityId);
         return {
             ...operation,
@@ -50,6 +64,13 @@ export async function OperationsTable() {
                     </Table.Row>
                 )}
                 {operationsWithDetails.map(operation => {
+                    const operationRaisedBed = operation.raisedBedId
+                        ? raisedBeds.find(rb => rb.id === operation.raisedBedId)
+                        : null;
+                    const operationRaisedBedField = operationRaisedBed && operation.raisedBedFieldId
+                        ? operationRaisedBed.fields.find(field => field.id === operation.raisedBedFieldId)
+                        : null;
+
                     return (
                         <Table.Row key={operation.id} className='group'>
                             <Table.Cell>
@@ -94,8 +115,8 @@ export async function OperationsTable() {
                                     {operation.raisedBedId && (
                                         <span><Tally3 className="size-4 shrink-0 rotate-90 mt-1 inline" /> Gr {raisedBeds.find(rb => rb.id === operation.raisedBedId)?.physicalId ?? 'N/A'}</span>
                                     )}
-                                    {operation.raisedBedFieldId && (
-                                        <span>{operation.raisedBedFieldId}</span>
+                                    {operationRaisedBedField && (
+                                        <span>{operationRaisedBedField.positionIndex + 1}</span>
                                     )}
                                 </Stack>
                             </Table.Cell>
