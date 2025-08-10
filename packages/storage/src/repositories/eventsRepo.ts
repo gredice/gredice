@@ -51,6 +51,7 @@ export const knownEventTypes = {
         schedule: "operation.schedule",
         complete: "operation.complete",
         fail: "operation.fail",
+        cancel: "operation.cancel",
     }
 }
 
@@ -199,6 +200,12 @@ export const knownEvents = {
         }),
         failedV1: (aggregateId: string, data: { error: string, errorCode: string }) => ({
             type: knownEventTypes.operations.fail,
+            version: 1,
+            aggregateId,
+            data
+        }),
+        canceledV1: (aggregateId: string, data: { canceledBy: string, reason: string }) => ({
+            type: knownEventTypes.operations.cancel,
             version: 1,
             aggregateId,
             data
