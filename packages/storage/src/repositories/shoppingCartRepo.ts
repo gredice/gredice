@@ -89,6 +89,7 @@ export async function upsertOrRemoveCartItem(
                     gardenId ? eq(shoppingCartItems.gardenId, gardenId) : undefined,
                     raisedBedId ? eq(shoppingCartItems.raisedBedId, raisedBedId) : undefined,
                     typeof positionIndex === 'number' ? eq(shoppingCartItems.positionIndex, positionIndex) : undefined,
+                    typeof additionalData === 'string' ? eq(shoppingCartItems.additionalData, additionalData) : undefined,
                     eq(shoppingCartItems.isDeleted, false),
                 ),
             })
