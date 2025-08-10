@@ -17,14 +17,15 @@ export function RaisedBedFieldPlantStatusSelector({ raisedBedId, positionIndex, 
                 raisedBedFieldUpdatePlant({ raisedBedId, positionIndex, status: newValue });
             }}
             items={[
-                { value: 'new', label: 'Novo' },
-                { value: 'planned', label: 'Planirano' },
-                { value: 'sowed', label: 'Sijano' },
-                { value: 'sprouted', label: 'Proklijalo' },
-                { value: 'ready', label: 'Spremno' },
-                { value: 'harvesting', label: 'Berba' },
-                { value: 'harvested', label: 'Ubrane' },
-                { value: 'removed', label: 'Uklonjene' }
+                { value: 'new', label: 'Novo', icon: '🆕' },
+                { value: 'planned', label: 'Planirano', icon: '🗓️' },
+                { value: 'sowed', label: 'Sijano', icon: '🫘' },
+                { value: 'sprouted', label: 'Proklijalo', icon: '🌱' },
+                { value: 'notSprouted', label: 'Nije proklijalo', icon: '❌' },
+                { value: 'died', label: 'Uginulo', icon: '💀' },
+                { value: 'ready', label: 'Spremno', icon: '🥕' },
+                { value: 'harvested', label: 'Ubrane', icon: '🌾' },
+                { value: 'removed', label: 'Uklonjene', icon: '🗑️' }
             ]}
         />
     );
