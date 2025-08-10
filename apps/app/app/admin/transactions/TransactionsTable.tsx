@@ -49,7 +49,7 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
                 {transactions.map(transaction => {
                     const invoiceCount = transaction.invoices?.length || 0;
                     const hasNoInvoices = invoiceCount === 0;
-                    const isTest = transaction.stripePaymentId.startsWith('cs_test_');
+                    const isTest = transaction.stripePaymentId?.startsWith('cs_test_') || false;
 
                     return (
                         <Table.Row key={transaction.id} className={hasNoInvoices ? 'bg-green-50 dark:bg-green-950' : ''}>
