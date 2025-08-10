@@ -65,7 +65,6 @@ export default async function RaisedBedPage({ params }: { params: Promise<{ rais
                                     <Table.Head>Status</Table.Head>
                                     <Table.Head>Planirani datum sadnje</Table.Head>
                                     <Table.Head>Datum kreiranja</Table.Head>
-                                    <Table.Head>Datum zadnje promjene</Table.Head>
                                 </Table.Row>
                             </Table.Header>
                             <Table.Body>
@@ -92,7 +91,6 @@ export default async function RaisedBedPage({ params }: { params: Promise<{ rais
                                             </Table.Cell>
                                             <Table.Cell>{field.plantScheduledDate ? <LocaleDateTime time={false}>{new Date(field.plantScheduledDate)}</LocaleDateTime> : '-'}</Table.Cell>
                                             <Table.Cell><LocaleDateTime time={false}>{field.createdAt}</LocaleDateTime></Table.Cell>
-                                            <Table.Cell><LocaleDateTime time={false}>{field.updatedAt}</LocaleDateTime></Table.Cell>
                                         </Table.Row>
                                     );
                                 })}
