@@ -95,9 +95,10 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                                 .flatMap(rb => rb.fields)
                                 .find(rbf => rbf.id === op.raisedBedFieldId)
                             : undefined;
+                        const sort = field ? plantSorts?.find(ps => ps.id === field.plantSortId) : null;
 
                         const physicalPositionIndex = field
-                            ? (field.positionIndex + 1).toString()
+                            ? (isFirstRaisedBed ? field.positionIndex + 1 : field.positionIndex + 10).toString()
                             : (isFirstRaisedBed
                                 ? '1-9'
                                 : '10-18');
@@ -105,6 +106,7 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                         return {
                             ...op,
                             physicalPositionIndex,
+                            sort
                         };
                     })
                     .sort((a, b) => a.physicalPositionIndex.localeCompare(b.physicalPositionIndex, undefined, { numeric: true }));
@@ -123,14 +125,14 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                         const operationData = operationsData?.find(data => data.id === op.entityId);
                         return {
                             id: `operation-${op.id}`,
-                            text: `${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}`,
+                            text: `${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`,
                             link: operationData?.information?.label ? KnownPages.GrediceOperation(operationData?.information?.label) : KnownPages.GrediceOperations,
                         };
                     })
                 ];
 
                 return (
-                    <Accordion key={physicalId} defaultOpen={isToday} variant="plain" className="hover:bg-muted">
+                    <Accordion key={physicalId} defaultOpen={isToday} variant="plain">
                         <Row spacing={1}>
                             <Tally3 className="size-5 rotate-90 mt-1" />
                             <Typography level="h5" component="p"><strong>Gr {physicalId}</strong></Typography>
@@ -157,7 +159,7 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                                             <Row spacing={1}>
                                                 <Checkbox type="submit" />
                                                 <Typography>
-                                                    {`${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : '?'}`}
+                                                    {`${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`}
                                                 </Typography>
                                             </Row>
                                         </form>
@@ -168,7 +170,7 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                                 const operationData = operationsData?.find(data => data.id === op.entityId);
                                 return (
                                     <div key={op.id}>
-                                        <Row spacing={1} alignItems="start">
+                                        <Row spacing={1} className="hover:bg-muted">
                                             <form action={completeOperationAction} className="w-fit">
                                                 <input type="hidden" name="operationId" value={op.id} />
                                                 <input type="hidden" name="completedBy" value={userId} />
@@ -177,53 +179,57 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                                                     <Link
                                                         href={operationData?.information?.label ? KnownPages.GrediceOperation(operationData?.information?.label) : KnownPages.GrediceOperations}
                                                         target="_blank">
-                                                        <Typography>{`${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}`}</Typography>
+                                                        <Typography>
+                                                            {`${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`}
+                                                        </Typography>
                                                     </Link>
                                                 </Row>
                                             </form>
-                                            <Row spacing={1} alignItems="center">
+                                            <Row justifyContent="space-between" className="grow">
                                                 {op.scheduledDate && (
                                                     <Typography level="body2" className="select-none">
                                                         <LocaleDateTime time={false}>{op.scheduledDate}</LocaleDateTime>
                                                     </Typography>
                                                 )}
-                                                <RescheduleOperationModal
-                                                    operation={{
-                                                        id: op.id,
-                                                        entityId: op.entityId,
-                                                        scheduledDate: op.scheduledDate
-                                                    }}
-                                                    operationLabel={operationData?.information?.label ?? op.entityId.toString()}
-                                                    trigger={
-                                                        <Button
-                                                            variant="plain"
-                                                            size="sm"
-                                                            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                                                            title={op.scheduledDate ? "Prerasporedi operaciju" : "Zakaži operaciju"}
-                                                        >
-                                                            <Calendar className="size-4 shrink-0" />
-                                                        </Button>
-                                                    }
-                                                />
-                                                <CancelOperationModal
-                                                    operation={{
-                                                        id: op.id,
-                                                        entityId: op.entityId,
-                                                        scheduledDate: op.scheduledDate,
-                                                        status: op.status
-                                                    }}
-                                                    operationLabel={operationData?.information?.label ?? op.entityId.toString()}
-                                                    trigger={
-                                                        <Button
-                                                            variant="plain"
-                                                            size="sm"
-                                                            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                                                            title="Otkaži operaciju"
-                                                        >
-                                                            <Close className="size-4 shrink-0" />
-                                                        </Button>
-                                                    }
-                                                />
+                                                <Row>
+                                                    <RescheduleOperationModal
+                                                        operation={{
+                                                            id: op.id,
+                                                            entityId: op.entityId,
+                                                            scheduledDate: op.scheduledDate
+                                                        }}
+                                                        operationLabel={operationData?.information?.label ?? op.entityId.toString()}
+                                                        trigger={
+                                                            <Button
+                                                                variant="plain"
+                                                                size="sm"
+                                                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                                                title={op.scheduledDate ? "Prerasporedi operaciju" : "Zakaži operaciju"}
+                                                            >
+                                                                <Calendar className="size-4 shrink-0" />
+                                                            </Button>
+                                                        }
+                                                    />
+                                                    <CancelOperationModal
+                                                        operation={{
+                                                            id: op.id,
+                                                            entityId: op.entityId,
+                                                            scheduledDate: op.scheduledDate,
+                                                            status: op.status
+                                                        }}
+                                                        operationLabel={operationData?.information?.label ?? op.entityId.toString()}
+                                                        trigger={
+                                                            <Button
+                                                                variant="plain"
+                                                                size="sm"
+                                                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                                                title="Otkaži operaciju"
+                                                            >
+                                                                <Close className="size-4 shrink-0" />
+                                                            </Button>
+                                                        }
+                                                    />
+                                                </Row>
                                             </Row>
                                         </Row>
                                     </div>
