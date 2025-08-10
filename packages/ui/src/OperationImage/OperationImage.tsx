@@ -22,7 +22,7 @@ export function OperationImage({ operation, size }: OperationImageProps) {
                 style={{
                     "--imageSize": size ? `${size}px` : '32px',
                 } as React.CSSProperties}
-                className="size-[--imageSize]" />
+                className="size-[--imageSize] shrink-0" />
         );
     }
 

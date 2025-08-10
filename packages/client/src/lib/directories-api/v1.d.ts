@@ -461,6 +461,8 @@ export interface components {
                         description: string;
                         /** @description (tehnički naziv operacije - jednom postavljen ne smije se mjenjati!) */
                         name: string;
+                        /** @description (postupak za izvršavanje radnje) */
+                        instructions: string;
                     };
                     prices?: {
                         /** @description (EUR cijena za jednu operaciju) */
@@ -606,6 +608,8 @@ export interface components {
                                 description: string;
                                 /** @description (tehnički naziv operacije - jednom postavljen ne smije se mjenjati!) */
                                 name: string;
+                                /** @description (postupak za izvršavanje radnje) */
+                                instructions: string;
                             };
                             prices?: {
                                 /** @description (EUR cijena za jednu operaciju) */
@@ -795,6 +799,8 @@ export interface components {
                                 description: string;
                                 /** @description (tehnički naziv operacije - jednom postavljen ne smije se mjenjati!) */
                                 name: string;
+                                /** @description (postupak za izvršavanje radnje) */
+                                instructions: string;
                             };
                             prices?: {
                                 /** @description (EUR cijena za jednu operaciju) */
@@ -928,6 +934,8 @@ export interface components {
                                         description: string;
                                         /** @description (tehnički naziv operacije - jednom postavljen ne smije se mjenjati!) */
                                         name: string;
+                                        /** @description (postupak za izvršavanje radnje) */
+                                        instructions: string;
                                     };
                                     prices?: {
                                         /** @description (EUR cijena za jednu operaciju) */
@@ -1097,6 +1105,8 @@ export interface components {
                 description: string;
                 /** @description (tehnički naziv operacije - jednom postavljen ne smije se mjenjati!) */
                 name: string;
+                /** @description (postupak za izvršavanje radnje) */
+                instructions: string;
             };
             prices: {
                 /** @description (EUR cijena za jednu operaciju) */

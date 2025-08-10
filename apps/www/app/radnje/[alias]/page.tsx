@@ -71,6 +71,14 @@ export default async function OperationPage({ params }: { params: Promise<{ alia
                     </Markdown>
                 </div>
                 <Stack>
+                    <Typography level="h2" gutterBottom className="text-2xl">Postupak</Typography>
+                    <div className="max-w-xl">
+                        <Markdown>
+                            {operation.information.instructions || "Nema postupka za ovu radnju."}
+                        </Markdown>
+                    </div>
+                </Stack>
+                <Stack>
                     <Typography level="h2" className="text-2xl">Dostupno za</Typography>
                     <OperationApplicationsList
                         operationId={operation.id} />
