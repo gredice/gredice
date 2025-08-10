@@ -234,20 +234,23 @@ export default async function AdminSchedulePage() {
 
     return (
         <Stack spacing={2}>
-            <Typography level="h4" component="h1">Rasprored operacija</Typography>
+            <Typography level="h4" component="h1">Rasprored</Typography>
             <Stack spacing={2}>
                 {dates.map((date, dateIndex) => {
                     return (
                         <Fragment key={date.toISOString()}>
-                            <Row spacing={4} alignItems="start">
-                                <Stack className="pt-[18px]">
-                                    <Typography level="body2">
-                                        <LocaleDateTime time={false}>{date}</LocaleDateTime>
-                                    </Typography>
-                                    <Typography level="body1" uppercase semiBold={dateIndex !== 0} bold={dateIndex === 0}>
-                                        {dateIndex === 0 ? 'Danas' : new Intl.DateTimeFormat('hr-HR', { weekday: 'long' }).format(date).substring(0, 3)}
-                                    </Typography>
-                                </Stack>
+                            <div className="flex flex-col md:flex-row gap-x-4 gap-y-2">
+                                <Row spacing={1}>
+                                    <Calendar className="size-5 shrink-0 ml-2 mb-1" />
+                                    <Stack>
+                                        <Typography level="body2">
+                                            <LocaleDateTime time={false}>{date}</LocaleDateTime>
+                                        </Typography>
+                                        <Typography level="body1" uppercase semiBold={dateIndex !== 0} bold={dateIndex === 0}>
+                                            {dateIndex === 0 ? 'Danas' : new Intl.DateTimeFormat('hr-HR', { weekday: 'long' }).format(date).substring(0, 3)}
+                                        </Typography>
+                                    </Stack>
+                                </Row>
                                 <ScheduleDay
                                     isToday={dateIndex === 0}
                                     date={date}
@@ -255,7 +258,7 @@ export default async function AdminSchedulePage() {
                                     operations={operations}
                                     plantSorts={plantSorts}
                                     operationsData={operationsData} />
-                            </Row>
+                            </div>
                             <Divider />
                         </Fragment>
                     );
