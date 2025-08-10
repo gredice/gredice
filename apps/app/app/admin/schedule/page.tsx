@@ -14,7 +14,9 @@ import { Divider } from "@signalco/ui-primitives/Divider";
 import Link from "next/link";
 import { KnownPages } from "../../../src/KnownPages";
 import { CopyTasksButton } from "./CopyTasksButton";
-import { Tally3 } from "@signalco/ui-icons";
+import { Tally3, Calendar } from "@signalco/ui-icons";
+import { Button } from "@signalco/ui-primitives/Button";
+import { RescheduleOperationModal } from "./RescheduleOperationModal";
 
 export const dynamic = 'force-dynamic';
 
@@ -165,23 +167,45 @@ async function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSort
                                 const operationData = operationsData?.find(data => data.id === op.entityId);
                                 return (
                                     <div key={op.id}>
-                                        <form action={completeOperationAction} className="w-fit">
-                                            <input type="hidden" name="operationId" value={op.id} />
-                                            <input type="hidden" name="completedBy" value={userId} />
-                                            <Row spacing={1}>
-                                                <Checkbox type="submit" />
-                                                <Link
-                                                    href={operationData?.information?.label ? KnownPages.GrediceOperation(operationData?.information?.label) : KnownPages.GrediceOperations}
-                                                    target="_blank">
-                                                    <Typography>{`${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}`}</Typography>
-                                                </Link>
+                                        <Row spacing={1} alignItems="start">
+                                            <form action={completeOperationAction} className="w-fit">
+                                                <input type="hidden" name="operationId" value={op.id} />
+                                                <input type="hidden" name="completedBy" value={userId} />
+                                                <Row spacing={1}>
+                                                    <Checkbox type="submit" />
+                                                    <Link
+                                                        href={operationData?.information?.label ? KnownPages.GrediceOperation(operationData?.information?.label) : KnownPages.GrediceOperations}
+                                                        target="_blank">
+                                                        <Typography>{`${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}`}</Typography>
+                                                    </Link>
+                                                </Row>
+                                            </form>
+                                            <Row spacing={1} alignItems="center">
                                                 {op.scheduledDate && (
                                                     <Typography level="body2" className="select-none">
                                                         <LocaleDateTime time={false}>{op.scheduledDate}</LocaleDateTime>
                                                     </Typography>
                                                 )}
+                                                <RescheduleOperationModal
+                                                    operation={{
+                                                        id: op.id,
+                                                        entityId: op.entityId,
+                                                        scheduledDate: op.scheduledDate
+                                                    }}
+                                                    operationLabel={operationData?.information?.label ?? op.entityId.toString()}
+                                                    trigger={
+                                                        <Button
+                                                            variant="plain"
+                                                            size="sm"
+                                                            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                                            title={op.scheduledDate ? "Prerasporedi operaciju" : "Zakaži operaciju"}
+                                                        >
+                                                            <Calendar className="size-3" />
+                                                        </Button>
+                                                    }
+                                                />
                                             </Row>
-                                        </form>
+                                        </Row>
                                     </div>
                                 );
                             })}

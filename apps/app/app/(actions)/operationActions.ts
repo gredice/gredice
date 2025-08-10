@@ -46,6 +46,37 @@ export async function createOperationAction(formData: FormData) {
     return { success: true };
 }
 
+export async function rescheduleOperationAction(formData: FormData) {
+    await auth(["admin"]);
+    const operationId = formData.get("operationId") ? Number(formData.get("operationId")) : undefined;
+    if (!operationId) {
+        throw new Error("Operation ID is required");
+    }
+    const scheduledDate = formData.get("scheduledDate") as string;
+    if (!scheduledDate) {
+        throw new Error("Scheduled Date is required");
+    }
+
+    const operation = await getOperationById(operationId);
+    if (!operation) {
+        throw new Error(`Operation with ID ${operationId} not found.`);
+    }
+
+    // Create a new scheduled event to reschedule the operation
+    await createEvent(knownEvents.operations.scheduledV1(operationId.toString(), {
+        scheduledDate: new Date(scheduledDate).toISOString()
+    }));
+
+    revalidatePath(KnownPages.Schedule);
+    if (operation.accountId)
+        revalidatePath(KnownPages.Account(operation.accountId));
+    if (operation.gardenId)
+        revalidatePath(KnownPages.Garden(operation.gardenId));
+    if (operation.raisedBedId)
+        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+    return { success: true };
+}
+
 export async function completeOperationAction(formData: FormData) {
     await auth(["admin"]);
     const operationId = formData.get("operationId") ? Number(formData.get("operationId")) : undefined;
