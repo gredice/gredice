@@ -21,6 +21,8 @@ import { Button, ButtonProps } from "@signalco/ui-primitives/Button";
 import { getAuthToken } from "@gredice/client";
 import { useUserLogins } from "../hooks/useUserLogins";
 import { Spinner } from "@signalco/ui-primitives/Spinner";
+import { DeliveryAddressesSection } from "../shared-ui/delivery/DeliveryAddressesSection";
+import { DeliveryRequestsSection } from "../shared-ui/delivery/DeliveryRequestsSection";
 
 export function FacebookLoginButton({ ...props }: ButtonProps) {
     return (
@@ -115,6 +117,7 @@ export function OverviewModal() {
                         items={[
                             { label: 'Generalno', value: 'generalno' },
                             { label: 'Suncokreti', value: 'suncokreti' },
+                            { label: 'Dostava', value: 'dostava' },
                             { label: 'Obavijesti', value: 'obavijesti' },
                             { label: 'Sigurnost', value: 'sigurnost' },
                             { label: 'Zvuk', value: 'zvuk' },
@@ -133,6 +136,12 @@ export function OverviewModal() {
                             label="Suncokreti"
                             selected={settingsMode === 'suncokreti'}
                             onSelected={() => setProfileModalOpen('suncokreti')}
+                        />
+                        <ListItem
+                            nodeId="profile-delivery"
+                            label="Dostava"
+                            selected={settingsMode === 'dostava'}
+                            onSelected={() => setProfileModalOpen('dostava')}
                         />
                         <ListItem
                             nodeId="profile-notifications"
@@ -274,6 +283,21 @@ export function OverviewModal() {
                                         </CardContent>
                                     </form>
                                 </Card> */}
+                            </Stack>
+                        </Stack>
+                    )}
+                    {settingsMode === 'dostava' && (
+                        <Stack spacing={4}>
+                            <Typography level="h4" className="hidden md:block">Dostava</Typography>
+                            <Stack spacing={4}>
+                                <Stack spacing={2}>
+                                    <Typography level="h6">Adrese</Typography>
+                                    <DeliveryAddressesSection />
+                                </Stack>
+                                <Stack spacing={2}>
+                                    <Typography level="h6">Moje narudžbe</Typography>
+                                    <DeliveryRequestsSection />
+                                </Stack>
                             </Stack>
                         </Stack>
                     )}

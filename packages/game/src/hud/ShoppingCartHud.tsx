@@ -16,12 +16,19 @@ import { ShoppingCartItem } from "./components/shopping-cart/ShoppingCartItem";
 import { useCurrentAccount } from "../hooks/useCurrentAccount";
 import { cx } from "@signalco/ui-primitives/cx";
 import { useShoppingCartDelete } from "../hooks/useShoppingCartDelete";
+import { useState } from "react";
+import { DeliveryStep, DeliverySelectionData } from "../shared-ui/delivery/DeliveryStep";
 
 export function ShoppingCart() {
     const { data: account } = useCurrentAccount();
     const { data: cart, isLoading, isError } = useShoppingCart();
     const deleteCart = useShoppingCartDelete();
     const checkout = useCheckout();
+
+    // State for delivery flow
+    const [showDeliveryStep, setShowDeliveryStep] = useState(false);
+    const [deliverySelection, setDeliverySelection] = useState<DeliverySelectionData | null>(null);
+
     const showSunflowersSuggestion =
         !cart?.items.some(item => item.currency === 'sunflower') &&
         cart?.items.some(item => (account?.sunflowers.amount ?? 0) > (item.shopData.price ?? 0) * 100);
@@ -32,11 +39,49 @@ export function ShoppingCart() {
             return;
         }
 
+        // If cart contains deliverable items and user hasn't gone through delivery step yet
+        if (cart.hasDeliverableItems && !deliverySelection) {
+            setShowDeliveryStep(true);
+            return;
+        }
+
+        // Include delivery information in checkout if available
+        const checkoutData: any = {
+            cartId: cart.id
+        };
+
+        if (deliverySelection) {
+            checkoutData.deliveryInfo = deliverySelection;
+        }
+
         checkout.mutate(cart?.id);
     }
 
     function handleDeleteCart() {
         deleteCart.mutate();
+    }
+
+    function handleBackToCart() {
+        setShowDeliveryStep(false);
+    }
+
+    function handleDeliveryProceed() {
+        if (deliverySelection) {
+            // Proceed with checkout including delivery information
+            handleCheckout();
+        }
+    }
+
+    // Show delivery step if user clicked on checkout with deliverable items
+    if (showDeliveryStep) {
+        return (
+            <DeliveryStep
+                onSelectionChange={setDeliverySelection}
+                onBack={handleBackToCart}
+                onProceed={handleDeliveryProceed}
+                isValid={!!deliverySelection}
+            />
+        );
     }
 
     return (
