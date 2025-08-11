@@ -209,12 +209,13 @@ Logs:
 4. Do we snapshot address fields into request table or separate history table?
     * snapshot into request table for simplicity
 
-## 19. Implementation Phases (Proposed)
+## 19. Implementation Phases
 
 1. Core data model + address CRUD + slot CRUD + events.
 2. Checkout integration + request creation.
 3. Back-office management UI.
 4. Public slot reference page.
+5. Verify MVP acceptance criteria is achievable.
 
 ## 20. Acceptance Criteria (MVP)
 

@@ -41,7 +41,6 @@ export async function createTestAccount() {
 export async function createTestRaisedBed(gardenId: number, accountId: string, blockId: string) {
     const { createRaisedBed } = await import('@gredice/storage');
     return await createRaisedBed({
-        name: 'Test Bed',
         accountId,
         gardenId,
         blockId,
