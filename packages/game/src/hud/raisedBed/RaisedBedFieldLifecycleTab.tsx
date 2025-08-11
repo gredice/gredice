@@ -178,7 +178,7 @@ export function RaisedBedFieldLifecycleTab({ raisedBedId, positionIndex }: { rai
             break;
         case 'died':
             icon = <span className="mr-0.5">{'😢'}</span>;
-            localizedStatus = 'Uginula';
+            localizedStatus = 'Neuspjela';
             break;
         case 'uprooted':
             localizedStatus = 'Uklonjena';
