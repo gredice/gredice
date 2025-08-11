@@ -67,8 +67,8 @@ export async function raisedBedFieldUpdatePlant({ raisedBedId, positionIndex, st
                 content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** biljka **${sortData.information?.name}** nije proklijala. Polje je spremno za nove biljke.`;
             } else if (status === 'died') {
                 // TODO: Add died image
-                header = `😢 Biljka ${sortData.information?.name} je uginula!`;
-                content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** biljka **${sortData.information?.name}** je uginula. Veselimo se novim biljkama koje će rasti na ovom mestu.`;
+                header = `😢 Biljka ${sortData.information?.name} nije uspjela!`;
+                content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** biljka **${sortData.information?.name}** nije uspjela. Veselimo se novim biljkama koje će rasti na ovom mestu.`;
             } else if (status === 'ready') {
                 // TODO: Add ready image
                 header = `🌿 Biljka ${sortData.information?.name} je spremna za berbu!`;
