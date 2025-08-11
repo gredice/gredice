@@ -311,7 +311,7 @@ export function OverviewModal() {
                                     </Row>
                                 </Card>
                                 <div className="overflow-y-auto max-h-[calc(100dvh-18rem)] md:max-h-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card shadow-sm p-0">
-                                    <NotificationList read={notificationsFilter === 'all'} short />
+                                    <NotificationList read={notificationsFilter === 'all'} />
                                 </div>
                             </Stack>
                         </Stack>

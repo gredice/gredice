@@ -18,7 +18,7 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
         return null;
     }
 
-    const field = raisedBed.fields.find(field => field.positionIndex === positionIndex);
+    const field = raisedBed.fields.find(field => field.positionIndex === positionIndex && field.active);
     if (!field || !field.plantSortId) {
         console.error(`Field not found for raised bed ${raisedBedId} at position index ${positionIndex}`, raisedBed.fields);
         return null;
@@ -50,21 +50,27 @@ export function RaisedBedFieldItemPlanted({ raisedBedId, positionIndex }: { rais
         );
     }
 
+    const segments = field.toBeRemoved ?
+        [
+            { value: 100, percentage: 100, color: "stroke-red-500", trackColor: "stroke-red-50 dark:stroke-red-50/80" },
+        ] :
+        [
+            { value: germinationValue, percentage: germinationPercentage, color: "stroke-yellow-500", trackColor: "stroke-yellow-50 dark:stroke-yellow-50/80", pulse: !field.plantGrowthDate },
+            { value: growthValue, percentage: growthPercentage, color: "stroke-green-500", trackColor: "stroke-green-50 dark:stroke-green-50/80", pulse: !field.plantReadyDate },
+            { value: harvestValue, percentage: harvestPercentage, color: "stroke-blue-500", trackColor: "stroke-blue-50 dark:stroke-blue-50/80", pulse: Boolean(harvestValue) },
+        ];
+
     return (
         <Modal
             title={`Biljka "${plantSort.information.name}"`}
             modal={false}
-            className="md:border-tertiary md:border-b-4"
+            className="md:border-tertiary md:border-b-4 max-w-xl"
             trigger={(
                 <RaisedBedFieldItemButton>
                     <SegmentedCircularProgress
                         size={80}
                         strokeWidth={4}
-                        segments={[
-                            { value: germinationValue, percentage: germinationPercentage, color: "stroke-yellow-500", trackColor: "stroke-yellow-50 dark:stroke-yellow-50/80", pulse: !field.plantGrowthDate },
-                            { value: growthValue, percentage: growthPercentage, color: "stroke-green-500", trackColor: "stroke-green-50 dark:stroke-green-50/80", pulse: !field.plantReadyDate },
-                            { value: harvestValue, percentage: harvestPercentage, color: "stroke-blue-500", trackColor: "stroke-blue-50 dark:stroke-blue-50/80", pulse: Boolean(harvestValue) },
-                        ]}
+                        segments={segments}
                     >
                         <img
                             src={`https://www.gredice.com/${plantSort.image?.cover?.url || plantSort.information.plant.image?.cover?.url}`}

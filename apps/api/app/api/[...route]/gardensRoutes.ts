@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { createGardenBlock, createGardenStack, createRaisedBed, deleteGardenStack, getAccountGardens, getGarden, getGardenBlocks, getGardenStack, getRaisedBed, getRaisedBedDiaryEntries, getRaisedBeds, getRaisedBedSensors, spendSunflowers, updateGardenBlock, updateGardenStack, updateRaisedBed } from '@gredice/storage';
+import { createEvent, createGardenBlock, createGardenStack, createRaisedBed, deleteGardenStack, getAccountGardens, getGarden, getGardenBlocks, getGardenStack, getRaisedBed, getRaisedBedDiaryEntries, getRaisedBeds, getRaisedBedSensors, knownEvents, spendSunflowers, updateGardenBlock, updateGardenStack, updateRaisedBed } from '@gredice/storage';
 import { validator as zValidator } from "hono-openapi/zod";
 import { z } from 'zod';
 import { describeRoute } from 'hono-openapi';
@@ -903,6 +903,86 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 type,
                 values: history.data?.values || []
             });
+        })
+    .patch(
+        '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex',
+        describeRoute({
+            description: 'Update a plant in a raised bed field',
+        }),
+        zValidator(
+            "param",
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                positionIndex: z.string(),
+            })
+        ),
+        zValidator(
+            "json",
+            z.object({
+                status: z.string(),
+            })
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, positionIndex } = context.req.valid('param');
+            const { status } = context.req.valid('json');
+
+            // For now, we only support 'remove' status update this way
+            if (status !== 'removed') {
+                return context.json({ error: 'Invalid status' }, 400);
+            }
+
+            const gardenIdNumber = parseInt(gardenId);
+            if (isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const raisedBedIdNumber = parseInt(raisedBedId);
+            if (isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const positionIndexNumber = parseInt(positionIndex);
+            if (isNaN(positionIndexNumber) || positionIndexNumber < 0) {
+                return context.json({ error: 'Invalid position index' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+
+            // Verify the raised bed exists and belongs to the user
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (!raisedBed || raisedBed.gardenId !== gardenIdNumber || raisedBed.accountId !== accountId) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            // Find the field to validate it exists and can be updated
+            const field = raisedBed.fields.find(field => field.positionIndex === positionIndexNumber && field.active);
+            if (!field) {
+                return context.json({ error: 'Field not found or not active' }, 404);
+            }
+
+            // For removal status, check if the plant can be removed (toBeRemoved should be true)
+            if (status === 'removed' && !field.toBeRemoved) {
+                return context.json({
+                    error: 'Plant cannot be removed at this time. Only plants that are dead, harvested, or failed to sprout can be removed.'
+                }, 400);
+            }
+
+            // Call the storage function to create the event and update the plant status
+            try {
+                await createEvent(knownEvents.raisedBedFields.plantUpdateV1(
+                    `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
+                    { status: status }
+                ));
+
+                return context.json({ success: true }, 200);
+            } catch (error) {
+                console.error('Error updating field plant status:', error);
+                return context.json({
+                    error: error instanceof Error ? error.message : 'Failed to update plant status'
+                }, 500);
+            }
         });
 
 export default app;

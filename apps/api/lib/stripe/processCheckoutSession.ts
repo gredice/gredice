@@ -179,11 +179,11 @@ export async function processItem(itemData: {
                 return;
             }
 
-            // Try to resolve field ID from position index
+            // Try to resolve field ID from position index (only active fields)
             let fieldId: number | undefined = undefined;
             if (typeof itemData.positionIndex === 'number' && itemData.raisedBedId) {
                 const raisedBedFields = await getRaisedBedFieldsWithEvents(itemData.raisedBedId);
-                fieldId = raisedBedFields.find(field => field.positionIndex === itemData.positionIndex)?.id;
+                fieldId = raisedBedFields.find(field => field.positionIndex === itemData.positionIndex && field.active)?.id;
             }
 
             // Try to extract scheduled date from additional data

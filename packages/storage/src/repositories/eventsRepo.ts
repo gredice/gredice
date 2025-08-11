@@ -45,7 +45,6 @@ export const knownEventTypes = {
         delete: "raisedBedField.delete",
         plantPlace: "raisedBedField.plantPlace",
         plantUpdate: "raisedBedField.plantUpdate",
-        plantAbandon: "raisedBedField.plantAbandon",
     },
     operations: {
         schedule: "operation.schedule",
@@ -165,12 +164,6 @@ export const knownEvents = {
             type: knownEventTypes.raisedBedFields.delete,
             version: 1,
             aggregateId,
-        }),
-        plantAbandonV1: (aggregateId: string) => ({
-            type: knownEventTypes.raisedBedFields.plantAbandon,
-            version: 1,
-            aggregateId,
-            data: { status: "abandoned" },
         }),
         plantPlaceV1: (aggregateId: string, data: { plantSortId: string, scheduledDate: string | null | undefined }) => ({
             type: knownEventTypes.raisedBedFields.plantPlace,

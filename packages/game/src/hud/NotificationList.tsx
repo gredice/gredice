@@ -96,7 +96,7 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
 
 export function NotificationList({ read, short }: NotificationProps) {
     const { data: currentUser } = useCurrentUser();
-    const { data: notifications, error } = useNotifications(currentUser?.id, read, 0, short ? 10 : undefined);
+    const { data: notifications, error } = useNotifications(currentUser?.id, read, 0, short ? 10 : 1000);
     const isLoading = false;
     if (isLoading) {
         return (
