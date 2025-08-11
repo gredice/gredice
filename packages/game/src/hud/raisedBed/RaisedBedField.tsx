@@ -13,7 +13,7 @@ function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBe
         return null;
     }
 
-    const field = raisedBed.fields.find(field => field.positionIndex === positionIndex);
+    const field = raisedBed.fields.find(field => field.positionIndex === positionIndex && field.active);
     const hasField = Boolean(field);
 
     if (isGardenLoading) {

@@ -16,6 +16,7 @@ export function RaisedBedFieldItemEmpty({ gardenId, raisedBedId, positionIndex }
     }
 
     const cartItems = cart?.items.filter(item =>
+        item.gardenId === gardenId &&
         item.raisedBedId === raisedBedId &&
         item.positionIndex === positionIndex);
     const cartPlantItem = cartItems?.find(item => item.entityTypeName === 'plantSort' && item.status === 'new');

@@ -270,12 +270,16 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         knownEventTypes.raisedBedFields.delete,
         knownEventTypes.raisedBedFields.plantPlace,
         knownEventTypes.raisedBedFields.plantUpdate,
-    ], fieldAggregateIds, 0, 10000);
+    ], fieldAggregateIds, 0, 100000);
 
     // For each field, fetch and apply events
     return fields.map((field) => {
         const aggregateId = `${field.raisedBedId}|${field.positionIndex}`;
-        const events = fieldsEvents.filter(event => event.aggregateId === aggregateId);
+        const events = fieldsEvents.filter(event =>
+            event.aggregateId === aggregateId &&
+            // 5000ms is offset for events - because events and fields are created in parallel
+            field.createdAt <= new Date(event.createdAt.getTime() + 5000)
+        );
 
         // Reduce events to get latest status, plant info, etc.
         let plantStatus: string | undefined = undefined;
@@ -284,6 +288,12 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         let plantSowDate: Date | undefined = undefined;
         let plantGrowthDate: Date | undefined = undefined;
         let plantReadyDate: Date | undefined = undefined;
+        let plantDeadDate: Date | undefined = undefined;
+        let plantHarvestedDate: Date | undefined = undefined;
+        let plantRemovedDate: Date | undefined = undefined;
+        let active = true;
+        let toBeRemoved = false;
+        let stoppedDate: Date | undefined = undefined;
 
         // TODO: Implement multiple handling
         // let operationId = undefined;
@@ -304,8 +314,26 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     plantSowDate = event.createdAt;
                 } else if (plantStatus === 'sprouted') {
                     plantGrowthDate = event.createdAt;
+                } else if (plantStatus === 'notSprouted') {
+                    plantDeadDate = event.createdAt;
+                    stoppedDate = event.createdAt;
+                    toBeRemoved = true;
+                } else if (plantStatus === 'died') {
+                    plantDeadDate = event.createdAt;
+                    stoppedDate = event.createdAt;
+                    toBeRemoved = true;
                 } else if (plantStatus === 'ready') {
                     plantReadyDate = event.createdAt;
+                } else if (plantStatus === 'harvested') {
+                    plantHarvestedDate = event.createdAt;
+                    stoppedDate = event.createdAt;
+                    toBeRemoved = true;
+                } else if (plantStatus === 'removed') {
+                    plantRemovedDate = event.createdAt;
+                    active = false;
+
+                    // Don't process any newer events for this field
+                    break;
                 }
             }
             // else if (event.type === knownEventTypes.raisedBedFields.operationOrder) {
@@ -331,6 +359,12 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             plantSowDate,
             plantGrowthDate,
             plantReadyDate,
+            plantDeadDate,
+            plantHarvestedDate,
+            plantRemovedDate,
+            active,
+            toBeRemoved,
+            stoppedDate
         };
     });
 }
@@ -398,24 +432,23 @@ export async function getAllRaisedBeds() {
 }
 
 export async function upsertRaisedBedField(field: Omit<InsertRaisedBedField, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>) {
-    // Try to update first
-    const updated = await storage()
-        .update(raisedBedFields)
-        .set({ ...field, updatedAt: new Date() })
-        .where(and(
-            eq(raisedBedFields.raisedBedId, field.raisedBedId),
-            eq(raisedBedFields.positionIndex, field.positionIndex),
-            eq(raisedBedFields.isDeleted, false)
-        ));
-    if (updated.rowCount && updated.rowCount > 0) {
-        return;
+    const existingRaisedBedFields = await getRaisedBedFieldsWithEvents(field.raisedBedId);
+    const existingField = existingRaisedBedFields.find(f => f.positionIndex === field.positionIndex);
+    if (!existingField || !existingField.active) {
+        await storage()
+            .insert(raisedBedFields)
+            .values(field)
+            .onConflictDoNothing();
+    } else {
+        await storage()
+            .update(raisedBedFields)
+            .set({ ...field, updatedAt: new Date() })
+            .where(and(
+                eq(raisedBedFields.raisedBedId, field.raisedBedId),
+                eq(raisedBedFields.positionIndex, field.positionIndex),
+                eq(raisedBedFields.isDeleted, false)
+            ));
     }
-
-    // If not updated, insert new
-    await storage()
-        .insert(raisedBedFields)
-        .values(field)
-        .onConflictDoNothing();
 }
 
 export async function deleteRaisedBedField(raisedBedId: number, positionIndex: number) {

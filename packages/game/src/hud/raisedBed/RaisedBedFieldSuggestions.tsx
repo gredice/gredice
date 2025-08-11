@@ -27,7 +27,7 @@ export function RaisedBedFieldSuggestions({ gardenId, raisedBedId }: { gardenId:
 
         await Promise.all(Array.from({ length: 9 }).map(async (_, index) => {
             if (!raisedBed || !shoppingCart) return;
-            if (raisedBed.fields.find(field => field.positionIndex === index)) return;
+            if (raisedBed.fields.find(field => field.positionIndex === index && field.active)) return;
             if (shoppingCart.items.find(item => item.raisedBedId === raisedBedId && item.positionIndex === index && item.entityTypeName === 'plantSort' && item.status === 'new')) return;
             return setCartItem.mutateAsync({
                 entityTypeName: "plantSort",
