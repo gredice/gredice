@@ -1,4 +1,4 @@
-import { getShoppingCart, setCartItemPaid, upsertRaisedBedField, createEvent, knownEvents, earnSunflowersForPayment, updateRaisedBed, markCartPaidIfAllItemsPaid, createTransaction, createRaisedBedSensor, createOperation, getRaisedBedFieldsWithEvents, getAllTransactions } from "@gredice/storage";
+import { getShoppingCart, setCartItemPaid, upsertRaisedBedField, createEvent, knownEvents, earnSunflowersForPayment, updateRaisedBed, markCartPaidIfAllItemsPaid, createTransaction, createRaisedBedSensor, createOperation, getRaisedBedFieldsWithEvents, getAllTransactions, isCartItemDeliverable, createDeliveryRequest } from "@gredice/storage";
 import { getStripeCheckoutSession } from "@gredice/stripe/server";
 
 export async function processCheckoutSession(checkoutSessionId?: string) {
@@ -214,6 +214,45 @@ export async function processItem(itemData: {
                     }
                 ));
                 console.debug(`Scheduled operation ${operationId} for date ${scheduledDate}.`);
+            }
+
+            // Check if this operation/entity is deliverable and create delivery request if needed
+            if (itemData.cartId) {
+                const cartItem = {
+                    entityId: itemData.entityId || '',
+                    entityTypeName: itemData.entityTypeName || '',
+                    id: parseInt(itemData.cartId.toString(), 10) // Use cartId as placeholder
+                } as any;
+
+                const isDeliverable = await isCartItemDeliverable(cartItem);
+                if (isDeliverable) {
+                    console.debug(`Operation ${operationId} is deliverable - checking for delivery configuration in metadata`);
+
+                    // Check if delivery information was stored in additionalData
+                    let deliveryInfo = null;
+                    if (typeof additionalData === 'object' && additionalData !== null && 'delivery' in additionalData) {
+                        deliveryInfo = additionalData.delivery as any;
+                    }
+
+                    if (deliveryInfo && deliveryInfo.slotId && deliveryInfo.mode) {
+                        try {
+                            const deliveryRequestId = await createDeliveryRequest({
+                                operationId,
+                                slotId: deliveryInfo.slotId,
+                                mode: deliveryInfo.mode,
+                                addressId: deliveryInfo.addressId,
+                                locationId: deliveryInfo.locationId,
+                                notes: deliveryInfo.notes
+                            });
+                            console.debug(`Created delivery request ${deliveryRequestId} for operation ${operationId}`);
+                        } catch (error) {
+                            console.error(`Failed to create delivery request for operation ${operationId}:`, error);
+                            // Don't fail the whole payment, just log the error
+                        }
+                    } else {
+                        console.warn(`Operation ${operationId} is deliverable but no delivery information found in metadata`);
+                    }
+                }
             }
         }
     } else if (

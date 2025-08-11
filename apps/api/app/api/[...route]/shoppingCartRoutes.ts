@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { validator as zValidator } from 'hono-openapi/zod';
 import { z } from 'zod';
-import { getOrCreateShoppingCart, upsertOrRemoveCartItem, deleteShoppingCart, getSunflowers } from '@gredice/storage';
+import { getOrCreateShoppingCart, upsertOrRemoveCartItem, deleteShoppingCart, getSunflowers, cartContainsDeliverableItems } from '@gredice/storage';
 import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
 import { describeRoute } from 'hono-openapi';
 import { getCartInfo } from './checkoutRoutes';
@@ -46,11 +46,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 enoughSunflowersNote = `Nedovoljno suncokreta. Potrebno je ${totalSunflowers} 🌻, a imaš samo ${await getSunflowers(accountId)} 🌻.`;
             }
 
+            // Check if cart contains deliverable items
+            const hasDeliverableItems = await cartContainsDeliverableItems(cart.id);
+
             return context.json({
                 ...cart,
                 items: cartInfo.items,
                 total,
                 totalSunflowers,
+                hasDeliverableItems,
                 notes: enoughSunflowersNote ? [...cartInfo.notes, enoughSunflowersNote] : cartInfo.notes,
                 allowPurchase: cartInfo.allowPurchase && enoughSunflowers,
             });

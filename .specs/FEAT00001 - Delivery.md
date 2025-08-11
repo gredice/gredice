@@ -213,9 +213,10 @@ Logs:
 
 1. Core data model + address CRUD + slot CRUD + events.
 2. Checkout integration + request creation.
-3. Back-office management UI.
-4. Public slot reference page.
-5. Verify MVP acceptance criteria is achievable.
+3. In-game UI for delivery and cancellation
+4. Back-office management UI.
+5. Public slot reference page.
+6. Verify MVP acceptance criteria is achievable.
 
 ## 20. Acceptance Criteria (MVP)
 

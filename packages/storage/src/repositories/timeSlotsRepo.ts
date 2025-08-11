@@ -196,6 +196,47 @@ export async function bulkGenerateTimeSlots(params: BulkSlotCreationParams): Pro
     return { created, skippedExisting };
 }
 
+// Unified function for API - get time slots with filters
+export interface GetTimeSlotsParams {
+    type?: 'delivery' | 'pickup';
+    locationId?: number;
+    fromDate?: Date;
+    toDate?: Date;
+    status?: string;
+}
+
+export function getTimeSlots(params: GetTimeSlotsParams = {}): Promise<SelectTimeSlot[]> {
+    const { type, locationId, fromDate, toDate, status = TimeSlotStatuses.SCHEDULED } = params;
+
+    const conditions = [
+        eq(timeSlots.status, status)
+    ];
+
+    if (type) {
+        conditions.push(eq(timeSlots.type, type));
+    }
+
+    if (locationId) {
+        conditions.push(eq(timeSlots.locationId, locationId));
+    }
+
+    if (fromDate) {
+        conditions.push(gte(timeSlots.startAt, fromDate));
+    }
+
+    if (toDate) {
+        conditions.push(lte(timeSlots.startAt, toDate));
+    }
+
+    return storage().query.timeSlots.findMany({
+        where: and(...conditions),
+        orderBy: [asc(timeSlots.startAt)],
+        with: {
+            location: true
+        }
+    });
+}
+
 // Archive past slots (helper for cleanup)
 export async function archivePastSlots(): Promise<number> {
     const yesterday = new Date();

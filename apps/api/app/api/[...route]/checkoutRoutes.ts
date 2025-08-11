@@ -165,10 +165,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
             description: 'Create a Stripe checkout session for the given cart',
         }),
         authValidator(['user', 'admin']),
-        zValidator('json', z.object({ cartId: z.number() })),
+        zValidator('json', z.object({
+            cartId: z.number(),
+            deliveryInfo: z.object({
+                slotId: z.number(),
+                mode: z.enum(['delivery', 'pickup']),
+                addressId: z.number().optional(),
+                locationId: z.number().optional(),
+                notes: z.string().max(500).optional()
+            }).optional()
+        })),
         async (context) => {
             const { accountId, userId } = context.get('authContext');
-            const { cartId } = context.req.valid('json');
+            const { cartId, deliveryInfo } = context.req.valid('json');
 
             // Retrieve data
             const [account, user, cart] = await Promise.all([
@@ -281,7 +290,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             gardenId: item.gardenId,
                             raisedBedId: item.raisedBedId,
                             positionIndex: item.positionIndex?.toString() ?? null,
-                            additionalData: item.additionalData ?? null
+                            additionalData: JSON.stringify({
+                                ...(item.additionalData ? JSON.parse(item.additionalData) : {}),
+                                ...(deliveryInfo ? { delivery: deliveryInfo } : {})
+                            })
                         }
                     },
                     price: {
