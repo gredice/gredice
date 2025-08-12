@@ -218,20 +218,16 @@ export async function processItem(itemData: {
 
             // Check if this operation/entity is deliverable and create delivery request if needed
             if (itemData.cartId) {
-                const cartItem = {
-                    entityId: itemData.entityId || '',
-                    entityTypeName: itemData.entityTypeName || '',
-                    id: parseInt(itemData.cartId.toString(), 10) // Use cartId as placeholder
-                } as any;
-
-                const isDeliverable = await isCartItemDeliverable(cartItem);
+                const isDeliverable = await isCartItemDeliverable({
+                    entityId: parseInt(itemData.entityId, 10),
+                });
                 if (isDeliverable) {
                     console.debug(`Operation ${operationId} is deliverable - checking for delivery configuration in metadata`);
 
                     // Check if delivery information was stored in additionalData
                     let deliveryInfo = null;
                     if (typeof additionalData === 'object' && additionalData !== null && 'delivery' in additionalData) {
-                        deliveryInfo = additionalData.delivery as any;
+                        deliveryInfo = additionalData.delivery;
                     }
 
                     if (deliveryInfo && deliveryInfo.slotId && deliveryInfo.mode) {

@@ -126,8 +126,7 @@ export async function getDeliverableCartItems(cartId: number): Promise<SelectSho
 }
 
 // Check if specific cart item is deliverable
-export async function isCartItemDeliverable(item: SelectShoppingCartItem): Promise<boolean> {
-    const entityId = parseInt(item.entityId, 10);
+export async function isCartItemDeliverable({ entityId }: { entityId: number }): Promise<boolean> {
     if (isNaN(entityId)) {
         return false;
     }
@@ -135,8 +134,8 @@ export async function isCartItemDeliverable(item: SelectShoppingCartItem): Promi
     // Find attribute definition for 'deliverable' attribute of entity-operation type
     const deliverableAttributeDef = await storage().query.attributeDefinitions.findFirst({
         where: and(
+            // TODO: Use better targeting than just by name
             eq(attributeDefinitions.name, 'deliverable'),
-            eq(attributeDefinitions.entityTypeName, 'entity-operation'),
             eq(attributeDefinitions.isDeleted, false)
         )
     });
@@ -149,7 +148,6 @@ export async function isCartItemDeliverable(item: SelectShoppingCartItem): Promi
         where: and(
             eq(attributeValues.entityId, entityId),
             eq(attributeValues.attributeDefinitionId, deliverableAttributeDef.id),
-            eq(attributeValues.entityTypeName, 'entity-operation'),
             eq(attributeValues.isDeleted, false)
         )
     });

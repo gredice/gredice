@@ -36,6 +36,10 @@ export const KnownPages = {
     Sensors: '/admin/sensors',
     Cache: '/admin/cache',
 
+    // Delivery management
+    DeliverySlots: '/admin/delivery/slots',
+    DeliveryRequests: '/admin/delivery/requests',
+
     // External links
     StripePayment: (paymentId: string) => `https://dashboard.stripe.com/payments/${paymentId}`,
     GrediceOperations: `https://www.gredice.com/radnje`,
