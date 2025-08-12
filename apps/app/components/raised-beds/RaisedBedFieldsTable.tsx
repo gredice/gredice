@@ -30,7 +30,7 @@ export async function RaisedBedFieldsTable({ raisedBedId }: RaisedBedFieldsTable
             <Table.Body>
                 {fields?.length === 0 && (
                     <Table.Row>
-                        <Table.Cell colSpan={5}>
+                        <Table.Cell colSpan={4}>
                             <NoDataPlaceholder />
                         </Table.Cell>
                     </Table.Row>
