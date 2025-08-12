@@ -47,7 +47,7 @@
     "@signalco/auth-server": "0.5.3",
     "@signalco/hooks": "0.2.1",
     "@signalco/js": "0.1.0",
-    "@signalco/ui": "0.2.9",
+    "@signalco/ui": "0.2.10",
     "@signalco/ui-icons": "0.2.2",
     "@signalco/ui-primitives": "0.6.4",
     "@signalco/ui-themes-minimal-app": "0.1.3",
