@@ -40,7 +40,7 @@ export async function AccountSunflowersCard({ accountId }: { accountId: string }
                     <form action={submitGiftSunflowers}>
                         <Stack spacing={1}>
                             <div className="grid grid-cols-2 gap-2">
-                                <Input label="Iznos" type="number" name="amount" defaultValue="1000" />
+                                <Input label="Iznos" type="number" name="amount" defaultValue="0" />
                                 <SelectItems
                                     label="Razlog"
                                     name="reason"

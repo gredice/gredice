@@ -5,8 +5,8 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Checkbox } from "@signalco/ui-primitives/Checkbox";
-import { completeOperationAction } from "../../(actions)/operationActions";
-import { raisedBedPlantedFormHandler } from "../../(actions)/raisedBedFieldsActions";
+import { completeOperation } from "../../(actions)/operationActions";
+import { raisedBedPlanted } from "../../(actions)/raisedBedFieldsActions";
 import { Accordion } from "@signalco/ui/Accordion";
 import { Fragment } from "react";
 import { Row } from "@signalco/ui-primitives/Row";
@@ -195,10 +195,7 @@ function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSorts, ope
                                 const numberOfPlants = Math.pow(Math.floor(30 / (sortData?.information?.plant?.attributes?.seedingDistance || 30)), 2);
 
                                 const handlePlantConfirm = async () => {
-                                    const formData = new FormData();
-                                    formData.append('raisedBedId', field.raisedBedId.toString());
-                                    formData.append('positionIndex', field.positionIndex.toString());
-                                    await raisedBedPlantedFormHandler(formData);
+                                    await raisedBedPlanted(field.raisedBedId, field.positionIndex);
                                 };
 
                                 return (
@@ -225,10 +222,7 @@ function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSorts, ope
                                 const operationData = operationsData?.find(data => data.id === op.entityId);
 
                                 const handleOperationConfirm = async () => {
-                                    const formData = new FormData();
-                                    formData.append('operationId', op.id.toString());
-                                    formData.append('completedBy', userId.toString());
-                                    await completeOperationAction(formData);
+                                    await completeOperation(op.id, userId);
                                 };
 
                                 return (
