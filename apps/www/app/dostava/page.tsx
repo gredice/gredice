@@ -6,6 +6,9 @@ import { Row } from "@signalco/ui-primitives/Row"
 import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal"
 import { Typography } from "@signalco/ui-primitives/Typography"
 import { WhatsAppCard } from "../../components/social/WhatsAppCard"
+import { Button } from "@signalco/ui-primitives/Button"
+import { Calendar } from "@signalco/ui-icons"
+import { KnownPages } from "../../src/KnownPages"
 
 export default function DeliveryPage() {
     return (
@@ -93,11 +96,23 @@ export default function DeliveryPage() {
                     <p>Dostave se zakazuju unaprijed, minimalno <strong>48 sati</strong> prije željenog termina. Nakon što zatražiš dostavu, obavijestit ćemo te ako je ona potvrđena ili eventualno odbijena, ovisno o trenutačnoj popunjenosti rasporeda.</p>
                     <p>
                         Dostave se odvijaju u <strong>2-satnim vremenskim blokovima</strong>, a sve dostupne termine možeš
-                        vidjeti u aplikaciji. Ako te ne pronađemo na adresi u dogovoreno vrijeme, pokušat ćemo te
+                        vidjeti u aplikaciji ili na našoj stranici s terminima. Ako te ne pronađemo na adresi u dogovoreno vrijeme, pokušat ćemo te
                         kontaktirati. U slučaju da dostava ipak ne uspije, svoje povrće možeš naknadno osobno preuzeti na našoj
                         lokaciji u Zagrebu. Ako povrće ne preuzmeš u roku od <strong>72 sata</strong>, donirat ćemo ga onima
                         kojima je najpotrebnije.
                     </p>
+                    <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: '0.5rem' }}>
+                        <h3>📅 Pogledaj dostupne termine</h3>
+                        <p>Želiš vidjeti koji su termini dostupni u sljedećih 14 dana? Pogledaj našu stranicu s dostupnim terminima dostave i osobnog preuzimanja.</p>
+                        <Button
+                            href={KnownPages.DeliverySlots}
+                            variant="solid"
+                            color="primary"
+                            startDecorator={<Calendar className="size-4" />}
+                        >
+                            Pogledaj dostupne termine
+                        </Button>
+                    </div>
                     <hr />
                     <p>Tvoje povrće čeka da stigne do tebe - svježe, lokalno i s ljubavlju uzgojeno. 🥬📦</p>
                     <hr />

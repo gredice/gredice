@@ -2,6 +2,7 @@ export const KnownPages = {
     Landing: '/',
 
     Delivery: '/dostava',
+    DeliverySlots: '/dostava/termini',
     Plants: '/biljke',
     Plant: (alias: string) => `/biljke/${encodeURIComponent(alias)}`,
     PlantSort: (alias: string, sortName: string) => `/biljke/${encodeURIComponent(alias)}/sorte/${encodeURIComponent(sortName)}`,
