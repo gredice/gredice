@@ -8,8 +8,9 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
 import { WhatsAppCard } from "../../../components/social/WhatsAppCard";
+import { client } from '@gredice/client';
 
-// Types for API response
+// Types from API response - these match the type-safe client schema
 interface TimeSlot {
     id: number;
     locationId: number;
@@ -27,28 +28,29 @@ interface TimeSlot {
     };
 }
 
-// Fetch slots from API
+// Fetch slots using type-safe client
 async function fetchTimeSlots(type: 'delivery' | 'pickup'): Promise<TimeSlot[]> {
     const fromDate = new Date();
     const toDate = new Date();
     toDate.setDate(toDate.getDate() + 14);
 
-    const url = new URL('https://api.gredice.com/api/delivery/slots');
-    url.searchParams.set('type', type);
-    url.searchParams.set('from', fromDate.toISOString());
-    url.searchParams.set('to', toDate.toISOString());
-
     try {
-        const response = await fetch(url.toString(), {
-            next: { revalidate: 300 } // Cache for 5 minutes
+        const response = await client().api.delivery.slots.$get({
+            query: {
+                type,
+                from: fromDate.toISOString(),
+                to: toDate.toISOString()
+            }
         });
 
         if (!response.ok) {
-            console.error('Failed to fetch slots:', response.status, response.statusText);
+            console.error('Failed to fetch slots:', response.status);
             return [];
         }
 
-        return await response.json();
+        const slots = await response.json();
+        // Type assertion since we know the API contract matches our interface
+        return slots as TimeSlot[];
     } catch (error) {
         console.error('Error fetching slots:', error);
         return [];

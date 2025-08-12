@@ -10,39 +10,6 @@ import {
     DeliveryModes
 } from "../schema";
 
-// Get available slots for booking (scheduled status, future dates)
-export function getAvailableTimeSlots(
-    type?: 'delivery' | 'pickup',
-    locationId?: number,
-    fromDate?: Date,
-    toDate?: Date
-): Promise<(SelectTimeSlot & { availableCount?: number })[]> {
-    const conditions = [
-        eq(timeSlots.status, TimeSlotStatuses.SCHEDULED),
-        gte(timeSlots.startAt, fromDate || new Date())
-    ];
-
-    if (type) {
-        conditions.push(eq(timeSlots.type, type));
-    }
-
-    if (locationId) {
-        conditions.push(eq(timeSlots.locationId, locationId));
-    }
-
-    if (toDate) {
-        conditions.push(lte(timeSlots.startAt, toDate));
-    }
-
-    return storage().query.timeSlots.findMany({
-        where: and(...conditions),
-        orderBy: [asc(timeSlots.startAt)],
-        with: {
-            location: true
-        }
-    });
-}
-
 // Get all slots for admin view
 export function getAllTimeSlots(
     type?: 'delivery' | 'pickup',
@@ -68,17 +35,6 @@ export function getAllTimeSlots(
         orderBy: [desc(timeSlots.startAt)],
         with: {
             location: true
-        }
-    });
-}
-
-// Get a specific time slot by ID
-export function getTimeSlot(slotId: number): Promise<SelectTimeSlot | undefined> {
-    return storage().query.timeSlots.findFirst({
-        where: eq(timeSlots.id, slotId),
-        with: {
-            location: true,
-            // Note: deliveryRequests relationship removed due to event sourcing refactor
         }
     });
 }

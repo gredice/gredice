@@ -90,11 +90,9 @@ export const deliveryRequests = pgTable('delivery_requests', {
     // Basic metadata only - all business state reconstructed from events
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().$onUpdate(() => new Date()),
-    isDeleted: boolean('is_deleted').notNull().default(false),
 }, (table) => [
     index('delivery_requests_operation_id_idx').on(table.operationId),
     index('delivery_requests_created_at_idx').on(table.createdAt),
-    index('delivery_requests_is_deleted_idx').on(table.isDeleted),
 ]);
 
 export const deliveryRequestsRelations = relations(deliveryRequests, ({ one }) => ({
@@ -150,11 +148,11 @@ export const TimeSlotStatuses = {
 } as const;
 
 export const CancelReasonCodes = {
-    USER_REQUESTED: 'user_requested',
-    PAYMENT_FAILED: 'payment_failed',
-    ITEM_UNAVAILABLE: 'item_unavailable',
-    OPERATIONAL_ISSUE: 'operational_issue',
-    CUTOFF_EXPIRED: 'cutoff_expired'
+    USER_REQUESTED: 'user_requested', // ✅ Used in UI for customer-initiated cancellations
+    // PAYMENT_FAILED: 'payment_failed', // TODO: Use when implementing payment failure handling
+    // ITEM_UNAVAILABLE: 'item_unavailable', // TODO: Use when implementing inventory checks
+    // OPERATIONAL_ISSUE: 'operational_issue', // TODO: Use for admin/operational cancellations
+    CUTOFF_EXPIRED: 'cutoff_expired' // ✅ Used in API for time-based validations
 } as const;
 
 export type DeliveryMode = typeof DeliveryModes[keyof typeof DeliveryModes];
