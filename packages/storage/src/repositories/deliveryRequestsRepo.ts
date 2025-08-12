@@ -101,7 +101,6 @@ export async function getDeliveryRequestsWithEvents(
 ): Promise<DeliveryRequestWithEvents[]> {
     // First get the projection records
     const requests = await storage().query.deliveryRequests.findMany({
-        where: eq(deliveryRequests.isDeleted, false),
         orderBy: [desc(deliveryRequests.createdAt)],
         with: {
             operation: true
@@ -131,12 +130,24 @@ export async function getDeliveryRequestsWithEvents(
     // Apply filters on reconstructed state
     let filteredRequests = reconstructedRequests;
 
+    if (accountId) {
+        filteredRequests = filteredRequests.filter(r => r.operation?.accountId === accountId);
+    }
+
     if (state) {
         filteredRequests = filteredRequests.filter(r => r.state === state);
     }
 
     if (slotId) {
         filteredRequests = filteredRequests.filter(r => r.slotId === slotId);
+    }
+
+    if (fromDate) {
+        filteredRequests = filteredRequests.filter(r => r.createdAt >= fromDate);
+    }
+
+    if (toDate) {
+        filteredRequests = filteredRequests.filter(r => r.createdAt <= toDate);
     }
 
     // Note: Date filtering would require joining with slots
@@ -161,7 +172,6 @@ export async function getDeliveryRequest(requestId: string): Promise<DeliveryReq
     const request = await storage().query.deliveryRequests.findFirst({
         where: and(
             eq(deliveryRequests.id, requestId),
-            eq(deliveryRequests.isDeleted, false)
         ),
         with: {
             operation: true
@@ -185,7 +195,6 @@ export async function getDeliveryRequestByOperation(operationId: number): Promis
     const request = await storage().query.deliveryRequests.findFirst({
         where: and(
             eq(deliveryRequests.operationId, operationId),
-            eq(deliveryRequests.isDeleted, false)
         ),
         with: {
             operation: true
