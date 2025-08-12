@@ -6,19 +6,7 @@ import { KnownPages } from "../../src/KnownPages";
 import { revalidatePath } from "next/cache";
 import { EntityStandardized } from "../../lib/@types/EntityStandardized";
 
-export async function raisedBedPlantedFormHandler(formData: FormData) {
-    await auth(["admin"]);
-
-    const raisedBedId = formData.get("raisedBedId") ? Number(formData.get("raisedBedId")) : undefined;
-    if (!raisedBedId) {
-        throw new Error("Raised bed ID is required");
-    }
-
-    const positionIndex = formData.get("positionIndex") ? Number(formData.get("positionIndex")) : undefined;
-    if (positionIndex === undefined || positionIndex < 0) {
-        throw new Error("Position index is required and must be a non-negative number");
-    }
-
+export async function raisedBedPlanted(raisedBedId: number, positionIndex: number) {
     await raisedBedFieldUpdatePlant({
         raisedBedId,
         positionIndex,

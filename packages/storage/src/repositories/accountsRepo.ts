@@ -85,6 +85,7 @@ export async function getSunflowersHistory(accountId: string, offset: number = 0
 }
 
 export async function earnSunflowers(accountId: string, amount: number, reason: string) {
+    if (amount === 0) return;
     await createEvent(knownEvents.accounts.sunflowersEarnedV1(accountId, { amount, reason }));
 }
 

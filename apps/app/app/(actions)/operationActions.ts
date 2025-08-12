@@ -77,17 +77,8 @@ export async function rescheduleOperationAction(formData: FormData) {
     return { success: true };
 }
 
-export async function completeOperationAction(formData: FormData) {
+export async function completeOperation(operationId: number, completedBy: string) {
     await auth(["admin"]);
-    const operationId = formData.get("operationId") ? Number(formData.get("operationId")) : undefined;
-    if (!operationId) {
-        throw new Error("Operation ID is required");
-    }
-    const completedBy = formData.get("completedBy") as string;
-    if (!completedBy) {
-        throw new Error("Completed By is required");
-    }
-
     const operation = await getOperationById(operationId);
     if (!operation) {
         throw new Error(`Operation with ID ${operationId} not found.`);
