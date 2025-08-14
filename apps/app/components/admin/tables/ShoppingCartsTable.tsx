@@ -10,11 +10,8 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 
 export async function ShoppingCartsTable({ accountId }: { accountId?: string }) {
     await auth(['admin']);
-    const shoppingCarts = await getAllShoppingCarts(accountId);
 
-    if (shoppingCarts.length === 0) {
-        return <NoDataPlaceholder />;
-    }
+    const shoppingCarts = await getAllShoppingCarts({ filter: { accountId } });
 
     return (
         <Table>
@@ -29,24 +26,37 @@ export async function ShoppingCartsTable({ accountId }: { accountId?: string }) 
                 </Table.Row>
             </Table.Header>
             <Table.Body>
+                {shoppingCarts.length === 0 && (
+                    <Table.Row>
+                        <Table.Cell colSpan={6}>
+                            <NoDataPlaceholder />
+                        </Table.Cell>
+                    </Table.Row>
+                )}
                 {shoppingCarts.map(cart => (
                     <Table.Row key={cart.id}>
                         <Table.Cell>
-                            <Link href={KnownPages.ShoppingCartDetails(cart.id)}>
+                            <Link href={KnownPages.ShoppingCart(cart.id)}>
                                 <Typography>{cart.id}</Typography>
                             </Link>
                         </Table.Cell>
-                        <Table.Cell>
-                            <Link href={KnownPages.AccountDetails(cart.accountId)}>
-                                <Typography>{cart.accountId}</Typography>
-                            </Link>
-                        </Table.Cell>
+                        {!Boolean(accountId) && (
+                            <Table.Cell>
+                                {cart.accountId ? (
+                                    <Link href={KnownPages.Account(cart.accountId)}>
+                                        <Typography>{cart.accountId}</Typography>
+                                    </Link>
+                                ) : (
+                                    <Typography>Nepoznato</Typography>
+                                )}
+                            </Table.Cell>
+                        )}
                         <Table.Cell>
                             <Chip color={cart.status === 'active' ? 'success' : 'neutral'}>
                                 {cart.status === 'active' ? 'Aktivna' : 'Neaktivna'}
                             </Chip>
                         </Table.Cell>
-                        <Table.Cell>{cart.totalItems}</Table.Cell>
+                        <Table.Cell>{cart.items.length}</Table.Cell>
                         <Table.Cell>
                             <Typography secondary>
                                 <LocaleDateTime>{cart.createdAt}</LocaleDateTime>
