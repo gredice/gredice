@@ -24,7 +24,7 @@ export default async function UsersPage() {
 
             <Row spacing={1}>
                 <Typography level="h1" className="text-2xl" semiBold>{"Korisnici"}</Typography>
-                <Chip color="primary" size="sm">{users.length}</Chip>
+                <Chip color="primary">{users.length}</Chip>
             </Row>
             <Card>
                 <CardOverflow>

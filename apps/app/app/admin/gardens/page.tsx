@@ -21,7 +21,7 @@ export default async function GardensPage() {
         <Stack spacing={2}>
             <Row spacing={1}>
                 <Typography level="h1" className="text-2xl" semiBold>Vrtovi</Typography>
-                <Chip color="primary" size="sm">{gardens.length}</Chip>
+                <Chip color="primary">{gardens.length}</Chip>
             </Row>
             <Card>
                 <CardOverflow>

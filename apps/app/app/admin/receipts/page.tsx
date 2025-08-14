@@ -47,7 +47,7 @@ export default async function ReceiptsPage() {
         <Stack spacing={2}>
             <Row spacing={1}>
                 <Typography level="h1" className="text-2xl" semiBold>{"Fiskalni računi"}</Typography>
-                <Chip color="primary" size="sm">{receipts.length}</Chip>
+                <Chip color="primary">{receipts.length}</Chip>
             </Row>
             <Card>
                 <CardOverflow>

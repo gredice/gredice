@@ -27,7 +27,6 @@ export function OperationCancelButton({ operation, operationLabel }: OperationCa
             trigger={
                 <Button
                     variant="plain"
-                    size="sm"
                     className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                     title="Otkaži operaciju"
                 >

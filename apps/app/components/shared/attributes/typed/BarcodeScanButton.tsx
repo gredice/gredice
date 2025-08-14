@@ -421,13 +421,13 @@ export function BarcodeScanButton({
                     {/* Camera Controls */}
                     <div className="flex gap-2 justify-center">
                         {scanState === "scanning" && (
-                            <Button onClick={stopCameraScanning} size="sm">
+                            <Button onClick={stopCameraScanning}>
                                 <Stop className="size-4 mr-2" />
                                 Stop Scanning
                             </Button>
                         )}
 
-                        <Button onClick={closeCamera} variant="outlined" size="sm">
+                        <Button onClick={closeCamera} variant="outlined">
                             Cancel
                         </Button>
                     </div>

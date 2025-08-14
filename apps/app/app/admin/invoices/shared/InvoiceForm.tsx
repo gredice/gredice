@@ -395,7 +395,6 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                                 <Button
                                                     type="button"
                                                     variant="outlined"
-                                                    size="sm"
                                                     onClick={() => {
                                                         setShowTransactionModal(true);
                                                         fetchTransactions();
@@ -406,7 +405,6 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                                 <Button
                                                     type="button"
                                                     variant="outlined"
-                                                    size="sm"
                                                     onClick={() => {
                                                         if (!formData.accountId.trim()) {
                                                             alert('Molimo unesite Account ID prije odabira košarice');
@@ -532,7 +530,6 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                         {isAccountReadOnly && mode === 'create' && (
                                             <Button
                                                 variant="outlined"
-                                                size="sm"
                                                 onClick={() => setIsAccountReadOnly(false)}
                                             >
                                                 Ručno uređivanje
