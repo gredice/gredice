@@ -11,13 +11,15 @@ import { Input } from "@signalco/ui-primitives/Input";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { KnownPages } from "../../../../src/KnownPages";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Delete } from "@signalco/ui-icons";
+import { Add, Delete } from "@signalco/ui-icons";
 import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
 
 // Import actions based on mode
 import { createInvoiceAction, getTransactionsAction, getShoppingCartsAction, getAccountDetailsAction, getShoppingCartItemsWithEntityNamesAction } from "../create/actions";
 import { updateInvoiceAction } from "../[invoiceId]/edit/actions";
 import { getInvoice } from "@gredice/storage";
+import { Checkbox } from "@signalco/ui-primitives/Checkbox";
+import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 
 const statusOptions = [
     { value: 'draft', label: 'Nacrt' },
@@ -356,7 +358,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
     return (
         <>
             <form onSubmit={handleSubmit}>
-                <Stack spacing={4}>
+                <Stack spacing={2}>
                     <Row spacing={2} justifyContent="space-between" alignItems="center">
                         <Typography level="h1" className="text-2xl" semiBold>
                             {mode === 'create' ? 'Nova ponuda' : `Uredi ponudu ${invoice?.invoiceNumber}`}
@@ -372,8 +374,8 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                             </Button>
                             <Button
                                 type="submit"
+                                variant="solid"
                                 disabled={isSubmitting}
-                                color="primary"
                             >
                                 {isSubmitting
                                     ? (mode === 'create' ? 'Kreiranje...' : 'Ažuriranje...')
@@ -383,8 +385,8 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                         </Row>
                     </Row>
 
-                    <Row spacing={4} alignItems="stretch">
-                        <Stack spacing={4} className="flex-1">
+                    <Row spacing={2} alignItems="stretch">
+                        <Stack spacing={2} className="flex-1">
                             {/* Invoice Information */}
                             <Card>
                                 <CardHeader>
@@ -428,97 +430,72 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                     </Row>
                                 </CardHeader>
                                 <CardContent>
-                                    <Stack spacing={3}>
+                                    <Stack spacing={1}>
                                         {mode === 'create' && (
-                                            <Row spacing={3}>
-                                                <Stack spacing={1} className="flex-1">
-                                                    <Typography level="body2" className="text-gray-600">Account ID</Typography>
-                                                    <Input
-                                                        value={formData.accountId}
-                                                        onChange={(e) => handleInputChange('accountId', e.target.value)}
-                                                        placeholder="Unesite account ID"
-                                                        required
-                                                    />
-                                                </Stack>
-                                                <Stack spacing={1} className="flex-1">
-                                                    <Typography level="body2" className="text-gray-600">Transaction ID (neobavezno)</Typography>
-                                                    <Input
-                                                        value={formData.transactionId}
-                                                        onChange={(e) => handleInputChange('transactionId', e.target.value)}
-                                                        placeholder="ID povezane transakcije"
-                                                        type="number"
-                                                    />
-                                                </Stack>
+                                            <Row spacing={2}>
+                                                <Input
+                                                    label="Account ID"
+                                                    value={formData.accountId}
+                                                    onChange={(e) => handleInputChange('accountId', e.target.value)}
+                                                    placeholder="Unesite account ID"
+                                                    required
+                                                />
+                                                <Input
+                                                    label="Transaction ID (neobavezno)"
+                                                    value={formData.transactionId}
+                                                    onChange={(e) => handleInputChange('transactionId', e.target.value)}
+                                                    placeholder="ID povezane transakcije"
+                                                    type="number"
+                                                />
                                             </Row>
                                         )}
-                                        <Row spacing={3}>
-                                            <Stack spacing={1} className="flex-1">
-                                                <Typography level="body2" className="text-gray-600">Valuta</Typography>
-                                                <select
-                                                    value={formData.currency}
-                                                    onChange={(e) => handleInputChange('currency', e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                >
-                                                    {currencyOptions.map(option => (
-                                                        <option key={option.value} value={option.value}>
-                                                            {option.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </Stack>
-                                            <Stack spacing={1} className="flex-1">
-                                                <Typography level="body2" className="text-gray-600">Status</Typography>
-                                                <select
-                                                    value={formData.status}
-                                                    onChange={(e) => handleInputChange('status', e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                >
-                                                    {availableStatusOptions.map(option => (
-                                                        <option key={option.value} value={option.value}>
-                                                            {option.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </Stack>
+                                        <Row spacing={2}>
+                                            <SelectItems
+                                                label="Valuta"
+                                                className="w-full"
+                                                value={formData.currency}
+                                                items={currencyOptions}
+                                                onValueChange={(value) => handleInputChange('currency', value)}
+                                            />
+                                            <SelectItems
+                                                label="Status"
+                                                className="w-full"
+                                                value={formData.status}
+                                                items={availableStatusOptions}
+                                                onValueChange={(value) => handleInputChange('status', value)}
+                                            />
                                         </Row>
-                                        <Row spacing={3}>
-                                            <Stack spacing={1} className="flex-1">
-                                                <Typography level="body2" className="text-gray-600">Datum izdavanja</Typography>
-                                                <Input
-                                                    type="date"
-                                                    value={formData.issueDate}
-                                                    onChange={(e) => handleInputChange('issueDate', e.target.value)}
-                                                    required
-                                                />
-                                            </Stack>
-                                            <Stack spacing={1} className="flex-1">
-                                                <Typography level="body2" className="text-gray-600">Datum dospijeća</Typography>
-                                                <Input
-                                                    type="date"
-                                                    value={formData.dueDate}
-                                                    onChange={(e) => handleInputChange('dueDate', e.target.value)}
-                                                    required
-                                                />
-                                            </Stack>
+                                        <Row spacing={2}>
+                                            <Input
+                                                label="Datum izdavanja"
+                                                type="date"
+                                                fullWidth
+                                                value={formData.issueDate}
+                                                onChange={(e) => handleInputChange('issueDate', e.target.value)}
+                                                required
+                                            />
+                                            <Input
+                                                label="Datum dospijeća"
+                                                type="date"
+                                                fullWidth
+                                                value={formData.dueDate}
+                                                onChange={(e) => handleInputChange('dueDate', e.target.value)}
+                                                required
+                                            />
                                         </Row>
-                                        <Row spacing={3}>
-                                            <Stack spacing={1} className="flex-1">
-                                                <Typography level="body2" className="text-gray-600">PDV</Typography>
-                                                <label className="flex items-center space-x-2 p-3 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50">
-                                                    <input
-                                                        type="checkbox"
+                                        <Row spacing={2}>
+                                            <div className="flex-1">
+                                                <label className="flex items-center space-x-2 p-3 border border-input bg-background rounded-md cursor-pointer">
+                                                    <Checkbox
+                                                        label={formData.vatEnabled ? 'PDV uključen (25%)' : 'PDV isključen'}
                                                         checked={formData.vatEnabled}
-                                                        onChange={(e) => handleInputChange('vatEnabled', e.target.checked.toString())}
-                                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                        onCheckedChange={(checked: boolean) => handleInputChange('vatEnabled', checked.toString())}
                                                     />
-                                                    <span className="text-sm">
-                                                        {formData.vatEnabled ? 'PDV uključen (25%)' : 'PDV isključen'}
-                                                    </span>
                                                 </label>
-                                            </Stack>
-                                            <Stack spacing={1} className="flex-1">
+                                            </div>
+                                            <div className="flex-1">
                                                 {/* Empty column for alignment */}
-                                            </Stack>
+                                            </div>
                                         </Row>
                                     </Stack>
                                 </CardContent>
@@ -541,44 +518,46 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                     </Row>
                                 </CardHeader>
                                 <CardContent>
-                                    <Stack spacing={3}>
+                                    <Stack spacing={1}>
+                                        <Row spacing={2}>
+                                            <Stack spacing={1} className="w-full">
+                                                <Input
+                                                    label="Naziv *"
+                                                    value={formData.billToName}
+                                                    onChange={(e) => handleInputChange('billToName', e.target.value)}
+                                                    placeholder="Naziv kupca"
+                                                    required
+                                                    disabled={isAccountReadOnly}
+                                                />
+                                                {isAccountReadOnly && (
+                                                    <Typography level="body3">
+                                                        Automatski ispunjeno iz podataka ponude
+                                                    </Typography>
+                                                )}
+                                            </Stack>
+                                            <Stack spacing={1} className="w-full">
+                                                <Input
+                                                    label="Email"
+                                                    type="email"
+                                                    value={formData.billToEmail}
+                                                    onChange={(e) => handleInputChange('billToEmail', e.target.value)}
+                                                    placeholder="email@example.com"
+                                                    disabled={isAccountReadOnly}
+                                                />
+                                                {isAccountReadOnly && (
+                                                    <Typography level="body3">
+                                                        Automatski ispunjeno iz podataka ponude
+                                                    </Typography>
+                                                )}
+                                            </Stack>
+                                        </Row>
                                         <Stack spacing={1}>
-                                            <Typography level="body2" className="text-gray-600">Naziv *</Typography>
-                                            <Input
-                                                value={formData.billToName}
-                                                onChange={(e) => handleInputChange('billToName', e.target.value)}
-                                                placeholder="Naziv kupca"
-                                                required
-                                                disabled={isAccountReadOnly}
-                                            />
-                                            {isAccountReadOnly && (
-                                                <Typography level="body3" className="text-gray-500">
-                                                    Automatski ispunjeno iz podataka ponude
-                                                </Typography>
-                                            )}
-                                        </Stack>
-                                        <Stack spacing={1}>
-                                            <Typography level="body2" className="text-gray-600">Email</Typography>
-                                            <Input
-                                                type="email"
-                                                value={formData.billToEmail}
-                                                onChange={(e) => handleInputChange('billToEmail', e.target.value)}
-                                                placeholder="email@example.com"
-                                                disabled={isAccountReadOnly}
-                                            />
-                                            {isAccountReadOnly && (
-                                                <Typography level="body3" className="text-gray-500">
-                                                    Automatski ispunjeno iz podataka ponude
-                                                </Typography>
-                                            )}
-                                        </Stack>
-                                        <Stack spacing={1}>
-                                            <Typography level="body2" className="text-gray-600">Adresa</Typography>
+                                            <Typography level="body2">Adresa</Typography>
                                             <textarea
                                                 value={formData.billToAddress}
                                                 onChange={(e) => handleInputChange('billToAddress', e.target.value)}
-                                                placeholder="Ulica i broj&#10;Poštanski broj Grad&#10;Država"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                placeholder="Ulica i broj, Poštanski broj Grad, Država..."
+                                                className="w-full text-base px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                                 rows={3}
                                             />
                                         </Stack>
@@ -587,7 +566,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                             </Card>
                         </Stack>
 
-                        <Stack spacing={4} className="flex-1">
+                        <Stack spacing={2} className="flex-1">
                             {/* Summary and Invoice Details */}
                             <Card>
                                 <CardHeader>
@@ -596,12 +575,12 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                 <CardContent>
                                     <Stack spacing={2}>
                                         <Row justifyContent="space-between">
-                                            <Typography level="body2" className="text-gray-600">Osnovica</Typography>
+                                            <Typography level="body2">Osnovica</Typography>
                                             <Typography>€{subtotal}</Typography>
                                         </Row>
                                         {formData.vatEnabled && (
                                             <Row justifyContent="space-between">
-                                                <Typography level="body2" className="text-gray-600">PDV (25%)</Typography>
+                                                <Typography level="body2">PDV (25%)</Typography>
                                                 <Typography>€{taxAmount}</Typography>
                                             </Row>
                                         )}
@@ -619,24 +598,24 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                     <CardTitle>Napomene i uvjeti</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <Stack spacing={3}>
+                                    <Stack spacing={1}>
                                         <Stack spacing={1}>
-                                            <Typography level="body2" className="text-gray-600">Napomene</Typography>
+                                            <Typography level="body2">Napomene</Typography>
                                             <textarea
                                                 value={formData.notes}
                                                 onChange={(e) => handleInputChange('notes', e.target.value)}
                                                 placeholder="Dodatne napomene..."
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                className="w-full text-base px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                                 rows={3}
                                             />
                                         </Stack>
                                         <Stack spacing={1}>
-                                            <Typography level="body2" className="text-gray-600">Uvjeti</Typography>
+                                            <Typography level="body2">Uvjeti</Typography>
                                             <textarea
                                                 value={formData.terms}
                                                 onChange={(e) => handleInputChange('terms', e.target.value)}
                                                 placeholder="Uvjeti plaćanja..."
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                className="w-full text-base px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                                 rows={3}
                                             />
                                         </Stack>
@@ -651,17 +630,17 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                         <CardHeader>
                             <Row justifyContent="space-between" alignItems="center">
                                 <CardTitle>Stavke ponude</CardTitle>
-                                <Button type="button" variant="link" onClick={addItem}>
-                                    + Dodaj stavku
+                                <Button variant="solid" onClick={addItem} startDecorator={<Add className="size-4 shrink-0" />}>
+                                    Dodaj stavku
                                 </Button>
                             </Row>
                         </CardHeader>
                         <CardContent>
                             <Stack spacing={2}>
                                 {items.map((item, index) => (
-                                    <Card key={index} className="border-l-4 border-l-blue-200">
+                                    <Card key={index} className="border-l-4 border-l-primary">
                                         <CardContent className="pt-4">
-                                            <Stack spacing={3}>
+                                            <Stack spacing={2}>
                                                 <Row spacing={2} alignItems="start">
                                                     <Stack spacing={1} className="flex-1">
                                                         <Typography level="body2">Opis *</Typography>
@@ -687,7 +666,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                                         <Input
                                                             type="number"
                                                             step="0.01"
-                                                            min="0"
+                                                            min="1"
                                                             value={item.quantity}
                                                             onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
                                                             required
@@ -698,7 +677,6 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                                         <Input
                                                             type="number"
                                                             step="0.01"
-                                                            min="0"
                                                             value={item.unitPrice}
                                                             onChange={(e) => handleItemChange(index, 'unitPrice', e.target.value)}
                                                             required
@@ -709,7 +687,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                                                         <Input
                                                             value={item.totalPrice}
                                                             disabled
-                                                            className="bg-gray-50"
+                                                            readOnly
                                                         />
                                                     </Stack>
                                                 </Row>
@@ -725,8 +703,8 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
 
             {/* Transaction Selection Modal - Only for create mode */}
             {mode === 'create' && showTransactionModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
+                <div className="fixed inset-0 bg-black backdrop-blur bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-card rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
                         <div className="p-6 border-b">
                             <Row spacing={2} justifyContent="space-between" alignItems="center">
                                 <Typography level="h3" semiBold>Odaberite transakciju</Typography>
@@ -744,15 +722,15 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                             ) : (
                                 <Stack spacing={2}>
                                     {transactions.map((transaction) => (
-                                        <Card key={transaction.id} className="cursor-pointer hover:bg-gray-50" onClick={() => populateFromTransaction(transaction)}>
+                                        <Card key={transaction.id} onClick={() => populateFromTransaction(transaction)}>
                                             <CardContent>
                                                 <Row spacing={2} justifyContent="space-between">
                                                     <Stack spacing={1}>
                                                         <Typography semiBold>#{transaction.id}</Typography>
-                                                        <Typography level="body2" className="text-gray-600">
+                                                        <Typography level="body2">
                                                             Account: {transaction.accountId}
                                                         </Typography>
-                                                        <Typography level="body2" className="text-gray-600">
+                                                        <Typography level="body2">
                                                             {transaction.stripePaymentId}
                                                         </Typography>
                                                     </Stack>
@@ -777,14 +755,14 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
 
             {/* Shopping Cart Selection Modal - Only for create mode */}
             {mode === 'create' && showShoppingCartModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
+                <div className="fixed inset-0 bg-black backdrop-blur bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-card rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
                         <div className="p-6 border-b">
                             <Row spacing={2} justifyContent="space-between" alignItems="center">
                                 <Stack spacing={1}>
                                     <Typography level="h3" semiBold>Odaberite košaricu</Typography>
                                     {formData.accountId && (
-                                        <Typography level="body2" className="text-gray-600">
+                                        <Typography level="body2">
                                             Košarice za korisnički račun: {formData.accountId}
                                         </Typography>
                                     )}
@@ -803,21 +781,21 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                             ) : (
                                 <Stack spacing={2}>
                                     {shoppingCarts.map((cart) => (
-                                        <Card key={cart.id} className="cursor-pointer hover:bg-gray-50" onClick={() => populateFromShoppingCart(cart)}>
+                                        <Card key={cart.id} onClick={() => populateFromShoppingCart(cart)}>
                                             <CardContent>
                                                 <Row spacing={2} justifyContent="space-between">
                                                     <Stack spacing={1}>
                                                         <Typography semiBold>Košarica #{cart.id}</Typography>
-                                                        <Typography level="body2" className="text-gray-600">
+                                                        <Typography level="body2">
                                                             Account: {cart.accountId}
                                                         </Typography>
-                                                        <Typography level="body2" className="text-gray-600">
+                                                        <Typography level="body2">
                                                             Stavki: {cart.items?.length || 0}
                                                         </Typography>
                                                     </Stack>
                                                     <Stack spacing={1} alignItems="start">
                                                         <Typography semiBold>
-                                                            {((cart.items?.reduce((sum: number, item) => sum + (item.amount || 0), 0) || 0) / 100).toFixed(2)}€
+                                                            {((cart.items?.reduce((sum: number, item) => sum + (item.amount || 0), 0) || 0)).toFixed(2)}€
                                                         </Typography>
                                                         <Chip className="w-fit" color={cart.status === 'paid' ? 'success' : 'neutral'}>
                                                             {cart.status === 'paid' ? 'Plaćena' : (cart.status === 'new' ? 'Nova' : cart.status)}

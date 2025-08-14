@@ -13,6 +13,7 @@ import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
 import { InvoiceActions } from "./InvoiceActions";
 import { isOverdue } from "./invoiceUtils";
 import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
+import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
 
 export const dynamic = 'force-dynamic';
 
@@ -178,6 +179,9 @@ export default async function InvoicePage({ params }: { params: { invoiceId: str
                             </CardHeader>
                             <CardContent>
                                 <Stack spacing={2}>
+                                    {!invoice.transactionId && (
+                                        <NoDataPlaceholder>Nema povezanih stavki</NoDataPlaceholder>
+                                    )}
                                     {invoice.transactionId && (
                                         <Row spacing={2} alignItems="center">
                                             <Typography level="body2" className="w-20">Transakcija:</Typography>
@@ -218,10 +222,10 @@ export default async function InvoicePage({ params }: { params: { invoiceId: str
                                                 <Typography>{item.quantity} kom</Typography>
                                             </Table.Cell>
                                             <Table.Cell className="text-right">
-                                                <Typography>{item.unitPrice}{invoice.currency === 'eur' ? '€' : invoice.currency}</Typography>
+                                                <Typography>{Number(item.unitPrice).toFixed(2)}{invoice.currency === 'eur' ? '€' : invoice.currency}</Typography>
                                             </Table.Cell>
                                             <Table.Cell className="text-right">
-                                                <Typography>{item.totalPrice}{invoice.currency === 'eur' ? '€' : invoice.currency}</Typography>
+                                                <Typography>{Number(item.totalPrice).toFixed(2)}{invoice.currency === 'eur' ? '€' : invoice.currency}</Typography>
                                             </Table.Cell>
                                         </Table.Row>
                                     ))}

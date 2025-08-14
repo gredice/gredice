@@ -56,18 +56,16 @@ export async function fiscalizeReceiptAction(receiptId: number) {
     }
 
     // Get fiscalization settings for the account
-    const fiscalizationSettings = await getAllFiscalizationSettings(receipt.invoice.accountId);
-
+    const fiscalizationSettings = await getAllFiscalizationSettings();
     if (!fiscalizationSettings.userSettings) {
         throw new Error('Fiscalization user settings not found for account');
     }
-
     if (!fiscalizationSettings.posSettings) {
         throw new Error('Fiscalization POS settings not found for account');
     }
 
     try {
-        const fiscalResult = await receiptRequest({
+        const response = await receiptRequest({
             date: receipt.issuedAt,
             receiptNumber: receipt.receiptNumber,
             totalAmount: Number(receipt.totalAmount),
@@ -91,13 +89,33 @@ export async function fiscalizeReceiptAction(receiptId: number) {
             }
         });
 
+        if (!response.success) {
+            const { responseText, errors, zki } = response;
+            await updateReceiptFiscalization(receiptId, {
+                zki,
+                cisStatus: 'failed',
+                cisErrorMessage: errors?.[0]?.errorMessage ?? null,
+                cisResponse: responseText
+            });
+            return;
+        }
+
+        const {
+            dateTime,
+            receiptNumber,
+            responseText,
+            jir,
+            zki
+        } = response;
+
         await updateReceiptFiscalization(receiptId, {
-            jir: fiscalResult.jir,
-            zki: fiscalResult.zki,
-            cisTimestamp: fiscalResult.dateTime,
+            jir,
+            zki,
+            cisTimestamp: dateTime,
             cisStatus: 'confirmed',
             cisErrorMessage: null,
-            cisReference: fiscalResult.receiptNumber, // Assuming receiptNumber is the reference
+            cisReference: receiptNumber, // Assuming receiptNumber is the reference
+            cisResponse: responseText,
         });
     } catch (error) {
         console.error('Error fiscalizing receipt:', error);
@@ -105,7 +123,8 @@ export async function fiscalizeReceiptAction(receiptId: number) {
         await updateReceiptFiscalization(receiptId, {
             cisStatus: 'failed',
             cisErrorMessage: errorMessage,
-            cisTimestamp: new Date()
+            cisTimestamp: new Date(),
+            cisResponse: 'no response'
         });
     }
 

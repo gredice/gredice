@@ -6,6 +6,7 @@ import Link from "next/link";
 import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
 import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
 import { ExternalLink } from "@signalco/ui-icons";
+import { Typography } from "@signalco/ui-primitives/Typography";
 
 function getStatusColor(status: string) {
     switch (status) {
@@ -66,8 +67,8 @@ export async function InvoicesTable({ transactionId }: { transactionId?: number 
                         </Table.Cell>
                         <Table.Cell>
                             <div>
-                                <div className="font-medium">{invoice.billToName}</div>
-                                <div className="text-sm text-gray-500">{invoice.billToEmail}</div>
+                                <Typography>{invoice.billToName}</Typography>
+                                <Typography level="body2">{invoice.billToEmail}</Typography>
                             </div>
                         </Table.Cell>
                         <Table.Cell>
@@ -98,7 +99,7 @@ export async function InvoicesTable({ transactionId }: { transactionId?: number 
                                     </Chip>
                                 </Link>
                             ) : (
-                                <span className="text-gray-500">Nema transakcije</span>
+                                <NoDataPlaceholder>Nema transakcije</NoDataPlaceholder>
                             )}
                         </Table.Cell>
                     </Table.Row>

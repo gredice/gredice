@@ -393,6 +393,13 @@
       "when": 1754170193052,
       "tag": "0055_free_quicksilver",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1755039074777,
+      "tag": "0056_pretty_nextwave",
+      "breakpoints": true
     }
   ]
 }
