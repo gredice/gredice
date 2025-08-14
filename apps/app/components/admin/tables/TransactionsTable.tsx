@@ -39,7 +39,7 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
             <Table.Body>
                 {transactions.length === 0 && (
                     <Table.Row>
-                        <Table.Cell colSpan={7}>
+                        <Table.Cell colSpan={hasAccountFilter ? 6 : 7}>
                             <NoDataPlaceholder>
                                 Nema transakcija
                             </NoDataPlaceholder>
