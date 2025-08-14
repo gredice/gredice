@@ -27,7 +27,7 @@ jobs:
         timeout-minutes: 5
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
               with:
                 fetch-depth: 2
   
@@ -65,7 +65,7 @@ jobs:
         runs-on: ubuntu-latest
         needs: lint
         steps:
-          - uses: actions/checkout@v4
+          - uses: actions/checkout@v5
             with:
               fetch-depth: 2
 
@@ -109,7 +109,7 @@ jobs:
         runs-on: ubuntu-latest
         needs: lint
         steps:
-          - uses: actions/checkout@v4
+          - uses: actions/checkout@v5
             with:
               fetch-depth: 2
 
