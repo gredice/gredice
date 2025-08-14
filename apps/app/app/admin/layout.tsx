@@ -1,12 +1,10 @@
 import { PropsWithChildren, Suspense } from "react";
 import { AuthAppProvider } from "../../components/providers/AuthAppProvider";
 import { SignedOut, AuthProtectedSection } from "@signalco/auth-server/components";
-import { LoginDialog } from "./LoginDialog";
+import { LoginDialog, Nav, MobileHeader } from "../../components/admin/navigation";
 import { auth } from "../../lib/auth/auth";
-import { Nav } from "./Nav";
-import { MobileHeader } from "./MobileHeader";
 import { getEntityTypesOrganizedByCategories } from "@gredice/storage";
-import { AdminClientProvider } from "./AdminClientProvider";
+import { AdminClientProvider } from "../../components/admin/providers";
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +25,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                             </div>
                             {/* Main Content */}
                             <div className="min-h-full grow md:pt-2">
-                                <div className="p-2 md:p-4 bg-background rounded-t-xl md:border-l md:border-t md:rounded-tl-xl min-h-full">
+                                <div className="p-2 md:p-4 bg-background rounded-t-xl md:border-l md:border-t md:rounded-tr-none min-h-full">
                                     <AuthProtectedSection auth={authAdmin}>
                                         <Suspense>
                                             {children}

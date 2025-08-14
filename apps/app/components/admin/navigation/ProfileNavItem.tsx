@@ -2,7 +2,7 @@
 
 import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@signalco/ui-primitives/Menu";
-import { KnownPages } from "../../src/KnownPages";
+import { KnownPages } from "../../../src/KnownPages";
 import { LogOut, UserCircle } from "@signalco/ui-icons";
 
 export function ProfileNavItem({ onItemClick }: { onItemClick?: () => void } = {}) {

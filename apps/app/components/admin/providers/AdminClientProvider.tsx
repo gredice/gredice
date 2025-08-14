@@ -1,6 +1,6 @@
 'use client';
 
-import { NavContext, NavContextType } from "./NavContext";
+import { NavContext, NavContextType } from "../navigation/NavContext";
 
 export function AdminClientProvider({ categorizedTypes, uncategorizedTypes, children }: {
     categorizedTypes: NavContextType['categorizedTypes'],

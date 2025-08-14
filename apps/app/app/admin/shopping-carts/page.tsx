@@ -2,7 +2,7 @@ import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import { auth } from "../../../lib/auth/auth";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Stack } from "@signalco/ui-primitives/Stack";
-import { ShoppingCartsTable } from "./ShoppingCartsTable";
+import { ShoppingCartsTable } from "../../../components/admin/tables";
 
 export const dynamic = 'force-dynamic';
 

@@ -1,14 +1,14 @@
 import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
 import { Row } from "@signalco/ui-primitives/Row";
 import { getEntityTypeByName } from "@gredice/storage";
-import { EntitiesTable } from "./EntitiesTable";
+import { EntitiesTable } from "../../../../components/admin/tables";
 import { createEntity } from "../../../(actions)/entityActions";
 import { Add } from "@signalco/ui-icons";
 import { ServerActionIconButton } from "../../../../components/shared/ServerActionIconButton";
 import { auth } from "../../../../lib/auth/auth";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Stack } from "@signalco/ui-primitives/Stack";
-import { EntityTypeMenu } from "./EntityTypeMenu";
+import { EntityTypeMenu } from "../../../../components/admin/directories";
 
 export const dynamic = 'force-dynamic';
 
