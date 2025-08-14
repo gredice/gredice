@@ -5,6 +5,7 @@ import { withAxiom } from 'next-axiom';
 const nextConfig = {
     experimental: {
         reactCompiler: true,
+        turbopackScopeHoisting: false
     },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
     images: {

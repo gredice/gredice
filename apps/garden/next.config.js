@@ -7,6 +7,7 @@ const nextConfig = {
     reactStrictMode: true,
     experimental: {
         reactCompiler: true,
+        turbopackScopeHoisting: false
     },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
     productionBrowserSourceMaps: true,

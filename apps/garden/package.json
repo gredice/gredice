@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "next lint",
     "dev": "next dev --turbo -p 3001",
-    "build": "RUST_BACKTRACE=full next build --turbopack",
+    "build": "next build --turbopack",
     "start": "next start",
     "test": "pnpm run /^test:.*/",
     "test:run": "playwright test",
