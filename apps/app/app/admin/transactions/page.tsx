@@ -5,7 +5,7 @@ import { auth } from "../../../lib/auth/auth";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
-import { TransactionsTable } from "./TransactionsTable";
+import { TransactionsTable } from "../../../components/admin/tables";
 
 export const dynamic = 'force-dynamic';
 

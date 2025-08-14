@@ -1,4 +1,4 @@
-import { AttributeDefinitionsList } from "./AttributeDefinitionsList";
+import { AttributeDefinitionsList } from "../../../../../components/admin/directories";
 import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
 import { getEntityTypeByName } from "@gredice/storage";
 import { KnownPages } from "../../../../../src/KnownPages";

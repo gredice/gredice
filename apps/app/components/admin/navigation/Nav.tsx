@@ -1,7 +1,7 @@
 'use client';
 
 import { List, ListHeader } from "@signalco/ui-primitives/List";
-import { KnownPages } from "../../src/KnownPages";
+import { KnownPages } from "../../../src/KnownPages";
 import { Bank, Fence, Home, Inbox, SmileHappy, User, Tally3, Euro, Calendar, Hammer, Add, Edit, Book } from "@signalco/ui-icons";
 import { NavItem } from "./NavItem";
 import { Stack } from "@signalco/ui-primitives/Stack";

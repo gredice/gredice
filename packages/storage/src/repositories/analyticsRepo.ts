@@ -2,7 +2,7 @@ import { count, lt } from "drizzle-orm";
 import { accounts, events, farms, gardenBlocks, gardens, raisedBeds, transactions, users } from "../schema";
 import { storage } from "../storage";
 
-export async function getAnalyticsTotals(days: number = 1) {
+export async function getAnalyticsTotals(days: number = 7) {
     const now = new Date();
     const beforeDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
