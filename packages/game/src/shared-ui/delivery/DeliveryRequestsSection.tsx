@@ -6,7 +6,6 @@ import { Card, CardContent } from "@signalco/ui-primitives/Card";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { Modal } from "@signalco/ui-primitives/Modal";
-import { ModalConfirm } from "@signalco/ui/ModalConfirm";
 import { Input } from "@signalco/ui-primitives/Input";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import {
@@ -160,7 +159,7 @@ function CancelRequestModal({
                     <CardContent>
                         <Stack spacing={2}>
                             <Typography level="h6">Detalji dostave</Typography>
-                            <Row spacing={2} alignItems="center">
+                            <Row spacing={2}>
                                 {request.mode === 'delivery' ? (
                                     <>
                                         <Truck className="size-4" />
@@ -273,7 +272,7 @@ function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
                 <Stack spacing={3}>
                     <Row justifyContent="space-between" alignItems="start">
                         <Stack spacing={2}>
-                            <Row spacing={2} alignItems="center">
+                            <Row spacing={2}>
                                 {request.mode === 'delivery' ? (
                                     <>
                                         <Truck className="size-5" />
@@ -309,14 +308,14 @@ function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
                             )}
 
                             {request.location && (
-                                <Row spacing={1} alignItems="center">
+                                <Row spacing={1}>
                                     <MapPin className="size-4 text-muted-foreground" />
                                     <Typography level="body2">{request.location.name}</Typography>
                                 </Row>
                             )}
 
                             {request.slot && (
-                                <Row spacing={1} alignItems="center">
+                                <Row spacing={1}>
                                     <Timer className="size-4 text-muted-foreground" />
                                     <Typography level="body2">{formatSlotTime(request.slot)}</Typography>
                                 </Row>

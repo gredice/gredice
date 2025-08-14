@@ -69,7 +69,7 @@ export function AdminDashboardClient({
     return (
         <Stack spacing={2}>
             <Stack spacing={1}>
-                <Row justifyContent="space-between" alignItems="center">
+                <Row justifyContent="space-between">
                     <DashboardDivider>Računi i korisnici</DashboardDivider>
                     <SelectItems
                         value={selectedPeriod}

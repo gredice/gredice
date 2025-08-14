@@ -70,7 +70,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         <Typography level="body3" secondary className="text-green-600">
                             {`Popust: ${(100 - (item.shopData.discountPrice! / item.shopData.price! * 100)).toFixed(0)}% - ${item.shopData.discountDescription}`}
                         </Typography>
-                        <Row spacing={0.5} alignItems="center">
+                        <Row spacing={0.5}>
                             <Typography level="body1" bold className="text-green-600">
                                 {item.shopData.discountPrice?.toFixed(2) ?? "Nevaljan iznos"}
                             </Typography>

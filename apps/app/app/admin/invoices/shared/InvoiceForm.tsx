@@ -359,7 +359,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
         <>
             <form onSubmit={handleSubmit}>
                 <Stack spacing={2}>
-                    <Row spacing={2} justifyContent="space-between" alignItems="center">
+                    <Row spacing={2} justifyContent="space-between">
                         <Typography level="h1" className="text-2xl" semiBold>
                             {mode === 'create' ? 'Nova ponuda' : `Uredi ponudu ${invoice?.invoiceNumber}`}
                         </Typography>
@@ -390,7 +390,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                             {/* Invoice Information */}
                             <Card>
                                 <CardHeader>
-                                    <Row spacing={2} justifyContent="space-between" alignItems="center">
+                                    <Row spacing={2} justifyContent="space-between">
                                         <CardTitle>Osnovni podaci</CardTitle>
                                         {mode === 'create' && (
                                             <Row spacing={2}>
@@ -625,7 +625,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                     {/* Invoice Items */}
                     <Card>
                         <CardHeader>
-                            <Row justifyContent="space-between" alignItems="center">
+                            <Row justifyContent="space-between">
                                 <CardTitle>Stavke ponude</CardTitle>
                                 <Button variant="solid" onClick={addItem} startDecorator={<Add className="size-4 shrink-0" />}>
                                     Dodaj stavku
@@ -703,7 +703,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                 <div className="fixed inset-0 bg-black backdrop-blur bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-card rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
                         <div className="p-6 border-b">
-                            <Row spacing={2} justifyContent="space-between" alignItems="center">
+                            <Row spacing={2} justifyContent="space-between">
                                 <Typography level="h3" semiBold>Odaberite transakciju</Typography>
                                 <Button variant="link" onClick={() => setShowTransactionModal(false)}>✕</Button>
                             </Row>
@@ -755,7 +755,7 @@ export default function InvoiceForm({ mode, invoice, onSuccess }: InvoiceFormPro
                 <div className="fixed inset-0 bg-black backdrop-blur bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-card rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
                         <div className="p-6 border-b">
-                            <Row spacing={2} justifyContent="space-between" alignItems="center">
+                            <Row spacing={2} justifyContent="space-between">
                                 <Stack spacing={1}>
                                     <Typography level="h3" semiBold>Odaberite košaricu</Typography>
                                     {formData.accountId && (

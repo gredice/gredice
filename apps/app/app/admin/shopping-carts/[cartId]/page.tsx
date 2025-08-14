@@ -103,7 +103,7 @@ export default async function ShoppingCartDetailsPage({ params }: { params: { ca
                 <CardOverflow>
                     <div className="p-6">
                         <Stack spacing={3}>
-                            <Row spacing={4} alignItems="center">
+                            <Row spacing={4}>
                                 <Stack spacing={1}>
                                     <Typography level="body2">Status košarice</Typography>
                                     <Chip className="w-fit" color={cart.status === 'paid' ? 'success' : 'neutral'}>
@@ -124,7 +124,7 @@ export default async function ShoppingCartDetailsPage({ params }: { params: { ca
                                 </Stack>
                             </Row>
                             {Object.keys(currencyTotals).length > 0 && (
-                                <Row spacing={4} alignItems="center">
+                                <Row spacing={4}>
                                     <Stack spacing={1}>
                                         <Typography level="body2">Broj stavki</Typography>
                                         <Typography>{cart.items?.length || 0}</Typography>

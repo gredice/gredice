@@ -53,7 +53,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
     return (
         <Stack spacing={2}>
             <Row spacing={2} justifyContent="space-between">
-                <Row spacing={2} alignItems="center">
+                <Row spacing={2}>
                     <Typography level="h1" className="text-2xl" semiBold>
                         Fiskalni račun #{receipt.id}
                     </Typography>
@@ -167,14 +167,14 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
                         </CardHeader>
                         <CardContent>
                             <Stack spacing={1}>
-                                <Row spacing={2} alignItems="center">
+                                <Row spacing={2}>
                                     <Typography level="body2" className="w-20">Ponuda:</Typography>
                                     <Link href={KnownPages.Invoice(receipt.invoiceId)}>
                                         {receipt.invoice?.invoiceNumber || `#${receipt.invoiceId}`}
                                     </Link>
                                 </Row>
                                 {receipt.invoice?.transactionId && (
-                                    <Row spacing={2} alignItems="center">
+                                    <Row spacing={2}>
                                         <Typography level="body2" className="w-20">Transakcija:</Typography>
                                         <Link href={KnownPages.Transaction(receipt.invoice.transactionId)}>
                                             #{receipt.invoice.transactionId}

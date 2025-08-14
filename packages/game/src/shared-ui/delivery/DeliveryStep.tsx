@@ -6,11 +6,11 @@ import { Card, CardContent } from "@signalco/ui-primitives/Card";
 import { Row } from "@signalco/ui-primitives/Row";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@signalco/ui-primitives/Tabs";
-import { Navigate, MapPin, Truck, ShoppingCart, Timer } from "@signalco/ui-icons";
+import { Navigate, Truck, ShoppingCart, Timer } from "@signalco/ui-icons";
 import { Alert } from "@signalco/ui/Alert";
 import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
-import { useDeliveryAddresses, DeliveryAddressData } from "../../hooks/useDeliveryAddresses";
-import { usePickupLocations, PickupLocationData } from "../../hooks/usePickupLocations";
+import { useDeliveryAddresses } from "../../hooks/useDeliveryAddresses";
+import { usePickupLocations } from "../../hooks/usePickupLocations";
 import { useTimeSlots, TimeSlotData } from "../../hooks/useTimeSlots";
 import { DeliveryAddressesSection } from './DeliveryAddressesSection';
 
@@ -92,7 +92,7 @@ export function DeliveryStep({ onSelectionChange, onBack, onProceed, isValid }: 
     if (manageAddresses) {
         return (
             <Stack spacing={4}>
-                <Row justifyContent="space-between" alignItems="center">
+                <Row justifyContent="space-between">
                     <Typography level="h3">Upravljanje adresama</Typography>
                     <Button
                         variant="outlined"
@@ -108,7 +108,7 @@ export function DeliveryStep({ onSelectionChange, onBack, onProceed, isValid }: 
 
     return (
         <Stack spacing={4}>
-            <Row spacing={2} justifyContent="space-between" alignItems="center">
+            <Row spacing={2} justifyContent="space-between">
                 <Typography level="h3">Informacije o dostavi</Typography>
                 <Button
                     variant="plain"
@@ -145,7 +145,7 @@ export function DeliveryStep({ onSelectionChange, onBack, onProceed, isValid }: 
 
                             <TabsContent value="delivery" className="mt-4">
                                 <Stack spacing={3}>
-                                    <Row justifyContent="space-between" alignItems="center">
+                                    <Row justifyContent="space-between">
                                         <Typography level="body1">Odaberite adresu za dostavu</Typography>
                                         <Button
                                             variant="outlined"
@@ -173,7 +173,7 @@ export function DeliveryStep({ onSelectionChange, onBack, onProceed, isValid }: 
                                                     <Card key={address.id} className="border-primary bg-primary/5">
                                                         <CardContent className="p-3">
                                                             <Stack spacing={1}>
-                                                                <Row spacing={2} alignItems="center">
+                                                                <Row spacing={2}>
                                                                     <Typography level="body1" bold>
                                                                         {address.label}
                                                                     </Typography>
@@ -279,7 +279,7 @@ export function DeliveryStep({ onSelectionChange, onBack, onProceed, isValid }: 
                                         selection.slotId === slot.id && (
                                             <Card key={slot.id} className="border-primary bg-primary/5">
                                                 <CardContent className="p-3">
-                                                    <Row spacing={2} alignItems="center">
+                                                    <Row spacing={2}>
                                                         <Timer className="size-4 text-muted-foreground" />
                                                         <Typography level="body2">
                                                             {formatSlotTime(slot)}

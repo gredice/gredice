@@ -200,7 +200,7 @@ function AddressCard({ address }: { address: DeliveryAddressData }) {
                 <Stack spacing={2}>
                     <Row justifyContent="space-between" alignItems="start">
                         <Stack spacing={1}>
-                            <Row spacing={1} alignItems="center">
+                            <Row spacing={1}>
                                 <Typography level="h6">{address.label}</Typography>
                                 {address.isDefault && (
                                     <Typography level="body3" className="text-primary">
@@ -273,7 +273,7 @@ export function DeliveryAddressesSection() {
 
     return (
         <Stack spacing={4}>
-            <Row justifyContent="space-between" alignItems="center">
+            <Row justifyContent="space-between">
                 <Typography level="h4" className="hidden md:block">Adrese za dostavu</Typography>
                 <Modal
                     open={isCreating}
