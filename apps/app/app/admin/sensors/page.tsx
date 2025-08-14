@@ -85,7 +85,7 @@ export default async function SensorsPage() {
         <Stack spacing={2}>
             <Row spacing={1}>
                 <Typography level="h1" className="text-2xl" semiBold>{"Senzori"}</Typography>
-                <Chip color="primary" size="sm">{totalSensors}</Chip>
+                <Chip color="primary">{totalSensors}</Chip>
             </Row>
             <Stack spacing={2}>
                 {sensorsByPhysicalId.length === 0 ? (

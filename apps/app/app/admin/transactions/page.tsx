@@ -24,9 +24,9 @@ export default async function TransactionsPage() {
         <Stack spacing={2}>
             <Row spacing={1}>
                 <Typography level="h1" className="text-2xl" semiBold>{"Transakcije"}</Typography>
-                <Chip color="primary" size="sm">{transactions.length}</Chip>
+                <Chip color="primary">{transactions.length}</Chip>
                 {transactionsWithoutInvoices.length > 0 && (
-                    <Chip color="success" size="sm">
+                    <Chip color="success">
                         ✨ {transactionsWithoutInvoices.length} bez računa
                     </Chip>
                 )}

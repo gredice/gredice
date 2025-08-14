@@ -21,7 +21,7 @@ export default async function AccountsPage() {
         <Stack spacing={2}>
             <Row spacing={1}>
                 <Typography level="h1" className="text-2xl" semiBold>{"Računi"}</Typography>
-                <Chip color="primary" size="sm">{accounts.length}</Chip>
+                <Chip color="primary">{accounts.length}</Chip>
             </Row>
             <Card>
                 <CardOverflow>

@@ -19,7 +19,7 @@ export default async function FeedbackPage() {
         <Stack spacing={2}>
             <Row spacing={1}>
                 <Typography level="h1" className="text-2xl" semiBold>Povratne informacije</Typography>
-                <Chip color="primary" size="sm">{feedbacks.length}</Chip>
+                <Chip color="primary">{feedbacks.length}</Chip>
             </Row>
             <Card>
                 <CardOverflow>

@@ -49,7 +49,7 @@ export async function AccountSunflowersCard({ accountId }: { accountId: string }
                                         { value: 'gift', label: 'Poklon' }
                                     ]} />
                             </div>
-                            <Button size="sm" type="submit" startDecorator={<Add className="size-5" />}>Dodjeli</Button>
+                            <Button type="submit" startDecorator={<Add className="size-5" />}>Dodjeli</Button>
                         </Stack>
                     </form>
                 </div>
