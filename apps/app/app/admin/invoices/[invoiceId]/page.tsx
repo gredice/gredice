@@ -61,7 +61,7 @@ export default async function InvoicePage({ params }: { params: { invoiceId: str
                 { label: `${invoice.invoiceNumber}` }
             ]} />
             <Stack spacing={2}>
-                <Row spacing={2} alignItems="center" justifyContent="space-between">
+                <Row spacing={2} justifyContent="space-between">
                     <Typography level="h1">
                         Ponuda {invoice.invoiceNumber}
                     </Typography>
@@ -105,7 +105,7 @@ export default async function InvoicePage({ params }: { params: { invoiceId: str
                                     )}
                                     <Stack spacing={1} className="flex-1">
                                         <Typography level="body2" >Status</Typography>
-                                        <Row spacing={2} alignItems="center">
+                                        <Row spacing={2}>
                                             <Chip color={getStatusColor(invoice.status)} >
                                                 {getStatusLabel(invoice.status)}
                                             </Chip>
@@ -183,7 +183,7 @@ export default async function InvoicePage({ params }: { params: { invoiceId: str
                                         <NoDataPlaceholder>Nema povezanih stavki</NoDataPlaceholder>
                                     )}
                                     {invoice.transactionId && (
-                                        <Row spacing={2} alignItems="center">
+                                        <Row spacing={2}>
                                             <Typography level="body2" className="w-20">Transakcija:</Typography>
                                             <Link href={KnownPages.Transaction(invoice.transactionId)}>
                                                 #{invoice.transactionId}

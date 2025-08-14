@@ -15,7 +15,7 @@ export default async function InvoicesPage() {
 
     return (
         <Stack spacing={2}>
-            <Row spacing={1} justifyContent="space-between" alignItems="center">
+            <Row spacing={1} justifyContent="space-between">
                 <Row spacing={1}>
                     <Typography level="h1" className="text-2xl" semiBold>Ponude</Typography>
                 </Row>
