@@ -1,1 +1,0 @@
-ALTER TABLE "shopping_cart_items" DROP COLUMN "type";

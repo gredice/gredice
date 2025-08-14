@@ -1,1 +1,0 @@
-ALTER TABLE "attribute_definitions" ALTER COLUMN "data_type" SET NOT NULL;

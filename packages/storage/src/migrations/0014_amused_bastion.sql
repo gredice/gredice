@@ -1,1 +1,0 @@
-ALTER TABLE "attribute_definitions" ADD COLUMN "required" boolean DEFAULT false NOT NULL;
