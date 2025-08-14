@@ -36,7 +36,7 @@ export function SelectEntity({ value, onChange, attributeDefinition }: Attribute
     return (
         <SelectItems
             items={items}
-            value={value ?? ''}
+            value={value ?? '-'}
             onValueChange={handleOnChange}
         />
     );

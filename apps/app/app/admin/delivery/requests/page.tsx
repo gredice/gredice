@@ -11,11 +11,9 @@ export default async function AdminDeliveryRequestsPage() {
     await auth(['admin']);
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={2}>
             <Typography level="h1" className="text-2xl" semiBold>Upravljanje zahtjevima za dostavu</Typography>
-
             <DeliveryRequestsFilters />
-
             <Card>
                 <CardOverflow>
                     <DeliveryRequestsTable />
