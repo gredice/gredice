@@ -1,8 +1,8 @@
-import vercelToolbar from '@vercel/toolbar/plugins/next'
+import vercelToolbar from '@vercel/toolbar/plugins/next';
 import { withAxiom } from 'next-axiom';
+import type { NextConfig } from 'next';
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
     experimental: {
         reactCompiler: true,
         // Scope hoisting is disabled as a workaround for current compatibility issues with Turbopack and our codebase.

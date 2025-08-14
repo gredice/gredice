@@ -1,9 +1,8 @@
-// @ts-check
-import vercelToolbar from '@vercel/toolbar/plugins/next'
+import vercelToolbar from '@vercel/toolbar/plugins/next';
 import { withAxiom } from 'next-axiom';
+import type { NextConfig } from 'next';
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
     reactStrictMode: true,
     experimental: {
         reactCompiler: true,
