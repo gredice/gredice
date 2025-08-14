@@ -7,15 +7,15 @@
   },
   "devDependencies": {
     "@types/node": "22.17.1",
-    "@types/react": "19.1.9",
+    "@types/react": "19.1.10",
     "typescript": "5.9.2"
   },
   "dependencies": {
     "@signalco/hooks": "0.2.1",
-    "@signalco/ui": "0.2.9",
+    "@signalco/ui": "0.2.10",
     "@signalco/ui-icons": "0.2.2",
-    "@signalco/ui-primitives": "0.6.3",
     "next": "15.4.6",
+    "@signalco/ui-primitives": "0.6.4",
     "react": "19.1.1",
     "react-dom": "19.1.1"
   },
