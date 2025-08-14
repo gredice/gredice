@@ -1,7 +1,7 @@
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Container } from "@signalco/ui-primitives/Container";
 import { PageHeader } from "../../../components/shared/PageHeader";
-import { Card } from "@signalco/ui-primitives/Card";
+import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@signalco/ui-primitives/Tabs";
 import { Row } from "@signalco/ui-primitives/Row";
@@ -9,6 +9,8 @@ import { Chip } from "@signalco/ui-primitives/Chip";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
 import { WhatsAppCard } from "../../../components/social/WhatsAppCard";
 import { client } from '@gredice/client';
+import { StyledHtml } from "../../../components/shared/StyledHtml";
+import { Markdown } from "../../../components/shared/Markdown";
 
 // Types from API response - these match the type-safe client schema
 interface TimeSlot {
@@ -97,20 +99,23 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
     }
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={1}>
             {Object.entries(groupedSlots).map(([date, dateSlots]) => (
-                <Card key={date} className="p-4">
-                    <Stack spacing={3}>
-                        <Typography level="h6" className="border-b pb-2">
-                            {new Date(date).toLocaleDateString('hr-HR', {
-                                weekday: 'long',
-                                day: 'numeric',
-                                month: 'long',
-                                year: 'numeric'
-                            })}
-                        </Typography>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <Card key={date}>
+                    <CardHeader>
+                        <CardTitle>
+                            <Typography level="h5" className="text-xl font-normal">
+                                {new Date(date).toLocaleDateString('hr-HR', {
+                                    weekday: 'long',
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric'
+                                })}
+                            </Typography>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent noHeader>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                             {dateSlots.map((slot) => {
                                 return (
                                     <div key={slot.id} className="border rounded-lg p-3 bg-background">
@@ -129,7 +134,7 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
                                                     Dostupno
                                                 </Chip>
                                             </Row>
-                                            {slot.location && (
+                                            {slot.location && slot.type === 'pickup' && (
                                                 <Typography level="body3" className="text-muted-foreground">
                                                     📍 {slot.location.name}
                                                 </Typography>
@@ -139,7 +144,7 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
                                 );
                             })}
                         </div>
-                    </Stack>
+                    </CardContent>
                 </Card>
             ))}
         </Stack>
@@ -148,75 +153,59 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
 
 export default async function DeliverySlotsPage() {
     return (
-        <Container maxWidth="lg">
-            <Stack spacing={6}>
+        <Container maxWidth="md">
+            <Stack spacing={4}>
                 <PageHeader
                     padded
-                    header="📅 Dostupni termini dostave"
-                    subHeader="Pogledajte dostupne termine za dostavu ili osobno preuzimanje"
+                    header="📅 Termini dostave"
+                    subHeader="Vidi dostupne termine za dostavu ili osobno preuzimanje."
                 />
 
-                <Card className="p-4">
-                    <Stack spacing={4}>
-                        <Typography level="body1">
-                            Ovdje možete vidjeti sve dostupne termine za dostavu ili osobno preuzimanje u sljedećih 14 dana.
-                            Za rezervaciju termina, idite u <strong>aplikaciju za naručivanje</strong> nakon što završite s kupovinom.
-                        </Typography>
+                <Typography level="body1">
+                    Ovdje možeš vidjeti sve dostupne termine za dostavu ili osobno preuzimanje u sljedećih 14 dana.
+                    Termin možeš rezervirati u <strong>aplikaciju</strong> tijekom narudžbe branja.
+                </Typography>
 
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <Stack spacing={2}>
-                                <Typography level="body2" semiBold className="text-blue-800">
-                                    💡 Kako rezervirati termin?
-                                </Typography>
-                                <Typography level="body3" className="text-blue-700">
-                                    1. Dodajte proizvode u košaricu<br />
-                                    2. Idite na checkout<br />
-                                    3. Odaberite način dostave i preferirani termin<br />
-                                    4. Završite narudžbu
-                                </Typography>
-                            </Stack>
-                        </div>
-                    </Stack>
+                <Card className="w-fit p-4 pt-6 pr-6">
+                    <CardHeader>
+                        <CardTitle>
+                            💡 Kako rezervirati termin?
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <StyledHtml>
+                            <ol>
+                                <li>Dodaj barem jedno branje u košaricu</li>
+                                <li>Potvrdi plaćanje</li>
+                                <li>Odaberi način dostave i preferirani termin</li>
+                                <li>Završi narudžbu</li>
+                            </ol>
+                        </StyledHtml>
+                    </CardContent>
                 </Card>
 
-                <Tabs defaultValue="delivery" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="delivery">
-                            🚚 Dostava na adresu
-                        </TabsTrigger>
-                        <TabsTrigger value="pickup">
-                            📦 Osobno preuzimanje
-                        </TabsTrigger>
-                    </TabsList>
+                <Stack spacing={2}>
+                    <Typography level="h4">Termini dostave na adresu</Typography>
+                    <Typography level="body2" className="text-muted-foreground">
+                        Dostava se vrši u 2-satnim blokovima na područje Zagreba i okolice.
+                    </Typography>
+                    <SlotsDisplay type="delivery" />
+                </Stack>
+                <Stack spacing={2}>
+                    <Typography level="h4">Termini osobnog preuzimanja</Typography>
+                    <Typography level="body2" className="text-muted-foreground">
+                        Osobno preuzimanje na našim lokacijama u Zagrebu.
+                    </Typography>
+                    <SlotsDisplay type="pickup" />
+                </Stack>
 
-                    <TabsContent value="delivery" className="mt-6">
-                        <Stack spacing={4}>
-                            <Typography level="h5">Termini dostave na adresu</Typography>
-                            <Typography level="body2" className="text-muted-foreground">
-                                Dostava se vrši u 2-satnim blokovima na područje Zagreba i okolice.
-                            </Typography>
-                            <SlotsDisplay type="delivery" />
-                        </Stack>
-                    </TabsContent>
-
-                    <TabsContent value="pickup" className="mt-6">
-                        <Stack spacing={4}>
-                            <Typography level="h5">Termini osobnog preuzimanja</Typography>
-                            <Typography level="body2" className="text-muted-foreground">
-                                Osobno preuzimanje na našim lokacijama u Zagrebu.
-                            </Typography>
-                            <SlotsDisplay type="pickup" />
-                        </Stack>
-                    </TabsContent>
-                </Tabs>
-
-                <Stack spacing={4}>
-                    <Typography level="h6">Potrebna vam je pomoć?</Typography>
+                <Stack spacing={2}>
+                    <Typography level="h6">Potrebna ti je pomoć ili više informacija o dostavi?</Typography>
                     <WhatsAppCard />
                 </Stack>
 
                 <Row spacing={2} className="mt-8">
-                    <Typography level="body1">Jesu li vam ove informacije korisne?</Typography>
+                    <Typography level="body1">Jesu li ti ove informacije korisne?</Typography>
                     <FeedbackModal topic="www/delivery-slots" />
                 </Row>
             </Stack>

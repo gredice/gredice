@@ -54,19 +54,17 @@ export async function TimeSlotsTable() {
         <Table>
             <Table.Header>
                 <Table.Row>
-                    <Table.Head>ID</Table.Head>
                     <Table.Head>Tip</Table.Head>
                     <Table.Head>Lokacija</Table.Head>
                     <Table.Head>Vremenski slot</Table.Head>
                     <Table.Head>Status</Table.Head>
-                    <Table.Head>Kreiran</Table.Head>
                     <Table.Head>Akcije</Table.Head>
                 </Table.Row>
             </Table.Header>
             <Table.Body>
                 {timeSlots.length === 0 && (
                     <Table.Row>
-                        <Table.Cell colSpan={7}>
+                        <Table.Cell colSpan={5}>
                             <NoDataPlaceholder>
                                 Nema vremenskih slotova
                             </NoDataPlaceholder>
@@ -78,9 +76,6 @@ export async function TimeSlotsTable() {
 
                     return (
                         <Table.Row key={slot.id}>
-                            <Table.Cell>
-                                <Typography level="body2">{slot.id}</Typography>
-                            </Table.Cell>
                             <Table.Cell>
                                 <Chip color="primary" className="w-fit">
                                     {getTypeLabel(slot.type)}
@@ -98,13 +93,6 @@ export async function TimeSlotsTable() {
                                 <Chip color={getStatusColor(slot.status)} className="w-fit">
                                     {getStatusLabel(slot.status)}
                                 </Chip>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Typography level="body2" secondary>
-                                    <LocaleDateTime time={true}>
-                                        {slot.createdAt}
-                                    </LocaleDateTime>
-                                </Typography>
                             </Table.Cell>
                             <Table.Cell>
                                 <SlotActionButtons slot={slot} />

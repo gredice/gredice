@@ -5,6 +5,8 @@ import { Button } from "@signalco/ui-primitives/Button";
 import { SelectTimeSlot } from "@gredice/storage";
 import { closeTimeSlotAction, archiveTimeSlotAction, updateTimeSlotStatusAction } from "./actions";
 import { useTransition } from "react";
+import { IconButton } from "@signalco/ui-primitives/IconButton";
+import { Close } from "@signalco/ui-icons";
 
 interface SlotActionButtonsProps {
     slot: SelectTimeSlot;
@@ -48,14 +50,14 @@ export function SlotActionButtons({ slot }: SlotActionButtonsProps) {
     return (
         <Row spacing={1}>
             {isScheduled && (
-                <Button
+                <IconButton
                     variant="outlined"
                     size="sm"
                     onClick={handleCloseSlot}
                     disabled={isPending}
                 >
-                    Zatvori
-                </Button>
+                    <Close />
+                </IconButton>
             )}
 
             {isClosed && (

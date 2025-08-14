@@ -48,7 +48,7 @@ export default async function FaqPage() {
                         </div>
                     </Stack>
                 ))}
-                <Stack spacing={4}>
+                <Stack spacing={2}>
                     <Typography level="h4">Nema tvojeg pitanja?</Typography>
                     <WhatsAppCard />
                 </Stack>

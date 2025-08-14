@@ -9,6 +9,7 @@ import { WhatsAppCard } from "../../components/social/WhatsAppCard"
 import { Button } from "@signalco/ui-primitives/Button"
 import { Calendar } from "@signalco/ui-icons"
 import { KnownPages } from "../../src/KnownPages"
+import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card"
 
 export default function DeliveryPage() {
     return (
@@ -101,24 +102,31 @@ export default function DeliveryPage() {
                         lokaciji u Zagrebu. Ako povrće ne preuzmeš u roku od <strong>72 sata</strong>, donirat ćemo ga onima
                         kojima je najpotrebnije.
                     </p>
-                    <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: '0.5rem' }}>
-                        <h3>📅 Pogledaj dostupne termine</h3>
-                        <p>Želiš vidjeti koji su termini dostupni u sljedećih 14 dana? Pogledaj našu stranicu s dostupnim terminima dostave i osobnog preuzimanja.</p>
-                        <Button
-                            href={KnownPages.DeliverySlots}
-                            variant="solid"
-                            color="primary"
-                            startDecorator={<Calendar className="size-4" />}
-                        >
-                            Pogledaj dostupne termine
-                        </Button>
-                    </div>
                     <hr />
                     <p>Tvoje povrće čeka da stigne do tebe - svježe, lokalno i s ljubavlju uzgojeno. 🥬📦</p>
                     <hr />
                 </StyledHtml>
             </Stack>
-            <Stack spacing={4}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <Card className="mb-8">
+                    <CardHeader>
+                        <CardTitle>📅 Termini dostave</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Stack spacing={3}>
+                            <Typography>Želiš vidjeti koji su termini dostupni za dostavu tvojeg povrća?</Typography>
+                            <Button
+                                href={KnownPages.DeliverySlots}
+                                variant="solid"
+                                startDecorator={<Calendar className="size-4" />}
+                            >
+                                Pogledaj dostupne termine
+                            </Button>
+                        </Stack>
+                    </CardContent>
+                </Card>
+            </div>
+            <Stack spacing={2}>
                 <Typography level="h5">Imaš dodatna pitanja?</Typography>
                 <WhatsAppCard />
             </Stack>
