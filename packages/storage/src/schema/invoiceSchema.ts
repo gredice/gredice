@@ -133,6 +133,7 @@ export const receipts = pgTable('receipts', {
     cisReference: text('cis_reference'), // Reference number from CIS system
     cisErrorMessage: text('cis_error_message'), // Error message if fiscalization failed
     cisTimestamp: timestamp('cis_timestamp'), // When receipt was processed by CIS
+    cisResponse: text('cis_response'), // Full response from CIS (for debugging)
 
     // Receipt dates
     issuedAt: timestamp('issued_at').notNull().defaultNow(),

@@ -9,7 +9,7 @@ import {
 } from "../schema";
 
 // Get active fiscalization user settings for an account
-export async function getFiscalizationUserSettings(accountId: string): Promise<SelectFiscalizationUserSettings | null> {
+export async function getFiscalizationUserSettings(): Promise<SelectFiscalizationUserSettings | null> {
     const results = await storage()
         .select()
         .from(fiscalizationUserSettings)
@@ -25,7 +25,7 @@ export async function getFiscalizationUserSettings(accountId: string): Promise<S
 }
 
 // Get active fiscalization POS settings for an account
-export async function getFiscalizationPosSettings(accountId: string): Promise<SelectFiscalizationPosSettings | null> {
+export async function getFiscalizationPosSettings(): Promise<SelectFiscalizationPosSettings | null> {
     const results = await storage()
         .select()
         .from(fiscalizationPosSettings)
@@ -41,10 +41,10 @@ export async function getFiscalizationPosSettings(accountId: string): Promise<Se
 }
 
 // Get all fiscalization settings for an account (convenience function)
-export async function getAllFiscalizationSettings(accountId: string) {
+export async function getAllFiscalizationSettings() {
     const [userSettings, posSettings] = await Promise.all([
-        getFiscalizationUserSettings(accountId),
-        getFiscalizationPosSettings(accountId),
+        getFiscalizationUserSettings(),
+        getFiscalizationPosSettings(),
     ]);
 
     return {

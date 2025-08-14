@@ -1,15 +1,17 @@
 'use server';
 
-import { changeInvoiceStatus, cancelInvoice, softDeleteInvoice, InvoiceStatus, createReceiptFromInvoice, getReceiptByInvoice } from "@gredice/storage";
+import { changeInvoiceStatus, cancelInvoice, softDeleteInvoice, InvoiceStatus, createReceiptFromInvoice, getReceiptByInvoice, getFiscalizationUserSettings, getInvoice, users } from "@gredice/storage";
 import { auth } from "../../../../lib/auth/auth";
 import { redirect } from "next/navigation";
 import { KnownPages } from "../../../../src/KnownPages";
+import { revalidatePath } from "next/cache";
 
 export async function changeInvoiceStatusAction(invoiceId: number, newStatus: InvoiceStatus) {
     await auth(['admin']);
 
     try {
         await changeInvoiceStatus(invoiceId, newStatus);
+        revalidatePath(KnownPages.Invoice(invoiceId));
         return { success: true };
     } catch (error) {
         console.error('Error changing invoice status:', error);
@@ -25,6 +27,7 @@ export async function cancelInvoiceAction(invoiceId: number) {
 
     try {
         await cancelInvoice(invoiceId);
+        revalidatePath(KnownPages.Invoice(invoiceId));
         return { success: true };
     } catch (error) {
         console.error('Error cancelling invoice:', error);
@@ -40,6 +43,7 @@ export async function deleteInvoiceAction(invoiceId: number) {
 
     try {
         await softDeleteInvoice(invoiceId);
+        revalidatePath(KnownPages.Invoices);
         redirect(KnownPages.Invoices);
     } catch (error) {
         console.error('Error deleting invoice:', error);
@@ -54,11 +58,21 @@ export async function createReceiptAction(invoiceId: number) {
     await auth(['admin']);
 
     try {
+        // TODO: Retrieve from settings
+        const invoice = await getInvoice(invoiceId);
+        const userSettings = await getFiscalizationUserSettings();
+        if (!userSettings) {
+            throw new Error('Fiscalization user settings not found');
+        }
+
         const receiptId = await createReceiptFromInvoice(invoiceId, {
-            paymentMethod: 'card', // Default payment method - could be made configurable
-            businessPin: '12345678901', // Default business PIN - should be configured
-            businessName: 'Gredice d.o.o.', // Default business name - should be configured  
-            businessAddress: 'Adresa 1, 10000 Zagreb, Hrvatska', // Default address - should be configured
+            paymentMethod: 'card',
+            businessPin: userSettings.pin,
+            businessName: 'Gredice d.o.o.',
+            businessAddress: 'Ulica Julija Knifera 3, 10000 Zagreb, Hrvatska',
+            customerAddress: invoice?.billToAddress,
+            customerName: invoice?.billToName,
+            paymentReference: invoice?.transactionId?.toString()
         });
 
         redirect(KnownPages.Receipt(receiptId));

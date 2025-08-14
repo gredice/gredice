@@ -127,7 +127,7 @@ export const knownEvents = {
             version: 1,
             aggregateId,
         }),
-        fiscalizedV1: (aggregateId: string, data: { jir?: string; zki?: string; cisStatus: string }) => ({
+        fiscalizedV1: (aggregateId: string, data: { jir?: string; zki?: string; cisStatus: string, cisResponse?: string | null }) => ({
             type: knownEventTypes.receipts.fiscalize,
             version: 1,
             aggregateId,

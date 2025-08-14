@@ -9,7 +9,6 @@ import { Edit, Delete, Send, Check, Clear, FileText } from "@signalco/ui-icons";
 import { useState, useTransition, useEffect } from "react";
 import { changeInvoiceStatusAction, cancelInvoiceAction, deleteInvoiceAction, createReceiptAction, getInvoiceReceiptAction } from "./actions";
 import { canEditInvoice, canDeleteInvoice, canCancelInvoice, InvoiceStatus } from "./invoiceUtils";
-import Link from "next/link";
 import { KnownPages } from "../../../../src/KnownPages";
 
 type Invoice = {
@@ -98,17 +97,16 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
                         variant="outlined"
                         startDecorator={<Edit className="size-4" />}
                         disabled={isPending}
+                        href={`${KnownPages.Invoice(invoice.id)}/edit`}
                     >
-                        <Link href={`${KnownPages.Invoice(invoice.id)}/edit`}>
-                            Uredi
-                        </Link>
+                        Uredi
                     </Button>
                 )}
 
                 {/* Status Transition Buttons */}
                 {status === 'draft' && (
                     <Button
-                        variant="soft"
+                        variant="solid"
                         startDecorator={<FileText className="size-4" />}
                         disabled={isPending}
                         onClick={() => handleStatusChange('pending')}
@@ -119,19 +117,18 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
 
                 {status === 'pending' && (
                     <Button
-                        variant="soft"
-                        color="primary"
+                        variant="solid"
                         startDecorator={<Send className="size-4" />}
                         disabled={isPending}
                         onClick={() => handleStatusChange('sent')}
                     >
-                        Pošalji
+                        Zaključaj
                     </Button>
                 )}
 
                 {status === 'sent' && (
                     <Button
-                        variant="soft"
+                        variant="solid"
                         color="success"
                         startDecorator={<Check className="size-4" />}
                         disabled={isPending}
@@ -144,7 +141,7 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
                 {/* Create Receipt Button - only when invoice is paid */}
                 {status === 'paid' && receiptChecked && !existingReceipt && (
                     <Button
-                        variant="soft"
+                        variant="solid"
                         color="primary"
                         startDecorator={<FileText className="size-4" />}
                         disabled={isPending}
@@ -160,10 +157,9 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
                         variant="outlined"
                         startDecorator={<FileText className="size-4" />}
                         disabled={isPending}
+                        href={KnownPages.Receipt(existingReceipt.id)}
                     >
-                        <Link href={KnownPages.Receipt(existingReceipt.id)}>
-                            Prikaži račun
-                        </Link>
+                        Prikaži račun
                     </Button>
                 )}
 

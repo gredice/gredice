@@ -15,9 +15,10 @@ export const dynamic = 'force-dynamic';
 
 function getCisStatusColor(cisStatus: string) {
     switch (cisStatus) {
-        case 'sent': return 'success';
+        case 'sent': return 'info';
         case 'pending': return 'warning';
         case 'failed': return 'error';
+        case 'confirmed': return 'success';
         default: return 'neutral';
     }
 }
@@ -27,6 +28,7 @@ function getCisStatusLabel(cisStatus: string) {
         case 'sent': return 'Poslano';
         case 'pending': return 'Na čekanju';
         case 'failed': return 'Neuspješno';
+        case 'confirmed': return 'Potvrđeno';
         default: return cisStatus;
     }
 }
@@ -35,13 +37,14 @@ export default async function ReceiptsPage() {
     await auth(['admin']);
 
     // Get receipts with all statuses - this is a simplified approach
-    const [sentReceipts, pendingReceipts, failedReceipts] = await Promise.all([
+    const [sentReceipts, pendingReceipts, failedReceipts, confirmedReceipts] = await Promise.all([
         getReceiptsByStatus('sent'),
         getReceiptsByStatus('pending'),
-        getReceiptsByStatus('failed')
+        getReceiptsByStatus('failed'),
+        getReceiptsByStatus('confirmed'),
     ]);
 
-    const receipts = [...sentReceipts, ...pendingReceipts, ...failedReceipts];
+    const receipts = [...sentReceipts, ...pendingReceipts, ...failedReceipts, ...confirmedReceipts];
 
     return (
         <Stack spacing={2}>
@@ -54,13 +57,10 @@ export default async function ReceiptsPage() {
                     <Table>
                         <Table.Header>
                             <Table.Row>
+                                <Table.Head>Datum izdavanja</Table.Head>
                                 <Table.Head>Račun</Table.Head>
-                                <Table.Head>JIR</Table.Head>
-                                <Table.Head>ZKI</Table.Head>
                                 <Table.Head>CIS Status</Table.Head>
                                 <Table.Head>Iznos</Table.Head>
-                                <Table.Head>Datum izdavanja</Table.Head>
-                                <Table.Head>Datum fiskaalizacije</Table.Head>
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
@@ -76,43 +76,24 @@ export default async function ReceiptsPage() {
                             {receipts.map((receipt) => (
                                 <Table.Row key={receipt.id}>
                                     <Table.Cell>
+                                        <LocaleDateTime>
+                                            {receipt.createdAt}
+                                        </LocaleDateTime>
+                                    </Table.Cell>
+                                    <Table.Cell>
                                         <Link href={KnownPages.Receipt(receipt.id)}>
-                                            {receipt.invoice?.invoiceNumber || `#${receipt.invoiceId}`}
+                                            {receipt.yearReceiptNumber}
                                         </Link>
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <Typography className="font-mono text-sm">
-                                            {receipt.jir || 'N/A'}
-                                        </Typography>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Typography className="font-mono text-sm">
-                                            {receipt.zki || 'N/A'}
-                                        </Typography>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Chip color={getCisStatusColor(receipt.cisStatus)} size="sm" className="w-fit">
-                                            <Typography noWrap>
-                                                {getCisStatusLabel(receipt.cisStatus)}
-                                            </Typography>
+                                        <Chip color={getCisStatusColor(receipt.cisStatus)} className="w-fit">
+                                            {getCisStatusLabel(receipt.cisStatus)}
                                         </Chip>
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <Chip color="success" size="sm" className="w-fit">
-                                            <Typography noWrap>
-                                                {receipt.invoice?.currency === 'eur' ? '€' : receipt.invoice?.currency || 'eur'} {receipt.totalAmount}
-                                            </Typography>
+                                        <Chip className="w-fit">
+                                            {receipt.totalAmount}{receipt.currency === 'eur' ? '€' : receipt.currency || 'eur'}
                                         </Chip>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <LocaleDateTime time={false}>
-                                            {receipt.invoice?.issueDate}
-                                        </LocaleDateTime>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <LocaleDateTime>
-                                            {receipt.cisTimestamp}
-                                        </LocaleDateTime>
                                     </Table.Cell>
                                 </Table.Row>
                             ))}

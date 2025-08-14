@@ -17,14 +17,14 @@ import { PgTransaction } from 'drizzle-orm/pg-core';
 
 // Receipt creation data interface
 export interface ReceiptCreationData {
-    paymentMethod: string; // 'card', 'cash', 'bank_transfer', etc.
-    paymentReference?: string; // External payment reference (e.g., Stripe payment ID)
-    businessPin?: string; // Croatian business tax number
-    businessName?: string;
-    businessAddress?: string;
-    customerPin?: string; // Customer's PIN for B2B transactions
-    customerName?: string;
-    customerAddress?: string; // Customer's address for B2B transactions
+    paymentMethod: 'card' | 'cash' | 'bank_transfer';
+    paymentReference?: string | null;
+    businessPin?: string | null;
+    businessName?: string | null;
+    businessAddress?: string | null;
+    customerPin?: string | null;
+    customerName?: string | null;
+    customerAddress?: string | null;
     // JIR and ZKI are optional - provided later during fiscalization
     jir?: string;
     zki?: string;
@@ -623,6 +623,7 @@ export async function updateReceiptFiscalization(
         cisReference?: string;
         cisErrorMessage?: string | null;
         cisTimestamp?: Date;
+        cisResponse?: string | null;
     }
 ) {
     await storage()
@@ -634,6 +635,7 @@ export async function updateReceiptFiscalization(
             cisReference: fiscalizationData.cisReference,
             cisErrorMessage: fiscalizationData.cisErrorMessage,
             cisTimestamp: fiscalizationData.cisTimestamp,
+            cisResponse: fiscalizationData.cisResponse,
             updatedAt: new Date(),
         })
         .where(
@@ -646,6 +648,7 @@ export async function updateReceiptFiscalization(
         jir: fiscalizationData.jir,
         zki: fiscalizationData.zki,
         cisStatus: fiscalizationData.cisStatus,
+        cisResponse: fiscalizationData.cisResponse,
     }) ?? {
         name: 'receipt.fiscalized.v1',
         entityId: receiptId.toString(),
@@ -654,6 +657,7 @@ export async function updateReceiptFiscalization(
             jir: fiscalizationData.jir,
             zki: fiscalizationData.zki,
             cisStatus: fiscalizationData.cisStatus,
+            cisResponse: fiscalizationData.cisResponse,
         }
     });
 }

@@ -8,10 +8,10 @@ export default async function CreateInvoicePage() {
     await auth(['admin']);
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={2}>
             <Breadcrumbs items={[
-                { label: 'Računi', href: KnownPages.Invoices },
-                { label: 'Kreiraj novi račun' }
+                { label: 'Ponude', href: KnownPages.Invoices },
+                { label: 'Kreiraj novu ponudu' }
             ]} />
             <InvoiceForm mode="create" />
         </Stack>

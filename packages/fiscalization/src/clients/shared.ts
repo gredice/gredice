@@ -30,12 +30,12 @@ export async function sendSoapRequest(signedXml: string, endpoint: string) {
         if (responseText.includes("<tns:PorukaGreske>")) {
             const errorMatch = responseText.match(/<tns:PorukaGreske>([^<]+)<\/tns:PorukaGreske>/)
             if (errorMatch) {
-                return { errors: [{ errorMessage: errorMatch[1] }] }
+                return { responseText, errors: [{ errorMessage: errorMatch[1] }] }
             }
         }
 
         throw new Error(`Error! Status: ${response.statusCode}. Response: ${responseText}`);
     }
 
-    return responseText;
+    return { responseText };
 }

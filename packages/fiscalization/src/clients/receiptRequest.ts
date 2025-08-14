@@ -22,11 +22,26 @@ function getEndpoint(env: "educ" | "prod") {
     return env === "educ" ? testEndpoint : prodEndpoint;
 }
 
+export type ReceiptRequestResult = {
+    success: true;
+    dateTime: Date;
+    receiptNumber: string;
+    jir: string;
+    zki: string;
+    responseText: string;
+    errors?: never;
+} | {
+    success: false,
+    zki: string;
+    responseText: string;
+    errors?: Array<{ errorMessage: string | null | undefined }>;
+}
+
 export async function receiptRequest(receipt: Receipt, settings: {
     userSettings: UserSettings;
     posSettings: PosSettings;
     posUser: PosUser;
-}) {
+}): Promise<ReceiptRequestResult> {
     const { userSettings, posSettings, posUser } = settings;
     const composedReceipt = {
         pin: userSettings.pin,
@@ -65,9 +80,15 @@ export async function receiptRequest(receipt: Receipt, settings: {
     }
 
     // Use the public endpoint property provided by the client
-    const responseText = await sendSoapRequest(signedXml, getEndpoint(userSettings.environment));
-    if (typeof responseText === 'object' && 'errors' in responseText) {
-        throw new Error(`Request failed: ${responseText.errors.map((e: any) => e.errorMessage).join(', ')}`);
+    const { responseText, errors } = await sendSoapRequest(signedXml, getEndpoint(userSettings.environment));
+    if (errors) {
+        console.error('Error processing receipt request:', errors);
+        return {
+            success: false,
+            zki,
+            responseText,
+            errors
+        }
     }
 
     // Parse the SOAP response to extract the result
@@ -79,13 +100,20 @@ export async function receiptRequest(receipt: Receipt, settings: {
         }
     }
     if (!jir) {
-        throw new Error("JIR not found in the response");
+        console.error('Response does not contain JIR:', responseText, errors);
+        return {
+            success: false,
+            zki,
+            responseText
+        }
     }
 
     return {
+        success: true,
         dateTime: composedReceipt.date,
         receiptNumber: `${composedReceipt.receiptNumber}/${composedReceipt.premiseId}/${composedReceipt.posId}`,
         jir,
-        zki
+        zki,
+        responseText
     }
 }

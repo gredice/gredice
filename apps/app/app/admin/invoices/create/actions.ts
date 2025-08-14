@@ -206,7 +206,7 @@ export async function getShoppingCartItemsWithEntityNamesAction(shoppingCartItem
         return {
             ...item,
             entityName: entity?.information?.label || entity?.information?.name || `${item.entityTypeName} ${item.entityId}`,
-            price: entity?.prices?.perPlant || entity?.prices?.perOperation || 0,
+            price: entity?.prices?.perPlant || entity?.information?.plant?.prices?.perPlant || entity?.prices?.perOperation || entity?.information?.plant?.prices?.perOperation || 0,
         };
     });
 
