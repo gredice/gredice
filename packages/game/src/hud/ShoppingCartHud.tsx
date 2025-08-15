@@ -8,20 +8,27 @@ import { Modal } from "@signalco/ui-primitives/Modal";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
 import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { useShoppingCart } from "../hooks/useShoppingCart";
+import { ShoppingCartData, useShoppingCart } from "../hooks/useShoppingCart";
 import { ModalConfirm } from "@signalco/ui/ModalConfirm";
-import { useCheckout } from "../hooks/useCheckout";
+import { useCheckout, isCompleteDeliverySelection } from "../hooks/useCheckout";
 import { Alert } from "@signalco/ui/Alert";
 import { ShoppingCartItem } from "./components/shopping-cart/ShoppingCartItem";
 import { useCurrentAccount } from "../hooks/useCurrentAccount";
 import { cx } from "@signalco/ui-primitives/cx";
 import { useShoppingCartDelete } from "../hooks/useShoppingCartDelete";
+import { useState } from "react";
+import { DeliveryStep, DeliverySelectionData } from "../shared-ui/delivery/DeliveryStep";
 
 export function ShoppingCart() {
     const { data: account } = useCurrentAccount();
     const { data: cart, isLoading, isError } = useShoppingCart();
     const deleteCart = useShoppingCartDelete();
     const checkout = useCheckout();
+
+    // State for delivery flow
+    const [showDeliveryStep, setShowDeliveryStep] = useState(false);
+    const [deliverySelection, setDeliverySelection] = useState<DeliverySelectionData | null>(null);
+
     const showSunflowersSuggestion =
         !cart?.items.some(item => item.currency === 'sunflower') &&
         cart?.items.some(item => (account?.sunflowers.amount ?? 0) > (item.shopData.price ?? 0) * 100);
@@ -32,11 +39,51 @@ export function ShoppingCart() {
             return;
         }
 
-        checkout.mutate(cart?.id);
+        // If cart contains deliverable items and user hasn't gone through delivery step yet
+        if (cart.hasDeliverableItems && !deliverySelection) {
+            setShowDeliveryStep(true);
+            return;
+        }
+
+        // Prepare checkout data with delivery information if available
+        const checkoutData = {
+            cartId: cart.id,
+            ...(isCompleteDeliverySelection(deliverySelection) && { deliveryInfo: deliverySelection })
+        };
+
+        checkout.mutate(checkoutData);
     }
 
     function handleDeleteCart() {
         deleteCart.mutate();
+    }
+
+    function handleBackToCart() {
+        setShowDeliveryStep(false);
+    }
+
+    function handleDelivery() {
+        setShowDeliveryStep(true);
+    }
+
+    function handleDeliveryProceed() {
+        if (isCompleteDeliverySelection(deliverySelection)) {
+            // Proceed with checkout including delivery information
+            handleCheckout();
+        }
+    }
+
+    // Show delivery step if user clicked on checkout with deliverable items
+    if (showDeliveryStep) {
+        return (
+            <DeliveryStep
+                onSelectionChange={setDeliverySelection}
+                onBack={handleBackToCart}
+                onProceed={handleDeliveryProceed}
+                checkout={checkout}
+                isValid={isCompleteDeliverySelection(deliverySelection)}
+            />
+        );
     }
 
     return (
@@ -123,34 +170,24 @@ export function ShoppingCart() {
                                 >
                                     <Typography>Jeste li sigurni da želite obrisati sve stavke iz košarice?</Typography>
                                 </ModalConfirm>
-                                {cart?.totalSunflowers ? (
-                                    <ModalConfirm
-                                        title="Potvrdi plaćanje"
-                                        header={`Potvrđuješ plaćanje ${cart?.totalSunflowers ?? 0} 🌻 i ${cart?.total.toFixed(2) ?? 0} €?`}
-                                        onConfirm={handleCheckout}
-                                        trigger={(
-                                            <Button
-                                                variant="solid"
-                                                disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
-                                                loading={checkout.isPending}
-                                                startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0" /> : undefined}
-                                                endDecorator={<Navigate className="size-5 shrink-0" />}
-                                            >
-                                                Potvrdi i plati
-                                            </Button>
-                                        )}
-                                    />
+                                {cart?.hasDeliverableItems ? (
+                                    <>
+                                        <Button
+                                            variant="solid"
+                                            disabled={!cart.allowPurchase}
+                                            startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0" /> : undefined}
+                                            endDecorator={<Navigate className="size-5 shrink-0" />}
+                                            onClick={handleDelivery}
+                                        >
+                                            Dostava
+                                        </Button>
+                                    </>
                                 ) : (
-                                    <Button
-                                        variant="solid"
-                                        onClick={handleCheckout}
-                                        disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
-                                        loading={checkout.isPending}
-                                        startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0" /> : undefined}
-                                        endDecorator={<Navigate className="size-5 shrink-0" />}
-                                    >
-                                        Plati
-                                    </Button>
+                                    <ButtonConfirmPayment
+                                        cart={cart}
+                                        checkout={checkout}
+                                        onConfirm={handleCheckout}
+                                    />
                                 )}
                             </div>
                         </Stack>
@@ -159,6 +196,42 @@ export function ShoppingCart() {
             </Stack>
         </Stack>
     )
+}
+
+function ButtonConfirmPayment({ cart, checkout, onConfirm }: { cart: ReturnType<typeof useShoppingCart>['data'], checkout: ReturnType<typeof useCheckout>, onConfirm: () => void }) {
+    return (
+        <>
+            {cart?.totalSunflowers ? (
+                <ModalConfirm
+                    title="Potvrdi plaćanje"
+                    header={`Potvrđuješ plaćanje ${cart?.totalSunflowers ?? 0} 🌻 i ${cart?.total.toFixed(2) ?? 0} €?`}
+                    onConfirm={onConfirm}
+                    trigger={(
+                        <Button
+                            variant="solid"
+                            disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
+                            loading={checkout.isPending}
+                            startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0" /> : undefined}
+                            endDecorator={<Navigate className="size-5 shrink-0" />}
+                        >
+                            Potvrdi i plati
+                        </Button>
+                    )}
+                />
+            ) : (
+                <Button
+                    variant="solid"
+                    onClick={onConfirm}
+                    disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
+                    loading={checkout.isPending}
+                    startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0" /> : undefined}
+                    endDecorator={<Navigate className="size-5 shrink-0" />}
+                >
+                    Plati
+                </Button>
+            )}
+        </>
+    );
 }
 
 export function ShoppingCartHud() {

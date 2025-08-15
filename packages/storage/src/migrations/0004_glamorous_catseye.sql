@@ -1,1 +1,0 @@
-ALTER TABLE "attribute_definitions" ADD COLUMN "multiple" boolean DEFAULT false NOT NULL;

@@ -82,7 +82,7 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
                                 </Chip>
                             </Table.Cell>
                             <Table.Cell>
-                                <Row spacing={1} alignItems="center">
+                                <Row spacing={1}>
                                     {hasNoInvoices ? (
                                         <Chip color="error" className="w-fit">
                                             <Typography noWrap>

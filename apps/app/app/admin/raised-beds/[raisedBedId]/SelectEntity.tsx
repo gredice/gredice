@@ -50,7 +50,7 @@ export function SelectEntity({ value, defaultValue, onChange, entityTypeName, na
             <input type="hidden" name={name} value={internalValue ?? ''} />
             <SelectItems
                 items={items}
-                value={internalValue ?? ''}
+                value={internalValue ?? '-'}
                 onValueChange={handleOnChange}
                 label={label}
                 required={required}

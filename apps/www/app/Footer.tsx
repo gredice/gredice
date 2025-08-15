@@ -33,6 +33,7 @@ const sectionsData: SectionData[] = [
                 header: 'Informacije',
                 ctas: [
                     { label: 'Dostava', href: KnownPages.Delivery },
+                    { label: 'Termini dostave', href: KnownPages.DeliverySlots },
                     { label: 'Česta pitanja', href: KnownPages.FAQ },
                     { label: 'Kontaktiraj nas', href: KnownPages.Contact },
                     { label: 'O nama', href: KnownPages.AboutUs },

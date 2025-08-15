@@ -1,12 +1,22 @@
 import { count, lt } from "drizzle-orm";
-import { accounts, events, farms, gardenBlocks, gardens, raisedBeds, transactions, users } from "../schema";
+import { accounts, deliveryRequests, events, farms, gardenBlocks, gardens, raisedBeds, transactions, users } from "../schema";
 import { storage } from "../storage";
 
 export async function getAnalyticsTotals(days: number = 7) {
     const now = new Date();
     const beforeDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-    const [usersCount, usersBeforeCount, accountsCount, accountsBeforeCount, farmsCount, farmsBeforeCount, gardensCount, gardensBeforeCount, blocksCount, blocksBeforeCount, eventsCount, eventsBeforeCount, raisedBedsCount, raisedBedsBeforeCount, transactionsCount, transactionsBeforeCount] = await Promise.all([
+    const [
+        usersCount, usersBeforeCount,
+        accountsCount, accountsBeforeCount,
+        farmsCount, farmsBeforeCount,
+        gardensCount, gardensBeforeCount,
+        blocksCount, blocksBeforeCount,
+        eventsCount, eventsBeforeCount,
+        raisedBedsCount, raisedBedsBeforeCount,
+        transactionsCount, transactionsBeforeCount,
+        deliveryRequestsCount, deliveryRequestsBeforeCount
+    ] = await Promise.all([
         storage().select({ count: count() }).from(users),
         storage().select({ count: count() }).from(users).where(lt(users.createdAt, beforeDate)),
         storage().select({ count: count() }).from(accounts),
@@ -23,6 +33,8 @@ export async function getAnalyticsTotals(days: number = 7) {
         storage().select({ count: count() }).from(raisedBeds).where(lt(raisedBeds.createdAt, beforeDate)),
         storage().select({ count: count() }).from(transactions),
         storage().select({ count: count() }).from(transactions).where(lt(transactions.createdAt, beforeDate)),
+        storage().select({ count: count() }).from(deliveryRequests),
+        storage().select({ count: count() }).from(deliveryRequests).where(lt(deliveryRequests.createdAt, beforeDate)),
     ]);
 
     return {
@@ -42,5 +54,7 @@ export async function getAnalyticsTotals(days: number = 7) {
         raisedBedsBefore: raisedBedsBeforeCount[0].count,
         transactions: transactionsCount[0].count,
         transactionsBefore: transactionsBeforeCount[0].count,
+        deliveryRequests: deliveryRequestsCount[0].count,
+        deliveryRequestsBefore: deliveryRequestsBeforeCount[0].count,
     };
 }

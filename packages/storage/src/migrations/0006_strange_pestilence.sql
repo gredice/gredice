@@ -1,1 +1,0 @@
-ALTER TABLE "plants" ADD COLUMN "is_deleted" boolean DEFAULT false NOT NULL;

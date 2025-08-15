@@ -1,1 +1,0 @@
-ALTER TABLE "raised_beds" ADD COLUMN "status" text DEFAULT 'new' NOT NULL;

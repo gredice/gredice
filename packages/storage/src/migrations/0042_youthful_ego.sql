@@ -1,1 +1,0 @@
-ALTER TABLE "raised_bed_sensors" ADD COLUMN "status" text DEFAULT 'new' NOT NULL;

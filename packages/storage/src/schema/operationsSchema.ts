@@ -1,4 +1,8 @@
 import { boolean, index, integer, pgTable, serial, text, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+import { accounts } from "./usersSchema";
+import { gardens, raisedBeds, raisedBedFields } from "./gardenSchema";
+import { entities, entityTypes } from "./cmsSchema";
 
 export const operations = pgTable('operations', {
     id: serial('id').primaryKey(),
@@ -21,6 +25,39 @@ export const operations = pgTable('operations', {
     index('operations_timestamp_idx').on(table.timestamp),
     index('operations_is_deleted_idx').on(table.isDeleted),
 ]);
+
+export const operationsRelations = relations(operations, ({ one }) => ({
+    account: one(accounts, {
+        fields: [operations.accountId],
+        references: [accounts.id],
+        relationName: 'accountOperations',
+    }),
+    garden: one(gardens, {
+        fields: [operations.gardenId],
+        references: [gardens.id],
+        relationName: 'gardenOperations',
+    }),
+    raisedBed: one(raisedBeds, {
+        fields: [operations.raisedBedId],
+        references: [raisedBeds.id],
+        relationName: 'raisedBedOperations',
+    }),
+    raisedBedField: one(raisedBedFields, {
+        fields: [operations.raisedBedFieldId],
+        references: [raisedBedFields.id],
+        relationName: 'raisedBedFieldOperations',
+    }),
+    entity: one(entities, {
+        fields: [operations.entityId],
+        references: [entities.id],
+        relationName: 'entityOperations',
+    }),
+    entityType: one(entityTypes, {
+        fields: [operations.entityTypeName],
+        references: [entityTypes.name],
+        relationName: 'entityTypeOperations',
+    }),
+}));
 
 export type InsertOperation = Omit<typeof operations.$inferInsert, 'id' | 'createdAt'>;
 export type SelectOperation = typeof operations.$inferSelect;

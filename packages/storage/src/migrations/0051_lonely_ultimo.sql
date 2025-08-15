@@ -1,1 +1,0 @@
-DROP TABLE "transaction_entities" CASCADE;

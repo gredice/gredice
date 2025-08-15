@@ -1,1 +1,0 @@
-ALTER TABLE "attribute_definitions" ADD COLUMN "description" text;

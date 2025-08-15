@@ -51,6 +51,17 @@ export const knownEventTypes = {
         complete: "operation.complete",
         fail: "operation.fail",
         cancel: "operation.cancel",
+    },
+    delivery: {
+        requestCreated: "delivery.request.created",
+        requestSlotChanged: "delivery.request.slot.changed",
+        requestAddressChanged: "delivery.request.address.changed",
+        requestConfirmed: "delivery.request.confirmed",
+        requestPreparing: "delivery.request.preparing",
+        requestReady: "delivery.request.ready",
+        requestCancelled: "delivery.request.cancelled",
+        requestFulfilled: "delivery.request.fulfilled",
+        userCancelled: "delivery.request.user_cancelled",
     }
 }
 
@@ -202,6 +213,53 @@ export const knownEvents = {
             version: 1,
             aggregateId,
             data
+        }),
+    },
+    delivery: {
+        requestCreatedV1: (aggregateId: string, data: {
+            operationId: number;
+            slotId: number;
+            mode: string;
+            addressId?: number;
+            locationId?: number;
+            notes?: string;
+            accountId: string;
+            gardenId?: string;
+            raisedBedId?: string;
+            raisedBedFieldId?: string;
+        }) => ({
+            type: knownEventTypes.delivery.requestCreated,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestSlotChangedV1: (aggregateId: string, data: { previousSlotId: number; newSlotId: number }) => ({
+            type: knownEventTypes.delivery.requestSlotChanged,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestAddressChangedV1: (aggregateId: string, data: { addressId: number }) => ({
+            type: knownEventTypes.delivery.requestAddressChanged,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestCancelledV1: (aggregateId: string, data: { actorType: string; reasonCode: string; note?: string }) => ({
+            type: knownEventTypes.delivery.requestCancelled,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestFulfilledV1: (aggregateId: string) => ({
+            type: knownEventTypes.delivery.requestFulfilled,
+            version: 1,
+            aggregateId,
+        }),
+        userCancelledV1: (aggregateId: string) => ({
+            type: knownEventTypes.delivery.userCancelled,
+            version: 1,
+            aggregateId
         }),
     },
 }

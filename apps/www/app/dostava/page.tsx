@@ -6,6 +6,10 @@ import { Row } from "@signalco/ui-primitives/Row"
 import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal"
 import { Typography } from "@signalco/ui-primitives/Typography"
 import { WhatsAppCard } from "../../components/social/WhatsAppCard"
+import { Button } from "@signalco/ui-primitives/Button"
+import { Calendar } from "@signalco/ui-icons"
+import { KnownPages } from "../../src/KnownPages"
+import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card"
 
 export default function DeliveryPage() {
     return (
@@ -87,13 +91,13 @@ export default function DeliveryPage() {
                     </p>
                     <p>Lokacije za osobno preuzimanje:</p>
                     <ul>
-                        <li><strong>Gredice HQ</strong> - <a href="https://g.co/kgs/8J9Mf9r">Ulica Julija Knifera 3, Zagreb</a></li>
+                        <li><strong>Gredice HQ</strong> - <a href={KnownPages.GoogleMapsGrediceHQ} target="_blank">Ulica Julija Knifera 3, Zagreb</a></li>
                     </ul>
                     <h2 id="planiranje-i-zakazivanje">Planiranje i zakazivanje</h2>
                     <p>Dostave se zakazuju unaprijed, minimalno <strong>48 sati</strong> prije željenog termina. Nakon što zatražiš dostavu, obavijestit ćemo te ako je ona potvrđena ili eventualno odbijena, ovisno o trenutačnoj popunjenosti rasporeda.</p>
                     <p>
                         Dostave se odvijaju u <strong>2-satnim vremenskim blokovima</strong>, a sve dostupne termine možeš
-                        vidjeti u aplikaciji. Ako te ne pronađemo na adresi u dogovoreno vrijeme, pokušat ćemo te
+                        vidjeti u aplikaciji ili na našoj stranici s terminima. Ako te ne pronađemo na adresi u dogovoreno vrijeme, pokušat ćemo te
                         kontaktirati. U slučaju da dostava ipak ne uspije, svoje povrće možeš naknadno osobno preuzeti na našoj
                         lokaciji u Zagrebu. Ako povrće ne preuzmeš u roku od <strong>72 sata</strong>, donirat ćemo ga onima
                         kojima je najpotrebnije.
@@ -103,7 +107,26 @@ export default function DeliveryPage() {
                     <hr />
                 </StyledHtml>
             </Stack>
-            <Stack spacing={4}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <Card className="mb-8">
+                    <CardHeader>
+                        <CardTitle>📅 Termini dostave</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Stack spacing={3}>
+                            <Typography>Želiš vidjeti koji su termini dostupni za dostavu tvojeg povrća?</Typography>
+                            <Button
+                                href={KnownPages.DeliverySlots}
+                                variant="solid"
+                                startDecorator={<Calendar className="size-4" />}
+                            >
+                                Pogledaj dostupne termine
+                            </Button>
+                        </Stack>
+                    </CardContent>
+                </Card>
+            </div>
+            <Stack spacing={2}>
                 <Typography level="h5">Imaš dodatna pitanja?</Typography>
                 <WhatsAppCard />
             </Stack>

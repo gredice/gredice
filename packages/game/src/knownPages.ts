@@ -8,4 +8,7 @@ export const KnownPages = {
     GrediceBlock: (alias: string) => `https://www.gredice.com/blokovi/${alias}`,
     GrediceSunflowers: 'https://www.gredice.com/suncokreti',
     GrediceContact: 'https://www.gredice.com/kontakt',
+    GrediceDeliverySlots: 'https://www.gredice.com/dostava/termini',
+
+    GoogleMapsGrediceHQ: 'https://maps.app.goo.gl/hJbidDQzhHWGCZwS6'
 };

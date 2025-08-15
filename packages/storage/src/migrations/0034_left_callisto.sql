@@ -1,1 +1,0 @@
-ALTER TABLE "shopping_cart_items" ADD COLUMN "type" text DEFAULT 'user' NOT NULL;

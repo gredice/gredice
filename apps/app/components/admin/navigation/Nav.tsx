@@ -2,7 +2,7 @@
 
 import { List, ListHeader } from "@signalco/ui-primitives/List";
 import { KnownPages } from "../../../src/KnownPages";
-import { Bank, Fence, Home, Inbox, SmileHappy, User, Tally3, Euro, Calendar, Hammer, Add, Edit, Book } from "@signalco/ui-icons";
+import { Bank, Fence, Home, Inbox, SmileHappy, User, Tally3, Euro, Calendar, Hammer, Add, Edit, Book, Truck } from "@signalco/ui-icons";
 import { NavItem } from "./NavItem";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { ProfileNavItem } from "./ProfileNavItem";
@@ -110,6 +110,8 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                 <ListHeader header="Upravljanje" />
                 <List>
                     <NavItem href={KnownPages.Schedule} label="Raspored" icon={<Calendar className="size-5" />} onClick={onItemClick} />
+                    <NavItem href={KnownPages.DeliverySlots} label="Dostava - Slotovi" icon={<Truck className="size-5" />} onClick={onItemClick} />
+                    <NavItem href={KnownPages.DeliveryRequests} label="Dostava - Zahtjevi" icon={<Truck className="size-5" />} onClick={onItemClick} />
                 </List>
             </Stack>
             <Stack spacing={1}>

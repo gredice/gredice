@@ -16,6 +16,7 @@ import { PlantsShowcase } from "./PlantsShowcase";
 import { FacebookCard } from "../components/social/FacebookCard";
 import { InstagramCard } from "../components/social/InstagramCard";
 import { WhatsAppCard } from "../components/social/WhatsAppCard";
+import { NavigatingButton } from "@signalco/ui/NavigatingButton";
 
 const sectionsData: SectionData[] = [
     {
@@ -79,9 +80,14 @@ const sectionsData: SectionData[] = [
                     <Row spacing={4}>
                         <Image alt="Sjeme i presadnice" className="w-32 sm:w-[200px]" src={SeedsAndTransplants} width={200} height={200} />
                         <Stack spacing={2}>
-                            <Typography level="h4" component="h3">Zasadi</Typography>
-                            <Typography level="body1" className="text-balance">Odaberi svoju kombinaciju povrća u aplikaciji i složi svoju gredicu.</Typography>
-                            <Typography level="body1" className="text-balance">Mi postavljamo gredice kod lokalnog OPG-a i brzo sadimo tvoje biljke.</Typography>
+                            <Stack spacing={2}>
+                                <Typography level="h4" component="h3">Zasadi</Typography>
+                                <Typography level="body1" className="text-balance">Odaberi svoju kombinaciju povrća u aplikaciji i složi svoju gredicu.</Typography>
+                                <Typography level="body1" className="text-balance">Mi postavljamo gredice kod lokalnog OPG-a i brzo sadimo tvoje biljke.</Typography>
+                            </Stack>
+                            <NavigatingButton variant="link" className="w-fit" href={KnownPages.RaisedBeds}>
+                                Više o podignutim gredicama
+                            </NavigatingButton>
                         </Stack>
                     </Row>
                 )
@@ -90,9 +96,14 @@ const sectionsData: SectionData[] = [
                 asset: (
                     <Row spacing={4}>
                         <Stack spacing={2}>
-                            <Typography level="h4" component="h3">Održavaj</Typography>
-                            <Typography level="body1" className="text-balance">Prati stanje svojih gredica, naruči zalijevanje, okopavanje ili što god treba tvom vrtu.</Typography>
-                            <Typography level="body1" className="text-balance">U aplikaciji ćeš dobivati obavijesti, slike svojih gredica i savjete kako bi tvoje biljke bile sretne i zdrave.</Typography>
+                            <Stack spacing={2}>
+                                <Typography level="h4" component="h3">Održavaj</Typography>
+                                <Typography level="body1" className="text-balance">Prati stanje svojih gredica, naruči zalijevanje, okopavanje ili što god treba tvom vrtu.</Typography>
+                                <Typography level="body1" className="text-balance">U aplikaciji ćeš dobivati obavijesti, slike svojih gredica i savjete kako bi tvoje biljke bile sretne i zdrave.</Typography>
+                            </Stack>
+                            <NavigatingButton variant="link" className="w-fit" href={KnownPages.Operations}>
+                                Više o radnjama
+                            </NavigatingButton>
                         </Stack>
                         <Image alt="Održavanje gredice" className="w-32 sm:w-[200px]" src={RaisedBedMaintenance} width={200} height={200} />
                     </Row>
@@ -109,6 +120,9 @@ const sectionsData: SectionData[] = [
                                 <Typography level="body1" className="text-balance">Mi ćemo ubrati sve plodove tvojih gredica i dostaviti ih još svježe iz tvog vrta direktno na tvoj kućni prag.</Typography>
                                 <Typography level="body3">* Besplatna dostava je dostupna samo za područje Zagreba</Typography>
                             </Stack>
+                            <NavigatingButton variant="link" className="w-fit" href={KnownPages.Delivery}>
+                                Više o dostavi
+                            </NavigatingButton>
                         </Stack>
                     </Row>
                 )

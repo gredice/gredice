@@ -10,3 +10,4 @@ export * from './shoppingCartSchema';
 export * from './notificationsSchema';
 export * from './operationsSchema';
 export * from './fiscalizationSchema';
+export * from './deliverySchema';

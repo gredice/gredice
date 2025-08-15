@@ -63,13 +63,15 @@ export function AdminDashboardClient({
         raisedBeds: raisedBedsCount,
         raisedBedsBefore: raisedBedsBeforeCount,
         transactions: transactionsCount,
-        transactionsBefore: transactionsBeforeCount
+        transactionsBefore: transactionsBeforeCount,
+        deliveryRequests: deliveryRequestsCount,
+        deliveryRequestsBefore: deliveryRequestsBeforeCount
     } = initialAnalyticsData;
 
     return (
         <Stack spacing={2}>
             <Stack spacing={1}>
-                <Row justifyContent="space-between" alignItems="center">
+                <Row justifyContent="space-between">
                     <DashboardDivider>Računi i korisnici</DashboardDivider>
                     <SelectItems
                         value={selectedPeriod}
@@ -89,6 +91,7 @@ export function AdminDashboardClient({
                     <FactCard header="Događaji" value={eventsCount} beforeValue={eventsBeforeCount} />
                     <FactCard header="Gredice" value={raisedBedsCount} href={KnownPages.RaisedBeds} beforeValue={raisedBedsBeforeCount} />
                     <FactCard header="Transakcije" value={transactionsCount} href={KnownPages.Transactions} beforeValue={transactionsBeforeCount} />
+                    <FactCard header="Zahtjevi za dostavu" value={deliveryRequestsCount} href={KnownPages.DeliveryRequests} beforeValue={deliveryRequestsBeforeCount} />
                 </div>
             </Stack>
             <Stack spacing={1}>
