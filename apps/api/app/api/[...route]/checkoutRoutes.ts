@@ -235,7 +235,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 ...item,
                                 amount_total: sunflowerAmount,
                                 additionalData: {
-                                    ...item.additionalData,
+                                    ...(item.additionalData ? JSON.parse(item.additionalData) : {}),
                                     ...(deliveryInfo ? { delivery: deliveryInfo } : {})
                                 }
                             })

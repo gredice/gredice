@@ -15,11 +15,13 @@ import {
     MapPin,
     Close,
     Approved,
-    Info
+    Info,
+    Navigate
 } from "@signalco/ui-icons";
 import { Alert } from "@signalco/ui/Alert";
 import { useDeliveryRequests, DeliveryRequestData } from "../../hooks/useDeliveryRequests";
 import { useCancelDeliveryRequest } from "../../hooks/useDeliveryRequestMutations";
+import { KnownPages } from '../../knownPages';
 
 const CANCEL_REASON_OPTIONS = [
     { value: 'USER_CHANGE_MIND', label: 'Predomislio/la sam se' },
@@ -373,8 +375,15 @@ export function DeliveryRequestsSection() {
 
     return (
         <Stack spacing={2}>
-            <Typography level="h5">Moje dostave</Typography>
-
+            <Row spacing={1} justifyContent='space-between'>
+                <Typography level="h5">Moje dostave</Typography>
+                <Button
+                    variant='link'
+                    href={KnownPages.GrediceDeliverySlots}
+                    endDecorator={<Navigate className="size-5 shrink-0" />}>
+                    📅 Termini dostave
+                </Button>
+            </Row>
             {isLoading ? (
                 <Typography>Učitavanje dostava...</Typography>
             ) : requests && requests.length > 0 ? (
