@@ -3,14 +3,14 @@ import { Container } from "@signalco/ui-primitives/Container";
 import { PageHeader } from "../../../components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
 import { Typography } from "@signalco/ui-primitives/Typography";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@signalco/ui-primitives/Tabs";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
 import { WhatsAppCard } from "../../../components/social/WhatsAppCard";
 import { client } from '@gredice/client';
 import { StyledHtml } from "../../../components/shared/StyledHtml";
-import { Markdown } from "../../../components/shared/Markdown";
+
+export const dynamic = 'force-dynamic';
 
 // Types from API response - these match the type-safe client schema
 interface TimeSlot {
