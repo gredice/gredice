@@ -26,16 +26,15 @@ export async function cartContainsDeliverableItems(cartId: number): Promise<bool
     // Get unique entity IDs from cart items (convert string to integer)
     const entityIdStrings = Array.from(new Set(items.map(item => item.entityId)));
     const entityIds = entityIdStrings.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
-
     if (entityIds.length === 0) {
         return false;
     }
 
-    // Find attribute definition for 'deliverable' attribute of entity-operation type
+    // Find attribute definition for 'deliverable' attribute of `operation` type
     const deliverableAttributeDef = await storage().query.attributeDefinitions.findFirst({
         where: and(
             eq(attributeDefinitions.name, 'deliverable'),
-            eq(attributeDefinitions.entityTypeName, 'entity-operation'),
+            eq(attributeDefinitions.entityTypeName, 'operation'),
             eq(attributeDefinitions.isDeleted, false)
         )
     });
@@ -55,7 +54,7 @@ export async function cartContainsDeliverableItems(cartId: number): Promise<bool
             and(
                 inArray(attributeValues.entityId, entityIds),
                 eq(attributeValues.attributeDefinitionId, deliverableAttributeDef.id),
-                eq(attributeValues.entityTypeName, 'entity-operation'),
+                eq(attributeValues.entityTypeName, 'operation'),
                 eq(attributeValues.isDeleted, false)
             )
         );
@@ -87,11 +86,11 @@ export async function getDeliverableCartItems(cartId: number): Promise<SelectSho
         return [];
     }
 
-    // Find attribute definition for 'deliverable' attribute of entity-operation type
+    // Find attribute definition for 'deliverable' attribute of `operation` type
     const deliverableAttributeDef = await storage().query.attributeDefinitions.findFirst({
         where: and(
             eq(attributeDefinitions.name, 'deliverable'),
-            eq(attributeDefinitions.entityTypeName, 'entity-operation'),
+            eq(attributeDefinitions.entityTypeName, 'operation'),
             eq(attributeDefinitions.isDeleted, false)
         )
     });
@@ -110,7 +109,7 @@ export async function getDeliverableCartItems(cartId: number): Promise<SelectSho
             and(
                 inArray(attributeValues.entityId, entityIds),
                 eq(attributeValues.attributeDefinitionId, deliverableAttributeDef.id),
-                eq(attributeValues.entityTypeName, 'entity-operation'),
+                eq(attributeValues.entityTypeName, 'operation'),
                 eq(attributeValues.isDeleted, false)
             )
         );
@@ -131,11 +130,12 @@ export async function isCartItemDeliverable({ entityId }: { entityId: number }):
         return false;
     }
 
-    // Find attribute definition for 'deliverable' attribute of entity-operation type
+    // Find attribute definition for 'deliverable' attribute of `operation` type
     const deliverableAttributeDef = await storage().query.attributeDefinitions.findFirst({
         where: and(
             // TODO: Use better targeting than just by name
             eq(attributeDefinitions.name, 'deliverable'),
+            eq(attributeDefinitions.entityTypeName, 'operation'),
             eq(attributeDefinitions.isDeleted, false)
         )
     });

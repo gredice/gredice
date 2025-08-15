@@ -289,13 +289,11 @@ export function OverviewModal() {
                     {settingsMode === 'dostava' && (
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">Dostava</Typography>
-                            <Stack spacing={4}>
+                            <Stack spacing={2} className="overflow-y-auto max-h-[calc(100dvh-200px)]">
                                 <Stack spacing={2}>
-                                    <Typography level="h6">Adrese</Typography>
                                     <DeliveryAddressesSection />
                                 </Stack>
                                 <Stack spacing={2}>
-                                    <Typography level="h6">Moje narudžbe</Typography>
                                     <DeliveryRequestsSection />
                                 </Stack>
                             </Stack>

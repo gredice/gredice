@@ -4,44 +4,20 @@ import { storage } from "../storage";
 import {
     deliveryRequests,
     timeSlots,
-    DeliveryRequestStates
+    DeliveryRequestStates,
+    SelectDeliveryRequest
 } from "../schema";
-import { createEvent, getEvents } from "./eventsRepo";
+import { createEvent, getEvents, knownEvents, knownEventTypes, Event as DbEvent } from "./eventsRepo";
 import { randomUUID } from 'node:crypto';
-
-// Event types for delivery requests
-const knownEventTypes = {
-    deliveryRequest: {
-        create: 'delivery_request.create',
-        cancel: 'delivery_request.cancel',
-        statusUpdate: 'delivery_request.status_update',
-    }
-};
+import { getTimeSlot } from './timeSlotsRepo';
+import { getDeliveryAddress } from './deliveryAddressesRepo';
+import { getPickupLocation } from './pickupLocationsRepo';
 
 // Business state projection interface
-export interface DeliveryRequestWithEvents {
-    id: string;
-    operationId: number;
-    state: string;
-    slotId?: number;
-    addressId?: number;
-    locationId?: number;
-    mode?: 'delivery' | 'pickup';
-    cancelReason?: string;
-    requestNotes?: string;
-    deliveryNotes?: string;
-    createdAt: Date;
-    updatedAt: Date;
-
-    // Related entities (populated separately if needed)
-    operation?: any;
-    slot?: any;
-    address?: any;
-    location?: any;
-}
+export type DeliveryRequestWithEvents = ReturnType<typeof reconstructDeliveryRequestFromEvents>;
 
 // Helper function to reconstruct business state from events
-function reconstructDeliveryRequestFromEvents(request: any, events: any[]): DeliveryRequestWithEvents {
+async function reconstructDeliveryRequestFromEvents(request: SelectDeliveryRequest, events: DbEvent[]) {
     let state: string = DeliveryRequestStates.PENDING;
     let slotId: number | undefined = undefined;
     let addressId: number | undefined = undefined;
@@ -50,44 +26,68 @@ function reconstructDeliveryRequestFromEvents(request: any, events: any[]): Deli
     let cancelReason: string | undefined = undefined;
     let requestNotes: string | undefined = undefined;
     let deliveryNotes: string | undefined = undefined;
+    let accountId: string | undefined = undefined;
 
     for (const event of events) {
         const data = event.data as Record<string, any> | undefined;
 
-        if (event.type === knownEventTypes.deliveryRequest.create) {
+        if (event.type === knownEventTypes.delivery.requestCreated) {
             slotId = data?.slotId;
             addressId = data?.addressId;
             locationId = data?.locationId;
             mode = data?.mode;
             requestNotes = data?.requestNotes;
             state = DeliveryRequestStates.PENDING;
+            accountId = data?.accountId;
         }
-        else if (event.type === knownEventTypes.deliveryRequest.cancel) {
+        else if (event.type === knownEventTypes.delivery.requestAddressChanged) {
+            addressId = data?.addressId;
+            locationId = data?.locationId;
+            mode = data?.mode;
+            requestNotes = data?.requestNotes;
+        }
+        else if (event.type === knownEventTypes.delivery.requestConfirmed) {
+            state = DeliveryRequestStates.CONFIRMED;
+        }
+        else if (event.type === knownEventTypes.delivery.requestPreparing) {
+            state = DeliveryRequestStates.PREPARING;
+        }
+        else if (event.type === knownEventTypes.delivery.requestReady) {
+            state = DeliveryRequestStates.READY;
+        }
+        else if (event.type === knownEventTypes.delivery.requestFulfilled) {
+            state = DeliveryRequestStates.FULFILLED;
+        }
+        else if (event.type === knownEventTypes.delivery.requestSlotChanged) {
+            slotId = data?.slotId;
+        }
+        else if (event.type === knownEventTypes.delivery.userCancelled) {
             state = DeliveryRequestStates.CANCELLED;
-            cancelReason = data?.cancelReason;
         }
-        else if (event.type === knownEventTypes.deliveryRequest.statusUpdate) {
-            state = data?.status ?? state;
-            if (data?.deliveryNotes) {
-                deliveryNotes = data.deliveryNotes;
-            }
+        else if (event.type === knownEventTypes.delivery.requestCancelled) {
+            state = DeliveryRequestStates.CANCELLED;
+            cancelReason = data?.reasonCode;
         }
     }
+
+    const slot = slotId ? await getTimeSlot(slotId) : undefined;
+    const address = addressId && accountId ? await getDeliveryAddress(addressId, accountId) : undefined;
+    const location = locationId ? await getPickupLocation(locationId) : undefined;
 
     return {
         id: request.id,
         operationId: request.operationId,
         state,
-        slotId,
-        addressId,
-        locationId,
+        slot,
+        address,
+        location,
         mode,
         cancelReason,
         requestNotes,
         deliveryNotes,
         createdAt: request.createdAt,
         updatedAt: request.updatedAt,
-        operation: request.operation
+        accountId,
     };
 }
 
@@ -98,7 +98,7 @@ export async function getDeliveryRequestsWithEvents(
     slotId?: number,
     fromDate?: Date,
     toDate?: Date
-): Promise<DeliveryRequestWithEvents[]> {
+) {
     // First get the projection records
     const requests = await storage().query.deliveryRequests.findMany({
         orderBy: [desc(deliveryRequests.createdAt)],
@@ -112,26 +112,32 @@ export async function getDeliveryRequestsWithEvents(
     // Get all events for these requests
     const aggregateIds = requests.map(r => r.id);
     const allEvents = await getEvents([
-        knownEventTypes.deliveryRequest.create,
-        knownEventTypes.deliveryRequest.cancel,
-        knownEventTypes.deliveryRequest.statusUpdate,
+        knownEventTypes.delivery.requestCreated,
+        knownEventTypes.delivery.requestCancelled,
+        knownEventTypes.delivery.requestAddressChanged,
+        knownEventTypes.delivery.requestConfirmed,
+        knownEventTypes.delivery.requestPreparing,
+        knownEventTypes.delivery.requestReady,
+        knownEventTypes.delivery.requestFulfilled,
+        knownEventTypes.delivery.requestSlotChanged,
+        knownEventTypes.delivery.userCancelled,
     ], aggregateIds, 0, 100000);
 
     // Reconstruct business state for each request
-    const reconstructedRequests = requests.map((request) => {
+    const reconstructedRequests = await Promise.all(requests.map((request) => {
         const events = allEvents.filter(event =>
             event.aggregateId === request.id &&
             request.createdAt <= new Date(event.createdAt.getTime() + 5000) // 5s offset
         );
 
         return reconstructDeliveryRequestFromEvents(request, events);
-    });
+    }));
 
     // Apply filters on reconstructed state
     let filteredRequests = reconstructedRequests;
 
     if (accountId) {
-        filteredRequests = filteredRequests.filter(r => r.operation?.accountId === accountId);
+        filteredRequests = filteredRequests.filter(r => r.accountId === accountId);
     }
 
     if (state) {
@@ -139,7 +145,7 @@ export async function getDeliveryRequestsWithEvents(
     }
 
     if (slotId) {
-        filteredRequests = filteredRequests.filter(r => r.slotId === slotId);
+        filteredRequests = filteredRequests.filter(r => r.slot?.id === slotId);
     }
 
     if (fromDate) {
@@ -163,7 +169,7 @@ export function getDeliveryRequests(
     slotId?: number,
     fromDate?: Date,
     toDate?: Date
-): Promise<DeliveryRequestWithEvents[]> {
+) {
     return getDeliveryRequestsWithEvents(accountId, state, slotId, fromDate, toDate);
 }
 
@@ -182,9 +188,15 @@ export async function getDeliveryRequest(requestId: string): Promise<DeliveryReq
 
     // Get events for this request
     const events = await getEvents([
-        knownEventTypes.deliveryRequest.create,
-        knownEventTypes.deliveryRequest.cancel,
-        knownEventTypes.deliveryRequest.statusUpdate,
+        knownEventTypes.delivery.requestCreated,
+        knownEventTypes.delivery.requestCancelled,
+        knownEventTypes.delivery.requestAddressChanged,
+        knownEventTypes.delivery.requestConfirmed,
+        knownEventTypes.delivery.requestPreparing,
+        knownEventTypes.delivery.requestReady,
+        knownEventTypes.delivery.requestFulfilled,
+        knownEventTypes.delivery.requestSlotChanged,
+        knownEventTypes.delivery.userCancelled,
     ], [request.id], 0, 100000);
 
     return reconstructDeliveryRequestFromEvents(request, events);
@@ -205,9 +217,15 @@ export async function getDeliveryRequestByOperation(operationId: number): Promis
 
     // Get events and reconstruct state
     const events = await getEvents([
-        knownEventTypes.deliveryRequest.create,
-        knownEventTypes.deliveryRequest.cancel,
-        knownEventTypes.deliveryRequest.statusUpdate,
+        knownEventTypes.delivery.requestCreated,
+        knownEventTypes.delivery.requestCancelled,
+        knownEventTypes.delivery.requestAddressChanged,
+        knownEventTypes.delivery.requestConfirmed,
+        knownEventTypes.delivery.requestPreparing,
+        knownEventTypes.delivery.requestReady,
+        knownEventTypes.delivery.requestFulfilled,
+        knownEventTypes.delivery.requestSlotChanged,
+        knownEventTypes.delivery.userCancelled,
     ], [request.id], 0, 100000);
 
     return reconstructDeliveryRequestFromEvents(request, events);
@@ -221,6 +239,7 @@ export async function createDeliveryRequest(data: {
     addressId?: number;
     locationId?: number;
     notes?: string;
+    accountId: string;
 }): Promise<string> {
     const requestId = randomUUID();
 
@@ -263,19 +282,18 @@ export async function createDeliveryRequest(data: {
     });
 
     // Create the event with all business data
-    await createEvent({
-        type: knownEventTypes.deliveryRequest.create,
-        version: 1,
-        aggregateId: requestId,
-        data: {
+
+    await createEvent(knownEvents.delivery.requestCreatedV1(
+        requestId,
+        {
             operationId: data.operationId,
             slotId: data.slotId,
             mode: data.mode,
             addressId: data.addressId,
             locationId: data.locationId,
-            requestNotes: data.notes
-        }
-    });
+            notes: data.notes,
+            accountId: data.accountId
+        }));
 
     return requestId;
 }
@@ -304,24 +322,18 @@ export async function cancelDeliveryRequest(
     }
 
     // Check cutoff time for user cancellations
-    if (actorType === 'user' && request.slotId) {
-        const slot = await storage().query.timeSlots.findFirst({
-            where: eq(timeSlots.id, request.slotId)
-        });
+    if (actorType === 'user' && request.slot?.id) {
+        const cutoffHours = 12; // Default cutoff
+        const cutoffTime = new Date(request.slot.startAt.getTime() - cutoffHours * 60 * 60 * 1000);
 
-        if (slot) {
-            const cutoffHours = 12; // Default cutoff
-            const cutoffTime = new Date(slot.startAt.getTime() - cutoffHours * 60 * 60 * 1000);
-
-            if (new Date() >= cutoffTime) {
-                throw new Error('Cannot cancel - cutoff time has passed');
-            }
+        if (new Date() >= cutoffTime) {
+            throw new Error('Cannot cancel - cutoff time has passed');
         }
     }
 
     // Create the cancellation event
     await createEvent({
-        type: knownEventTypes.deliveryRequest.cancel,
+        type: knownEventTypes.delivery.requestCancelled,
         version: 1,
         aggregateId: requestId,
         data: {
@@ -329,6 +341,78 @@ export async function cancelDeliveryRequest(
             cancelReason: reasonCode,
             note,
             cancelledBy: actorId
+        }
+    });
+}
+
+// Confirm a delivery request
+export async function confirmDeliveryRequest(requestId: string): Promise<void> {
+    const request = await getDeliveryRequest(requestId);
+
+    if (!request) {
+        throw new Error('Delivery request not found');
+    }
+
+    if (request.state === DeliveryRequestStates.CONFIRMED) {
+        // Idempotent - already confirmed
+        return;
+    }
+
+    // Create the confirmation event
+    await createEvent({
+        type: knownEventTypes.delivery.requestConfirmed,
+        version: 1,
+        aggregateId: requestId,
+        data: {
+            status: DeliveryRequestStates.CONFIRMED
+        }
+    });
+}
+
+// Prepare a delivery request
+export async function prepareDeliveryRequest(requestId: string): Promise<void> {
+    const request = await getDeliveryRequest(requestId);
+
+    if (!request) {
+        throw new Error('Delivery request not found');
+    }
+
+    if (request.state === DeliveryRequestStates.PREPARING) {
+        // Idempotent - already preparing
+        return;
+    }
+
+    // Create the preparation event
+    await createEvent({
+        type: knownEventTypes.delivery.requestPreparing,
+        version: 1,
+        aggregateId: requestId,
+        data: {
+            status: DeliveryRequestStates.PREPARING
+        }
+    });
+}
+
+// Ready a delivery request
+export async function readyDeliveryRequest(requestId: string): Promise<void> {
+    const request = await getDeliveryRequest(requestId);
+
+    if (!request) {
+        throw new Error('Delivery request not found');
+    }
+
+    if (request.state === DeliveryRequestStates.READY) {
+        // Idempotent - already ready
+        return;
+    }
+
+    // Create the ready event
+    await createEvent({
+        type: knownEventTypes.delivery.requestReady,
+        version: 1,
+        aggregateId: requestId,
+        data: {
+            status: DeliveryRequestStates.READY
         }
     });
 }
@@ -352,29 +436,12 @@ export async function fulfillDeliveryRequest(requestId: string, deliveryNotes?: 
 
     // Create the fulfillment event
     await createEvent({
-        type: knownEventTypes.deliveryRequest.statusUpdate,
+        type: knownEventTypes.delivery.requestFulfilled,
         version: 1,
         aggregateId: requestId,
         data: {
             status: DeliveryRequestStates.FULFILLED,
             deliveryNotes
-        }
-    });
-}
-
-// Update delivery request status (generic status update function)
-export async function updateDeliveryRequestStatus(
-    requestId: string,
-    status: string,
-    notes?: string
-): Promise<void> {
-    await createEvent({
-        type: knownEventTypes.deliveryRequest.statusUpdate,
-        version: 1,
-        aggregateId: requestId,
-        data: {
-            status,
-            deliveryNotes: notes
         }
     });
 }

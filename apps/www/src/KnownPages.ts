@@ -24,4 +24,6 @@ export const KnownPages = {
     LegalCompany: '/legalno/tvrtka',
 
     GardenApp: 'https://vrt.gredice.com',
+
+    GoogleMapsGrediceHQ: 'https://maps.app.goo.gl/hJbidDQzhHWGCZwS6'
 }

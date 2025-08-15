@@ -91,7 +91,7 @@ export default function DeliveryPage() {
                     </p>
                     <p>Lokacije za osobno preuzimanje:</p>
                     <ul>
-                        <li><strong>Gredice HQ</strong> - <a href="https://g.co/kgs/8J9Mf9r">Ulica Julija Knifera 3, Zagreb</a></li>
+                        <li><strong>Gredice HQ</strong> - <a href={KnownPages.GoogleMapsGrediceHQ} target="_blank">Ulica Julija Knifera 3, Zagreb</a></li>
                     </ul>
                     <h2 id="planiranje-i-zakazivanje">Planiranje i zakazivanje</h2>
                     <p>Dostave se zakazuju unaprijed, minimalno <strong>48 sati</strong> prije željenog termina. Nakon što zatražiš dostavu, obavijestit ćemo te ako je ona potvrđena ili eventualno odbijena, ovisno o trenutačnoj popunjenosti rasporeda.</p>

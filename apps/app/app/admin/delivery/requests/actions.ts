@@ -1,7 +1,7 @@
 'use server';
 
 import { auth } from '../../../../lib/auth/auth';
-import { updateDeliveryRequestStatus } from '@gredice/storage';
+import { cancelDeliveryRequest, confirmDeliveryRequest, DeliveryRequestStates, fulfillDeliveryRequest, prepareDeliveryRequest, readyDeliveryRequest } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 
 export async function updateDeliveryRequestStatusAction(prevState: unknown, formData: FormData) {
@@ -10,6 +10,7 @@ export async function updateDeliveryRequestStatusAction(prevState: unknown, form
 
         const requestId = formData.get('requestId') as string;
         const status = formData.get('status') as string;
+        const reasonCode = formData.get('reasonCode') as string;
         const notes = formData.get('notes') as string || undefined;
 
         if (!requestId || !status) {
@@ -19,7 +20,19 @@ export async function updateDeliveryRequestStatusAction(prevState: unknown, form
             };
         }
 
-        await updateDeliveryRequestStatus(requestId, status, notes);
+        if (status === DeliveryRequestStates.CONFIRMED) {
+            await confirmDeliveryRequest(requestId);
+        } else if (status === DeliveryRequestStates.CANCELLED) {
+            await cancelDeliveryRequest(requestId, 'admin', reasonCode, notes);
+        } else if (status === DeliveryRequestStates.PREPARING) {
+            await prepareDeliveryRequest(requestId);
+        } else if (status === DeliveryRequestStates.READY) {
+            await readyDeliveryRequest(requestId);
+        } else if (status === DeliveryRequestStates.FULFILLED) {
+            await fulfillDeliveryRequest(requestId, notes);
+        } else {
+            throw new Error('Nepoznat status zahtjeva');
+        }
 
         revalidatePath('/admin/delivery/requests');
 

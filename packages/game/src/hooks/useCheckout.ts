@@ -2,13 +2,30 @@ import { client } from "@gredice/client";
 import { clientStripe } from "@gredice/stripe/client";
 import { useMutation } from "@tanstack/react-query";
 
+export interface CheckoutData {
+    cartId: number;
+    deliveryInfo?: {
+        slotId: number;
+        mode: 'delivery' | 'pickup';
+        addressId?: number;
+        locationId?: number;
+        notes?: string;
+    };
+}
+
+// Type guard to check if delivery selection is complete
+export function isCompleteDeliverySelection(selection: any): selection is CheckoutData['deliveryInfo'] {
+    return selection &&
+        typeof selection.slotId === 'number' &&
+        (selection.mode === 'delivery' || selection.mode === 'pickup') &&
+        (selection.mode === 'delivery' ? typeof selection.addressId === 'number' : typeof selection.locationId === 'number');
+}
+
 export function useCheckout() {
     return useMutation({
-        mutationFn: async (cartId: number) => {
+        mutationFn: async (data: CheckoutData) => {
             const response = await client().api.checkout.checkout.$post({
-                json: {
-                    cartId: cartId,
-                }
+                json: data
             });
             if (!response.ok) {
                 console.error("Failed to create checkout session:", response.statusText);

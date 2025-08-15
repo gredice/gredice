@@ -18,7 +18,6 @@ import {
     Info
 } from "@signalco/ui-icons";
 import { Alert } from "@signalco/ui/Alert";
-import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
 import { useDeliveryRequests, DeliveryRequestData } from "../../hooks/useDeliveryRequests";
 import { useCancelDeliveryRequest } from "../../hooks/useDeliveryRequestMutations";
 
@@ -34,12 +33,16 @@ function getStatusColor(state: string) {
     switch (state) {
         case 'pending':
             return 'warning';
-        case 'scheduled':
+        case 'confirmed':
+            return 'info';
+        case 'preparing':
+            return 'info';
+        case 'ready':
             return 'info';
         case 'fulfilled':
             return 'success';
         case 'cancelled':
-            return 'danger';
+            return 'error';
         default:
             return 'neutral';
     }
@@ -49,8 +52,12 @@ function getStatusLabel(state: string) {
     switch (state) {
         case 'pending':
             return 'Na čekanju';
-        case 'scheduled':
+        case 'confirmed':
             return 'Zakazano';
+        case 'preparing':
+            return 'Priprema';
+        case 'ready':
+            return 'Spremno';
         case 'fulfilled':
             return 'Izvršeno';
         case 'cancelled':
@@ -84,16 +91,17 @@ function getCutoffTime(slot: any): Date | null {
 }
 
 function canCancelRequest(request: DeliveryRequestData): boolean {
-    if (request.state !== 'pending' && request.state !== 'scheduled') {
+    if (request.state !== 'pending' && request.state !== 'confirmed') {
         return false;
     }
 
-    if (!request.slot) return false;
+    // if (!request.slot) return false;
 
-    const cutoffTime = getCutoffTime(request.slot);
-    if (!cutoffTime) return false;
+    // const cutoffTime = getCutoffTime(request.slot);
+    // if (!cutoffTime) return false;
 
-    return new Date() < cutoffTime;
+    // return new Date() < cutoffTime;
+    return true;
 }
 
 function CancelRequestModal({
@@ -221,6 +229,7 @@ function CancelRequestModal({
 
                     <Input
                         label="Dodatne napomene (opciono)"
+                        className="bg-card"
                         value={note}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNote(e.target.value)}
                         placeholder="Dodatne informacije o razlogu otkazivanja..."
@@ -268,29 +277,21 @@ function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
 
     return (
         <Card>
-            <CardContent>
+            <CardContent noHeader>
                 <Stack spacing={3}>
-                    <Row justifyContent="space-between" alignItems="start">
-                        <Stack spacing={2}>
-                            <Row spacing={2}>
-                                {request.mode === 'delivery' ? (
-                                    <>
-                                        <Truck className="size-5" />
-                                        <Typography level="h6">Dostava</Typography>
-                                    </>
-                                ) : (
-                                    <>
-                                        <ShoppingCart className="size-5" />
-                                        <Typography level="h6">Preuzimanje</Typography>
-                                    </>
-                                )}
-                                <Chip
-                                    color={getStatusColor(request.state) as any}
-                                    startDecorator={getStatusIcon(request.state)}
-                                >
-                                    {getStatusLabel(request.state)}
-                                </Chip>
-                            </Row>
+                    <div className="flex flex-col md:flex-row gap-1 md:items-center">
+                        <Stack spacing={1} className='w-full'>
+                            {request.mode === 'delivery' ? (
+                                <Row spacing={1}>
+                                    <Truck className="size-5 shrink-0" />
+                                    <Typography>Dostava</Typography>
+                                </Row>
+                            ) : (
+                                <Row spacing={1}>
+                                    <ShoppingCart className="size-5 shrink-0" />
+                                    <Typography>Preuzimanje</Typography>
+                                </Row>
+                            )}
 
                             {request.address && (
                                 <Row spacing={1} alignItems="start">
@@ -337,23 +338,30 @@ function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
                                 </Stack>
                             )}
                         </Stack>
-
-                        {canCancel && (
-                            <CancelRequestModal
-                                request={request}
-                                trigger={
-                                    <Button
-                                        variant="outlined"
-                                        color="danger"
-                                        size="sm"
-                                        startDecorator={<Close className="size-4" />}
-                                    >
-                                        Otkaži
-                                    </Button>
-                                }
-                            />
-                        )}
-                    </Row>
+                        <Row spacing={1}>
+                            <Chip
+                                color={getStatusColor(request.state) as any}
+                                startDecorator={getStatusIcon(request.state)}
+                            >
+                                {getStatusLabel(request.state)}
+                            </Chip>
+                            {canCancel && (
+                                <CancelRequestModal
+                                    request={request}
+                                    trigger={
+                                        <Button
+                                            variant="outlined"
+                                            color="danger"
+                                            size="sm"
+                                            startDecorator={<Close className="size-4" />}
+                                        >
+                                            Otkaži
+                                        </Button>
+                                    }
+                                />
+                            )}
+                        </Row>
+                    </div>
                 </Stack>
             </CardContent>
         </Card>
@@ -364,13 +372,13 @@ export function DeliveryRequestsSection() {
     const { data: requests, isLoading } = useDeliveryRequests();
 
     return (
-        <Stack spacing={4}>
-            <Typography level="h4" className="hidden md:block">Moje dostave</Typography>
+        <Stack spacing={2}>
+            <Typography level="h5">Moje dostave</Typography>
 
             {isLoading ? (
                 <Typography>Učitavanje dostava...</Typography>
             ) : requests && requests.length > 0 ? (
-                <Stack spacing={3}>
+                <Stack spacing={1}>
                     {requests.map((request) => (
                         <DeliveryRequestCard key={request.id} request={request} />
                     ))}
@@ -382,7 +390,7 @@ export function DeliveryRequestsSection() {
                             <Truck className="size-12 text-muted-foreground" />
                             <Typography level="h6">Nema dostava</Typography>
                             <Typography level="body3" secondary>
-                                Trenutno nemate zakazanih dostava
+                                Trenutno nema zakazanih dostava
                             </Typography>
                         </Stack>
                     </CardContent>

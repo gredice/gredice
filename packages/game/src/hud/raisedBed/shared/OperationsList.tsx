@@ -14,7 +14,7 @@ import { useSetShoppingCartItem } from "../../../hooks/useSetShoppingCartItem";
 import { AnimateFlyToItem, useAnimateFlyToShoppingCart } from "../../../indicators/AnimateFlyTo";
 import { Modal } from "@signalco/ui-primitives/Modal";
 import { Input } from "@signalco/ui-primitives/Input";
-import { Card } from "@signalco/ui-primitives/Card";
+import { Card, CardContent } from "@signalco/ui-primitives/Card";
 import { Calendar } from "@signalco/ui-icons";
 import { formatLocalDate } from "../RaisedBedPlantPicker";
 import { useState } from "react";
@@ -73,20 +73,24 @@ function OperationScheduleModal({
                     </Typography>
                     <Typography>Ova radnja će biti zakazana za odabrani datum.</Typography>
                     <Card>
-                        <Row spacing={2}>
-                            <span className="size-20 text-4xl flex items-center justify-center border rounded bg-card">🪏</span>
-                            <Stack>
-                                <Typography className="mt-2" noWrap>
-                                    {operation.information.label}
-                                </Typography>
-                                <Typography level="body2">
-                                    {operation.information.shortDescription}
-                                </Typography>
-                                <Typography level="body2" semiBold>
-                                    {formatPrice(operation.prices?.perOperation)}
-                                </Typography>
-                            </Stack>
-                        </Row>
+                        <CardContent noHeader>
+                            <Row spacing={2}>
+                                <div>
+                                    <OperationImage operation={operation} size={32} />
+                                </div>
+                                <Stack>
+                                    <Typography noWrap>
+                                        {operation.information.label}
+                                    </Typography>
+                                    <Typography level="body2">
+                                        {operation.information.shortDescription}
+                                    </Typography>
+                                    <Typography level="body2" semiBold>
+                                        {formatPrice(operation.prices?.perOperation)}
+                                    </Typography>
+                                </Stack>
+                            </Row>
+                        </CardContent>
                     </Card>
                     <Input
                         type="date"

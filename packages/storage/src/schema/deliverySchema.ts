@@ -136,7 +136,9 @@ export const DeliveryModes = {
 
 export const DeliveryRequestStates = {
     PENDING: 'pending',
-    SCHEDULED: 'scheduled',
+    CONFIRMED: 'confirmed',
+    PREPARING: 'preparing',
+    READY: 'ready',
     FULFILLED: 'fulfilled',
     CANCELLED: 'cancelled'
 } as const;

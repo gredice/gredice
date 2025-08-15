@@ -1,14 +1,22 @@
 import 'server-only';
-import { and, eq, gte, lte, desc, asc, sql } from "drizzle-orm";
+import { and, eq, gte, lte, desc, asc } from "drizzle-orm";
 import { storage } from "../storage";
 import {
     timeSlots,
     InsertTimeSlot,
     UpdateTimeSlot,
     SelectTimeSlot,
-    TimeSlotStatuses,
-    DeliveryModes
+    TimeSlotStatuses
 } from "../schema";
+
+export function getTimeSlot(slotId: number): Promise<SelectTimeSlot | undefined> {
+    return storage().query.timeSlots.findFirst({
+        where: eq(timeSlots.id, slotId),
+        with: {
+            location: true
+        }
+    });
+}
 
 // Get all slots for admin view
 export function getAllTimeSlots(

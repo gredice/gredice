@@ -238,7 +238,8 @@ export async function processItem(itemData: {
                                 mode: deliveryInfo.mode,
                                 addressId: deliveryInfo.addressId,
                                 locationId: deliveryInfo.locationId,
-                                notes: deliveryInfo.notes
+                                notes: deliveryInfo.notes,
+                                accountId: itemData.accountId
                             });
                             console.debug(`Created delivery request ${deliveryRequestId} for operation ${operationId}`);
                         } catch (error) {

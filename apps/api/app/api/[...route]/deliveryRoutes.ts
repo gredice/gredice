@@ -57,7 +57,7 @@ const createRequestSchema = z.object({
     mode: z.enum(['delivery', 'pickup']),
     addressId: z.number().optional(),
     locationId: z.number().optional(),
-    notes: z.string().max(500).optional()
+    notes: z.string().max(500).optional(),
 });
 
 const cancelRequestSchema = z.object({
@@ -253,7 +253,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const data = context.req.valid('json');
 
             try {
-                const requestId = await createDeliveryRequest(data);
+                const requestId = await createDeliveryRequest({
+                    ...data,
+                    accountId: accountId
+                });
                 return context.json({ id: requestId }, 201);
             } catch (error) {
                 console.error('Failed to create delivery request:', error);

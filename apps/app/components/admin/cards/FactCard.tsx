@@ -6,10 +6,11 @@ import { cx } from "@signalco/ui-primitives/cx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@signalco/ui-primitives/Tooltip";
 
 export function FactCard({ header, value, href, beforeValue }: { header: string, value: string | number, href?: string, beforeValue?: string | number }) {
-    const change = beforeValue ? ((Number(value) - Number(beforeValue)) / Number(beforeValue)) * 100 : 0;
-    const hasChange = beforeValue && Number(beforeValue) > 0;
+    const hasChange = typeof beforeValue !== "undefined";
+    const change = hasChange ? (Number(beforeValue) > 0 ? ((Number(value) - Number(beforeValue)) / Number(beforeValue)) * 100 : Number(value) * 100) : 0;
     const changeText = hasChange ? `${change > 0 ? "+" : ""}${change.toFixed(1)}%` : "";
     const changeCount = hasChange ? Number(value) - Number(beforeValue) : 0;
+    const changeCountText = changeCount > 0 ? `+${changeCount}` : changeCount;
 
     const CardComponent = href ? 'a' : 'div';
 
@@ -26,12 +27,13 @@ export function FactCard({ header, value, href, beforeValue }: { header: string,
                             <Stack className="self-end">
                                 <Tooltip>
                                     <TooltipTrigger>
-                                        <Typography level="body2"
+                                        <Typography level="body1"
                                             className={cx(
                                                 change > 0 ? "text-green-600" : change < 0 ? "text-red-600" : "",
                                                 "cursor-help text-right"
                                             )}>
-                                            {changeText}
+                                            {changeCountText}
+                                            <small>{` (${changeText})`}</small>
                                         </Typography>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -40,7 +42,6 @@ export function FactCard({ header, value, href, beforeValue }: { header: string,
                                         </Typography>
                                     </TooltipContent>
                                 </Tooltip>
-                                <Typography className="text-right" level="body3">od prošlog perioda</Typography>
                             </Stack>
                         )}
                     </Row>

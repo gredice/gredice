@@ -233,7 +233,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             processItem({
                                 accountId,
                                 ...item,
-                                amount_total: sunflowerAmount
+                                amount_total: sunflowerAmount,
+                                additionalData: {
+                                    ...item.additionalData,
+                                    ...(deliveryInfo ? { delivery: deliveryInfo } : {})
+                                }
                             })
                         ]);
                     }

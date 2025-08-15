@@ -78,6 +78,7 @@ function AddressForm({
                 <Stack spacing={2}>
                     <Input
                         label="Naziv adrese"
+                        className="bg-card"
                         value={formData.label}
                         onChange={(e) => setFormData(prev => ({ ...prev, label: e.target.value }))}
                         placeholder="npr. Kuća, Posao..."
@@ -85,6 +86,7 @@ function AddressForm({
                     />
                     <Input
                         label="Ime i prezime"
+                        className="bg-card"
                         value={formData.contactName}
                         onChange={(e) => setFormData(prev => ({ ...prev, contactName: e.target.value }))}
                         placeholder="Unesite ime i prezime"
@@ -92,6 +94,7 @@ function AddressForm({
                     />
                     <Input
                         label="Telefon"
+                        className="bg-card"
                         value={formData.phone}
                         onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                         placeholder="npr. +385 98 123 4567"
@@ -99,6 +102,7 @@ function AddressForm({
                     />
                     <Input
                         label="Ulica i kućni broj"
+                        className="bg-card"
                         value={formData.street1}
                         onChange={(e) => setFormData(prev => ({ ...prev, street1: e.target.value }))}
                         placeholder="Unesite adresu"
@@ -106,6 +110,7 @@ function AddressForm({
                     />
                     <Input
                         label="Dodatne informacije (stan, kat...)"
+                        className="bg-card"
                         value={formData.street2}
                         onChange={(e) => setFormData(prev => ({ ...prev, street2: e.target.value }))}
                         placeholder="Dodatne informacije (opciono)"
@@ -113,6 +118,7 @@ function AddressForm({
                     <Row spacing={2}>
                         <Input
                             label="Grad"
+                            className="bg-card"
                             value={formData.city}
                             onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
                             placeholder="Unesite grad"
@@ -120,6 +126,7 @@ function AddressForm({
                         />
                         <Input
                             label="Poštanski broj"
+                            className="bg-card"
                             value={formData.postalCode}
                             onChange={(e) => setFormData(prev => ({ ...prev, postalCode: e.target.value }))}
                             placeholder="10000"
@@ -128,6 +135,7 @@ function AddressForm({
                     </Row>
                     <Checkbox
                         checked={formData.isDefault}
+                        className="bg-card"
                         onCheckedChange={(checked: boolean) => setFormData(prev => ({ ...prev, isDefault: !!checked }))}
                         label="Postavi kao zadanu adresu"
                     />
@@ -195,7 +203,7 @@ function AddressCard({ address }: { address: DeliveryAddressData }) {
     }
 
     return (
-        <Card className={address.isDefault ? 'border-primary' : ''}>
+        <Card className={address.isDefault ? 'border-primary/30 border-2' : ''}>
             <CardContent>
                 <Stack spacing={2}>
                     <Row justifyContent="space-between" alignItems="start">
@@ -272,9 +280,9 @@ export function DeliveryAddressesSection() {
     };
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={2}>
             <Row justifyContent="space-between">
-                <Typography level="h4" className="hidden md:block">Adrese za dostavu</Typography>
+                <Typography level="h5">Adrese za dostavu</Typography>
                 <Modal
                     open={isCreating}
                     onOpenChange={setIsCreating}
@@ -299,14 +307,14 @@ export function DeliveryAddressesSection() {
             {isLoading ? (
                 <Typography>Učitavanje adresa...</Typography>
             ) : addresses && addresses.length > 0 ? (
-                <Stack spacing={2}>
+                <Stack spacing={1}>
                     {addresses.map((address) => (
                         <AddressCard key={address.id} address={address} />
                     ))}
                 </Stack>
             ) : (
                 <NoDataPlaceholder>
-                    Dodajte svoju prvu adresu za dostavu
+                    Dodaj svoju prvu adresu za dostavu
                 </NoDataPlaceholder>
             )}
         </Stack>
