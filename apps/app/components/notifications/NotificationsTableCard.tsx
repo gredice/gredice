@@ -1,7 +1,7 @@
 import { Card, CardHeader, CardTitle, CardOverflow } from "@signalco/ui-primitives/Card";
 import { getNotificationsByAccount, getNotificationsByUser } from "@gredice/storage";
 import { Table } from "@signalco/ui-primitives/Table";
-import { LocaleDateTime } from "../shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { NotificationCreateModal } from "./NotificationCreateModal";
 import { Row } from "@signalco/ui-primitives/Row";
 import { ServerActionIconButton } from "../shared/ServerActionIconButton";
@@ -93,7 +93,7 @@ export async function NotificationsTableCard({ accountId, userId, gardenId, rais
                                 <Table.Cell>{notification.gardenId || "-"}</Table.Cell>
                                 <Table.Cell>{notification.readAt ? "Da" : "Ne"}</Table.Cell>
                                 <Table.Cell>
-                                    <LocaleDateTime>{notification.timestamp}</LocaleDateTime>
+                                    <LocalDateTime>{notification.timestamp}</LocalDateTime>
                                 </Table.Cell>
                                 <Table.Cell>{notification.id}</Table.Cell>
                                 <Table.Cell>
@@ -106,7 +106,7 @@ export async function NotificationsTableCard({ accountId, userId, gardenId, rais
                                         </ServerActionIconButton>
                                     )}
                                 </Table.Cell>
-                                <Table.Cell><LocaleDateTime>{notification.createdAt}</LocaleDateTime></Table.Cell>
+                                <Table.Cell><LocalDateTime>{notification.createdAt}</LocalDateTime></Table.Cell>
                             </Table.Row>
                         ))}
                         {accountNotifications.length === 0 && userNotifications.length === 0 && (

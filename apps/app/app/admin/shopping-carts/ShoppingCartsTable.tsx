@@ -4,7 +4,7 @@ import { auth } from "../../../lib/auth/auth";
 import { KnownPages } from "../../../src/KnownPages";
 import Link from "next/link";
 import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
-import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { Typography } from "@signalco/ui-primitives/Typography";
 
@@ -80,9 +80,9 @@ export async function ShoppingCartsTable({ accountId }: { accountId?: string }) 
                                 </Chip>
                             </Table.Cell>
                             <Table.Cell>
-                                <LocaleDateTime time={false}>
+                                <LocalDateTime time={false}>
                                     {cart.updatedAt}
-                                </LocaleDateTime>
+                                </LocalDateTime>
                             </Table.Cell>
                         </Table.Row>
                     );

@@ -2,7 +2,7 @@ import { getAccounts, getAllOperations, getAllRaisedBeds, getEntitiesFormatted, 
 import { Table } from '@signalco/ui-primitives/Table';
 import { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
-import { LocaleDateTime } from '../shared/LocaleDateTime';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Chip } from '@signalco/ui-primitives/Chip';
@@ -91,17 +91,17 @@ export async function OperationsTable({
                                     {operation.status === 'planned' && (
                                         <Row spacing={1}>
                                             <Calendar className="size-4 shrink-0" />
-                                            <LocaleDateTime time={false}>
+                                            <LocalDateTime time={false}>
                                                 {operation.scheduledDate}
-                                            </LocaleDateTime>
+                                            </LocalDateTime>
                                         </Row>
                                     )}
                                     {operation.status === 'completed' && (
                                         <Row spacing={1}>
                                             {/* <span>{operation.completedBy}</span> */}
-                                            <LocaleDateTime time={false}>
+                                            <LocalDateTime time={false}>
                                                 {operation.completedAt ? new Date(operation.completedAt) : null}
-                                            </LocaleDateTime>
+                                            </LocalDateTime>
                                         </Row>
                                     )}
                                 </Stack>
@@ -121,14 +121,14 @@ export async function OperationsTable({
                                 </Stack>
                             </Table.Cell>
                             <Table.Cell>
-                                <LocaleDateTime time={false}>
+                                <LocalDateTime time={false}>
                                     {operation.timestamp}
-                                </LocaleDateTime>
+                                </LocalDateTime>
                             </Table.Cell>
                             <Table.Cell>
-                                <LocaleDateTime time={false}>
+                                <LocalDateTime time={false}>
                                     {operation.createdAt ? new Date(operation.createdAt) : null}
-                                </LocaleDateTime>
+                                </LocalDateTime>
                             </Table.Cell>
                             <Table.Cell>
                                 <Row spacing={1}>

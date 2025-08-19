@@ -2,7 +2,7 @@ import { getAllTimeSlots, getPickupLocations } from "@gredice/storage";
 import { Table } from "@signalco/ui-primitives/Table";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
-import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
+import { TimeRange } from "@gredice/ui/LocalDateTime";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { SlotActionButtons } from "./SlotActionButtons";
 
@@ -36,18 +36,6 @@ export async function TimeSlotsTable() {
             case 'pickup': return 'Preuzimanje';
             default: return type;
         }
-    }
-
-    function formatTimeSlot(startAt: Date, endAt: Date) {
-        const start = new Date(startAt);
-        const end = new Date(endAt);
-        return `${start.toLocaleDateString('hr-HR')} ${start.toLocaleTimeString('hr-HR', {
-            hour: '2-digit',
-            minute: '2-digit'
-        })} - ${end.toLocaleTimeString('hr-HR', {
-            hour: '2-digit',
-            minute: '2-digit'
-        })}`;
     }
 
     return (
@@ -86,7 +74,7 @@ export async function TimeSlotsTable() {
                             </Table.Cell>
                             <Table.Cell>
                                 <Typography level="body2">
-                                    {formatTimeSlot(slot.startAt, slot.endAt)}
+                                    <TimeRange startAt={slot.startAt} endAt={slot.endAt} />
                                 </Typography>
                             </Table.Cell>
                             <Table.Cell>

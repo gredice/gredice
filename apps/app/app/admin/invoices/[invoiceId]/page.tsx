@@ -9,7 +9,7 @@ import { auth } from "../../../../lib/auth/auth";
 import { KnownPages } from "../../../../src/KnownPages";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { InvoiceActions } from "./InvoiceActions";
 import { isOverdue } from "./invoiceUtils";
 import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
@@ -90,11 +90,11 @@ export default async function InvoicePage({ params }: { params: { invoiceId: str
                                     <Row spacing={4}>
                                         <Stack spacing={1} className="flex-1">
                                             <Typography level="body2" >Datum izdavanja</Typography>
-                                            <LocaleDateTime time={false}>{invoice.issueDate}</LocaleDateTime>
+                                            <LocalDateTime time={false}>{invoice.issueDate}</LocalDateTime>
                                         </Stack>
                                         <Stack spacing={1} className="flex-1">
                                             <Typography level="body2" >Datum dospijeća</Typography>
-                                            <LocaleDateTime time={false}>{invoice.dueDate}</LocaleDateTime>
+                                            <LocalDateTime time={false}>{invoice.dueDate}</LocalDateTime>
                                         </Stack>
                                     </Row>
                                     {invoice.notes && (

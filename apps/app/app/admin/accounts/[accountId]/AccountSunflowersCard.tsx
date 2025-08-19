@@ -6,7 +6,7 @@ import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { revalidatePath } from "next/cache";
 import { Field } from "../../../../components/shared/fields/Field";
-import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
 import { auth } from "../../../../lib/auth/auth";
 import { KnownPages } from "../../../../src/KnownPages";
@@ -88,9 +88,9 @@ export async function AccountSunflowersCard({ accountId }: { accountId: string }
                                         {sunflower.amount}
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <LocaleDateTime>
+                                        <LocalDateTime>
                                             {sunflower.createdAt}
-                                        </LocaleDateTime>
+                                        </LocalDateTime>
                                     </Table.Cell>
                                 </Table.Row>
                             ))}

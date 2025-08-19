@@ -6,7 +6,7 @@ import { auth } from "../../../lib/auth/auth";
 import { KnownPages } from "../../../src/KnownPages";
 import Link from "next/link";
 import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
-import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
@@ -76,9 +76,9 @@ export default async function ReceiptsPage() {
                             {receipts.map((receipt) => (
                                 <Table.Row key={receipt.id}>
                                     <Table.Cell>
-                                        <LocaleDateTime>
+                                        <LocalDateTime>
                                             {receipt.createdAt}
-                                        </LocaleDateTime>
+                                        </LocalDateTime>
                                     </Table.Cell>
                                     <Table.Cell>
                                         <Link href={KnownPages.Receipt(receipt.id)}>

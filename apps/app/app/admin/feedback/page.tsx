@@ -4,7 +4,7 @@ import { Chip } from "@signalco/ui-primitives/Chip";
 import { Table } from "@signalco/ui-primitives/Table";
 import { auth } from "../../../lib/auth/auth";
 import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
-import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
@@ -58,9 +58,9 @@ export default async function FeedbackPage() {
                                         {JSON.stringify(feedback.data)}
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <LocaleDateTime time={false}>
+                                        <LocalDateTime time={false}>
                                             {feedback.createdAt}
-                                        </LocaleDateTime>
+                                        </LocalDateTime>
                                     </Table.Cell>
                                 </Table.Row>
                             ))}

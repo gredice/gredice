@@ -10,7 +10,7 @@ import { entityDisplayName } from '../../../../src/entities/entityAttributes';
 import { ServerActionIconButton } from '../../../../components/shared/ServerActionIconButton';
 import { Duplicate } from '@signalco/ui-icons';
 import { duplicateEntity } from '../../../(actions)/entityActions';
-import { LocaleDateTime } from '../../../../components/shared/LocaleDateTime';
+import { LocalDateTime } from '../../../../components/shared/LocalDateTime';
 
 export async function EntitiesTable({ entityTypeName }: { entityTypeName: string }) {
     const entities = await getEntitiesRaw(entityTypeName);
@@ -58,9 +58,9 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                             </Table.Cell>
                             <Table.Cell>
                                 <Typography secondary>
-                                    <LocaleDateTime time={false}>
+                                    <LocalDateTime time={false}>
                                         {entity.updatedAt}
-                                    </LocaleDateTime>
+                                    </LocalDateTime>
                                 </Typography>
                             </Table.Cell>
                             <Table.Cell>

@@ -6,7 +6,7 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { signalcoClient } from '@gredice/signalco';
 import { Suspense } from "react";
-import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 
 async function SensorCard({ sensor }: { sensor: SelectRaisedBedSensor }) {
     const data = sensor.sensorSignalcoId
@@ -38,14 +38,14 @@ async function SensorCard({ sensor }: { sensor: SelectRaisedBedSensor }) {
                             <Typography level="body2">Vlažnost tla</Typography>
                             <Typography semiBold>{moisture.value ?? 'N/A'}%</Typography>
                             <Typography level="body3">
-                                <LocaleDateTime>{moisture.updatedAt ? new Date(moisture.updatedAt) : null}</LocaleDateTime>
+                                <LocalDateTime>{moisture.updatedAt ? new Date(moisture.updatedAt) : null}</LocalDateTime>
                             </Typography>
                         </Stack>
                         <Stack>
                             <Typography level="body2">Temperatura tla</Typography>
                             <Typography semiBold>{temperature.value ?? 'N/A'}°C</Typography>
                             <Typography level="body3">
-                                <LocaleDateTime>{temperature.updatedAt ? new Date(temperature.updatedAt) : null}</LocaleDateTime>
+                                <LocalDateTime>{temperature.updatedAt ? new Date(temperature.updatedAt) : null}</LocalDateTime>
                             </Typography>
                         </Stack>
                     </Stack>

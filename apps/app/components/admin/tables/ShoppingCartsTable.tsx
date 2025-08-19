@@ -4,7 +4,7 @@ import { auth } from "../../../lib/auth/auth";
 import { KnownPages } from "../../../src/KnownPages";
 import Link from "next/link";
 import { NoDataPlaceholder } from "../../shared/placeholders/NoDataPlaceholder";
-import { LocaleDateTime } from "../../shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { Typography } from "@signalco/ui-primitives/Typography";
 
@@ -59,12 +59,12 @@ export async function ShoppingCartsTable({ accountId }: { accountId?: string }) 
                         <Table.Cell>{cart.items.length}</Table.Cell>
                         <Table.Cell>
                             <Typography secondary>
-                                <LocaleDateTime>{cart.createdAt}</LocaleDateTime>
+                                <LocalDateTime>{cart.createdAt}</LocalDateTime>
                             </Typography>
                         </Table.Cell>
                         <Table.Cell>
                             <Typography secondary>
-                                <LocaleDateTime>{cart.updatedAt}</LocaleDateTime>
+                                <LocalDateTime>{cart.updatedAt}</LocalDateTime>
                             </Typography>
                         </Table.Cell>
                     </Table.Row>

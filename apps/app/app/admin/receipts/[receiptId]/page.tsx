@@ -8,7 +8,7 @@ import { auth } from "../../../../lib/auth/auth";
 import { KnownPages } from "../../../../src/KnownPages";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { FieldSet } from "../../../../components/shared/fields/FieldSet";
 import { Field } from "../../../../components/shared/fields/Field";
 import { ReceiptActions } from "./ReceiptActions";
@@ -70,8 +70,8 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
                 <FieldSet>
                     <Field name="Račun ID" value={receipt.id} mono />
                     <Field name="Broj računa" value={receipt.receiptNumber} mono />
-                    <Field name="Kreiran" value={<LocaleDateTime>{receipt.createdAt}</LocaleDateTime>} />
-                    <Field name="Ažuriran" value={<LocaleDateTime>{receipt.updatedAt}</LocaleDateTime>} />
+                    <Field name="Kreiran" value={<LocalDateTime>{receipt.createdAt}</LocalDateTime>} />
+                    <Field name="Ažuriran" value={<LocalDateTime>{receipt.updatedAt}</LocalDateTime>} />
                 </FieldSet>
                 <FieldSet>
                     <Field name="Ponuda broj" value={receipt.invoice?.invoiceNumber || `#${receipt.invoiceId}`} />
@@ -105,7 +105,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
                                     } />
                                     <Field name="Datum fiskalizacije" value={
                                         receipt.cisTimestamp ? (
-                                            <LocaleDateTime>{receipt.cisTimestamp}</LocaleDateTime>
+                                            <LocalDateTime>{receipt.cisTimestamp}</LocalDateTime>
                                         ) : '-'
                                     } />
                                     {receipt.cisErrorMessage && (

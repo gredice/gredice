@@ -3,7 +3,7 @@ import { Table } from "@signalco/ui-primitives/Table";
 import { getAccountGardens, getAllRaisedBeds, getRaisedBeds } from "@gredice/storage";
 import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
 import Link from "next/link";
-import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { KnownPages } from "../../../../src/KnownPages";
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
 
@@ -81,7 +81,7 @@ export async function RaisedBedsTableCard({ accountId, gardenId }: { accountId?:
                                             {Array.isArray(bed.fields) ? bed.fields.length : 0}
                                         </SegmentedCircularProgress>
                                     </Table.Cell>
-                                    <Table.Cell><LocaleDateTime>{bed.createdAt}</LocaleDateTime></Table.Cell>
+                                    <Table.Cell><LocalDateTime>{bed.createdAt}</LocalDateTime></Table.Cell>
                                 </Table.Row>
                             ))}
                     </Table.Body>

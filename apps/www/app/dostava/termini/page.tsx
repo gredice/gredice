@@ -10,6 +10,7 @@ import { WhatsAppCard } from "../../../components/social/WhatsAppCard";
 import { client } from '@gredice/client';
 import { StyledHtml } from "../../../components/shared/StyledHtml";
 import { Metadata } from "next";
+import { TimeRange, LocalDateTime } from "@gredice/ui/LocalDateTime";
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
@@ -110,12 +111,17 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
                     <CardHeader>
                         <CardTitle>
                             <Typography level="h5" className="text-xl font-normal">
-                                {new Date(date).toLocaleDateString('hr-HR', {
-                                    weekday: 'long',
-                                    day: 'numeric',
-                                    month: 'long',
-                                    year: 'numeric'
-                                })}
+                                <LocalDateTime
+                                    time={false}
+                                    format={{
+                                        weekday: 'long',
+                                        day: 'numeric',
+                                        month: 'long',
+                                        year: 'numeric'
+                                    }}
+                                >
+                                    {new Date(date)}
+                                </LocalDateTime>
                             </Typography>
                         </CardTitle>
                     </CardHeader>
@@ -127,13 +133,7 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
                                         <Stack spacing={2}>
                                             <Row spacing={2} className="items-center">
                                                 <Typography level="body2" semiBold>
-                                                    {new Date(slot.startAt).toLocaleTimeString('hr-HR', {
-                                                        hour: '2-digit',
-                                                        minute: '2-digit'
-                                                    })} - {new Date(slot.endAt).toLocaleTimeString('hr-HR', {
-                                                        hour: '2-digit',
-                                                        minute: '2-digit'
-                                                    })}
+                                                    <TimeRange startAt={slot.startAt} endAt={slot.endAt} timeOnly />
                                                 </Typography>
                                                 <Chip color="success" size="sm">
                                                     Dostupno
