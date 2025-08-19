@@ -75,7 +75,7 @@ export async function DeliveryRequestsTable() {
                         ? `${address.street1 || ''}${address.street2 ? address.street2 + ", " : ''}, ${address.city || ''}, ${address.postalCode || ''}`
                         : '';
                     const GOOGLE_MAPS_URL = "https://www.google.com/maps/dir//";
-                    const googleMapsDirectionsUri = `${GOOGLE_MAPS_URL}${encodeURI(addressString)}`;
+                    const googleMapsDirectionsUri = `${GOOGLE_MAPS_URL}${encodeURIComponent(addressString)}`;
                     return (
                         <Table.Row key={request.id}>
                             <Table.Cell>
