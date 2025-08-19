@@ -72,7 +72,7 @@ export async function DeliveryRequestsTable() {
                 {deliveryRequests.map(request => {
                     const { slot, address, location } = request;
                     const addressString = address
-                        ? `${address.street1 || ''}${address.street2 ? address.street2 + ", " : ''}, ${address.city || ''}, ${address.postalCode || ''}`
+                        ? [address.street1, address.street2, address.city, address.postalCode].filter(Boolean).join(', ')
                         : '';
                     const GOOGLE_MAPS_URL = "https://www.google.com/maps/dir//";
                     const googleMapsDirectionsUri = `${GOOGLE_MAPS_URL}${encodeURIComponent(addressString)}`;
