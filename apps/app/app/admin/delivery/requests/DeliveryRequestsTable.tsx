@@ -5,6 +5,7 @@ import { NoDataPlaceholder } from "../../../../components/shared/placeholders/No
 import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { DeliveryRequestActionButtons } from "./DeliveryRequestActionButtons";
+import { Stack } from "@signalco/ui-primitives/Stack";
 
 export async function DeliveryRequestsTable() {
     const [deliveryRequests, pickupLocations, timeSlots] = await Promise.all([
@@ -53,7 +54,7 @@ export async function DeliveryRequestsTable() {
                     <Table.Head>Status</Table.Head>
                     <Table.Head>Način</Table.Head>
                     <Table.Head>Vremenski slot</Table.Head>
-                    <Table.Head>Lokacija</Table.Head>
+                    <Table.Head>Lokacija/Adresa dostave</Table.Head>
                     <Table.Head>Kreiran</Table.Head>
                     <Table.Head>Akcije</Table.Head>
                 </Table.Row>
@@ -69,9 +70,12 @@ export async function DeliveryRequestsTable() {
                     </Table.Row>
                 )}
                 {deliveryRequests.map(request => {
-                    const slot = timeSlots.find(s => s.id === request.slotId);
-                    const location = pickupLocations.find(loc => loc.id === request.locationId);
-
+                    const { slot, address, location } = request;
+                    const addressString = address
+                        ? `${address.street1 || ''}${address.street2 ? address.street2 + ", " : ''}, ${address.city || ''}, ${address.postalCode || ''}`
+                        : '';
+                    const GOOGLE_MAPS_URL = "https://www.google.com/maps/dir//";
+                    const googleMapsDirectionsUri = `${GOOGLE_MAPS_URL}${encodeURI(addressString)}`;
                     return (
                         <Table.Row key={request.id}>
                             <Table.Cell>
@@ -106,7 +110,19 @@ export async function DeliveryRequestsTable() {
                                 )}
                             </Table.Cell>
                             <Table.Cell>
-                                <Typography>{location?.name || '-'}</Typography>
+                                {request.mode === 'pickup' ? (
+                                    <Typography>{location?.name || '-'}</Typography>
+                                ) : (
+                                    <Stack>
+                                        <Typography>{address?.contactName || '-'}</Typography>
+                                        <a href={`tel:${address?.phone}`}><Typography>{address?.phone}</Typography></a>
+                                        <a href={googleMapsDirectionsUri} target="_blank">
+                                            <Typography>{address?.street1 || '-'}</Typography>
+                                            {address?.street2 && <Typography>{address?.street2 || '-'}</Typography>}
+                                            <Typography>{address?.postalCode || '-'}, {address?.city || '-'}</Typography>
+                                        </a>
+                                    </Stack>
+                                )}
                             </Table.Cell>
                             <Table.Cell>
                                 <Typography level="body2" secondary>

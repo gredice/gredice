@@ -51,6 +51,7 @@ export function SlotActionButtons({ slot }: SlotActionButtonsProps) {
         <Row spacing={1}>
             {isScheduled && (
                 <IconButton
+                    title="Zatvori"
                     variant="outlined"
                     size="sm"
                     onClick={handleCloseSlot}
