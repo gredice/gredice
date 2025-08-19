@@ -115,7 +115,11 @@ export async function DeliveryRequestsTable() {
                                 ) : (
                                     <Stack>
                                         <Typography>{address?.contactName || '-'}</Typography>
-                                        <a href={`tel:${address?.phone}`}><Typography>{address?.phone}</Typography></a>
+                                        {address?.phone ? (
+                                            <a href={`tel:${address.phone}`}><Typography>{address.phone}</Typography></a>
+                                        ) : (
+                                            <Typography>-</Typography>
+                                        )}
                                         <a href={googleMapsDirectionsUri} target="_blank">
                                             <Typography>{address?.street1 || '-'}</Typography>
                                             {address?.street2 && <Typography>{address?.street2 || '-'}</Typography>}
