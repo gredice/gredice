@@ -9,6 +9,8 @@ import { HoverOutline } from "./helpers/HoverOutline";
 import { useCurrentGarden } from "../hooks/useCurrentGarden";
 import { usePlantSort } from "../hooks/usePlantSorts";
 import { GardenResponse } from "@gredice/client";
+import { useRaisedBedSensors } from "../hooks/useRaisedBedSensors";
+import { Color, MeshStandardMaterial } from "three";
 
 export function RaisedBedPlantField({ field }: { field: GardenResponse['raisedBeds'][number]['fields'][number] }) {
     const { positionIndex, plantSortId, plantSowDate } = field;
@@ -107,6 +109,18 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const currentStackHeight = useStackHeight(stack, block);
     const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
 
+    // Soil moisture
+    const { data: currentGarden } = useCurrentGarden();
+    const raisedBed = currentGarden?.raisedBeds?.find(rb => rb.blockId === block.id);
+    const { data: sensorData } = useRaisedBedSensors(currentGarden?.id, raisedBed?.id);
+    const soilMoisture = sensorData?.find(sensor => sensor.type === 'soil_moisture' && sensor.value)?.value ?? 0;
+    // Lighten for soilMoisture 0, default color when 1
+    let soilColor = materials['Material.Dirt'].color.clone() as Color;
+    const soilHsl = { h: 0, s: 0, l: 0 };
+    soilColor.getHSL(soilHsl, 'srgb');
+    soilHsl.l = soilHsl.l + ((Number(soilMoisture) / 100) * 0); // Lighten based on moisture
+    soilColor.setHSL(soilHsl.h, soilHsl.s, soilHsl.l, 'srgb');
+
     // Switch between shapes (O, L, I, U) based on neighbors
     let shape = "O";
     let shapeRotation = 0;
@@ -167,8 +181,8 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                     castShadow
                     receiveShadow
                     geometry={nodes[`Raised_Bed_${shape}_1`].geometry}
-                    material={materials['Material.Dirt']}
                 >
+                    <meshStandardMaterial color={soilColor} />
                     <HoverOutline hovered={hovered} />
                 </mesh>
             </animated.group>

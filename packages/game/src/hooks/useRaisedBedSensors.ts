@@ -1,10 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { client } from "@gredice/client";
 
-export function useRaisedBedSensors(gardenId: number, raisedBedId: number) {
+export function useRaisedBedSensors(gardenId: number | null | undefined, raisedBedId: number | null | undefined) {
     return useQuery({
         queryKey: ['raisedBeds', raisedBedId, 'sensors'],
         queryFn: async () => {
+            if (!gardenId) {
+                console.warn('Garden ID is not defined, cannot fetch sensors.');
+                return [];
+            }
+            if (!raisedBedId) {
+                console.warn('Raised Bed ID is not defined, cannot fetch sensors.');
+                return [];
+            }
+
             const response = await client().api.gardens[":gardenId"]["raised-beds"][":raisedBedId"].sensors.$get({
                 param: {
                     gardenId: gardenId.toString(),
@@ -13,7 +22,7 @@ export function useRaisedBedSensors(gardenId: number, raisedBedId: number) {
             });
             if (response.status === 400) {
                 console.error('Failed to fetch sensor data - bad request', response);
-                return null;
+                return [];
             }
             if (response.status === 404) {
                 console.error('Raised bed not found or no sensors available', response);
