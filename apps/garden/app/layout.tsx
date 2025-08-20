@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { AxiomWebVitals } from 'next-axiom';
 import "./globals.css";
@@ -11,6 +11,13 @@ export const metadata: Metadata = {
   title: "Vrt | Gredice",
   description: "Gredice vrt - vrt po tvom",
 };
+
+export const viewport: Viewport = {
+  maximumScale: 1,
+  initialScale: 1,
+  userScalable: false,
+  width: "device-width"
+}
 
 export default function RootLayout({
   children,

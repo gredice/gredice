@@ -1,15 +1,20 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { AxiomWebVitals } from 'next-axiom';
 import "./globals.css";
 import Head from "next/head";
 import { ClientAppProvider } from "../components/providers/ClientAppProvider";
-import {ReactNode} from "react";
+import { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "Farma | Gredice",
   description: "Gredice farma - upravljanje farmom.",
 };
+
+export const viewport: Viewport = {
+  initialScale: 1,
+  width: "device-width"
+}
 
 export default function RootLayout({
   children,

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { AxiomWebVitals } from 'next-axiom';
 import "./globals.css";
@@ -11,6 +11,11 @@ export const metadata: Metadata = {
   description: "Gredice admin - upravljanje gredicama",
 };
 
+export const viewport: Viewport = {
+  initialScale: 1,
+  width: "device-width"
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -19,7 +24,6 @@ export default function RootLayout({
   return (
     <html lang="hr" suppressHydrationWarning={true}>
       <Head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="apple-mobile-web-app-title" content="Gredice" />
         <meta name="theme-color" content="#2e6f40" />
         <title>Admin | Gredice</title>
