@@ -332,17 +332,12 @@ export async function cancelDeliveryRequest(
     }
 
     // Create the cancellation event
-    await createEvent({
-        type: knownEventTypes.delivery.requestCancelled,
-        version: 1,
-        aggregateId: requestId,
-        data: {
-            actorType,
-            cancelReason: reasonCode,
-            note,
-            cancelledBy: actorId
-        }
-    });
+    await createEvent(knownEvents.delivery.requestCancelledV1(requestId, {
+        actorType,
+        cancelReason: reasonCode,
+        note,
+        cancelledBy: actorId
+    }));
 }
 
 // Confirm a delivery request
@@ -359,14 +354,9 @@ export async function confirmDeliveryRequest(requestId: string): Promise<void> {
     }
 
     // Create the confirmation event
-    await createEvent({
-        type: knownEventTypes.delivery.requestConfirmed,
-        version: 1,
-        aggregateId: requestId,
-        data: {
-            status: DeliveryRequestStates.CONFIRMED
-        }
-    });
+    await createEvent(knownEvents.delivery.requestConfirmedV1(requestId, {
+        status: DeliveryRequestStates.CONFIRMED
+    }));
 }
 
 // Prepare a delivery request
@@ -383,14 +373,9 @@ export async function prepareDeliveryRequest(requestId: string): Promise<void> {
     }
 
     // Create the preparation event
-    await createEvent({
-        type: knownEventTypes.delivery.requestPreparing,
-        version: 1,
-        aggregateId: requestId,
-        data: {
-            status: DeliveryRequestStates.PREPARING
-        }
-    });
+    await createEvent(knownEvents.delivery.requestPreparingV1(requestId, {
+        status: DeliveryRequestStates.PREPARING
+    }));
 }
 
 // Ready a delivery request
@@ -407,14 +392,9 @@ export async function readyDeliveryRequest(requestId: string): Promise<void> {
     }
 
     // Create the ready event
-    await createEvent({
-        type: knownEventTypes.delivery.requestReady,
-        version: 1,
-        aggregateId: requestId,
-        data: {
-            status: DeliveryRequestStates.READY
-        }
-    });
+    await createEvent(knownEvents.delivery.requestReadyV1(requestId, {
+        status: DeliveryRequestStates.READY
+    }));
 }
 
 // Fulfill a delivery request
@@ -435,13 +415,8 @@ export async function fulfillDeliveryRequest(requestId: string, deliveryNotes?: 
     }
 
     // Create the fulfillment event
-    await createEvent({
-        type: knownEventTypes.delivery.requestFulfilled,
-        version: 1,
-        aggregateId: requestId,
-        data: {
-            status: DeliveryRequestStates.FULFILLED,
-            deliveryNotes
-        }
-    });
+    await createEvent(knownEvents.delivery.requestFulfilledV1(requestId, {
+        status: DeliveryRequestStates.FULFILLED,
+        deliveryNotes
+    }));
 }

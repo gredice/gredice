@@ -245,16 +245,35 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
-        requestCancelledV1: (aggregateId: string, data: { actorType: string; reasonCode: string; note?: string }) => ({
+        requestCancelledV1: (aggregateId: string, data: { actorType: string; cancelReason: string; note?: string; cancelledBy?: string }) => ({
             type: knownEventTypes.delivery.requestCancelled,
             version: 1,
             aggregateId,
             data,
         }),
-        requestFulfilledV1: (aggregateId: string) => ({
+        requestConfirmedV1: (aggregateId: string, data: { status: string }) => ({
+            type: knownEventTypes.delivery.requestConfirmed,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestPreparingV1: (aggregateId: string, data: { status: string }) => ({
+            type: knownEventTypes.delivery.requestPreparing,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestReadyV1: (aggregateId: string, data: { status: string }) => ({
+            type: knownEventTypes.delivery.requestReady,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestFulfilledV1: (aggregateId: string, data: { status: string; deliveryNotes?: string }) => ({
             type: knownEventTypes.delivery.requestFulfilled,
             version: 1,
             aggregateId,
+            data,
         }),
         userCancelledV1: (aggregateId: string) => ({
             type: knownEventTypes.delivery.userCancelled,

@@ -521,22 +521,12 @@ export async function createReceipt(receipt: Omit<InsertReceipt, 'yearReceiptNum
                 })
                 .returning({ id: receipts.id }))[0].id;
 
-            await createEvent(knownEvents.receipts?.createdV1?.(receiptId.toString(), {
+            await createEvent(knownEvents.receipts.createdV1(receiptId.toString(), {
                 invoiceId: receipt.invoiceId.toString(),
                 receiptNumber,
                 totalAmount: receipt.totalAmount,
                 paymentMethod: receipt.paymentMethod,
-            }) ?? {
-                name: 'receipt.created.v1',
-                entityId: receiptId.toString(),
-                entityTypeName: 'receipt',
-                eventData: {
-                    invoiceId: receipt.invoiceId.toString(),
-                    receiptNumber,
-                    totalAmount: receipt.totalAmount,
-                    paymentMethod: receipt.paymentMethod,
-                }
-            });
+            }));
 
             return receiptId;
         } catch (error) {
@@ -605,12 +595,7 @@ export async function updateReceipt(receipt: UpdateReceipt) {
                 eq(receipts.isDeleted, false)
             ));
 
-    await createEvent(knownEvents.receipts?.updatedV1?.(receipt.id.toString()) ?? {
-        name: 'receipt.updated.v1',
-        entityId: receipt.id.toString(),
-        entityTypeName: 'receipt',
-        eventData: {}
-    });
+    await createEvent(knownEvents.receipts.updatedV1(receipt.id.toString()));
 }
 
 // Croatian fiscalization functions
@@ -644,22 +629,12 @@ export async function updateReceiptFiscalization(
                 eq(receipts.isDeleted, false)
             ));
 
-    await createEvent(knownEvents.receipts?.fiscalizedV1?.(receiptId.toString(), {
+    await createEvent(knownEvents.receipts.fiscalizedV1(receiptId.toString(), {
         jir: fiscalizationData.jir,
         zki: fiscalizationData.zki,
         cisStatus: fiscalizationData.cisStatus,
         cisResponse: fiscalizationData.cisResponse,
-    }) ?? {
-        name: 'receipt.fiscalized.v1',
-        entityId: receiptId.toString(),
-        entityTypeName: 'receipt',
-        eventData: {
-            jir: fiscalizationData.jir,
-            zki: fiscalizationData.zki,
-            cisStatus: fiscalizationData.cisStatus,
-            cisResponse: fiscalizationData.cisResponse,
-        }
-    });
+    }));
 }
 
 export async function getReceiptsByStatus(cisStatus: string) {
@@ -729,10 +704,5 @@ export async function softDeleteReceipt(receiptId: number) {
             ));
 
     // Create event using the same pattern as other receipt operations
-    await createEvent(knownEvents.receipts?.updatedV1?.(receiptId.toString()) ?? {
-        name: 'receipt.deleted.v1',
-        entityId: receiptId.toString(),
-        entityTypeName: 'receipt',
-        eventData: {}
-    });
+    await createEvent(knownEvents.receipts.updatedV1(receiptId.toString()));
 }
