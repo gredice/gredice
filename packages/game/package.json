@@ -52,7 +52,7 @@
     "tsx": "4.20.4",
     "typescript": "5.9.2",
     "uuid": "11.1.0",
-    "zustand": "5.0.7"
+    "zustand": "5.0.8"
   },
   "peerDependencies": {
     "@signalco/ui": ">=0",
