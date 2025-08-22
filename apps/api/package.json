@@ -43,7 +43,7 @@
     "@gredice/storage": "workspace:*",
     "@gredice/stripe": "workspace:*",
     "@gredice/transactional": "workspace:*",
-    "@playwright/test": "1.54.2",
+    "@playwright/test": "1.55.0",
     "@signalco/auth-server": "0.5.3",
     "@signalco/hooks": "0.2.1",
     "@signalco/js": "0.1.0",
