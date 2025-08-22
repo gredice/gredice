@@ -4,6 +4,12 @@ import { PageHeader } from "../../components/shared/PageHeader";
 import { InstagramCard } from "../../components/social/InstagramCard";
 import { WhatsAppCard } from "../../components/social/WhatsAppCard";
 import { FacebookCard } from "../../components/social/FacebookCard";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Kontakt",
+    description: "Slobodno nam se javi ako imaš pitanja, prijedloge ili komentare."
+};
 
 export default function ContactPage() {
     return (

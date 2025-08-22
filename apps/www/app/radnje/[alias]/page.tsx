@@ -13,9 +13,36 @@ import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
 import { Euro } from "@signalco/ui-icons";
 import { AttributeCard } from "../../../components/attributes/DetailCard";
 import { OperationApplicationsList } from "./OperationApplicationsList";
+import { Metadata } from "next";
+import { directoriesClient } from "@gredice/client";
 
-export default async function OperationPage({ params }: { params: Promise<{ alias: string }> }) {
-    const { alias: aliasUnescaped } = await params;
+export const revalidate = 3600; // 1 hour
+export async function generateMetadata(props: PageProps<'/radnje/[alias]'>): Promise<Metadata> {
+    const { alias: aliasUnescaped } = await props.params;
+    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const operationData = await getOperationsData();
+    const operation = operationData?.find((op) => op.information.label === alias);
+    if (!operation) {
+        return {
+            title: "Radnja nije pronađena",
+            description: "Radnja koju tražiš nije pronađena.",
+        };
+    }
+    return {
+        title: operation.information.label,
+        description: operation.information.shortDescription,
+    };
+}
+
+export async function generateStaticParams() {
+    const entities = (await directoriesClient().GET('/entities/operation')).data;
+    return entities?.map((entity) => ({
+        alias: String(entity.information.label),
+    })) ?? [];
+}
+
+export default async function OperationPage(props: PageProps<'/radnje/[alias]'>) {
+    const { alias: aliasUnescaped } = await props.params;
     const alias = decodeURIComponent(aliasUnescaped);
     const operationsData = await getOperationsData();
     const operation = operationsData?.find(op => op.information.label === alias);

@@ -3,6 +3,12 @@ import { PageHeader } from "../../../components/shared/PageHeader";
 import { Container } from "@signalco/ui-primitives/Container";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { StyledHtml } from "../../../components/shared/StyledHtml";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Politika kolačića",
+    description: "Koje kolačiće koristimo na našoj web stranici, kako ih koristimo, te koja su tvoja prava vezana uz njih."
+}
 
 export default function PolitikaKolacicaPage() {
     return (

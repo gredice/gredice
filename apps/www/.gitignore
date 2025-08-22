@@ -45,3 +45,6 @@ node_modules/
 # Sitemap
 **/public/sitemap*
 **/public/robots*
+
+# Generated
+/tests/sitemap-pages.json

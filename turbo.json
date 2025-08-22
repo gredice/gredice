@@ -50,7 +50,11 @@
             "cache": false,
             "persistent": true
         },
-        "test": {},
+        "test": {
+            "dependsOn": [
+                "build"
+            ]
+        },
         "db-generate": {
             "cache": false,
             "outputs": [

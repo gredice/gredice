@@ -8,6 +8,12 @@ import { Card, CardContent } from "@signalco/ui-primitives/Card";
 import { KnownPages } from "../../src/KnownPages";
 import { FeedbackModal } from "../../components/shared/feedback/FeedbackModal";
 
+export const revalidate = 3600; // 1 hour
+export const metadata = {
+    title: "Radnje",
+    description: "Sve što trebaš znati o radnjama koje možeš obavljati u svojim gredicama.",
+};
+
 function OperationCard({ operation }: { operation: OperationData }) {
     return (
         <Card href={KnownPages.Operation(operation.information.label)}>
@@ -37,7 +43,7 @@ export default async function OperationsPage() {
         <Stack spacing={4}>
             <PageHeader
                 header="Radnje"
-                subHeader={`Sve što trebaš znati o radnjama koje možeš obavljati u svojim gredicama 🪏`}
+                subHeader={`Sve što trebaš znati o radnjama koje možeš obavljati u svojim gredicama.`}
                 padded
             />
             <Stack spacing={4}>

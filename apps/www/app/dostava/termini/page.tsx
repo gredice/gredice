@@ -9,8 +9,13 @@ import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal
 import { WhatsAppCard } from "../../../components/social/WhatsAppCard";
 import { client } from '@gredice/client';
 import { StyledHtml } from "../../../components/shared/StyledHtml";
+import { Metadata } from "next";
 
 export const dynamic = 'force-dynamic';
+export const metadata: Metadata = {
+    title: "Termini dostave",
+    description: "Vidi dostupne termine za dostavu ili osobno preuzimanje.",
+};
 
 // Types from API response - these match the type-safe client schema
 interface TimeSlot {

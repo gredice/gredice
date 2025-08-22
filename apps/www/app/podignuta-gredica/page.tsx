@@ -8,6 +8,12 @@ import { Container } from "@signalco/ui-primitives/Container";
 import { KnownPages } from "../../src/KnownPages";
 import { BlockImage } from "@gredice/ui/BlockImage";
 import Image from "next/image";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Podignuta gredica",
+    description: "Sve što trebaš znati o podignutim gredicama i korištenju aplikacije Gredice za planiranje vrta."
+}
 
 export default function RaisedBedPage() {
     return (
