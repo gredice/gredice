@@ -60,50 +60,6 @@ jobs:
             - name: 🔎 Lint app
               if: success() && github.event_name == 'pull_request'
               run: pnpm lint --filter=${{ inputs.name }}
-    build:
-        timeout-minutes: 5
-        runs-on: ubuntu-latest
-        needs: lint
-        steps:
-          - uses: actions/checkout@v5
-            with:
-              fetch-depth: 2
-
-          - name: ✨ Setup Node
-            uses: actions/setup-node@v4
-            with:
-              node-version: "22.18.0"
-    
-          - uses: pnpm/action-setup@v3
-            name: ✨ Install pnpm
-            with:
-              version: 10.14.0
-    
-          - name: ✨ Get pnpm store directory
-            shell: bash
-            run: |
-              echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-    
-          - uses: actions/cache@v4
-            name: ✨ Setup pnpm cache
-            with:
-              path: ${{ env.STORE_PATH }}
-              key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-              restore-keys: |
-                ${{ runner.os }}-pnpm-store-
-
-          - name: 📦️ Install dependencies
-            run: pnpm install --frozen-lockfile --filter ${{ inputs.name }}... --filter .
-    
-          - name: ✨ Setup Vercel CLI
-            run: npm i --g vercel@latest
-
-          - name: ⚙️ Pull Vercel Environment Information
-            run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }} 
-            working-directory: ${{ inputs.path }}/
-
-          - name: ⚒️ Build app
-            run: pnpm build --filter=${{ inputs.name }}
     test:
         timeout-minutes: 5
         runs-on: ubuntu-latest
