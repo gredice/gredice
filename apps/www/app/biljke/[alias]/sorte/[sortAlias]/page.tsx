@@ -14,8 +14,8 @@ import { PlantTips } from "../../PlantTips";
 import { Metadata } from "next";
 
 export const revalidate = 3600; // 1 hour
-export async function generateMetadata({ params }: { params: Promise<{ alias: string, sortAlias: string }> }): Promise<Metadata> {
-    const { alias: aliasUnescaped, sortAlias: sortAliasUnescaped } = await params;
+export async function generateMetadata(props: PageProps<'/biljke/[alias]/sorte/[sortAlias]'>): Promise<Metadata> {
+    const { alias: aliasUnescaped, sortAlias: sortAliasUnescaped } = await props.params;
     const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
     const sortAlias = sortAliasUnescaped ? decodeURIComponent(sortAliasUnescaped) : null;
     const sort = (await getPlantSortsData())?.find((sort) =>
@@ -38,15 +38,15 @@ export async function generateStaticParams() {
     return sorts?.map((entity) => ({
         alias: String(entity.information.plant.information?.name),
         sortAlias: String(entity.information.name),
-    }));
+    })) ?? [];
 }
 
-export default async function PlantSortPage({ params }: { params: Promise<{ alias: string, sortAlias: string }> }) {
-    const { alias: aliasUnescaped, sortAlias: sortAliasUnescaped } = await params;
+export default async function PlantSortPage(props: PageProps<'/biljke/[alias]/sorte/[sortAlias]'>) {
+    const { alias: aliasUnescaped, sortAlias: sortAliasUnescaped } = await props.params;
     const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
     const sort = sortAliasUnescaped ? decodeURIComponent(sortAliasUnescaped) : null;
     if (!alias || !sort) {
-        console.warn("Invalid parameters for plant sort page:", params);
+        console.warn("Invalid parameters for plant sort page:", await props.params);
         notFound();
     }
 

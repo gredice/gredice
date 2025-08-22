@@ -3,6 +3,12 @@ import { PageHeader } from "../../../components/shared/PageHeader";
 import { Container } from "@signalco/ui-primitives/Container";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { StyledHtml } from "../../../components/shared/StyledHtml";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Tvrtka",
+    description: "Službeni podaci o društvu Gredice d.o.o."
+}
 
 export default function UvjetiKoristenjaPage() {
     return (

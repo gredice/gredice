@@ -10,6 +10,12 @@ import { Button } from "@signalco/ui-primitives/Button"
 import { Calendar } from "@signalco/ui-icons"
 import { KnownPages } from "../../src/KnownPages"
 import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card"
+import { Metadata } from "next"
+
+export const metadata: Metadata = {
+    title: "Dostava",
+    description: "Sve informacije o dostavi povrća iz tvojih gredica.",
+};
 
 export default function DeliveryPage() {
     return (

@@ -3,6 +3,12 @@ import { PageHeader } from "../../../components/shared/PageHeader";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Container } from "@signalco/ui-primitives/Container";
 import { StyledHtml } from "../../../components/shared/StyledHtml";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Politika privatnosti",
+    description: "Kako prikupljamo, koristimo i štitimo tvoje osobne podatke prilikom korištenja naše web stranice."
+}
 
 export default function PolitikaPrivatnostiPage() {
     return (

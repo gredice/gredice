@@ -15,8 +15,8 @@ import { Row } from "@signalco/ui-primitives/Row";
 import { Metadata } from "next";
 
 export const revalidate = 3600; // 1 hour
-export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }): Promise<Metadata> {
-    const { alias: aliasUnescaped } = await params;
+export async function generateMetadata(props: PageProps<'/blokovi/[alias]'>): Promise<Metadata> {
+    const { alias: aliasUnescaped } = await props.params;
     const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
     const blockData = (await directoriesClient().GET('/entities/block')).data;
     const block = blockData?.find((block) => block.information.label === alias);
@@ -36,7 +36,7 @@ export async function generateStaticParams() {
     const entities = (await directoriesClient().GET('/entities/block')).data;
     return entities?.map((entity) => ({
         alias: String(entity.information.label),
-    }));
+    })) ?? [];
 }
 
 function BlockAttributes({ prices, attributes }: BlockData) {
@@ -52,8 +52,8 @@ function BlockAttributes({ prices, attributes }: BlockData) {
     )
 }
 
-export default async function BlockPage({ params }: { params: Promise<{ alias: string }> }) {
-    const { alias: aliasUnescaped } = await params;
+export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
+    const { alias: aliasUnescaped } = await props.params;
     const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
     if (!alias) {
         notFound();

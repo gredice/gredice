@@ -2,6 +2,12 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { Container } from "@signalco/ui-primitives/Container";
 import { Typography } from "@signalco/ui-primitives/Typography";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Legalno",
+    description: "Pravni dokumenti i informacije"
+}
 
 export default function LegalnoPage() {
     return (

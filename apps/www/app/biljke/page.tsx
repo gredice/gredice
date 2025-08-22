@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     description: "Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu.",
 };
 
-export default async function PlantsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+export default async function PlantsPage({ searchParams }: PageProps<'/biljke'>) {
     const params = await searchParams;
     const view = params.pregled;
     const search = params.pretraga;

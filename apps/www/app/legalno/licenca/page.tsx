@@ -3,6 +3,12 @@ import { PageHeader } from "../../../components/shared/PageHeader";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Container } from "@signalco/ui-primitives/Container";
 import { StyledHtml } from "../../../components/shared/StyledHtml";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Licenca izvornog koda",
+    description: "Uvjeti korištenja izvornog koda aplikacije Gredice."
+}
 
 export default function PolitikaPrivatnostiPage() {
     return (

@@ -14,8 +14,8 @@ import { PlantTips } from "./PlantTips";
 import { Metadata } from "next";
 
 export const revalidate = 3600; // 1 hour
-export async function generateMetadata({ params }: { params: Promise<{ alias: string }> }): Promise<Metadata> {
-    const { alias: aliasUnescaped } = await params;
+export async function generateMetadata(props: PageProps<'/biljke/[alias]'>): Promise<Metadata> {
+    const { alias: aliasUnescaped } = await props.params;
     const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
     const plant = (await getPlantsData())?.find((plant) => plant.information.name.toLowerCase() === alias?.toLowerCase());
     if (!plant) {
@@ -34,10 +34,10 @@ export async function generateStaticParams() {
     const plants = await getPlantsData();
     return plants?.map((entity) => ({
         alias: String(entity.information.name),
-    }));
+    })) ?? [];
 }
 
-export default async function PlantPage(props: { params: Promise<{ alias: string }> }) {
+export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
     const { alias: aliasUnescaped } = await props.params;
     const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
     if (!alias) {
