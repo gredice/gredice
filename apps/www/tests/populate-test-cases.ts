@@ -1,5 +1,4 @@
 import { writeFile } from "fs/promises";
-import { url } from "inspector";
 import { parseStringPromise } from 'xml2js';
 
 // Helper to fetch and parse sitemap.xml
