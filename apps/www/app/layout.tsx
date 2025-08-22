@@ -37,14 +37,6 @@ export const metadata: Metadata = {
         title: "Gredice - vrt po tvom",
         url: "https://www.gredice.com",
         siteName: "Gredice - vrt po tvom",
-        images: [
-            {
-                url: "/og",
-                width: 1200,
-                height: 630,
-                alt: "Gredice - vrt po tvom",
-            },
-        ],
     }
 };
 
