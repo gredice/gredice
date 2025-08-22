@@ -1,5 +1,7 @@
 # FEAT00001 – Delivery Feature Specification
 
+Status: Implemented
+
 ## 1. Summary
 
 Enable users to receive (or personally pick up) deliverable items purchased through the platform by: (a) storing reusable delivery addresses, (b) selecting an available 2‑hour delivery (or pickup) time slot during checkout (Game modal flow), and (c) managing delivery requests operationally in the internal app. Built on Next.js (App Router) with Drizzle (PostgreSQL) and event sourcing for delivery request aggregate changes.
