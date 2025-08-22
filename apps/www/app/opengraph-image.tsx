@@ -1,7 +1,14 @@
 import { ImageResponse } from 'next/og'
-import { Logotype } from '../../components/Logotype'
- 
-export async function GET() {
+import { Logotype } from '../components/Logotype'
+
+export const alt = 'Gredice'
+export const size = {
+  width: 1200,
+  height: 630,
+};
+export const contentType = 'image/png'
+
+export default async function Image() {
   return new ImageResponse(
     (
       <div
@@ -20,8 +27,7 @@ export async function GET() {
       </div>
     ),
     {
-      width: 1200,
-      height: 630,
+      ...size
     }
   )
 }
