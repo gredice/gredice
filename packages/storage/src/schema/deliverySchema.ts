@@ -149,15 +149,6 @@ export const TimeSlotStatuses = {
     ARCHIVED: 'archived'
 } as const;
 
-export const CancelReasonCodes = {
-    USER_REQUESTED: 'user_requested', // ✅ Used in UI for customer-initiated cancellations
-    // PAYMENT_FAILED: 'payment_failed', // TODO: Use when implementing payment failure handling
-    // ITEM_UNAVAILABLE: 'item_unavailable', // TODO: Use when implementing inventory checks
-    // OPERATIONAL_ISSUE: 'operational_issue', // TODO: Use for admin/operational cancellations
-    CUTOFF_EXPIRED: 'cutoff_expired' // ✅ Used in API for time-based validations
-} as const;
-
 export type DeliveryMode = typeof DeliveryModes[keyof typeof DeliveryModes];
 export type DeliveryRequestState = typeof DeliveryRequestStates[keyof typeof DeliveryRequestStates];
 export type TimeSlotStatus = typeof TimeSlotStatuses[keyof typeof TimeSlotStatuses];
-export type CancelReasonCode = typeof CancelReasonCodes[keyof typeof CancelReasonCodes];

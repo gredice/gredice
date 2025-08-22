@@ -36,7 +36,7 @@ export function useCancelDeliveryRequest() {
     return useMutation({
         mutationFn: async (data: {
             requestId: string;
-            reasonCode: string;
+            cancelReason: string;
             note?: string;
         }) => {
             const { requestId, ...cancelData } = data;

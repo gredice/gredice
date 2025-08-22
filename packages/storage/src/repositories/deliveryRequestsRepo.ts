@@ -66,7 +66,7 @@ async function reconstructDeliveryRequestFromEvents(request: SelectDeliveryReque
         }
         else if (event.type === knownEventTypes.delivery.requestCancelled) {
             state = DeliveryRequestStates.CANCELLED;
-            cancelReason = data?.reasonCode;
+            cancelReason = data?.cancelReason;
         }
     }
 
@@ -302,7 +302,7 @@ export async function createDeliveryRequest(data: {
 export async function cancelDeliveryRequest(
     requestId: string,
     actorType: 'user' | 'admin' | 'system',
-    reasonCode: string,
+    cancelReason: string,
     note?: string,
     actorId?: string
 ): Promise<void> {
@@ -334,7 +334,7 @@ export async function cancelDeliveryRequest(
     // Create the cancellation event
     await createEvent(knownEvents.delivery.requestCancelledV1(requestId, {
         actorType,
-        cancelReason: reasonCode,
+        cancelReason,
         note,
         cancelledBy: actorId
     }));
