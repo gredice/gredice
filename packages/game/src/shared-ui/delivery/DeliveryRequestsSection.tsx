@@ -114,7 +114,7 @@ function CancelRequestModal({
     trigger: React.ReactElement;
 }) {
     const [isOpen, setIsOpen] = useState(false);
-    const [reasonCode, setReasonCode] = useState('');
+    const [cancelReason, setCancelReason] = useState('');
     const [note, setNote] = useState('');
     const cancelRequest = useCancelDeliveryRequest();
 
@@ -124,16 +124,16 @@ function CancelRequestModal({
     const minutesUntilCutoff = Math.max(0, Math.floor((timeUntilCutoff % (1000 * 60 * 60)) / (1000 * 60)));
 
     const handleCancel = async () => {
-        if (!reasonCode) return;
+        if (!cancelReason) return;
 
         try {
             await cancelRequest.mutateAsync({
                 requestId: request.id,
-                reasonCode,
+                cancelReason,
                 note: note.trim() || undefined
             });
             setIsOpen(false);
-            setReasonCode('');
+            setCancelReason('');
             setNote('');
         } catch (error) {
             console.error('Failed to cancel delivery request:', error);
@@ -222,8 +222,8 @@ function CancelRequestModal({
                 {/* Cancel Form */}
                 <Stack spacing={3}>
                     <SelectItems
-                        value={reasonCode}
-                        onValueChange={setReasonCode}
+                        value={cancelReason}
+                        onValueChange={setCancelReason}
                         items={CANCEL_REASON_OPTIONS}
                         placeholder="Odaberite razlog otkazivanja"
                         label="Razlog otkazivanja"
@@ -250,7 +250,7 @@ function CancelRequestModal({
                         variant="solid"
                         color="danger"
                         onClick={handleCancel}
-                        disabled={!reasonCode || cancelRequest.isPending}
+                        disabled={!cancelReason || cancelRequest.isPending}
                         loading={cancelRequest.isPending}
                         startDecorator={<Close className="size-4" />}
                     >

@@ -124,7 +124,7 @@ Base path (internal): /api/delivery
 Server Actions (preferred internal invocation):
 
 * createDeliveryRequest({ operationId, slotId, addressId?, mode }): returns projection
-* cancelDeliveryRequest({ requestId, reasonCode?, note? }): returns updated projection or idempotent status
+* cancelDeliveryRequest({ requestId, cancelReason?, note? }): returns updated projection or idempotent status
 * fulfillDeliveryRequest({ requestId }): returns updated projection
 * bulkGenerateTimeSlots({ startDate, daysAhead, windows[], type, locationId }): returns counts
 
@@ -194,7 +194,7 @@ Logs:
 * delivery.request.created { requestId, operationId, slotId, mode }
 * delivery.request.slot.changed { requestId, previousSlotId, newSlotId }
 * delivery.request.address.changed { requestId, addressId }
-* delivery.request.cancelled { requestId, actorType, reasonCode }
+* delivery.request.cancelled { requestId, actorType, cancelReason }
 * delivery.request.fulfilled { requestId }
 * delivery.request.user_cancelled { requestId, cutoffRemainingMinutes }
 

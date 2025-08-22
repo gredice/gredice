@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createTestDb } from './testDb';
-import { getEvents, createEvent, knownEventTypes } from '@gredice/storage';
+import { getEvents, createEvent, knownEvents, knownEventTypes } from '@gredice/storage';
 
 test('createEvent and getEvents basic usage', async () => {
     createTestDb();
     const aggregateId = 'agg-1';
-    const event = { type: knownEventTypes.accounts.earnSunflowers, version: 1, aggregateId, data: { amount: 100, reason: 'test' } };
+    const event = knownEvents.accounts.sunflowersEarnedV1(aggregateId, { amount: 100, reason: 'test' });
     await createEvent(event);
     const events = await getEvents(event.type, [aggregateId]);
     assert.ok(Array.isArray(events));

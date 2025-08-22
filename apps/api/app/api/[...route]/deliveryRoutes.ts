@@ -61,7 +61,7 @@ const createRequestSchema = z.object({
 });
 
 const cancelRequestSchema = z.object({
-    reasonCode: z.string().min(1).max(50),
+    cancelReason: z.string().min(1).max(50),
     note: z.string().max(500).optional()
 });
 
@@ -280,10 +280,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { accountId } = context.get('authContext');
             const { id } = context.req.valid('param');
-            const { reasonCode, note } = context.req.valid('json');
+            const { cancelReason, note } = context.req.valid('json');
 
             try {
-                await cancelDeliveryRequest(id, 'user', reasonCode, note, accountId);
+                await cancelDeliveryRequest(id, 'user', cancelReason, note, accountId);
                 return context.json({ success: true });
             } catch (error) {
                 console.error('Failed to cancel delivery request:', error);

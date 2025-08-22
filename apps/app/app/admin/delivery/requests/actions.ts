@@ -10,7 +10,7 @@ export async function updateDeliveryRequestStatusAction(prevState: unknown, form
 
         const requestId = formData.get('requestId') as string;
         const status = formData.get('status') as string;
-        const reasonCode = formData.get('reasonCode') as string;
+        const cancelReason = formData.get('cancelReason') as string;
         const notes = formData.get('notes') as string || undefined;
 
         if (!requestId || !status) {
@@ -23,7 +23,7 @@ export async function updateDeliveryRequestStatusAction(prevState: unknown, form
         if (status === DeliveryRequestStates.CONFIRMED) {
             await confirmDeliveryRequest(requestId);
         } else if (status === DeliveryRequestStates.CANCELLED) {
-            await cancelDeliveryRequest(requestId, 'admin', reasonCode, notes);
+            await cancelDeliveryRequest(requestId, 'admin', cancelReason, notes);
         } else if (status === DeliveryRequestStates.PREPARING) {
             await prepareDeliveryRequest(requestId);
         } else if (status === DeliveryRequestStates.READY) {
