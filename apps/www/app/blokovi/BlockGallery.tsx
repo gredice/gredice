@@ -9,6 +9,7 @@ import { Typography } from "@signalco/ui-primitives/Typography";
 import { cx } from "@signalco/ui-primitives/cx";
 import { Row } from "@signalco/ui-primitives/Row";
 import { BlockData } from "@gredice/client";
+import { KnownPages } from "../../src/KnownPages";
 
 function BlockGalleryItem(props: Omit<BlockData, 'id'> & { id: string, showPrices?: boolean }) {
     const { showPrices = true, ...entity } = props;
@@ -25,7 +26,7 @@ function BlockGalleryItem(props: Omit<BlockData, 'id'> & { id: string, showPrice
                     )}
                 </Row>
             )}
-            href={`/blokovi/${entity.information.label}`}>
+            href={KnownPages.Block(entity.information.label)}>
             <BlockImage blockName={entity.information.name} fill />
         </ItemCard>
     );

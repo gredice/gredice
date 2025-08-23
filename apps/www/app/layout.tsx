@@ -15,6 +15,7 @@ import { Footer } from "./Footer";
 import { VercelToolbar } from '@vercel/toolbar/next';
 
 export const metadata: Metadata = {
+    metadataBase: new URL('https://www.gredice.com'),
     title: {
         template: "%s | Gredice",
         default: "Gredice - vrt po tvom",
