@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "next lint",
+    "lint": "biome check",
     "dev": "next dev --turbo -p 3001",
     "build": "next build --turbopack",
     "start": "next start",
@@ -26,8 +26,7 @@
     "server-only": "0.0.1"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "3.3.1",
-    "@eslint/js": "9.34.0",
+    "@biomejs/biome": "2.2.2",
     "@gredice/client": "workspace:*",
     "@gredice/game": "workspace:*",
     "@gredice/ui": "workspace:*",
@@ -49,8 +48,6 @@
     "@types/react-dom": "19.1.7",
     "@vercel/analytics": "1.5.0",
     "babel-plugin-react-compiler": "19.1.0-rc.2",
-    "eslint": "9.34.0",
-    "eslint-config-next": "15.5.0",
     "next-axiom": "1.9.2",
     "postcss": "8.5.6",
     "sass": "1.90.0",

@@ -15,10 +15,6 @@ const nextConfig: NextConfig = {
     typescript: {
         ignoreBuildErrors: true,
     },
-    // Ignore ESLint errors in the build process
-    eslint: {
-        ignoreDuringBuilds: true,
-    },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
     images: {
         remotePatterns: [

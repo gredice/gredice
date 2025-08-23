@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 import { BlockData } from '@gredice/client';
 import { EntityViewer } from '@gredice/game';
 import { test } from '@playwright/experimental-ct-react';
