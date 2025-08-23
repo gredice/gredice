@@ -164,8 +164,8 @@ importers:
         specifier: 0.5.1
         version: 0.5.1(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       hypertune:
-        specifier: 2.7.2
-        version: 2.7.2
+        specifier: 2.7.3
+        version: 2.7.3
       next:
         specifier: 15.5.0
         version: 15.5.0(@babel/core@7.28.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.90.0)
@@ -300,8 +300,8 @@ importers:
   apps/farm:
     dependencies:
       hypertune:
-        specifier: 2.7.2
-        version: 2.7.2
+        specifier: 2.7.3
+        version: 2.7.3
       next:
         specifier: 15.5.0
         version: 15.5.0(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.90.0)
@@ -409,8 +409,8 @@ importers:
         specifier: 4.0.1
         version: 4.0.1(next@15.5.0(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.90.0))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       hypertune:
-        specifier: 2.7.2
-        version: 2.7.2
+        specifier: 2.7.3
+        version: 2.7.3
       next:
         specifier: 15.5.0
         version: 15.5.0(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.90.0)
@@ -536,8 +536,8 @@ importers:
         specifier: 4.0.1
         version: 4.0.1(next@15.5.0(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.90.0))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       hypertune:
-        specifier: 2.7.2
-        version: 2.7.2
+        specifier: 2.7.3
+        version: 2.7.3
       next:
         specifier: 15.5.0
         version: 15.5.0(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.90.0)
@@ -5972,6 +5972,10 @@ packages:
 
   hypertune@2.7.2:
     resolution: {integrity: sha512-U+RIyPNbNAuF/RGcCkSI4iUj98LYrk3Vozv8wElMV4lEJFeLRbYTHb8+mwj4i7+tSnhU6wg+itoxdeFVa5oNEQ==}
+    hasBin: true
+
+  hypertune@2.7.3:
+    resolution: {integrity: sha512-o6p1XUSnOd4LENpZpEySJpB7Ck6WJfXtoX5S+D3U9ZM949LhsVfCYSV9fG7CDocz5EkalsuCVmmOJ8QqQ4llaw==}
     hasBin: true
 
   ieee754@1.2.1:
@@ -14643,6 +14647,21 @@ snapshots:
   human-signals@2.1.0: {}
 
   hypertune@2.7.2:
+    dependencies:
+      cac: 6.7.14
+      core-js: 3.40.0
+      cross-fetch: 4.1.0
+      dotenv: 16.6.1
+      joycon: 3.1.1
+      json-stable-stringify: 1.2.1
+      jsonito: 0.2.1
+      nanoid: 3.3.11
+      p-retry: 4.6.2
+      regenerator-runtime: 0.14.1
+    transitivePeerDependencies:
+      - encoding
+
+  hypertune@2.7.3:
     dependencies:
       cac: 6.7.14
       core-js: 3.40.0
