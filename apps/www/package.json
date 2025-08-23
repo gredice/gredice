@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",
-    "@eslint/js": "9.33.0",
+    "@eslint/js": "9.34.0",
     "@gredice/client": "workspace:*",
     "@gredice/game": "workspace:*",
     "@gredice/ui": "workspace:*",
@@ -51,7 +51,7 @@
     "@types/xml2js": "0.4.14",
     "@vercel/analytics": "1.5.0",
     "dotenv": "17.2.1",
-    "eslint": "9.33.0",
+    "eslint": "9.34.0",
     "eslint-config-next": "15.5.0",
     "next-axiom": "1.9.2",
     "next-sitemap": "4.2.3",
