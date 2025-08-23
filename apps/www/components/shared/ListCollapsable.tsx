@@ -1,32 +1,45 @@
 import { List } from "@signalco/ui-primitives/List";
 import { ListItem } from "@signalco/ui-primitives/ListItem";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
-import Link from "next/link";
+import { Route } from "next";
 import { useRouter } from "next/navigation";
 import { ReactElement } from "react";
 
-export function ListCollapsable({items, value}: {items: {value: string, label: string, icon: ReactElement, href: string}[], value: string}) {
+type ListCollapsableProps = {
+    items: {
+        value: string;
+        label: string;
+        icon: ReactElement;
+        href: Route;
+    }[];
+    value: string;
+};
+
+export function ListCollapsable({ items, value }: ListCollapsableProps) {
     const router = useRouter();
+    function handleValueChange(newValue: string) {
+        const selectedItem = items.find(i => i.value === newValue);
+        if (selectedItem) {
+            router.push(selectedItem.href);
+        }
+    }
+
     return (
         <>
             <SelectItems
                 value={value}
                 items={items}
                 className="w-full md:hidden"
-                onValueChange={(newValue) => router.push(items.find(i => i.value === newValue)?.href ?? '#')} />
+                onValueChange={handleValueChange} />
             <List className="hidden md:block">
                 {items.map((item) => {
                     return (
-                        <Link
+                        <ListItem
                             key={item.value}
-                            href={item.href}>
-                            <ListItem
-                                nodeId={item.value}
-                                selected={item.label === value}
-                                onSelected={() => { }}
-                                label={item.label}
-                                startDecorator={item.icon} />
-                        </Link>
+                            selected={item.label === value}
+                            href={item.href}
+                            label={item.label}
+                            startDecorator={item.icon} />
                     );
                 })}
             </List>

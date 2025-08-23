@@ -6,14 +6,13 @@ import { Card, CardContent } from "@signalco/ui-primitives/Card";
 import { Row } from "@signalco/ui-primitives/Row";
 import { SelectItems } from "@signalco/ui-primitives/SelectItems";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@signalco/ui-primitives/Tabs";
-import { Navigate, Truck, ShoppingCart, Timer, Edit, Map } from "@signalco/ui-icons";
+import { Truck, ShoppingCart, Edit, Map } from "@signalco/ui-icons";
 import { Alert } from "@signalco/ui/Alert";
 import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
 import { useDeliveryAddresses } from "../../hooks/useDeliveryAddresses";
 import { usePickupLocations } from "../../hooks/usePickupLocations";
 import { useTimeSlots, TimeSlotData } from "../../hooks/useTimeSlots";
 import { DeliveryAddressesSection } from './DeliveryAddressesSection';
-import Link from 'next/link';
 import { KnownPages } from '../../knownPages';
 import { useCheckout } from '../../hooks/useCheckout';
 import { ButtonConfirmPayment } from '../../hud/components/shopping-cart/ButtonConfirmPayment';
@@ -234,9 +233,9 @@ export function DeliveryStep({ onSelectionChange, onBack, checkout, onProceed, i
                                                                 {location.postalCode} {location.city}
                                                             </Typography>
                                                         </Stack>
-                                                        <Link href={KnownPages.GoogleMapsGrediceHQ} target="_blank">
+                                                        <a href={KnownPages.GoogleMapsGrediceHQ} target="_blank" rel="noopener noreferrer">
                                                             <Map className="size-6 shrink-0" />
-                                                        </Link>
+                                                        </a>
                                                     </Row>
                                                 </CardContent>
                                             </Card>

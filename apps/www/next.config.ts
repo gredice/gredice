@@ -3,7 +3,10 @@ import { withAxiom } from 'next-axiom';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+    reactStrictMode: true,
+    typedRoutes: true,
     experimental: {
+        typedEnv: true,
         reactCompiler: true,
         // Scope hoisting is disabled as a workaround for current compatibility issues with Turbopack and our codebase.
         // This should be revisited in future Next.js versions as the underlying issues may be resolved.

@@ -2,6 +2,10 @@ import type { NextConfig } from 'next';
 import { withAxiom } from 'next-axiom';
 
 const nextConfig: NextConfig = {
+    reactStrictMode: true,
+    experimental: {
+        typedEnv: true,
+    },
     images: {
         remotePatterns: [
             {

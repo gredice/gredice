@@ -1,4 +1,4 @@
-import { HTMLAttributes, ImgHTMLAttributes } from "react";
+import { HTMLAttributes } from "react";
 import { orderBy } from '@signalco/js';
 import { BlockData } from "@gredice/client";
 
@@ -28,15 +28,6 @@ export type GardenDisplay2DProps = {
      */
     blockSize?: number;
 } & HTMLAttributes<HTMLDivElement>;
-
-export function HtmlImageBlock({ blockName, ...rest }: ImgHTMLAttributes<HTMLImageElement> & { blockName: string }) {
-    return (
-        <img
-            src={`https://www.gredice.com/assets/blocks/${blockName}.png`}
-            {...rest}
-        />
-    );
-}
 
 export function GardenDisplay2D({ garden, blockData, viewportSize = 600, viewportOffset, blockSize = 128, ...rest }: GardenDisplay2DProps) {
     // Block snapshots have margins so we need to adjust the size
@@ -110,9 +101,10 @@ export function GardenDisplay2D({ garden, blockData, viewportSize = 600, viewpor
                         const horizontalOffset = isLargeBlock ? -((realizedBlockSize - blockSize) / 2) : 0;
 
                         return (
-                            <HtmlImageBlock
+                            <img
                                 key={block.id}
-                                blockName={block.name}
+                                src={`https://www.gredice.com/assets/blocks/${block.name}.png`}
+                                alt={`${block.name}`}
                                 width={realizedBlockSize}
                                 height={realizedBlockSize}
                                 style={{
