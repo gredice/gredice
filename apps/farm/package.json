@@ -15,7 +15,7 @@
     "regenerate:feature-flags": "hypertune"
   },
   "dependencies": {
-    "hypertune": "2.7.2",
+    "hypertune": "2.7.3",
     "next": "15.5.0",
     "react": "19.1.1",
     "react-dom": "19.1.1",
