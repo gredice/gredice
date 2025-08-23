@@ -4,7 +4,7 @@ import { Table } from "@signalco/ui-primitives/Table";
 import { KnownPages } from "../../../src/KnownPages";
 import Link from "next/link";
 import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
-import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { ExternalLink } from "@signalco/ui-icons";
 import { Typography } from "@signalco/ui-primitives/Typography";
 
@@ -82,14 +82,14 @@ export async function InvoicesTable({ transactionId }: { transactionId?: number 
                             </Chip>
                         </Table.Cell>
                         <Table.Cell>
-                            <LocaleDateTime time={false}>
+                            <LocalDateTime time={false}>
                                 {invoice.issueDate}
-                            </LocaleDateTime>
+                            </LocalDateTime>
                         </Table.Cell>
                         <Table.Cell>
-                            <LocaleDateTime time={false}>
+                            <LocalDateTime time={false}>
                                 {invoice.dueDate}
-                            </LocaleDateTime>
+                            </LocalDateTime>
                         </Table.Cell>
                         <Table.Cell>
                             {invoice.transactionId ? (

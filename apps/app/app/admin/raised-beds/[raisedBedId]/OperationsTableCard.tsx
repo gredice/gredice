@@ -1,7 +1,7 @@
 import { getOperations } from "@gredice/storage";
 import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card";
 import { Table } from "@signalco/ui-primitives/Table";
-import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { Row } from "@signalco/ui-primitives/Row";
 import { OperationCreateModal } from "./OperationCreateModal";
 import { OperationsTable } from "../../../../components/operations/OperationsTable";

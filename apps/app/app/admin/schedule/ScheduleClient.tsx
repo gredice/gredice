@@ -2,7 +2,7 @@
 
 import { EntityStandardized } from "../../../lib/@types/EntityStandardized";
 import { Stack } from "@signalco/ui-primitives/Stack";
-import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Checkbox } from "@signalco/ui-primitives/Checkbox";
 import { completeOperation } from "../../(actions)/operationActions";
@@ -250,7 +250,7 @@ function ScheduleDay({ isToday, date, allRaisedBeds, operations, plantSorts, ope
                                             <Row justifyContent="space-between" className="grow">
                                                 {op.scheduledDate && (
                                                     <Typography level="body2" className="select-none">
-                                                        <LocaleDateTime time={false}>{op.scheduledDate}</LocaleDateTime>
+                                                        <LocalDateTime time={false}>{op.scheduledDate}</LocalDateTime>
                                                     </Typography>
                                                 )}
                                                 <Row>
@@ -333,7 +333,7 @@ export function ScheduleClient({ allRaisedBeds, operations, plantSorts, operatio
                                     <Calendar className="size-5 shrink-0 ml-2 mb-1" />
                                     <Stack>
                                         <Typography level="body2">
-                                            <LocaleDateTime time={false}>{date}</LocaleDateTime>
+                                            <LocalDateTime time={false}>{date}</LocalDateTime>
                                         </Typography>
                                         <Typography level="body1" uppercase semiBold={dateIndex !== 0} bold={dateIndex === 0}>
                                             {dateIndex === 0 ? 'Danas' : new Intl.DateTimeFormat('hr-HR', { weekday: 'long' }).format(date).substring(0, 3)}

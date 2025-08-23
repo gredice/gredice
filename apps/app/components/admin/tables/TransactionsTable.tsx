@@ -5,7 +5,7 @@ import { auth } from "../../../lib/auth/auth";
 import { KnownPages } from "../../../src/KnownPages";
 import Link from "next/link";
 import { NoDataPlaceholder } from "../../shared/placeholders/NoDataPlaceholder";
-import { LocaleDateTime } from "../../shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { ExternalLink } from "@signalco/ui-icons";
@@ -99,9 +99,9 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
                                 </Row>
                             </Table.Cell>
                             <Table.Cell>
-                                <LocaleDateTime time={false}>
+                                <LocalDateTime time={false}>
                                     {transaction.createdAt}
-                                </LocaleDateTime>
+                                </LocalDateTime>
                             </Table.Cell>
                             <Table.Cell>
                                 {transaction.stripePaymentId ? (

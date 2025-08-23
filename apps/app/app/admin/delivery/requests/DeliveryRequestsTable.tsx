@@ -2,7 +2,7 @@ import { getDeliveryRequests, getPickupLocations, getAllTimeSlots } from "@gredi
 import { Table } from "@signalco/ui-primitives/Table";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
-import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
+import { TimeRange, LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { DeliveryRequestActionButtons } from "./DeliveryRequestActionButtons";
 import { Stack } from "@signalco/ui-primitives/Stack";
@@ -96,14 +96,7 @@ export async function DeliveryRequestsTable() {
                             <Table.Cell>
                                 {slot ? (
                                     <Typography level="body2">
-                                        {new Date(slot.startAt).toLocaleDateString('hr-HR')} {' '}
-                                        {new Date(slot.startAt).toLocaleTimeString('hr-HR', {
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })} - {new Date(slot.endAt).toLocaleTimeString('hr-HR', {
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })}
+                                        <TimeRange startAt={slot.startAt} endAt={slot.endAt} />
                                     </Typography>
                                 ) : (
                                     <Typography level="body2" secondary>-</Typography>
@@ -130,9 +123,9 @@ export async function DeliveryRequestsTable() {
                             </Table.Cell>
                             <Table.Cell>
                                 <Typography level="body2" secondary>
-                                    <LocaleDateTime time={true}>
+                                    <LocalDateTime>
                                         {request.createdAt}
-                                    </LocaleDateTime>
+                                    </LocalDateTime>
                                 </Typography>
                             </Table.Cell>
                             <Table.Cell>

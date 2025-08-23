@@ -1,7 +1,7 @@
 import { getEntitiesFormatted, getRaisedBed } from "@gredice/storage";
 import { Table } from "@signalco/ui-primitives/Table";
 import { NoDataPlaceholder } from "../shared/placeholders/NoDataPlaceholder";
-import { LocaleDateTime } from "../shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { RaisedBedFieldPlantStatusSelector } from "../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantStatusSelector";
 import { EntityStandardized } from "../../lib/@types/EntityStandardized";
 import { Stack } from "@signalco/ui-primitives/Stack";
@@ -53,48 +53,48 @@ export async function RaisedBedFieldsTable({ raisedBedId }: RaisedBedFieldsTable
                                 <Stack>
                                     <Row>
                                         <Typography level="body3" className="w-16">Stvoreno</Typography>
-                                        <LocaleDateTime time={false}>{field.createdAt}</LocaleDateTime>
+                                        <LocalDateTime time={false}>{field.createdAt}</LocalDateTime>
                                     </Row>
                                     <Row>
                                         <Typography level="body3" className="w-16">Planirano</Typography>
                                         {field.plantScheduledDate ? (
-                                            <LocaleDateTime time={false}>{new Date(field.plantScheduledDate)}</LocaleDateTime>
+                                            <LocalDateTime time={false}>{new Date(field.plantScheduledDate)}</LocalDateTime>
                                         ) : '-'}
                                     </Row>
                                     <Row>
                                         <Typography level="body3" className="w-16">Sijano</Typography>
                                         {field.plantSowDate ? (
-                                            <LocaleDateTime time={false}>{new Date(field.plantSowDate)}</LocaleDateTime>
+                                            <LocalDateTime time={false}>{new Date(field.plantSowDate)}</LocalDateTime>
                                         ) : '-'}
                                     </Row>
                                     <Row>
                                         <Typography level="body3" className="w-16">Proklijalo</Typography>
                                         {field.plantGrowthDate ? (
-                                            <LocaleDateTime time={false}>{new Date(field.plantGrowthDate)}</LocaleDateTime>
+                                            <LocalDateTime time={false}>{new Date(field.plantGrowthDate)}</LocalDateTime>
                                         ) : '-'}
                                     </Row>
                                     <Row>
                                         <Typography level="body3" className="w-16">Spremno</Typography>
                                         {field.plantReadyDate ? (
-                                            <LocaleDateTime time={false}>{new Date(field.plantReadyDate)}</LocaleDateTime>
+                                            <LocalDateTime time={false}>{new Date(field.plantReadyDate)}</LocalDateTime>
                                         ) : '-'}
                                     </Row>
                                     <Row>
                                         <Typography level="body3" className="w-16">Ubrano</Typography>
                                         {field.plantHarvestedDate ? (
-                                            <LocaleDateTime time={false}>{new Date(field.plantHarvestedDate)}</LocaleDateTime>
+                                            <LocalDateTime time={false}>{new Date(field.plantHarvestedDate)}</LocalDateTime>
                                         ) : '-'}
                                     </Row>
                                     <Row>
                                         <Typography level="body3" className="w-16">Uginulo</Typography>
                                         {field.plantDeadDate ? (
-                                            <LocaleDateTime time={false}>{new Date(field.plantDeadDate)}</LocaleDateTime>
+                                            <LocalDateTime time={false}>{new Date(field.plantDeadDate)}</LocalDateTime>
                                         ) : '-'}
                                     </Row>
                                     <Row>
                                         <Typography level="body3" className="w-16">Uklonjeno</Typography>
                                         {field.plantRemovedDate ? (
-                                            <LocaleDateTime time={false}>{new Date(field.plantRemovedDate)}</LocaleDateTime>
+                                            <LocalDateTime time={false}>{new Date(field.plantRemovedDate)}</LocalDateTime>
                                         ) : '-'}
                                     </Row>
                                 </Stack>

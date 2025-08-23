@@ -1,7 +1,7 @@
 import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { ReactNode } from "react";
-import { LocaleDateTime } from "../LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 
 export function Field({ name, value, mono }: { name: string; value: Date | boolean | string | number | ReactNode | null | undefined, mono?: boolean }) {
     return (
@@ -14,7 +14,7 @@ export function Field({ name, value, mono }: { name: string; value: Date | boole
                 noWrap={typeof value === 'string' || typeof value === 'number'}
                 title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}>
                 {value instanceof Date
-                    ? <LocaleDateTime>{value}</LocaleDateTime>
+                    ? <LocalDateTime>{value}</LocalDateTime>
                     : (typeof value === 'boolean'
                         ? (value ? 'Da' : 'Ne')
                         : (value ?? '-'))}

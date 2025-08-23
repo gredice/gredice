@@ -15,7 +15,7 @@ import { NoDataPlaceholder } from "../../../../components/shared/placeholders/No
 import { auth } from "../../../../lib/auth/auth";
 import { FieldSet } from "../../../../components/shared/fields/FieldSet";
 import { Field } from "../../../../components/shared/fields/Field";
-import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { ServerActionIconButton } from "../../../../components/shared/ServerActionIconButton";
 import { unblockUserLogin } from "../../../(actions)/userActions";
 
@@ -54,8 +54,8 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                         <Field name="Uloga" value={<SelectUserRole user={user} />} />
                     </FieldSet>
                     <FieldSet>
-                        <Field name="Datum kreiranja" value={<LocaleDateTime>{createdAt}</LocaleDateTime>} />
-                        <Field name="Datum ažuriranja" value={<LocaleDateTime>{updatedAt}</LocaleDateTime>} />
+                        <Field name="Datum kreiranja" value={<LocalDateTime>{createdAt}</LocalDateTime>} />
+                        <Field name="Datum ažuriranja" value={<LocalDateTime>{updatedAt}</LocalDateTime>} />
                     </FieldSet>
                 </Stack>
             </Stack>
@@ -93,10 +93,10 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                                             </Link>
                                         </Table.Cell>
                                         <Table.Cell>
-                                            <LocaleDateTime>{account.createdAt}</LocaleDateTime>
+                                            <LocalDateTime>{account.createdAt}</LocalDateTime>
                                         </Table.Cell>
                                         <Table.Cell>
-                                            <LocaleDateTime>{account.updatedAt}</LocaleDateTime>
+                                            <LocalDateTime>{account.updatedAt}</LocalDateTime>
                                         </Table.Cell>
                                     </Table.Row>
                                 ))}
@@ -143,7 +143,7 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                                                         <Disabled className="text-red-500" />
                                                         <Typography>
                                                             {'Blokiran do '}
-                                                            <LocaleDateTime>{userLogin.blockedUntil}</LocaleDateTime>
+                                                            <LocalDateTime>{userLogin.blockedUntil}</LocalDateTime>
                                                         </Typography>
                                                         <ServerActionIconButton
                                                             onClick={unblockUserLogin.bind(null, userLogin.id)}
@@ -161,7 +161,7 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                                                             </Typography>
                                                             <Typography>
                                                                 {'Zadnji '}
-                                                                <LocaleDateTime>{userLogin.lastFailedAttempt}</LocaleDateTime>
+                                                                <LocalDateTime>{userLogin.lastFailedAttempt}</LocalDateTime>
                                                             </Typography>
                                                         </Stack>
                                                     </Row>
@@ -169,20 +169,20 @@ export default async function UserPage({ params }: { params: Promise<{ userId: s
                                         </Table.Cell>
                                         <Table.Cell>
                                             {userLogin.lastLogin ? (
-                                                <LocaleDateTime>
+                                                <LocalDateTime>
                                                     {userLogin.lastLogin}
-                                                </LocaleDateTime>
+                                                </LocalDateTime>
                                             ) : 'Nikad'}
                                         </Table.Cell>
                                         <Table.Cell>
-                                            <LocaleDateTime>
+                                            <LocalDateTime>
                                                 {userLogin.createdAt}
-                                            </LocaleDateTime>
+                                            </LocalDateTime>
                                         </Table.Cell>
                                         <Table.Cell>
-                                            <LocaleDateTime>
+                                            <LocalDateTime>
                                                 {userLogin.updatedAt}
-                                            </LocaleDateTime>
+                                            </LocalDateTime>
                                         </Table.Cell>
                                     </Table.Row>
                                 ))}

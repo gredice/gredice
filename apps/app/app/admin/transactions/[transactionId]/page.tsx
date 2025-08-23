@@ -3,7 +3,7 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
 import { KnownPages } from "../../../../src/KnownPages";
 import { notFound } from "next/navigation";
-import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Card, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
 import { Chip } from "@signalco/ui-primitives/Chip";
@@ -38,7 +38,7 @@ export default async function TransactionDetailsPage({ params }: { params: Promi
                     <Field name="ID transakcije" value={transaction.id} />
                     <Field name="Tip" value={transaction.status} />
                     <Field name="Iznos" value={`${(transaction.amount / 100).toFixed(2)}€`} />
-                    <Field name="Datum kreiranja" value={<LocaleDateTime time={false}>{transaction.createdAt}</LocaleDateTime>} />
+                    <Field name="Datum kreiranja" value={<LocalDateTime time={false}>{transaction.createdAt}</LocalDateTime>} />
                     <Field name="Računi" value={(
                         <>
                             {(transaction.invoices?.length || 0) === 0 ? (

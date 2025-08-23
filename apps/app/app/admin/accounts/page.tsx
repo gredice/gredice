@@ -6,7 +6,7 @@ import { auth } from "../../../lib/auth/auth";
 import { KnownPages } from "../../../src/KnownPages";
 import Link from "next/link";
 import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
-import { LocaleDateTime } from "../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { Row } from "@signalco/ui-primitives/Row";
 import { Stack } from "@signalco/ui-primitives/Stack";
@@ -58,9 +58,9 @@ export default async function AccountsPage() {
                                             </Link>
                                         </Table.Cell>
                                         <Table.Cell>
-                                            <LocaleDateTime time={false}>
+                                            <LocalDateTime time={false}>
                                                 {account.createdAt}
-                                            </LocaleDateTime>
+                                            </LocalDateTime>
                                         </Table.Cell>
                                     </Table.Row>
                                 );

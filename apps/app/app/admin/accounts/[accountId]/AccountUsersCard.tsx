@@ -4,7 +4,7 @@ import Link from "next/link";
 import { KnownPages } from "../../../../src/KnownPages";
 import { Table } from "@signalco/ui-primitives/Table";
 import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
-import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 
 export async function AccountUsersCard({ accountId }: { accountId: string }) {
     const users = await getAccountUsers(accountId);
@@ -41,14 +41,14 @@ export async function AccountUsersCard({ accountId }: { accountId: string }) {
                                     </Link>
                                 </Table.Cell>
                                 <Table.Cell>
-                                    <LocaleDateTime>
+                                    <LocalDateTime>
                                         {user.createdAt}
-                                    </LocaleDateTime>
+                                    </LocalDateTime>
                                 </Table.Cell>
                                 <Table.Cell>
-                                    <LocaleDateTime>
+                                    <LocalDateTime>
                                         {user.updatedAt}
-                                    </LocaleDateTime>
+                                    </LocalDateTime>
                                 </Table.Cell>
                             </Table.Row>
                         ))}

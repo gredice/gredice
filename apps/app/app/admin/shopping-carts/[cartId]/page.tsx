@@ -8,7 +8,7 @@ import { Stack } from "@signalco/ui-primitives/Stack";
 import { Typography } from "@signalco/ui-primitives/Typography";
 import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
 import { notFound } from "next/navigation";
-import { LocaleDateTime } from "../../../../components/shared/LocaleDateTime";
+import { LocalDateTime } from "@gredice/ui/LocalDateTime";
 import { EntityStandardized } from "../../../../lib/@types/EntityStandardized";
 import { Chip } from "@signalco/ui-primitives/Chip";
 import { Row } from "@signalco/ui-primitives/Row";
@@ -119,7 +119,7 @@ export default async function ShoppingCartDetailsPage({ params }: { params: { ca
                                 <Stack spacing={1}>
                                     <Typography level="body2">Datum kreiranja</Typography>
                                     <Typography>
-                                        <LocaleDateTime>{cart.createdAt}</LocaleDateTime>
+                                        <LocalDateTime>{cart.createdAt}</LocalDateTime>
                                     </Typography>
                                 </Stack>
                             </Row>
@@ -214,14 +214,14 @@ export default async function ShoppingCartDetailsPage({ params }: { params: { ca
                                         {typeof item.positionIndex === 'number' ? ` | Pozicija ${item.positionIndex + 1}` : ''}
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <LocaleDateTime time={false}>
+                                        <LocalDateTime time={false}>
                                             {item.createdAt}
-                                        </LocaleDateTime>
+                                        </LocalDateTime>
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <LocaleDateTime time={false}>
+                                        <LocalDateTime time={false}>
                                             {item.updatedAt}
-                                        </LocaleDateTime>
+                                        </LocalDateTime>
                                     </Table.Cell>
                                 </Table.Row>
                             ))}
