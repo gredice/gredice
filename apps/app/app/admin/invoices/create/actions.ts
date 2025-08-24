@@ -1,8 +1,17 @@
 'use server';
 
-import { createInvoice, getAllTransactions, getOrCreateShoppingCart, getAllShoppingCarts, getAccount, getAccountUsers, getEntitiesFormatted, SelectShoppingCartItem } from "@gredice/storage";
-import { auth } from "../../../../lib/auth/auth";
-import { EntityStandardized } from "../../../../lib/@types/EntityStandardized";
+import {
+    createInvoice,
+    getAccount,
+    getAccountUsers,
+    getAllShoppingCarts,
+    getAllTransactions,
+    getEntitiesFormatted,
+    getOrCreateShoppingCart,
+    type SelectShoppingCartItem,
+} from '@gredice/storage';
+import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
+import { auth } from '../../../../lib/auth/auth';
 
 interface InvoiceCreationData {
     accountId: string;
@@ -43,7 +52,9 @@ export async function createInvoiceAction(data: InvoiceCreationData) {
         const invoiceData = {
             invoiceNumber,
             accountId: data.accountId,
-            transactionId: data.transactionId ? parseInt(data.transactionId) : null,
+            transactionId: data.transactionId
+                ? parseInt(data.transactionId, 10)
+                : null,
             subtotal: data.subtotal,
             taxAmount: data.taxAmount,
             totalAmount: data.totalAmount,
@@ -63,7 +74,7 @@ export async function createInvoiceAction(data: InvoiceCreationData) {
         };
 
         // Prepare invoice items
-        const itemsData = data.items.map(item => ({
+        const itemsData = data.items.map((item) => ({
             description: item.description,
             quantity: item.quantity, // Keep as string for decimal field
             unitPrice: item.unitPrice, // Keep as string for decimal field
@@ -78,7 +89,10 @@ export async function createInvoiceAction(data: InvoiceCreationData) {
         console.error('Error creating invoice:', error);
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error occurred'
+            error:
+                error instanceof Error
+                    ? error.message
+                    : 'Unknown error occurred',
         };
     }
 }
@@ -90,8 +104,10 @@ export async function getTransactionsAction() {
         const transactions = await getAllTransactions();
 
         // Sort transactions by newest first (createdAt descending)
-        const sortedTransactions = (transactions || []).sort((a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        const sortedTransactions = (transactions || []).sort(
+            (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime(),
         );
 
         return { success: true, transactions: sortedTransactions };
@@ -111,21 +127,28 @@ export async function getShoppingCartsAction(accountId?: string) {
         let shoppingCarts = allShoppingCarts || [];
 
         if (accountId) {
-            shoppingCarts = shoppingCarts.filter(cart => cart.accountId === accountId);
+            shoppingCarts = shoppingCarts.filter(
+                (cart) => cart.accountId === accountId,
+            );
         }
 
         // Filter carts to only include those with items paid in EUR currency
-        shoppingCarts = shoppingCarts.map(cart => ({
-            ...cart,
-            items: cart.items.filter(item =>
-                item.status === 'paid' &&
-                (item.currency === 'eur' || !item.currency) // Default to EUR if no currency specified
-            )
-        })).filter(cart => cart.items.length > 0); // Only include carts that have EUR paid items
+        shoppingCarts = shoppingCarts
+            .map((cart) => ({
+                ...cart,
+                items: cart.items.filter(
+                    (item) =>
+                        item.status === 'paid' &&
+                        (item.currency === 'eur' || !item.currency), // Default to EUR if no currency specified
+                ),
+            }))
+            .filter((cart) => cart.items.length > 0); // Only include carts that have EUR paid items
 
         // Sort by newest first (createdAt descending)
-        shoppingCarts = shoppingCarts.sort((a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        shoppingCarts = shoppingCarts.sort(
+            (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime(),
         );
 
         return { success: true, shoppingCarts };
@@ -153,7 +176,7 @@ export async function getAccountDetailsAction(accountId: string) {
     try {
         const [account, accountUsers] = await Promise.all([
             getAccount(accountId),
-            getAccountUsers(accountId)
+            getAccountUsers(accountId),
         ]);
 
         if (!account) {
@@ -170,7 +193,7 @@ export async function getAccountDetailsAction(accountId: string) {
                 email: firstUser?.userName || '',
                 displayName: firstUser?.displayName || '',
                 // Add more fields as needed for invoice billing
-            }
+            },
         };
     } catch (error) {
         console.error('Error fetching account details:', error);
@@ -178,11 +201,15 @@ export async function getAccountDetailsAction(accountId: string) {
     }
 }
 
-export async function getShoppingCartItemsWithEntityNamesAction(shoppingCartItems: SelectShoppingCartItem[]) {
+export async function getShoppingCartItemsWithEntityNamesAction(
+    shoppingCartItems: SelectShoppingCartItem[],
+) {
     await auth(['admin']);
 
     // Get unique entity types
-    const entityTypes = [...new Set(shoppingCartItems.map(item => item.entityTypeName))];
+    const entityTypes = [
+        ...new Set(shoppingCartItems.map((item) => item.entityTypeName)),
+    ];
 
     // Fetch entities for each type
     const entitiesPromises = entityTypes.map(async (entityTypeName) => {
@@ -199,14 +226,22 @@ export async function getShoppingCartItemsWithEntityNamesAction(shoppingCartItem
     });
 
     // Enhance shopping cart items with entity names
-    const enhancedItems = shoppingCartItems.map(item => {
+    const enhancedItems = shoppingCartItems.map((item) => {
         const entities = entitiesLookup[item.entityTypeName] || [];
-        const entity = entities.find(e => e.id?.toString() === item.entityId);
+        const entity = entities.find((e) => e.id?.toString() === item.entityId);
 
         return {
             ...item,
-            entityName: entity?.information?.label || entity?.information?.name || `${item.entityTypeName} ${item.entityId}`,
-            price: entity?.prices?.perPlant || entity?.information?.plant?.prices?.perPlant || entity?.prices?.perOperation || entity?.information?.plant?.prices?.perOperation || 0,
+            entityName:
+                entity?.information?.label ||
+                entity?.information?.name ||
+                `${item.entityTypeName} ${item.entityId}`,
+            price:
+                entity?.prices?.perPlant ||
+                entity?.information?.plant?.prices?.perPlant ||
+                entity?.prices?.perOperation ||
+                entity?.information?.plant?.prices?.perOperation ||
+                0,
         };
     });
 

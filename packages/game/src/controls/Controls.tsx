@@ -1,19 +1,21 @@
 import { OrbitControls } from '@react-three/drei';
-import { useEffect, useRef, useState } from 'react';
-import { useGameState } from '../useGameState';
 import { useFrame, useThree } from '@react-three/fiber';
-import { MOUSE, TOUCH, Vector3 } from 'three';
 import { useControls } from 'leva';
+import { useEffect, useRef, useState } from 'react';
+import { MOUSE, TOUCH, Vector3 } from 'three';
 import { CameraController } from '../controllers/CameraController';
-import { useIsEditMode } from '../hooks/useIsEditMode';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useIsEditMode } from '../hooks/useIsEditMode';
+import { useGameState } from '../useGameState';
 
 function useCameraRotate() {
-    const orbitControls = useGameState(state => state.orbitControls);
-    const worldRotation = useGameState(state => state.worldRotation);
+    const orbitControls = useGameState((state) => state.orbitControls);
+    const worldRotation = useGameState((state) => state.worldRotation);
 
     useEffect(() => {
-        orbitControls?.setAzimuthalAngle(worldRotation * (Math.PI / 2) + Math.PI / 4 + Math.PI);
+        orbitControls?.setAzimuthalAngle(
+            worldRotation * (Math.PI / 2) + Math.PI / 4 + Math.PI,
+        );
     }, [worldRotation, orbitControls]);
 }
 
@@ -21,8 +23,8 @@ const up = new Vector3(0, 1, 0);
 
 function useCameraPan(direction: [number, number] | null) {
     const dir = useRef(new Vector3());
-    const camera = useThree(state => state.camera);
-    const orbitControls = useGameState(state => state.orbitControls);
+    const camera = useThree((state) => state.camera);
+    const orbitControls = useGameState((state) => state.orbitControls);
 
     useFrame(() => {
         if (direction === null) return;
@@ -45,20 +47,20 @@ function useCameraPan(direction: [number, number] | null) {
 const rotateKeys: Record<string, 'cw' | 'ccw'> = {
     KeyQ: 'cw',
     KeyW: 'ccw',
-}
+};
 
 const panKeys: Record<string, [number, number]> = {
     ArrowUp: [0, 1],
     ArrowDown: [0, -1],
     ArrowLeft: [1, 0],
     ArrowRight: [-1, 0],
-}
+};
 
 const rotateValueByKey = (key: string) => rotateKeys[key];
 
 const useKeyboardControls = () => {
     const [panDir, setPanDir] = useState<[number, number] | null>(null);
-    const worldRotate = useGameState(state => state.worldRotate);
+    const worldRotate = useGameState((state) => state.worldRotate);
     useCameraPan(panDir);
 
     useEffect(() => {
@@ -74,47 +76,54 @@ const useKeyboardControls = () => {
             // Handle panning
             const panValue = panKeys[e.code];
             if (panValue) setPanDir(panValue);
-        }
+        };
 
         const handleKeyUp = (e: KeyboardEvent) => {
             const panValue = panKeys[e.code];
             if (panValue) {
                 setPanDir(null);
             }
-        }
+        };
 
-        document.addEventListener('keydown', handleKeyDown)
-        document.addEventListener('keyup', handleKeyUp)
+        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keyup', handleKeyUp);
         return () => {
-            document.removeEventListener('keydown', handleKeyDown)
-            document.removeEventListener('keyup', handleKeyUp)
-        }
-    }, [setPanDir]);
-}
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('keyup', handleKeyUp);
+        };
+    }, [worldRotate]);
+};
 
 export function Controls({ debugCloseup }: { debugCloseup?: boolean }) {
     const isEditMode = useIsEditMode();
-    const setOrbitControls = useGameState(state => state.setOrbitControls);
-    const setIsDragging = useGameState(state => state.setIsDragging);
+    const setOrbitControls = useGameState((state) => state.setOrbitControls);
+    const setIsDragging = useGameState((state) => state.setIsDragging);
     const garden = useCurrentGarden();
     useCameraRotate();
     useKeyboardControls();
     const [isAnimating, setIsAnimating] = useState(false);
 
     // Closeup
-    const isCloseUpView = useGameState(state => state.view) === 'closeup';
-    const closeupBlock = useGameState(state => state.closeupBlock);
+    const isCloseUpView = useGameState((state) => state.view) === 'closeup';
+    const closeupBlock = useGameState((state) => state.closeupBlock);
     // Find stat containing the closeup block
     const closeupPosition: [number, number, number] = closeupBlock
-        ? (garden.data?.stacks.find(stack => stack.blocks.some(block => block.id === closeupBlock.id))?.position.toArray() as [number, number, number])
+        ? (garden.data?.stacks
+              .find((stack) =>
+                  stack.blocks.some((block) => block.id === closeupBlock.id),
+              )
+              ?.position.toArray() as [number, number, number])
         : [0, 0, 0];
-    const { isCloseUp, targetPosition } = debugCloseup ? useControls({
-        isCloseUp: { value: false, label: "Closeup" },
-        targetPosition: { value: [0, 0, 0], label: "Target Position" },
-    }) : {
-        isCloseUp: isCloseUpView,
-        targetPosition: closeupPosition
-    };
+    const { isCloseUp, targetPosition } = debugCloseup
+        ? // biome-ignore lint/correctness/useHookAtTopLevel: Debug flag, doesn't change during runtime
+          useControls({
+              isCloseUp: { value: false, label: 'Closeup' },
+              targetPosition: { value: [0, 0, 0], label: 'Target Position' },
+          })
+        : {
+              isCloseUp: isCloseUpView,
+              targetPosition: closeupPosition,
+          };
 
     return (
         <>
@@ -144,5 +153,5 @@ export function Controls({ debugCloseup }: { debugCloseup?: boolean }) {
                 }}
             />
         </>
-    )
+    );
 }

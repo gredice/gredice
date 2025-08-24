@@ -1,12 +1,24 @@
 'use server';
 
-import { changeInvoiceStatus, cancelInvoice, softDeleteInvoice, InvoiceStatus, createReceiptFromInvoice, getReceiptByInvoice, getFiscalizationUserSettings, getInvoice, users } from "@gredice/storage";
-import { auth } from "../../../../lib/auth/auth";
-import { redirect } from "next/navigation";
-import { KnownPages } from "../../../../src/KnownPages";
-import { revalidatePath } from "next/cache";
+import {
+    cancelInvoice,
+    changeInvoiceStatus,
+    createReceiptFromInvoice,
+    getFiscalizationUserSettings,
+    getInvoice,
+    getReceiptByInvoice,
+    type InvoiceStatus,
+    softDeleteInvoice,
+} from '@gredice/storage';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { auth } from '../../../../lib/auth/auth';
+import { KnownPages } from '../../../../src/KnownPages';
 
-export async function changeInvoiceStatusAction(invoiceId: number, newStatus: InvoiceStatus) {
+export async function changeInvoiceStatusAction(
+    invoiceId: number,
+    newStatus: InvoiceStatus,
+) {
     await auth(['admin']);
 
     try {
@@ -17,7 +29,10 @@ export async function changeInvoiceStatusAction(invoiceId: number, newStatus: In
         console.error('Error changing invoice status:', error);
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Failed to change invoice status'
+            error:
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to change invoice status',
         };
     }
 }
@@ -33,7 +48,10 @@ export async function cancelInvoiceAction(invoiceId: number) {
         console.error('Error cancelling invoice:', error);
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Failed to cancel invoice'
+            error:
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to cancel invoice',
         };
     }
 }
@@ -49,7 +67,10 @@ export async function deleteInvoiceAction(invoiceId: number) {
         console.error('Error deleting invoice:', error);
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Failed to delete invoice'
+            error:
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to delete invoice',
         };
     }
 }
@@ -72,7 +93,7 @@ export async function createReceiptAction(invoiceId: number) {
             businessAddress: 'Ulica Julija Knifera 3, 10000 Zagreb, Hrvatska',
             customerAddress: invoice?.billToAddress,
             customerName: invoice?.billToName,
-            paymentReference: invoice?.transactionId?.toString()
+            paymentReference: invoice?.transactionId?.toString(),
         });
 
         redirect(KnownPages.Receipt(receiptId));
@@ -80,7 +101,10 @@ export async function createReceiptAction(invoiceId: number) {
         console.error('Error creating receipt:', error);
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Failed to create receipt'
+            error:
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to create receipt',
         };
     }
 }
@@ -95,7 +119,10 @@ export async function getInvoiceReceiptAction(invoiceId: number) {
         console.error('Error getting receipt:', error);
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Failed to get receipt'
+            error:
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to get receipt',
         };
     }
 }

@@ -1,4 +1,4 @@
-import { Skeleton } from "@signalco/ui-primitives/Skeleton";
+import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 
 export function PlantListItemSkeleton() {
     return (
@@ -9,5 +9,5 @@ export function PlantListItemSkeleton() {
                 <Skeleton className="w-44 h-5" />
             </div>
         </div>
-    )
+    );
 }

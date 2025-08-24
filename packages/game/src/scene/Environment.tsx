@@ -1,31 +1,63 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import chroma from 'chroma-js';
+import { useEffect, useRef } from 'react';
 import { getPosition } from 'suncalc';
-import { useGameState } from '../useGameState';
 import { Color, Quaternion, Vector3 } from 'three';
-import { useWeatherNow } from '../hooks/useWeatherNow';
-import { Drops } from './Rain/Drops';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useWeatherNow } from '../hooks/useWeatherNow';
+import { useGameState } from '../useGameState';
+import { Drops } from './Rain/Drops';
 
 const backgroundColorScale = chroma
-    .scale(['#2D3947', '#BADDf6', '#E7E2CC', '#E7E2CC', '#f8b195', '#6c5b7b', '#2D3947'])
+    .scale([
+        '#2D3947',
+        '#BADDf6',
+        '#E7E2CC',
+        '#E7E2CC',
+        '#f8b195',
+        '#6c5b7b',
+        '#2D3947',
+    ])
     .domain([0.2, 0.225, 0.25, 0.75, 0.765, 0.785, 0.8]);
 const sunTemperatureScale = chroma
-    .scale([chroma.temperature(20000), chroma.temperature(8000), chroma.temperature(6000), chroma.temperature(6000), chroma.temperature(2000), chroma.temperature(20000)])
+    .scale([
+        chroma.temperature(20000),
+        chroma.temperature(8000),
+        chroma.temperature(6000),
+        chroma.temperature(6000),
+        chroma.temperature(2000),
+        chroma.temperature(20000),
+    ])
     .domain([0.2, 0.25, 0.775, 0.8]);
 const sunIntensityTimeScale = chroma
     .scale(['black', 'white', 'white', 'black'])
     .domain([0.2, 0.225, 0.75, 0.81]);
 const hemisphereSkyColorScale = chroma
-    .scale([chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000), chroma.temperature(20000), chroma.temperature(2000), chroma.temperature(20000)])
+    .scale([
+        chroma.temperature(20000),
+        chroma.temperature(2000),
+        chroma.temperature(20000),
+        chroma.temperature(20000),
+        chroma.temperature(2000),
+        chroma.temperature(20000),
+    ])
     .domain([0.2, 0.25, 0.3, 0.75, 0.8, 0.85]);
 
-function getSunPosition({ lat, lon }: { lat: number, lon: number }, currentTime: Date, timeOfDay: number) {
-    const date = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
+function getSunPosition(
+    { lat, lon }: { lat: number; lon: number },
+    currentTime: Date,
+    timeOfDay: number,
+) {
+    const date = new Date(
+        currentTime.getFullYear(),
+        currentTime.getMonth(),
+        currentTime.getDate(),
+    );
     date.setHours(Math.trunc(timeOfDay * 24));
-    date.setMinutes(Math.trunc((timeOfDay * 24 - Math.trunc(timeOfDay * 24)) * 60));
+    date.setMinutes(
+        Math.trunc((timeOfDay * 24 - Math.trunc(timeOfDay * 24)) * 60),
+    );
 
     const sunPosition = getPosition(currentTime, lat, lon);
 
@@ -44,7 +76,11 @@ function getSunPosition({ lat, lon }: { lat: number, lon: number }, currentTime:
     return pos;
 }
 
-export function environmentState({ lat, lon }: { lat: number, lon: number }, currentTime: Date, timeOfDay: number) {
+export function environmentState(
+    { lat, lon }: { lat: number; lon: number },
+    currentTime: Date,
+    timeOfDay: number,
+) {
     const sunPosition = getSunPosition({ lat, lon }, currentTime, timeOfDay);
     const colors = {
         background: backgroundColorScale(timeOfDay).rgb(),
@@ -58,38 +94,38 @@ export function environmentState({ lat, lon }: { lat: number, lon: number }, cur
 }
 
 export type EnvironmentProps = {
-    noBackground?: boolean,
-    noSound?: boolean,
-    noWeather?: boolean
-}
+    noBackground?: boolean;
+    noSound?: boolean;
+    noWeather?: boolean;
+};
 
 type EnvironmentElements = {
-    background: Color,
+    background: Color;
     ambient: {
-        intensity: number,
-    },
+        intensity: number;
+    };
     hemisphere: {
-        color: Color,
-        groundColor: Color,
-        intensity: number,
-    },
+        color: Color;
+        groundColor: Color;
+        intensity: number;
+    };
     directionalLight: {
-        color: Color,
-        position: Vector3,
-        intensity: number,
-    },
-}
+        color: Color;
+        position: Vector3;
+        intensity: number;
+    };
+};
 
 function useEnvironmentElements({
     location,
     currentTime,
     timeOfDay,
-    weather
+    weather,
 }: {
-    location: { lat: number, lon: number },
-    currentTime: Date,
-    timeOfDay: number,
-    weather: ReturnType<typeof useWeatherNow>['data']
+    location: { lat: number; lon: number };
+    currentTime: Date;
+    timeOfDay: number;
+    weather: ReturnType<typeof useWeatherNow>['data'];
 }) {
     const {
         sunPosition,
@@ -103,13 +139,22 @@ function useEnvironmentElements({
         sunTemperature[0] / 255,
         sunTemperature[1] / 255,
         sunTemperature[2] / 255,
-        'srgb');
-    const directionalLightIntensity = Math.max(0, sunIntensity * 5 - (weather?.cloudy ?? 0) * 4 - (weather?.foggy ?? 0) * 4);
+        'srgb',
+    );
+    const directionalLightIntensity = Math.max(
+        0,
+        sunIntensity * 5 -
+            (weather?.cloudy ?? 0) * 4 -
+            (weather?.foggy ?? 0) * 4,
+    );
     const directionalLightPosition = sunPosition;
 
     // Ambient light
     const ambientIntensityOffset = 1;
-    const ambientLightIntensity = sunIntensity * (2 + Math.max(0, -(weather?.cloudy ?? 0) - (weather?.foggy ?? 0))) + ambientIntensityOffset
+    const ambientLightIntensity =
+        sunIntensity *
+            (2 + Math.max(0, -(weather?.cloudy ?? 0) - (weather?.foggy ?? 0))) +
+        ambientIntensityOffset;
 
     // Background color
     const backgroundColor = useRef<Color>(new Color());
@@ -117,7 +162,8 @@ function useEnvironmentElements({
         background[0] / 255,
         background[1] / 255,
         background[2] / 255,
-        'srgb');
+        'srgb',
+    );
 
     // Set background color based on weather
     if (weather && ((weather?.cloudy ?? 0) > 0 || (weather?.foggy ?? 0) > 0)) {
@@ -125,23 +171,28 @@ function useEnvironmentElements({
         backgroundColor.current.getHSL(rainyBackground);
         backgroundColor.current.setHSL(
             rainyBackground.h,
-            rainyBackground.s * (1 - Math.min(0.7, weather.cloudy + weather.foggy)),// * (weather.cloudy > 0.5 || weather.foggy > 0.5 ? 0.3 : 0.8),
-            rainyBackground.l * (1 - Math.min(0.1, weather.cloudy + weather.foggy)))// * (weather.cloudy > 0.9 ? 0.8 : (weather.cloudy > 0.4 ? 0.9 : 0.95)));
+            rainyBackground.s *
+                (1 - Math.min(0.7, weather.cloudy + weather.foggy)), // * (weather.cloudy > 0.5 || weather.foggy > 0.5 ? 0.3 : 0.8),
+            rainyBackground.l *
+                (1 - Math.min(0.1, weather.cloudy + weather.foggy)),
+        ); // * (weather.cloudy > 0.9 ? 0.8 : (weather.cloudy > 0.4 ? 0.9 : 0.95)));
     }
 
     const hemisphereColor = useRef<Color>(new Color());
     hemisphereColor.current.setRGB(
-        hemisphereSkyColor[0] / 255 * -0,
+        (hemisphereSkyColor[0] / 255) * -0,
         hemisphereSkyColor[1] / 255,
         hemisphereSkyColor[2] / 255,
-        'srgb');
+        'srgb',
+    );
 
     const hemisphereGroundColor = useRef<Color>(new Color());
     hemisphereGroundColor.current.setRGB(
-        backgroundColor.current.r / 255 * 0.5,
-        backgroundColor.current.g / 255 * 0.5,
-        backgroundColor.current.b / 255 * 0.5,
-        'srgb');
+        (backgroundColor.current.r / 255) * 0.5,
+        (backgroundColor.current.g / 255) * 0.5,
+        (backgroundColor.current.b / 255) * 0.5,
+        'srgb',
+    );
     const hemisphereIntensity = sunIntensity * 2 + 3;
 
     return {
@@ -158,11 +209,15 @@ function useEnvironmentElements({
             color: directionalLightColor.current,
             position: directionalLightPosition,
             intensity: directionalLightIntensity,
-        }
+        },
     };
 }
 
-export function Environment({ noBackground, noSound, noWeather }: EnvironmentProps) {
+export function Environment({
+    noBackground,
+    noSound,
+    noWeather,
+}: EnvironmentProps) {
     const cameraShadowSize = 20;
     const shadowMapSize = 8;
 
@@ -171,15 +226,17 @@ export function Environment({ noBackground, noSound, noWeather }: EnvironmentPro
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
 
     const { data: garden } = useCurrentGarden();
-    const location = garden ? {
-        lat: garden.location.lat ?? 0,
-        lon: garden.location.lon ?? 0
-    } : {
-        lat: 45.739,
-        lon: 16.572
-    };
+    const location = garden
+        ? {
+              lat: garden.location.lat ?? 0,
+              lon: garden.location.lon ?? 0,
+          }
+        : {
+              lat: 45.739,
+              lon: 16.572,
+          };
 
-    const overrideWeather = useGameState(state => state.weather);
+    const overrideWeather = useGameState((state) => state.weather);
     const { data: weather } = useWeatherNow(!noWeather);
     if (overrideWeather && weather) {
         console.debug('Overriding weather', overrideWeather);
@@ -190,13 +247,27 @@ export function Environment({ noBackground, noSound, noWeather }: EnvironmentPro
     }
 
     // Sound
-    const morningAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Morning 01.mp3');
-    const dayAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Day Birds 01.mp3');
-    const nightAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Night 01.mp3');
-    const dayRainAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Day Rain 01.mp3');
-    const rainHeavyAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Rain Heavy 01.mp3');
-    const rainLightModAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Mod Rain Light 01.mp3');
-    const rainMediumModAmbient = ambientAudioMixer.useMusic('https://cdn.gredice.com/sounds/ambient/Mod Rain Medium 01.mp3');
+    const morningAmbient = ambientAudioMixer.useMusic(
+        'https://cdn.gredice.com/sounds/ambient/Morning 01.mp3',
+    );
+    const dayAmbient = ambientAudioMixer.useMusic(
+        'https://cdn.gredice.com/sounds/ambient/Day Birds 01.mp3',
+    );
+    const nightAmbient = ambientAudioMixer.useMusic(
+        'https://cdn.gredice.com/sounds/ambient/Night 01.mp3',
+    );
+    const dayRainAmbient = ambientAudioMixer.useMusic(
+        'https://cdn.gredice.com/sounds/ambient/Day Rain 01.mp3',
+    );
+    const rainHeavyAmbient = ambientAudioMixer.useMusic(
+        'https://cdn.gredice.com/sounds/ambient/Rain Heavy 01.mp3',
+    );
+    const rainLightModAmbient = ambientAudioMixer.useMusic(
+        'https://cdn.gredice.com/sounds/ambient/Mod Rain Light 01.mp3',
+    );
+    const rainMediumModAmbient = ambientAudioMixer.useMusic(
+        'https://cdn.gredice.com/sounds/ambient/Mod Rain Medium 01.mp3',
+    );
     useEffect(() => {
         if (noSound) {
             return;
@@ -235,19 +306,41 @@ export function Environment({ noBackground, noSound, noWeather }: EnvironmentPro
             rainLightModAmbient.stop();
             rainMediumModAmbient.stop();
         };
-    }, [timeOfDay, weather, overrideWeather, noSound]);
-
-    const { background, ambient, hemisphere, directionalLight } = useEnvironmentElements({
-        location,
-        currentTime,
+    }, [
         timeOfDay,
-        weather
-    });
+        weather,
+        noSound,
+        dayAmbient.play,
+        dayAmbient.stop,
+        dayRainAmbient.play,
+        dayRainAmbient.stop,
+        morningAmbient.play,
+        morningAmbient.stop,
+        nightAmbient.play,
+        nightAmbient.stop,
+        rainHeavyAmbient.play,
+        rainHeavyAmbient.stop,
+        rainLightModAmbient.play,
+        rainLightModAmbient.stop,
+        rainMediumModAmbient.play,
+        rainMediumModAmbient.stop,
+    ]);
+
+    const { background, ambient, hemisphere, directionalLight } =
+        useEnvironmentElements({
+            location,
+            currentTime,
+            timeOfDay,
+            weather,
+        });
 
     // Handle fog
     const fog = weather?.foggy ?? 0;
     const fogNear = 170 - fog * 30;
-    const fogColor = timeOfDay > 0.2 && timeOfDay < 0.8 ? new Color(0xaaaaaa) : new Color(0x55556a);
+    const fogColor =
+        timeOfDay > 0.2 && timeOfDay < 0.8
+            ? new Color(0xaaaaaa)
+            : new Color(0x55556a);
 
     // Handle rain
     const rain = weather?.rainy ?? 0;
@@ -264,16 +357,16 @@ export function Environment({ noBackground, noSound, noWeather }: EnvironmentPro
             {!noBackground && (
                 <color
                     attach="background"
-                    args={[background.r, background.g, background.b]} />
+                    args={[background.r, background.g, background.b]}
+                />
             )}
-            <ambientLight
-                intensity={ambient.intensity}
-            />
+            <ambientLight intensity={ambient.intensity} />
             <hemisphereLight
                 position={[0, 1, 0]}
                 color={hemisphere.color}
                 groundColor={hemisphere.groundColor}
-                intensity={hemisphere.intensity} />
+                intensity={hemisphere.intensity}
+            />
             {/* TODO: Update shadow camera position based on camera position */}
             <directionalLight
                 intensity={directionalLight.intensity}
@@ -283,14 +376,23 @@ export function Environment({ noBackground, noSound, noWeather }: EnvironmentPro
                 // shadow-near={0.01}
                 // shadow-far={1000}
                 shadow-normalBias={0.03}
-                castShadow>
-                <orthographicCamera attach="shadow-camera" args={[-cameraShadowSize, cameraShadowSize, cameraShadowSize, -cameraShadowSize]} />
+                castShadow
+            >
+                <orthographicCamera
+                    attach="shadow-camera"
+                    args={[
+                        -cameraShadowSize,
+                        cameraShadowSize,
+                        cameraShadowSize,
+                        -cameraShadowSize,
+                    ]}
+                />
             </directionalLight>
-            {(!noWeather && fog > 0) && (
+            {!noWeather && fog > 0 && (
                 <fog attach="fog" args={[fogColor, fogNear, 190]} />
             )}
-            {(!noWeather && rain > 0) && (
-                <Drops count={rain < 0.4 ? 200 : (rain > 0.9 ? 2000 : 600)} />
+            {!noWeather && rain > 0 && (
+                <Drops count={rain < 0.4 ? 200 : rain > 0.9 ? 2000 : 600} />
             )}
         </>
     );

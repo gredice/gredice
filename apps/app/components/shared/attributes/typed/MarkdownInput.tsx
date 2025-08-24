@@ -1,9 +1,26 @@
-import { MDXEditor, UndoRedo, BoldItalicUnderlineToggles, toolbarPlugin, markdownShortcutPlugin, headingsPlugin, listsPlugin, quotePlugin, thematicBreakPlugin, BlockTypeSelect, CreateLink, InsertThematicBreak, ListsToggle, Separator, linkPlugin, linkDialogPlugin } from "@mdxeditor/editor";
-import { useState } from "react";
-import { AttributeInputProps } from '../AttributeInputProps';
-import { useTheme } from "next-themes";
-import { cx } from "@signalco/ui-primitives/cx";
-import '@mdxeditor/editor/style.css'
+import {
+    BlockTypeSelect,
+    BoldItalicUnderlineToggles,
+    CreateLink,
+    headingsPlugin,
+    InsertThematicBreak,
+    ListsToggle,
+    linkDialogPlugin,
+    linkPlugin,
+    listsPlugin,
+    MDXEditor,
+    markdownShortcutPlugin,
+    quotePlugin,
+    Separator,
+    thematicBreakPlugin,
+    toolbarPlugin,
+    UndoRedo,
+} from '@mdxeditor/editor';
+import { cx } from '@signalco/ui-primitives/cx';
+import { useTheme } from 'next-themes';
+import { useState } from 'react';
+import type { AttributeInputProps } from '../AttributeInputProps';
+import '@mdxeditor/editor/style.css';
 
 export function MarkdownInput({ value, onChange }: AttributeInputProps) {
     const { resolvedTheme } = useTheme();
@@ -13,8 +30,8 @@ export function MarkdownInput({ value, onChange }: AttributeInputProps) {
             <MDXEditor
                 placeholder="Nema informacija..."
                 className={cx(
-                    "[&_.mdxeditor-toolbar]:bg-transparent",
-                    resolvedTheme === 'dark' && "dark-theme"
+                    '[&_.mdxeditor-toolbar]:bg-transparent',
+                    resolvedTheme === 'dark' && 'dark-theme',
                 )}
                 contentEditableClassName="prose prose-p:my-2 prose-sm max-w-none"
                 plugins={[
@@ -38,8 +55,8 @@ export function MarkdownInput({ value, onChange }: AttributeInputProps) {
                                 <InsertThematicBreak />
                                 <ListsToggle />
                             </>
-                        )
-                    })
+                        ),
+                    }),
                 ]}
                 markdown={inputValue}
                 onChange={setInputValue}

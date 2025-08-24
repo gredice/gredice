@@ -1,18 +1,18 @@
-import { Button } from "@signalco/ui-primitives/Button"
-import { SoundSlider } from "./SoundSlider"
-import { useEffect } from "react"
-import { Card, CardContent } from "@signalco/ui-primitives/Card"
-import { Stack } from "@signalco/ui-primitives/Stack"
-import { Leaf, Play, Reset } from "@signalco/ui-icons"
-import { useGameAudio } from "../../hooks/useGameAudio"
-import { Alert } from "@signalco/ui/Alert"
-import { Typography } from "@signalco/ui-primitives/Typography"
+import { Alert } from '@signalco/ui/Alert';
+import { Leaf, Play, Reset } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Card, CardContent } from '@signalco/ui-primitives/Card';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useEffect } from 'react';
+import { useGameAudio } from '../../hooks/useGameAudio';
+import { SoundSlider } from './SoundSlider';
 
 const DEFAULT_VOLUMES = {
     master: 0.5,
     ambient: 0.5,
-    sfx: 0.5
-}
+    sfx: 0.5,
+};
 
 export function SoundSettingsCard() {
     const {
@@ -22,19 +22,27 @@ export function SoundSettingsCard() {
         setMuted: setMasterMuted,
         volume: masterVolume,
         setVolume: setMasterVolume,
-        ambient: { isMuted: ambientMuted, volume: ambientVolume, setMuted: setAmbientMuted, setVolume: setAmbientVolume },
-        effects: { isMuted: sfxMuted, volume: sfxVolume, setMuted: setSfxMuted, setVolume: setSfxVolume },
+        ambient: {
+            isMuted: ambientMuted,
+            volume: ambientVolume,
+            setMuted: setAmbientMuted,
+            setVolume: setAmbientVolume,
+        },
+        effects: {
+            isMuted: sfxMuted,
+            volume: sfxVolume,
+            setMuted: setSfxMuted,
+            setVolume: setSfxVolume,
+        },
     } = useGameAudio();
 
     const handleMasterVolumeChange = (newVolume: number) => {
-        if (newVolume === masterVolume)
-            return;
+        if (newVolume === masterVolume) return;
 
         setMasterVolume(newVolume);
         const newMuted = newVolume === 0;
-        if (newMuted !== isMasterMuted)
-            setMasterMuted(newMuted);
-    }
+        if (newMuted !== isMasterMuted) setMasterMuted(newMuted);
+    };
 
     const handleReset = () => {
         setMasterVolume(DEFAULT_VOLUMES.master);
@@ -43,7 +51,7 @@ export function SoundSettingsCard() {
         setMasterMuted(false);
         setSfxMuted(false);
         setAmbientMuted(false);
-    }
+    };
 
     function handleAmbientSetMuted(newMuted: boolean) {
         if (!newMuted && ambientVolume === 0) {
@@ -61,13 +69,13 @@ export function SoundSettingsCard() {
 
     useEffect(() => {
         if (isMasterMuted || masterVolume === 0) {
-            setSfxMuted(true)
-            setAmbientMuted(true)
+            setSfxMuted(true);
+            setAmbientMuted(true);
         } else {
-            setSfxMuted(false)
-            setAmbientMuted(false)
+            setSfxMuted(false);
+            setAmbientMuted(false);
         }
-    }, [isMasterMuted, masterVolume]);
+    }, [isMasterMuted, masterVolume, setAmbientMuted, setSfxMuted]);
 
     return (
         <Card>
@@ -78,28 +86,52 @@ export function SoundSettingsCard() {
                             color="success"
                             className="text-green-950 dark:text-green-50"
                             startDecorator={<Leaf />}
-                            endDecorator={<Button onClick={resumeIfNeeded} variant="soft" size="sm" className="!p-4" startDecorator={<Play className="size-5" />}>Nastavi</Button>}>
-                            <Typography>Zvuk je privremeno isključen jer tvoj uređaj štedi energiju.</Typography>
+                            endDecorator={
+                                <Button
+                                    onClick={resumeIfNeeded}
+                                    variant="soft"
+                                    size="sm"
+                                    className="!p-4"
+                                    startDecorator={<Play className="size-5" />}
+                                >
+                                    Nastavi
+                                </Button>
+                            }
+                        >
+                            <Typography>
+                                Zvuk je privremeno isključen jer tvoj uređaj
+                                štedi energiju.
+                            </Typography>
                         </Alert>
                     )}
                     <Stack spacing={4}>
                         <SoundSlider
                             value={Math.round(masterVolume * 100)}
                             muted={isMasterMuted}
-                            onChange={(value) => handleMasterVolumeChange(value / 100)}
+                            onChange={(value) =>
+                                handleMasterVolumeChange(value / 100)
+                            }
                             onMuteToggle={() => setMasterMuted(!isMasterMuted)}
                             label="Glavno"
                         />
                         <SoundSlider
                             value={Math.round(ambientVolume * 100)}
-                            muted={isMasterMuted || masterVolume === 0 || ambientMuted}
+                            muted={
+                                isMasterMuted ||
+                                masterVolume === 0 ||
+                                ambientMuted
+                            }
                             onChange={(value) => setAmbientVolume(value / 100)}
-                            onMuteToggle={() => handleAmbientSetMuted(!ambientMuted)}
+                            onMuteToggle={() =>
+                                handleAmbientSetMuted(!ambientMuted)
+                            }
                             label="Ambientalno"
                         />
                         <SoundSlider
                             value={Math.round(sfxVolume * 100)}
-                            muted={isMasterMuted || masterVolume === 0 || sfxMuted}
+                            muted={
+                                isMasterMuted || masterVolume === 0 || sfxMuted
+                            }
                             onChange={(value) => setSfxVolume(value / 100)}
                             onMuteToggle={() => handleSfxSetMuted(!sfxMuted)}
                             label="Efekti"
@@ -110,11 +142,12 @@ export function SoundSettingsCard() {
                         variant="outlined"
                         startDecorator={<Reset className="size-4" />}
                         size="sm"
-                        className="self-end">
+                        className="self-end"
+                    >
                         Vrati zadano
                     </Button>
                 </Stack>
             </CardContent>
         </Card>
-    )
+    );
 }

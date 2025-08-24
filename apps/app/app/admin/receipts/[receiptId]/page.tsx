@@ -1,45 +1,62 @@
-import { getReceipt } from "@gredice/storage";
-import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Chip } from "@signalco/ui-primitives/Chip";
-import { auth } from "../../../../lib/auth/auth";
-import { KnownPages } from "../../../../src/KnownPages";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { LocalDateTime } from "@gredice/ui/LocalDateTime";
-import { FieldSet } from "../../../../components/shared/fields/FieldSet";
-import { Field } from "../../../../components/shared/fields/Field";
-import { ReceiptActions } from "./ReceiptActions";
-import { ServerActionButton } from "../../../../components/shared/ServerActionButton";
-import { fiscalizeReceiptAction } from "./actions";
+import { getReceipt } from '@gredice/storage';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Chip } from '@signalco/ui-primitives/Chip';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { Field } from '../../../../components/shared/fields/Field';
+import { FieldSet } from '../../../../components/shared/fields/FieldSet';
+import { ServerActionButton } from '../../../../components/shared/ServerActionButton';
+import { auth } from '../../../../lib/auth/auth';
+import { KnownPages } from '../../../../src/KnownPages';
+import { fiscalizeReceiptAction } from './actions';
+import { ReceiptActions } from './ReceiptActions';
 
 export const dynamic = 'force-dynamic';
 
 function getCisStatusColor(cisStatus: string) {
     switch (cisStatus) {
-        case 'pending': return 'warning';
-        case 'confirmed': return 'success';
-        case 'failed': return 'error';
-        default: return 'neutral';
+        case 'pending':
+            return 'warning';
+        case 'confirmed':
+            return 'success';
+        case 'failed':
+            return 'error';
+        default:
+            return 'neutral';
     }
 }
 
 function getCisStatusLabel(cisStatus: string) {
     switch (cisStatus) {
-        case 'pending': return 'Na čekanju';
-        case 'confirmed': return 'Potvrđeno';
-        case 'failed': return 'Neuspješno';
-        default: return cisStatus;
+        case 'pending':
+            return 'Na čekanju';
+        case 'confirmed':
+            return 'Potvrđeno';
+        case 'failed':
+            return 'Neuspješno';
+        default:
+            return cisStatus;
     }
 }
 
-export default async function ReceiptPage({ params }: { params: Promise<{ receiptId: string }> }) {
+export default async function ReceiptPage({
+    params,
+}: {
+    params: Promise<{ receiptId: string }>;
+}) {
     await auth(['admin']);
     const { receiptId } = await params;
-    const receiptIdNumber = parseInt(receiptId);
-    if (isNaN(receiptIdNumber)) {
+    const receiptIdNumber = parseInt(receiptId, 10);
+    if (Number.isNaN(receiptIdNumber)) {
         notFound();
     }
 
@@ -48,7 +65,10 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
         notFound();
     }
 
-    const fiscalizeReceiptActionBound = fiscalizeReceiptAction.bind(null, receiptIdNumber);
+    const fiscalizeReceiptActionBound = fiscalizeReceiptAction.bind(
+        null,
+        receiptIdNumber,
+    );
 
     return (
         <Stack spacing={2}>
@@ -69,12 +89,32 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
             <Stack spacing={2}>
                 <FieldSet>
                     <Field name="Račun ID" value={receipt.id} mono />
-                    <Field name="Broj računa" value={receipt.receiptNumber} mono />
-                    <Field name="Kreiran" value={<LocalDateTime>{receipt.createdAt}</LocalDateTime>} />
-                    <Field name="Ažuriran" value={<LocalDateTime>{receipt.updatedAt}</LocalDateTime>} />
+                    <Field
+                        name="Broj računa"
+                        value={receipt.receiptNumber}
+                        mono
+                    />
+                    <Field
+                        name="Kreiran"
+                        value={
+                            <LocalDateTime>{receipt.createdAt}</LocalDateTime>
+                        }
+                    />
+                    <Field
+                        name="Ažuriran"
+                        value={
+                            <LocalDateTime>{receipt.updatedAt}</LocalDateTime>
+                        }
+                    />
                 </FieldSet>
                 <FieldSet>
-                    <Field name="Ponuda broj" value={receipt.invoice?.invoiceNumber || `#${receipt.invoiceId}`} />
+                    <Field
+                        name="Ponuda broj"
+                        value={
+                            receipt.invoice?.invoiceNumber ||
+                            `#${receipt.invoiceId}`
+                        }
+                    />
                 </FieldSet>
             </Stack>
             <Row spacing={2} alignItems="stretch">
@@ -94,25 +134,56 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
                         <CardContent>
                             <Stack spacing={2}>
                                 <FieldSet>
-                                    <Field name="JIR" value={receipt.jir || '-'} mono />
-                                    <Field name="ZKI" value={receipt.zki || '-'} mono />
+                                    <Field
+                                        name="JIR"
+                                        value={receipt.jir || '-'}
+                                        mono
+                                    />
+                                    <Field
+                                        name="ZKI"
+                                        value={receipt.zki || '-'}
+                                        mono
+                                    />
                                 </FieldSet>
                                 <FieldSet>
-                                    <Field name="CIS Status" value={
-                                        <Chip color={getCisStatusColor(receipt.cisStatus)} className="w-fit">
-                                            {getCisStatusLabel(receipt.cisStatus)}
-                                        </Chip>
-                                    } />
-                                    <Field name="Datum fiskalizacije" value={
-                                        receipt.cisTimestamp ? (
-                                            <LocalDateTime>{receipt.cisTimestamp}</LocalDateTime>
-                                        ) : '-'
-                                    } />
+                                    <Field
+                                        name="CIS Status"
+                                        value={
+                                            <Chip
+                                                color={getCisStatusColor(
+                                                    receipt.cisStatus,
+                                                )}
+                                                className="w-fit"
+                                            >
+                                                {getCisStatusLabel(
+                                                    receipt.cisStatus,
+                                                )}
+                                            </Chip>
+                                        }
+                                    />
+                                    <Field
+                                        name="Datum fiskalizacije"
+                                        value={
+                                            receipt.cisTimestamp ? (
+                                                <LocalDateTime>
+                                                    {receipt.cisTimestamp}
+                                                </LocalDateTime>
+                                            ) : (
+                                                '-'
+                                            )
+                                        }
+                                    />
                                     {receipt.cisErrorMessage && (
-                                        <Field name="CIS poruka" value={receipt.cisErrorMessage} />
+                                        <Field
+                                            name="CIS poruka"
+                                            value={receipt.cisErrorMessage}
+                                        />
                                     )}
                                     {receipt.cisReference && (
-                                        <Field name="CIS referenca" value={receipt.cisReference} />
+                                        <Field
+                                            name="CIS referenca"
+                                            value={receipt.cisReference}
+                                        />
                                     )}
                                 </FieldSet>
                             </Stack>
@@ -127,9 +198,19 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
                         <CardContent>
                             <Stack spacing={2}>
                                 <FieldSet>
-                                    <Field name="Naziv tvrtke" value={receipt.businessName || '-'} />
-                                    <Field name="OIB" value={receipt.businessPin || '-'} mono />
-                                    <Field name="Adresa" value={receipt.businessAddress || '-'} />
+                                    <Field
+                                        name="Naziv tvrtke"
+                                        value={receipt.businessName || '-'}
+                                    />
+                                    <Field
+                                        name="OIB"
+                                        value={receipt.businessPin || '-'}
+                                        mono
+                                    />
+                                    <Field
+                                        name="Adresa"
+                                        value={receipt.businessAddress || '-'}
+                                    />
                                 </FieldSet>
                             </Stack>
                         </CardContent>
@@ -145,16 +226,36 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
                         <CardContent>
                             <Stack spacing={1}>
                                 <Row justifyContent="space-between">
-                                    <Typography level="body2">Osnovica</Typography>
-                                    <Typography>{receipt.subtotal}{receipt.currency === 'eur' ? ' €' : receipt.currency}</Typography>
+                                    <Typography level="body2">
+                                        Osnovica
+                                    </Typography>
+                                    <Typography>
+                                        {receipt.subtotal}
+                                        {receipt.currency === 'eur'
+                                            ? ' €'
+                                            : receipt.currency}
+                                    </Typography>
                                 </Row>
                                 <Row justifyContent="space-between">
                                     <Typography level="body2">PDV</Typography>
-                                    <Typography>{receipt.taxAmount}{receipt.currency === 'eur' ? ' €' : receipt.currency}</Typography>
+                                    <Typography>
+                                        {receipt.taxAmount}
+                                        {receipt.currency === 'eur'
+                                            ? ' €'
+                                            : receipt.currency}
+                                    </Typography>
                                 </Row>
-                                <Row justifyContent="space-between" className="border-t pt-2">
+                                <Row
+                                    justifyContent="space-between"
+                                    className="border-t pt-2"
+                                >
                                     <Typography semiBold>Ukupno</Typography>
-                                    <Typography level="h3" semiBold>{receipt.totalAmount}{receipt.currency === 'eur' ? ' €' : receipt.currency}</Typography>
+                                    <Typography level="h3" semiBold>
+                                        {receipt.totalAmount}
+                                        {receipt.currency === 'eur'
+                                            ? ' €'
+                                            : receipt.currency}
+                                    </Typography>
                                 </Row>
                             </Stack>
                         </CardContent>
@@ -168,15 +269,31 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
                         <CardContent>
                             <Stack spacing={1}>
                                 <Row spacing={2}>
-                                    <Typography level="body2" className="w-20">Ponuda:</Typography>
-                                    <Link href={KnownPages.Invoice(receipt.invoiceId)}>
-                                        {receipt.invoice?.invoiceNumber || `#${receipt.invoiceId}`}
+                                    <Typography level="body2" className="w-20">
+                                        Ponuda:
+                                    </Typography>
+                                    <Link
+                                        href={KnownPages.Invoice(
+                                            receipt.invoiceId,
+                                        )}
+                                    >
+                                        {receipt.invoice?.invoiceNumber ||
+                                            `#${receipt.invoiceId}`}
                                     </Link>
                                 </Row>
                                 {receipt.invoice?.transactionId && (
                                     <Row spacing={2}>
-                                        <Typography level="body2" className="w-20">Transakcija:</Typography>
-                                        <Link href={KnownPages.Transaction(receipt.invoice.transactionId)}>
+                                        <Typography
+                                            level="body2"
+                                            className="w-20"
+                                        >
+                                            Transakcija:
+                                        </Typography>
+                                        <Link
+                                            href={KnownPages.Transaction(
+                                                receipt.invoice.transactionId,
+                                            )}
+                                        >
                                             #{receipt.invoice.transactionId}
                                         </Link>
                                     </Row>

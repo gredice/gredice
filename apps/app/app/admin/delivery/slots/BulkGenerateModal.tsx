@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from "react";
-import { Modal } from "@signalco/ui-primitives/Modal";
-import { BulkGenerateForm } from "./BulkGenerateForm";
+import { Modal } from '@signalco/ui-primitives/Modal';
+import { useState } from 'react';
+import { BulkGenerateForm } from './BulkGenerateForm';
 
 type Location = {
     id: number;
@@ -14,7 +14,10 @@ type BulkGenerateModalProps = {
     locations: Location[];
 };
 
-export function BulkGenerateModal({ trigger, locations }: BulkGenerateModalProps) {
+export function BulkGenerateModal({
+    trigger,
+    locations,
+}: BulkGenerateModalProps) {
     const [open, setOpen] = useState(false);
 
     return (

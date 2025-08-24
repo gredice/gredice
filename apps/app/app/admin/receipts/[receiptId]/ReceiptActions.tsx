@@ -1,12 +1,12 @@
 'use client';
 
-import { Button } from "@signalco/ui-primitives/Button";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { ModalConfirm } from "@signalco/ui/ModalConfirm";
-import { Delete } from "@signalco/ui-icons";
-import { useState, useTransition } from "react";
-import { deleteReceiptAction } from "./actions";
+import { ModalConfirm } from '@signalco/ui/ModalConfirm';
+import { Delete } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useState, useTransition } from 'react';
+import { deleteReceiptAction } from './actions';
 
 type Receipt = {
     id: number;
@@ -23,7 +23,8 @@ export function ReceiptActions({ receipt }: ReceiptActionsProps) {
     const [error, setError] = useState<string | null>(null);
 
     // Don't allow deletion of fiscalized receipts (those with JIR)
-    const canDelete = receipt.cisStatus === 'pending' || receipt.cisStatus === 'failed';
+    const canDelete =
+        receipt.cisStatus === 'pending' || receipt.cisStatus === 'failed';
 
     const handleDelete = () => {
         startTransition(async () => {
@@ -38,7 +39,10 @@ export function ReceiptActions({ receipt }: ReceiptActionsProps) {
     return (
         <Row spacing={2} className="flex-wrap">
             {error && (
-                <Typography level="body2" className="text-red-600 bg-red-50 p-2 rounded w-full">
+                <Typography
+                    level="body2"
+                    className="text-red-600 bg-red-50 p-2 rounded w-full"
+                >
                     {error}
                 </Typography>
             )}
@@ -49,7 +53,7 @@ export function ReceiptActions({ receipt }: ReceiptActionsProps) {
                     title="Potvrdi brisanje"
                     header={`Brisanje fiskalnog računa ${receipt.receiptNumber}`}
                     onConfirm={handleDelete}
-                    trigger={(
+                    trigger={
                         <Button
                             variant="outlined"
                             color="danger"
@@ -58,17 +62,21 @@ export function ReceiptActions({ receipt }: ReceiptActionsProps) {
                         >
                             Obriši
                         </Button>
-                    )}
+                    }
                 >
                     <Typography>
-                        Jeste li sigurni da želite obrisati ovaj fiskalni račun? Ova akcija se ne može poništiti.
+                        Jeste li sigurni da želite obrisati ovaj fiskalni račun?
+                        Ova akcija se ne može poništiti.
                     </Typography>
                 </ModalConfirm>
             )}
 
             {/* Info message for fiscalized receipts */}
             {!canDelete && (
-                <Typography level="body2" className="text-amber-600 bg-amber-50 p-2 rounded">
+                <Typography
+                    level="body2"
+                    className="text-amber-600 bg-amber-50 p-2 rounded"
+                >
                     Fiskalizirani računi se ne mogu obrisati.
                 </Typography>
             )}

@@ -1,44 +1,73 @@
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
-import { cx } from "@signalco/ui-primitives/cx";
-import { Markdown } from "../../../components/shared/Markdown";
-import { slug } from "@signalco/js";
-import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
-import { PlantOperations } from "./PlantOperations";
-import { PlantData } from "@gredice/client";
-import { getOperationsData } from "../../../lib/plants/getOperationsData";
+import type { PlantData } from '@gredice/client';
+import { slug } from '@signalco/js';
+import { cx } from '@signalco/ui-primitives/cx';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import { Markdown } from '../../../components/shared/Markdown';
+import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
+import { getOperationsData } from '../../../lib/plants/getOperationsData';
+import { PlantOperations } from './PlantOperations';
 
 export type InformationSectionProps = {
-    plantId: number
-    id: string
-    header: string
-    content: string | null | undefined,
-    sortContent?: string | null | undefined,
-    operations?: PlantData["information"]["operations"] | null | undefined
-}
+    plantId: number;
+    id: string;
+    header: string;
+    content: string | null | undefined;
+    sortContent?: string | null | undefined;
+    operations?: PlantData['information']['operations'] | null | undefined;
+};
 
-export async function InformationSection({ plantId, id, header, content, sortContent, operations }: InformationSectionProps) {
+export async function InformationSection({
+    plantId,
+    id,
+    header,
+    content,
+    sortContent,
+    operations,
+}: InformationSectionProps) {
     if (!content) {
         return null;
     }
 
     // Filter operations based on stage
     const allOperations = await getOperationsData();
-    const gardenOperations = allOperations?.filter((operation) => operation.attributes?.application === "garden" && operation.attributes?.stage.information?.name === id);
-    const raisedBedFullOperations = allOperations?.filter((operation) => operation.attributes?.application === "raisedBedFull" && operation.attributes?.stage.information?.name === id);
-    const raisedBedSquareOperations = allOperations?.filter((operation) => operation.attributes?.application === "raisedBed1m" && operation.attributes?.stage.information?.name === id);
-    const plantOperations = operations?.filter((operation) => operation.attributes?.application === "plant" && operation.attributes?.stage.information?.name === id);
+    const gardenOperations = allOperations?.filter(
+        (operation) =>
+            operation.attributes?.application === 'garden' &&
+            operation.attributes?.stage.information?.name === id,
+    );
+    const raisedBedFullOperations = allOperations?.filter(
+        (operation) =>
+            operation.attributes?.application === 'raisedBedFull' &&
+            operation.attributes?.stage.information?.name === id,
+    );
+    const raisedBedSquareOperations = allOperations?.filter(
+        (operation) =>
+            operation.attributes?.application === 'raisedBed1m' &&
+            operation.attributes?.stage.information?.name === id,
+    );
+    const plantOperations = operations?.filter(
+        (operation) =>
+            operation.attributes?.application === 'plant' &&
+            operation.attributes?.stage.information?.name === id,
+    );
     const applicableOperations = [
         ...(gardenOperations ?? []),
         ...(raisedBedFullOperations ?? []),
         ...(raisedBedSquareOperations ?? []),
-        ...(plantOperations ?? [])
+        ...(plantOperations ?? []),
     ];
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 group">
-            <Typography id={slug(header)} level="h2" className="text-2xl md:col-span-2">{header}</Typography>
+            <Typography
+                id={slug(header)}
+                level="h2"
+                className="text-2xl md:col-span-2"
+            >
+                {header}
+            </Typography>
             <Stack spacing={1}>
                 {sortContent && (
                     <Stack>
@@ -57,7 +86,12 @@ export async function InformationSection({ plantId, id, header, content, sortCon
                     <Markdown>{content}</Markdown>
                 </Stack>
             </Stack>
-            <Stack className={cx("border rounded-lg p-2 h-fit", !applicableOperations?.length && 'justify-center')}>
+            <Stack
+                className={cx(
+                    'border rounded-lg p-2 h-fit',
+                    !applicableOperations?.length && 'justify-center',
+                )}
+            >
                 {(applicableOperations?.length ?? 0) <= 0 && (
                     <div className="py-4">
                         <NoDataPlaceholder>
@@ -74,9 +108,9 @@ export async function InformationSection({ plantId, id, header, content, sortCon
                 topic="www/plants/information"
                 data={{
                     plantId: plantId,
-                    sectionId: id
+                    sectionId: id,
                 }}
             />
         </div>
-    )
+    );
 }

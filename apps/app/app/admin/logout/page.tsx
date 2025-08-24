@@ -1,7 +1,5 @@
-import { LogoutForm } from "./LogoutForm";
+import { LogoutForm } from './LogoutForm';
 
 export default function LogoutPage() {
-    return (
-        <LogoutForm />
-    );
+    return <LogoutForm />;
 }

@@ -1,10 +1,10 @@
 'use client';
 
-import { Button } from "@signalco/ui-primitives/Button";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Check, ShoppingCart, Truck, Edit } from "@signalco/ui-icons";
-import { useState } from "react";
-import { updateDeliveryRequestStatusAction } from "./actions";
+import { Check, Edit, ShoppingCart, Truck } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { useState } from 'react';
+import { updateDeliveryRequestStatusAction } from './actions';
 
 type DeliveryRequest = {
     id: string;
@@ -17,7 +17,9 @@ type DeliveryRequestActionButtonsProps = {
     request: DeliveryRequest;
 };
 
-export function DeliveryRequestActionButtons({ request }: DeliveryRequestActionButtonsProps) {
+export function DeliveryRequestActionButtons({
+    request,
+}: DeliveryRequestActionButtonsProps) {
     const [loading, setLoading] = useState<string | null>(null);
 
     const handleStatusUpdate = async (newStatus: string) => {
@@ -55,7 +57,9 @@ export function DeliveryRequestActionButtons({ request }: DeliveryRequestActionB
                         disabled={loading === 'confirmed'}
                         startDecorator={<Check className="size-4" />}
                     >
-                        {loading === 'confirmed' ? 'Potvrđivanje...' : 'Potvrdi'}
+                        {loading === 'confirmed'
+                            ? 'Potvrđivanje...'
+                            : 'Potvrdi'}
                     </Button>
                     <Button
                         variant="plain"

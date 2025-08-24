@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
 import { client } from '@gredice/client';
+import { useQuery } from '@tanstack/react-query';
 
 export const currentAccountKeys = ['accounts', 'current'];
 
@@ -9,7 +9,9 @@ export function useCurrentAccount() {
         queryFn: async () => {
             const [accountResponse, sunflowers] = await Promise.all([
                 client().api.accounts.current.$get(),
-                client().api.accounts.current.sunflowers.$get().then(response => response.json())
+                client()
+                    .api.accounts.current.sunflowers.$get()
+                    .then((response) => response.json()),
             ]);
             const account = await accountResponse.json();
             if (accountResponse.status === 404) {
@@ -17,7 +19,7 @@ export function useCurrentAccount() {
             }
             return {
                 ...account,
-                sunflowers
+                sunflowers,
             };
         },
         staleTime: 1000 * 60 * 5, // 5 min

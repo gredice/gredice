@@ -1,23 +1,25 @@
-import { PropsWithChildren, useRef } from "react";
-import { create } from "zustand";
-import { Block } from "../types/Block";
-import { useGameState } from "../useGameState";
-import { Stack } from "../types/Stack";
+import { type PropsWithChildren, useRef } from 'react';
+import { create } from 'zustand';
+import type { Block } from '../types/Block';
+import { useGameState } from '../useGameState';
 
 type useHoveredBlockStore = {
-    hoveredBlock: Block | null,
-    setHoveredBlock: (block: Block | null) => void
-}
+    hoveredBlock: Block | null;
+    setHoveredBlock: (block: Block | null) => void;
+};
 
 export const useHoveredBlockStore = create<useHoveredBlockStore>((set) => ({
     hoveredBlock: null,
     setHoveredBlock: (block: Block | null) => set({ hoveredBlock: block }),
 }));
 
-export function SelectableGroup({ children, stack, block }: PropsWithChildren<{ stack: Stack, block: Block }>) {
+export function SelectableGroup({
+    children,
+    block,
+}: PropsWithChildren<{ block: Block }>) {
     const groupRef = useRef(null);
     const hovered = useHoveredBlockStore();
-    const setView = useGameState(state => state.setView);
+    const setView = useGameState((state) => state.setView);
 
     if (block.name !== 'Raised_Bed') {
         return children;
@@ -37,6 +39,7 @@ export function SelectableGroup({ children, stack, block }: PropsWithChildren<{ 
     }
 
     return (
+        // biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive
         <group
             ref={groupRef}
             onPointerEnter={(e) => {
@@ -49,8 +52,9 @@ export function SelectableGroup({ children, stack, block }: PropsWithChildren<{ 
                     hovered.setHoveredBlock(null);
                 }
             }}
-            onClick={handleSelected}>
+            onClick={handleSelected}
+        >
             {children}
         </group>
-    )
+    );
 }

@@ -1,25 +1,29 @@
 'use client';
 
-import { Input } from "@signalco/ui-primitives/Input";
-import { useSearchParam } from "@signalco/hooks/useSearchParam";
-import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Search, Close } from "@signalco/ui-icons";
-import { cx } from "@signalco/ui-primitives/cx";
-import { HTMLAttributes } from "react";
+import { useSearchParam } from '@signalco/hooks/useSearchParam';
+import { Close, Search } from '@signalco/ui-icons';
+import { cx } from '@signalco/ui-primitives/cx';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Input } from '@signalco/ui-primitives/Input';
+import type { HTMLAttributes } from 'react';
 
 export type FilterInputProps = HTMLAttributes<HTMLFormElement> & {
     searchParamName: string;
     fieldName: string;
 };
 
-export function FilterInput({ searchParamName, fieldName, ...rest }: FilterInputProps) {
+export function FilterInput({
+    searchParamName,
+    fieldName,
+    ...rest
+}: FilterInputProps) {
     const [search, setSearch] = useSearchParam(searchParamName);
     const handleSubmit = (data: FormData) => {
         const searchInput = data.get(fieldName);
         if (typeof searchInput === 'string') {
             setSearch(searchInput);
         }
-    }
+    };
 
     return (
         <form action={handleSubmit} {...rest}>
@@ -27,32 +31,35 @@ export function FilterInput({ searchParamName, fieldName, ...rest }: FilterInput
                 name={fieldName}
                 defaultValue={search}
                 placeholder="Pretraži..."
-                startDecorator={(
+                startDecorator={
                     <IconButton
                         className="hover:bg-neutral-300 ml-1 rounded-full aspect-square"
                         title="Pretraga"
                         type="submit"
                         size="sm"
-                        variant="plain">
+                        variant="plain"
+                    >
                         <Search className="size-5" />
                     </IconButton>
-                )}
+                }
                 // Clear search
-                endDecorator={(
+                endDecorator={
                     <IconButton
                         className={cx(
-                            "hover:bg-neutral-300 mr-1 rounded-full aspect-square",
-                            search ? 'visible' : 'invisible'
+                            'hover:bg-neutral-300 mr-1 rounded-full aspect-square',
+                            search ? 'visible' : 'invisible',
                         )}
                         title="Očisti pretragu"
                         onClick={() => setSearch('')}
                         size="sm"
-                        variant="plain">
+                        variant="plain"
+                    >
                         <Close className="size-5" />
                     </IconButton>
-                )}
+                }
                 className="min-w-60"
-                variant="soft" />
+                variant="soft"
+            />
         </form>
     );
 }

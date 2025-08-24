@@ -1,8 +1,8 @@
 import { Input } from '@signalco/ui-primitives/Input';
-import { useState } from 'react';
-import { AttributeInputProps } from '../AttributeInputProps';
-import { BarcodeScanButton } from './BarcodeScanButton';
 import { Row } from '@signalco/ui-primitives/Row';
+import { useState } from 'react';
+import type { AttributeInputProps } from '../AttributeInputProps';
+import { BarcodeScanButton } from './BarcodeScanButton';
 
 export function BarcodeInput({ value, onChange }: AttributeInputProps) {
     const [inputValue, setInputValue] = useState<string>(value || '');
@@ -19,11 +19,12 @@ export function BarcodeInput({ value, onChange }: AttributeInputProps) {
     return (
         <Row spacing={1}>
             <Input
-                placeholder={"Nema informacija..."}
+                placeholder={'Nema informacija...'}
                 value={inputValue}
                 onChange={(e) => handleOnChange(e.target.value)}
                 onBlur={handleOnBlur}
-                fullWidth />
+                fullWidth
+            />
             <BarcodeScanButton onScan={handleScan} />
         </Row>
     );

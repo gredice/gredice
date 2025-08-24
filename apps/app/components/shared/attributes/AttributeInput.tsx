@@ -1,62 +1,85 @@
 'use client';
 
-import { SelectAttributeDefinition, SelectAttributeValue } from '@gredice/storage';
+import type {
+    SelectAttributeDefinition,
+    SelectAttributeValue,
+} from '@gredice/storage';
 import { Delete } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import dynamic from 'next/dynamic';
-import { TextInput } from './typed/TextInput';
-import { BooleanInput } from './typed/BooleanInput';
-import { NumberInput } from './typed/NumberInput';
-import { JsonInput } from './typed/JsonInput';
-import { handleValueSave, handleValueDelete } from '../../../app/(actions)/entityActions';
-import { ComponentType } from 'react';
-import { AttributeInputProps } from './AttributeInputProps';
-import { SelectEntity } from './typed/SelectEntity';
+import type { ComponentType } from 'react';
+import {
+    handleValueDelete,
+    handleValueSave,
+} from '../../../app/(actions)/entityActions';
+import type { AttributeInputProps } from './AttributeInputProps';
 import { BarcodeInput } from './typed/BarcodeInput';
+import { BooleanInput } from './typed/BooleanInput';
+import { JsonInput } from './typed/JsonInput';
+import { NumberInput } from './typed/NumberInput';
+import { SelectEntity } from './typed/SelectEntity';
+import { TextInput } from './typed/TextInput';
 
-const MarkdownInput = dynamic(() => import('./typed/MarkdownInput').then(mod => ({
-    default: mod.MarkdownInput
-})), {
-    ssr: false,
-    loading: () => <Skeleton className='w-full h-40' />
-});
+const MarkdownInput = dynamic(
+    () =>
+        import('./typed/MarkdownInput').then((mod) => ({
+            default: mod.MarkdownInput,
+        })),
+    {
+        ssr: false,
+        loading: () => <Skeleton className="w-full h-40" />,
+    },
+);
 
 export function AttributeInput({
     entityType,
     entityId,
     attributeDefinition,
-    attributeValue
+    attributeValue,
 }: {
-    entityType: string,
-    entityId: number,
-    attributeDefinition: SelectAttributeDefinition,
-    attributeValue: SelectAttributeValue | undefined | null
+    entityType: string;
+    entityId: number;
+    attributeDefinition: SelectAttributeDefinition;
+    attributeValue: SelectAttributeValue | undefined | null;
 }) {
     const handleChange = async (value: string | null) => {
-        console.debug('AttributeInput handleChange', value, attributeValue?.entityTypeName, attributeValue?.entityId);
+        console.debug(
+            'AttributeInput handleChange',
+            value,
+            attributeValue?.entityTypeName,
+            attributeValue?.entityId,
+        );
 
         // Ignore if not changed or empty/null value
-        if (value === attributeValue?.value ||
-            (value === '' && !attributeValue?.value)) {
+        if (
+            value === attributeValue?.value ||
+            (value === '' && !attributeValue?.value)
+        ) {
             console.debug('AttributeInput handleChange: no change');
             return;
         }
 
         try {
-            await handleValueSave(entityType, entityId, attributeDefinition, attributeValue?.id, value);
+            await handleValueSave(
+                entityType,
+                entityId,
+                attributeDefinition,
+                attributeValue?.id,
+                value,
+            );
         } catch (error) {
             console.error('AttributeInput handleChange error', error);
             // TODO: Display error notification
         }
-    }
+    };
 
     const handleDelete = async () => {
         if (!attributeValue) {
             return;
         }
         await handleValueDelete(attributeValue);
-    }
+    };
 
     let AttributeInputComponent: ComponentType<AttributeInputProps> = TextInput;
     let schema: string | null = null;
@@ -77,7 +100,7 @@ export function AttributeInput({
     }
 
     return (
-        <div className='grid grid-cols-[1fr,auto] gap-1 items-center'>
+        <div className="grid grid-cols-[1fr,auto] gap-1 items-center">
             <AttributeInputComponent
                 attributeDefinition={attributeDefinition}
                 value={attributeValue?.value}
@@ -85,8 +108,12 @@ export function AttributeInput({
                 schema={schema}
             />
             {attributeValue && attributeDefinition.multiple && (
-                <IconButton onClick={handleDelete} variant='plain' title='Obriši'>
-                    <Delete className='size-4' />
+                <IconButton
+                    onClick={handleDelete}
+                    variant="plain"
+                    title="Obriši"
+                >
+                    <Delete className="size-4" />
                 </IconButton>
             )}
         </div>

@@ -1,1 +1,1 @@
-export * from './jsonSchema'
+export * from './jsonSchema';

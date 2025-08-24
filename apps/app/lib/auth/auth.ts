@@ -12,7 +12,7 @@ type User = {
     userName: string;
     accountIds: string[];
     role: string;
-}
+};
 
 async function getUser(id: string): Promise<User | null> {
     const user = await storageGetUser(id);
@@ -23,23 +23,25 @@ async function getUser(id: string): Promise<User | null> {
     return {
         id: user.id,
         userName: user.userName,
-        accountIds: user.accounts.map(accountUsers => accountUsers.accountId),
+        accountIds: user.accounts.map((accountUsers) => accountUsers.accountId),
         role: user.role,
-    }
+    };
 }
 
-export const { withAuth, createJwt, setCookie, auth, clearCookie } = initRbac(initAuth({
-    security: {
-        expiry: 60 * 60 * 1000
-    },
-    jwt: {
-        namespace: 'gredice',
-        issuer: 'api',
-        audience: 'web',
-        jwtSecretFactory,
-    },
-    cookie: {
-        name: 'gredice_session'
-    },
-    getUser
-}));
+export const { withAuth, createJwt, setCookie, auth, clearCookie } = initRbac(
+    initAuth({
+        security: {
+            expiry: 60 * 60 * 1000,
+        },
+        jwt: {
+            namespace: 'gredice',
+            issuer: 'api',
+            audience: 'web',
+            jwtSecretFactory,
+        },
+        cookie: {
+            name: 'gredice_session',
+        },
+        getUser,
+    }),
+);

@@ -3,29 +3,40 @@
 import {
     deleteAttributeValue,
     deleteEntity,
-    SelectAttributeDefinition,
-    SelectAttributeValue,
+    type SelectAttributeDefinition,
+    type SelectAttributeValue,
     createEntity as storageCreateEntity,
-    updateEntity as storageUpdateEntity,
     duplicateEntity as storageDuplicateEntity,
-    UpdateEntity,
+    updateEntity as storageUpdateEntity,
+    type UpdateEntity,
     upsertAttributeValue,
-    upsertEntityType
-} from "@gredice/storage";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { auth } from "../../lib/auth/auth";
-import { KnownPages } from "../../src/KnownPages";
+    upsertEntityType,
+} from '@gredice/storage';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { auth } from '../../lib/auth/auth';
+import { KnownPages } from '../../src/KnownPages';
 
-export async function createEntityType(entityTypeName: string, label: string, categoryId?: number) {
+export async function createEntityType(
+    entityTypeName: string,
+    label: string,
+    categoryId?: number,
+) {
     await auth(['admin']);
 
     await upsertEntityType({ name: entityTypeName, label: label, categoryId });
     revalidatePath(KnownPages.Directories);
-    redirect(KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName));
+    redirect(
+        KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
+    );
 }
 
-export async function updateEntityType(id: number, entityTypeName: string, label: string, categoryId?: number) {
+export async function updateEntityType(
+    id: number,
+    entityTypeName: string,
+    label: string,
+    categoryId?: number,
+) {
     await auth(['admin']);
 
     await upsertEntityType({ id, name: entityTypeName, label, categoryId });
@@ -36,7 +47,9 @@ export async function updateEntityType(id: number, entityTypeName: string, label
 export async function deleteEntityType(id: number) {
     await auth(['admin']);
 
-    const { deleteEntityType: storageDeleteEntityType } = await import('@gredice/storage');
+    const { deleteEntityType: storageDeleteEntityType } = await import(
+        '@gredice/storage'
+    );
     await storageDeleteEntityType(id);
     revalidatePath(KnownPages.Directories);
     redirect(KnownPages.Directories);
@@ -45,15 +58,21 @@ export async function deleteEntityType(id: number) {
 export async function updateEntityTypeFromEditPage(formData: FormData) {
     await auth(['admin']);
 
-    const id = parseInt(formData.get('id') as string);
+    const id = parseInt(formData.get('id') as string, 10);
     const name = formData.get('name') as string;
     const label = formData.get('label') as string;
-    const categoryId = formData.get('categoryId') as string === 'none'
-        ? undefined
-        : formData.get('categoryId') as string;
+    const categoryId =
+        (formData.get('categoryId') as string) === 'none'
+            ? undefined
+            : (formData.get('categoryId') as string);
     const originalName = formData.get('originalName') as string;
 
-    await updateEntityType(id, name, label, categoryId ? parseInt(categoryId) : undefined);
+    await updateEntityType(
+        id,
+        name,
+        label,
+        categoryId ? parseInt(categoryId, 10) : undefined,
+    );
 
     revalidatePath(KnownPages.Directories);
     revalidatePath(KnownPages.DirectoryEntityType(originalName));
@@ -64,7 +83,7 @@ export async function updateEntityTypeFromEditPage(formData: FormData) {
 export async function deleteEntityTypeFromEditPage(formData: FormData) {
     await auth(['admin']);
 
-    const id = parseInt(formData.get('id') as string);
+    const id = parseInt(formData.get('id') as string, 10);
     await deleteEntityType(id);
 }
 
@@ -87,7 +106,10 @@ export async function updateEntity(entity: UpdateEntity) {
     revalidatePath(KnownPages.DirectoryEntityPath, 'layout');
 }
 
-export async function duplicateEntity(entityTypeName: string, entityId: number) {
+export async function duplicateEntity(
+    entityTypeName: string,
+    entityId: number,
+) {
     await auth(['admin']);
 
     const newEntityId = await storageDuplicateEntity(entityId);
@@ -101,10 +123,12 @@ export async function handleValueSave(
     entityId: number,
     attributeDefinition: SelectAttributeDefinition,
     attributeValueId?: number,
-    newValue?: string | null) {
+    newValue?: string | null,
+) {
     await auth(['admin']);
 
-    const newAttributeValueValue = (newValue?.length ?? 0) <= 0 ? null : newValue;
+    const newAttributeValueValue =
+        (newValue?.length ?? 0) <= 0 ? null : newValue;
     await upsertAttributeValue({
         id: !attributeValueId ? undefined : attributeValueId,
         attributeDefinitionId: attributeDefinition.id,
@@ -119,10 +143,15 @@ export async function handleValueDelete(attributeValue: SelectAttributeValue) {
     await auth(['admin']);
 
     await deleteAttributeValue(attributeValue.id);
-    revalidatePath(`/admin/directories/${attributeValue.entityTypeName}/${attributeValue.entityId}`);
+    revalidatePath(
+        `/admin/directories/${attributeValue.entityTypeName}/${attributeValue.entityId}`,
+    );
 }
 
-export async function handleEntityDelete(entityTypeName: string, entityId: number) {
+export async function handleEntityDelete(
+    entityTypeName: string,
+    entityId: number,
+) {
     await auth(['admin']);
 
     await deleteEntity(entityId);

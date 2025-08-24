@@ -1,24 +1,28 @@
 {
-  "name": "@gredice/stripe",
-  "version": "0.0.0",
-  "private": true,
-  "sideEffects": true,
-  "type": "module",
-  "license": "MIT",
-  "exports": {
-    "./client": "./src/lib/client/index.ts",
-    "./server": "./src/lib/server/index.ts"
-  },
-  "devDependencies": {
-    "@types/node": "22.17.2",
-    "@types/react": "19.1.11",
-    "server-only": "0.0.1"
-  },
-  "dependencies": {
-    "@signalco/js": "0.1.0",
-    "@stripe/stripe-js": "7.8.0",
-    "react": "19.1.1",
-    "stripe": "18.4.0",
-    "typescript": "5.9.2"
-  }
+    "name": "@gredice/stripe",
+    "version": "0.0.0",
+    "private": true,
+    "sideEffects": true,
+    "type": "module",
+    "license": "MIT",
+    "exports": {
+        "./client": "./src/lib/client/index.ts",
+        "./server": "./src/lib/server/index.ts"
+    },
+    "scripts": {
+        "lint": "biome check"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.2.2",
+        "@types/node": "22.17.2",
+        "@types/react": "19.1.11",
+        "server-only": "0.0.1"
+    },
+    "dependencies": {
+        "@signalco/js": "0.1.0",
+        "@stripe/stripe-js": "7.8.0",
+        "react": "19.1.1",
+        "stripe": "18.4.0",
+        "typescript": "5.9.2"
+    }
 }

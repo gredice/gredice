@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Modal } from "@signalco/ui-primitives/Modal";
-import { Button } from "@signalco/ui-primitives/Button";
-import { Input } from "@signalco/ui-primitives/Input";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Calendar } from "@signalco/ui-icons";
-import { rescheduleOperationAction } from "../../(actions)/operationActions";
+import { Calendar } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Input } from '@signalco/ui-primitives/Input';
+import { Modal } from '@signalco/ui-primitives/Modal';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useState } from 'react';
+import { rescheduleOperationAction } from '../../(actions)/operationActions';
 
 function formatLocalDate(date: Date): string {
     const year = date.getFullYear();
@@ -30,7 +30,7 @@ interface RescheduleOperationModalProps {
 export function RescheduleOperationModal({
     operation,
     operationLabel,
-    trigger
+    trigger,
 }: RescheduleOperationModalProps) {
     const [open, setOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -53,8 +53,16 @@ export function RescheduleOperationModal({
     }
 
     const today = new Date();
-    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-    const threeMonthsFromTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth() + 3, tomorrow.getDate());
+    const tomorrow = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + 1,
+    );
+    const threeMonthsFromTomorrow = new Date(
+        tomorrow.getFullYear(),
+        tomorrow.getMonth() + 3,
+        tomorrow.getDate(),
+    );
 
     const currentScheduledDate = operation.scheduledDate
         ? formatLocalDate(operation.scheduledDate)
@@ -68,21 +76,34 @@ export function RescheduleOperationModal({
             trigger={trigger}
             title={`${isRescheduling ? 'Prerasporedi' : 'Zakaži'}: ${operationLabel}`}
             open={open}
-            onOpenChange={setOpen}>
+            onOpenChange={setOpen}
+        >
             <form onSubmit={handleSubmit}>
                 <Stack spacing={2}>
                     <Typography level="h5">
-                        {isRescheduling ? 'Preraspoređivanje operacije' : 'Zakazivanje operacije'}
+                        {isRescheduling
+                            ? 'Preraspoređivanje operacije'
+                            : 'Zakazivanje operacije'}
                     </Typography>
                     <Typography>
-                        Operacija će biti {isRescheduling ? 'preraspoređena' : 'zakazana'} na odabrani datum.
+                        Operacija će biti{' '}
+                        {isRescheduling ? 'preraspoređena' : 'zakazana'} na
+                        odabrani datum.
                     </Typography>
 
-                    <input type="hidden" name="operationId" value={operation.id} />
+                    <input
+                        type="hidden"
+                        name="operationId"
+                        value={operation.id}
+                    />
 
                     <Input
                         type="date"
-                        label={isRescheduling ? "Novi datum operacije" : "Datum operacije"}
+                        label={
+                            isRescheduling
+                                ? 'Novi datum operacije'
+                                : 'Datum operacije'
+                        }
                         name="scheduledDate"
                         className="w-full bg-card"
                         disabled={isLoading}
@@ -105,7 +126,9 @@ export function RescheduleOperationModal({
                             variant="solid"
                             disabled={isLoading}
                             loading={isLoading}
-                            startDecorator={<Calendar className="size-5 shrink-0" />}
+                            startDecorator={
+                                <Calendar className="size-5 shrink-0" />
+                            }
                         >
                             {isRescheduling ? 'Prerasporedi' : 'Zakaži'}
                         </Button>

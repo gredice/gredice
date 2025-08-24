@@ -1,26 +1,29 @@
-import { useState } from 'react';
-import { Button } from "@signalco/ui-primitives/Button";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Card, CardContent } from "@signalco/ui-primitives/Card";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Chip } from "@signalco/ui-primitives/Chip";
-import { Modal } from "@signalco/ui-primitives/Modal";
-import { Input } from "@signalco/ui-primitives/Input";
-import { SelectItems } from "@signalco/ui-primitives/SelectItems";
+import { Alert } from '@signalco/ui/Alert';
 import {
-    Truck,
+    Approved,
+    Close,
+    Info,
+    MapPin,
+    Navigate,
     ShoppingCart,
     Timer,
-    MapPin,
-    Close,
-    Approved,
-    Info,
-    Navigate
-} from "@signalco/ui-icons";
-import { Alert } from "@signalco/ui/Alert";
-import { useDeliveryRequests, DeliveryRequestData } from "../../hooks/useDeliveryRequests";
-import { useCancelDeliveryRequest } from "../../hooks/useDeliveryRequestMutations";
+    Truck,
+} from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Card, CardContent } from '@signalco/ui-primitives/Card';
+import { Chip } from '@signalco/ui-primitives/Chip';
+import { Input } from '@signalco/ui-primitives/Input';
+import { Modal } from '@signalco/ui-primitives/Modal';
+import { Row } from '@signalco/ui-primitives/Row';
+import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useState } from 'react';
+import { useCancelDeliveryRequest } from '../../hooks/useDeliveryRequestMutations';
+import {
+    type DeliveryRequestData,
+    useDeliveryRequests,
+} from '../../hooks/useDeliveryRequests';
 import { KnownPages } from '../../knownPages';
 
 const CANCEL_REASON_OPTIONS = [
@@ -28,7 +31,7 @@ const CANCEL_REASON_OPTIONS = [
     { value: 'WRONG_ADDRESS', label: 'Pogrešna adresa' },
     { value: 'WRONG_TIME', label: 'Pogrešno vrijeme' },
     { value: 'NO_LONGER_NEEDED', label: 'Više ne trebam' },
-    { value: 'OTHER', label: 'Ostalo' }
+    { value: 'OTHER', label: 'Ostalo' },
 ];
 
 function getStatusColor(state: string) {
@@ -108,7 +111,7 @@ function canCancelRequest(request: DeliveryRequestData): boolean {
 
 function CancelRequestModal({
     request,
-    trigger
+    trigger,
 }: {
     request: DeliveryRequestData;
     trigger: React.ReactElement;
@@ -120,8 +123,14 @@ function CancelRequestModal({
 
     const cutoffTime = request.slot ? getCutoffTime(request.slot) : null;
     const timeUntilCutoff = cutoffTime ? cutoffTime.getTime() - Date.now() : 0;
-    const hoursUntilCutoff = Math.max(0, Math.floor(timeUntilCutoff / (1000 * 60 * 60)));
-    const minutesUntilCutoff = Math.max(0, Math.floor((timeUntilCutoff % (1000 * 60 * 60)) / (1000 * 60)));
+    const hoursUntilCutoff = Math.max(
+        0,
+        Math.floor(timeUntilCutoff / (1000 * 60 * 60)),
+    );
+    const minutesUntilCutoff = Math.max(
+        0,
+        Math.floor((timeUntilCutoff % (1000 * 60 * 60)) / (1000 * 60)),
+    );
 
     const handleCancel = async () => {
         if (!cancelReason) return;
@@ -130,7 +139,7 @@ function CancelRequestModal({
             await cancelRequest.mutateAsync({
                 requestId: request.id,
                 cancelReason,
-                note: note.trim() || undefined
+                note: note.trim() || undefined,
             });
             setIsOpen(false);
             setCancelReason('');
@@ -143,12 +152,15 @@ function CancelRequestModal({
     const formatSlotTime = (slot: any) => {
         const start = new Date(slot.startAt);
         const end = new Date(slot.endAt);
-        return `${start.toLocaleDateString('hr-HR')} ${start.toLocaleTimeString('hr-HR', {
+        return `${start.toLocaleDateString('hr-HR')} ${start.toLocaleTimeString(
+            'hr-HR',
+            {
+                hour: '2-digit',
+                minute: '2-digit',
+            },
+        )} - ${end.toLocaleTimeString('hr-HR', {
             hour: '2-digit',
-            minute: '2-digit'
-        })} - ${end.toLocaleTimeString('hr-HR', {
-            hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
         })}`;
     };
 
@@ -160,8 +172,12 @@ function CancelRequestModal({
             trigger={trigger}
         >
             <Stack spacing={4}>
-                <Alert color="warning" startDecorator={<Info className="size-4" />}>
-                    Otkazivanje dostave je nepovratno. Termin će biti oslobođen za druge korisnike.
+                <Alert
+                    color="warning"
+                    startDecorator={<Info className="size-4" />}
+                >
+                    Otkazivanje dostave je nepovratno. Termin će biti oslobođen
+                    za druge korisnike.
                 </Alert>
 
                 {/* Request Summary */}
@@ -173,39 +189,55 @@ function CancelRequestModal({
                                 {request.mode === 'delivery' ? (
                                     <>
                                         <Truck className="size-4" />
-                                        <Typography level="body2">Dostava na adresu</Typography>
+                                        <Typography level="body2">
+                                            Dostava na adresu
+                                        </Typography>
                                     </>
                                 ) : (
                                     <>
                                         <ShoppingCart className="size-4" />
-                                        <Typography level="body2">Preuzimanje</Typography>
+                                        <Typography level="body2">
+                                            Preuzimanje
+                                        </Typography>
                                     </>
                                 )}
                             </Row>
 
                             {request.address && (
                                 <Stack spacing={0.5}>
-                                    <Typography level="body3" secondary>Adresa:</Typography>
+                                    <Typography level="body3" secondary>
+                                        Adresa:
+                                    </Typography>
                                     <Typography level="body2">
                                         {request.address.street1}
-                                        {request.address.street2 && `, ${request.address.street2}`}
+                                        {request.address.street2 &&
+                                            `, ${request.address.street2}`}
                                         <br />
-                                        {request.address.postalCode} {request.address.city}
+                                        {request.address.postalCode}{' '}
+                                        {request.address.city}
                                     </Typography>
                                 </Stack>
                             )}
 
                             {request.location && (
                                 <Stack spacing={0.5}>
-                                    <Typography level="body3" secondary>Lokacija:</Typography>
-                                    <Typography level="body2">{request.location.name}</Typography>
+                                    <Typography level="body3" secondary>
+                                        Lokacija:
+                                    </Typography>
+                                    <Typography level="body2">
+                                        {request.location.name}
+                                    </Typography>
                                 </Stack>
                             )}
 
                             {request.slot && (
                                 <Stack spacing={0.5}>
-                                    <Typography level="body3" secondary>Termin:</Typography>
-                                    <Typography level="body2">{formatSlotTime(request.slot)}</Typography>
+                                    <Typography level="body3" secondary>
+                                        Termin:
+                                    </Typography>
+                                    <Typography level="body2">
+                                        {formatSlotTime(request.slot)}
+                                    </Typography>
                                 </Stack>
                             )}
                         </Stack>
@@ -215,7 +247,8 @@ function CancelRequestModal({
                 {/* Cutoff Warning */}
                 {timeUntilCutoff > 0 && (
                     <Alert color="info">
-                        Ostalo je {hoursUntilCutoff}h {minutesUntilCutoff}min do krajnjeg roka za otkazivanje.
+                        Ostalo je {hoursUntilCutoff}h {minutesUntilCutoff}min do
+                        krajnjeg roka za otkazivanje.
                     </Alert>
                 )}
 
@@ -233,7 +266,9 @@ function CancelRequestModal({
                         label="Dodatne napomene (opciono)"
                         className="bg-card"
                         value={note}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNote(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setNote(e.target.value)
+                        }
                         placeholder="Dodatne informacije o razlogu otkazivanja..."
                     />
                 </Stack>
@@ -268,12 +303,15 @@ function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
     const formatSlotTime = (slot: any) => {
         const start = new Date(slot.startAt);
         const end = new Date(slot.endAt);
-        return `${start.toLocaleDateString('hr-HR')} ${start.toLocaleTimeString('hr-HR', {
+        return `${start.toLocaleDateString('hr-HR')} ${start.toLocaleTimeString(
+            'hr-HR',
+            {
+                hour: '2-digit',
+                minute: '2-digit',
+            },
+        )} - ${end.toLocaleTimeString('hr-HR', {
             hour: '2-digit',
-            minute: '2-digit'
-        })} - ${end.toLocaleTimeString('hr-HR', {
-            hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
         })}`;
     };
 
@@ -282,7 +320,7 @@ function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
             <CardContent noHeader>
                 <Stack spacing={3}>
                     <div className="flex flex-col md:flex-row gap-1 md:items-center">
-                        <Stack spacing={1} className='w-full'>
+                        <Stack spacing={1} className="w-full">
                             {request.mode === 'delivery' ? (
                                 <Row spacing={1}>
                                     <Truck className="size-5 shrink-0" />
@@ -299,12 +337,16 @@ function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
                                 <Row spacing={1} alignItems="start">
                                     <MapPin className="size-4 mt-0.5 text-muted-foreground" />
                                     <Stack spacing={0.5}>
-                                        <Typography level="body2">{request.address.label}</Typography>
+                                        <Typography level="body2">
+                                            {request.address.label}
+                                        </Typography>
                                         <Typography level="body3" secondary>
                                             {request.address.street1}
-                                            {request.address.street2 && `, ${request.address.street2}`}
+                                            {request.address.street2 &&
+                                                `, ${request.address.street2}`}
                                             <br />
-                                            {request.address.postalCode} {request.address.city}
+                                            {request.address.postalCode}{' '}
+                                            {request.address.city}
                                         </Typography>
                                     </Stack>
                                 </Row>
@@ -313,29 +355,43 @@ function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
                             {request.location && (
                                 <Row spacing={1}>
                                     <MapPin className="size-4 text-muted-foreground" />
-                                    <Typography level="body2">{request.location.name}</Typography>
+                                    <Typography level="body2">
+                                        {request.location.name}
+                                    </Typography>
                                 </Row>
                             )}
 
                             {request.slot && (
                                 <Row spacing={1}>
                                     <Timer className="size-4 text-muted-foreground" />
-                                    <Typography level="body2">{formatSlotTime(request.slot)}</Typography>
+                                    <Typography level="body2">
+                                        {formatSlotTime(request.slot)}
+                                    </Typography>
                                 </Row>
                             )}
 
                             {request.requestNotes && (
                                 <Stack spacing={0.5}>
-                                    <Typography level="body3" secondary>Napomene:</Typography>
-                                    <Typography level="body2">{request.requestNotes}</Typography>
+                                    <Typography level="body3" secondary>
+                                        Napomene:
+                                    </Typography>
+                                    <Typography level="body2">
+                                        {request.requestNotes}
+                                    </Typography>
                                 </Stack>
                             )}
 
                             {request.cancelReason && (
                                 <Stack spacing={0.5}>
-                                    <Typography level="body3" secondary>Razlog otkazivanja:</Typography>
+                                    <Typography level="body3" secondary>
+                                        Razlog otkazivanja:
+                                    </Typography>
                                     <Typography level="body2">
-                                        {CANCEL_REASON_OPTIONS.find(opt => opt.value === request.cancelReason)?.label || request.cancelReason}
+                                        {CANCEL_REASON_OPTIONS.find(
+                                            (opt) =>
+                                                opt.value ===
+                                                request.cancelReason,
+                                        )?.label || request.cancelReason}
                                     </Typography>
                                 </Stack>
                             )}
@@ -355,7 +411,9 @@ function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
                                             variant="outlined"
                                             color="danger"
                                             size="sm"
-                                            startDecorator={<Close className="size-4" />}
+                                            startDecorator={
+                                                <Close className="size-4" />
+                                            }
                                         >
                                             Otkaži
                                         </Button>
@@ -375,12 +433,13 @@ export function DeliveryRequestsSection() {
 
     return (
         <Stack spacing={2}>
-            <Row spacing={1} justifyContent='space-between'>
+            <Row spacing={1} justifyContent="space-between">
                 <Typography level="h5">Moje dostave</Typography>
                 <Button
-                    variant='link'
+                    variant="link"
                     href={KnownPages.GrediceDeliverySlots}
-                    endDecorator={<Navigate className="size-5 shrink-0" />}>
+                    endDecorator={<Navigate className="size-5 shrink-0" />}
+                >
                     📅 Termini dostave
                 </Button>
             </Row>
@@ -389,7 +448,10 @@ export function DeliveryRequestsSection() {
             ) : requests && requests.length > 0 ? (
                 <Stack spacing={1}>
                     {requests.map((request) => (
-                        <DeliveryRequestCard key={request.id} request={request} />
+                        <DeliveryRequestCard
+                            key={request.id}
+                            request={request}
+                        />
                     ))}
                 </Stack>
             ) : (

@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
 import { client } from '@gredice/client';
+import { useQuery } from '@tanstack/react-query';
 
 export const deliveryRequestsQueryKey = ['delivery', 'requests'];
 
@@ -12,8 +12,10 @@ export function useDeliveryRequests() {
                 throw new Error('Failed to fetch delivery requests');
             }
             return await response.json();
-        }
+        },
     });
 }
 
-export type DeliveryRequestData = NonNullable<Awaited<ReturnType<typeof useDeliveryRequests>['data']>>[0];
+export type DeliveryRequestData = NonNullable<
+    Awaited<ReturnType<typeof useDeliveryRequests>['data']>
+>[0];

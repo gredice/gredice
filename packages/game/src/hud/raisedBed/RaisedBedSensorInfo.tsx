@@ -156,7 +156,7 @@ function SensorInfoModal({
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
     // Add smart labeling logic with mobile-friendly labels
-    const dataWithSmartLabels = processedData?.map((item, index) => {
+    const dataWithSmartLabels = processedData?.map((item, _index) => {
         return {
             ...item,
             timestamp: new Date(item.timestamp).getTime(),
@@ -192,9 +192,9 @@ function SensorInfoModal({
     const trend = currentMoisture - previousMoisture;
     const avgMoisture = dataWithSmartLabels
         ? Math.round(
-            dataWithSmartLabels.reduce((sum, item) => sum + item.value, 0) /
-            (dataWithSmartLabels.length || 1),
-        )
+              dataWithSmartLabels.reduce((sum, item) => sum + item.value, 0) /
+                  (dataWithSmartLabels.length || 1),
+          )
         : 0;
 
     // Determine moisture status
@@ -407,13 +407,13 @@ function SensorInfoModal({
                                             domain={[
                                                 new Date(
                                                     Date.now() -
-                                                    duration *
-                                                    24 *
-                                                    60 *
-                                                    60 *
-                                                    1000,
+                                                        duration *
+                                                            24 *
+                                                            60 *
+                                                            60 *
+                                                            1000,
                                                 ).getTime(),
-                                                new Date().getTime(),
+                                                Date.now(),
                                             ]}
                                             angle={-35}
                                             textAnchor="end"
@@ -667,7 +667,7 @@ export function RaisedBedSensorInfo({
                                 className={cx(
                                     'size-5 shrink-0 stroke-blue-400',
                                     Number(soilMoisture?.value ?? '0') >= 20 &&
-                                    'fill-blue-300',
+                                        'fill-blue-300',
                                 )}
                             />
                             {isLoading && <Skeleton className="w-6 h-4" />}
@@ -706,7 +706,7 @@ export function RaisedBedSensorInfo({
                                 className={cx(
                                     'size-5 shrink-0 stroke-red-400',
                                     Number(soilTemperature?.value ?? '0') >=
-                                    20 && 'fill-red-300',
+                                        20 && 'fill-red-300',
                                 )}
                             />
                             {isLoading && <Skeleton className="w-6 h-4" />}

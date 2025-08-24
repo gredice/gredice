@@ -1,17 +1,17 @@
-import { getUsers } from "@gredice/storage";
-import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
-import { Chip } from "@signalco/ui-primitives/Chip";
-import { Table } from "@signalco/ui-primitives/Table";
-import { SelectUserRole } from "./SelectUserRole";
-import { auth } from "../../../lib/auth/auth";
-import { ButtonImpersonateUser } from "./ButtonImpersonateUser";
-import Link from "next/link";
-import { KnownPages } from "../../../src/KnownPages";
-import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
-import { LocalDateTime } from "@gredice/ui/LocalDateTime";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Stack } from "@signalco/ui-primitives/Stack";
+import { getUsers } from '@gredice/storage';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
+import { Chip } from '@signalco/ui-primitives/Chip';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Table } from '@signalco/ui-primitives/Table';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import Link from 'next/link';
+import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
+import { auth } from '../../../lib/auth/auth';
+import { KnownPages } from '../../../src/KnownPages';
+import { ButtonImpersonateUser } from './ButtonImpersonateUser';
+import { SelectUserRole } from './SelectUserRole';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,9 +21,10 @@ export default async function UsersPage() {
 
     return (
         <Stack spacing={2}>
-
             <Row spacing={1}>
-                <Typography level="h1" className="text-2xl" semiBold>{"Korisnici"}</Typography>
+                <Typography level="h1" className="text-2xl" semiBold>
+                    {'Korisnici'}
+                </Typography>
                 <Chip color="primary">{users.length}</Chip>
             </Row>
             <Card>
@@ -47,7 +48,7 @@ export default async function UsersPage() {
                                     </Table.Cell>
                                 </Table.Row>
                             )}
-                            {users.map(user => (
+                            {users.map((user) => (
                                 <Table.Row key={user.id}>
                                     <Table.Cell>
                                         <Link href={KnownPages.User(user.id)}>
@@ -63,7 +64,9 @@ export default async function UsersPage() {
                                         </LocalDateTime>
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <ButtonImpersonateUser userId={user.id} />
+                                        <ButtonImpersonateUser
+                                            userId={user.id}
+                                        />
                                     </Table.Cell>
                                 </Table.Row>
                             ))}

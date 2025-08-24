@@ -1,15 +1,13 @@
-import { auth } from "../../lib/auth/auth";
-import { AdminDashboard } from "../../components/admin/dashboard";
+import { AdminDashboard } from '../../components/admin/dashboard';
+import { auth } from '../../lib/auth/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage({
-    searchParams
+    searchParams,
 }: {
-    searchParams: Promise<{ period?: string }>
+    searchParams: Promise<{ period?: string }>;
 }) {
     await auth(['admin']);
-    return (
-        <AdminDashboard searchParams={searchParams} />
-    );
+    return <AdminDashboard searchParams={searchParams} />;
 }

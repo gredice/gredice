@@ -1,4 +1,7 @@
-import { Typography, TypographyProps } from "@signalco/ui-primitives/Typography";
+import {
+    Typography,
+    type TypographyProps,
+} from '@signalco/ui-primitives/Typography';
 
 export type NoDataPlaceholder = TypographyProps;
 
@@ -7,5 +10,5 @@ export function NoDataPlaceholder({ children, ...rest }: NoDataPlaceholder) {
         <Typography level="body2" center {...rest}>
             {children || 'Nema podataka'}
         </Typography>
-    )
+    );
 }

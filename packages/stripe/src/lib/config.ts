@@ -1,5 +1,5 @@
-import Stripe from 'stripe';
 import { isAbsoluteUrl } from '@signalco/js';
+import Stripe from 'stripe';
 
 let stripe: Stripe | null = null;
 
@@ -29,7 +29,7 @@ export function getReturnUrl(params?: Record<string, string> | string) {
         if (url.startsWith('/')) {
             url = baseUrl + url;
         } else {
-            url = baseUrl + '/' + url;
+            url = `${baseUrl}/${url}`;
         }
     }
 
@@ -54,11 +54,7 @@ export function getReturnUrl(params?: Record<string, string> | string) {
 
 export function getStripe() {
     if (!stripe) {
-        stripe = new Stripe(
-            getSecretKey(),
-            {
-            }
-        );
+        stripe = new Stripe(getSecretKey(), {});
     }
     return stripe;
 }

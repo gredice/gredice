@@ -1,15 +1,19 @@
-import { useEffect, useId, useRef } from "react";
-import { useWindowFocus } from "../hooks/useWindowFocus";
+import { useEffect, useId, useRef } from 'react';
+import { useWindowFocus } from '../hooks/useWindowFocus';
 
 function fromAudio(context: AudioContext, buffer: AudioBuffer) {
     return new AudioBufferSourceNode(context, {
-        buffer
+        buffer,
     });
 }
 
 // TODO: Option to overlap multiple play calls, queue or play one at a time
 // TODO: Preload effect data to reduce latency
-function useSoundEffect(handler: mixerManagerData, context: AudioContext, src: string) {
+function useSoundEffect(
+    handler: mixerManagerData,
+    context: AudioContext,
+    src: string,
+) {
     const audioCache = useRef<AudioBuffer>(null);
 
     // TODO: Use shared cache for audio data (if measured browser disk cache is slower)
@@ -18,7 +22,9 @@ function useSoundEffect(handler: mixerManagerData, context: AudioContext, src: s
         async play() {
             // Load audio data if not already loaded
             if (!audioCache.current) {
-                audioCache.current = await fetch(src).then(r => r.arrayBuffer()).then(b => context.decodeAudioData(b))
+                audioCache.current = await fetch(src)
+                    .then((r) => r.arrayBuffer())
+                    .then((b) => context.decodeAudioData(b));
             }
 
             // Ignore if unable to load
@@ -37,28 +43,33 @@ function useSoundEffect(handler: mixerManagerData, context: AudioContext, src: s
             sourceNode.addEventListener('ended', () => {
                 sourceNode.disconnect();
             });
-        }
+        },
     };
 }
 
 type mixerManagerData = {
-    getVolume: () => number
-}
+    getVolume: () => number;
+};
 
 type mixerManagerHandler = {
-    register: (id: string, operations: mixerManagementOperations) => void,
-    unregister: (id: string) => void,
-    queue: (id: string) => void,
-    getVolume: () => number
-}
+    register: (id: string, operations: mixerManagementOperations) => void;
+    unregister: (id: string) => void;
+    queue: (id: string) => void;
+    getVolume: () => number;
+};
 
 type mixerManagementOperations = {
-    updateVolume: () => void
-    play: () => Promise<void>
-}
+    updateVolume: () => void;
+    play: () => Promise<void>;
+};
 
 // TODO: Use shared gain node from context
-function useMusic(handler: mixerManagerHandler, context: AudioContext, config: { allowParallel?: boolean, loop?: boolean }, src: string) {
+function useMusic(
+    handler: mixerManagerHandler,
+    context: AudioContext,
+    config: { allowParallel?: boolean; loop?: boolean },
+    src: string,
+) {
     const id = useId();
     const node = useRef<AudioBufferSourceNode>(null);
     const audioCache = useRef<AudioBuffer>(null);
@@ -81,7 +92,9 @@ function useMusic(handler: mixerManagerHandler, context: AudioContext, config: {
 
             // Load audio data if not already loaded
             if (!audioCache.current) {
-                audioCache.current = await fetch(src).then(r => r.arrayBuffer()).then(b => context.decodeAudioData(b))
+                audioCache.current = await fetch(src)
+                    .then((r) => r.arrayBuffer())
+                    .then((b) => context.decodeAudioData(b));
             }
 
             // Ignore if unable to load
@@ -117,7 +130,7 @@ function useMusic(handler: mixerManagerHandler, context: AudioContext, config: {
                 current.disconnect();
                 node.current = null;
             }
-        }
+        },
     };
 
     const isWindowInFocus = useWindowFocus();
@@ -127,7 +140,7 @@ function useMusic(handler: mixerManagerHandler, context: AudioContext, config: {
         } else if (node.current) {
             operations.stop();
         }
-    }, [isWindowInFocus]);
+    }, [isWindowInFocus, operations.play, operations.stop]);
 
     useEffect(() => {
         return () => {
@@ -139,11 +152,11 @@ function useMusic(handler: mixerManagerHandler, context: AudioContext, config: {
                 node.current.stop();
             }
         };
-    }, []);
+    }, [handler.unregister, id]);
 
     return {
         play: operations.play,
-        stop: operations.stop
+        stop: operations.stop,
     };
 }
 
@@ -181,13 +194,17 @@ export function audioMixer(defaultVolume: number, defaultMuted: boolean) {
 
     function setMuted(muted: boolean) {
         isMuted = muted;
-        instances.forEach(i => i.updateVolume());
+        instances.forEach((i) => {
+            i.updateVolume();
+        });
         resumeContextIfNeeded();
     }
 
     function setVolume(gain: number) {
         volume = gain;
-        instances.forEach(i => i.updateVolume());
+        instances.forEach((i) => {
+            i.updateVolume();
+        });
         resumeContextIfNeeded();
     }
 
@@ -215,11 +232,20 @@ export function audioMixer(defaultVolume: number, defaultMuted: boolean) {
 
     return {
         // outputDevices: availableOutputDevices.map(d => ({ id: d.deviceId, label: d.label })),
-        getState: () => ({ isMuted, volume, isSuspended: audioContext.state === 'suspended' }),
-        useMusic: useMusic.bind(null, { register, unregister, queue, getVolume }, audioContext, { allowParallel: false, loop: true }),
+        getState: () => ({
+            isMuted,
+            volume,
+            isSuspended: audioContext.state === 'suspended',
+        }),
+        useMusic: useMusic.bind(
+            null,
+            { register, unregister, queue, getVolume },
+            audioContext,
+            { allowParallel: false, loop: true },
+        ),
         useSoundEffect: useSoundEffect.bind(null, { getVolume }, audioContext),
         setMuted,
         setVolume,
-        resumeContextIfNeeded
+        resumeContextIfNeeded,
     };
 }

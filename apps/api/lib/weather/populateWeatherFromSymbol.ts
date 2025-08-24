@@ -1,11 +1,10 @@
-
 type Weather = {
     snowy: number;
     rainy: number;
     foggy: number;
     cloudy: number;
     thundery: number;
-}
+};
 
 export function populateWeatherFromSymbol(symbol: number): Weather {
     const weather: Weather = {
@@ -20,13 +19,13 @@ export function populateWeatherFromSymbol(symbol: number): Weather {
         case 1: // Sunny
             break;
         case 2: // SunnyLightClouds
-            weather.cloudy = 0.20;
+            weather.cloudy = 0.2;
             break;
         case 3: // SunnyMediumClouds
-            weather.cloudy = 0.40;
+            weather.cloudy = 0.4;
             break;
         case 4: // SunnyHeavyClouds
-            weather.cloudy = 0.60;
+            weather.cloudy = 0.6;
             break;
         case 5: // CloudyLight
             weather.cloudy = 0.33;

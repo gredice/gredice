@@ -1,7 +1,7 @@
-import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
-import * as THREE from "three";
-import CSM from "three-custom-shader-material";
+import { useFrame } from '@react-three/fiber';
+import { useEffect, useMemo, useRef } from 'react';
+import * as THREE from 'three';
+import CSM from 'three-custom-shader-material';
 
 interface DropsProps {
     count?: number;
@@ -11,8 +11,8 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
     const fref = useRef<THREE.Group>(null);
     const dropsRef = useRef<THREE.InstancedMesh>(null!);
     const _dummy = useMemo(() => new THREE.Object3D(), []);
-    const initialY = useMemo(() => new Float32Array(count).fill(0), []);
-    const angles = useMemo(() => new Float32Array(count).fill(0), []);
+    const initialY = useMemo(() => new Float32Array(count).fill(0), [count]);
+    const angles = useMemo(() => new Float32Array(count).fill(0), [count]);
 
     const size = 40;
     const speed = 15;
@@ -23,21 +23,31 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
             _dummy.position.set(
                 THREE.MathUtils.randFloatSpread(size),
                 THREE.MathUtils.randFloat(-0.1, size),
-                THREE.MathUtils.randFloatSpread(size)
+                THREE.MathUtils.randFloatSpread(size),
             );
             _dummy.scale.set(0.7, 0.7, 0.7);
             _dummy.updateMatrix();
             dropsMesh.setMatrixAt(i, _dummy.matrix);
         }
         dropsMesh.instanceMatrix.needsUpdate = true;
-    }, []);
+    }, [
+        _dummy.matrix,
+        _dummy.position.set,
+        _dummy.scale.set,
+        _dummy.updateMatrix,
+        count,
+    ]);
 
     useFrame(({ camera }, dt) => {
         const dropsMesh = dropsRef.current;
 
         // Calculate what is camera target on the ground in front of the camera
         if (fref?.current) {
-            fref.current.position.set((camera.position.x + 100), 0, (camera.position.z + 100));
+            fref.current.position.set(
+                camera.position.x + 100,
+                0,
+                camera.position.z + 100,
+            );
         }
 
         for (let i = 0; i < count; i++) {
@@ -45,12 +55,12 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
             _dummy.matrix.decompose(
                 _dummy.position,
                 _dummy.quaternion,
-                _dummy.scale
+                _dummy.scale,
             );
 
             _dummy.rotation.y = Math.atan2(
                 camera.position.x - _dummy.position.x,
-                camera.position.z - _dummy.position.z
+                camera.position.z - _dummy.position.z,
             );
             _dummy.rotation.x = angles[i];
             _dummy.position.y -= dt * speed;
@@ -59,11 +69,11 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
                 _dummy.position.set(
                     THREE.MathUtils.randFloatSpread(size),
                     THREE.MathUtils.randFloat(-0.1, size),
-                    THREE.MathUtils.randFloatSpread(size)
+                    THREE.MathUtils.randFloatSpread(size),
                 );
                 initialY[i] = _dummy.position.y;
                 angles[i] = THREE.MathUtils.randFloatSpread(
-                    THREE.MathUtils.degToRad(20)
+                    THREE.MathUtils.degToRad(20),
                 );
             }
 
@@ -85,7 +95,7 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
           vUv = uv;
         }
       `,
-        []
+        [],
     );
 
     const fragmentShader = useMemo(
@@ -132,14 +142,14 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
           csm_DiffuseColor.a = dropletDistance * 0.1 * rainProgress * circle; 
         }
       `,
-        []
+        [],
     );
 
     const uniforms = useMemo(
         () => ({
             uRainProgress: { value: 1 },
         }),
-        []
+        [],
     );
 
     return (
@@ -161,4 +171,4 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
             </instancedMesh>
         </group>
     );
-}
+};

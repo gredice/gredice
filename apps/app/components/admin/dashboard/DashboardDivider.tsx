@@ -1,5 +1,5 @@
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { PropsWithChildren } from "react";
+import { Typography } from '@signalco/ui-primitives/Typography';
+import type { PropsWithChildren } from 'react';
 
 export function DashboardDivider({ children }: PropsWithChildren) {
     return (

@@ -1,27 +1,31 @@
 {
-  "name": "@gredice/ui",
-  "version": "1.0.0",
-  "private": true,
-  "exports": {
-    "./*": "./src/*/index.ts"
-  },
-  "devDependencies": {
-    "@types/node": "22.17.2",
-    "@types/react": "19.1.11",
-    "typescript": "5.9.2"
-  },
-  "dependencies": {
-    "@signalco/hooks": "0.2.1",
-    "@signalco/ui": "0.2.10",
-    "@signalco/ui-icons": "0.2.2",
-    "@signalco/ui-primitives": "0.6.4",
-    "next": "15.5.0",
-    "react": "19.1.1",
-    "react-dom": "19.1.1"
-  },
-  "peerDependencies": {
-    "next": "15.x",
-    "react": "19.x",
-    "react-dom": "19.x"
-  }
+    "name": "@gredice/ui",
+    "version": "1.0.0",
+    "private": true,
+    "exports": {
+        "./*": "./src/*/index.ts"
+    },
+    "scripts": {
+        "lint": "biome check"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.2.2",
+        "@types/node": "22.17.2",
+        "@types/react": "19.1.11",
+        "typescript": "5.9.2"
+    },
+    "dependencies": {
+        "@signalco/hooks": "0.2.1",
+        "@signalco/ui": "0.2.10",
+        "@signalco/ui-icons": "0.2.2",
+        "@signalco/ui-primitives": "0.6.4",
+        "next": "15.5.0",
+        "react": "19.1.1",
+        "react-dom": "19.1.1"
+    },
+    "peerDependencies": {
+        "next": "15.x",
+        "react": "19.x",
+        "react-dom": "19.x"
+    }
 }

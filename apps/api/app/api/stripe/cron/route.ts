@@ -1,6 +1,6 @@
-import { getStripeCheckoutSessions } from "@gredice/stripe/server";
-import { NextRequest } from "next/server";
-import { processCheckoutSession } from "../../../../lib/stripe/processCheckoutSession";
+import { getStripeCheckoutSessions } from '@gredice/stripe/server';
+import type { NextRequest } from 'next/server';
+import { processCheckoutSession } from '../../../../lib/stripe/processCheckoutSession';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +15,11 @@ export async function GET(request: NextRequest) {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 3);
     const checkoutSessions = await getStripeCheckoutSessions(yesterday);
-    await Promise.all(checkoutSessions.map(s => s.id).map(processCheckoutSession));
-    return Response.json({ success: true, processedCheckoutSessions: checkoutSessions.length });
+    await Promise.all(
+        checkoutSessions.map((s) => s.id).map(processCheckoutSession),
+    );
+    return Response.json({
+        success: true,
+        processedCheckoutSessions: checkoutSessions.length,
+    });
 }

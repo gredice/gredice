@@ -1,25 +1,33 @@
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { useCurrentGarden } from "../../hooks/useCurrentGarden";
-import { BlockImage } from "@gredice/ui/BlockImage";
-import { RaisedBedFieldItemButton } from "./RaisedBedFieldItemButton";
-import { RaisedBedFieldItemEmpty } from "./RaisedBedFieldItemEmpty";
-import { RaisedBedFieldItemPlanted } from "./RaisedBedFieldItemPlanted";
-import { Stack } from "@signalco/ui-primitives/Stack";
+import { BlockImage } from '@gredice/ui/BlockImage';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useCurrentGarden } from '../../hooks/useCurrentGarden';
+import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
+import { RaisedBedFieldItemEmpty } from './RaisedBedFieldItemEmpty';
+import { RaisedBedFieldItemPlanted } from './RaisedBedFieldItemPlanted';
 
-function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBedId: number; gardenId: number; positionIndex: number }) {
+function RaisedBedFieldItem({
+    gardenId,
+    raisedBedId,
+    positionIndex,
+}: {
+    raisedBedId: number;
+    gardenId: number;
+    positionIndex: number;
+}) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
     if (!raisedBed) {
         return null;
     }
 
-    const field = raisedBed.fields.find(field => field.positionIndex === positionIndex && field.active);
+    const field = raisedBed.fields.find(
+        (field) => field.positionIndex === positionIndex && field.active,
+    );
     const hasField = Boolean(field);
 
     if (isGardenLoading) {
-        return (
-            <RaisedBedFieldItemButton isLoading={true} />
-        );
+        return <RaisedBedFieldItemButton isLoading={true} />;
     }
 
     if (!hasField) {
@@ -37,33 +45,43 @@ function RaisedBedFieldItem({ gardenId, raisedBedId, positionIndex }: { raisedBe
             raisedBedId={raisedBedId}
             positionIndex={positionIndex}
         />
-    )
+    );
 }
 
 export function useNeighboringRaisedBeds(raisedBedId: number) {
     const { data: garden } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
     const raisedBedBlockId = raisedBed?.blockId;
-    const raisedBedStack = garden?.stacks.find(stack => stack.blocks.some(block => block.id === raisedBedBlockId));
+    const raisedBedStack = garden?.stacks.find((stack) =>
+        stack.blocks.some((block) => block.id === raisedBedBlockId),
+    );
     const raisedBedPosition = raisedBedStack?.position;
-    const raisedBedIndex = raisedBedStack?.blocks.findIndex(block => block.id === raisedBedBlockId);
-    return garden?.raisedBeds.filter(bed => {
-        const stack = garden?.stacks.find(stack => stack.blocks.some(block => block.id === bed.blockId));
+    const raisedBedIndex = raisedBedStack?.blocks.findIndex(
+        (block) => block.id === raisedBedBlockId,
+    );
+    return garden?.raisedBeds.filter((bed) => {
+        const stack = garden?.stacks.find((stack) =>
+            stack.blocks.some((block) => block.id === bed.blockId),
+        );
         if (!stack) return false;
         const position = stack.position;
-        const index = stack.blocks.findIndex(block => block.id === bed.blockId);
+        const index = stack.blocks.findIndex(
+            (block) => block.id === bed.blockId,
+        );
         if (raisedBedIndex !== index) return false;
         // Check if the position is adjacent (left, right, above, below)
         return (
-            (position.x === raisedBedPosition?.x && Math.abs(position.z - raisedBedPosition?.z) === 1) || // Above or below
-            (position.z === raisedBedPosition?.z && Math.abs(position.x - raisedBedPosition?.x) === 1) // Left or right
+            (position.x === raisedBedPosition?.x &&
+                Math.abs(position.z - raisedBedPosition?.z) === 1) || // Above or below
+            (position.z === raisedBedPosition?.z &&
+                Math.abs(position.x - raisedBedPosition?.x) === 1) // Left or right
         );
     });
 }
 
 export function RaisedBedField({
     gardenId,
-    raisedBedId
+    raisedBedId,
 }: {
     gardenId: number;
     raisedBedId: number;
@@ -75,13 +93,34 @@ export function RaisedBedField({
         return (
             <div className="flex flex-col mt-4 items-center h-full">
                 <Stack spacing={1}>
-                    <Typography level="h5" semiBold center className="text-white">Nevaljan oblik gredice</Typography>
-                    <Typography level="body1" center className="text-balance text-white/80">
+                    <Typography
+                        level="h5"
+                        semiBold
+                        center
+                        className="text-white"
+                    >
+                        Nevaljan oblik gredice
+                    </Typography>
+                    <Typography
+                        level="body1"
+                        center
+                        className="text-balance text-white/80"
+                    >
                         Gredice trenutno mogu biti samo u obliku 1x2 ili 2x1.
                     </Typography>
                     <div className="relative left-14">
-                        <BlockImage blockName="Raised_Bed" width={144} height={144} className="size-36 absolute" />
-                        <BlockImage blockName="Raised_Bed" width={144} height={144} className="size-36 absolute left-[60px] top-[33px]" />
+                        <BlockImage
+                            blockName="Raised_Bed"
+                            width={144}
+                            height={144}
+                            className="size-36 absolute"
+                        />
+                        <BlockImage
+                            blockName="Raised_Bed"
+                            width={144}
+                            height={144}
+                            className="size-36 absolute left-[60px] top-[33px]"
+                        />
                     </div>
                 </Stack>
             </div>
@@ -93,13 +132,23 @@ export function RaisedBedField({
             <div></div>
             <div className="size-full grid grid-rows-3">
                 {[...Array(3)].map((_, rowIndex) => (
-                    <div key={`${rowIndex}`} className="size-full grid grid-cols-3">
+                    <div
+                        // biome-ignore lint/suspicious/noArrayIndexKey: Allowed, matrix
+                        key={`${rowIndex}`}
+                        className="size-full grid grid-cols-3"
+                    >
                         {[...Array(3)].map((_, colIndex) => (
-                            <div key={`${rowIndex}-${colIndex}`} className="size-full p-0.5">
+                            <div
+                                // biome-ignore lint/suspicious/noArrayIndexKey: Allowed, matrix
+                                key={`${rowIndex}-${colIndex}`}
+                                className="size-full p-0.5"
+                            >
                                 <RaisedBedFieldItem
                                     gardenId={gardenId}
                                     raisedBedId={raisedBedId}
-                                    positionIndex={(2 - rowIndex) * 3 + (2 - colIndex)}
+                                    positionIndex={
+                                        (2 - rowIndex) * 3 + (2 - colIndex)
+                                    }
                                 />
                             </div>
                         ))}

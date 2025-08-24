@@ -1,10 +1,15 @@
-import { Card, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
-import { getAccountGardens } from "@gredice/storage";
-import Link from "next/link";
-import { KnownPages } from "../../../../src/KnownPages";
-import { Table } from "@signalco/ui-primitives/Table";
-import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
-import { LocalDateTime } from "@gredice/ui/LocalDateTime";
+import { getAccountGardens } from '@gredice/storage';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import {
+    Card,
+    CardHeader,
+    CardOverflow,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Table } from '@signalco/ui-primitives/Table';
+import Link from 'next/link';
+import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
+import { KnownPages } from '../../../../src/KnownPages';
 
 export async function AccountGardensCard({ accountId }: { accountId: string }) {
     const gardens = await getAccountGardens(accountId);
@@ -33,7 +38,7 @@ export async function AccountGardensCard({ accountId }: { accountId: string }) {
                                 </Table.Cell>
                             </Table.Row>
                         )}
-                        {gardens.map(garden => (
+                        {gardens.map((garden) => (
                             <Table.Row key={garden.id}>
                                 <Table.Cell>
                                     <Link href={KnownPages.Garden(garden.id)}>

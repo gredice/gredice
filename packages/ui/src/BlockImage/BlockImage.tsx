@@ -1,4 +1,4 @@
-import Image, { ImageProps } from 'next/image';
+import Image, { type ImageProps } from 'next/image';
 
 type BlockImageProps = Omit<ImageProps, 'src' | 'alt'> & {
     blockName: string;

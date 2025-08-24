@@ -1,19 +1,19 @@
-import { useSearchParam } from "@signalco/hooks/useSearchParam";
-import { Modal } from "@signalco/ui-primitives/Modal";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { FilterInput } from "@gredice/ui/FilterInput";
-import { ReactElement, useState } from "react";
-import { SegmentedProgress } from "../../controls/components/SegmentedProgress";
-import { PlantData, PlantSortData } from "@gredice/client";
-import { useShoppingCart } from "../../hooks/useShoppingCart";
-import { PlantsList } from "./PlantsList";
-import { PlantsSortList } from "./PlantsSortList";
-import { useSetShoppingCartItem } from "../../hooks/useSetShoppingCartItem";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Button } from "@signalco/ui-primitives/Button";
-import { Left, ShoppingCart } from "@signalco/ui-icons";
-import { Input } from "@signalco/ui-primitives/Input";
+import type { PlantData, PlantSortData } from '@gredice/client';
+import { FilterInput } from '@gredice/ui/FilterInput';
+import { useSearchParam } from '@signalco/hooks/useSearchParam';
+import { Left, ShoppingCart } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Input } from '@signalco/ui-primitives/Input';
+import { Modal } from '@signalco/ui-primitives/Modal';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { type ReactElement, useState } from 'react';
+import { SegmentedProgress } from '../../controls/components/SegmentedProgress';
+import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
+import { useShoppingCart } from '../../hooks/useShoppingCart';
+import { PlantsList } from './PlantsList';
+import { PlantsSortList } from './PlantsSortList';
 
 // Helper to format date as YYYY-MM-DD in local time
 // TODO: Move to shared utilities
@@ -43,19 +43,31 @@ export function PlantPicker({
     inShoppingCart,
     selectedPlantId: preselectedPlantId,
     selectedSortId: preselectedSortId,
-    selectedPlantOptions: preselectedPlantOptions
+    selectedPlantOptions: preselectedPlantOptions,
 }: PlantPickerProps) {
     const [open, setOpen] = useState(false);
     const [, setSearch] = useSearchParam('pretraga', '');
     const steps = [
-        { label: 'Odabir biljke', subHeader: 'Odaberi biljku koju želiš posaditi' },
-        { label: 'Odabir sorte', subHeader: 'Odaberi sortu biljke koju želiš posaditi' },
+        {
+            label: 'Odabir biljke',
+            subHeader: 'Odaberi biljku koju želiš posaditi',
+        },
+        {
+            label: 'Odabir sorte',
+            subHeader: 'Odaberi sortu biljke koju želiš posaditi',
+        },
     ];
     const { data: cart } = useShoppingCart();
     const setCartItem = useSetShoppingCartItem();
-    const [selectedPlantId, setSelectedPlantId] = useState<number | null>(preselectedPlantId ?? null);
-    const [selectedSortId, setSelectedSortId] = useState<number | null>(preselectedSortId ?? null);
-    const [plantOptions, setPlantOptions] = useState<{ scheduledDate: Date | null | undefined } | null>(preselectedPlantOptions ?? null);
+    const [selectedPlantId, setSelectedPlantId] = useState<number | null>(
+        preselectedPlantId ?? null,
+    );
+    const [selectedSortId, setSelectedSortId] = useState<number | null>(
+        preselectedSortId ?? null,
+    );
+    const [plantOptions, setPlantOptions] = useState<{
+        scheduledDate: Date | null | undefined;
+    } | null>(preselectedPlantOptions ?? null);
     const [flyToShoppingCart, setFlyToShoppingCart] = useState(false);
 
     let currentStep = 0;
@@ -76,11 +88,12 @@ export function PlantPicker({
 
     async function removeFromCart() {
         // Remove existing item if it exists in cart already
-        const existingItem = cart?.items.find(item =>
-            item.entityTypeName === "plantSort" &&
-            item.gardenId === gardenId &&
-            item.raisedBedId === raisedBedId &&
-            item.positionIndex === positionIndex
+        const existingItem = cart?.items.find(
+            (item) =>
+                item.entityTypeName === 'plantSort' &&
+                item.gardenId === gardenId &&
+                item.raisedBedId === raisedBedId &&
+                item.positionIndex === positionIndex,
         );
         if (existingItem) {
             await setCartItem.mutateAsync({
@@ -88,9 +101,9 @@ export function PlantPicker({
                 gardenId: existingItem.gardenId ?? undefined,
                 raisedBedId: existingItem.raisedBedId ?? undefined,
                 positionIndex: existingItem.positionIndex ?? undefined,
-                amount: 0
+                amount: 0,
             });
-        };
+        }
     }
 
     async function handleRemove() {
@@ -110,7 +123,7 @@ export function PlantPicker({
         // Add new item to cart
         setFlyToShoppingCart(true);
         await setCartItem.mutateAsync({
-            entityTypeName: "plantSort",
+            entityTypeName: 'plantSort',
             entityId: selectedSortId?.toString(),
             amount: 1,
             gardenId,
@@ -118,9 +131,9 @@ export function PlantPicker({
             positionIndex,
             additionalData: JSON.stringify({
                 scheduledDate: plantOptions?.scheduledDate?.toISOString(),
-            })
+            }),
         });
-        await new Promise(resolve => setTimeout(resolve, 800)); // Wait for animation to finish
+        await new Promise((resolve) => setTimeout(resolve, 800)); // Wait for animation to finish
         setOpen(false);
         setFlyToShoppingCart(false);
     }
@@ -135,8 +148,16 @@ export function PlantPicker({
     // Plant options
     // Use local time for tomorrow and 3 months from now
     const today = new Date();
-    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-    const threeMonthsFromTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth() + 3, tomorrow.getDate());
+    const tomorrow = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + 1,
+    );
+    const threeMonthsFromTomorrow = new Date(
+        tomorrow.getFullYear(),
+        tomorrow.getMonth() + 3,
+        tomorrow.getDate(),
+    );
     const plantDate = formatLocalDate(plantOptions?.scheduledDate ?? tomorrow);
     function handlePlantDateChange(date: string) {
         const parsedDate = date ? new Date(date) : null;
@@ -151,22 +172,32 @@ export function PlantPicker({
             trigger={trigger}
             open={open}
             onOpenChange={handleOpenChange}
-            title={"Sijanje biljke"}
+            title={'Sijanje biljke'}
             modal={false}
-            className="md:border-tertiary md:border-b-4 md:max-w-2xl">
+            className="md:border-tertiary md:border-b-4 md:max-w-2xl"
+        >
             <Stack spacing={2}>
                 <SegmentedProgress
                     className="pb-4 pr-8 w-full md:w-80 self-center"
                     segments={steps.map((step, stepIndex) => ({
-                        value: currentStep > stepIndex ? 100 : (currentStep < stepIndex ? 0 : 99),
+                        value:
+                            currentStep > stepIndex
+                                ? 100
+                                : currentStep < stepIndex
+                                  ? 0
+                                  : 99,
                         highlighted: stepIndex === currentStep,
                         label: step.label,
-                        onClick: selectedPlantId && stepIndex === 0 ? () => {
-                            setSelectedPlantId(null);
-                            setSelectedSortId(null);
-                            setSearch(undefined);
-                        } : undefined
-                    }))} />
+                        onClick:
+                            selectedPlantId && stepIndex === 0
+                                ? () => {
+                                      setSelectedPlantId(null);
+                                      setSelectedSortId(null);
+                                      setSearch(undefined);
+                                  }
+                                : undefined,
+                    }))}
+                />
                 <Stack>
                     <Typography level="h3" className="text-xl">
                         {steps[currentStep].label}
@@ -175,7 +206,12 @@ export function PlantPicker({
                         {steps[currentStep].subHeader}
                     </Typography>
                 </Stack>
-                {currentStep < 1 && <FilterInput searchParamName={"pretraga"} fieldName={"search"} />}
+                {currentStep < 1 && (
+                    <FilterInput
+                        searchParamName={'pretraga'}
+                        fieldName={'search'}
+                    />
+                )}
                 {currentStep === 0 && (
                     <>
                         <PlantsList onChange={handlePlantSelect} />
@@ -192,7 +228,7 @@ export function PlantPicker({
                         </Row>
                     </>
                 )}
-                {(currentStep === 1 && selectedPlantId) && (
+                {currentStep === 1 && selectedPlantId && (
                     <>
                         <Stack spacing={2}>
                             <PlantsSortList
@@ -210,7 +246,9 @@ export function PlantPicker({
                                 name="plantDate"
                                 className="w-full bg-card"
                                 value={plantDate}
-                                onChange={(e) => handlePlantDateChange(e.target.value)}
+                                onChange={(e) =>
+                                    handlePlantDateChange(e.target.value)
+                                }
                                 min={min}
                                 max={max}
                             />
@@ -231,17 +269,24 @@ export function PlantPicker({
                                     <Button
                                         variant="plain"
                                         loading={setCartItem.isPending}
-                                        onClick={handleRemove}>
+                                        onClick={handleRemove}
+                                    >
                                         Ukloni
                                     </Button>
                                 )}
                                 <Button
                                     variant="solid"
                                     disabled={!selectedSortId}
-                                    title={!selectedSortId ? "Odaberi sortu prije potvrde" : undefined}
+                                    title={
+                                        !selectedSortId
+                                            ? 'Odaberi sortu prije potvrde'
+                                            : undefined
+                                    }
                                     loading={setCartItem.isPending}
                                     onClick={handleConfirm}
-                                    startDecorator={<ShoppingCart className="shrink-0 size-5" />}
+                                    startDecorator={
+                                        <ShoppingCart className="shrink-0 size-5" />
+                                    }
                                 >
                                     Potvrdi sijanje
                                 </Button>

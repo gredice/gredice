@@ -1,6 +1,6 @@
-import { createInvoice } from "@gredice/storage";
-import { redirect } from "next/navigation";
-import { auth } from "../../../lib/auth/auth";
+import { createInvoice } from '@gredice/storage';
+import { redirect } from 'next/navigation';
+import { auth } from '../../../lib/auth/auth';
 
 export async function createInvoiceServerAction(formData: FormData) {
     'use server';
@@ -36,7 +36,7 @@ export async function createInvoiceServerAction(formData: FormData) {
         const invoiceData = {
             invoiceNumber,
             accountId,
-            transactionId: transactionId ? parseInt(transactionId) : null,
+            transactionId: transactionId ? parseInt(transactionId, 10) : null,
             subtotal,
             taxAmount,
             totalAmount,
@@ -59,10 +59,18 @@ export async function createInvoiceServerAction(formData: FormData) {
         const items = [];
         let itemIndex = 0;
         while (formData.get(`item_${itemIndex}_description`)) {
-            const description = formData.get(`item_${itemIndex}_description`) as string;
-            const quantity = formData.get(`item_${itemIndex}_quantity`) as string;
-            const unitPrice = formData.get(`item_${itemIndex}_unitPrice`) as string;
-            const totalPrice = formData.get(`item_${itemIndex}_totalPrice`) as string;
+            const description = formData.get(
+                `item_${itemIndex}_description`,
+            ) as string;
+            const quantity = formData.get(
+                `item_${itemIndex}_quantity`,
+            ) as string;
+            const unitPrice = formData.get(
+                `item_${itemIndex}_unitPrice`,
+            ) as string;
+            const totalPrice = formData.get(
+                `item_${itemIndex}_totalPrice`,
+            ) as string;
 
             if (description.trim()) {
                 items.push({

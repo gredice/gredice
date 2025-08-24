@@ -1,31 +1,31 @@
-import { client } from "@gredice/client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useShoppingCart, useShoppingCartQueryKey } from "./useShoppingCart";
+import { client } from '@gredice/client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useShoppingCart, useShoppingCartQueryKey } from './useShoppingCart';
 
 export function useSetShoppingCartItem() {
     const queryClient = useQueryClient();
     const { data: cart } = useShoppingCart();
     return useMutation({
         mutationFn: async (item: {
-            id?: number,
-            entityTypeName: string,
+            id?: number;
+            entityTypeName: string;
             entityId: string;
-            amount: number,
-            gardenId?: number,
-            raisedBedId?: number,
-            positionIndex?: number,
-            additionalData?: string | null,
-            currency?: string | null,
+            amount: number;
+            gardenId?: number;
+            raisedBedId?: number;
+            positionIndex?: number;
+            additionalData?: string | null;
+            currency?: string | null;
             forceCreate?: boolean;
         }) => {
             if (!cart) {
                 throw new Error('Shopping cart is not available');
             }
 
-            const response = await client().api["shopping-cart"].$post({
+            const response = await client().api['shopping-cart'].$post({
                 json: {
                     ...item,
-                    cartId: cart.id
+                    cartId: cart.id,
                 },
             });
             if (response.status !== 200) {
@@ -34,11 +34,11 @@ export function useSetShoppingCartItem() {
         },
         onSettled: () => {
             queryClient.invalidateQueries({
-                queryKey: useShoppingCartQueryKey
-            })
+                queryKey: useShoppingCartQueryKey,
+            });
         },
         scope: {
-            id: 'setShoppingCartItem'
-        }
+            id: 'setShoppingCartItem',
+        },
     });
 }

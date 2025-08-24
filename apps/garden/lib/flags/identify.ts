@@ -1,7 +1,7 @@
-import { Identify } from "flags";
-import { dedupe } from "flags/next";
-import { Context } from "./generated/hypertune";
-import { client } from "@gredice/client";
+import { client } from '@gredice/client';
+import type { Identify } from 'flags';
+import { dedupe } from 'flags/next';
+import type { Context } from './generated/hypertune';
 
 export async function getContext() {
     try {
@@ -10,7 +10,9 @@ export async function getContext() {
         // not make any network requests, as it's important to keep latency low here.
         const response = await client().api.users.current.$get();
         if (!response.ok) {
-            throw new Error("Failed to fetch user - got NOK response: " + response.status);
+            throw new Error(
+                `Failed to fetch user - got NOK response: ${response.status}`,
+            );
         }
         const user = await response.json();
 
@@ -20,7 +22,7 @@ export async function getContext() {
                 id: user?.id,
                 name: user?.displayName ?? user?.userName,
             },
-            environment: process.env.NODE_ENV
+            environment: process.env.NODE_ENV,
         };
     } catch {
         return {
@@ -29,7 +31,7 @@ export async function getContext() {
                 id: 'unknown',
                 name: 'unknown',
             },
-            environment: process.env.NODE_ENV
+            environment: process.env.NODE_ENV,
         };
     }
 }

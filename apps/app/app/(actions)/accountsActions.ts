@@ -1,9 +1,9 @@
 'use server';
 
-import { getAccountUsers } from "@gredice/storage";
-import { createJwt } from "../../lib/auth/auth";
-import { sendEmail } from "@gredice/email/acs";
-import AccountDeleteConfirmationTemplate from "@gredice/transactional/emails/Account/delete-confirmation";
+import { sendEmail } from '@gredice/email/acs';
+import { getAccountUsers } from '@gredice/storage';
+import AccountDeleteConfirmationTemplate from '@gredice/transactional/emails/Account/delete-confirmation';
+import { createJwt } from '../../lib/auth/auth';
 
 export async function sendDeleteAccountEmail(accountId: string) {
     // Only allow if account has one user

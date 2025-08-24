@@ -1,7 +1,16 @@
-import { Card, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
-import { TransactionsTable } from "../../transactions/TransactionsTable";
+import {
+    Card,
+    CardHeader,
+    CardOverflow,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { TransactionsTable } from '../../transactions/TransactionsTable';
 
-export async function AccountTransactionsCard({ accountId }: { accountId: string }) {
+export async function AccountTransactionsCard({
+    accountId,
+}: {
+    accountId: string;
+}) {
     return (
         <Card>
             <CardHeader>

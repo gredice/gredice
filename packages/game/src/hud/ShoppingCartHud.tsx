@@ -1,23 +1,31 @@
-import { Delete, Info, Navigate, ShoppingCart as ShoppingCartIcon } from "@signalco/ui-icons";
-import { Button } from "@signalco/ui-primitives/Button";
-import { Row } from "@signalco/ui-primitives/Row";
-import { DotIndicator } from "@signalco/ui-primitives/DotIndicator";
-import { HudCard } from "./components/HudCard";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Modal } from "@signalco/ui-primitives/Modal";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
-import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { ShoppingCartData, useShoppingCart } from "../hooks/useShoppingCart";
-import { ModalConfirm } from "@signalco/ui/ModalConfirm";
-import { useCheckout, isCompleteDeliverySelection } from "../hooks/useCheckout";
-import { Alert } from "@signalco/ui/Alert";
-import { ShoppingCartItem } from "./components/shopping-cart/ShoppingCartItem";
-import { useCurrentAccount } from "../hooks/useCurrentAccount";
-import { cx } from "@signalco/ui-primitives/cx";
-import { useShoppingCartDelete } from "../hooks/useShoppingCartDelete";
-import { useState } from "react";
-import { DeliveryStep, DeliverySelectionData } from "../shared-ui/delivery/DeliveryStep";
+import { Alert } from '@signalco/ui/Alert';
+import { ModalConfirm } from '@signalco/ui/ModalConfirm';
+import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
+import {
+    Delete,
+    Info,
+    Navigate,
+    ShoppingCart as ShoppingCartIcon,
+} from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { cx } from '@signalco/ui-primitives/cx';
+import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Modal } from '@signalco/ui-primitives/Modal';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useState } from 'react';
+import { isCompleteDeliverySelection, useCheckout } from '../hooks/useCheckout';
+import { useCurrentAccount } from '../hooks/useCurrentAccount';
+import { useShoppingCart } from '../hooks/useShoppingCart';
+import { useShoppingCartDelete } from '../hooks/useShoppingCartDelete';
+import {
+    type DeliverySelectionData,
+    DeliveryStep,
+} from '../shared-ui/delivery/DeliveryStep';
+import { HudCard } from './components/HudCard';
+import { ShoppingCartItem } from './components/shopping-cart/ShoppingCartItem';
 
 export function ShoppingCart() {
     const { data: account } = useCurrentAccount();
@@ -27,15 +35,20 @@ export function ShoppingCart() {
 
     // State for delivery flow
     const [showDeliveryStep, setShowDeliveryStep] = useState(false);
-    const [deliverySelection, setDeliverySelection] = useState<DeliverySelectionData | null>(null);
+    const [deliverySelection, setDeliverySelection] =
+        useState<DeliverySelectionData | null>(null);
 
     const showSunflowersSuggestion =
-        !cart?.items.some(item => item.currency === 'sunflower') &&
-        cart?.items.some(item => (account?.sunflowers.amount ?? 0) > (item.shopData.price ?? 0) * 100);
+        !cart?.items.some((item) => item.currency === 'sunflower') &&
+        cart?.items.some(
+            (item) =>
+                (account?.sunflowers.amount ?? 0) >
+                (item.shopData.price ?? 0) * 100,
+        );
 
     function handleCheckout() {
         if (!cart || !cart.id) {
-            console.error("No cart available for checkout");
+            console.error('No cart available for checkout');
             return;
         }
 
@@ -48,7 +61,9 @@ export function ShoppingCart() {
         // Prepare checkout data with delivery information if available
         const checkoutData = {
             cartId: cart.id,
-            ...(isCompleteDeliverySelection(deliverySelection) && { deliveryInfo: deliverySelection })
+            ...(isCompleteDeliverySelection(deliverySelection) && {
+                deliveryInfo: deliverySelection,
+            }),
         };
 
         checkout.mutate(checkoutData);
@@ -95,42 +110,60 @@ export function ShoppingCart() {
                 <Typography level="h3">Košarica</Typography>
             </Row>
             <Stack>
-                <div className={cx(
-                    'opacity-0 h-0 transition-all duration-150',
-                    showSunflowersSuggestion && "opacity-100 h-auto mb-4"
-                )}>
+                <div
+                    className={cx(
+                        'opacity-0 h-0 transition-all duration-150',
+                        showSunflowersSuggestion && 'opacity-100 h-auto mb-4',
+                    )}
+                >
                     <Alert color="primary">
-                        Dio košarice možeš platiti u <span className="text-yellow-500">🌻</span>. Odaberi željeni način plaćanja desno od cijene.
+                        Dio košarice možeš platiti u{' '}
+                        <span className="text-yellow-500">🌻</span>. Odaberi
+                        željeni način plaćanja desno od cijene.
                     </Alert>
                 </div>
                 <Stack>
                     <Stack spacing={2} className="max-h-[50vh] overflow-y-auto">
-                        {isLoading && <Typography level="body1">Učitavanje...</Typography>}
-                        {isError && <Typography level="body1">Greška prilikom učitavanja košarice</Typography>}
-                        {!isLoading && !isError && (
-                            <>
-                                {cart?.items.length ? (
-                                    cart.items.map((item) => (
-                                        <ShoppingCartItem key={item.id} item={item} />
-                                    ))
-                                ) : (
-                                    <NoDataPlaceholder>Košarica je prazna</NoDataPlaceholder>
-                                )}
-                            </>
+                        {isLoading && (
+                            <Typography level="body1">Učitavanje...</Typography>
                         )}
+                        {isError && (
+                            <Typography level="body1">
+                                Greška prilikom učitavanja košarice
+                            </Typography>
+                        )}
+                        {!isLoading &&
+                            !isError &&
+                            (cart?.items.length ? (
+                                cart.items.map((item) => (
+                                    <ShoppingCartItem
+                                        key={item.id}
+                                        item={item}
+                                    />
+                                ))
+                            ) : (
+                                <NoDataPlaceholder>
+                                    Košarica je prazna
+                                </NoDataPlaceholder>
+                            ))}
                     </Stack>
                     <Stack className="border-t mt-4 pt-2" spacing={1}>
-                        <Row justifyContent="space-between" alignItems="start" spacing={2}>
-                            <Typography level="body1">
-                                Ukupno
-                            </Typography>
+                        <Row
+                            justifyContent="space-between"
+                            alignItems="start"
+                            spacing={2}
+                        >
+                            <Typography level="body1">Ukupno</Typography>
                             <Stack>
                                 <Typography level="body1" bold>
                                     {cart?.total.toFixed(2)} €
                                 </Typography>
                                 {(cart?.totalSunflowers ?? 0) > 0 && (
                                     <Typography level="body1" bold>
-                                        {(cart?.totalSunflowers ?? 0) > 0 ? `-${cart?.totalSunflowers ?? 0}` : '0'} <span className={"text-lg"}>🌻</span>
+                                        {(cart?.totalSunflowers ?? 0) > 0
+                                            ? `-${cart?.totalSunflowers ?? 0}`
+                                            : '0'}{' '}
+                                        <span className={'text-lg'}>🌻</span>
                                     </Typography>
                                 )}
                             </Stack>
@@ -143,8 +176,14 @@ export function ShoppingCart() {
                                         <Alert
                                             key={note}
                                             color="info"
-                                            startDecorator={<Info className="opacity-80 stroke-blue-900 dark:stroke-blue-100 mt-px" />}>
-                                            <Typography level="body2" className="text-blue-900 dark:text-blue-100">
+                                            startDecorator={
+                                                <Info className="opacity-80 stroke-blue-900 dark:stroke-blue-100 mt-px" />
+                                            }
+                                        >
+                                            <Typography
+                                                level="body2"
+                                                className="text-blue-900 dark:text-blue-100"
+                                            >
                                                 {note}
                                             </Typography>
                                         </Alert>
@@ -160,28 +199,40 @@ export function ShoppingCart() {
                                     trigger={
                                         <Button
                                             variant="plain"
-                                            disabled={!cart?.items.length || deleteCart.isPending}
+                                            disabled={
+                                                !cart?.items.length ||
+                                                deleteCart.isPending
+                                            }
                                             loading={deleteCart.isPending}
-                                            startDecorator={<Delete className="size-5 shrink-0" />}
+                                            startDecorator={
+                                                <Delete className="size-5 shrink-0" />
+                                            }
                                         >
                                             Očisti košaricu
                                         </Button>
                                     }
                                 >
-                                    <Typography>Jeste li sigurni da želite obrisati sve stavke iz košarice?</Typography>
+                                    <Typography>
+                                        Jeste li sigurni da želite obrisati sve
+                                        stavke iz košarice?
+                                    </Typography>
                                 </ModalConfirm>
                                 {cart?.hasDeliverableItems ? (
-                                    <>
-                                        <Button
-                                            variant="solid"
-                                            disabled={!cart.allowPurchase}
-                                            startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0" /> : undefined}
-                                            endDecorator={<Navigate className="size-5 shrink-0" />}
-                                            onClick={handleDelivery}
-                                        >
-                                            Dostava
-                                        </Button>
-                                    </>
+                                    <Button
+                                        variant="solid"
+                                        disabled={!cart.allowPurchase}
+                                        startDecorator={
+                                            !cart?.allowPurchase ? (
+                                                <Info className="size-5 shrink-0" />
+                                            ) : undefined
+                                        }
+                                        endDecorator={
+                                            <Navigate className="size-5 shrink-0" />
+                                        }
+                                        onClick={handleDelivery}
+                                    >
+                                        Dostava
+                                    </Button>
                                 ) : (
                                     <ButtonConfirmPayment
                                         cart={cart}
@@ -195,10 +246,18 @@ export function ShoppingCart() {
                 </Stack>
             </Stack>
         </Stack>
-    )
+    );
 }
 
-function ButtonConfirmPayment({ cart, checkout, onConfirm }: { cart: ReturnType<typeof useShoppingCart>['data'], checkout: ReturnType<typeof useCheckout>, onConfirm: () => void }) {
+function ButtonConfirmPayment({
+    cart,
+    checkout,
+    onConfirm,
+}: {
+    cart: ReturnType<typeof useShoppingCart>['data'];
+    checkout: ReturnType<typeof useCheckout>;
+    onConfirm: () => void;
+}) {
     return (
         <>
             {cart?.totalSunflowers ? (
@@ -206,25 +265,43 @@ function ButtonConfirmPayment({ cart, checkout, onConfirm }: { cart: ReturnType<
                     title="Potvrdi plaćanje"
                     header={`Potvrđuješ plaćanje ${cart?.totalSunflowers ?? 0} 🌻 i ${cart?.total.toFixed(2) ?? 0} €?`}
                     onConfirm={onConfirm}
-                    trigger={(
+                    trigger={
                         <Button
                             variant="solid"
-                            disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
+                            disabled={
+                                !cart?.items.length ||
+                                checkout.isPending ||
+                                !cart.allowPurchase
+                            }
                             loading={checkout.isPending}
-                            startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0" /> : undefined}
-                            endDecorator={<Navigate className="size-5 shrink-0" />}
+                            startDecorator={
+                                !cart?.allowPurchase ? (
+                                    <Info className="size-5 shrink-0" />
+                                ) : undefined
+                            }
+                            endDecorator={
+                                <Navigate className="size-5 shrink-0" />
+                            }
                         >
                             Potvrdi i plati
                         </Button>
-                    )}
+                    }
                 />
             ) : (
                 <Button
                     variant="solid"
                     onClick={onConfirm}
-                    disabled={!cart?.items.length || checkout.isPending || !cart.allowPurchase}
+                    disabled={
+                        !cart?.items.length ||
+                        checkout.isPending ||
+                        !cart.allowPurchase
+                    }
                     loading={checkout.isPending}
-                    startDecorator={!cart?.allowPurchase ? <Info className="size-5 shrink-0" /> : undefined}
+                    startDecorator={
+                        !cart?.allowPurchase ? (
+                            <Info className="size-5 shrink-0" />
+                        ) : undefined
+                    }
                     endDecorator={<Navigate className="size-5 shrink-0" />}
                 >
                     Plati
@@ -241,30 +318,35 @@ export function ShoppingCartHud() {
     }
 
     return (
-        <HudCard
-            open
-            position="floating"
-            className="static p-0.5">
+        <HudCard open position="floating" className="static p-0.5">
             <Row spacing={1}>
                 <Modal
                     title="Košarica"
-                    className='bg-card border-tertiary border-b-4 md:max-w-2xl'
+                    className="bg-card border-tertiary border-b-4 md:max-w-2xl"
                     modal={false}
-                    trigger={(
+                    trigger={
                         <IconButton
                             title="Košarica"
                             variant="plain"
-                            className="relative rounded-full size-10">
+                            className="relative rounded-full size-10"
+                        >
                             <ShoppingCartIcon className="!stroke-[1.4px] shrink-0" />
                             {Boolean(cart?.items.length) && (
                                 <div className="absolute -right-2 -top-2">
-                                    <DotIndicator size={24} color={"success"} content={(
-                                        <Typography>{cart?.items.length}</Typography>
-                                    )} />
+                                    <DotIndicator
+                                        size={24}
+                                        color={'success'}
+                                        content={
+                                            <Typography>
+                                                {cart?.items.length}
+                                            </Typography>
+                                        }
+                                    />
                                 </div>
                             )}
                         </IconButton>
-                    )}>
+                    }
+                >
                     <ShoppingCart />
                 </Modal>
             </Row>

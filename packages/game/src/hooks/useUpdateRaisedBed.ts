@@ -1,7 +1,7 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCurrentUser } from "./useCurrentUser";
-import { client } from "@gredice/client";
-import { currentGardenKeys } from "./useCurrentGarden";
+import { client } from '@gredice/client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { currentGardenKeys } from './useCurrentGarden';
+import { useCurrentUser } from './useCurrentUser';
 
 export function useUpdateRaisedBed(gardenId: number, raisedBedId: number) {
     const queryClient = useQueryClient();
@@ -12,14 +12,16 @@ export function useUpdateRaisedBed(gardenId: number, raisedBedId: number) {
                 throw new Error('Current user data is not available');
             }
 
-            await client().api.gardens[":gardenId"]["raised-beds"][":raisedBedId"].$patch({
+            await client().api.gardens[':gardenId']['raised-beds'][
+                ':raisedBedId'
+            ].$patch({
                 param: {
                     gardenId: gardenId.toString(),
-                    raisedBedId: raisedBedId.toString()
+                    raisedBedId: raisedBedId.toString(),
                 },
                 json: {
                     name: name || undefined,
-                }
+                },
             });
         },
         onError: (error) => {
@@ -27,6 +29,6 @@ export function useUpdateRaisedBed(gardenId: number, raisedBedId: number) {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: currentGardenKeys });
-        }
-    })
+        },
+    });
 }

@@ -1,11 +1,16 @@
-import { AttributeInputProps } from '../AttributeInputProps';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { useEffect, useState } from 'react';
+import type { AttributeInputProps } from '../AttributeInputProps';
 import { getEntities } from '../actions/entitiesActions';
 
-export function SelectEntity({ value, onChange, attributeDefinition }: AttributeInputProps) {
+export function SelectEntity({
+    value,
+    onChange,
+    attributeDefinition,
+}: AttributeInputProps) {
     const entityTypeName = attributeDefinition?.dataType.split(':')[1];
-    const [entities, setEntities] = useState<Awaited<ReturnType<typeof getEntities>>>();
+    const [entities, setEntities] =
+        useState<Awaited<ReturnType<typeof getEntities>>>();
 
     useEffect(() => {
         if (!entityTypeName) {
@@ -25,13 +30,16 @@ export function SelectEntity({ value, onChange, attributeDefinition }: Attribute
         { value: '-', label: '-' },
         ...(entities?.map((entity, entityIndex) => ({
             value: entity.information?.name ?? entityIndex.toString(),
-            label: (entity.information?.label ?? entity.information?.name) ?? `${entityTypeName} ${entityIndex + 1}`,
+            label:
+                entity.information?.label ??
+                entity.information?.name ??
+                `${entityTypeName} ${entityIndex + 1}`,
         })) ?? []),
-    ]
+    ];
 
     const handleOnChange = (newValue: string) => {
         onChange(newValue !== '-' ? newValue : null);
-    }
+    };
 
     return (
         <SelectItems

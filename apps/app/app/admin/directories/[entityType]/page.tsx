@@ -1,18 +1,22 @@
-import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
-import { Row } from "@signalco/ui-primitives/Row";
-import { getEntityTypeByName } from "@gredice/storage";
-import { EntitiesTable } from "../../../../components/admin/tables";
-import { createEntity } from "../../../(actions)/entityActions";
-import { Add } from "@signalco/ui-icons";
-import { ServerActionIconButton } from "../../../../components/shared/ServerActionIconButton";
-import { auth } from "../../../../lib/auth/auth";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { EntityTypeMenu } from "../../../../components/admin/directories";
+import { getEntityTypeByName } from '@gredice/storage';
+import { Add } from '@signalco/ui-icons';
+import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { EntityTypeMenu } from '../../../../components/admin/directories';
+import { EntitiesTable } from '../../../../components/admin/tables';
+import { ServerActionIconButton } from '../../../../components/shared/ServerActionIconButton';
+import { auth } from '../../../../lib/auth/auth';
+import { createEntity } from '../../../(actions)/entityActions';
 
 export const dynamic = 'force-dynamic';
 
-export default async function EntitiesPage({ params }: { params: Promise<{ entityType: string }> }) {
+export default async function EntitiesPage({
+    params,
+}: {
+    params: Promise<{ entityType: string }>;
+}) {
     await auth(['admin']);
     const { entityType: entityTypeName } = await params;
     const entityType = await getEntityTypeByName(entityTypeName);
@@ -21,17 +25,18 @@ export default async function EntitiesPage({ params }: { params: Promise<{ entit
     return (
         <Stack spacing={2}>
             <Row spacing={1} justifyContent="space-between">
-                <Typography level="h1" className="text-2xl" semiBold>{entityType?.label}</Typography>
+                <Typography level="h1" className="text-2xl" semiBold>
+                    {entityType?.label}
+                </Typography>
                 <Row>
                     <ServerActionIconButton
                         variant="plain"
                         title="Dodaj zapis"
-                        onClick={createEntityBound}>
-                        <Add className='size-5' />
+                        onClick={createEntityBound}
+                    >
+                        <Add className="size-5" />
                     </ServerActionIconButton>
-                    {entityType && (
-                        <EntityTypeMenu entityType={entityType} />
-                    )}
+                    {entityType && <EntityTypeMenu entityType={entityType} />}
                 </Row>
             </Row>
             <Card>

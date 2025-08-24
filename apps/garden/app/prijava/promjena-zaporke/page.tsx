@@ -1,7 +1,12 @@
-import { Suspense } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card"
-import { ChangePasswordForm } from './ChangePasswordForm'
-import { Password } from '@signalco/ui-icons'
+import { Password } from '@signalco/ui-icons';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Suspense } from 'react';
+import { ChangePasswordForm } from './ChangePasswordForm';
 
 export default function ChangePasswordPage() {
     return (
@@ -11,7 +16,9 @@ export default function ChangePasswordPage() {
                     <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#2f6e40] mx-auto mb-4">
                         <Password className="w-6 h-6 text-white" />
                     </div>
-                    <CardTitle className="text-center">Promjena zaporke</CardTitle>
+                    <CardTitle className="text-center">
+                        Promjena zaporke
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Suspense>
@@ -20,5 +27,5 @@ export default function ChangePasswordPage() {
                 </CardContent>
             </Card>
         </div>
-    )
+    );
 }

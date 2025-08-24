@@ -1,9 +1,10 @@
+import { TZDate } from '@date-fns/tz';
+import { grediceCached, grediceCacheKeys } from '@gredice/storage';
 import { Hono } from 'hono';
+import { describeRoute } from 'hono-openapi';
 import { getBjelovarForecast } from '../../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../../lib/weather/populateWeatherFromSymbol';
-import { describeRoute } from 'hono-openapi';
-import { TZDate } from "@date-fns/tz";
-import { grediceCached, grediceCacheKeys } from '@gredice/storage';
+
 // import { signalcoClient } from '@gredice/signalco';
 
 const app = new Hono()
@@ -13,18 +14,30 @@ const app = new Hono()
             description: 'Get weather forecast',
         }),
         async (context) => {
-            const forecast = await grediceCached(grediceCacheKeys.forecastBjelovar, getBjelovarForecast, 60 * 60);
+            const forecast = await grediceCached(
+                grediceCacheKeys.forecastBjelovar,
+                getBjelovarForecast,
+                60 * 60,
+            );
             return context.json(forecast ?? []);
-        })
+        },
+    )
     .get(
         '/now',
         describeRoute({
             description: 'Get current weather',
         }),
         async (context) => {
-            const forecast = await grediceCached(grediceCacheKeys.forecastBjelovar, getBjelovarForecast, 60 * 60);
+            const forecast = await grediceCached(
+                grediceCacheKeys.forecastBjelovar,
+                getBjelovarForecast,
+                60 * 60,
+            );
             if (!forecast || forecast.length === 0) {
-                return context.json({ error: 'Forecast not available' }, { status: 500 });
+                return context.json(
+                    { error: 'Forecast not available' },
+                    { status: 500 },
+                );
             }
 
             // const measurements = await grediceCached(grediceCacheKeys.airSensorOpgIb, async () => {
@@ -49,8 +62,13 @@ const app = new Hono()
 
             for (const day of forecast) {
                 for (const entry of day.entries) {
-                    const entryDateTime = new TZDate(`${day.date}T${entry.time.toString().padStart(2, "0")}:00:00`, 'Europe/Zagreb');
-                    const diff = Math.abs(entryDateTime.getTime() - nowLocal.getTime());
+                    const entryDateTime = new TZDate(
+                        `${day.date}T${entry.time.toString().padStart(2, '0')}:00:00`,
+                        'Europe/Zagreb',
+                    );
+                    const diff = Math.abs(
+                        entryDateTime.getTime() - nowLocal.getTime(),
+                    );
                     if (diff < minDiff) {
                         minDiff = diff;
                         closestEntry = entry;
@@ -59,13 +77,16 @@ const app = new Hono()
             }
 
             if (!closestEntry) {
-                return context.json({ error: 'Forecast not available' }, { status: 500 });
+                return context.json(
+                    { error: 'Forecast not available' },
+                    { status: 500 },
+                );
             }
 
             const weather = {
                 symbol: closestEntry.symbol,
                 temperature: closestEntry?.temperature,
-                measuredTemperature: null as number | null,//measurements?.actualTemperature,
+                measuredTemperature: null as number | null, //measurements?.actualTemperature,
                 rain: closestEntry.rain,
                 windDirection: closestEntry.windDirection,
                 windSpeed: closestEntry.windStrength,
@@ -73,6 +94,7 @@ const app = new Hono()
             };
 
             return context.json(weather);
-        });
+        },
+    );
 
 export default app;

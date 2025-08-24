@@ -1,18 +1,18 @@
-import { useState, useEffect, FormEvent } from 'react'
-import { Input } from '@signalco/ui-primitives/Input';
 import { Button } from '@signalco/ui-primitives/Button';
+import { Input } from '@signalco/ui-primitives/Input';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import { type FormEvent, useEffect, useState } from 'react';
 
 interface EmailPasswordFormProps {
-    onSubmit: (email: string, password: string) => Promise<void>
-    submitText: string
-    registration?: boolean
+    onSubmit: (email: string, password: string) => Promise<void>;
+    submitText: string;
+    registration?: boolean;
 }
 
 export function EmailPasswordForm({
     onSubmit,
     submitText,
-    registration: registration = false
+    registration = false,
 }: EmailPasswordFormProps) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -22,12 +22,12 @@ export function EmailPasswordForm({
 
     useEffect(() => {
         if (registration && typeof passwordsMatch === 'boolean') {
-            setPasswordsMatch(password === repeatPassword)
+            setPasswordsMatch(password === repeatPassword);
         }
-    }, [password, repeatPassword, registration, passwordsMatch])
+    }, [password, repeatPassword, registration, passwordsMatch]);
 
     const handleSubmit = (e: FormEvent) => {
-        e.preventDefault()
+        e.preventDefault();
 
         const doPasswordsMarch = password === repeatPassword;
         setPasswordsMatch(doPasswordsMarch);
@@ -36,7 +36,7 @@ export function EmailPasswordForm({
             setIsLoading(true);
             onSubmit(email, password).then(() => setIsLoading(false));
         }
-    }
+    };
 
     return (
         <form onSubmit={handleSubmit} className="gap-6 flex flex-col">
@@ -44,7 +44,7 @@ export function EmailPasswordForm({
                 <Input
                     id="email"
                     type="email"
-                    label='Email'
+                    label="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -68,7 +68,9 @@ export function EmailPasswordForm({
                             required
                         />
                         {passwordsMatch === false && (
-                            <p className="text-sm text-red-500">Zaporke se ne podudaraju</p>
+                            <p className="text-sm text-red-500">
+                                Zaporke se ne podudaraju
+                            </p>
                         )}
                     </Stack>
                 )}
@@ -77,8 +79,14 @@ export function EmailPasswordForm({
                 <Button
                     type="submit"
                     fullWidth
-                    variant='soft'
-                    disabled={registration && !(Boolean(password.length) && Boolean(repeatPassword.length))}
+                    variant="soft"
+                    disabled={
+                        registration &&
+                        !(
+                            Boolean(password.length) &&
+                            Boolean(repeatPassword.length)
+                        )
+                    }
                     loading={isLoading}
                 >
                     {submitText}
@@ -95,6 +103,5 @@ export function EmailPasswordForm({
                 )}
             </Stack>
         </form>
-    )
+    );
 }
-

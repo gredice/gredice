@@ -15,7 +15,7 @@ export interface LocalDateTimeProps {
 /**
  * A client-side date/time formatter component that ensures dates are formatted
  * in the user's local timezone, preventing hydration mismatches.
- * 
+ *
  * This component avoids the server/client timezone mismatch by only rendering
  * the formatted date/time on the client side.
  */
@@ -26,7 +26,7 @@ export function LocalDateTime({
     format,
     locale = 'hr-HR',
     className,
-    title
+    title,
 }: LocalDateTimeProps) {
     const [mounted, setMounted] = useState(false);
 
@@ -41,16 +41,19 @@ export function LocalDateTime({
     }
 
     if (date === false && time === false) {
-        throw new Error('At least one of date or time must be true, or leave them undefined to show both');
+        throw new Error(
+            'At least one of date or time must be true, or leave them undefined to show both',
+        );
     }
 
     if (!children) {
         return null;
     }
 
-    const dateValue = typeof children === 'string' ? new Date(children) : children;
+    const dateValue =
+        typeof children === 'string' ? new Date(children) : children;
 
-    if (isNaN(dateValue.getTime())) {
+    if (Number.isNaN(dateValue.getTime())) {
         console.warn('LocalDateTime: Invalid date provided:', children);
         return <span className={className}>Invalid Date</span>;
     }
@@ -72,7 +75,7 @@ export function LocalDateTime({
         delete options.timeZoneName;
     }
 
-    // Remove date parts if date is disabled  
+    // Remove date parts if date is disabled
     if (date === false) {
         delete options.year;
         delete options.month;
@@ -80,7 +83,9 @@ export function LocalDateTime({
         delete options.weekday;
     }
 
-    const formattedValue = new Intl.DateTimeFormat(locale, options).format(dateValue);
+    const formattedValue = new Intl.DateTimeFormat(locale, options).format(
+        dateValue,
+    );
     const titleValue = title || dateValue.toISOString();
 
     return (
@@ -108,7 +113,7 @@ export function TimeRange({
     locale = 'hr-HR',
     className,
     timeOnly = false,
-    separator = ' - '
+    separator = ' - ',
 }: TimeRangeProps) {
     const [mounted, setMounted] = useState(false);
 
@@ -123,7 +128,7 @@ export function TimeRange({
     const startDate = typeof startAt === 'string' ? new Date(startAt) : startAt;
     const endDate = typeof endAt === 'string' ? new Date(endAt) : endAt;
 
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
         console.warn('TimeRange: Invalid dates provided:', { startAt, endAt });
         return <span className={className}>Invalid Date Range</span>;
     }
@@ -131,21 +136,30 @@ export function TimeRange({
     const timeFormat: Intl.DateTimeFormatOptions = {
         hour: '2-digit',
         minute: '2-digit',
-        hour12: false
+        hour12: false,
     };
 
     const dateFormat: Intl.DateTimeFormatOptions = {
         year: 'numeric',
         month: 'numeric',
-        day: 'numeric'
+        day: 'numeric',
     };
 
     if (timeOnly) {
-        const startTime = new Intl.DateTimeFormat(locale, timeFormat).format(startDate);
-        const endTime = new Intl.DateTimeFormat(locale, timeFormat).format(endDate);
+        const startTime = new Intl.DateTimeFormat(locale, timeFormat).format(
+            startDate,
+        );
+        const endTime = new Intl.DateTimeFormat(locale, timeFormat).format(
+            endDate,
+        );
         return (
-            <span className={className} title={`${startDate.toISOString()} - ${endDate.toISOString()}`}>
-                {startTime}{separator}{endTime}
+            <span
+                className={className}
+                title={`${startDate.toISOString()} - ${endDate.toISOString()}`}
+            >
+                {startTime}
+                {separator}
+                {endTime}
             </span>
         );
     }
@@ -154,24 +168,46 @@ export function TimeRange({
     const sameDay = startDate.toDateString() === endDate.toDateString();
 
     if (sameDay) {
-        const dateStr = new Intl.DateTimeFormat(locale, dateFormat).format(startDate);
-        const startTime = new Intl.DateTimeFormat(locale, timeFormat).format(startDate);
-        const endTime = new Intl.DateTimeFormat(locale, timeFormat).format(endDate);
-        
+        const dateStr = new Intl.DateTimeFormat(locale, dateFormat).format(
+            startDate,
+        );
+        const startTime = new Intl.DateTimeFormat(locale, timeFormat).format(
+            startDate,
+        );
+        const endTime = new Intl.DateTimeFormat(locale, timeFormat).format(
+            endDate,
+        );
+
         return (
-            <span className={className} title={`${startDate.toISOString()} - ${endDate.toISOString()}`}>
-                {dateStr} {startTime}{separator}{endTime}
+            <span
+                className={className}
+                title={`${startDate.toISOString()} - ${endDate.toISOString()}`}
+            >
+                {dateStr} {startTime}
+                {separator}
+                {endTime}
             </span>
         );
     }
 
     // Different days
-    const startStr = new Intl.DateTimeFormat(locale, { ...dateFormat, ...timeFormat }).format(startDate);
-    const endStr = new Intl.DateTimeFormat(locale, { ...dateFormat, ...timeFormat }).format(endDate);
+    const startStr = new Intl.DateTimeFormat(locale, {
+        ...dateFormat,
+        ...timeFormat,
+    }).format(startDate);
+    const endStr = new Intl.DateTimeFormat(locale, {
+        ...dateFormat,
+        ...timeFormat,
+    }).format(endDate);
 
     return (
-        <span className={className} title={`${startDate.toISOString()} - ${endDate.toISOString()}`}>
-            {startStr}{separator}{endStr}
+        <span
+            className={className}
+            title={`${startDate.toISOString()} - ${endDate.toISOString()}`}
+        >
+            {startStr}
+            {separator}
+            {endStr}
         </span>
     );
 }

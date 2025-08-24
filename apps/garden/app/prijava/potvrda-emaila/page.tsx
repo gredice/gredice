@@ -1,7 +1,12 @@
-import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card"
-import { MailCheck } from '@signalco/ui-icons'
-import { VerifyEmail } from "./VerifyEmail"
-import { Suspense } from "react"
+import { MailCheck } from '@signalco/ui-icons';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Suspense } from 'react';
+import { VerifyEmail } from './VerifyEmail';
 
 export default function EmailVerificationPage() {
     return (
@@ -11,7 +16,9 @@ export default function EmailVerificationPage() {
                     <div className="flex items-center justify-center size-12 rounded-full bg-[#2f6e40] mx-auto mb-4">
                         <MailCheck className="w-6 h-6 text-white" />
                     </div>
-                    <CardTitle className='text-center'>Potvrda email adrese</CardTitle>
+                    <CardTitle className="text-center">
+                        Potvrda email adrese
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Suspense>
@@ -20,6 +27,5 @@ export default function EmailVerificationPage() {
                 </CardContent>
             </Card>
         </div>
-    )
+    );
 }
-

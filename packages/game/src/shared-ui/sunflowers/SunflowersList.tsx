@@ -1,47 +1,82 @@
-import { Row } from "@signalco/ui-primitives/Row";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { List } from "@signalco/ui-primitives/List";
-import { ListItem } from "@signalco/ui-primitives/ListItem";
-import { useCurrentAccount } from "../../hooks/useCurrentAccount";
-import { NoSunflowersPlaceholder } from "./NoSunflowersPlaceholder";
-import { BlockImage } from "@gredice/ui/BlockImage";
-import { Empty } from "@signalco/ui-icons";
+import { BlockImage } from '@gredice/ui/BlockImage';
+import { Empty } from '@signalco/ui-icons';
+import { List } from '@signalco/ui-primitives/List';
+import { ListItem } from '@signalco/ui-primitives/ListItem';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import Image from 'next/image';
+import { useCurrentAccount } from '../../hooks/useCurrentAccount';
+import { NoSunflowersPlaceholder } from './NoSunflowersPlaceholder';
 
 function sunflowerReasonToDescription(reason: string) {
     if (reason === 'registration') {
-        return { icon: <span className="text-4xl text-center size-10">🎉</span>, label: 'Nagrada za registraciju' };
+        return {
+            icon: <span className="text-4xl text-center size-10">🎉</span>,
+            label: 'Nagrada za registraciju',
+        };
     }
 
     if (reason.startsWith('block')) {
-        return { icon: <BlockImage blockName={reason.split(':')[1]} className="size-10" width={40} height={40} />, label: 'Postavljanje bloka' };
+        return {
+            icon: (
+                <BlockImage
+                    blockName={reason.split(':')[1]}
+                    className="size-10"
+                    width={40}
+                    height={40}
+                />
+            ),
+            label: 'Postavljanje bloka',
+        };
     }
     if (reason.startsWith('recycle')) {
         return {
             icon: (
                 <div className="relative size-10">
-                    <BlockImage blockName={reason.split(':')[1]} className="absolute inset-0 size-10" width={40} height={40} />
-                    <img
-                        src={'https://vrt.gredice.com/assets/textures/recycle.png'}
+                    <BlockImage
+                        blockName={reason.split(':')[1]}
+                        className="absolute inset-0 size-10"
+                        width={40}
+                        height={40}
+                    />
+                    <Image
+                        src={
+                            'https://vrt.gredice.com/assets/textures/recycle.png'
+                        }
                         alt="Recikliranje"
                         width={20}
                         height={20}
-                        className="absolute top-0 right-0 size-5 opacity-50" />
+                        className="absolute top-0 right-0 size-5 opacity-50"
+                    />
                 </div>
-            ), label: 'Recikliranje bloka'
+            ),
+            label: 'Recikliranje bloka',
         };
     }
     if (reason === 'gift') {
-        return { icon: <span className="text-4xl text-center size-10">🎁</span>, label: 'Poklon' };
+        return {
+            icon: <span className="text-4xl text-center size-10">🎁</span>,
+            label: 'Poklon',
+        };
     }
     if (reason === 'payment') {
-        return { icon: <span className="text-4xl text-center size-10">💰</span>, label: 'Plaćanje' };
+        return {
+            icon: <span className="text-4xl text-center size-10">💰</span>,
+            label: 'Plaćanje',
+        };
     }
     if (reason.startsWith('shoppingCartItem')) {
-        return { icon: <span className="text-4xl text-center size-10">🛒</span>, label: 'Kupnja' };
+        return {
+            icon: <span className="text-4xl text-center size-10">🛒</span>,
+            label: 'Kupnja',
+        };
     }
     if (reason.startsWith('refund:operation')) {
-        return { icon: <span className="text-4xl text-center size-10">↩️</span>, label: 'Povrat sredstava za radnju' };
+        return {
+            icon: <span className="text-4xl text-center size-10">↩️</span>,
+            label: 'Povrat sredstava za radnju',
+        };
     }
 
     console.warn('Unknown sunflower reason:', reason);
@@ -61,7 +96,7 @@ export function SunflowersList({ limit }: { limit?: number }) {
 
     // Group similar items on a daily basis
     const historyGrouped = history.reduce((acc, event) => {
-        const eventDate = new Date(event.createdAt).toLocaleDateString("hr-HR");
+        const eventDate = new Date(event.createdAt).toLocaleDateString('hr-HR');
         const eventReasonGroup = event.reason.split(':')[0];
         const key = `${eventDate}-${eventReasonGroup}-${event.amount}`;
 
@@ -69,7 +104,7 @@ export function SunflowersList({ limit }: { limit?: number }) {
             acc.set(key, {
                 ...event,
                 totalAmount: event.amount,
-                count: 1
+                count: 1,
             });
         } else {
             const existingEvent = acc.get(key);
@@ -81,7 +116,10 @@ export function SunflowersList({ limit }: { limit?: number }) {
         }
 
         return acc;
-    }, new Map<string, (typeof history)[0] & { count: number, totalAmount: number }>());
+    }, new Map<
+        string,
+        (typeof history)[0] & { count: number; totalAmount: number }
+    >());
     const historyGroupedArray = Array.from(historyGrouped.values());
     const actualLimit = limit ?? historyGroupedArray.length;
 
@@ -92,23 +130,48 @@ export function SunflowersList({ limit }: { limit?: number }) {
                 return (
                     <ListItem
                         key={event.id}
-                        label={(
+                        label={
                             <Row spacing={1} justifyContent="space-between">
                                 <Row spacing={2}>
                                     {description.icon}
                                     <Stack>
                                         <Row spacing={1}>
-                                            <Typography level="body2">{description.label}</Typography>
-                                            <Typography secondary>{event.count > 1 ? `x${event.count}` : ''}</Typography>
+                                            <Typography level="body2">
+                                                {description.label}
+                                            </Typography>
+                                            <Typography secondary>
+                                                {event.count > 1
+                                                    ? `x${event.count}`
+                                                    : ''}
+                                            </Typography>
                                         </Row>
-                                        <Typography level="body3">{new Date(event.createdAt).toLocaleDateString('hr-HR', { day: "numeric", month: 'long', year: 'numeric' })}</Typography>
+                                        <Typography level="body3">
+                                            {new Date(
+                                                event.createdAt,
+                                            ).toLocaleDateString('hr-HR', {
+                                                day: 'numeric',
+                                                month: 'long',
+                                                year: 'numeric',
+                                            })}
+                                        </Typography>
                                     </Stack>
                                 </Row>
-                                <Typography color={event.totalAmount > 0 ? 'success' : 'danger'}>{event.totalAmount > 0 ? `+${event.totalAmount}` : event.totalAmount}</Typography>
+                                <Typography
+                                    color={
+                                        event.totalAmount > 0
+                                            ? 'success'
+                                            : 'danger'
+                                    }
+                                >
+                                    {event.totalAmount > 0
+                                        ? `+${event.totalAmount}`
+                                        : event.totalAmount}
+                                </Typography>
                             </Row>
-                        )} />
+                        }
+                    />
                 );
             })}
         </List>
-    )
+    );
 }

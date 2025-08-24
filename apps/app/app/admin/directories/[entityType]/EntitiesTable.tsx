@@ -1,18 +1,22 @@
 import { getEntitiesRaw } from '@gredice/storage';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Duplicate } from '@signalco/ui-icons';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
-import { KnownPages } from '../../../../src/KnownPages';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { EntityAttributeProgress } from './EntityAttributeProgress';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
-import { entityDisplayName } from '../../../../src/entities/entityAttributes';
 import { ServerActionIconButton } from '../../../../components/shared/ServerActionIconButton';
-import { Duplicate } from '@signalco/ui-icons';
+import { entityDisplayName } from '../../../../src/entities/entityAttributes';
+import { KnownPages } from '../../../../src/KnownPages';
 import { duplicateEntity } from '../../../(actions)/entityActions';
-import { LocalDateTime } from '../../../../components/shared/LocalDateTime';
+import { EntityAttributeProgress } from './EntityAttributeProgress';
 
-export async function EntitiesTable({ entityTypeName }: { entityTypeName: string }) {
+export async function EntitiesTable({
+    entityTypeName,
+}: {
+    entityTypeName: string;
+}) {
     const entities = await getEntitiesRaw(entityTypeName);
 
     return (
@@ -34,25 +38,41 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                         </Table.Cell>
                     </Table.Row>
                 )}
-                {entities.map(entity => {
+                {entities.map((entity) => {
                     return (
-                        <Table.Row key={entity.id} className='group'>
+                        <Table.Row key={entity.id} className="group">
                             <Table.Cell>
-                                <Link href={KnownPages.DirectoryEntity(entityTypeName, entity.id)}>
-                                    <Typography>{entityDisplayName(entity)}</Typography>
+                                <Link
+                                    href={KnownPages.DirectoryEntity(
+                                        entityTypeName,
+                                        entity.id,
+                                    )}
+                                >
+                                    <Typography>
+                                        {entityDisplayName(entity)}
+                                    </Typography>
                                 </Link>
                             </Table.Cell>
                             <Table.Cell>
-                                <div className='w-24'>
+                                <div className="w-24">
                                     <EntityAttributeProgress
                                         entityTypeName={entityTypeName}
-                                        entity={entity} />
+                                        entity={entity}
+                                    />
                                 </div>
                             </Table.Cell>
                             <Table.Cell>
-                                <div className='flex'>
-                                    <Chip color={entity.state === 'draft' ? 'neutral' : 'success'}>
-                                        {entity.state === 'draft' ? 'U izradi' : 'Objavljeno'}
+                                <div className="flex">
+                                    <Chip
+                                        color={
+                                            entity.state === 'draft'
+                                                ? 'neutral'
+                                                : 'success'
+                                        }
+                                    >
+                                        {entity.state === 'draft'
+                                            ? 'U izradi'
+                                            : 'Objavljeno'}
                                     </Chip>
                                 </div>
                             </Table.Cell>
@@ -67,9 +87,14 @@ export async function EntitiesTable({ entityTypeName }: { entityTypeName: string
                                 <ServerActionIconButton
                                     variant="plain"
                                     title="Dupliciraj zapis"
-                                    className='group-hover:opacity-100 opacity-0 transition-opacity'
-                                    onClick={duplicateEntity.bind(null, entityTypeName, entity.id)}>
-                                    <Duplicate className='size-5' />
+                                    className="group-hover:opacity-100 opacity-0 transition-opacity"
+                                    onClick={duplicateEntity.bind(
+                                        null,
+                                        entityTypeName,
+                                        entity.id,
+                                    )}
+                                >
+                                    <Duplicate className="size-5" />
                                 </ServerActionIconButton>
                             </Table.Cell>
                         </Table.Row>

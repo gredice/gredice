@@ -1,12 +1,12 @@
+import { createHypertuneAdapter } from '@flags-sdk/hypertune';
+import { flag } from 'flags/next';
 import {
+    type Context,
     createSource,
+    type FlagValues,
     vercelFlagDefinitions as flagDefinitions,
     flagFallbacks,
-    type FlagValues,
-    type Context,
-} from '../lib/flags/generated/hypertune'
-import { flag } from 'flags/next'
-import { createHypertuneAdapter } from '@flags-sdk/hypertune'
+} from '../lib/flags/generated/hypertune';
 import { identify } from '../lib/flags/identify';
 
 const hypertuneAdapter = createHypertuneAdapter<FlagValues, Context>({

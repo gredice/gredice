@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from "react";
-import { Modal } from "@signalco/ui-primitives/Modal";
-import { CreateTimeSlotForm } from "./CreateTimeSlotForm";
+import { Modal } from '@signalco/ui-primitives/Modal';
+import { useState } from 'react';
+import { CreateTimeSlotForm } from './CreateTimeSlotForm';
 
 type Location = {
     id: number;
@@ -14,7 +14,10 @@ type CreateTimeSlotModalProps = {
     locations: Location[];
 };
 
-export function CreateTimeSlotModal({ trigger, locations }: CreateTimeSlotModalProps) {
+export function CreateTimeSlotModal({
+    trigger,
+    locations,
+}: CreateTimeSlotModalProps) {
     const [open, setOpen] = useState(false);
 
     return (

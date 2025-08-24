@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
 import { client } from '@gredice/client';
+import { useQuery } from '@tanstack/react-query';
 
 export const pickupLocationsQueryKey = ['delivery', 'pickupLocations'];
 
@@ -7,13 +7,16 @@ export function usePickupLocations() {
     return useQuery({
         queryKey: pickupLocationsQueryKey,
         queryFn: async () => {
-            const response = await client().api.delivery['pickup-locations'].$get();
+            const response =
+                await client().api.delivery['pickup-locations'].$get();
             if (response.status !== 200) {
                 throw new Error('Failed to fetch pickup locations');
             }
             return await response.json();
-        }
+        },
     });
 }
 
-export type PickupLocationData = NonNullable<Awaited<ReturnType<typeof usePickupLocations>['data']>>[0];
+export type PickupLocationData = NonNullable<
+    Awaited<ReturnType<typeof usePickupLocations>['data']>
+>[0];

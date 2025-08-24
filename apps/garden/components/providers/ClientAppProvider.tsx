@@ -1,11 +1,11 @@
 'use client';
 
-import { AuthProvider } from '@signalco/auth-client/components';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { PropsWithChildren } from 'react';
-import { ThemeProvider } from 'next-themes';
-import { NotificationsContainer } from '@signalco/ui-notifications';
 import { client } from '@gredice/client';
+import { AuthProvider } from '@signalco/auth-client/components';
+import { NotificationsContainer } from '@signalco/ui-notifications';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider } from 'next-themes';
+import type { PropsWithChildren } from 'react';
 
 export type User = {
     id: string;
@@ -19,7 +19,7 @@ async function currentUserFactory() {
         return null;
     }
 
-    return await response.json() as User;
+    return (await response.json()) as User;
 }
 
 const queryClient = new QueryClient();
@@ -27,7 +27,7 @@ const queryClient = new QueryClient();
 export function ClientAppProvider({ children }: PropsWithChildren) {
     return (
         <QueryClientProvider client={queryClient}>
-            <ThemeProvider attribute="class" defaultTheme='light'>
+            <ThemeProvider attribute="class" defaultTheme="light">
                 <AuthProvider currentUserFactory={currentUserFactory}>
                     {children}
                     <NotificationsContainer />

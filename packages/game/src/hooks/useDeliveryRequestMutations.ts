@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { client } from '@gredice/client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deliveryRequestsQueryKey } from './useDeliveryRequests';
 
 export function useCreateDeliveryRequest() {
@@ -15,7 +15,7 @@ export function useCreateDeliveryRequest() {
             notes?: string;
         }) => {
             const response = await client().api.delivery.requests.$post({
-                json: data
+                json: data,
             });
             if (!response.ok) {
                 throw new Error('Failed to create delivery request');
@@ -24,9 +24,9 @@ export function useCreateDeliveryRequest() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({
-                queryKey: deliveryRequestsQueryKey
+                queryKey: deliveryRequestsQueryKey,
             });
-        }
+        },
     });
 }
 
@@ -40,14 +40,21 @@ export function useCancelDeliveryRequest() {
             note?: string;
         }) => {
             const { requestId, ...cancelData } = data;
-            const response = await client().api.delivery.requests[':id'].cancel.$patch({
+            const response = await client().api.delivery.requests[
+                ':id'
+            ].cancel.$patch({
                 param: { id: requestId },
-                json: cancelData
+                json: cancelData,
             });
             if (!response.ok) {
                 const errorData = await response.json();
-                if ('error' in errorData && errorData.error === 'CUTOFF_EXPIRED') {
-                    throw new Error('Cutoff time has passed. Cannot cancel delivery request.');
+                if (
+                    'error' in errorData &&
+                    errorData.error === 'CUTOFF_EXPIRED'
+                ) {
+                    throw new Error(
+                        'Cutoff time has passed. Cannot cancel delivery request.',
+                    );
                 }
                 throw new Error('Failed to cancel delivery request');
             }
@@ -55,8 +62,8 @@ export function useCancelDeliveryRequest() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({
-                queryKey: deliveryRequestsQueryKey
+                queryKey: deliveryRequestsQueryKey,
             });
-        }
+        },
     });
 }

@@ -1,6 +1,6 @@
 import vercelToolbar from '@vercel/toolbar/plugins/next';
-import { withAxiom } from 'next-axiom';
 import type { NextConfig } from 'next';
+import { withAxiom } from 'next-axiom';
 
 const nextConfig: NextConfig = {
     reactStrictMode: true,
@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
         reactCompiler: true,
         // Scope hoisting is disabled as a workaround for current compatibility issues with Turbopack and our codebase.
         // This should be revisited in future Next.js versions as the underlying issues may be resolved.
-        turbopackScopeHoisting: false
+        turbopackScopeHoisting: false,
     },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
     images: {
@@ -33,9 +33,9 @@ const nextConfig: NextConfig = {
                 port: '',
                 pathname: '/**',
             },
-        ]
+        ],
     },
-    productionBrowserSourceMaps: true
+    productionBrowserSourceMaps: true,
 };
 
 const withVercelToolbar = vercelToolbar();

@@ -1,12 +1,12 @@
 'use client';
 
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Input } from "@signalco/ui-primitives/Input";
-import { Button } from "@signalco/ui-primitives/Button";
-import { SelectItems } from "@signalco/ui-primitives/SelectItems";
-import { useFormStatus } from "react-dom";
-import { createTimeSlotAction } from "./actions";
-import { useState, useActionState } from "react";
+import { Button } from '@signalco/ui-primitives/Button';
+import { Input } from '@signalco/ui-primitives/Input';
+import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { useActionState, useState } from 'react';
+import { useFormStatus } from 'react-dom';
+import { createTimeSlotAction } from './actions';
 
 type Location = {
     id: number;
@@ -45,12 +45,16 @@ export function CreateTimeSlotForm({ locations }: CreateTimeSlotFormProps) {
                     placeholder="Odaberi lokaciju"
                     value={selectedLocation}
                     onValueChange={setSelectedLocation}
-                    items={locations.map(location => ({
+                    items={locations.map((location) => ({
                         value: location.id.toString(),
-                        label: location.name
+                        label: location.name,
                     }))}
                 />
-                <input type="hidden" name="locationId" value={selectedLocation} />
+                <input
+                    type="hidden"
+                    name="locationId"
+                    value={selectedLocation}
+                />
 
                 <SelectItems
                     variant="outlined"
@@ -59,7 +63,7 @@ export function CreateTimeSlotForm({ locations }: CreateTimeSlotFormProps) {
                     onValueChange={setSelectedType}
                     items={[
                         { value: 'delivery', label: 'Dostava' },
-                        { value: 'pickup', label: 'Preuzimanje' }
+                        { value: 'pickup', label: 'Preuzimanje' },
                     ]}
                 />
                 <input type="hidden" name="type" value={selectedType} />
@@ -84,7 +88,9 @@ export function CreateTimeSlotForm({ locations }: CreateTimeSlotFormProps) {
                 <SubmitButton />
 
                 {state?.message && (
-                    <div className={`text-sm ${state.success ? 'text-green-600' : 'text-red-600'}`}>
+                    <div
+                        className={`text-sm ${state.success ? 'text-green-600' : 'text-red-600'}`}
+                    >
                         {state.message}
                     </div>
                 )}

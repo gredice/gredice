@@ -1,31 +1,45 @@
-import { getGarden } from "@gredice/storage";
-import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
-import { auth } from "../../../../lib/auth/auth";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
-import { KnownPages } from "../../../../src/KnownPages";
-import { Field } from "../../../../components/shared/fields/Field";
-import { FieldSet } from "../../../../components/shared/fields/FieldSet";
-import Link from "next/link";
-import { RaisedBedsTableCard } from "../../accounts/[accountId]/RaisedBedsTableCard";
-import { notFound } from "next/navigation";
+import { getGarden } from '@gredice/storage';
+import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
+import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import Image from 'next/image';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { Field } from '../../../../components/shared/fields/Field';
+import { FieldSet } from '../../../../components/shared/fields/FieldSet';
+import { auth } from '../../../../lib/auth/auth';
+import { KnownPages } from '../../../../src/KnownPages';
+import { RaisedBedsTableCard } from '../../accounts/[accountId]/RaisedBedsTableCard';
 
 export const dynamic = 'force-dynamic';
 
-function GardenPreviewCard({ gardenId, gardenName }: { gardenId: number, gardenName: string }) {
+function GardenPreviewCard({
+    gardenId,
+    gardenName,
+}: {
+    gardenId: number;
+    gardenName: string;
+}) {
     return (
         <Card className="overflow-hidden">
             <CardOverflow>
-                <img
+                <Image
                     src={`https://vrt.gredice.com/vrtovi/${gardenId}/opengraph-image?fullscreen=true`}
                     alt={gardenName}
+                    layout="responsive"
+                    width={1200}
+                    height={630}
                 />
             </CardOverflow>
         </Card>
     );
 }
 
-export default async function GardenPage({ params }: { params: Promise<{ gardenId: number; }> }) {
+export default async function GardenPage({
+    params,
+}: {
+    params: Promise<{ gardenId: number }>;
+}) {
     const { gardenId } = await params;
     await auth(['admin']);
     const garden = await getGarden(gardenId);
@@ -37,25 +51,52 @@ export default async function GardenPage({ params }: { params: Promise<{ gardenI
     return (
         <Stack spacing={4}>
             <Stack spacing={2}>
-                <Breadcrumbs items={[
-                    { label: 'Vrtovi', href: KnownPages.Gardens },
-                    { label: garden?.name }
-                ]} />
+                <Breadcrumbs
+                    items={[
+                        { label: 'Vrtovi', href: KnownPages.Gardens },
+                        { label: garden?.name },
+                    ]}
+                />
                 <Stack spacing={2}>
                     <FieldSet>
                         <Field name="ID vrta" value={garden?.id} mono />
                         <Field name="Naziv" value={garden?.name} />
-                        <Field name="Račun" value={(<Link href={garden?.accountId ? KnownPages.Account(garden.accountId) : '#'}>{garden?.accountId}</Link>)} mono />
+                        <Field
+                            name="Račun"
+                            value={
+                                <Link
+                                    href={
+                                        garden?.accountId
+                                            ? KnownPages.Account(
+                                                  garden.accountId,
+                                              )
+                                            : '#'
+                                    }
+                                >
+                                    {garden?.accountId}
+                                </Link>
+                            }
+                            mono
+                        />
                         <Field name="Obrisan" value={garden?.isDeleted} />
                     </FieldSet>
                     <FieldSet>
-                        <Field name="Datum kreiranja" value={garden?.createdAt} />
-                        <Field name="Datum ažuriranja" value={garden?.updatedAt} />
+                        <Field
+                            name="Datum kreiranja"
+                            value={garden?.createdAt}
+                        />
+                        <Field
+                            name="Datum ažuriranja"
+                            value={garden?.updatedAt}
+                        />
                     </FieldSet>
                 </Stack>
             </Stack>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <GardenPreviewCard gardenId={gardenId} gardenName={garden.name} />
+                <GardenPreviewCard
+                    gardenId={gardenId}
+                    gardenName={garden.name}
+                />
             </div>
             <RaisedBedsTableCard gardenId={gardenId} />
         </Stack>

@@ -1,8 +1,8 @@
-import { ListHeader } from "@signalco/ui-primitives/List";
-import { SplitView } from "@signalco/ui/SplitView";
-import { ReactNode } from "react";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { LegalFilesMenu } from "./LegalFilesMenu";
+import { SplitView } from '@signalco/ui/SplitView';
+import { ListHeader } from '@signalco/ui-primitives/List';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import type { ReactNode } from 'react';
+import { LegalFilesMenu } from './LegalFilesMenu';
 
 export default function LegalLayout({ children }: { children: ReactNode }) {
     return (
@@ -11,9 +11,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
                 <ListHeader header="Legalno" />
                 <LegalFilesMenu />
             </Stack>
-            <div className="mb-12 md:mb-24">
-                {children}
-            </div>
+            <div className="mb-12 md:mb-24">{children}</div>
         </SplitView>
     );
 }

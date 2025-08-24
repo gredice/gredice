@@ -1,11 +1,18 @@
-import { getEntityTypeByNameWithCategory, getEntityTypeCategories } from "@gredice/storage";
-import { auth } from "../../../../../lib/auth/auth";
-import { notFound } from "next/navigation";
-import { EntityTypeEditForm } from "./EntityTypeEditForm";
+import {
+    getEntityTypeByNameWithCategory,
+    getEntityTypeCategories,
+} from '@gredice/storage';
+import { notFound } from 'next/navigation';
+import { auth } from '../../../../../lib/auth/auth';
+import { EntityTypeEditForm } from './EntityTypeEditForm';
 
 export const dynamic = 'force-dynamic';
 
-export default async function EditEntityTypePage({ params }: { params: { entityType: string } }) {
+export default async function EditEntityTypePage({
+    params,
+}: {
+    params: { entityType: string };
+}) {
     await auth(['admin']);
 
     const entityType = await getEntityTypeByNameWithCategory(params.entityType);
@@ -15,5 +22,7 @@ export default async function EditEntityTypePage({ params }: { params: { entityT
 
     const categories = await getEntityTypeCategories();
 
-    return <EntityTypeEditForm entityType={entityType} categories={categories} />;
+    return (
+        <EntityTypeEditForm entityType={entityType} categories={categories} />
+    );
 }

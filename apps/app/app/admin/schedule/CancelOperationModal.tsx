@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Modal } from "@signalco/ui-primitives/Modal";
-import { Button } from "@signalco/ui-primitives/Button";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Close } from "@signalco/ui-icons";
-import { cancelOperationAction } from "../../(actions)/operationActions";
+import { Close } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Modal } from '@signalco/ui-primitives/Modal';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useState } from 'react';
+import { cancelOperationAction } from '../../(actions)/operationActions';
 
 interface CancelOperationModalProps {
     operation: {
@@ -23,7 +23,7 @@ interface CancelOperationModalProps {
 export function CancelOperationModal({
     operation,
     operationLabel,
-    trigger
+    trigger,
 }: CancelOperationModalProps) {
     const [open, setOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -38,7 +38,9 @@ export function CancelOperationModal({
             setOpen(false);
         } catch (error) {
             console.error('Error canceling operation:', error);
-            alert('Greška pri otkazivanju operacije: ' + (error as Error).message);
+            alert(
+                `Greška pri otkazivanju operacije: ${(error as Error).message}`,
+            );
         } finally {
             setIsLoading(false);
         }
@@ -50,21 +52,28 @@ export function CancelOperationModal({
             trigger={trigger}
             title={`Otkaži: ${operationLabel}`}
             open={open}
-            onOpenChange={setOpen}>
+            onOpenChange={setOpen}
+        >
             <form onSubmit={handleSubmit}>
                 <Stack spacing={2}>
-                    <Typography level="h5">
-                        Otkazivanje operacije
-                    </Typography>
+                    <Typography level="h5">Otkazivanje operacije</Typography>
                     <Typography>
-                        Operacija će biti otkazana i korisnik će biti obaviješten o otkazivanju.
-                        {operation.status === 'planned' && ' Ako je operacija plaćena suncokretima, oni će biti refundirani.'}
+                        Operacija će biti otkazana i korisnik će biti
+                        obaviješten o otkazivanju.
+                        {operation.status === 'planned' &&
+                            ' Ako je operacija plaćena suncokretima, oni će biti refundirani.'}
                     </Typography>
 
-                    <input type="hidden" name="operationId" value={operation.id} />
+                    <input
+                        type="hidden"
+                        name="operationId"
+                        value={operation.id}
+                    />
 
                     <Stack spacing={1}>
-                        <Typography level="body2">Razlog otkazivanja</Typography>
+                        <Typography level="body2">
+                            Razlog otkazivanja
+                        </Typography>
                         <textarea
                             name="reason"
                             placeholder="Unesite razlog otkazivanja operacije..."
@@ -89,7 +98,9 @@ export function CancelOperationModal({
                             color="danger"
                             disabled={isLoading}
                             loading={isLoading}
-                            startDecorator={<Close className="size-5 shrink-0" />}
+                            startDecorator={
+                                <Close className="size-5 shrink-0" />
+                            }
                         >
                             Otkaži operaciju
                         </Button>

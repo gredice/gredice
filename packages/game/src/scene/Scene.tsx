@@ -1,13 +1,14 @@
 'use client';
 
+import { Canvas, type Vector3 as FiberVector3 } from '@react-three/fiber';
+import type { HTMLAttributes, PropsWithChildren } from 'react';
 import { PCFSoftShadowMap } from 'three';
-import { Canvas, Vector3 as FiberVector3 } from '@react-three/fiber';
-import { HTMLAttributes, PropsWithChildren } from 'react';
 
-export type SceneProps = HTMLAttributes<HTMLDivElement> & PropsWithChildren<{
-    position: FiberVector3,
-    zoom: number,
-}>;
+export type SceneProps = HTMLAttributes<HTMLDivElement> &
+    PropsWithChildren<{
+        position: FiberVector3;
+        zoom: number;
+    }>;
 
 export function Scene({ children, position, zoom, ...rest }: SceneProps) {
     return (
@@ -21,10 +22,11 @@ export function Scene({ children, position, zoom, ...rest }: SceneProps) {
                 position,
                 zoom,
                 far: 10000,
-                near: 0.01
+                near: 0.01,
             }}
-            {...rest}>
+            {...rest}
+        >
             {children}
         </Canvas>
-    )
+    );
 }

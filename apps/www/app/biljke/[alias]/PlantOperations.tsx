@@ -1,12 +1,12 @@
-import { Card, CardContent } from "@signalco/ui-primitives/Card";
-import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { KnownPages } from "../../../src/KnownPages";
-import { Info } from "@signalco/ui-icons";
-import { PlantData } from "@gredice/client";
-import { OperationImage } from "@gredice/ui/OperationImage";
-import Link from "next/link";
+import type { PlantData } from '@gredice/client';
+import { OperationImage } from '@gredice/ui/OperationImage';
+import { Info } from '@signalco/ui-icons';
+import { Card, CardContent } from '@signalco/ui-primitives/Card';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import Link from 'next/link';
+import { KnownPages } from '../../../src/KnownPages';
 
 export function operationFrequencyLabel(frequency: string | undefined) {
     switch (frequency) {
@@ -25,13 +25,21 @@ export function operationFrequencyLabel(frequency: string | undefined) {
         case 'monthly':
             return 'Svakog mjeseca';
         default:
-            return "Nepoznato";
+            return 'Nepoznato';
     }
 }
 
-export function PlantOperations({ operations }: { operations?: PlantData["information"]["operations"] }) {
+export function PlantOperations({
+    operations,
+}: {
+    operations?: PlantData['information']['operations'];
+}) {
     const orderedOperations = operations?.sort((a, b) => {
-        if (a.attributes?.relativeDays == null && b.attributes?.relativeDays == null) return 0;
+        if (
+            a.attributes?.relativeDays == null &&
+            b.attributes?.relativeDays == null
+        )
+            return 0;
         if (a.attributes?.relativeDays == null) return 1;
         if (b.attributes?.relativeDays == null) return -1;
         return a.attributes.relativeDays - b.attributes.relativeDays;
@@ -40,16 +48,25 @@ export function PlantOperations({ operations }: { operations?: PlantData["inform
     return (
         <Stack spacing={1}>
             {orderedOperations?.map((operation, operationIndex) => (
-                <div key={operation.information?.name ?? operationIndex} className="flex flex-col md:flex-row md:items-center group gap-x-4">
+                <div
+                    key={operation.information?.name ?? operationIndex}
+                    className="flex flex-col md:flex-row md:items-center group gap-x-4"
+                >
                     {/* TODO: Extract insutrction card */}
                     <Card className="flex-grow">
                         <CardContent className="py-0 pl-3 pr-0 flex items-center justify-between">
                             <Row spacing={2}>
                                 <OperationImage operation={operation} />
                                 <div>
-                                    <h3 className="font-semibold">{operation.information?.label}</h3>
+                                    <h3 className="font-semibold">
+                                        {operation.information?.label}
+                                    </h3>
                                     {operation.attributes?.frequency && (
-                                        <p className="text-sm text-muted-foreground">{operationFrequencyLabel(operation.attributes.frequency)}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {operationFrequencyLabel(
+                                                operation.attributes.frequency,
+                                            )}
+                                        </p>
                                     )}
                                 </div>
                             </Row>
@@ -57,7 +74,15 @@ export function PlantOperations({ operations }: { operations?: PlantData["inform
                                 <span>
                                     {operation.prices?.perOperation.toFixed(2)}€
                                 </span>
-                                <Link href={operation.information?.label ? KnownPages.Operation(operation.information?.label) : KnownPages.Operations}>
+                                <Link
+                                    href={
+                                        operation.information?.label
+                                            ? KnownPages.Operation(
+                                                  operation.information?.label,
+                                              )
+                                            : KnownPages.Operations
+                                    }
+                                >
                                     <IconButton
                                         size="lg"
                                         variant="plain"
@@ -72,5 +97,5 @@ export function PlantOperations({ operations }: { operations?: PlantData["inform
                 </div>
             ))}
         </Stack>
-    )
+    );
 }

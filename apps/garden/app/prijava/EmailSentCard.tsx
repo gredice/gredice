@@ -1,8 +1,13 @@
-import { Button } from "@signalco/ui-primitives/Button";
-import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Mail } from "@signalco/ui-icons";
+import { Mail } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
 
 export function EmailSentCard() {
     return (
@@ -19,9 +24,11 @@ export function EmailSentCard() {
                         Provjeri svoj email za nastavak promjene zaporke
                     </Typography>
                     <Typography level="body3" center>
-                        Poslali smo ti link za promjene zaporke na tvoju email adresu. Molimo te provjeri svoj inbox i slijedi upute za promjenu zaporke.
+                        Poslali smo ti link za promjene zaporke na tvoju email
+                        adresu. Molimo te provjeri svoj inbox i slijedi upute za
+                        promjenu zaporke.
                     </Typography>
-                    <Button href="/" fullWidth variant='soft'>
+                    <Button href="/" fullWidth variant="soft">
                         Povratak
                     </Button>
                 </Stack>

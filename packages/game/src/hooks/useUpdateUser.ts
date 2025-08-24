@@ -1,24 +1,30 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKey, useCurrentUser } from "./useCurrentUser";
-import { client } from "@gredice/client";
+import { client } from '@gredice/client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryKey, useCurrentUser } from './useCurrentUser';
 
 export function useUpdateUser() {
     const queryClient = useQueryClient();
     const currentUser = useCurrentUser();
     return useMutation({
-        mutationFn: async ({ displayName, avatarUrl }: { displayName?: string, avatarUrl?: string | null }) => {
+        mutationFn: async ({
+            displayName,
+            avatarUrl,
+        }: {
+            displayName?: string;
+            avatarUrl?: string | null;
+        }) => {
             if (!currentUser.data) {
                 throw new Error('Current user data is not available');
             }
 
-            const response = await client().api.users[":userId"].$patch({
+            const response = await client().api.users[':userId'].$patch({
                 param: {
-                    userId: currentUser.data.id
+                    userId: currentUser.data.id,
                 },
                 json: {
                     displayName,
-                    avatarUrl
-                }
+                    avatarUrl,
+                },
             });
 
             if (response.status === 404) {
@@ -30,6 +36,6 @@ export function useUpdateUser() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKey.currentUser });
-        }
-    })
+        },
+    });
 }

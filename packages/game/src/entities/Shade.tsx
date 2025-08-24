@@ -1,10 +1,10 @@
-import { animated } from "@react-spring/three";
-import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
-import { useStackHeight } from "../utils/getStackHeight";
-import { useGameGLTF } from "../utils/useGameGLTF";
-import { useEntityNeighbors } from "./helpers/useEntityNeighbors";
-import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
-import { models } from "../data/models";
+import { animated } from '@react-spring/three';
+import { models } from '../data/models';
+import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
+import { useStackHeight } from '../utils/getStackHeight';
+import { useGameGLTF } from '../utils/useGameGLTF';
+import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
+import { useEntityNeighbors } from './helpers/useEntityNeighbors';
 
 export function Shade({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
@@ -80,11 +80,11 @@ export function Shade({ stack, block, rotation }: EntityInstanceProps) {
             sides++;
         }
 
-        if (sides === 2 && (s && e || n && w || n && e || s && w)) {
+        if (sides === 2 && ((s && e) || (n && w) || (n && e) || (s && w))) {
             middle = true;
         } else if (sides >= 3) {
             middle = true;
-        } 
+        }
 
         realizedRotation = 0;
     }
@@ -98,55 +98,72 @@ export function Shade({ stack, block, rotation }: EntityInstanceProps) {
     return (
         <animated.group
             position={stack.position.clone().setY(currentStackHeight + 1)}
-            rotation={animatedRotation as unknown as [number, number, number]}>
-            {solo && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes[`Shade_Solo`].geometry}
-                material={materials['Material.Planks']}
-            />}
-            {left && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes[`Shade_Single_Left`].geometry}
-                material={materials['Material.Planks']}
-            />}
-            {right && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes[`Shade_Single_Right`].geometry}
-                material={materials['Material.Planks']}
-            />}
-            {n && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes['Shade_N'].geometry}
-                material={materials['Material.Planks']}
-            />}
-            {e && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes['Shade_E'].geometry}
-                material={materials['Material.Planks']}
-            />}
-            {w && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes['Shade_W'].geometry}
-                material={materials['Material.Planks']}
-            />}
-            {s && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes['Shade_S'].geometry}
-                material={materials['Material.Planks']}
-            />}
-            {middle && <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes['Shade_Middle'].geometry}
-                material={materials['Material.Planks']}
-            />}
+            rotation={animatedRotation as unknown as [number, number, number]}
+        >
+            {solo && (
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.Shade_Solo.geometry}
+                    material={materials['Material.Planks']}
+                />
+            )}
+            {left && (
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.Shade_Single_Left.geometry}
+                    material={materials['Material.Planks']}
+                />
+            )}
+            {right && (
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.Shade_Single_Right.geometry}
+                    material={materials['Material.Planks']}
+                />
+            )}
+            {n && (
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.Shade_N.geometry}
+                    material={materials['Material.Planks']}
+                />
+            )}
+            {e && (
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.Shade_E.geometry}
+                    material={materials['Material.Planks']}
+                />
+            )}
+            {w && (
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.Shade_W.geometry}
+                    material={materials['Material.Planks']}
+                />
+            )}
+            {s && (
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.Shade_S.geometry}
+                    material={materials['Material.Planks']}
+                />
+            )}
+            {middle && (
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.Shade_Middle.geometry}
+                    material={materials['Material.Planks']}
+                />
+            )}
         </animated.group>
     );
 }

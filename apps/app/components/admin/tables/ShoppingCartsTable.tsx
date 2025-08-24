@@ -1,14 +1,18 @@
-import { getAllShoppingCarts } from "@gredice/storage";
-import { Table } from "@signalco/ui-primitives/Table";
-import { auth } from "../../../lib/auth/auth";
-import { KnownPages } from "../../../src/KnownPages";
-import Link from "next/link";
-import { NoDataPlaceholder } from "../../shared/placeholders/NoDataPlaceholder";
-import { LocalDateTime } from "@gredice/ui/LocalDateTime";
-import { Chip } from "@signalco/ui-primitives/Chip";
-import { Typography } from "@signalco/ui-primitives/Typography";
+import { getAllShoppingCarts } from '@gredice/storage';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Chip } from '@signalco/ui-primitives/Chip';
+import { Table } from '@signalco/ui-primitives/Table';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import Link from 'next/link';
+import { auth } from '../../../lib/auth/auth';
+import { KnownPages } from '../../../src/KnownPages';
+import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 
-export async function ShoppingCartsTable({ accountId }: { accountId?: string }) {
+export async function ShoppingCartsTable({
+    accountId,
+}: {
+    accountId?: string;
+}) {
     await auth(['admin']);
 
     const shoppingCarts = await getAllShoppingCarts({ filter: { accountId } });
@@ -33,18 +37,24 @@ export async function ShoppingCartsTable({ accountId }: { accountId?: string }) 
                         </Table.Cell>
                     </Table.Row>
                 )}
-                {shoppingCarts.map(cart => (
+                {shoppingCarts.map((cart) => (
                     <Table.Row key={cart.id}>
                         <Table.Cell>
                             <Link href={KnownPages.ShoppingCart(cart.id)}>
                                 <Typography>{cart.id}</Typography>
                             </Link>
                         </Table.Cell>
-                        {!Boolean(accountId) && (
+                        {!accountId && (
                             <Table.Cell>
                                 {cart.accountId ? (
-                                    <Link href={KnownPages.Account(cart.accountId)}>
-                                        <Typography>{cart.accountId}</Typography>
+                                    <Link
+                                        href={KnownPages.Account(
+                                            cart.accountId,
+                                        )}
+                                    >
+                                        <Typography>
+                                            {cart.accountId}
+                                        </Typography>
                                     </Link>
                                 ) : (
                                     <Typography>Nepoznato</Typography>
@@ -52,8 +62,16 @@ export async function ShoppingCartsTable({ accountId }: { accountId?: string }) 
                             </Table.Cell>
                         )}
                         <Table.Cell>
-                            <Chip color={cart.status === 'active' ? 'success' : 'neutral'}>
-                                {cart.status === 'active' ? 'Aktivna' : 'Neaktivna'}
+                            <Chip
+                                color={
+                                    cart.status === 'active'
+                                        ? 'success'
+                                        : 'neutral'
+                                }
+                            >
+                                {cart.status === 'active'
+                                    ? 'Aktivna'
+                                    : 'Neaktivna'}
                             </Chip>
                         </Table.Cell>
                         <Table.Cell>{cart.items.length}</Table.Cell>

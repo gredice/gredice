@@ -1,5 +1,5 @@
-import { Suspense } from "react";
-import { DeleteAccountCard } from "./DeleteAccountCard";
+import { Suspense } from 'react';
+import { DeleteAccountCard } from './DeleteAccountCard';
 
 export default function AccountDeleteConfirmPage() {
     return (

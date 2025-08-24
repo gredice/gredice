@@ -1,21 +1,26 @@
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Container } from "@signalco/ui-primitives/Container";
-import { PageHeader } from "../../../components/shared/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Chip } from "@signalco/ui-primitives/Chip";
-import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
-import { WhatsAppCard } from "../../../components/social/WhatsAppCard";
 import { client } from '@gredice/client';
-import { StyledHtml } from "../../../components/shared/StyledHtml";
-import { Metadata } from "next";
-import { TimeRange, LocalDateTime } from "@gredice/ui/LocalDateTime";
+import { LocalDateTime, TimeRange } from '@gredice/ui/LocalDateTime';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Chip } from '@signalco/ui-primitives/Chip';
+import { Container } from '@signalco/ui-primitives/Container';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import type { Metadata } from 'next';
+import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import { PageHeader } from '../../../components/shared/PageHeader';
+import { StyledHtml } from '../../../components/shared/StyledHtml';
+import { WhatsAppCard } from '../../../components/social/WhatsAppCard';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
-    title: "Termini dostave",
-    description: "Vidi dostupne termine za dostavu ili osobno preuzimanje.",
+    title: 'Termini dostave',
+    description: 'Vidi dostupne termine za dostavu ili osobno preuzimanje.',
 };
 
 // Types from API response - these match the type-safe client schema
@@ -37,7 +42,9 @@ interface TimeSlot {
 }
 
 // Fetch slots using type-safe client
-async function fetchTimeSlots(type: 'delivery' | 'pickup'): Promise<TimeSlot[]> {
+async function fetchTimeSlots(
+    type: 'delivery' | 'pickup',
+): Promise<TimeSlot[]> {
     const fromDate = new Date();
     const toDate = new Date();
     toDate.setDate(toDate.getDate() + 14);
@@ -47,8 +54,8 @@ async function fetchTimeSlots(type: 'delivery' | 'pickup'): Promise<TimeSlot[]> 
             query: {
                 type,
                 from: fromDate.toISOString(),
-                to: toDate.toISOString()
-            }
+                to: toDate.toISOString(),
+            },
         });
 
         if (!response.ok) {
@@ -67,24 +74,32 @@ async function fetchTimeSlots(type: 'delivery' | 'pickup'): Promise<TimeSlot[]> 
 
 // Group slots by date for better display
 function groupSlotsByDate(slots: TimeSlot[]) {
-    const grouped = slots.reduce((acc, slot) => {
-        const date = new Date(slot.startAt).toDateString();
-        if (!acc[date]) {
-            acc[date] = [];
-        }
-        acc[date].push(slot);
-        return acc;
-    }, {} as Record<string, TimeSlot[]>);
+    const grouped = slots.reduce(
+        (acc, slot) => {
+            const date = new Date(slot.startAt).toDateString();
+            if (!acc[date]) {
+                acc[date] = [];
+            }
+            acc[date].push(slot);
+            return acc;
+        },
+        {} as Record<string, TimeSlot[]>,
+    );
 
     // Sort dates
     return Object.keys(grouped)
         .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
-        .reduce((acc, date) => {
-            acc[date] = grouped[date].sort((a: TimeSlot, b: TimeSlot) =>
-                new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
-            );
-            return acc;
-        }, {} as Record<string, TimeSlot[]>);
+        .reduce(
+            (acc, date) => {
+                acc[date] = grouped[date].sort(
+                    (a: TimeSlot, b: TimeSlot) =>
+                        new Date(a.startAt).getTime() -
+                        new Date(b.startAt).getTime(),
+                );
+                return acc;
+            },
+            {} as Record<string, TimeSlot[]>,
+        );
 }
 
 async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
@@ -97,7 +112,9 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
                 <Stack spacing={2} className="text-center">
                     <Typography level="h6">Nema dostupnih termina</Typography>
                     <Typography level="body2" className="text-muted-foreground">
-                        Trenutno nema dostupnih termina za {type === 'delivery' ? 'dostavu' : 'osobno preuzimanje'} u sljedećih 14 dana.
+                        Trenutno nema dostupnih termina za{' '}
+                        {type === 'delivery' ? 'dostavu' : 'osobno preuzimanje'}{' '}
+                        u sljedećih 14 dana.
                     </Typography>
                 </Stack>
             </Card>
@@ -110,14 +127,17 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
                 <Card key={date}>
                     <CardHeader>
                         <CardTitle>
-                            <Typography level="h5" className="text-xl font-normal">
+                            <Typography
+                                level="h5"
+                                className="text-xl font-normal"
+                            >
                                 <LocalDateTime
                                     time={false}
                                     format={{
                                         weekday: 'long',
                                         day: 'numeric',
                                         month: 'long',
-                                        year: 'numeric'
+                                        year: 'numeric',
                                     }}
                                 >
                                     {new Date(date)}
@@ -129,21 +149,38 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                             {dateSlots.map((slot) => {
                                 return (
-                                    <div key={slot.id} className="border rounded-lg p-3 bg-background">
+                                    <div
+                                        key={slot.id}
+                                        className="border rounded-lg p-3 bg-background"
+                                    >
                                         <Stack spacing={2}>
-                                            <Row spacing={2} className="items-center">
-                                                <Typography level="body2" semiBold>
-                                                    <TimeRange startAt={slot.startAt} endAt={slot.endAt} timeOnly />
+                                            <Row
+                                                spacing={2}
+                                                className="items-center"
+                                            >
+                                                <Typography
+                                                    level="body2"
+                                                    semiBold
+                                                >
+                                                    <TimeRange
+                                                        startAt={slot.startAt}
+                                                        endAt={slot.endAt}
+                                                        timeOnly
+                                                    />
                                                 </Typography>
                                                 <Chip color="success" size="sm">
                                                     Dostupno
                                                 </Chip>
                                             </Row>
-                                            {slot.location && slot.type === 'pickup' && (
-                                                <Typography level="body3" className="text-muted-foreground">
-                                                    📍 {slot.location.name}
-                                                </Typography>
-                                            )}
+                                            {slot.location &&
+                                                slot.type === 'pickup' && (
+                                                    <Typography
+                                                        level="body3"
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        📍 {slot.location.name}
+                                                    </Typography>
+                                                )}
                                         </Stack>
                                     </div>
                                 );
@@ -167,22 +204,24 @@ export default async function DeliverySlotsPage() {
                 />
 
                 <Typography level="body1">
-                    Ovdje možeš vidjeti sve dostupne termine za dostavu ili osobno preuzimanje u sljedećih 14 dana.
-                    Termin možeš rezervirati u <strong>aplikaciju</strong> tijekom narudžbe branja.
+                    Ovdje možeš vidjeti sve dostupne termine za dostavu ili
+                    osobno preuzimanje u sljedećih 14 dana. Termin možeš
+                    rezervirati u <strong>aplikaciju</strong> tijekom narudžbe
+                    branja.
                 </Typography>
 
                 <Card className="w-fit p-4 pt-6 pr-6">
                     <CardHeader>
-                        <CardTitle>
-                            💡 Kako rezervirati termin?
-                        </CardTitle>
+                        <CardTitle>💡 Kako rezervirati termin?</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <StyledHtml>
                             <ol>
                                 <li>Dodaj barem jedno branje u košaricu</li>
                                 <li>Potvrdi plaćanje</li>
-                                <li>Odaberi način dostave i preferirani termin</li>
+                                <li>
+                                    Odaberi način dostave i preferirani termin
+                                </li>
                                 <li>Završi narudžbu</li>
                             </ol>
                         </StyledHtml>
@@ -190,14 +229,19 @@ export default async function DeliverySlotsPage() {
                 </Card>
 
                 <Stack spacing={2}>
-                    <Typography level="h4">Termini dostave na adresu</Typography>
+                    <Typography level="h4">
+                        Termini dostave na adresu
+                    </Typography>
                     <Typography level="body2" className="text-muted-foreground">
-                        Dostava se vrši u 2-satnim blokovima na područje Zagreba i okolice.
+                        Dostava se vrši u 2-satnim blokovima na područje Zagreba
+                        i okolice.
                     </Typography>
                     <SlotsDisplay type="delivery" />
                 </Stack>
                 <Stack spacing={2}>
-                    <Typography level="h4">Termini osobnog preuzimanja</Typography>
+                    <Typography level="h4">
+                        Termini osobnog preuzimanja
+                    </Typography>
                     <Typography level="body2" className="text-muted-foreground">
                         Osobno preuzimanje na našim lokacijama u Zagrebu.
                     </Typography>
@@ -205,12 +249,16 @@ export default async function DeliverySlotsPage() {
                 </Stack>
 
                 <Stack spacing={2}>
-                    <Typography level="h6">Potrebna ti je pomoć ili više informacija o dostavi?</Typography>
+                    <Typography level="h6">
+                        Potrebna ti je pomoć ili više informacija o dostavi?
+                    </Typography>
                     <WhatsAppCard />
                 </Stack>
 
                 <Row spacing={2} className="mt-8">
-                    <Typography level="body1">Jesu li ti ove informacije korisne?</Typography>
+                    <Typography level="body1">
+                        Jesu li ti ove informacije korisne?
+                    </Typography>
                     <FeedbackModal topic="www/delivery-slots" />
                 </Row>
             </Stack>

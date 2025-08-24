@@ -1,13 +1,21 @@
-import { Card, CardHeader, CardTitle, CardOverflow } from "@signalco/ui-primitives/Card";
-import { getNotificationsByAccount, getNotificationsByUser } from "@gredice/storage";
-import { Table } from "@signalco/ui-primitives/Table";
-import { LocalDateTime } from "@gredice/ui/LocalDateTime";
-import { NotificationCreateModal } from "./NotificationCreateModal";
-import { Row } from "@signalco/ui-primitives/Row";
-import { ServerActionIconButton } from "../shared/ServerActionIconButton";
-import { Delete } from "@signalco/ui-icons";
-import { deleteNotification } from "./(actions)/notificationActions";
-import { NoDataPlaceholder } from "../shared/placeholders/NoDataPlaceholder";
+import {
+    getNotificationsByAccount,
+    getNotificationsByUser,
+} from '@gredice/storage';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Delete } from '@signalco/ui-icons';
+import {
+    Card,
+    CardHeader,
+    CardOverflow,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Table } from '@signalco/ui-primitives/Table';
+import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
+import { ServerActionIconButton } from '../shared/ServerActionIconButton';
+import { deleteNotification } from './(actions)/notificationActions';
+import { NotificationCreateModal } from './NotificationCreateModal';
 
 type NotificationTableCardProps = {
     accountId?: string;
@@ -16,7 +24,12 @@ type NotificationTableCardProps = {
     raisedBedId?: number;
 };
 
-export async function NotificationsTableCard({ accountId, userId, gardenId, raisedBedId }: NotificationTableCardProps) {
+export async function NotificationsTableCard({
+    accountId,
+    userId,
+    gardenId,
+    raisedBedId,
+}: NotificationTableCardProps) {
     const accountNotifications = accountId
         ? await getNotificationsByAccount(accountId, true, 0, 10000)
         : [];
@@ -26,9 +39,13 @@ export async function NotificationsTableCard({ accountId, userId, gardenId, rais
         : [];
 
     // Filter notifications by gardenId or raisedBedId if provided
-    const filteredNotifications = [...accountNotifications, ...userNotifications].filter(notification => {
+    const filteredNotifications = [
+        ...accountNotifications,
+        ...userNotifications,
+    ].filter((notification) => {
         if (gardenId && notification.gardenId !== gardenId) return false;
-        if (raisedBedId && notification.raisedBedId !== raisedBedId) return false;
+        if (raisedBedId && notification.raisedBedId !== raisedBedId)
+            return false;
         return true;
     });
 
@@ -65,57 +82,89 @@ export async function NotificationsTableCard({ accountId, userId, gardenId, rais
                         </Table.Row>
                     </Table.Header>
                     <Table.Body>
-                        {filteredNotifications.map(notification => (
+                        {filteredNotifications.map((notification) => (
                             <Table.Row key={notification.id}>
                                 <Table.Cell>{notification.header}</Table.Cell>
                                 <Table.Cell>{notification.content}</Table.Cell>
                                 <Table.Cell>
                                     {notification.linkUrl ? (
-                                        <a href={notification.linkUrl} target="_blank" rel="noopener noreferrer">
+                                        <a
+                                            href={notification.linkUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
                                             {notification.linkUrl}
                                         </a>
                                     ) : (
-                                        "-"
+                                        '-'
                                     )}
                                 </Table.Cell>
                                 <Table.Cell>
                                     {notification.imageUrl ? (
-                                        <a href={notification.imageUrl} target="_blank" rel="noopener noreferrer">
+                                        <a
+                                            href={notification.imageUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
                                             Pogledaj sliku
                                         </a>
                                     ) : (
-                                        "-"
+                                        '-'
                                     )}
                                 </Table.Cell>
-                                <Table.Cell>{notification.blockId || "-"}</Table.Cell>
-                                <Table.Cell>{notification.accountId || "-"}</Table.Cell>
-                                <Table.Cell>{notification.userId || "-"}</Table.Cell>
-                                <Table.Cell>{notification.gardenId || "-"}</Table.Cell>
-                                <Table.Cell>{notification.readAt ? "Da" : "Ne"}</Table.Cell>
                                 <Table.Cell>
-                                    <LocalDateTime>{notification.timestamp}</LocalDateTime>
+                                    {notification.blockId || '-'}
+                                </Table.Cell>
+                                <Table.Cell>
+                                    {notification.accountId || '-'}
+                                </Table.Cell>
+                                <Table.Cell>
+                                    {notification.userId || '-'}
+                                </Table.Cell>
+                                <Table.Cell>
+                                    {notification.gardenId || '-'}
+                                </Table.Cell>
+                                <Table.Cell>
+                                    {notification.readAt ? 'Da' : 'Ne'}
+                                </Table.Cell>
+                                <Table.Cell>
+                                    <LocalDateTime>
+                                        {notification.timestamp}
+                                    </LocalDateTime>
                                 </Table.Cell>
                                 <Table.Cell>{notification.id}</Table.Cell>
                                 <Table.Cell>
                                     {accountId && (
                                         <ServerActionIconButton
                                             title="Obriši obavijest"
-                                            onClick={deleteNotification.bind(null, accountId, null, notification.id)}
+                                            onClick={deleteNotification.bind(
+                                                null,
+                                                accountId,
+                                                null,
+                                                notification.id,
+                                            )}
                                         >
                                             <Delete className="size-5" />
                                         </ServerActionIconButton>
                                     )}
                                 </Table.Cell>
-                                <Table.Cell><LocalDateTime>{notification.createdAt}</LocalDateTime></Table.Cell>
-                            </Table.Row>
-                        ))}
-                        {accountNotifications.length === 0 && userNotifications.length === 0 && (
-                            <Table.Row>
-                                <Table.Cell colSpan={12}>
-                                    <NoDataPlaceholder>Nema obavjesti</NoDataPlaceholder>
+                                <Table.Cell>
+                                    <LocalDateTime>
+                                        {notification.createdAt}
+                                    </LocalDateTime>
                                 </Table.Cell>
                             </Table.Row>
-                        )}
+                        ))}
+                        {accountNotifications.length === 0 &&
+                            userNotifications.length === 0 && (
+                                <Table.Row>
+                                    <Table.Cell colSpan={12}>
+                                        <NoDataPlaceholder>
+                                            Nema obavjesti
+                                        </NoDataPlaceholder>
+                                    </Table.Cell>
+                                </Table.Row>
+                            )}
                     </Table.Body>
                 </Table>
             </CardOverflow>

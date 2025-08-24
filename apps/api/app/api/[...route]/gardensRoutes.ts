@@ -66,8 +66,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId);
-            if (isNaN(gardenIdNumber)) {
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
@@ -130,8 +130,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 variant: block?.variant,
                             };
                         })
-                        .filter(Boolean)
-                        .map((i) => i!);
+                        .filter(Boolean) as {
+                        id: string;
+                        name: string;
+                        rotation?: number | null;
+                        variant?: number | null;
+                    }[];
                     return acc;
                 },
                 {} as Record<
@@ -206,8 +210,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
         ),
         async (context) => {
             const { gardenId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId);
-            if (isNaN(gardenIdNumber)) {
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
@@ -338,8 +342,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId);
-            if (isNaN(gardenIdNumber)) {
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
                 return context.newResponse('Invalid garden ID', {
                     status: 400,
                 });
@@ -367,13 +371,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
             function parsePath(path: string) {
                 const pathParts = path.split('/');
                 if (pathParts.length < 3 || pathParts.length > 4) {
-                    throw new Error('Invalid path: ' + path);
+                    throw new Error(`Invalid path: ${path}`);
                 }
 
                 const x = parseInt(pathParts[1], 10);
                 const y = parseInt(pathParts[2], 10);
                 if (Number.isNaN(x) || Number.isNaN(y)) {
-                    throw new Error('Invalid path: ' + path);
+                    throw new Error(`Invalid path: ${path}`);
                 }
 
                 let index: number | undefined;
@@ -384,7 +388,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     } else {
                         index = parseInt(pathParts[3], 10);
                         if (Number.isNaN(index)) {
-                            throw new Error('Invalid path: ' + path);
+                            throw new Error(`Invalid path: ${path}`);
                         }
                     }
                 }
@@ -669,8 +673,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId);
-            if (isNaN(gardenIdNumber)) {
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
@@ -716,7 +720,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 spendSunflowers(
                     accountId,
                     cost,
-                    'block:' + block.information.name,
+                    `block:${block.information.name}`,
                 ),
                 createGardenBlock(gardenIdNumber, block.information.name),
             ]);
@@ -746,8 +750,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, blockId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId);
-            if (isNaN(gardenIdNumber)) {
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
@@ -793,7 +797,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { gardenId, blockId } = context.req.valid('param');
             const { accountId } = context.get('authContext');
             const gardenIdNumber = parseInt(gardenId, 10) || 0;
-            if (isNaN(gardenIdNumber) || gardenIdNumber <= 0) {
+            if (Number.isNaN(gardenIdNumber) || gardenIdNumber <= 0) {
                 console.warn('Invalid garden ID', { gardenId });
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
@@ -833,8 +837,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId);
-            if (isNaN(gardenIdNumber)) {
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
@@ -876,12 +880,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId);
-            if (isNaN(gardenIdNumber)) {
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
-            const raisedBedIdNumber = parseInt(raisedBedId);
-            if (isNaN(raisedBedIdNumber)) {
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
                 return context.json({ error: 'Invalid raised bed ID' }, 400);
             }
 
@@ -924,12 +928,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId);
-            if (isNaN(gardenIdNumber)) {
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
-            const raisedBedIdNumber = parseInt(raisedBedId);
-            if (isNaN(raisedBedIdNumber)) {
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
                 return context.json({ error: 'Invalid raised bed ID' }, 400);
             }
 
@@ -954,12 +958,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId);
-            if (isNaN(gardenIdNumber)) {
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
-            const raisedBedIdNumber = parseInt(raisedBedId);
-            if (isNaN(raisedBedIdNumber)) {
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
                 return context.json({ error: 'Invalid raised bed ID' }, 400);
             }
 
@@ -993,12 +997,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId);
-            if (isNaN(gardenIdNumber)) {
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
-            const raisedBedIdNumber = parseInt(raisedBedId);
-            if (isNaN(raisedBedIdNumber)) {
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
                 return context.json({ error: 'Invalid raised bed ID' }, 400);
             }
 
@@ -1018,12 +1022,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // Fetch sensor data from Signalco
             const data = await Promise.all(
                 sensors.map((sensor) => {
-                    if (!sensor.sensorSignalcoId) return null;
+                    if (!sensor.sensorSignalcoId) {
+                        return null;
+                    }
                     return signalcoClient().GET('/entity/{id}', {
                         params: { path: { id: sensor.sensorSignalcoId } },
                     });
-                },
-                ),
+                }),
             );
 
             return context.json(
@@ -1103,12 +1108,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { gardenId, raisedBedId, sensorId, type } =
                 context.req.valid('param');
             const { duration } = context.req.valid('query');
-            const gardenIdNumber = parseInt(gardenId);
-            if (isNaN(gardenIdNumber)) {
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
-            const raisedBedIdNumber = parseInt(raisedBedId);
-            if (isNaN(raisedBedIdNumber)) {
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
                 return context.json({ error: 'Invalid raised bed ID' }, 400);
             }
 
@@ -1123,7 +1128,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const sensors = await getRaisedBedSensors(raisedBedIdNumber);
-            const sensorIdNumber = parseInt(sensorId);
+            const sensorIdNumber = parseInt(sensorId, 10);
             const sensor = sensors.find((s) => s.id === sensorIdNumber);
             if (!sensor) {
                 return context.json({ error: 'Sensor not found' }, 404);
@@ -1182,18 +1187,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Invalid status' }, 400);
             }
 
-            const gardenIdNumber = parseInt(gardenId);
-            if (isNaN(gardenIdNumber)) {
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
-            const raisedBedIdNumber = parseInt(raisedBedId);
-            if (isNaN(raisedBedIdNumber)) {
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
                 return context.json({ error: 'Invalid raised bed ID' }, 400);
             }
 
-            const positionIndexNumber = parseInt(positionIndex);
-            if (isNaN(positionIndexNumber) || positionIndexNumber < 0) {
+            const positionIndexNumber = parseInt(positionIndex, 10);
+            if (Number.isNaN(positionIndexNumber) || positionIndexNumber < 0) {
                 return context.json({ error: 'Invalid position index' }, 400);
             }
 

@@ -1,14 +1,14 @@
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
-import { Button } from "@signalco/ui-primitives/Button";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Add, Calendar } from "@signalco/ui-icons";
-import { auth } from "../../../../lib/auth/auth";
-import { getPickupLocations } from "@gredice/storage";
-import { TimeSlotsTable } from "./TimeSlotsTable";
-import { CreateTimeSlotModal } from "./CreateTimeSlotModal";
-import { BulkGenerateModal } from "./BulkGenerateModal";
+import { getPickupLocations } from '@gredice/storage';
+import { Add, Calendar } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { auth } from '../../../../lib/auth/auth';
+import { BulkGenerateModal } from './BulkGenerateModal';
+import { CreateTimeSlotModal } from './CreateTimeSlotModal';
+import { TimeSlotsTable } from './TimeSlotsTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,11 +20,16 @@ export default async function AdminTimeSlotsPage() {
     return (
         <Stack spacing={4}>
             <Row justifyContent="space-between">
-                <Typography level="h1" className="text-2xl">Upravljanje vremenskim slotovima dostave</Typography>
+                <Typography level="h1" className="text-2xl">
+                    Upravljanje vremenskim slotovima dostave
+                </Typography>
                 <Row spacing={2}>
                     <CreateTimeSlotModal
                         trigger={
-                            <Button variant="solid" startDecorator={<Add className="size-4" />}>
+                            <Button
+                                variant="solid"
+                                startDecorator={<Add className="size-4" />}
+                            >
                                 Kreiraj slot
                             </Button>
                         }
@@ -32,7 +37,10 @@ export default async function AdminTimeSlotsPage() {
                     />
                     <BulkGenerateModal
                         trigger={
-                            <Button variant="outlined" startDecorator={<Calendar className="size-4" />}>
+                            <Button
+                                variant="outlined"
+                                startDecorator={<Calendar className="size-4" />}
+                            >
                                 Generiraj u bloku
                             </Button>
                         }

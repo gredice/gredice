@@ -1,5 +1,5 @@
-import { auth } from "../../../../lib/auth/auth";
-import { EmailSendForm } from "./EmailSendForm";
+import { auth } from '../../../../lib/auth/auth';
+import { EmailSendForm } from './EmailSendForm';
 
 export async function EmailsList() {
     const { user } = await auth(['admin']);
@@ -11,5 +11,5 @@ export async function EmailsList() {
                 <EmailSendForm from={userName} />
             </div>
         </div>
-    )
+    );
 }

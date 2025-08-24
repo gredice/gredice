@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { Button } from "@signalco/ui-primitives/Button";
-import { Close } from "@signalco/ui-icons";
-import { CancelOperationModal } from "../../app/admin/schedule/CancelOperationModal";
+import { Close } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { CancelOperationModal } from '../../app/admin/schedule/CancelOperationModal';
 
 interface OperationCancelButtonProps {
     operation: {
@@ -14,9 +14,16 @@ interface OperationCancelButtonProps {
     operationLabel: string;
 }
 
-export function OperationCancelButton({ operation, operationLabel }: OperationCancelButtonProps) {
+export function OperationCancelButton({
+    operation,
+    operationLabel,
+}: OperationCancelButtonProps) {
     // Only show cancel button for new and planned operations
-    if (operation.status === 'completed' || operation.status === 'failed' || operation.status === 'canceled') {
+    if (
+        operation.status === 'completed' ||
+        operation.status === 'failed' ||
+        operation.status === 'canceled'
+    ) {
         return null;
     }
 

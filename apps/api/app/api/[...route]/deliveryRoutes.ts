@@ -1,23 +1,26 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
 import {
-    getDeliveryAddresses,
-    getDeliveryAddress,
+    cancelDeliveryRequest,
     createDeliveryAddress,
-    updateDeliveryAddress,
+    createDeliveryRequest,
     deleteDeliveryAddress,
-    validateDeliveryAddress,
-    InsertDeliveryAddress,
-    UpdateDeliveryAddress,
+    getDeliveryAddress,
+    getDeliveryAddresses,
+    getDeliveryRequestsWithEvents,
     getPickupLocations,
     getTimeSlots,
-    createDeliveryRequest,
-    getDeliveryRequestsWithEvents,
-    cancelDeliveryRequest
+    type InsertDeliveryAddress,
+    type UpdateDeliveryAddress,
+    updateDeliveryAddress,
+    validateDeliveryAddress,
 } from '@gredice/storage';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
-import { authValidator, AuthVariables } from '../../../lib/hono/authValidator';
+import { z } from 'zod';
+import {
+    type AuthVariables,
+    authValidator,
+} from '../../../lib/hono/authValidator';
 
 // Validation schemas
 const createAddressSchema = z.object({
@@ -29,7 +32,7 @@ const createAddressSchema = z.object({
     city: z.string().min(1).max(100),
     postalCode: z.string().min(3).max(10),
     countryCode: z.string().length(2).default('HR'),
-    isDefault: z.boolean().default(false)
+    isDefault: z.boolean().default(false),
 });
 
 const updateAddressSchema = z.object({
@@ -41,14 +44,14 @@ const updateAddressSchema = z.object({
     city: z.string().min(1).max(100).optional(),
     postalCode: z.string().min(3).max(10).optional(),
     countryCode: z.string().length(2).optional(),
-    isDefault: z.boolean().optional()
+    isDefault: z.boolean().optional(),
 });
 
 const slotsQuerySchema = z.object({
     type: z.enum(['delivery', 'pickup']).optional(),
     from: z.string().datetime().optional(),
     to: z.string().datetime().optional(),
-    locationId: z.coerce.number().optional()
+    locationId: z.coerce.number().optional(),
 });
 
 const createRequestSchema = z.object({
@@ -62,7 +65,7 @@ const createRequestSchema = z.object({
 
 const cancelRequestSchema = z.object({
     cancelReason: z.string().min(1).max(50),
-    note: z.string().max(500).optional()
+    note: z.string().max(500).optional(),
 });
 
 const app = new Hono<{ Variables: AuthVariables }>()
@@ -71,21 +74,21 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/addresses',
         describeRoute({
             description: 'Get all delivery addresses for the current user',
-            tags: ['Delivery']
+            tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId } = context.get('authContext');
             const addresses = await getDeliveryAddresses(accountId);
             return context.json(addresses);
-        }
+        },
     )
     // POST /addresses - create address
     .post(
         '/addresses',
         describeRoute({
             description: 'Create a new delivery address',
-            tags: ['Delivery']
+            tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
         zValidator('json', createAddressSchema),
@@ -96,30 +99,36 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // Validate the address data
             const validationErrors = validateDeliveryAddress(data);
             if (validationErrors.length > 0) {
-                return context.json({ error: 'Validation failed', details: validationErrors }, 400);
+                return context.json(
+                    { error: 'Validation failed', details: validationErrors },
+                    400,
+                );
             }
 
             const insertData: InsertDeliveryAddress = {
                 ...data,
-                accountId
+                accountId,
             };
 
             try {
                 const addressId = await createDeliveryAddress(insertData);
-                const newAddress = await getDeliveryAddress(addressId, accountId);
+                const newAddress = await getDeliveryAddress(
+                    addressId,
+                    accountId,
+                );
                 return context.json(newAddress, 201);
             } catch (error) {
                 console.error('Failed to create delivery address:', error);
                 return context.json({ error: 'Failed to create address' }, 500);
             }
-        }
+        },
     )
     // PATCH /addresses/:id - update address
     .patch(
         '/addresses/:id',
         describeRoute({
             description: 'Update a delivery address',
-            tags: ['Delivery']
+            tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
         zValidator('param', z.object({ id: z.coerce.number() })),
@@ -132,12 +141,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // Validate the address data
             const validationErrors = validateDeliveryAddress(data);
             if (validationErrors.length > 0) {
-                return context.json({ error: 'Validation failed', details: validationErrors }, 400);
+                return context.json(
+                    { error: 'Validation failed', details: validationErrors },
+                    400,
+                );
             }
 
             const updateData: UpdateDeliveryAddress = {
                 id,
-                ...data
+                ...data,
             };
 
             try {
@@ -148,14 +160,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 console.error('Failed to update delivery address:', error);
                 return context.json({ error: 'Failed to update address' }, 500);
             }
-        }
+        },
     )
     // DELETE /addresses/:id - soft delete address
     .delete(
         '/addresses/:id',
         describeRoute({
             description: 'Delete a delivery address',
-            tags: ['Delivery']
+            tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
         zValidator('param', z.object({ id: z.coerce.number() })),
@@ -170,14 +182,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 console.error('Failed to delete delivery address:', error);
                 return context.json({ error: 'Failed to delete address' }, 500);
             }
-        }
+        },
     )
     // GET /pickup-locations - list pickup locations
     .get(
         '/pickup-locations',
         describeRoute({
             description: 'Get all active pickup locations',
-            tags: ['Delivery']
+            tags: ['Delivery'],
         }),
         async (context) => {
             try {
@@ -185,16 +197,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json(locations);
             } catch (error) {
                 console.error('Failed to get pickup locations:', error);
-                return context.json({ error: 'Failed to get pickup locations' }, 500);
+                return context.json(
+                    { error: 'Failed to get pickup locations' },
+                    500,
+                );
             }
-        }
+        },
     )
     // GET /slots - list available time slots
     .get(
         '/slots',
         describeRoute({
             description: 'Get available time slots for delivery or pickup',
-            tags: ['Delivery']
+            tags: ['Delivery'],
         }),
         zValidator('query', slotsQuerySchema),
         async (context) => {
@@ -202,7 +217,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Default to next 14 days if no date range provided
             const fromDate = from ? new Date(from) : new Date();
-            const toDate = to ? new Date(to) : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+            const toDate = to
+                ? new Date(to)
+                : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
             try {
                 const slots = await getTimeSlots({
@@ -210,21 +227,21 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     locationId,
                     fromDate,
                     toDate,
-                    status: 'scheduled' // Only return bookable slots
+                    status: 'scheduled', // Only return bookable slots
                 });
                 return context.json(slots);
             } catch (error) {
                 console.error('Failed to get time slots:', error);
                 return context.json({ error: 'Failed to get time slots' }, 500);
             }
-        }
+        },
     )
     // GET /requests - list user's delivery requests
     .get(
         '/requests',
         describeRoute({
             description: 'Get delivery requests for the current user',
-            tags: ['Delivery']
+            tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
         async (context) => {
@@ -235,16 +252,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json(requests);
             } catch (error) {
                 console.error('Failed to get delivery requests:', error);
-                return context.json({ error: 'Failed to get delivery requests' }, 500);
+                return context.json(
+                    { error: 'Failed to get delivery requests' },
+                    500,
+                );
             }
-        }
+        },
     )
     // POST /requests - create delivery request
     .post(
         '/requests',
         describeRoute({
             description: 'Create a new delivery request',
-            tags: ['Delivery']
+            tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
         zValidator('json', createRequestSchema),
@@ -255,24 +275,30 @@ const app = new Hono<{ Variables: AuthVariables }>()
             try {
                 const requestId = await createDeliveryRequest({
                     ...data,
-                    accountId: accountId
+                    accountId: accountId,
                 });
                 return context.json({ id: requestId }, 201);
             } catch (error) {
                 console.error('Failed to create delivery request:', error);
-                return context.json({
-                    error: 'Failed to create delivery request',
-                    details: error instanceof Error ? error.message : 'Unknown error'
-                }, 500);
+                return context.json(
+                    {
+                        error: 'Failed to create delivery request',
+                        details:
+                            error instanceof Error
+                                ? error.message
+                                : 'Unknown error',
+                    },
+                    500,
+                );
             }
-        }
+        },
     )
     // PATCH /requests/:id/cancel - cancel delivery request
     .patch(
         '/requests/:id/cancel',
         describeRoute({
             description: 'Cancel a delivery request',
-            tags: ['Delivery']
+            tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
         zValidator('param', z.object({ id: z.string().uuid() })),
@@ -283,23 +309,36 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { cancelReason, note } = context.req.valid('json');
 
             try {
-                await cancelDeliveryRequest(id, 'user', cancelReason, note, accountId);
+                await cancelDeliveryRequest(
+                    id,
+                    'user',
+                    cancelReason,
+                    note,
+                    accountId,
+                );
                 return context.json({ success: true });
             } catch (error) {
                 console.error('Failed to cancel delivery request:', error);
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                const errorMessage =
+                    error instanceof Error ? error.message : 'Unknown error';
 
                 // Handle specific error cases
                 if (errorMessage.includes('cutoff time has passed')) {
-                    return context.json({ error: 'CUTOFF_EXPIRED', message: errorMessage }, 400);
+                    return context.json(
+                        { error: 'CUTOFF_EXPIRED', message: errorMessage },
+                        400,
+                    );
                 }
 
-                return context.json({
-                    error: 'Failed to cancel delivery request',
-                    details: errorMessage
-                }, 500);
+                return context.json(
+                    {
+                        error: 'Failed to cancel delivery request',
+                        details: errorMessage,
+                    },
+                    500,
+                );
             }
-        }
+        },
     );
 
 export default app;

@@ -1,15 +1,26 @@
 'use client';
 
-import { Button } from "@signalco/ui-primitives/Button";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { ModalConfirm } from "@signalco/ui/ModalConfirm";
-import { Edit, Delete, Send, Check, Clear, FileText } from "@signalco/ui-icons";
-import { useState, useTransition, useEffect } from "react";
-import { changeInvoiceStatusAction, cancelInvoiceAction, deleteInvoiceAction, createReceiptAction, getInvoiceReceiptAction } from "./actions";
-import { canEditInvoice, canDeleteInvoice, canCancelInvoice, InvoiceStatus } from "./invoiceUtils";
-import { KnownPages } from "../../../../src/KnownPages";
+import { ModalConfirm } from '@signalco/ui/ModalConfirm';
+import { Check, Clear, Delete, Edit, FileText, Send } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useEffect, useState, useTransition } from 'react';
+import { KnownPages } from '../../../../src/KnownPages';
+import {
+    cancelInvoiceAction,
+    changeInvoiceStatusAction,
+    createReceiptAction,
+    deleteInvoiceAction,
+    getInvoiceReceiptAction,
+} from './actions';
+import {
+    canCancelInvoice,
+    canDeleteInvoice,
+    canEditInvoice,
+    type InvoiceStatus,
+} from './invoiceUtils';
 
 type Invoice = {
     id: number;
@@ -24,7 +35,9 @@ interface InvoiceActionsProps {
 export function InvoiceActions({ invoice }: InvoiceActionsProps) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
-    const [existingReceipt, setExistingReceipt] = useState<Awaited<ReturnType<typeof getInvoiceReceiptAction>>['receipt'] | null>(null);
+    const [existingReceipt, setExistingReceipt] = useState<
+        Awaited<ReturnType<typeof getInvoiceReceiptAction>>['receipt'] | null
+    >(null);
     const [receiptChecked, setReceiptChecked] = useState(false);
 
     const status = invoice.status as InvoiceStatus;
@@ -48,7 +61,10 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
     const handleStatusChange = (newStatus: InvoiceStatus) => {
         startTransition(async () => {
             setError(null);
-            const result = await changeInvoiceStatusAction(invoice.id, newStatus);
+            const result = await changeInvoiceStatusAction(
+                invoice.id,
+                newStatus,
+            );
             if (!result.success) {
                 setError(result.error || 'Failed to change status');
             }
@@ -85,7 +101,10 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
     return (
         <Stack spacing={2}>
             {error && (
-                <Typography level="body2" className="text-red-600 bg-red-50 p-2 rounded">
+                <Typography
+                    level="body2"
+                    className="text-red-600 bg-red-50 p-2 rounded"
+                >
                     {error}
                 </Typography>
             )}
@@ -169,7 +188,7 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
                         title="Potvrdi otkazivanje"
                         header={`Otkazivanje ponude ${invoice.invoiceNumber}`}
                         onConfirm={handleCancel}
-                        trigger={(
+                        trigger={
                             <Button
                                 variant="outlined"
                                 color="warning"
@@ -178,10 +197,11 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
                             >
                                 Otkaži
                             </Button>
-                        )}
+                        }
                     >
                         <Typography>
-                            Jeste li sigurni da želite otkazati ovu ponudu? Ova akcija se ne može poništiti.
+                            Jeste li sigurni da želite otkazati ovu ponudu? Ova
+                            akcija se ne može poništiti.
                         </Typography>
                     </ModalConfirm>
                 )}
@@ -192,7 +212,7 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
                         title="Potvrdi brisanje"
                         header={`Brisanje ponude ${invoice.invoiceNumber}`}
                         onConfirm={handleDelete}
-                        trigger={(
+                        trigger={
                             <Button
                                 variant="outlined"
                                 color="danger"
@@ -201,10 +221,11 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
                             >
                                 Obriši
                             </Button>
-                        )}
+                        }
                     >
                         <Typography>
-                            Jeste li sigurni da želite obrisati ovu ponudu? Ova akcija se ne može poništiti.
+                            Jeste li sigurni da želite obrisati ovu ponudu? Ova
+                            akcija se ne može poništiti.
                         </Typography>
                     </ModalConfirm>
                 )}

@@ -1,19 +1,23 @@
-import { getAttributeDefinition, getEntityTypeByName } from "@gredice/storage";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { notFound } from "next/navigation";
-import { ServerActionIconButton } from "../../../../../../components/shared/ServerActionIconButton";
-import { Delete } from "@signalco/ui-icons";
-import { deleteAttributeDefinition } from "../../../../../(actions)/definitionActions";
-import { FormCheckbox, FormInput } from "./Form";
-import { Breadcrumbs } from "@signalco/ui/Breadcrumbs";
-import { KnownPages } from "../../../../../../src/KnownPages";
+import { getAttributeDefinition, getEntityTypeByName } from '@gredice/storage';
+import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
+import { Delete } from '@signalco/ui-icons';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { notFound } from 'next/navigation';
+import { ServerActionIconButton } from '../../../../../../components/shared/ServerActionIconButton';
+import { KnownPages } from '../../../../../../src/KnownPages';
+import { deleteAttributeDefinition } from '../../../../../(actions)/definitionActions';
+import { FormCheckbox, FormInput } from './Form';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AttributeDefinitionPage({ params }: { params: Promise<{ entityType: string, id: string }> }) {
+export default async function AttributeDefinitionPage({
+    params,
+}: {
+    params: Promise<{ entityType: string; id: string }>;
+}) {
     const { entityType: entityTypeName, id: idString } = await params;
-    const id = parseInt(idString);
+    const id = parseInt(idString, 10);
     if (Number.isNaN(id) || id < 0) {
         notFound();
     }
@@ -31,42 +35,101 @@ export default async function AttributeDefinitionPage({ params }: { params: Prom
         defaultValue,
         label,
         multiple,
-        required
+        required,
     } = definition;
 
-    const deleteAttributeDefinitionBound = deleteAttributeDefinition.bind(null, entityTypeName, id);
+    const deleteAttributeDefinitionBound = deleteAttributeDefinition.bind(
+        null,
+        entityTypeName,
+        id,
+    );
 
     return (
         <Stack spacing={2}>
             <Row spacing={1} justifyContent="space-between">
-                <Breadcrumbs items={[
-                    { label: entityType.label, href: KnownPages.DirectoryEntityType(entityTypeName) },
-                    { label: "Atributi", href: KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName) },
-                    { label: label },
-                ]} />
+                <Breadcrumbs
+                    items={[
+                        {
+                            label: entityType.label,
+                            href: KnownPages.DirectoryEntityType(
+                                entityTypeName,
+                            ),
+                        },
+                        {
+                            label: 'Atributi',
+                            href: KnownPages.DirectoryEntityTypeAttributeDefinitions(
+                                entityTypeName,
+                            ),
+                        },
+                        { label: label },
+                    ]}
+                />
                 <ServerActionIconButton
                     title="Obriši"
                     onClick={deleteAttributeDefinitionBound}
-                    variant='plain'>
+                    variant="plain"
+                >
                     <Delete className="size-5" />
                 </ServerActionIconButton>
             </Row>
             <form>
                 <Stack spacing={3}>
-                    <FormInput definition={definition} name="category" label="Kategorija" value={category} />
+                    <FormInput
+                        definition={definition}
+                        name="category"
+                        label="Kategorija"
+                        value={category}
+                    />
                     <Row spacing={2}>
-                        <FormInput definition={definition} name="label" label="Naziv" value={label} />
-                        <FormInput definition={definition} name="name" label="Oznaka" value={name} />
+                        <FormInput
+                            definition={definition}
+                            name="label"
+                            label="Naziv"
+                            value={label}
+                        />
+                        <FormInput
+                            definition={definition}
+                            name="name"
+                            label="Oznaka"
+                            value={name}
+                        />
                     </Row>
-                    <FormInput definition={definition} name="description" label="Opis" value={definition.description || ''} placeholder="-" />
+                    <FormInput
+                        definition={definition}
+                        name="description"
+                        label="Opis"
+                        value={definition.description || ''}
+                        placeholder="-"
+                    />
                     <Stack spacing={2}>
                         <Row spacing={2}>
-                            <FormInput definition={definition} name="dataType" label="Tip podatka" value={dataType} />
-                            <FormInput definition={definition} name="defaultValue" label="Zadana vrijednost" value={defaultValue || ''} placeholder="-" />
+                            <FormInput
+                                definition={definition}
+                                name="dataType"
+                                label="Tip podatka"
+                                value={dataType}
+                            />
+                            <FormInput
+                                definition={definition}
+                                name="defaultValue"
+                                label="Zadana vrijednost"
+                                value={defaultValue || ''}
+                                placeholder="-"
+                            />
                         </Row>
-                        <FormCheckbox definition={definition} name="multiple" value={multiple ? 'true' : 'false'} label="Više vrijednosti" />
+                        <FormCheckbox
+                            definition={definition}
+                            name="multiple"
+                            value={multiple ? 'true' : 'false'}
+                            label="Više vrijednosti"
+                        />
                     </Stack>
-                    <FormCheckbox definition={definition} name="required" value={required ? 'true' : 'false'} label="Obavezno" />
+                    <FormCheckbox
+                        definition={definition}
+                        name="required"
+                        value={required ? 'true' : 'false'}
+                        label="Obavezno"
+                    />
                 </Stack>
             </form>
         </Stack>

@@ -1,12 +1,16 @@
 'use client';
 
-import { Row } from "@signalco/ui-primitives/Row";
-import { Button } from "@signalco/ui-primitives/Button";
-import { SelectTimeSlot } from "@gredice/storage";
-import { closeTimeSlotAction, archiveTimeSlotAction, updateTimeSlotStatusAction } from "./actions";
-import { useTransition } from "react";
-import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Close } from "@signalco/ui-icons";
+import type { SelectTimeSlot } from '@gredice/storage';
+import { Close } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Row } from '@signalco/ui-primitives/Row';
+import { useTransition } from 'react';
+import {
+    archiveTimeSlotAction,
+    closeTimeSlotAction,
+    updateTimeSlotStatusAction,
+} from './actions';
 
 interface SlotActionButtonsProps {
     slot: SelectTimeSlot;
@@ -35,7 +39,10 @@ export function SlotActionButtons({ slot }: SlotActionButtonsProps) {
 
     const handleReopenSlot = () => {
         startTransition(async () => {
-            const result = await updateTimeSlotStatusAction(slot.id, 'scheduled');
+            const result = await updateTimeSlotStatusAction(
+                slot.id,
+                'scheduled',
+            );
             if (!result.success) {
                 alert(result.message);
             }
@@ -44,7 +51,6 @@ export function SlotActionButtons({ slot }: SlotActionButtonsProps) {
 
     const isScheduled = slot.status === 'scheduled';
     const isClosed = slot.status === 'closed';
-    const isArchived = slot.status === 'archived';
     const isPastSlot = new Date(slot.endAt) < new Date();
 
     return (

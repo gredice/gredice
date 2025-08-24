@@ -1,24 +1,26 @@
 {
-  "name": "@gredice/signalco",
-  "version": "0.0.0",
-  "private": true,
-  "sideEffects": false,
-  "type": "module",
-  "license": "MIT",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "scripts": {
-    "regenerate": "pnpm run /^regenerate:.*/",
-    "regenerate:directories-api": "pnpm dlx openapi-typescript https://api.signalco.io/api/swagger.yaml -o ./src/lib/signalco-api/v1.d.ts"
-  },
-  "dependencies": {
-    "openapi-fetch": "0.14.0"
-  },
-  "devDependencies": {
-    "@types/node": "22.17.2",
-    "openapi-typescript": "7.9.1",
-    "server-only": "0.0.1",
-    "typescript": "5.9.2"
-  }
+    "name": "@gredice/signalco",
+    "version": "0.0.0",
+    "private": true,
+    "sideEffects": false,
+    "type": "module",
+    "license": "MIT",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "lint": "biome check",
+        "regenerate": "pnpm run /^regenerate:.*/",
+        "regenerate:directories-api": "pnpm dlx openapi-typescript https://api.signalco.io/api/swagger.yaml -o ./src/lib/signalco-api/v1.d.ts"
+    },
+    "dependencies": {
+        "openapi-fetch": "0.14.0"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.2.2",
+        "@types/node": "22.17.2",
+        "openapi-typescript": "7.9.1",
+        "server-only": "0.0.1",
+        "typescript": "5.9.2"
+    }
 }

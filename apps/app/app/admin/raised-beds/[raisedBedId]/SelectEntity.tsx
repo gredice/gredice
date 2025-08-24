@@ -1,8 +1,8 @@
 'use client';
 
+import { useControllableState } from '@signalco/hooks/useControllableState';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { useEffect, useState } from 'react';
-import { useControllableState } from '@signalco/hooks/useControllableState';
 import { getEntities } from '../../../../components/shared/attributes/actions/entitiesActions';
 
 export type SelectEntityProps = {
@@ -13,11 +13,24 @@ export type SelectEntityProps = {
     name?: string;
     label?: string;
     required?: boolean;
-}
+};
 
-export function SelectEntity({ value, defaultValue, onChange, entityTypeName, name, label, required }: SelectEntityProps) {
-    const [internalValue, setValue] = useControllableState(value, defaultValue, onChange);
-    const [entities, setEntities] = useState<Awaited<ReturnType<typeof getEntities>>>();
+export function SelectEntity({
+    value,
+    defaultValue,
+    onChange,
+    entityTypeName,
+    name,
+    label,
+    required,
+}: SelectEntityProps) {
+    const [internalValue, setValue] = useControllableState(
+        value,
+        defaultValue,
+        onChange,
+    );
+    const [entities, setEntities] =
+        useState<Awaited<ReturnType<typeof getEntities>>>();
 
     useEffect(() => {
         if (!entityTypeName) {
@@ -37,13 +50,16 @@ export function SelectEntity({ value, defaultValue, onChange, entityTypeName, na
         { value: '-', label: '-' },
         ...(entities?.map((entity, entityIndex) => ({
             value: entity.id?.toString() ?? entityIndex.toString(),
-            label: (entity.information?.label ?? entity.information?.name) ?? `${entityTypeName} ${entityIndex + 1}`,
+            label:
+                entity.information?.label ??
+                entity.information?.name ??
+                `${entityTypeName} ${entityIndex + 1}`,
         })) ?? []),
-    ]
+    ];
 
     const handleOnChange = (newValue: string) => {
         setValue(newValue !== '-' ? newValue : null);
-    }
+    };
 
     return (
         <>
