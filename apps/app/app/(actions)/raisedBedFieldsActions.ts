@@ -1,12 +1,21 @@
-"use server";
+'use server';
 
-import { createEvent, createNotification, getEntityFormatted, getRaisedBed, knownEvents } from "@gredice/storage";
-import { auth } from "../../lib/auth/auth";
-import { KnownPages } from "../../src/KnownPages";
-import { revalidatePath } from "next/cache";
-import { EntityStandardized } from "../../lib/@types/EntityStandardized";
+import {
+    createEvent,
+    createNotification,
+    getEntityFormatted,
+    getRaisedBed,
+    knownEvents,
+} from '@gredice/storage';
+import { revalidatePath } from 'next/cache';
+import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
+import { auth } from '../../lib/auth/auth';
+import { KnownPages } from '../../src/KnownPages';
 
-export async function raisedBedPlanted(raisedBedId: number, positionIndex: number) {
+export async function raisedBedPlanted(
+    raisedBedId: number,
+    positionIndex: number,
+) {
     await raisedBedFieldUpdatePlant({
         raisedBedId,
         positionIndex,
@@ -16,23 +25,36 @@ export async function raisedBedPlanted(raisedBedId: number, positionIndex: numbe
     revalidatePath(KnownPages.Schedule);
 }
 
-export async function raisedBedFieldUpdatePlant({ raisedBedId, positionIndex, status }:
-    { raisedBedId: number, positionIndex: number, status: string }) {
-    await auth(["admin"]);
+export async function raisedBedFieldUpdatePlant({
+    raisedBedId,
+    positionIndex,
+    status,
+}: {
+    raisedBedId: number;
+    positionIndex: number;
+    status: string;
+}) {
+    await auth(['admin']);
 
     const raisedBed = await getRaisedBed(raisedBedId);
     if (!raisedBed) {
         throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
     }
 
-    await createEvent(knownEvents.raisedBedFields.plantUpdateV1(
-        `${raisedBedId.toString()}|${positionIndex.toString()}`,
-        { status: status }
-    ));
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(
+            `${raisedBedId.toString()}|${positionIndex.toString()}`,
+            { status: status },
+        ),
+    );
 
-    const field = raisedBed.fields.find(field => field.positionIndex === positionIndex);
+    const field = raisedBed.fields.find(
+        (field) => field.positionIndex === positionIndex,
+    );
     if (field?.plantSortId) {
-        const sortData = await getEntityFormatted<EntityStandardized>(field.plantSortId);
+        const sortData = await getEntityFormatted<EntityStandardized>(
+            field.plantSortId,
+        );
         if (sortData) {
             // Create sprouted notification
             let header: string | null = null;
@@ -81,10 +103,14 @@ export async function raisedBedFieldUpdatePlant({ raisedBedId, positionIndex, st
                 });
             }
         } else {
-            console.warn(`No plant sort data found for raised bed ${raisedBedId} at position ${positionIndex}.`);
+            console.warn(
+                `No plant sort data found for raised bed ${raisedBedId} at position ${positionIndex}.`,
+            );
         }
     } else {
-        console.warn(`No plant sort found for raised bed ${raisedBedId} at position ${positionIndex}.`);
+        console.warn(
+            `No plant sort found for raised bed ${raisedBedId} at position ${positionIndex}.`,
+        );
     }
 
     revalidatePath(KnownPages.RaisedBed(raisedBedId));

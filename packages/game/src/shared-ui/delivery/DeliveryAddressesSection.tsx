@@ -1,22 +1,25 @@
+import { ModalConfirm } from '@signalco/ui/ModalConfirm';
+import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
+import { Add, Delete, Edit } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Card, CardContent } from '@signalco/ui-primitives/Card';
+import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Input } from '@signalco/ui-primitives/Input';
+import { Modal } from '@signalco/ui-primitives/Modal';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
-import { Button } from "@signalco/ui-primitives/Button";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Card, CardContent } from "@signalco/ui-primitives/Card";
-import { Input } from "@signalco/ui-primitives/Input";
-import { Row } from "@signalco/ui-primitives/Row";
-import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Modal } from "@signalco/ui-primitives/Modal";
-import { ModalConfirm } from "@signalco/ui/ModalConfirm";
-import { Checkbox } from "@signalco/ui-primitives/Checkbox";
-import { Delete, Edit, MapPin, Add } from "@signalco/ui-icons";
-import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
-import { useDeliveryAddresses, DeliveryAddressData } from "../../hooks/useDeliveryAddresses";
+import {
+    type DeliveryAddressData,
+    useDeliveryAddresses,
+} from '../../hooks/useDeliveryAddresses';
 import {
     useCreateDeliveryAddress,
+    useDeleteDeliveryAddress,
     useUpdateDeliveryAddress,
-    useDeleteDeliveryAddress
-} from "../../hooks/useDeliveryAddressMutations";
+} from '../../hooks/useDeliveryAddressMutations';
 
 interface AddressFormData {
     label: string;
@@ -39,14 +42,14 @@ const initialFormData: AddressFormData = {
     city: '',
     postalCode: '',
     countryCode: 'HR',
-    isDefault: false
+    isDefault: false,
 };
 
 function AddressForm({
     address,
     onSubmit,
     onCancel,
-    isLoading
+    isLoading,
 }: {
     address?: DeliveryAddressData;
     onSubmit: (data: AddressFormData) => void;
@@ -54,17 +57,19 @@ function AddressForm({
     isLoading: boolean;
 }) {
     const [formData, setFormData] = useState<AddressFormData>(
-        address ? {
-            label: address.label,
-            contactName: address.contactName,
-            phone: address.phone,
-            street1: address.street1,
-            street2: address.street2 || '',
-            city: address.city,
-            postalCode: address.postalCode,
-            countryCode: address.countryCode,
-            isDefault: address.isDefault
-        } : initialFormData
+        address
+            ? {
+                  label: address.label,
+                  contactName: address.contactName,
+                  phone: address.phone,
+                  street1: address.street1,
+                  street2: address.street2 || '',
+                  city: address.city,
+                  postalCode: address.postalCode,
+                  countryCode: address.countryCode,
+                  isDefault: address.isDefault,
+              }
+            : initialFormData,
     );
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -80,7 +85,12 @@ function AddressForm({
                         label="Naziv adrese"
                         className="bg-card"
                         value={formData.label}
-                        onChange={(e) => setFormData(prev => ({ ...prev, label: e.target.value }))}
+                        onChange={(e) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                label: e.target.value,
+                            }))
+                        }
                         placeholder="npr. Kuća, Posao..."
                         required
                     />
@@ -88,7 +98,12 @@ function AddressForm({
                         label="Ime i prezime"
                         className="bg-card"
                         value={formData.contactName}
-                        onChange={(e) => setFormData(prev => ({ ...prev, contactName: e.target.value }))}
+                        onChange={(e) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                contactName: e.target.value,
+                            }))
+                        }
                         placeholder="Unesite ime i prezime"
                         required
                     />
@@ -96,7 +111,12 @@ function AddressForm({
                         label="Telefon"
                         className="bg-card"
                         value={formData.phone}
-                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                        onChange={(e) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                phone: e.target.value,
+                            }))
+                        }
                         placeholder="npr. +385 98 123 4567"
                         required
                     />
@@ -104,7 +124,12 @@ function AddressForm({
                         label="Ulica i kućni broj"
                         className="bg-card"
                         value={formData.street1}
-                        onChange={(e) => setFormData(prev => ({ ...prev, street1: e.target.value }))}
+                        onChange={(e) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                street1: e.target.value,
+                            }))
+                        }
                         placeholder="Unesite adresu"
                         required
                     />
@@ -112,7 +137,12 @@ function AddressForm({
                         label="Dodatne informacije (stan, kat...)"
                         className="bg-card"
                         value={formData.street2}
-                        onChange={(e) => setFormData(prev => ({ ...prev, street2: e.target.value }))}
+                        onChange={(e) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                street2: e.target.value,
+                            }))
+                        }
                         placeholder="Dodatne informacije (opciono)"
                     />
                     <Row spacing={2}>
@@ -120,7 +150,12 @@ function AddressForm({
                             label="Grad"
                             className="bg-card"
                             value={formData.city}
-                            onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                            onChange={(e) =>
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    city: e.target.value,
+                                }))
+                            }
                             placeholder="Unesite grad"
                             required
                         />
@@ -128,7 +163,12 @@ function AddressForm({
                             label="Poštanski broj"
                             className="bg-card"
                             value={formData.postalCode}
-                            onChange={(e) => setFormData(prev => ({ ...prev, postalCode: e.target.value }))}
+                            onChange={(e) =>
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    postalCode: e.target.value,
+                                }))
+                            }
                             placeholder="10000"
                             required
                         />
@@ -136,7 +176,12 @@ function AddressForm({
                     <Checkbox
                         checked={formData.isDefault}
                         className="bg-card"
-                        onCheckedChange={(checked: boolean) => setFormData(prev => ({ ...prev, isDefault: !!checked }))}
+                        onCheckedChange={(checked: boolean) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                isDefault: !!checked,
+                            }))
+                        }
                         label="Postavi kao zadanu adresu"
                     />
                 </Stack>
@@ -149,11 +194,7 @@ function AddressForm({
                     >
                         Odustani
                     </Button>
-                    <Button
-                        type="submit"
-                        variant="solid"
-                        loading={isLoading}
-                    >
+                    <Button type="submit" variant="solid" loading={isLoading}>
                         {address ? 'Ažuriraj' : 'Dodaj'} adresu
                     </Button>
                 </Row>
@@ -171,7 +212,7 @@ function AddressCard({ address }: { address: DeliveryAddressData }) {
         try {
             await updateAddress.mutateAsync({
                 id: address.id,
-                ...data
+                ...data,
             });
             setIsEditing(false);
         } catch (error) {
@@ -209,15 +250,24 @@ function AddressCard({ address }: { address: DeliveryAddressData }) {
                     <Row justifyContent="space-between" alignItems="start">
                         <Stack spacing={1}>
                             <Row spacing={1}>
-                                <Typography level="h6">{address.label}</Typography>
+                                <Typography level="h6">
+                                    {address.label}
+                                </Typography>
                                 {address.isDefault && (
-                                    <Typography level="body3" className="text-primary">
+                                    <Typography
+                                        level="body3"
+                                        className="text-primary"
+                                    >
                                         (Zadana)
                                     </Typography>
                                 )}
                             </Row>
-                            <Typography level="body2">{address.contactName}</Typography>
-                            <Typography level="body3" secondary>{address.phone}</Typography>
+                            <Typography level="body2">
+                                {address.contactName}
+                            </Typography>
+                            <Typography level="body3" secondary>
+                                {address.phone}
+                            </Typography>
                         </Stack>
                         <Row spacing={1}>
                             <IconButton
@@ -245,7 +295,8 @@ function AddressCard({ address }: { address: DeliveryAddressData }) {
                                 }
                             >
                                 <Typography>
-                                    Jeste li sigurni da želite obrisati adresu "{address.label}"?
+                                    Jeste li sigurni da želite obrisati adresu "
+                                    {address.label}"?
                                 </Typography>
                             </ModalConfirm>
                         </Row>

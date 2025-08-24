@@ -1,28 +1,29 @@
-import { useSearchParam } from "@signalco/hooks/useSearchParam";
-import { Card, CardContent } from "@signalco/ui-primitives/Card";
-import { List } from "@signalco/ui-primitives/List";
-import { ListItem } from "@signalco/ui-primitives/ListItem";
-import { Modal } from "@signalco/ui-primitives/Modal";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { useCurrentUser } from "../hooks/useCurrentUser";
-import { ProfileInfo } from "../shared-ui/ProfileInfo";
-import { SoundSettingsCard } from "./components/SoundSettingsCard";
-import { SelectItems } from "@signalco/ui-primitives/SelectItems";
-import { SunflowersList } from "../shared-ui/sunflowers/SunflowersList";
-import { useCurrentAccount } from "../hooks/useCurrentAccount";
-import { UserProfileCard } from "./components/UserProfileCard";
-import { NotificationList } from "../hud/NotificationList";
-import { useState } from "react";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Approved, CompanyFacebook, Empty, Security } from "@signalco/ui-icons";
-import { useMarkAllNotificationsRead } from "../hooks/useMarkAllNotificationsRead";
-import { Button, ButtonProps } from "@signalco/ui-primitives/Button";
-import { getAuthToken } from "@gredice/client";
-import { useUserLogins } from "../hooks/useUserLogins";
-import { Spinner } from "@signalco/ui-primitives/Spinner";
-import { DeliveryAddressesSection } from "../shared-ui/delivery/DeliveryAddressesSection";
-import { DeliveryRequestsSection } from "../shared-ui/delivery/DeliveryRequestsSection";
+import { getAuthToken } from '@gredice/client';
+import { useSearchParam } from '@signalco/hooks/useSearchParam';
+import { Approved, CompanyFacebook, Empty, Security } from '@signalco/ui-icons';
+import { Button, type ButtonProps } from '@signalco/ui-primitives/Button';
+import { Card, CardContent } from '@signalco/ui-primitives/Card';
+import { List } from '@signalco/ui-primitives/List';
+import { ListItem } from '@signalco/ui-primitives/ListItem';
+import { Modal } from '@signalco/ui-primitives/Modal';
+import { Row } from '@signalco/ui-primitives/Row';
+import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Spinner } from '@signalco/ui-primitives/Spinner';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import Image from 'next/image';
+import { useState } from 'react';
+import { useCurrentAccount } from '../hooks/useCurrentAccount';
+import { useCurrentUser } from '../hooks/useCurrentUser';
+import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRead';
+import { useUserLogins } from '../hooks/useUserLogins';
+import { NotificationList } from '../hud/NotificationList';
+import { DeliveryAddressesSection } from '../shared-ui/delivery/DeliveryAddressesSection';
+import { DeliveryRequestsSection } from '../shared-ui/delivery/DeliveryRequestsSection';
+import { ProfileInfo } from '../shared-ui/ProfileInfo';
+import { SunflowersList } from '../shared-ui/sunflowers/SunflowersList';
+import { SoundSettingsCard } from './components/SoundSettingsCard';
+import { UserProfileCard } from './components/UserProfileCard';
 
 export function FacebookLoginButton({ ...props }: ButtonProps) {
     return (
@@ -36,12 +37,13 @@ export function FacebookLoginButton({ ...props }: ButtonProps) {
             <CompanyFacebook className="mr-2" />
             Poveži Facebook račun
         </Button>
-    )
+    );
 }
 
 function CompanyGoogle({ ...props }: React.SVGProps<SVGSVGElement>) {
     return (
         <svg viewBox="0 0 24 24" {...props}>
+            <title>Google</title>
             <path
                 fill="#4285F4"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -74,7 +76,7 @@ export function GoogleLoginButton({ ...props }: ButtonProps) {
             <CompanyGoogle className="mr-2 h-4 w-4" />
             Poveži Google račun
         </Button>
-    )
+    );
 }
 
 export function OverviewModal() {
@@ -85,11 +87,19 @@ export function OverviewModal() {
     const markAllNotificationsRead = useMarkAllNotificationsRead();
 
     // Security
-    const { data: userLogins, isLoading: userLoginsLoading } = useUserLogins(currentUser.data?.id);
+    const { data: userLogins, isLoading: userLoginsLoading } = useUserLogins(
+        currentUser.data?.id,
+    );
     const token = getAuthToken();
-    const passwordLoginConnected = userLogins?.methods?.some(login => login.provider === 'password');
-    const googleConnected = userLogins?.methods?.some(login => login.provider === 'google');
-    const facebookConnected = userLogins?.methods?.some(login => login.provider === 'facebook');
+    const passwordLoginConnected = userLogins?.methods?.some(
+        (login) => login.provider === 'password',
+    );
+    const googleConnected = userLogins?.methods?.some(
+        (login) => login.provider === 'google',
+    );
+    const facebookConnected = userLogins?.methods?.some(
+        (login) => login.provider === 'facebook',
+    );
 
     const handleMarkAllNotificationsRead = () => {
         markAllNotificationsRead.mutate({ readWhere: 'game' });
@@ -99,14 +109,15 @@ export function OverviewModal() {
         if (!open) {
             setProfileModalOpen(undefined);
         }
-    }
+    };
 
     return (
         <Modal
             open={Boolean(settingsMode)}
             onOpenChange={handleOpenChange}
             className="md:min-w-full lg:min-w-[80%] xl:min-w-[60%] md:min-h-[70%] md:max-h-full md:border-tertiary md:border-b-4"
-            title="Profil">
+            title="Profil"
+        >
             <div className="grid grid-rows-[auto_1fr] gap-4 md:gap-0 md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr]">
                 <Stack spacing={2} className="md:border-r md:pl-2">
                     <ProfileInfo />
@@ -124,7 +135,14 @@ export function OverviewModal() {
                         ]}
                     />
                     <List className="md:pr-6 hidden md:flex">
-                        <Typography level="body3" uppercase bold className="py-4">Profil</Typography>
+                        <Typography
+                            level="body3"
+                            uppercase
+                            bold
+                            className="py-4"
+                        >
+                            Profil
+                        </Typography>
                         <ListItem
                             nodeId="profile-general"
                             label="Generalno"
@@ -149,7 +167,14 @@ export function OverviewModal() {
                             selected={settingsMode === 'obavijesti'}
                             onSelected={() => setProfileModalOpen('obavijesti')}
                         />
-                        <Typography level="body3" uppercase bold className="py-4">Postavke</Typography>
+                        <Typography
+                            level="body3"
+                            uppercase
+                            bold
+                            className="py-4"
+                        >
+                            Postavke
+                        </Typography>
                         <ListItem
                             nodeId="profile-security"
                             label="Sigurnost"
@@ -167,32 +192,50 @@ export function OverviewModal() {
                 <div className="md:pl-6">
                     {settingsMode === 'generalno' && (
                         <Stack spacing={4}>
-                            <Typography level="h4" className="hidden md:block">Profil</Typography>
+                            <Typography level="h4" className="hidden md:block">
+                                Profil
+                            </Typography>
                             <UserProfileCard />
                         </Stack>
                     )}
                     {settingsMode === 'sigurnost' && (
                         <Stack spacing={4}>
-                            <Typography level="h4" className="hidden md:block">Sigurnost</Typography>
+                            <Typography level="h4" className="hidden md:block">
+                                Sigurnost
+                            </Typography>
                             <Stack spacing={2}>
                                 <Card>
                                     <CardContent noHeader>
-                                        <Typography level="body2">Prijava putem email adrese: <strong>{currentUser.data?.userName}</strong></Typography>
+                                        <Typography level="body2">
+                                            Prijava putem email adrese:{' '}
+                                            <strong>
+                                                {currentUser.data?.userName}
+                                            </strong>
+                                        </Typography>
                                     </CardContent>
                                 </Card>
                                 <Card>
                                     <CardContent noHeader>
                                         <Stack spacing={2}>
                                             <Stack spacing={2}>
-                                                <Typography level="body2">Prijava putem emaila i zaporke.</Typography>
+                                                <Typography level="body2">
+                                                    Prijava putem emaila i
+                                                    zaporke.
+                                                </Typography>
                                                 {passwordLoginConnected && (
                                                     <Row spacing={2}>
                                                         <Security className="size-8" />
-                                                        <Typography level="body1">Tvoj račun ima postavljenu zaporku.</Typography>
+                                                        <Typography level="body1">
+                                                            Tvoj račun ima
+                                                            postavljenu zaporku.
+                                                        </Typography>
                                                     </Row>
                                                 )}
                                                 {!passwordLoginConnected && (
-                                                    <Typography level="body3">Trenutno nemaš postavljenu zaporku.</Typography>
+                                                    <Typography level="body3">
+                                                        Trenutno nemaš
+                                                        postavljenu zaporku.
+                                                    </Typography>
                                                 )}
                                             </Stack>
                                             <Stack spacing={1}>
@@ -201,7 +244,9 @@ export function OverviewModal() {
                                                     href={`https://vrt.gredice.com/prijava/promjena-zaporke?token=${token}`}
                                                     fullWidth
                                                 >
-                                                    {passwordLoginConnected ? 'Promijeni zaporku' : 'Postavi zaporku'}
+                                                    {passwordLoginConnected
+                                                        ? 'Promijeni zaporku'
+                                                        : 'Postavi zaporku'}
                                                 </Button>
                                             </Stack>
                                         </Stack>
@@ -210,34 +255,60 @@ export function OverviewModal() {
                                 <Card>
                                     <CardContent noHeader>
                                         {userLoginsLoading && (
-                                            <Spinner loading className="size-5" loadingLabel="Učitavanje prijava..." />
+                                            <Spinner
+                                                loading
+                                                className="size-5"
+                                                loadingLabel="Učitavanje prijava..."
+                                            />
                                         )}
                                         {!userLoginsLoading && (
                                             <Stack spacing={3}>
                                                 <Stack spacing={3}>
-                                                    <Typography level="body2">Poveži svoj račun društvene mrežame za bržu i sigurniju prijavu.</Typography>
+                                                    <Typography level="body2">
+                                                        Poveži svoj račun
+                                                        društvene mrežame za
+                                                        bržu i sigurniju
+                                                        prijavu.
+                                                    </Typography>
                                                     {facebookConnected && (
                                                         <Row spacing={2}>
                                                             <CompanyFacebook className="size-8" />
-                                                            <Typography level="body1">Tvoj Facebook račun je povezan.</Typography>
+                                                            <Typography level="body1">
+                                                                Tvoj Facebook
+                                                                račun je
+                                                                povezan.
+                                                            </Typography>
                                                         </Row>
                                                     )}
                                                     {googleConnected && (
                                                         <Row spacing={2}>
                                                             <CompanyGoogle className="size-8" />
-                                                            <Typography level="body1">Tvoj Google račun je povezan.</Typography>
+                                                            <Typography level="body1">
+                                                                Tvoj Google
+                                                                račun je
+                                                                povezan.
+                                                            </Typography>
                                                         </Row>
                                                     )}
-                                                    {!facebookConnected && !googleConnected &&
-                                                        <Typography level="body3">Trenutno nemaš povezanih računa.</Typography>
-                                                    }
+                                                    {!facebookConnected &&
+                                                        !googleConnected && (
+                                                            <Typography level="body3">
+                                                                Trenutno nemaš
+                                                                povezanih
+                                                                računa.
+                                                            </Typography>
+                                                        )}
                                                 </Stack>
                                                 <Stack spacing={1}>
                                                     {!facebookConnected && (
-                                                        <FacebookLoginButton href={`https://api.gredice.com/api/auth/facebook?state=${token}`} />
+                                                        <FacebookLoginButton
+                                                            href={`https://api.gredice.com/api/auth/facebook?state=${token}`}
+                                                        />
                                                     )}
                                                     {!googleConnected && (
-                                                        <GoogleLoginButton href={`https://api.gredice.com/api/auth/google?state=${token}`} />
+                                                        <GoogleLoginButton
+                                                            href={`https://api.gredice.com/api/auth/google?state=${token}`}
+                                                        />
                                                     )}
                                                 </Stack>
                                             </Stack>
@@ -288,8 +359,13 @@ export function OverviewModal() {
                     )}
                     {settingsMode === 'dostava' && (
                         <Stack spacing={4}>
-                            <Typography level="h4" className="hidden md:block">Dostava</Typography>
-                            <Stack spacing={2} className="overflow-y-auto max-h-[calc(100dvh-200px)]">
+                            <Typography level="h4" className="hidden md:block">
+                                Dostava
+                            </Typography>
+                            <Stack
+                                spacing={2}
+                                className="overflow-y-auto max-h-[calc(100dvh-200px)]"
+                            >
                                 <Stack spacing={2}>
                                     <DeliveryAddressesSection />
                                 </Stack>
@@ -301,58 +377,98 @@ export function OverviewModal() {
                     )}
                     {settingsMode === 'zvuk' && (
                         <Stack spacing={4}>
-                            <Typography level="h4" className="hidden md:block">Zvuk</Typography>
+                            <Typography level="h4" className="hidden md:block">
+                                Zvuk
+                            </Typography>
                             <SoundSettingsCard />
                         </Stack>
                     )}
                     {settingsMode === 'obavijesti' && (
                         <Stack spacing={1}>
                             <Row justifyContent="space-between">
-                                <Typography level="h4" className="hidden md:block">Obavijesti</Typography>
+                                <Typography
+                                    level="h4"
+                                    className="hidden md:block"
+                                >
+                                    Obavijesti
+                                </Typography>
                             </Row>
                             <Stack spacing={1}>
                                 <Card className="bg-card p-1">
                                     <Row justifyContent="space-between">
                                         <SelectItems
                                             value={notificationsFilter}
-                                            onValueChange={setNotificationsFilter}
+                                            onValueChange={
+                                                setNotificationsFilter
+                                            }
                                             items={[
-                                                { label: 'Nepročitane', value: 'unread', icon: <Empty className="size-4" /> },
-                                                { label: 'Sve obavijesti', value: 'all', icon: <Approved className="size-4" /> },
+                                                {
+                                                    label: 'Nepročitane',
+                                                    value: 'unread',
+                                                    icon: (
+                                                        <Empty className="size-4" />
+                                                    ),
+                                                },
+                                                {
+                                                    label: 'Sve obavijesti',
+                                                    value: 'all',
+                                                    icon: (
+                                                        <Approved className="size-4" />
+                                                    ),
+                                                },
                                             ]}
                                         />
                                         <Button
                                             variant="plain"
                                             size="sm"
-                                            onClick={handleMarkAllNotificationsRead}
+                                            onClick={
+                                                handleMarkAllNotificationsRead
+                                            }
                                             startDecorator={
                                                 <Approved className="size-4" />
-                                            }>
+                                            }
+                                        >
                                             Sve pročitano
                                         </Button>
                                     </Row>
                                 </Card>
                                 <div className="overflow-y-auto max-h-[calc(100dvh-18rem)] md:max-h-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card shadow-sm p-0">
-                                    <NotificationList read={notificationsFilter === 'all'} />
+                                    <NotificationList
+                                        read={notificationsFilter === 'all'}
+                                    />
                                 </div>
                             </Stack>
                         </Stack>
                     )}
                     {settingsMode === 'suncokreti' && (
                         <Stack spacing={4}>
-                            <Typography level="h4" className="hidden md:block">Suncokreti</Typography>
+                            <Typography level="h4" className="hidden md:block">
+                                Suncokreti
+                            </Typography>
                             <Stack spacing={2}>
                                 <div className="relative mt-12 md:mt-0">
                                     <span className="absolute text-5xl -top-12 right-6">
-                                        <img
+                                        <Image
                                             src="https://cdn.gredice.com/sunflower-large.svg"
                                             alt="Suncokret"
                                             className="size-12"
+                                            width={48}
+                                            height={48}
                                         />
                                     </span>
                                     <Card className="relative z-10">
                                         <CardContent noHeader>
-                                            <Typography level="body2">Trenutno imaš <strong>{currentAccount?.sunflowers.amount}</strong> suncokreta za korištenje u svom vrtu.</Typography>
+                                            <Typography level="body2">
+                                                Trenutno imaš{' '}
+                                                <strong>
+                                                    {
+                                                        currentAccount
+                                                            ?.sunflowers.amount
+                                                    }
+                                                </strong>{' '}
+                                                suncokreta za korištenje u svom
+                                                vrtu.
+                                            </Typography>
                                         </CardContent>
                                     </Card>
                                 </div>
@@ -365,5 +481,5 @@ export function OverviewModal() {
                 </div>
             </div>
         </Modal>
-    )
+    );
 }

@@ -1,98 +1,147 @@
-import { slug } from "@signalco/js";
-import { MapPinHouse, LayoutGrid, Sprout, Euro } from "@signalco/ui-icons";
-import { Chip } from "@signalco/ui-primitives/Chip";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { NavigatingButton } from "@signalco/ui/NavigatingButton";
-import { AttributeCard } from "../../../components/attributes/DetailCard";
-import { PlantImage } from "../../../components/plants/PlantImage";
-import { FeedbackModal } from "../../../components/shared/feedback/FeedbackModal";
-import { PageHeader } from "../../../components/shared/PageHeader";
-import { KnownPages } from "../../../src/KnownPages";
-import { PlantAttributeCards } from "./PlantAttributeCards";
-import { VerifiedInformationBadge } from "./VerifiedInformationBadge";
-import { PlantData, PlantSortData } from "@gredice/client";
-import { getPlantInforationSections } from "./getPlantInforationSections";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { PlantCalendarPicker } from "./PlantCalendarPicker";
-import { SeedTimeInformationBadge } from "@gredice/ui/plants";
-import { AiWatermark } from "@gredice/ui/AiWatermark";
+import type { PlantData, PlantSortData } from '@gredice/client';
+import { AiWatermark } from '@gredice/ui/AiWatermark';
+import { SeedTimeInformationBadge } from '@gredice/ui/plants';
+import { slug } from '@signalco/js';
+import { NavigatingButton } from '@signalco/ui/NavigatingButton';
+import { Euro, LayoutGrid, MapPinHouse, Sprout } from '@signalco/ui-icons';
+import { Chip } from '@signalco/ui-primitives/Chip';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { AttributeCard } from '../../../components/attributes/DetailCard';
+import { PlantImage } from '../../../components/plants/PlantImage';
+import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import { PageHeader } from '../../../components/shared/PageHeader';
+import { KnownPages } from '../../../src/KnownPages';
+import { getPlantInforationSections } from './getPlantInforationSections';
+import { PlantAttributeCards } from './PlantAttributeCards';
+import { PlantCalendarPicker } from './PlantCalendarPicker';
+import { VerifiedInformationBadge } from './VerifiedInformationBadge';
 
-export function PlantPageHeader({ plant, sort }: { plant: PlantData & { isRecommended: boolean | null | undefined }, sort?: PlantSortData }) {
+export function PlantPageHeader({
+    plant,
+    sort,
+}: {
+    plant: PlantData & { isRecommended: boolean | null | undefined };
+    sort?: PlantSortData;
+}) {
     const informationSections = getPlantInforationSections(plant);
-    let plantsPerRow = Math.floor(30 / (plant.attributes?.seedingDistance ?? 30));
+    let plantsPerRow = Math.floor(
+        30 / (plant.attributes?.seedingDistance ?? 30),
+    );
     if (plantsPerRow < 1) {
-        console.warn(`Plants per row is less than 1 (${plantsPerRow}) for ${plant.information.name}. Setting to 1.`);
+        console.warn(
+            `Plants per row is less than 1 (${plantsPerRow}) for ${plant.information.name}. Setting to 1.`,
+        );
         plantsPerRow = 1;
     }
     const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
-    const pricePerPlant = plant.prices?.perPlant ? (plant.prices.perPlant / totalPlants).toFixed(2) : null;
+    const pricePerPlant = plant.prices?.perPlant
+        ? (plant.prices.perPlant / totalPlants).toFixed(2)
+        : null;
 
-    const baseLatinName = plant.information.latinName ? `lat. ${plant.information.latinName}` : null;
+    const baseLatinName = plant.information.latinName
+        ? `lat. ${plant.information.latinName}`
+        : null;
     const sortLatinName = `lat. ${sort?.information.latinName ?? '-'}`;
     return (
         <PageHeader
-            visual={(
+            visual={
                 <AiWatermark
                     reason="Primjer ploda biljke visoke rezolucije bez nedostataka."
                     aiPrompt={`Realistic and not perfect image of requested plant on white background. No Text Or Banners. Square image. ${plant.information.name}`}
-                    aiModel="ChatGPT-4o">
-                    <PlantImage plant={{
-                        information: {
-                            name: sort?.information?.name ?? plant.information.name,
-                        },
-                        image: {
-                            cover: sort?.image?.cover ?? plant.image?.cover
-                        }
-                    }} priority width={142} height={142} />
+                    aiModel="ChatGPT-4o"
+                >
+                    <PlantImage
+                        plant={{
+                            information: {
+                                name:
+                                    sort?.information?.name ??
+                                    plant.information.name,
+                            },
+                            image: {
+                                cover: sort?.image?.cover ?? plant.image?.cover,
+                            },
+                        }}
+                        priority
+                        width={142}
+                        height={142}
+                    />
                 </AiWatermark>
-            )}
+            }
             header={sort?.information?.name ?? plant.information.name}
-            alternativeName={(
+            alternativeName={
                 sort ? (
                     <Stack>
-                        <Typography level="body2" secondary>Sorta: {sortLatinName}</Typography>
-                        <Typography level="body2" secondary>Biljka: {baseLatinName}</Typography>
+                        <Typography level="body2" secondary>
+                            Sorta: {sortLatinName}
+                        </Typography>
+                        <Typography level="body2" secondary>
+                            Biljka: {baseLatinName}
+                        </Typography>
                     </Stack>
-                ) : baseLatinName
-            )}
-            subHeader={sort?.information.description ?? plant.information.description}
-            headerChildren={(
+                ) : (
+                    baseLatinName
+                )
+            }
+            subHeader={
+                sort?.information.description ?? plant.information.description
+            }
+            headerChildren={
                 <Stack spacing={4} alignItems="start">
                     {(plant.information.origin || sort?.information.origin) && (
                         <Stack spacing={1}>
                             <Typography level="body2">Porijeklo</Typography>
                             <Row spacing={1}>
                                 <MapPinHouse className="size-5 shrink-0" />
-                                <Typography>{sort?.information.origin ?? plant.information.origin}</Typography>
+                                <Typography>
+                                    {sort?.information.origin ??
+                                        plant.information.origin}
+                                </Typography>
                             </Row>
                         </Stack>
                     )}
                     <Row spacing={1}>
-                        {plant.information.verified && <VerifiedInformationBadge />}
+                        {plant.information.verified && (
+                            <VerifiedInformationBadge />
+                        )}
                         {plant.isRecommended && <SeedTimeInformationBadge />}
                     </Row>
-                    {informationSections.some((section) => section.avaialble) && (
+                    {informationSections.some(
+                        (section) => section.avaialble,
+                    ) && (
                         <Stack spacing={1}>
                             <Typography level="body2">Sadržaj</Typography>
                             <Row spacing={1} className="flex-wrap">
-                                {informationSections.filter((section) => section.avaialble).map((section) => (
-                                    <Chip key={section.id} color="neutral" href={`#${slug(section.header)}`}>
-                                        {section.header}
-                                    </Chip>
-                                ))}
+                                {informationSections
+                                    .filter((section) => section.avaialble)
+                                    .map((section) => (
+                                        <Chip
+                                            key={section.id}
+                                            color="neutral"
+                                            href={`#${slug(section.header)}`}
+                                        >
+                                            {section.header}
+                                        </Chip>
+                                    ))}
                             </Row>
                         </Stack>
                     )}
-                    <NavigatingButton href={KnownPages.GardenApp} className="bg-green-800 hover:bg-green-700">
+                    <NavigatingButton
+                        href={KnownPages.GardenApp}
+                        className="bg-green-800 hover:bg-green-700"
+                    >
                         Moj vrt
                     </NavigatingButton>
                 </Stack>
-            )}>
+            }
+        >
             <Stack>
                 <PlantCalendarPicker plant={plant} sort={sort} />
                 <Stack spacing={1} className="group">
-                    <Typography level="h2" className="text-2xl">Informacije</Typography>
+                    <Typography level="h2" className="text-2xl">
+                        Informacije
+                    </Typography>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <AttributeCard
                             icon={<LayoutGrid />}
@@ -102,31 +151,55 @@ export function PlantPageHeader({ plant, sort }: { plant: PlantData & { isRecomm
                             navigateHref={KnownPages.RaisedBeds}
                             navigateLabel="Više o gredicama"
                         />
-                        {pricePerPlant && <AttributeCard icon={<Sprout />} header="Cijena po biljci" value={`${pricePerPlant}€`} />}
-                        {plant.prices?.perPlant && <AttributeCard icon={<Euro />} header="Cijena za sadnju" value={`${plant.prices.perPlant.toFixed(2)}€`} />}
+                        {pricePerPlant && (
+                            <AttributeCard
+                                icon={<Sprout />}
+                                header="Cijena po biljci"
+                                value={`${pricePerPlant}€`}
+                            />
+                        )}
+                        {plant.prices?.perPlant && (
+                            <AttributeCard
+                                icon={<Euro />}
+                                header="Cijena za sadnju"
+                                value={`${plant.prices.perPlant.toFixed(2)}€`}
+                            />
+                        )}
                     </div>
                     <FeedbackModal
-                        topic={sort ? "www/plants/sorts/information" : "www/plants/information"}
+                        topic={
+                            sort
+                                ? 'www/plants/sorts/information'
+                                : 'www/plants/information'
+                        }
                         data={{
                             plantId: plant.id,
                             plantAlias: plant.information.name,
                             sortId: sort?.id,
-                            sortAlias: sort?.information.name
+                            sortAlias: sort?.information.name,
                         }}
-                        className="self-end group-hover:opacity-100 opacity-0 transition-opacity" />
+                        className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
+                    />
                 </Stack>
                 <Stack spacing={1} className="group">
-                    <Typography level="h2" className="text-2xl">Svojstva</Typography>
+                    <Typography level="h2" className="text-2xl">
+                        Svojstva
+                    </Typography>
                     <PlantAttributeCards attributes={plant.attributes} />
                     <FeedbackModal
-                        topic={sort ? "www/plants/sorts/attributes" : "www/plants/attributes"}
+                        topic={
+                            sort
+                                ? 'www/plants/sorts/attributes'
+                                : 'www/plants/attributes'
+                        }
                         data={{
                             plantId: plant.id,
                             plantAlias: plant.information.name,
                             sortId: sort?.id,
-                            sortAlias: sort?.information.name
+                            sortAlias: sort?.information.name,
                         }}
-                        className="self-end group-hover:opacity-100 opacity-0 transition-opacity" />
+                        className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
+                    />
                 </Stack>
             </Stack>
         </PageHeader>

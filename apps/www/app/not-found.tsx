@@ -1,8 +1,8 @@
-import { Row } from "@signalco/ui-primitives/Row";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { NavigatingButton } from "@signalco/ui/NavigatingButton";
-import Image from "next/image";
+import { NavigatingButton } from '@signalco/ui/NavigatingButton';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import Image from 'next/image';
 
 export default function NotFound() {
     return (
@@ -13,11 +13,13 @@ export default function NotFound() {
                     alt="Tužan suncokret"
                     className="rounded-xl bg-white shadow-xl"
                     width={200}
-                    height={200} />
+                    height={200}
+                />
                 <Stack spacing={2}>
                     <Typography level="h1">Nepoznata stranica</Typography>
                     <Typography level="body1">
-                        Oprosti, ali stranica koju tražiš ne postoji. Možda je premještena ili obrisana.
+                        Oprosti, ali stranica koju tražiš ne postoji. Možda je
+                        premještena ili obrisana.
                     </Typography>
                     <Row className="justify-center md:justify-start">
                         <NavigatingButton href="/">

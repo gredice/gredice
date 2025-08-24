@@ -5,9 +5,9 @@ export function useAnimatedEntityRotation(rotation: number) {
         config: {
             mass: 0.1,
             tension: 200,
-            friction: 10
+            friction: 10,
         },
-        rotation: [0, rotation * (Math.PI / 2), 0]
+        rotation: [0, rotation * (Math.PI / 2), 0],
     });
 
     return [sprintRotation];

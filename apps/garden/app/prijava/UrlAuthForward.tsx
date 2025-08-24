@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 
 export function UrlAuthForward() {
     const router = useRouter();
@@ -26,9 +26,9 @@ export function UrlAuthForward() {
                 router.push('/');
                 return;
             }
-        }
+        };
 
-        handleGoogleCallback()
+        handleGoogleCallback();
     }, [router, searchParams, queryClient]);
 
     return null;

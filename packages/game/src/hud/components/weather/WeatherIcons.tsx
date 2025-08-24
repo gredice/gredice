@@ -1,45 +1,66 @@
-import { Sunny, SunnyLightClouds, SunnyMediumClouds, SunnyHeavyClouds } from './icons/SunnyIcons'
-import { CloudyLight, CloudyMedium, SunnyMediumCloudsAndFoggy } from './icons/CloudyIcons'
-import { SunnyAndFoggy, SunnyLightCloudsAndFoggy, Foggy, CloudyMediumAndFoggy } from './icons/FoggyIcons'
-import { SunnyMediumCloudsAndLightRain, SunnyMediumCloudsAndMediumRain, SunnyMediumCloudsAndHeavyRain } from './icons/RainyIcons'
+import type { FC, SVGProps } from 'react';
 import {
-    SunnyMediumCloudsAndThunder,
-    SunnyMediumCloudsThunderAndLightRain,
-    SunnyMediumCloudsThunderAndMediumRain,
-    SunnyMediumCloudsThunderAndHeavyRain,
-    SunnyMediumCloudsLightSnowyRain,
-    SunnyMediumCloudsMediumSnowyRain,
-    SunnyMediumCloudsHeavySnowyRain,
-    SunnyMediumCloudsLightSnow,
-    SunnyMediumCloudsMediumSnow,
-    SunnyMediumCloudsHeavySnow,
-    SunnyMediumCloudsLightSnowAndThunder
-} from './icons/MixedWeatherIcons'
+    CloudyLight,
+    CloudyMedium,
+    SunnyMediumCloudsAndFoggy,
+} from './icons/CloudyIcons';
 import {
-    CloudyLightRain,
-    CloudyMediumRain,
     CloudyHeavyRain,
-    CloudyWithThunder,
-    CloudyLightRainWithThunder,
-    CloudyMediumRainWithThunder,
     CloudyHeavyRainWithThunder,
-    CloudyLightSnowyRain,
-    CloudyMediumSnowyRain,
-    CloudyHeavySnowyRain,
-    CloudyLightSnow,
-    CloudyMediumSnow,
     CloudyHeavySnow,
+    CloudyHeavySnowyRain,
+    CloudyLightRain,
+    CloudyLightRainAndFoggy,
+    CloudyLightRainWithThunder,
+    CloudyLightSnow,
+    CloudyLightSnowAndFoggy,
+    CloudyLightSnowyRain,
+    CloudyMediumRain,
+    CloudyMediumRainWithThunder,
+    CloudyMediumSnow,
+    CloudyMediumSnowyRain,
+    CloudyWithThunder,
     SunnyMediumCloudsLightRainAndFoggy,
     SunnyMediumCloudsLightSnowAndFoggy,
-    CloudyLightSnowAndFoggy,
-    CloudyLightRainAndFoggy
 } from './icons/CloudyWeatherIcons';
-import { FC, SVGProps } from 'react'
+import {
+    CloudyMediumAndFoggy,
+    Foggy,
+    SunnyAndFoggy,
+    SunnyLightCloudsAndFoggy,
+} from './icons/FoggyIcons';
+import {
+    SunnyMediumCloudsAndThunder,
+    SunnyMediumCloudsHeavySnow,
+    SunnyMediumCloudsHeavySnowyRain,
+    SunnyMediumCloudsLightSnow,
+    SunnyMediumCloudsLightSnowAndThunder,
+    SunnyMediumCloudsLightSnowyRain,
+    SunnyMediumCloudsMediumSnow,
+    SunnyMediumCloudsMediumSnowyRain,
+    SunnyMediumCloudsThunderAndHeavyRain,
+    SunnyMediumCloudsThunderAndLightRain,
+    SunnyMediumCloudsThunderAndMediumRain,
+} from './icons/MixedWeatherIcons';
+import {
+    SunnyMediumCloudsAndHeavyRain,
+    SunnyMediumCloudsAndLightRain,
+    SunnyMediumCloudsAndMediumRain,
+} from './icons/RainyIcons';
+import {
+    Sunny,
+    SunnyHeavyClouds,
+    SunnyLightClouds,
+    SunnyMediumClouds,
+} from './icons/SunnyIcons';
 
-export const weatherIcons: Record<number, {
-    day: FC<SVGProps<SVGSVGElement>>;
-    night: FC<SVGProps<SVGSVGElement>>;
-}> = {
+export const weatherIcons: Record<
+    number,
+    {
+        day: FC<SVGProps<SVGSVGElement>>;
+        night: FC<SVGProps<SVGSVGElement>>;
+    }
+> = {
     1: Sunny,
     2: SunnyLightClouds,
     3: SunnyMediumClouds,
@@ -82,6 +103,6 @@ export const weatherIcons: Record<number, {
     40: SunnyMediumCloudsLightSnowAndFoggy,
     41: CloudyLightSnowAndFoggy,
     42: CloudyLightRainAndFoggy,
-}
+};
 
-export type WeatherIconType = keyof typeof weatherIcons
+export type WeatherIconType = keyof typeof weatherIcons;

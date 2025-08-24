@@ -1,13 +1,13 @@
 'use client';
 
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { useState, useTransition, useEffect } from "react";
-import { KnownPages } from "../../../src/KnownPages";
-import { Row } from "@signalco/ui-primitives/Row";
-import { SelectItems } from "@signalco/ui-primitives/SelectItems";
-import { FactCard } from "../cards/FactCard";
-import { DashboardDivider } from "./DashboardDivider";
-import { type getAnalyticsTotals } from "@gredice/storage";
+import type { getAnalyticsTotals } from '@gredice/storage';
+import { Row } from '@signalco/ui-primitives/Row';
+import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { useEffect, useState, useTransition } from 'react';
+import { KnownPages } from '../../../src/KnownPages';
+import { FactCard } from '../cards/FactCard';
+import { DashboardDivider } from './DashboardDivider';
 
 type EntityData = {
     entityTypeName: string;
@@ -19,7 +19,7 @@ export function AdminDashboardClient({
     initialAnalyticsData,
     initialEntitiesData,
     onPeriodChange,
-    initialPeriod = '7'
+    initialPeriod = '7',
 }: {
     initialAnalyticsData: Awaited<ReturnType<typeof getAnalyticsTotals>>;
     initialEntitiesData: EntityData[];
@@ -37,7 +37,7 @@ export function AdminDashboardClient({
     const periodOptions = [
         { value: '1', label: '24h' },
         { value: '7', label: '7 dana' },
-        { value: '30', label: '30 dana' }
+        { value: '30', label: '30 dana' },
     ];
 
     const handlePeriodChange = (value: string) => {
@@ -65,7 +65,7 @@ export function AdminDashboardClient({
         transactions: transactionsCount,
         transactionsBefore: transactionsBeforeCount,
         deliveryRequests: deliveryRequestsCount,
-        deliveryRequestsBefore: deliveryRequestsBeforeCount
+        deliveryRequestsBefore: deliveryRequestsBeforeCount,
     } = initialAnalyticsData;
 
     return (
@@ -75,7 +75,9 @@ export function AdminDashboardClient({
                     <DashboardDivider>Računi i korisnici</DashboardDivider>
                     <SelectItems
                         value={selectedPeriod}
-                        onValueChange={(value) => handlePeriodChange(value || '7')}
+                        onValueChange={(value) =>
+                            handlePeriodChange(value || '7')
+                        }
                         items={periodOptions}
                         className="w-32"
                         placeholder="Odaberi period"
@@ -83,23 +85,74 @@ export function AdminDashboardClient({
                     />
                 </Row>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    <FactCard header="Računi" value={accountsCount} href={KnownPages.Accounts} beforeValue={accountsBeforeCount} />
-                    <FactCard header="Korisnici" value={usersCount} href={KnownPages.Users} beforeValue={usersBeforeCount} />
-                    <FactCard header="Farme" value={farmsCount} beforeValue={farmsBeforeCount} />
-                    <FactCard header="Vrtovi" value={gardensCount} href={KnownPages.Gardens} beforeValue={gardensBeforeCount} />
-                    <FactCard header="Blokovi" value={blocksCount} beforeValue={blocksBeforeCount} />
-                    <FactCard header="Događaji" value={eventsCount} beforeValue={eventsBeforeCount} />
-                    <FactCard header="Gredice" value={raisedBedsCount} href={KnownPages.RaisedBeds} beforeValue={raisedBedsBeforeCount} />
-                    <FactCard header="Transakcije" value={transactionsCount} href={KnownPages.Transactions} beforeValue={transactionsBeforeCount} />
-                    <FactCard header="Zahtjevi za dostavu" value={deliveryRequestsCount} href={KnownPages.DeliveryRequests} beforeValue={deliveryRequestsBeforeCount} />
+                    <FactCard
+                        header="Računi"
+                        value={accountsCount}
+                        href={KnownPages.Accounts}
+                        beforeValue={accountsBeforeCount}
+                    />
+                    <FactCard
+                        header="Korisnici"
+                        value={usersCount}
+                        href={KnownPages.Users}
+                        beforeValue={usersBeforeCount}
+                    />
+                    <FactCard
+                        header="Farme"
+                        value={farmsCount}
+                        beforeValue={farmsBeforeCount}
+                    />
+                    <FactCard
+                        header="Vrtovi"
+                        value={gardensCount}
+                        href={KnownPages.Gardens}
+                        beforeValue={gardensBeforeCount}
+                    />
+                    <FactCard
+                        header="Blokovi"
+                        value={blocksCount}
+                        beforeValue={blocksBeforeCount}
+                    />
+                    <FactCard
+                        header="Događaji"
+                        value={eventsCount}
+                        beforeValue={eventsBeforeCount}
+                    />
+                    <FactCard
+                        header="Gredice"
+                        value={raisedBedsCount}
+                        href={KnownPages.RaisedBeds}
+                        beforeValue={raisedBedsBeforeCount}
+                    />
+                    <FactCard
+                        header="Transakcije"
+                        value={transactionsCount}
+                        href={KnownPages.Transactions}
+                        beforeValue={transactionsBeforeCount}
+                    />
+                    <FactCard
+                        header="Zahtjevi za dostavu"
+                        value={deliveryRequestsCount}
+                        href={KnownPages.DeliveryRequests}
+                        beforeValue={deliveryRequestsBeforeCount}
+                    />
                 </div>
             </Stack>
             <Stack spacing={1}>
                 <DashboardDivider>Zapisi</DashboardDivider>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    {initialEntitiesData.map(({ label, count, entityTypeName }) => (
-                        <FactCard key={entityTypeName} header={label} value={count} href={KnownPages.DirectoryEntityType(entityTypeName)} />
-                    ))}
+                    {initialEntitiesData.map(
+                        ({ label, count, entityTypeName }) => (
+                            <FactCard
+                                key={entityTypeName}
+                                header={label}
+                                value={count}
+                                href={KnownPages.DirectoryEntityType(
+                                    entityTypeName,
+                                )}
+                            />
+                        ),
+                    )}
                 </div>
             </Stack>
         </Stack>

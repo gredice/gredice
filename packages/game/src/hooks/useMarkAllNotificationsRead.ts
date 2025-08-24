@@ -1,7 +1,7 @@
 import { client } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNotifications } from './useNotifications';
 import { useCurrentUser } from './useCurrentUser';
+import { useNotifications } from './useNotifications';
 
 export function useMarkAllNotificationsRead() {
     const queryClient = useQueryClient();
@@ -11,13 +11,13 @@ export function useMarkAllNotificationsRead() {
         mutationFn: async (options: { readWhere?: string }) => {
             if (!notifications || notifications.length === 0) return;
 
-            const ids = notifications.map(n => n.id);
+            const ids = notifications.map((n) => n.id);
             const res = await client().api.notifications.$put({
                 json: {
                     read: 'true',
                     readWhere: options.readWhere,
-                    notificationIds: ids
-                }
+                    notificationIds: ids,
+                },
             });
 
             if (!res.ok) {
@@ -26,6 +26,6 @@ export function useMarkAllNotificationsRead() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
-        }
+        },
     });
 }

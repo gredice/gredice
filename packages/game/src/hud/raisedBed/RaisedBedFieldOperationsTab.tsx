@@ -1,6 +1,16 @@
-import { OperationsList } from "./shared/OperationsList";
+import { OperationsList } from './shared/OperationsList';
 
-export function RaisedBedFieldOperationsTab({ gardenId, raisedBedId, positionIndex, plantSortId }: { gardenId: number; raisedBedId: number; positionIndex: number; plantSortId?: number }) {
+export function RaisedBedFieldOperationsTab({
+    gardenId,
+    raisedBedId,
+    positionIndex,
+    plantSortId,
+}: {
+    gardenId: number;
+    raisedBedId: number;
+    positionIndex: number;
+    plantSortId?: number;
+}) {
     return (
         <OperationsList
             gardenId={gardenId}
@@ -8,7 +18,8 @@ export function RaisedBedFieldOperationsTab({ gardenId, raisedBedId, positionInd
             positionIndex={positionIndex}
             plantSortId={plantSortId}
             filterFunc={(operation) =>
-                operation.attributes.application === 'plant'}
+                operation.attributes.application === 'plant'
+            }
         />
     );
 }

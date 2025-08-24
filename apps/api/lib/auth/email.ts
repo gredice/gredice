@@ -1,5 +1,5 @@
-import { createJwt } from './auth';
 import { sendEmailVerify, sendResetPassword } from '../email/transactional';
+import { createJwt } from './auth';
 
 // TODO: Move to Auth lib
 export async function sendEmailVerification(email: string) {
@@ -19,6 +19,6 @@ export async function sendChangePassword(email: string) {
 
     await sendResetPassword(email, {
         email,
-        confirmLink: url
+        confirmLink: url,
     });
 }

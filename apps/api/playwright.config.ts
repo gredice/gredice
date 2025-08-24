@@ -1,4 +1,8 @@
-import { defineConfig, devices, PlaywrightTestConfig } from '@playwright/test';
+import {
+    defineConfig,
+    devices,
+    type PlaywrightTestConfig,
+} from '@playwright/test';
 
 export const config: PlaywrightTestConfig = {
     testDir: './',
@@ -11,13 +15,13 @@ export const config: PlaywrightTestConfig = {
     reporter: 'html',
     use: {
         baseURL: 'http://127.0.0.1:3005',
-        trace: 'on-first-retry'
+        trace: 'on-first-retry',
     },
     projects: [
         {
             name: 'chromium',
             use: { ...devices['Desktop Chrome'] },
-        }
+        },
     ],
     webServer: {
         command: 'pnpm dev',

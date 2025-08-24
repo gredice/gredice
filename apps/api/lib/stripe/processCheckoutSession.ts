@@ -1,5 +1,21 @@
-import { getShoppingCart, setCartItemPaid, upsertRaisedBedField, createEvent, knownEvents, earnSunflowersForPayment, updateRaisedBed, markCartPaidIfAllItemsPaid, createTransaction, createRaisedBedSensor, createOperation, getRaisedBedFieldsWithEvents, getAllTransactions, isCartItemDeliverable, createDeliveryRequest } from "@gredice/storage";
-import { getStripeCheckoutSession } from "@gredice/stripe/server";
+import {
+    createDeliveryRequest,
+    createEvent,
+    createOperation,
+    createRaisedBedSensor,
+    createTransaction,
+    earnSunflowersForPayment,
+    getAllTransactions,
+    getRaisedBedFieldsWithEvents,
+    getShoppingCart,
+    isCartItemDeliverable,
+    knownEvents,
+    markCartPaidIfAllItemsPaid,
+    setCartItemPaid,
+    updateRaisedBed,
+    upsertRaisedBedField,
+} from '@gredice/storage';
+import { getStripeCheckoutSession } from '@gredice/stripe/server';
 
 export async function processCheckoutSession(checkoutSessionId?: string) {
     if (!checkoutSessionId) {
@@ -13,45 +29,67 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         return;
     }
     if (session.status !== 'complete') {
-        console.warn(`Session ${checkoutSessionId} is not complete, current status: ${session.status}`);
+        console.warn(
+            `Session ${checkoutSessionId} is not complete, current status: ${session.status}`,
+        );
         return;
     }
     if (session.paymentStatus !== 'paid') {
-        console.warn(`Payment not completed for session ${checkoutSessionId} with status: ${session.paymentStatus}`);
+        console.warn(
+            `Payment not completed for session ${checkoutSessionId} with status: ${session.paymentStatus}`,
+        );
         return;
     }
 
-    console.debug(`Processing checkout session ${checkoutSessionId} with amount ${session.amountTotal} cents`);
+    console.debug(
+        `Processing checkout session ${checkoutSessionId} with amount ${session.amountTotal} cents`,
+    );
 
     const affectedCartIds: number[] = [];
-    let accountId: string | undefined = undefined;
+    let accountId: string | undefined;
     for (const item of session.lineItems?.data ?? []) {
         console.debug(`Item: ${item.id} Quantity: ${item.quantity}`);
 
         const product = item.price?.product;
         if (typeof product === 'string') {
-            console.warn(`Product is a string: ${product}. This is not supported.`);
-            continue
+            console.warn(
+                `Product is a string: ${product}. This is not supported.`,
+            );
+            continue;
         }
 
         if (product?.deleted) {
-            console.warn(`Product is deleted: ${product.id}. This is not supported.`);
+            console.warn(
+                `Product is deleted: ${product.id}. This is not supported.`,
+            );
             continue;
         }
 
         // Extract metadata from the product
         const itemData = {
-            cartItemId: product?.metadata.cartItemId ? parseInt(product.metadata.cartItemId, 10) : undefined,
+            cartItemId: product?.metadata.cartItemId
+                ? parseInt(product.metadata.cartItemId, 10)
+                : undefined,
             entityId: product?.metadata.entityId,
             entityTypeName: product?.metadata.entityTypeName,
             accountId: product?.metadata.accountId,
             userId: product?.metadata.userId,
-            cartId: product?.metadata.cartId ? parseInt(product.metadata.cartId, 10) : undefined,
-            gardenId: product?.metadata.gardenId ? parseInt(product.metadata.gardenId, 10) : undefined,
-            raisedBedId: product?.metadata.raisedBedId ? parseInt(product.metadata.raisedBedId, 10) : undefined,
-            positionIndex: product?.metadata.positionIndex ? parseInt(product.metadata.positionIndex, 10) : undefined,
-            additionalData: product?.metadata.additionalData ? JSON.parse(product.metadata.additionalData) : undefined,
-            currency: 'eur'
+            cartId: product?.metadata.cartId
+                ? parseInt(product.metadata.cartId, 10)
+                : undefined,
+            gardenId: product?.metadata.gardenId
+                ? parseInt(product.metadata.gardenId, 10)
+                : undefined,
+            raisedBedId: product?.metadata.raisedBedId
+                ? parseInt(product.metadata.raisedBedId, 10)
+                : undefined,
+            positionIndex: product?.metadata.positionIndex
+                ? parseInt(product.metadata.positionIndex, 10)
+                : undefined,
+            additionalData: product?.metadata.additionalData
+                ? JSON.parse(product.metadata.additionalData)
+                : undefined,
+            currency: 'eur',
         };
 
         // Save accountId from metadata if not already set
@@ -60,20 +98,33 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         // Check if transaction was already precessed
         if (accountId) {
             // TODO: Use paginatino and retrieve last N transactions or match via date
-            const transactions = await getAllTransactions({ filter: { accountId } });
-            const existingTransaction = transactions.find(t =>
-                t.stripePaymentId === session.id &&
-                t.status === 'completed'
+            const transactions = await getAllTransactions({
+                filter: { accountId },
+            });
+            const existingTransaction = transactions.find(
+                (t) =>
+                    t.stripePaymentId === session.id &&
+                    t.status === 'completed',
             );
             if (existingTransaction) {
-                console.info(`Transaction for session ${checkoutSessionId} already processed for account ${accountId}`);
+                console.info(
+                    `Transaction for session ${checkoutSessionId} already processed for account ${accountId}`,
+                );
                 return;
             }
         }
 
         // Validate required metadata
-        if (!itemData.cartItemId || !itemData.entityId || !itemData.entityTypeName || !itemData.accountId || !itemData.cartId) {
-            console.warn(`Missing required metadata for item ${item.id} in session ${checkoutSessionId}`);
+        if (
+            !itemData.cartItemId ||
+            !itemData.entityId ||
+            !itemData.entityTypeName ||
+            !itemData.accountId ||
+            !itemData.cartId
+        ) {
+            console.warn(
+                `Missing required metadata for item ${item.id} in session ${checkoutSessionId}`,
+            );
             continue;
         }
 
@@ -81,32 +132,48 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         try {
             const cart = await getShoppingCart(itemData.cartId);
             if (!cart) {
-                console.warn(`No cart found for ID ${itemData.cartId} in session ${checkoutSessionId}`);
+                console.warn(
+                    `No cart found for ID ${itemData.cartId} in session ${checkoutSessionId}`,
+                );
                 continue;
             }
 
             // Find cart item by cartItemId for more reliable matching
-            const cartItem = cart.items.find(i => i.id === itemData.cartItemId);
+            const cartItem = cart.items.find(
+                (i) => i.id === itemData.cartItemId,
+            );
 
             if (cartItem?.status === 'paid') {
-                console.warn(`Cart item ${cartItem.id} is already paid. Skipping so we don't double process.`);
+                console.warn(
+                    `Cart item ${cartItem.id} is already paid. Skipping so we don't double process.`,
+                );
                 continue;
             }
             if (!cartItem) {
-                console.warn(`No cart item found with ID ${itemData.cartItemId} in cart ${itemData.cartId} for session ${checkoutSessionId}`);
+                console.warn(
+                    `No cart item found with ID ${itemData.cartItemId} in cart ${itemData.cartId} for session ${checkoutSessionId}`,
+                );
                 continue;
             }
 
             // Additional validation: ensure the cart item matches the expected entity details
-            if (cartItem.entityId !== itemData.entityId || cartItem.entityTypeName !== itemData.entityTypeName) {
-                console.warn(`Cart item ${itemData.cartItemId} entity mismatch. Expected: ${itemData.entityId}/${itemData.entityTypeName}, Found: ${cartItem.entityId}/${cartItem.entityTypeName}`);
+            if (
+                cartItem.entityId !== itemData.entityId ||
+                cartItem.entityTypeName !== itemData.entityTypeName
+            ) {
+                console.warn(
+                    `Cart item ${itemData.cartItemId} entity mismatch. Expected: ${itemData.entityId}/${itemData.entityTypeName}, Found: ${cartItem.entityId}/${cartItem.entityTypeName}`,
+                );
                 continue;
             }
 
             await setCartItemPaid(cartItem.id);
             affectedCartIds.push(cart.id);
         } catch (error) {
-            console.error(`Error processing cart item ${itemData.cartItemId} in session ${checkoutSessionId}`, error);
+            console.error(
+                `Error processing cart item ${itemData.cartItemId} in session ${checkoutSessionId}`,
+                error,
+            );
             continue;
         }
 
@@ -122,13 +189,15 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
     // Update all affected carts to mark them as paid if all items are paid
     await Promise.all([
         ...affectedCartIds.map(markCartPaidIfAllItemsPaid),
-        accountId && session.amountTotal ? createTransaction({
-            accountId,
-            amount: session.amountTotal,
-            stripePaymentId: session.paymentId ?? session.id,
-            status: 'completed',
-            currency: 'eur'
-        }) : undefined
+        accountId && session.amountTotal
+            ? createTransaction({
+                  accountId,
+                  amount: session.amountTotal,
+                  stripePaymentId: session.paymentId ?? session.id,
+                  status: 'completed',
+                  currency: 'eur',
+              })
+            : undefined,
     ]);
 }
 
@@ -144,11 +213,17 @@ export async function processItem(itemData: {
     currency: string | null;
     amount_total: number; // Amount in cents or sunflowers
 }) {
-    console.debug(`Processing item with entityId ${itemData.entityId} and entityTypeName ${itemData.entityTypeName} for account ${itemData.accountId}`);
+    console.debug(
+        `Processing item with entityId ${itemData.entityId} and entityTypeName ${itemData.entityTypeName} for account ${itemData.accountId}`,
+    );
 
-    const earnSunflowers = () => itemData.accountId && itemData.currency === 'eur' ?
-        earnSunflowersForPayment(itemData.accountId, itemData.amount_total / 100) :
-        Promise.resolve();
+    const earnSunflowers = () =>
+        itemData.accountId && itemData.currency === 'eur'
+            ? earnSunflowersForPayment(
+                  itemData.accountId,
+                  itemData.amount_total / 100,
+              )
+            : Promise.resolve();
 
     // TODO: Move this logic to a separate function
     if (itemData.entityTypeName === 'operation') {
@@ -156,40 +231,73 @@ export async function processItem(itemData: {
         // TODO: Handle raisedBed operation placement (not currently necessary since we can't buy raised bed operation without planting plants)
 
         // Special cases: Handle sensor installation
-        if (itemData.raisedBedId && itemData.entityId === '180') { // TODO: Mitigate hardcoded '180' as place sensor ID
+        if (itemData.raisedBedId && itemData.entityId === '180') {
+            // TODO: Mitigate hardcoded '180' as place sensor ID
             try {
                 await Promise.all([
                     createRaisedBedSensor({
                         raisedBedId: itemData.raisedBedId,
                     }),
-                    earnSunflowers
+                    earnSunflowers,
                 ]);
-                console.debug(`Installed sensor in raised bed ${itemData.raisedBedId}.`);
+                console.debug(
+                    `Installed sensor in raised bed ${itemData.raisedBedId}.`,
+                );
             } catch (error) {
-                console.error(`Failed to install sensor for raised bed ${itemData.raisedBedId}.`, error);
+                console.error(
+                    `Failed to install sensor for raised bed ${itemData.raisedBedId}.`,
+                    error,
+                );
             }
         } else {
-            if (!itemData.accountId || !itemData.entityId || !itemData.entityTypeName) {
-                console.error(`Missing required metadata for operation item in order.`, itemData);
+            if (
+                !itemData.accountId ||
+                !itemData.entityId ||
+                !itemData.entityTypeName
+            ) {
+                console.error(
+                    `Missing required metadata for operation item in order.`,
+                    itemData,
+                );
                 return;
             }
             const entityIdNumber = parseInt(itemData.entityId, 10);
-            if (isNaN(entityIdNumber)) {
-                console.error(`Invalid entityId ${itemData.entityId} for operation item in order.`, itemData);
+            if (Number.isNaN(entityIdNumber)) {
+                console.error(
+                    `Invalid entityId ${itemData.entityId} for operation item in order.`,
+                    itemData,
+                );
                 return;
             }
 
             // Try to resolve field ID from position index (only active fields)
-            let fieldId: number | undefined = undefined;
-            if (typeof itemData.positionIndex === 'number' && itemData.raisedBedId) {
-                const raisedBedFields = await getRaisedBedFieldsWithEvents(itemData.raisedBedId);
-                fieldId = raisedBedFields.find(field => field.positionIndex === itemData.positionIndex && field.active)?.id;
+            let fieldId: number | undefined;
+            if (
+                typeof itemData.positionIndex === 'number' &&
+                itemData.raisedBedId
+            ) {
+                const raisedBedFields = await getRaisedBedFieldsWithEvents(
+                    itemData.raisedBedId,
+                );
+                fieldId = raisedBedFields.find(
+                    (field) =>
+                        field.positionIndex === itemData.positionIndex &&
+                        field.active,
+                )?.id;
             }
 
             // Try to extract scheduled date from additional data
             let scheduledDate: string | null = null;
-            const additionalData = typeof itemData.additionalData === 'string' ? JSON.parse(itemData.additionalData) : itemData.additionalData;
-            if (typeof additionalData === 'object' && additionalData != null && 'scheduledDate' in additionalData && typeof additionalData.scheduledDate === 'string') {
+            const additionalData =
+                typeof itemData.additionalData === 'string'
+                    ? JSON.parse(itemData.additionalData)
+                    : itemData.additionalData;
+            if (
+                typeof additionalData === 'object' &&
+                additionalData != null &&
+                'scheduledDate' in additionalData &&
+                typeof additionalData.scheduledDate === 'string'
+            ) {
                 scheduledDate = additionalData.scheduledDate;
             }
 
@@ -200,20 +308,23 @@ export async function processItem(itemData: {
                     entityTypeName: itemData.entityTypeName,
                     gardenId: itemData.gardenId,
                     raisedBedId: itemData.raisedBedId,
-                    raisedBedFieldId: fieldId
+                    raisedBedFieldId: fieldId,
                 }),
-                earnSunflowers
+                earnSunflowers,
             ]);
-            console.debug(`Created operation ${itemData.entityId} of type ${itemData.entityTypeName} for account ${itemData.accountId} in garden ${itemData.gardenId ?? 'N/A'} with raised bed ${itemData.raisedBedId ?? 'N/A'} and field ${fieldId ?? 'N/A'}.`);
+            console.debug(
+                `Created operation ${itemData.entityId} of type ${itemData.entityTypeName} for account ${itemData.accountId} in garden ${itemData.gardenId ?? 'N/A'} with raised bed ${itemData.raisedBedId ?? 'N/A'} and field ${fieldId ?? 'N/A'}.`,
+            );
 
             if (scheduledDate) {
-                await createEvent(knownEvents.operations.scheduledV1(
-                    operationId.toString(),
-                    {
-                        scheduledDate
-                    }
-                ));
-                console.debug(`Scheduled operation ${operationId} for date ${scheduledDate}.`);
+                await createEvent(
+                    knownEvents.operations.scheduledV1(operationId.toString(), {
+                        scheduledDate,
+                    }),
+                );
+                console.debug(
+                    `Scheduled operation ${operationId} for date ${scheduledDate}.`,
+                );
             }
 
             // Check if this operation/entity is deliverable and create delivery request if needed
@@ -222,32 +333,46 @@ export async function processItem(itemData: {
                     entityId: parseInt(itemData.entityId, 10),
                 });
                 if (isDeliverable) {
-                    console.debug(`Operation ${operationId} is deliverable - checking for delivery configuration in metadata`);
+                    console.debug(
+                        `Operation ${operationId} is deliverable - checking for delivery configuration in metadata`,
+                    );
 
                     // Check if delivery information was stored in additionalData
                     let deliveryInfo = null;
-                    if (typeof additionalData === 'object' && additionalData !== null && 'delivery' in additionalData) {
+                    if (
+                        typeof additionalData === 'object' &&
+                        additionalData !== null &&
+                        'delivery' in additionalData
+                    ) {
                         deliveryInfo = additionalData.delivery;
                     }
 
-                    if (deliveryInfo && deliveryInfo.slotId && deliveryInfo.mode) {
+                    if (deliveryInfo?.slotId && deliveryInfo.mode) {
                         try {
-                            const deliveryRequestId = await createDeliveryRequest({
-                                operationId,
-                                slotId: deliveryInfo.slotId,
-                                mode: deliveryInfo.mode,
-                                addressId: deliveryInfo.addressId,
-                                locationId: deliveryInfo.locationId,
-                                notes: deliveryInfo.notes,
-                                accountId: itemData.accountId
-                            });
-                            console.debug(`Created delivery request ${deliveryRequestId} for operation ${operationId}`);
+                            const deliveryRequestId =
+                                await createDeliveryRequest({
+                                    operationId,
+                                    slotId: deliveryInfo.slotId,
+                                    mode: deliveryInfo.mode,
+                                    addressId: deliveryInfo.addressId,
+                                    locationId: deliveryInfo.locationId,
+                                    notes: deliveryInfo.notes,
+                                    accountId: itemData.accountId,
+                                });
+                            console.debug(
+                                `Created delivery request ${deliveryRequestId} for operation ${operationId}`,
+                            );
                         } catch (error) {
-                            console.error(`Failed to create delivery request for operation ${operationId}:`, error);
+                            console.error(
+                                `Failed to create delivery request for operation ${operationId}:`,
+                                error,
+                            );
                             // Don't fail the whole payment, just log the error
                         }
                     } else {
-                        console.warn(`Operation ${operationId} is deliverable but no delivery information found in metadata`);
+                        console.warn(
+                            `Operation ${operationId} is deliverable but no delivery information found in metadata`,
+                        );
                     }
                 }
             }
@@ -256,29 +381,42 @@ export async function processItem(itemData: {
         itemData.entityId &&
         itemData.entityTypeName === 'plantSort' &&
         itemData.raisedBedId &&
-        typeof itemData.positionIndex === 'number') {
+        typeof itemData.positionIndex === 'number'
+    ) {
         await Promise.all([
             upsertRaisedBedField({
                 positionIndex: itemData.positionIndex,
-                raisedBedId: itemData.raisedBedId
+                raisedBedId: itemData.raisedBedId,
             }),
-            createEvent(knownEvents.raisedBedFields.plantPlaceV1(
-                `${itemData.raisedBedId}|${itemData.positionIndex}`,
-                {
-                    plantSortId: itemData.entityId,
-                    scheduledDate: typeof itemData.additionalData === 'object' && itemData.additionalData != null && 'scheduledDate' in itemData.additionalData && typeof itemData.additionalData.scheduledDate === 'string'
-                        ? itemData.additionalData.scheduledDate
-                        : null,
-                }
-            )),
+            createEvent(
+                knownEvents.raisedBedFields.plantPlaceV1(
+                    `${itemData.raisedBedId}|${itemData.positionIndex}`,
+                    {
+                        plantSortId: itemData.entityId,
+                        scheduledDate:
+                            typeof itemData.additionalData === 'object' &&
+                            itemData.additionalData != null &&
+                            'scheduledDate' in itemData.additionalData &&
+                            typeof itemData.additionalData.scheduledDate ===
+                                'string'
+                                ? itemData.additionalData.scheduledDate
+                                : null,
+                    },
+                ),
+            ),
             updateRaisedBed({
                 id: itemData.raisedBedId,
-                status: 'active'
+                status: 'active',
             }),
             earnSunflowers,
         ]);
-        console.debug(`Placed plant sort ${itemData.entityId} in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`);
+        console.debug(
+            `Placed plant sort ${itemData.entityId} in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`,
+        );
     } else {
-        console.error(`Unsupported item type for entityId ${itemData.entityId} in order.`, itemData);
+        console.error(
+            `Unsupported item type for entityId ${itemData.entityId} in order.`,
+            itemData,
+        );
     }
 }

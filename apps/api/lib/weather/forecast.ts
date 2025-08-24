@@ -1,4 +1,4 @@
-import { parseStringPromise } from "xml2js";
+import { parseStringPromise } from 'xml2js';
 
 interface WeatherEntry {
     time: number;
@@ -45,11 +45,15 @@ interface ParsedXmlData {
 export async function getBjelovarForecast(): Promise<DayForecast[]> {
     try {
         console.info('Fetching forecast data for Bjelovar...');
-        const response = await fetch('https://prognoza.hr/sedam/hrvatska/7d_meteogrami.xml');
+        const response = await fetch(
+            'https://prognoza.hr/sedam/hrvatska/7d_meteogrami.xml',
+        );
         const xml = await response.text();
         const data: ParsedXmlData = await parseStringPromise(xml);
 
-        const bjelovarForecast = data.sedmodnevna_aliec.grad.find(city => city.$.ime === 'Bjelovar');
+        const bjelovarForecast = data.sedmodnevna_aliec.grad.find(
+            (city) => city.$.ime === 'Bjelovar',
+        );
         if (!bjelovarForecast) {
             console.warn('Bjelovar forecast not found.');
             throw new Error('Bjelovar forecast not found.');
@@ -59,7 +63,10 @@ export async function getBjelovarForecast(): Promise<DayForecast[]> {
         let currentDay: DayForecast | null = null;
 
         for (const entry of bjelovarForecast.dan) {
-            const date = entry.$.datum.replace(/(\d+)\.(\d+)\.(\d+)\./, '$3-$2-$1');
+            const date = entry.$.datum.replace(
+                /(\d+)\.(\d+)\.(\d+)\./,
+                '$3-$2-$1',
+            );
             const time = parseInt(entry.$.sat, 10);
             const temperature = parseInt(entry.t_2m[0], 10);
             const symbol = parseInt(entry.simbol[0].replace('n', ''), 10);
@@ -88,7 +95,7 @@ export async function getBjelovarForecast(): Promise<DayForecast[]> {
                     windStrength: windStrength,
                     entries: [],
                     symbol,
-                    rain
+                    rain,
                 };
                 fiveDayForecast.push(currentDay);
             }
@@ -100,11 +107,20 @@ export async function getBjelovarForecast(): Promise<DayForecast[]> {
                 currentDay.windDirection = windDirection;
                 currentDay.windStrength = windStrength;
             }
-            currentDay.entries.push({ time, temperature, symbol, windDirection, windStrength, rain });
+            currentDay.entries.push({
+                time,
+                temperature,
+                symbol,
+                windDirection,
+                windStrength,
+                rain,
+            });
         }
 
         // Sort the forecasts by date
-        fiveDayForecast.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        fiveDayForecast.sort(
+            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        );
 
         return fiveDayForecast;
     } catch (error) {

@@ -1,5 +1,5 @@
-import "server-only";
-import Stripe from 'stripe';
+import 'server-only';
+import type Stripe from 'stripe';
 import { getReturnUrl, getStripe } from '../config';
 
 export type UserAccount = {
@@ -7,7 +7,7 @@ export type UserAccount = {
     email: string;
     name: string;
     stripeCustomerId?: string;
-}
+};
 
 export type CheckoutItem = {
     price: {
@@ -28,7 +28,9 @@ async function ensureStripeCustomer(account: UserAccount): Promise<string> {
     // Ensure customer still exists in Stripe and is not deleted
     if (account.stripeCustomerId && account.stripeCustomerId.length > 0) {
         try {
-            const existingCustomerId = await getStripe().customers.retrieve(account.stripeCustomerId);
+            const existingCustomerId = await getStripe().customers.retrieve(
+                account.stripeCustomerId,
+            );
             if (existingCustomerId && !existingCustomerId.deleted)
                 return existingCustomerId.id;
         } catch (error) {
@@ -38,10 +40,12 @@ async function ensureStripeCustomer(account: UserAccount): Promise<string> {
     }
 
     // Try to find customer by email
-    const customers = await stripeListAll<Stripe.Customer>(params => getStripe().customers.list({
-        email: account.email,
-        ...params
-    }));
+    const customers = await stripeListAll<Stripe.Customer>((params) =>
+        getStripe().customers.list({
+            email: account.email,
+            ...params,
+        }),
+    );
 
     if (customers.length > 0) {
         const customer = customers[0];
@@ -53,7 +57,7 @@ async function ensureStripeCustomer(account: UserAccount): Promise<string> {
     // Create a new customer in Stripe
     const newCustomer = await getStripe().customers.create({
         email: account.email,
-        name: account.name
+        name: account.name,
     });
     return newCustomer.id;
 }
@@ -64,7 +68,7 @@ export async function getStripeCheckoutSessions(lastDateTime: Date) {
             created: {
                 gte: Math.floor(lastDateTime.getTime() / 1000),
             },
-            limit: 100
+            limit: 100,
         });
         return sessions.data;
     } catch (error) {
@@ -76,26 +80,37 @@ export async function getStripeCheckoutSessions(lastDateTime: Date) {
 export async function getStripeCheckoutSession(sessionId: string) {
     try {
         const session = await getStripe().checkout.sessions.retrieve(sessionId);
-        const line_items = await getStripe().checkout.sessions.listLineItems(sessionId, {
-            expand: ['data.price.product'],
-            limit: 100
-        });
+        const line_items = await getStripe().checkout.sessions.listLineItems(
+            sessionId,
+            {
+                expand: ['data.price.product'],
+                limit: 100,
+            },
+        );
         return {
             id: session.id,
             customerId: session.customer,
             status: session.status,
-            paymentId: typeof session.payment_link === 'string'
-                ? session.payment_link
-                : session.payment_link?.id,
+            paymentId:
+                typeof session.payment_link === 'string'
+                    ? session.payment_link
+                    : session.payment_link?.id,
             paymentStatus: session.payment_status,
             lineItems: line_items,
             amountTotal: session.amount_total,
         };
     } catch (error) {
         if (error instanceof Error) {
-            console.error(error.message + ' Please try again later or contact a system administrator.', 'error');
+            console.error(
+                error.message +
+                    ' Please try again later or contact a system administrator.',
+                'error',
+            );
         } else {
-            console.error('An unknown error occurred. Please try again later or contact a system administrator.', 'error');
+            console.error(
+                'An unknown error occurred. Please try again later or contact a system administrator.',
+                'error',
+            );
         }
         throw error;
     }
@@ -107,13 +122,20 @@ export async function stripeSessionCancel(sessionId: string) {
         return {
             id: session.id,
             customerId: session.customer,
-            status: session.status
+            status: session.status,
         };
     } catch (error) {
         if (error instanceof Error) {
-            console.error(error.message + ' Please try again later or contact a system administrator.', 'error');
+            console.error(
+                error.message +
+                    ' Please try again later or contact a system administrator.',
+                'error',
+            );
         } else {
-            console.error('An unknown error occurred. Please try again later or contact a system administrator.', 'error');
+            console.error(
+                'An unknown error occurred. Please try again later or contact a system administrator.',
+                'error',
+            );
         }
         throw error;
     }
@@ -122,8 +144,8 @@ export async function stripeSessionCancel(sessionId: string) {
 export async function stripeCheckout(
     account: UserAccount,
     data: {
-        items: CheckoutItem[],
-    }
+        items: CheckoutItem[];
+    },
 ) {
     try {
         const customerId = await ensureStripeCustomer(account);
@@ -132,14 +154,14 @@ export async function stripeCheckout(
             customer_update: {
                 address: 'auto',
             },
-            line_items: data.items.map(item => ({
+            line_items: data.items.map((item) => ({
                 price_data: {
                     currency: item.price.currency,
                     product_data: {
                         name: item.product.name,
                         description: item.product.description,
                         images: item.product.imageUrls,
-                        metadata: item.product.metadata
+                        metadata: item.product.metadata,
                     },
                     unit_amount: item.price.valueInCents,
                 },
@@ -153,7 +175,7 @@ export async function stripeCheckout(
         };
 
         // Create a checkout session in Stripe
-        let session;
+        let session: Stripe.Checkout.Session | undefined;
         try {
             session = await getStripe().checkout.sessions.create(params);
         } catch (err) {
@@ -162,15 +184,26 @@ export async function stripeCheckout(
         }
 
         if (session) {
-            return { sessionId: session.id, customerId: customerId, url: session.url };
+            return {
+                sessionId: session.id,
+                customerId: customerId,
+                url: session.url,
+            };
         }
 
         throw new Error('Unable to create checkout session.');
     } catch (error) {
         if (error instanceof Error) {
-            console.error(error.message + ' Please try again later or contact a system administrator.', 'error');
+            console.error(
+                error.message +
+                    ' Please try again later or contact a system administrator.',
+                'error',
+            );
         } else {
-            console.error('An unknown error occurred. Please try again later or contact a system administrator.', 'error');
+            console.error(
+                'An unknown error occurred. Please try again later or contact a system administrator.',
+                'error',
+            );
         }
         throw error;
     }
@@ -180,8 +213,7 @@ export async function stripeCustomerBillingInfo(account: UserAccount) {
     try {
         const customerId = await ensureStripeCustomer(account);
         const stripeCustomer = await getStripe().customers.retrieve(customerId);
-        if (stripeCustomer.deleted)
-            throw new Error('Customer not found');
+        if (stripeCustomer.deleted) throw new Error('Customer not found');
 
         return {
             customerId,
@@ -194,20 +226,31 @@ export async function stripeCustomerBillingInfo(account: UserAccount) {
         };
     } catch (error) {
         if (error instanceof Error) {
-            console.error(error.message + ' Please try again later or contact a system administrator.', 'error');
+            console.error(
+                error.message +
+                    ' Please try again later or contact a system administrator.',
+                'error',
+            );
         } else {
-            console.error('An unknown error occurred. Please try again later or contact a system administrator.', 'error');
+            console.error(
+                'An unknown error occurred. Please try again later or contact a system administrator.',
+                'error',
+            );
         }
         throw error;
     }
 }
 
-async function stripeListAll<T extends { id: string }>(fetchMethod: (params: Stripe.PaginationParams) => Promise<Stripe.ApiList<T>>) {
+async function stripeListAll<T extends { id: string }>(
+    fetchMethod: (
+        params: Stripe.PaginationParams,
+    ) => Promise<Stripe.ApiList<T>>,
+) {
     const data: T[] = [];
     let hasMore = true;
     while (hasMore) {
         const page = await fetchMethod({
-            starting_after: data[data.length - 1]?.id
+            starting_after: data[data.length - 1]?.id,
         });
         data.push(...page.data);
         hasMore = page.has_more;
@@ -219,13 +262,15 @@ export async function stripeCustomerPaymentMethods(account: UserAccount) {
     try {
         const customerId = await ensureStripeCustomer(account);
         const stripeCustomer = await getStripe().customers.retrieve(customerId);
-        if (stripeCustomer.deleted)
-            throw new Error('Customer not found');
+        if (stripeCustomer.deleted) throw new Error('Customer not found');
 
-        const paymentMethods = await stripeListAll<Stripe.PaymentMethod>(params => getStripe().paymentMethods.list({
-            customer: customerId,
-            ...params
-        }));
+        const paymentMethods = await stripeListAll<Stripe.PaymentMethod>(
+            (params) =>
+                getStripe().paymentMethods.list({
+                    customer: customerId,
+                    ...params,
+                }),
+        );
 
         return paymentMethods.map((pm) => {
             return {
@@ -236,14 +281,23 @@ export async function stripeCustomerPaymentMethods(account: UserAccount) {
                 last4: pm.card?.last4,
                 expMonth: pm.card?.exp_month,
                 expYear: pm.card?.exp_year,
-                isDefault: pm.id === stripeCustomer.invoice_settings.default_payment_method
+                isDefault:
+                    pm.id ===
+                    stripeCustomer.invoice_settings.default_payment_method,
             };
         });
     } catch (error) {
         if (error instanceof Error) {
-            console.error(error.message + ' Please try again later or contact a system administrator.', 'error');
+            console.error(
+                error.message +
+                    ' Please try again later or contact a system administrator.',
+                'error',
+            );
         } else {
-            console.error('An unknown error occurred. Please try again later or contact a system administrator.', 'error');
+            console.error(
+                'An unknown error occurred. Please try again later or contact a system administrator.',
+                'error',
+            );
         }
 
         throw error;
@@ -254,17 +308,19 @@ export async function stripeCreatePortal(account: UserAccount) {
     try {
         const customerId = await ensureStripeCustomer(account);
         try {
-            const { url, id } = await getStripe().billingPortal.sessions.create({
-                customer: customerId,
-                return_url: getReturnUrl()
-            });
+            const { url, id } = await getStripe().billingPortal.sessions.create(
+                {
+                    customer: customerId,
+                    return_url: getReturnUrl(),
+                },
+            );
             if (!url) {
                 throw new Error('Could not create billing portal');
             }
             return {
                 sessionId: id,
                 url,
-                customerId
+                customerId,
             };
         } catch (err) {
             console.error(err);
@@ -272,22 +328,37 @@ export async function stripeCreatePortal(account: UserAccount) {
         }
     } catch (error) {
         if (error instanceof Error) {
-            console.error(error.message + ' Please try again later or contact a system administrator.', 'error');
+            console.error(
+                error.message +
+                    ' Please try again later or contact a system administrator.',
+                'error',
+            );
         } else {
-            console.error('An unknown error occurred. Please try again later or contact a system administrator.', 'error');
+            console.error(
+                'An unknown error occurred. Please try again later or contact a system administrator.',
+                'error',
+            );
         }
 
         console.error(error);
     }
 }
 
-export async function stripeWebhookConstructEvent(body: string, sig: string, webhookSecret: string | undefined) {
+export async function stripeWebhookConstructEvent(
+    body: string,
+    sig: string,
+    webhookSecret: string | undefined,
+) {
     if (!webhookSecret) {
         throw new Error('Stripe webhook secret is not provided.');
     }
 
     try {
-        const event = getStripe().webhooks.constructEvent(body, sig, webhookSecret);
+        const event = getStripe().webhooks.constructEvent(
+            body,
+            sig,
+            webhookSecret,
+        );
         console.info(`🔔  Webhook received: ${event.type}`);
         return event;
     } catch (err: unknown) {

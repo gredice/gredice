@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from "react";
-import { Duplicate } from "@signalco/ui-icons";
-import { Row } from "@signalco/ui-primitives/Row";
+import { Duplicate } from '@signalco/ui-icons';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Row } from '@signalco/ui-primitives/Row';
+import { useState } from 'react';
 
 type TaskItem = {
     id: string;
@@ -23,13 +24,15 @@ export function CopyTasksButton({ physicalId, tasks }: CopyTasksButtonProps) {
         e.stopPropagation();
 
         // Create formatted text with links
-        const taskText = tasks.map(task => {
-            // TODO: Not working for WhatsApp
-            // if (task.link) {
-            //     return `• [${task.text}](${task.link})`;
-            // }
-            return `• ${task.text}`;
-        }).join('\n');
+        const taskText = tasks
+            .map((task) => {
+                // TODO: Not working for WhatsApp
+                // if (task.link) {
+                //     return `• [${task.text}](${task.link})`;
+                // }
+                return `• ${task.text}`;
+            })
+            .join('\n');
 
         const fullText = `Gr ${physicalId}\n${taskText}`;
 
@@ -44,10 +47,15 @@ export function CopyTasksButton({ physicalId, tasks }: CopyTasksButtonProps) {
 
     return (
         <Row spacing={1}>
-            <a onClick={handleCopy} className="hover:opacity-60">
+            <IconButton
+                title="Kopiraj zadatke u međuspremnik"
+                onClick={handleCopy}
+            >
                 <Duplicate className="size-4" />
-            </a>
-            {copied && <span className="text-sm text-green-500">Kopirano!</span>}
+            </IconButton>
+            {copied && (
+                <span className="text-sm text-green-500">Kopirano!</span>
+            )}
         </Row>
     );
 }

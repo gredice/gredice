@@ -1,11 +1,10 @@
 'use client';
 
-import { SelectEntity } from "@gredice/storage";
-import { SelectItems } from "@signalco/ui-primitives/SelectItems";
-import { updateEntity } from "../../../../(actions)/entityActions";
-import { useState } from "react";
-import { Megaphone } from "@signalco/ui-icons";
-import { Edit } from "@signalco/ui-icons";
+import type { SelectEntity } from '@gredice/storage';
+import { Edit, Megaphone } from '@signalco/ui-icons';
+import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { useState } from 'react';
+import { updateEntity } from '../../../../(actions)/entityActions';
 
 export function EntityStateSelect({ entity }: { entity: SelectEntity }) {
     const [state, setState] = useState(entity.state);
@@ -14,19 +13,28 @@ export function EntityStateSelect({ entity }: { entity: SelectEntity }) {
         setState(newState);
         await updateEntity({
             id: entity.id,
-            state: newState
+            state: newState,
         });
     }
 
     const items = [
-        { value: 'draft', label: 'U izradi', icon: <Edit className="size-5" /> },
-        { value: 'published', label: 'Objavljeno', icon: <Megaphone className="size-5" /> },
+        {
+            value: 'draft',
+            label: 'U izradi',
+            icon: <Edit className="size-5" />,
+        },
+        {
+            value: 'published',
+            label: 'Objavljeno',
+            icon: <Megaphone className="size-5" />,
+        },
     ];
 
     return (
         <SelectItems
             value={state}
             onValueChange={(newState) => handleStateChange(newState)}
-            items={items} />
-    )
+            items={items}
+        />
+    );
 }

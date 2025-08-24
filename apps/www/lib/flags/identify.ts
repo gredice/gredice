@@ -1,10 +1,10 @@
-import { Identify } from "flags";
-import { dedupe } from "flags/next";
-import { Context } from "./generated/hypertune";
+import type { Identify } from 'flags';
+import { dedupe } from 'flags/next';
+import type { Context } from './generated/hypertune';
 
 export async function getContext() {
     return {
-        environment: process.env.NODE_ENV
+        environment: process.env.NODE_ENV,
     };
 }
 

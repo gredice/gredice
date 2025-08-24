@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { client } from '@gredice/client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deliveryAddressesQueryKey } from './useDeliveryAddresses';
 
 export function useCreateDeliveryAddress() {
@@ -18,7 +18,7 @@ export function useCreateDeliveryAddress() {
             isDefault?: boolean;
         }) => {
             const response = await client().api.delivery.addresses.$post({
-                json: data
+                json: data,
             });
             if (!response.ok) {
                 throw new Error('Failed to create delivery address');
@@ -27,9 +27,9 @@ export function useCreateDeliveryAddress() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({
-                queryKey: deliveryAddressesQueryKey
+                queryKey: deliveryAddressesQueryKey,
             });
-        }
+        },
     });
 }
 
@@ -50,9 +50,11 @@ export function useUpdateDeliveryAddress() {
             isDefault?: boolean;
         }) => {
             const { id, ...updateData } = data;
-            const response = await client().api.delivery.addresses[':id'].$patch({
+            const response = await client().api.delivery.addresses[
+                ':id'
+            ].$patch({
                 param: { id: id.toString() },
-                json: updateData
+                json: updateData,
             });
             if (!response.ok) {
                 throw new Error('Failed to update delivery address');
@@ -61,9 +63,9 @@ export function useUpdateDeliveryAddress() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({
-                queryKey: deliveryAddressesQueryKey
+                queryKey: deliveryAddressesQueryKey,
             });
-        }
+        },
     });
 }
 
@@ -72,8 +74,10 @@ export function useDeleteDeliveryAddress() {
 
     return useMutation({
         mutationFn: async (id: number) => {
-            const response = await client().api.delivery.addresses[':id'].$delete({
-                param: { id: id.toString() }
+            const response = await client().api.delivery.addresses[
+                ':id'
+            ].$delete({
+                param: { id: id.toString() },
             });
             if (!response.ok) {
                 throw new Error('Failed to delete delivery address');
@@ -82,8 +86,8 @@ export function useDeleteDeliveryAddress() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({
-                queryKey: deliveryAddressesQueryKey
+                queryKey: deliveryAddressesQueryKey,
             });
-        }
+        },
     });
 }

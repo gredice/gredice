@@ -1,14 +1,16 @@
 export const KnownPages = {
     GredicePlants: 'https://www.gredice.com/biljke',
     GredicePlant: (alias: string) => `https://www.gredice.com/biljke/${alias}`,
-    GredicePlantSort: (alias: string, sortAlias: string) => `https://www.gredice.com/biljke/${alias}/sorte/${sortAlias}`,
+    GredicePlantSort: (alias: string, sortAlias: string) =>
+        `https://www.gredice.com/biljke/${alias}/sorte/${sortAlias}`,
     GrediceOperations: 'https://www.gredice.com/radnje',
-    GrediceOperation: (alias: string) => `https://www.gredice.com/radnje/${alias}`,
+    GrediceOperation: (alias: string) =>
+        `https://www.gredice.com/radnje/${alias}`,
     GrediceBlocks: 'https://www.gredice.com/blokovi',
     GrediceBlock: (alias: string) => `https://www.gredice.com/blokovi/${alias}`,
     GrediceSunflowers: 'https://www.gredice.com/suncokreti',
     GrediceContact: 'https://www.gredice.com/kontakt',
     GrediceDeliverySlots: 'https://www.gredice.com/dostava/termini',
 
-    GoogleMapsGrediceHQ: 'https://maps.app.goo.gl/hJbidDQzhHWGCZwS6'
+    GoogleMapsGrediceHQ: 'https://maps.app.goo.gl/hJbidDQzhHWGCZwS6',
 };

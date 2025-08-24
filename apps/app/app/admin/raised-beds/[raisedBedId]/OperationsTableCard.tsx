@@ -1,12 +1,19 @@
-import { getOperations } from "@gredice/storage";
-import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card";
-import { Table } from "@signalco/ui-primitives/Table";
-import { LocalDateTime } from "@gredice/ui/LocalDateTime";
-import { Row } from "@signalco/ui-primitives/Row";
-import { OperationCreateModal } from "./OperationCreateModal";
-import { OperationsTable } from "../../../../components/operations/OperationsTable";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Row } from '@signalco/ui-primitives/Row';
+import { OperationsTable } from '../../../../components/operations/OperationsTable';
+import { OperationCreateModal } from './OperationCreateModal';
 
-export function OperationsTableCard({ accountId, gardenId, raisedBedId, raisedBedFieldId }: {
+export function OperationsTableCard({
+    accountId,
+    gardenId,
+    raisedBedId,
+    raisedBedFieldId,
+}: {
     accountId: string;
     gardenId?: number;
     raisedBedId?: number;
@@ -17,7 +24,12 @@ export function OperationsTableCard({ accountId, gardenId, raisedBedId, raisedBe
             <CardHeader>
                 <Row justifyContent="space-between">
                     <CardTitle>Operacije</CardTitle>
-                    <OperationCreateModal accountId={accountId} gardenId={gardenId} raisedBedId={raisedBedId} raisedBedFieldId={raisedBedFieldId} />
+                    <OperationCreateModal
+                        accountId={accountId}
+                        gardenId={gardenId}
+                        raisedBedId={raisedBedId}
+                        raisedBedFieldId={raisedBedFieldId}
+                    />
                 </Row>
             </CardHeader>
             <CardContent>
@@ -25,7 +37,8 @@ export function OperationsTableCard({ accountId, gardenId, raisedBedId, raisedBe
                     accountId={accountId}
                     gardenId={gardenId}
                     raisedBedId={raisedBedId}
-                    raisedBedFieldId={raisedBedFieldId} />
+                    raisedBedFieldId={raisedBedFieldId}
+                />
             </CardContent>
         </Card>
     );

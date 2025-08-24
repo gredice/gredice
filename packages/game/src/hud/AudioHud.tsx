@@ -1,6 +1,6 @@
-import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { useGameAudio } from "../hooks/useGameAudio";
-import { Volume2, Mute } from "@signalco/ui-icons";
+import { Mute, Volume2 } from '@signalco/ui-icons';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { useGameAudio } from '../hooks/useGameAudio';
 
 export function AudioHud() {
     const { isMuted, isSuspended, setMuted, resumeIfNeeded } = useGameAudio();
@@ -8,10 +8,13 @@ export function AudioHud() {
     return (
         <IconButton
             title="Upali/ugasi zvuk"
-            onClick={() => isSuspended ? resumeIfNeeded() : setMuted(!isMuted)}
+            onClick={() =>
+                isSuspended ? resumeIfNeeded() : setMuted(!isMuted)
+            }
             variant="plain"
-            className='pointer-events-auto hover:bg-muted'>
-            {(isMuted || isSuspended) ? <Mute /> : <Volume2 />}
+            className="pointer-events-auto hover:bg-muted"
+        >
+            {isMuted || isSuspended ? <Mute /> : <Volume2 />}
         </IconButton>
-    )
+    );
 }

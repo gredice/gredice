@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { client } from "@gredice/client";
+import { client } from '@gredice/client';
+import { useQuery } from '@tanstack/react-query';
 
 export const queryKey = {
     currentUser: ['currentUser'],

@@ -1,5 +1,5 @@
-import { Row } from "@signalco/ui-primitives/Row";
-import { MobileNav } from "./MobileNav";
+import { Row } from '@signalco/ui-primitives/Row';
+import { MobileNav } from './MobileNav';
 
 export function MobileHeader() {
     return (

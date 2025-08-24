@@ -14,22 +14,34 @@ export function isPlantRecommended(plant: {
     calendar?: {
         sowing?: { start?: number; end?: number }[];
         propagating?: { start?: number; end?: number }[];
-    }
+    };
 }): boolean {
     const now = new Date();
     const month = now.getMonth() + 1; // JS months are 0-based
     const calendar = plant.calendar;
     if (!calendar) return false;
     // Check sowing
-    if (calendar.sowing && calendar.sowing.some(period =>
-        (period.start && period.end && month >= period.start && month <= period.end)
-    )) {
+    if (
+        calendar.sowing?.some(
+            (period) =>
+                period.start &&
+                period.end &&
+                month >= period.start &&
+                month <= period.end,
+        )
+    ) {
         return true;
     }
     // Check planting
-    if (calendar.propagating && calendar.propagating.some(period =>
-        (period.start && period.end && month >= period.start && month <= period.end)
-    )) {
+    if (
+        calendar.propagating?.some(
+            (period) =>
+                period.start &&
+                period.end &&
+                month >= period.start &&
+                month <= period.end,
+        )
+    ) {
         return true;
     }
     return false;

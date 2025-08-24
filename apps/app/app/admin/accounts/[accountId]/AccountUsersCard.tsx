@@ -1,10 +1,15 @@
-import { Card, CardHeader, CardOverflow, CardTitle } from "@signalco/ui-primitives/Card";
-import { getAccountUsers } from "@gredice/storage";
-import Link from "next/link";
-import { KnownPages } from "../../../../src/KnownPages";
-import { Table } from "@signalco/ui-primitives/Table";
-import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
-import { LocalDateTime } from "@gredice/ui/LocalDateTime";
+import { getAccountUsers } from '@gredice/storage';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import {
+    Card,
+    CardHeader,
+    CardOverflow,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Table } from '@signalco/ui-primitives/Table';
+import Link from 'next/link';
+import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
+import { KnownPages } from '../../../../src/KnownPages';
 
 export async function AccountUsersCard({ accountId }: { accountId: string }) {
     const users = await getAccountUsers(accountId);
@@ -33,7 +38,7 @@ export async function AccountUsersCard({ accountId }: { accountId: string }) {
                                 </Table.Cell>
                             </Table.Row>
                         )}
-                        {users.map(user => (
+                        {users.map((user) => (
                             <Table.Row key={user.id}>
                                 <Table.Cell>
                                     <Link href={KnownPages.User(user.user.id)}>

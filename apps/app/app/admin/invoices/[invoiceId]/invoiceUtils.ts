@@ -1,13 +1,16 @@
 // Client-safe invoice utility functions
 export type InvoiceStatus = 'draft' | 'pending' | 'sent' | 'paid' | 'cancelled';
 
-export function isValidStatusTransition(currentStatus: InvoiceStatus | string, newStatus: InvoiceStatus): boolean {
+export function isValidStatusTransition(
+    currentStatus: InvoiceStatus | string,
+    newStatus: InvoiceStatus,
+): boolean {
     const validTransitions: Record<InvoiceStatus, InvoiceStatus[]> = {
-        'draft': ['pending', 'cancelled'],
-        'pending': ['sent', 'cancelled'],
-        'sent': ['paid'],
-        'paid': [], // Cannot transition from paid
-        'cancelled': [] // Cannot transition from cancelled
+        draft: ['pending', 'cancelled'],
+        pending: ['sent', 'cancelled'],
+        sent: ['paid'],
+        paid: [], // Cannot transition from paid
+        cancelled: [], // Cannot transition from cancelled
     };
 
     return validTransitions[currentStatus]?.includes(newStatus) ?? false;
@@ -25,7 +28,11 @@ export function canCancelInvoice(status: InvoiceStatus | string): boolean {
     return status === 'draft' || status === 'pending' || status === 'sent';
 }
 
-export function isOverdue(invoice: { status: string; dueDate: Date; paidDate?: Date | null }): boolean {
+export function isOverdue(invoice: {
+    status: string;
+    dueDate: Date;
+    paidDate?: Date | null;
+}): boolean {
     if (invoice.status === 'paid' || invoice.paidDate) {
         return false;
     }

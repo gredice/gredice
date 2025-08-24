@@ -1,5 +1,5 @@
-import { JsonSchema } from "@gredice/js/jsonSchema";
-import { SelectAttributeDefinition } from "@gredice/storage";
+import type { JsonSchema } from '@gredice/js/jsonSchema';
+import type { SelectAttributeDefinition } from '@gredice/storage';
 
 export type AttributeInputProps = {
     attributeDefinition?: SelectAttributeDefinition;

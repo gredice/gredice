@@ -8,7 +8,11 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "lint": "biome check"
+  },
   "devDependencies": {
+    "@biomejs/biome": "2.2.2",
     "@gredice/client": "workspace:*",
     "@gredice/js": "workspace:*",
     "@gredice/stripe": "workspace:*",
@@ -49,7 +53,7 @@
     "three": "0.179.1",
     "three-custom-shader-material": "6.3.7",
     "three-stdlib": "2.36.0",
-    "tsx": "4.20.5",
+    "tsx": "4.20.4",
     "typescript": "5.9.2",
     "uuid": "11.1.0",
     "zustand": "5.0.8"

@@ -1,1 +1,1 @@
-export * from "./AiWatermark";
+export * from './AiWatermark';

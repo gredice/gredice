@@ -1,13 +1,13 @@
-import { getFeedbacks } from "@gredice/storage";
-import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
-import { Chip } from "@signalco/ui-primitives/Chip";
-import { Table } from "@signalco/ui-primitives/Table";
-import { auth } from "../../../lib/auth/auth";
-import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
-import { LocalDateTime } from "@gredice/ui/LocalDateTime";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Stack } from "@signalco/ui-primitives/Stack";
+import { getFeedbacks } from '@gredice/storage';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
+import { Chip } from '@signalco/ui-primitives/Chip';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Table } from '@signalco/ui-primitives/Table';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
+import { auth } from '../../../lib/auth/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +18,9 @@ export default async function FeedbackPage() {
     return (
         <Stack spacing={2}>
             <Row spacing={1}>
-                <Typography level="h1" className="text-2xl" semiBold>Povratne informacije</Typography>
+                <Typography level="h1" className="text-2xl" semiBold>
+                    Povratne informacije
+                </Typography>
                 <Chip color="primary">{feedbacks.length}</Chip>
             </Row>
             <Card>
@@ -43,17 +45,11 @@ export default async function FeedbackPage() {
                                     </Table.Cell>
                                 </Table.Row>
                             )}
-                            {feedbacks.map(feedback => (
+                            {feedbacks.map((feedback) => (
                                 <Table.Row key={feedback.id}>
-                                    <Table.Cell>
-                                        {feedback.topic}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        {feedback.score}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        {feedback.comment}
-                                    </Table.Cell>
+                                    <Table.Cell>{feedback.topic}</Table.Cell>
+                                    <Table.Cell>{feedback.score}</Table.Cell>
+                                    <Table.Cell>{feedback.comment}</Table.Cell>
                                     <Table.Cell>
                                         {JSON.stringify(feedback.data)}
                                     </Table.Cell>

@@ -50,7 +50,7 @@ export function LocalDateTime({
 
     const dateValue = typeof children === 'string' ? new Date(children) : children;
 
-    if (isNaN(dateValue.getTime())) {
+    if (Number.isNaN(dateValue.getTime())) {
         console.warn('LocalDateTime: Invalid date provided:', children);
         return <span className={className}>Invalid Date</span>;
     }
@@ -123,7 +123,7 @@ export function TimeRange({
     const startDate = typeof startAt === 'string' ? new Date(startAt) : startAt;
     const endDate = typeof endAt === 'string' ? new Date(endAt) : endAt;
 
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
         console.warn('TimeRange: Invalid dates provided:', { startAt, endAt });
         return <span className={className}>Invalid Date Range</span>;
     }
@@ -157,7 +157,7 @@ export function TimeRange({
         const dateStr = new Intl.DateTimeFormat(locale, dateFormat).format(startDate);
         const startTime = new Intl.DateTimeFormat(locale, timeFormat).format(startDate);
         const endTime = new Intl.DateTimeFormat(locale, timeFormat).format(endDate);
-        
+
         return (
             <span className={className} title={`${startDate.toISOString()} - ${endDate.toISOString()}`}>
                 {dateStr} {startTime}{separator}{endTime}

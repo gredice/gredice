@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useActionState } from "react";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Input } from "@signalco/ui-primitives/Input";
-import { Button } from "@signalco/ui-primitives/Button";
-import { SelectItems } from "@signalco/ui-primitives/SelectItems";
-import { useFormStatus } from "react-dom";
-import { bulkGenerateSlotsAction } from "./actions";
+import { Button } from '@signalco/ui-primitives/Button';
+import { Input } from '@signalco/ui-primitives/Input';
+import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { useActionState, useState } from 'react';
+import { useFormStatus } from 'react-dom';
+import { bulkGenerateSlotsAction } from './actions';
 
 type Location = {
     id: number;
@@ -49,12 +49,16 @@ export function BulkGenerateForm({ locations }: BulkGenerateFormProps) {
                     placeholder="Odaberi lokaciju"
                     value={selectedLocation}
                     onValueChange={setSelectedLocation}
-                    items={locations.map(location => ({
+                    items={locations.map((location) => ({
                         value: location.id.toString(),
-                        label: location.name
+                        label: location.name,
                     }))}
                 />
-                <input type="hidden" name="locationId" value={selectedLocation} />
+                <input
+                    type="hidden"
+                    name="locationId"
+                    value={selectedLocation}
+                />
 
                 <SelectItems
                     variant="outlined"
@@ -63,7 +67,7 @@ export function BulkGenerateForm({ locations }: BulkGenerateFormProps) {
                     onValueChange={setSelectedType}
                     items={[
                         { value: 'delivery', label: 'Dostava' },
-                        { value: 'pickup', label: 'Preuzimanje' }
+                        { value: 'pickup', label: 'Preuzimanje' },
                     ]}
                 />
                 <input type="hidden" name="type" value={selectedType} />
@@ -122,7 +126,9 @@ export function BulkGenerateForm({ locations }: BulkGenerateFormProps) {
                 />
 
                 <div>
-                    <div className="text-sm font-medium mb-2">Dani u tjednu</div>
+                    <div className="text-sm font-medium mb-2">
+                        Dani u tjednu
+                    </div>
                     <div className="flex flex-wrap gap-2">
                         {[
                             { value: '1', label: 'Pon' },
@@ -131,14 +137,23 @@ export function BulkGenerateForm({ locations }: BulkGenerateFormProps) {
                             { value: '4', label: 'Čet' },
                             { value: '5', label: 'Pet' },
                             { value: '6', label: 'Sub' },
-                            { value: '0', label: 'Ned' }
-                        ].map(day => (
-                            <label key={day.value} className="flex items-center space-x-2">
+                            { value: '0', label: 'Ned' },
+                        ].map((day) => (
+                            <label
+                                key={day.value}
+                                className="flex items-center space-x-2"
+                            >
                                 <input
                                     type="checkbox"
                                     name="daysOfWeek"
                                     value={day.value}
-                                    defaultChecked={['1', '2', '3', '4', '5'].includes(day.value)} // Default to weekdays
+                                    defaultChecked={[
+                                        '1',
+                                        '2',
+                                        '3',
+                                        '4',
+                                        '5',
+                                    ].includes(day.value)} // Default to weekdays
                                 />
                                 <span className="text-sm">{day.label}</span>
                             </label>
@@ -149,7 +164,9 @@ export function BulkGenerateForm({ locations }: BulkGenerateFormProps) {
                 <SubmitButton />
 
                 {state?.message && (
-                    <div className={`text-sm ${state.success ? 'text-green-600' : 'text-red-600'}`}>
+                    <div
+                        className={`text-sm ${state.success ? 'text-green-600' : 'text-red-600'}`}
+                    >
                         {state.message}
                     </div>
                 )}

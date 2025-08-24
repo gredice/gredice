@@ -156,7 +156,7 @@ function SensorInfoModal({
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
     // Add smart labeling logic with mobile-friendly labels
-    const dataWithSmartLabels = processedData?.map((item, index) => {
+    const dataWithSmartLabels = processedData?.map((item, _index) => {
         return {
             ...item,
             timestamp: new Date(item.timestamp).getTime(),
@@ -413,7 +413,7 @@ function SensorInfoModal({
                                                     60 *
                                                     1000,
                                                 ).getTime(),
-                                                new Date().getTime(),
+                                                Date.now(),
                                             ]}
                                             angle={-35}
                                             textAnchor="end"
@@ -671,14 +671,18 @@ export function RaisedBedSensorInfo({
                                 )}
                             />
                             {isLoading && <Skeleton className="w-6 h-4" />}
-                            {!isLoading && error && (
-                                <Warning className="size-5 shrink-0 text-red-500" />
-                            )}
-                            {!isLoading && !error && (
-                                <span>{soilMoisture?.value ?? '-'}%</span>
-                            )}
-                        </Row>
-                    </ButtonGreen>
+                            {
+                                !isLoading && error && (
+                                    <Warning className="size-5 shrink-0 text-red-500" />
+                                )
+                            }
+                            {
+                                !isLoading && !error && (
+                                    <span>{soilMoisture?.value ?? '-'}%</span>
+                                )
+                            }
+                        </Row >
+                    </ButtonGreen >
                 }
                 gardenId={gardenId}
                 raisedBedId={raisedBedId}
@@ -710,14 +714,18 @@ export function RaisedBedSensorInfo({
                                 )}
                             />
                             {isLoading && <Skeleton className="w-6 h-4" />}
-                            {!isLoading && error && (
-                                <Warning className="size-5 shrink-0 text-red-500" />
-                            )}
-                            {!isLoading && !error && (
-                                <span>{soilTemperature?.value ?? '-'}°C</span>
-                            )}
-                        </Row>
-                    </ButtonGreen>
+                            {
+                                !isLoading && error && (
+                                    <Warning className="size-5 shrink-0 text-red-500" />
+                                )
+                            }
+                            {
+                                !isLoading && !error && (
+                                    <span>{soilTemperature?.value ?? '-'}°C</span>
+                                )
+                            }
+                        </Row >
+                    </ButtonGreen >
                 }
                 gardenId={gardenId}
                 raisedBedId={raisedBedId}
@@ -725,6 +733,6 @@ export function RaisedBedSensorInfo({
                 sensorId={soilTemperature?.id}
                 type="soil_temperature"
             />
-        </Row>
+        </Row >
     );
 }

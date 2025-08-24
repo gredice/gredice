@@ -1,48 +1,71 @@
-import { getDeliveryRequests, getPickupLocations, getAllTimeSlots } from "@gredice/storage";
-import { Table } from "@signalco/ui-primitives/Table";
-import { Chip } from "@signalco/ui-primitives/Chip";
-import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
-import { TimeRange, LocalDateTime } from "@gredice/ui/LocalDateTime";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { DeliveryRequestActionButtons } from "./DeliveryRequestActionButtons";
-import { Stack } from "@signalco/ui-primitives/Stack";
+import {
+    getAllTimeSlots,
+    getDeliveryRequests,
+    getPickupLocations,
+} from '@gredice/storage';
+import { LocalDateTime, TimeRange } from '@gredice/ui/LocalDateTime';
+import { Chip } from '@signalco/ui-primitives/Chip';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Table } from '@signalco/ui-primitives/Table';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
+import { DeliveryRequestActionButtons } from './DeliveryRequestActionButtons';
 
 export async function DeliveryRequestsTable() {
-    const [deliveryRequests, pickupLocations, timeSlots] = await Promise.all([
+    const [deliveryRequests] = await Promise.all([
         getDeliveryRequests(),
         getPickupLocations(),
-        getAllTimeSlots()
+        getAllTimeSlots(),
     ]);
 
-    function getStatusColor(status: string): "primary" | "warning" | "info" | "success" | "neutral" {
+    function getStatusColor(
+        status: string,
+    ): 'primary' | 'warning' | 'info' | 'success' | 'neutral' {
         switch (status) {
-            case 'pending': return 'warning';
-            case 'confirmed': return 'primary';
-            case 'preparing': return 'info';
-            case 'ready': return 'success';
-            case 'fulfilled': return 'success';
-            case 'cancelled': return 'neutral';
-            default: return 'neutral';
+            case 'pending':
+                return 'warning';
+            case 'confirmed':
+                return 'primary';
+            case 'preparing':
+                return 'info';
+            case 'ready':
+                return 'success';
+            case 'fulfilled':
+                return 'success';
+            case 'cancelled':
+                return 'neutral';
+            default:
+                return 'neutral';
         }
     }
 
     function getStatusLabel(status: string) {
         switch (status) {
-            case 'pending': return 'Na čekanju';
-            case 'confirmed': return 'Potvrđen';
-            case 'preparing': return 'U pripremi';
-            case 'ready': return 'Spreman';
-            case 'fulfilled': return 'Ispunjen';
-            case 'cancelled': return 'Otkazan';
-            default: return status;
+            case 'pending':
+                return 'Na čekanju';
+            case 'confirmed':
+                return 'Potvrđen';
+            case 'preparing':
+                return 'U pripremi';
+            case 'ready':
+                return 'Spreman';
+            case 'fulfilled':
+                return 'Ispunjen';
+            case 'cancelled':
+                return 'Otkazan';
+            default:
+                return status;
         }
     }
 
     function getModeLabel(mode: string) {
         switch (mode) {
-            case 'delivery': return 'Dostava';
-            case 'pickup': return 'Preuzimanje';
-            default: return mode || '-';
+            case 'delivery':
+                return 'Dostava';
+            case 'pickup':
+                return 'Preuzimanje';
+            default:
+                return mode || '-';
         }
     }
 
@@ -69,12 +92,19 @@ export async function DeliveryRequestsTable() {
                         </Table.Cell>
                     </Table.Row>
                 )}
-                {deliveryRequests.map(request => {
+                {deliveryRequests.map((request) => {
                     const { slot, address, location } = request;
                     const addressString = address
-                        ? [address.street1, address.street2, address.city, address.postalCode].filter(Boolean).join(', ')
+                        ? [
+                              address.street1,
+                              address.street2,
+                              address.city,
+                              address.postalCode,
+                          ]
+                              .filter(Boolean)
+                              .join(', ')
                         : '';
-                    const GOOGLE_MAPS_URL = "https://www.google.com/maps/dir//";
+                    const GOOGLE_MAPS_URL = 'https://www.google.com/maps/dir//';
                     const googleMapsDirectionsUri = `${GOOGLE_MAPS_URL}${encodeURIComponent(addressString)}`;
                     return (
                         <Table.Row key={request.id}>
@@ -84,7 +114,10 @@ export async function DeliveryRequestsTable() {
                                 </Typography>
                             </Table.Cell>
                             <Table.Cell>
-                                <Chip color={getStatusColor(request.state)} className="w-fit">
+                                <Chip
+                                    color={getStatusColor(request.state)}
+                                    className="w-fit"
+                                >
                                     {getStatusLabel(request.state)}
                                 </Chip>
                             </Table.Cell>
@@ -96,27 +129,52 @@ export async function DeliveryRequestsTable() {
                             <Table.Cell>
                                 {slot ? (
                                     <Typography level="body2">
-                                        <TimeRange startAt={slot.startAt} endAt={slot.endAt} />
+                                        <TimeRange
+                                            startAt={slot.startAt}
+                                            endAt={slot.endAt}
+                                        />
                                     </Typography>
                                 ) : (
-                                    <Typography level="body2" secondary>-</Typography>
+                                    <Typography level="body2" secondary>
+                                        -
+                                    </Typography>
                                 )}
                             </Table.Cell>
                             <Table.Cell>
                                 {request.mode === 'pickup' ? (
-                                    <Typography>{location?.name || '-'}</Typography>
+                                    <Typography>
+                                        {location?.name || '-'}
+                                    </Typography>
                                 ) : (
                                     <Stack>
-                                        <Typography>{address?.contactName || '-'}</Typography>
+                                        <Typography>
+                                            {address?.contactName || '-'}
+                                        </Typography>
                                         {address?.phone ? (
-                                            <a href={`tel:${address.phone}`}><Typography>{address.phone}</Typography></a>
+                                            <a href={`tel:${address.phone}`}>
+                                                <Typography>
+                                                    {address.phone}
+                                                </Typography>
+                                            </a>
                                         ) : (
                                             <Typography>-</Typography>
                                         )}
-                                        <a href={googleMapsDirectionsUri} target="_blank">
-                                            <Typography>{address?.street1 || '-'}</Typography>
-                                            {address?.street2 && <Typography>{address?.street2 || '-'}</Typography>}
-                                            <Typography>{address?.postalCode || '-'}, {address?.city || '-'}</Typography>
+                                        <a
+                                            href={googleMapsDirectionsUri}
+                                            target="_blank"
+                                        >
+                                            <Typography>
+                                                {address?.street1 || '-'}
+                                            </Typography>
+                                            {address?.street2 && (
+                                                <Typography>
+                                                    {address?.street2 || '-'}
+                                                </Typography>
+                                            )}
+                                            <Typography>
+                                                {address?.postalCode || '-'},{' '}
+                                                {address?.city || '-'}
+                                            </Typography>
                                         </a>
                                     </Stack>
                                 )}
@@ -129,7 +187,9 @@ export async function DeliveryRequestsTable() {
                                 </Typography>
                             </Table.Cell>
                             <Table.Cell>
-                                <DeliveryRequestActionButtons request={request} />
+                                <DeliveryRequestActionButtons
+                                    request={request}
+                                />
                             </Table.Cell>
                         </Table.Row>
                     );

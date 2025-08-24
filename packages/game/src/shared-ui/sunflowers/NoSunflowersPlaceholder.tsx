@@ -1,4 +1,4 @@
-import { Typography } from "@signalco/ui-primitives/Typography";
+import { Typography } from '@signalco/ui-primitives/Typography';
 
 export function NoSunflowersPlaceholder() {
     return (

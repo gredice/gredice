@@ -1,12 +1,12 @@
 'use client';
 
-import { Button } from "@signalco/ui-primitives/Button";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
-import { showNotification } from "@signalco/ui-notifications";
-import { errorMessages } from "../../misc/errorMessages";
-import { client } from "@gredice/client";
+import { client } from '@gredice/client';
+import { showNotification } from '@signalco/ui-notifications';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { errorMessages } from '../../misc/errorMessages';
 
 export function SendVerifyEmailButton() {
     const router = useRouter();
@@ -20,10 +20,10 @@ export function SendVerifyEmailButton() {
         }
 
         setIsLoading(true);
-        const response = await client().api.auth["send-verify-email"].$post({
+        const response = await client().api.auth['send-verify-email'].$post({
             json: {
-                email
-            }
+                email,
+            },
         });
 
         if (response.status === 404 || response) {
@@ -33,16 +33,23 @@ export function SendVerifyEmailButton() {
         }
 
         router.push('/prijava/potvrda-emaila/poslano');
-    }
+    };
 
     return (
         <>
-            <Button fullWidth variant='soft' onClick={handleSend} disabled={!email} loading={isLoading}>
+            <Button
+                fullWidth
+                variant="soft"
+                onClick={handleSend}
+                disabled={!email}
+                loading={isLoading}
+            >
                 Pošalji ponovno
             </Button>
             {!email && (
                 <Typography level="body3" center>
-                    Nismo pronašli email adresu za slanje. Pokušaj ponovno ili kontaktiraj podršku.
+                    Nismo pronašli email adresu za slanje. Pokušaj ponovno ili
+                    kontaktiraj podršku.
                 </Typography>
             )}
         </>

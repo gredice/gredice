@@ -1,9 +1,9 @@
 'use server';
 
-import { updateInvoice } from "@gredice/storage";
-import { auth } from "../../../../../lib/auth/auth";
-import { revalidatePath } from "next/cache";
-import { KnownPages } from "../../../../../src/KnownPages";
+import { updateInvoice } from '@gredice/storage';
+import { revalidatePath } from 'next/cache';
+import { auth } from '../../../../../lib/auth/auth';
+import { KnownPages } from '../../../../../src/KnownPages';
 
 interface UpdateInvoiceData {
     id: number;
@@ -66,7 +66,6 @@ export async function updateInvoiceAction(data: UpdateInvoiceData) {
         revalidatePath(KnownPages.Invoice(data.id));
         revalidatePath(KnownPages.Invoices);
         return { success: true };
-
     } catch (error) {
         console.error('Error updating invoice:', error);
         return { success: false, error: 'Internal server error' };

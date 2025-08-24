@@ -1,11 +1,11 @@
 'use client';
 
-import { SelectItems } from "@signalco/ui-primitives/SelectItems";
-import { Input } from "@signalco/ui-primitives/Input";
-import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Close } from "@signalco/ui-icons";
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Close } from '@signalco/ui-icons';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Input } from '@signalco/ui-primitives/Input';
+import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 
 export function DeliveryRequestsFilters() {
     const router = useRouter();
@@ -15,7 +15,7 @@ export function DeliveryRequestsFilters() {
         status: searchParams.get('status') || 'all',
         mode: searchParams.get('mode') || 'all',
         fromDate: searchParams.get('fromDate') || '',
-        toDate: searchParams.get('toDate') || ''
+        toDate: searchParams.get('toDate') || '',
     });
 
     const handleFilterChange = (key: string, value: string) => {
@@ -36,7 +36,7 @@ export function DeliveryRequestsFilters() {
             status: 'all',
             mode: 'all',
             fromDate: '',
-            toDate: ''
+            toDate: '',
         };
         setFilters(clearedFilters);
         router.push('/admin/delivery/requests');
@@ -56,7 +56,7 @@ export function DeliveryRequestsFilters() {
                     { value: 'preparing', label: 'U pripremi' },
                     { value: 'ready', label: 'Spreman' },
                     { value: 'fulfilled', label: 'Ispunjen' },
-                    { value: 'cancelled', label: 'Otkazan' }
+                    { value: 'cancelled', label: 'Otkazan' },
                 ]}
             />
 
@@ -68,7 +68,7 @@ export function DeliveryRequestsFilters() {
                 items={[
                     { value: 'all', label: 'Svi načini' },
                     { value: 'delivery', label: 'Dostava' },
-                    { value: 'pickup', label: 'Preuzimanje' }
+                    { value: 'pickup', label: 'Preuzimanje' },
                 ]}
             />
 

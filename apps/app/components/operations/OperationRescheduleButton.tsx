@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { Button } from "@signalco/ui-primitives/Button";
-import { Calendar } from "@signalco/ui-icons";
-import { RescheduleOperationModal } from "../../app/admin/schedule/RescheduleOperationModal";
+import { Calendar } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { RescheduleOperationModal } from '../../app/admin/schedule/RescheduleOperationModal';
 
 interface OperationRescheduleButtonProps {
     operation: {
@@ -14,7 +14,10 @@ interface OperationRescheduleButtonProps {
     operationLabel: string;
 }
 
-export function OperationRescheduleButton({ operation, operationLabel }: OperationRescheduleButtonProps) {
+export function OperationRescheduleButton({
+    operation,
+    operationLabel,
+}: OperationRescheduleButtonProps) {
     // Only show reschedule button for new and planned operations
     if (operation.status === 'completed' || operation.status === 'failed') {
         return null;
@@ -28,7 +31,11 @@ export function OperationRescheduleButton({ operation, operationLabel }: Operati
                 <Button
                     variant="plain"
                     className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                    title={operation.scheduledDate ? "Prerasporedi operaciju" : "Zakaži operaciju"}
+                    title={
+                        operation.scheduledDate
+                            ? 'Prerasporedi operaciju'
+                            : 'Zakaži operaciju'
+                    }
                 >
                     <Calendar className="size-3" />
                 </Button>

@@ -1,3 +1,3 @@
 export const models = {
-    GameAssets: { url: '/assets/models/GameAssets.glb' }
-}
+    GameAssets: { url: '/assets/models/GameAssets.glb' },
+};

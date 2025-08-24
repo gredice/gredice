@@ -1,24 +1,28 @@
-import { useState, useCallback, useRef } from "react"
-import { useSprings, config } from "@react-spring/web"
+import { config, useSprings } from '@react-spring/web';
+import { useCallback, useRef, useState } from 'react';
 
 export type AnimationOptions = {
-    duration?: number
-    bounceScale?: number
-    shrinkScale?: number
-}
+    duration?: number;
+    bounceScale?: number;
+    shrinkScale?: number;
+};
 
-export function useAnimateFlyTo(targetX: number, targetY: number, options: AnimationOptions = {}) {
-    const { duration = 800, bounceScale = 1.3, shrinkScale = 0.3 } = options
+export function useAnimateFlyTo(
+    targetX: number,
+    targetY: number,
+    options: AnimationOptions = {},
+) {
+    const { duration = 800, bounceScale = 1.3, shrinkScale = 0.3 } = options;
 
     const [animations, setAnimations] = useState<number[]>([]);
-    const elementRef = useRef<HTMLDivElement | null>(null)
+    const elementRef = useRef<HTMLDivElement | null>(null);
 
     const [springs, api] = useSprings(animations.length, () => {
         if (!elementRef.current) {
-            console.warn("Element reference is not set for animation");
+            console.warn('Element reference is not set for animation');
             return {
                 from: { x: 0, y: 0, scale: 1, opacity: 1 },
-                to: { x: 0, y: 0, scale: 1, opacity: 0 }
+                to: { x: 0, y: 0, scale: 1, opacity: 0 },
             };
         }
 
@@ -29,7 +33,7 @@ export function useAnimateFlyTo(targetX: number, targetY: number, options: Anima
                 x: rect.left,
                 y: rect.top,
                 scale: 1,
-                opacity: 1
+                opacity: 1,
             },
             to: async (next) => {
                 await next({
@@ -54,13 +58,13 @@ export function useAnimateFlyTo(targetX: number, targetY: number, options: Anima
     });
 
     const run = useCallback(async () => {
-        setAnimations(prev => [...prev, Date.now()]);
+        setAnimations((prev) => [...prev, Date.now()]);
     }, []);
 
     const reset = useCallback(() => {
-        api.stop()
-        setAnimations([])
-    }, [api])
+        api.stop();
+        setAnimations([]);
+    }, [api]);
 
     return {
         run,
@@ -71,5 +75,5 @@ export function useAnimateFlyTo(targetX: number, targetY: number, options: Anima
             animations,
             springs,
         },
-    }
+    };
 }

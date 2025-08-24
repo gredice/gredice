@@ -1,5 +1,5 @@
-import { CardHeader, CardTitle } from "@signalco/ui-primitives/Card";
-import { Skeleton } from "@signalco/ui-primitives/Skeleton";
+import { CardHeader, CardTitle } from '@signalco/ui-primitives/Card';
+import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 
 export function CardHeaderSkeleton() {
     return (

@@ -1,11 +1,16 @@
 'use server';
 
-import { softDeleteReceipt, getReceipt, updateReceiptFiscalization, getAllFiscalizationSettings } from "@gredice/storage";
-import { auth } from "../../../../lib/auth/auth";
-import { redirect } from "next/navigation";
-import { KnownPages } from "../../../../src/KnownPages";
 import { receiptRequest } from '@gredice/fiscalization';
-import { revalidatePath } from "next/cache";
+import {
+    getAllFiscalizationSettings,
+    getReceipt,
+    softDeleteReceipt,
+    updateReceiptFiscalization,
+} from '@gredice/storage';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { auth } from '../../../../lib/auth/auth';
+import { KnownPages } from '../../../../src/KnownPages';
 
 export async function deleteReceiptAction(receiptId: number) {
     await auth(['admin']);
@@ -16,7 +21,7 @@ export async function deleteReceiptAction(receiptId: number) {
         if (!receipt) {
             return {
                 success: false,
-                error: 'Receipt not found'
+                error: 'Receipt not found',
             };
         }
 
@@ -24,7 +29,7 @@ export async function deleteReceiptAction(receiptId: number) {
         if (receipt.cisStatus === 'sent' || receipt.cisStatus === 'confirmed') {
             return {
                 success: false,
-                error: 'Cannot delete fiscalized receipts'
+                error: 'Cannot delete fiscalized receipts',
             };
         }
 
@@ -34,7 +39,10 @@ export async function deleteReceiptAction(receiptId: number) {
         console.error('Error deleting receipt:', error);
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Failed to delete receipt'
+            error:
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to delete receipt',
         };
     }
 }
@@ -65,29 +73,39 @@ export async function fiscalizeReceiptAction(receiptId: number) {
     }
 
     try {
-        const response = await receiptRequest({
-            date: receipt.issuedAt,
-            receiptNumber: receipt.receiptNumber,
-            totalAmount: Number(receipt.totalAmount),
-        }, {
-            posSettings: {
-                posId: fiscalizationSettings.posSettings.posId,
-                premiseId: fiscalizationSettings.posSettings.premiseId
+        const response = await receiptRequest(
+            {
+                date: receipt.issuedAt,
+                receiptNumber: receipt.receiptNumber,
+                totalAmount: Number(receipt.totalAmount),
             },
-            posUser: {
-                posPin: fiscalizationSettings.userSettings.pin
-            },
-            userSettings: {
-                pin: fiscalizationSettings.userSettings.pin,
-                environment: fiscalizationSettings.userSettings.environment as 'educ' | 'prod',
-                useVat: fiscalizationSettings.userSettings.useVat,
-                credentials: {
-                    password: fiscalizationSettings.userSettings.certPassword,
-                    cert: Buffer.from(fiscalizationSettings.userSettings.certBase64, 'base64').toString('binary')
+            {
+                posSettings: {
+                    posId: fiscalizationSettings.posSettings.posId,
+                    premiseId: fiscalizationSettings.posSettings.premiseId,
                 },
-                receiptNumberOnDevice: fiscalizationSettings.userSettings.receiptNumberOnDevice
-            }
-        });
+                posUser: {
+                    posPin: fiscalizationSettings.userSettings.pin,
+                },
+                userSettings: {
+                    pin: fiscalizationSettings.userSettings.pin,
+                    environment: fiscalizationSettings.userSettings
+                        .environment as 'educ' | 'prod',
+                    useVat: fiscalizationSettings.userSettings.useVat,
+                    credentials: {
+                        password:
+                            fiscalizationSettings.userSettings.certPassword,
+                        cert: Buffer.from(
+                            fiscalizationSettings.userSettings.certBase64,
+                            'base64',
+                        ).toString('binary'),
+                    },
+                    receiptNumberOnDevice:
+                        fiscalizationSettings.userSettings
+                            .receiptNumberOnDevice,
+                },
+            },
+        );
 
         if (!response.success) {
             const { responseText, errors, zki } = response;
@@ -95,18 +113,12 @@ export async function fiscalizeReceiptAction(receiptId: number) {
                 zki,
                 cisStatus: 'failed',
                 cisErrorMessage: errors?.[0]?.errorMessage ?? null,
-                cisResponse: responseText
+                cisResponse: responseText,
             });
             return;
         }
 
-        const {
-            dateTime,
-            receiptNumber,
-            responseText,
-            jir,
-            zki
-        } = response;
+        const { dateTime, receiptNumber, responseText, jir, zki } = response;
 
         await updateReceiptFiscalization(receiptId, {
             jir,
@@ -119,12 +131,15 @@ export async function fiscalizeReceiptAction(receiptId: number) {
         });
     } catch (error) {
         console.error('Error fiscalizing receipt:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to fiscalize receipt';
+        const errorMessage =
+            error instanceof Error
+                ? error.message
+                : 'Failed to fiscalize receipt';
         await updateReceiptFiscalization(receiptId, {
             cisStatus: 'failed',
             cisErrorMessage: errorMessage,
             cisTimestamp: new Date(),
-            cisResponse: 'no response'
+            cisResponse: 'no response',
         });
     }
 

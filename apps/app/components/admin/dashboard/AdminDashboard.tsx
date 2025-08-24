@@ -1,14 +1,14 @@
-import { auth } from "../../../lib/auth/auth";
-import { getAnalyticsData } from "./actions";
-import { AdminDashboardClient } from "./AdminDashboardClient";
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation';
+import { auth } from '../../../lib/auth/auth';
+import { AdminDashboardClient } from './AdminDashboardClient';
+import { getAnalyticsData } from './actions';
 
 type AdminDashboardProps = {
     searchParams?: Promise<{ period?: string }>;
 };
 
 export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
-    auth(["admin"]);
+    auth(['admin']);
     const params = await searchParams;
     const selectedPeriod = params?.period || '7';
 
@@ -16,7 +16,7 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
 
     const handlePeriodChange = async (period: string) => {
         'use server';
-        auth(["admin"]);
+        auth(['admin']);
         redirect(`?period=${period}`);
     };
 

@@ -1,24 +1,27 @@
-import { OperationData } from "@gredice/client";
-import { Button } from "@signalco/ui-primitives/Button";
-import { List } from "@signalco/ui-primitives/List";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { NoDataPlaceholder } from "@signalco/ui/NoDataPlaceholder";
-import { KnownPages } from "../../../knownPages";
-import { OperationListItemSkeleton } from "../OperationListItemSkeleton";
-import { useOperations } from "../../../hooks/useOperations";
-import { Alert } from "@signalco/ui/Alert";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { usePlantSort } from "../../../hooks/usePlantSorts";
-import { useSetShoppingCartItem } from "../../../hooks/useSetShoppingCartItem";
-import { AnimateFlyToItem, useAnimateFlyToShoppingCart } from "../../../indicators/AnimateFlyTo";
-import { Modal } from "@signalco/ui-primitives/Modal";
-import { Input } from "@signalco/ui-primitives/Input";
-import { Card, CardContent } from "@signalco/ui-primitives/Card";
-import { Calendar } from "@signalco/ui-icons";
-import { formatLocalDate } from "../RaisedBedPlantPicker";
-import { useState } from "react";
-import { OperationImage } from "@gredice/ui/OperationImage";
+import type { OperationData } from '@gredice/client';
+import { OperationImage } from '@gredice/ui/OperationImage';
+import { Alert } from '@signalco/ui/Alert';
+import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
+import { Calendar } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Card, CardContent } from '@signalco/ui-primitives/Card';
+import { Input } from '@signalco/ui-primitives/Input';
+import { List } from '@signalco/ui-primitives/List';
+import { Modal } from '@signalco/ui-primitives/Modal';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useState } from 'react';
+import { useOperations } from '../../../hooks/useOperations';
+import { usePlantSort } from '../../../hooks/usePlantSorts';
+import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
+import {
+    AnimateFlyToItem,
+    useAnimateFlyToShoppingCart,
+} from '../../../indicators/AnimateFlyTo';
+import { KnownPages } from '../../../knownPages';
+import { OperationListItemSkeleton } from '../OperationListItemSkeleton';
+import { formatLocalDate } from '../RaisedBedPlantPicker';
 
 function formatPrice(price?: number | null): string {
     if (price == null || price === undefined) {
@@ -30,7 +33,7 @@ function formatPrice(price?: number | null): string {
 function OperationScheduleModal({
     operation,
     onConfirm,
-    trigger
+    trigger,
 }: {
     operation: OperationData;
     onConfirm: (date: Date) => Promise<void>;
@@ -42,7 +45,7 @@ function OperationScheduleModal({
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
-        const date = formData.get("scheduledDate") as string;
+        const date = formData.get('scheduledDate') as string;
         if (date) {
             const scheduledDate = new Date(date);
             setIsLoading(true);
@@ -53,8 +56,16 @@ function OperationScheduleModal({
     }
 
     const today = new Date();
-    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-    const threeMonthsFromTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth() + 3, tomorrow.getDate());
+    const tomorrow = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + 1,
+    );
+    const threeMonthsFromTomorrow = new Date(
+        tomorrow.getFullYear(),
+        tomorrow.getMonth() + 3,
+        tomorrow.getDate(),
+    );
     const operationDefaultDate = formatLocalDate(tomorrow);
     const min = formatLocalDate(tomorrow);
     const max = formatLocalDate(threeMonthsFromTomorrow);
@@ -65,18 +76,22 @@ function OperationScheduleModal({
             trigger={trigger}
             title={`Zakaži radnju: ${operation.information.label}`}
             open={open}
-            onOpenChange={setOpen}>
+            onOpenChange={setOpen}
+        >
             <form onSubmit={handleSubmit}>
                 <Stack spacing={2}>
-                    <Typography level="h5">
-                        Zakazivanje radnje
+                    <Typography level="h5">Zakazivanje radnje</Typography>
+                    <Typography>
+                        Ova radnja će biti zakazana za odabrani datum.
                     </Typography>
-                    <Typography>Ova radnja će biti zakazana za odabrani datum.</Typography>
                     <Card>
                         <CardContent noHeader>
                             <Row spacing={2}>
                                 <div>
-                                    <OperationImage operation={operation} size={32} />
+                                    <OperationImage
+                                        operation={operation}
+                                        size={32}
+                                    />
                                 </div>
                                 <Stack>
                                     <Typography noWrap>
@@ -86,7 +101,9 @@ function OperationScheduleModal({
                                         {operation.information.shortDescription}
                                     </Typography>
                                     <Typography level="body2" semiBold>
-                                        {formatPrice(operation.prices?.perOperation)}
+                                        {formatPrice(
+                                            operation.prices?.perOperation,
+                                        )}
                                     </Typography>
                                 </Stack>
                             </Row>
@@ -116,7 +133,9 @@ function OperationScheduleModal({
                             variant="solid"
                             disabled={isLoading}
                             loading={isLoading}
-                            startDecorator={<Calendar className="size-5 shrink-0" />}
+                            startDecorator={
+                                <Calendar className="size-5 shrink-0" />
+                            }
                         >
                             Potvrdi
                         </Button>
@@ -131,7 +150,7 @@ function OperationsListItem({
     operation,
     gardenId,
     raisedBedId,
-    positionIndex
+    positionIndex,
 }: {
     gardenId: number;
     raisedBedId?: number;
@@ -143,7 +162,10 @@ function OperationsListItem({
 
     const price = formatPrice(operation.prices?.perOperation);
 
-    async function handleOperationPicked(operation: OperationData, scheduledDate?: Date) {
+    async function handleOperationPicked(
+        operation: OperationData,
+        scheduledDate?: Date,
+    ) {
         setShoppingCartItem.mutate({
             amount: 1,
             entityId: operation.id.toString(),
@@ -153,9 +175,9 @@ function OperationsListItem({
             positionIndex,
             additionalData: scheduledDate
                 ? JSON.stringify({
-                    scheduledDate: scheduledDate.toISOString(),
-                })
-                : null
+                      scheduledDate: scheduledDate.toISOString(),
+                  })
+                : null,
         });
         animateFlyToShoppingCart.run();
     }
@@ -164,7 +186,8 @@ function OperationsListItem({
         <Button
             variant="plain"
             className="justify-start text-start p-0 h-auto py-2 gap-3 px-4 rounded-none font-normal"
-            onClick={() => handleOperationPicked(operation)}>
+            onClick={() => handleOperationPicked(operation)}
+        >
             <AnimateFlyToItem {...animateFlyToShoppingCart.props}>
                 <OperationImage operation={operation} size={32} />
             </AnimateFlyToItem>
@@ -173,10 +196,15 @@ function OperationsListItem({
                     <Typography level="body1" semiBold>
                         {operation.information.label}
                     </Typography>
-                    <Typography level="body1" semiBold>{price}</Typography>
+                    <Typography level="body1" semiBold>
+                        {price}
+                    </Typography>
                 </Row>
                 {operation.information.shortDescription && (
-                    <Typography level="body2" className="line-clamp-2 break-words">
+                    <Typography
+                        level="body2"
+                        className="line-clamp-2 break-words"
+                    >
                         {operation.information.shortDescription}
                     </Typography>
                 )}
@@ -198,8 +226,11 @@ function OperationsListItem({
                             title="Zakaži radnju"
                             variant="plain"
                             size="sm"
-                            startDecorator={<Calendar className="size-4 shrink-0" />}
-                            disabled={setShoppingCartItem.isPending}>
+                            startDecorator={
+                                <Calendar className="size-4 shrink-0" />
+                            }
+                            disabled={setShoppingCartItem.isPending}
+                        >
                             Zakaži
                         </Button>
                     }
@@ -208,7 +239,10 @@ function OperationsListItem({
                     title="Više informacija"
                     variant="link"
                     size="sm"
-                    href={KnownPages.GrediceOperation(operation.information.label)}>
+                    href={KnownPages.GrediceOperation(
+                        operation.information.label,
+                    )}
+                >
                     Više informacija...
                 </Button>
             </div>
@@ -221,7 +255,7 @@ export function OperationsList({
     raisedBedId,
     positionIndex,
     plantSortId,
-    filterFunc
+    filterFunc,
 }: {
     gardenId: number;
     raisedBedId?: number;
@@ -229,29 +263,44 @@ export function OperationsList({
     plantSortId?: number;
     filterFunc: (operation: OperationData) => boolean;
 }) {
-    const { data: operations, isLoading: isLoadingOperations, isError } = useOperations();
-    const { data: plantSort, isLoading: isPlantSortLoading } = usePlantSort(plantSortId);
-    const isLoading = isLoadingOperations || (Boolean(plantSortId) && isPlantSortLoading);
+    const {
+        data: operations,
+        isLoading: isLoadingOperations,
+        isError,
+    } = useOperations();
+    const { data: plantSort, isLoading: isPlantSortLoading } =
+        usePlantSort(plantSortId);
+    const isLoading =
+        isLoadingOperations || (Boolean(plantSortId) && isPlantSortLoading);
     const filteredOperations = operations
         ?.filter(filterFunc)
-        .filter(op => plantSortId ? plantSort?.information.plant.information?.operations?.map(op => op.information?.name).includes(op.information.name) : true)
+        .filter((op) =>
+            plantSortId
+                ? plantSort?.information.plant.information?.operations
+                      ?.map((op) => op.information?.name)
+                      .includes(op.information.name)
+                : true,
+        );
 
     return (
         <>
             {isError && (
-                <Alert color="danger">
-                    Greška prilikom učitavanja radnji
-                </Alert>
+                <Alert color="danger">Greška prilikom učitavanja radnji</Alert>
             )}
-            <List variant="outlined" className="bg-card max-h-96 overflow-y-auto">
+            <List
+                variant="outlined"
+                className="bg-card max-h-96 overflow-y-auto"
+            >
                 {!isLoading && filteredOperations?.length === 0 && (
                     <NoDataPlaceholder className="p-4">
                         Nema dostupnih radnji
                     </NoDataPlaceholder>
                 )}
-                {isLoading && Array.from({ length: 3 }).map((_, index) => (
-                    <OperationListItemSkeleton key={index} />
-                ))}
+                {isLoading &&
+                    Array.from({ length: 3 }).map((_, index) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: Array indexed, skeletons
+                        <OperationListItemSkeleton key={index} />
+                    ))}
                 {filteredOperations?.map((operation) => (
                     <OperationsListItem
                         key={operation.id}
@@ -263,5 +312,5 @@ export function OperationsList({
                 ))}
             </List>
         </>
-    )
+    );
 }

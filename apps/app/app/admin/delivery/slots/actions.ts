@@ -1,22 +1,25 @@
 'use server';
 
-import { auth } from '../../../../lib/auth/auth';
 import {
-    createTimeSlot,
-    updateTimeSlot,
-    closeTimeSlot,
     archiveTimeSlot,
+    type BulkSlotCreationParams,
     bulkGenerateTimeSlots,
-    type BulkSlotCreationParams
+    closeTimeSlot,
+    createTimeSlot,
+    TimeSlotStatuses,
+    updateTimeSlot,
 } from '@gredice/storage';
-import { TimeSlotStatuses } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
+import { auth } from '../../../../lib/auth/auth';
 
-export async function createTimeSlotAction(prevState: unknown, formData: FormData) {
+export async function createTimeSlotAction(
+    _prevState: unknown,
+    formData: FormData,
+) {
     try {
         await auth(['admin']);
 
-        const locationId = parseInt(formData.get('locationId') as string);
+        const locationId = parseInt(formData.get('locationId') as string, 10);
         const type = formData.get('type') as 'delivery' | 'pickup';
         const startDate = formData.get('startDate') as string;
         const startTime = formData.get('startTime') as string;
@@ -30,33 +33,45 @@ export async function createTimeSlotAction(prevState: unknown, formData: FormDat
             type,
             startAt,
             endAt,
-            status: TimeSlotStatuses.SCHEDULED
+            status: TimeSlotStatuses.SCHEDULED,
         });
 
         revalidatePath('/admin/delivery/slots');
         return { success: true, message: 'Slot je uspješno kreiran' };
     } catch (error) {
         console.error('Failed to create time slot:', error);
-        return { success: false, message: error instanceof Error ? error.message : 'Greška pri kreiranju slota' };
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Greška pri kreiranju slota',
+        };
     }
 }
 
-export async function bulkGenerateSlotsAction(prevState: unknown, formData: FormData) {
+export async function bulkGenerateSlotsAction(
+    _prevState: unknown,
+    formData: FormData,
+) {
     try {
         await auth(['admin']);
 
-        const locationId = parseInt(formData.get('locationId') as string);
+        const locationId = parseInt(formData.get('locationId') as string, 10);
         const type = formData.get('type') as 'delivery' | 'pickup';
         const startDate = new Date(formData.get('startDate') as string);
-        const daysAhead = parseInt(formData.get('daysAhead') as string);
-        const windows = (formData.get('windows') as string).split(',').map(w => w.trim()).filter(Boolean);
+        const daysAhead = parseInt(formData.get('daysAhead') as string, 10);
+        const windows = (formData.get('windows') as string)
+            .split(',')
+            .map((w) => w.trim())
+            .filter(Boolean);
 
         const params: BulkSlotCreationParams = {
             startDate,
             daysAhead,
             windows,
             type,
-            locationId
+            locationId,
         };
 
         const result = await bulkGenerateTimeSlots(params);
@@ -64,11 +79,17 @@ export async function bulkGenerateSlotsAction(prevState: unknown, formData: Form
         revalidatePath('/admin/delivery/slots');
         return {
             success: true,
-            message: `Kreirano ${result.created} slotova, preskočeno ${result.skippedExisting} postojećih slotova`
+            message: `Kreirano ${result.created} slotova, preskočeno ${result.skippedExisting} postojećih slotova`,
         };
     } catch (error) {
         console.error('Failed to bulk generate slots:', error);
-        return { success: false, message: error instanceof Error ? error.message : 'Greška pri kreiranju slotova' };
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Greška pri kreiranju slotova',
+        };
     }
 }
 
@@ -80,7 +101,13 @@ export async function closeTimeSlotAction(slotId: number) {
         return { success: true, message: 'Slot je uspješno zatvoren' };
     } catch (error) {
         console.error('Failed to close slot:', error);
-        return { success: false, message: error instanceof Error ? error.message : 'Greška pri zatvaranju slota' };
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Greška pri zatvaranju slota',
+        };
     }
 }
 
@@ -92,11 +119,20 @@ export async function archiveTimeSlotAction(slotId: number) {
         return { success: true, message: 'Slot je uspješno arhiviran' };
     } catch (error) {
         console.error('Failed to archive slot:', error);
-        return { success: false, message: error instanceof Error ? error.message : 'Greška pri arhiviranju slota' };
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Greška pri arhiviranju slota',
+        };
     }
 }
 
-export async function updateTimeSlotStatusAction(slotId: number, status: string) {
+export async function updateTimeSlotStatusAction(
+    slotId: number,
+    status: string,
+) {
     try {
         await auth(['admin']);
         await updateTimeSlot({ id: slotId, status });
@@ -104,6 +140,12 @@ export async function updateTimeSlotStatusAction(slotId: number, status: string)
         return { success: true, message: 'Status slota je uspješno ažuriran' };
     } catch (error) {
         console.error('Failed to update slot status:', error);
-        return { success: false, message: error instanceof Error ? error.message : 'Greška pri ažuriranju statusa slota' };
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Greška pri ažuriranju statusa slota',
+        };
     }
 }

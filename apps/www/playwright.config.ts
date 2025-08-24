@@ -1,4 +1,8 @@
-import { defineConfig, devices, PlaywrightTestConfig } from '@playwright/experimental-ct-react';
+import {
+    defineConfig,
+    devices,
+    type PlaywrightTestConfig,
+} from '@playwright/experimental-ct-react';
 
 export const config: PlaywrightTestConfig = {
     testDir: './',
@@ -18,7 +22,7 @@ export const config: PlaywrightTestConfig = {
         {
             name: 'chromium',
             use: { ...devices['Desktop Chrome'] },
-        }
+        },
     ],
     webServer: {
         command: 'pnpm start',

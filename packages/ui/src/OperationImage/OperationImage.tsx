@@ -1,5 +1,5 @@
-import Image from "next/image";
-import { Hammer } from "@signalco/ui-icons";
+import { Hammer } from '@signalco/ui-icons';
+import Image from 'next/image';
 
 export type OperationImageProps = {
     operation: {
@@ -19,10 +19,13 @@ export function OperationImage({ operation, size }: OperationImageProps) {
     if (!operation.image?.cover?.url) {
         return (
             <Hammer
-                style={{
-                    "--imageSize": size ? `${size}px` : '32px',
-                } as React.CSSProperties}
-                className="size-[--imageSize] shrink-0" />
+                style={
+                    {
+                        '--imageSize': size ? `${size}px` : '32px',
+                    } as React.CSSProperties
+                }
+                className="size-[--imageSize] shrink-0"
+            />
         );
     }
 
@@ -34,8 +37,9 @@ export function OperationImage({ operation, size }: OperationImageProps) {
             style={{
                 objectFit: 'contain',
                 width: `${size ?? 32}px`,
-                height: `${size ?? 32}px`
+                height: `${size ?? 32}px`,
             }}
-            alt={operation.information?.label ?? "Slika operacije"} />
+            alt={operation.information?.label ?? 'Slika operacije'}
+        />
     );
 }

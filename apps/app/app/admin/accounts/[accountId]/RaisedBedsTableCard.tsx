@@ -1,23 +1,46 @@
-import { Card, CardHeader, CardTitle, CardOverflow } from "@signalco/ui-primitives/Card";
-import { Table } from "@signalco/ui-primitives/Table";
-import { getAccountGardens, getAllRaisedBeds, getRaisedBeds } from "@gredice/storage";
-import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
-import Link from "next/link";
-import { LocalDateTime } from "@gredice/ui/LocalDateTime";
-import { KnownPages } from "../../../../src/KnownPages";
+import {
+    getAccountGardens,
+    getAllRaisedBeds,
+    getRaisedBeds,
+} from '@gredice/storage';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
+import {
+    Card,
+    CardHeader,
+    CardOverflow,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Table } from '@signalco/ui-primitives/Table';
+import Link from 'next/link';
+import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
+import { KnownPages } from '../../../../src/KnownPages';
 
-export async function RaisedBedsTableCard({ accountId, gardenId }: { accountId?: string; gardenId?: number }) {
-    const raisedBeds = accountId ?
-        (await getAccountGardens(accountId)).flatMap(garden => garden.raisedBeds)
+export async function RaisedBedsTableCard({
+    accountId,
+    gardenId,
+}: {
+    accountId?: string;
+    gardenId?: number;
+}) {
+    const raisedBeds = accountId
+        ? (await getAccountGardens(accountId)).flatMap(
+              (garden) => garden.raisedBeds,
+          )
         : gardenId
-            ? await getRaisedBeds(gardenId)
-            : await getAllRaisedBeds();
+          ? await getRaisedBeds(gardenId)
+          : await getAllRaisedBeds();
 
     return (
         <Card>
             <CardHeader>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                    }}
+                >
                     <CardTitle>Gredice</CardTitle>
                 </div>
             </CardHeader>
@@ -46,7 +69,11 @@ export async function RaisedBedsTableCard({ accountId, gardenId }: { accountId?:
                         {raisedBeds
                             .sort((a, b) => {
                                 if (a.physicalId && b.physicalId)
-                                    return a.physicalId.localeCompare(b.physicalId, 'hr-HR', { numeric: true });
+                                    return a.physicalId.localeCompare(
+                                        b.physicalId,
+                                        'hr-HR',
+                                        { numeric: true },
+                                    );
                                 if (a.physicalId) return -1;
                                 if (b.physicalId) return 1;
                                 return a.id - b.id;
@@ -56,10 +83,12 @@ export async function RaisedBedsTableCard({ accountId, gardenId }: { accountId?:
                                     return a.id - b.id;
                                 return 0;
                             })
-                            .map(bed => (
+                            .map((bed) => (
                                 <Table.Row key={bed.id}>
                                     <Table.Cell>
-                                        <Link href={KnownPages.RaisedBed(bed.id)}>
+                                        <Link
+                                            href={KnownPages.RaisedBed(bed.id)}
+                                        >
                                             {bed.id}
                                         </Link>
                                     </Table.Cell>
@@ -73,15 +102,28 @@ export async function RaisedBedsTableCard({ accountId, gardenId }: { accountId?:
                                                     percentage: 100,
                                                     color: 'stroke-yellow-500',
                                                     trackColor: 'bg-gray-200',
-                                                    value: (bed.fields.filter(field => field.plantStatus === 'sprouted').length / 9) * 100
-                                                }
+                                                    value:
+                                                        (bed.fields.filter(
+                                                            (field) =>
+                                                                field.plantStatus ===
+                                                                'sprouted',
+                                                        ).length /
+                                                            9) *
+                                                        100,
+                                                },
                                             ]}
                                             size={24}
                                         >
-                                            {Array.isArray(bed.fields) ? bed.fields.length : 0}
+                                            {Array.isArray(bed.fields)
+                                                ? bed.fields.length
+                                                : 0}
                                         </SegmentedCircularProgress>
                                     </Table.Cell>
-                                    <Table.Cell><LocalDateTime>{bed.createdAt}</LocalDateTime></Table.Cell>
+                                    <Table.Cell>
+                                        <LocalDateTime>
+                                            {bed.createdAt}
+                                        </LocalDateTime>
+                                    </Table.Cell>
                                 </Table.Row>
                             ))}
                     </Table.Body>

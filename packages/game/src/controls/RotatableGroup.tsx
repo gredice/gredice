@@ -1,26 +1,31 @@
-import { ThreeEvent } from "@react-three/fiber";
-import { PropsWithChildren, useRef } from "react";
-import type { Block } from "../types/Block";
-import { useGameState } from "../useGameState";
-import { useBlockRotate } from "../hooks/useBlockRotate";
-import type { Vector3 } from "three";
+import type { ThreeEvent } from '@react-three/fiber';
+import { type PropsWithChildren, useRef } from 'react';
+import type { Vector3 } from 'three';
+import { useBlockRotate } from '../hooks/useBlockRotate';
+import type { Block } from '../types/Block';
+import { useGameState } from '../useGameState';
 
-export function RotatableGroup({ children, block }: PropsWithChildren<{ block: Block; }>) {
+export function RotatableGroup({
+    children,
+    block,
+}: PropsWithChildren<{ block: Block }>) {
     const blockRotate = useBlockRotate();
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
-    const isDragging = useGameState(state => state.isDragging);
-    const swipeSound = effectsAudioMixer.useSoundEffect('https://cdn.gredice.com/sounds/effects/Swipe Generic 01.mp3');
+    const isDragging = useGameState((state) => state.isDragging);
+    const swipeSound = effectsAudioMixer.useSoundEffect(
+        'https://cdn.gredice.com/sounds/effects/Swipe Generic 01.mp3',
+    );
 
     const rotateInitiated = useRef<Vector3>(null);
     const doubleClickDownTimeStamp = useRef(0);
     const firstClickTimeStamp = useRef(0);
 
-    async function doRotate(event: ThreeEvent<globalThis.PointerEvent> | ThreeEvent<MouseEvent>) {
-        if (!rotateInitiated.current)
-            return;
+    async function doRotate(
+        event: ThreeEvent<globalThis.PointerEvent> | ThreeEvent<MouseEvent>,
+    ) {
+        if (!rotateInitiated.current) return;
 
-        if (isDragging)
-            return;
+        if (isDragging) return;
 
         event.stopPropagation();
         blockRotate.mutate({ blockId: block.id, rotation: block.rotation + 1 });
@@ -36,21 +41,27 @@ export function RotatableGroup({ children, block }: PropsWithChildren<{ block: B
         }
 
         doubleClickDownTimeStamp.current = Date.now();
-        if (doubleClickDownTimeStamp.current - firstClickTimeStamp.current > 1000) {
+        if (
+            doubleClickDownTimeStamp.current - firstClickTimeStamp.current >
+            1000
+        ) {
             firstClickTimeStamp.current = 0;
         }
     }
 
     function handleRotateCancel() {
-        console.debug("Rotate cancel - leave");
+        console.debug('Rotate cancel - leave');
         rotateInitiated.current = null;
     }
 
     function handlePointerUp(event: ThreeEvent<globalThis.PointerEvent>) {
         // Cancel if the pointer moved
-        if (rotateInitiated.current && event.point.distanceTo(rotateInitiated.current) > 0.1) {
+        if (
+            rotateInitiated.current &&
+            event.point.distanceTo(rotateInitiated.current) > 0.1
+        ) {
             rotateInitiated.current = null;
-            console.debug("Rotate cancel - moved");
+            console.debug('Rotate cancel - moved');
             return;
         }
 
@@ -62,8 +73,7 @@ export function RotatableGroup({ children, block }: PropsWithChildren<{ block: B
             firstClickTimeStamp.current = now;
         }
 
-        if (!rotateInitiated.current)
-            return;
+        if (!rotateInitiated.current) return;
 
         doRotate(event);
     }
@@ -72,7 +82,8 @@ export function RotatableGroup({ children, block }: PropsWithChildren<{ block: B
         <group
             onPointerDown={handlePointerDown}
             onPointerLeave={handleRotateCancel}
-            onPointerUp={handlePointerUp}>
+            onPointerUp={handlePointerUp}
+        >
             {children}
         </group>
     );

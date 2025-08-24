@@ -1,9 +1,12 @@
 'use server';
 
-import { auth } from "../../lib/auth/auth";
-import { upsertEntityTypeCategory, deleteEntityTypeCategory } from "@gredice/storage";
-import { revalidatePath } from "next/cache";
-import { KnownPages } from "../../src/KnownPages";
+import {
+    deleteEntityTypeCategory,
+    upsertEntityTypeCategory,
+} from '@gredice/storage';
+import { revalidatePath } from 'next/cache';
+import { auth } from '../../lib/auth/auth';
+import { KnownPages } from '../../src/KnownPages';
 
 export async function createEntityTypeCategory(name: string, label: string) {
     await auth(['admin']);
@@ -19,7 +22,10 @@ export async function createEntityTypeCategoryFromForm(formData: FormData) {
     await createEntityTypeCategory(name, label);
 }
 
-export async function updateEntityTypeCategoryFromForm(categoryId: number, formData: FormData) {
+export async function updateEntityTypeCategoryFromForm(
+    categoryId: number,
+    formData: FormData,
+) {
     const name = formData.get('name') as string;
     const label = formData.get('label') as string;
 
@@ -30,7 +36,11 @@ export async function removeEntityTypeCategoryById(categoryId: number) {
     await removeEntityTypeCategory(categoryId);
 }
 
-export async function updateEntityTypeCategory(id: number, name: string, label: string) {
+export async function updateEntityTypeCategory(
+    id: number,
+    name: string,
+    label: string,
+) {
     await auth(['admin']);
 
     await upsertEntityTypeCategory({ id, name, label });

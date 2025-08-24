@@ -1,56 +1,89 @@
 'use client';
 
-import { Input } from "@signalco/ui-primitives/Input";
-import { Button } from "@signalco/ui-primitives/Button";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Alert } from "@signalco/ui/Alert";
-import { authCurrentUserQueryKeys } from "@signalco/auth-client";
-import { queryClient } from "../../providers/ClientAppProvider";
-import { useActionState } from "react";
-import { Warning } from "@signalco/ui-icons";
-import { Modal } from "@signalco/ui-primitives/Modal";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { invalidatePage } from "../../../app/(actions)/sharedActions";
+import { authCurrentUserQueryKeys } from '@signalco/auth-client';
+import { Alert } from '@signalco/ui/Alert';
+import { Warning } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Input } from '@signalco/ui-primitives/Input';
+import { Modal } from '@signalco/ui-primitives/Modal';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useActionState } from 'react';
+import { invalidatePage } from '../../../app/(actions)/sharedActions';
+import { queryClient } from '../../providers/ClientAppProvider';
 
 export function LoginDialog() {
-    const [error, submitAction, isPending] = useActionState(async (_previousState: unknown, formData: FormData) => {
-        const email = formData.get('email') as string;
-        const password = formData.get('password') as string;
+    const [error, submitAction, isPending] = useActionState(
+        async (_previousState: unknown, formData: FormData) => {
+            const email = formData.get('email') as string;
+            const password = formData.get('password') as string;
 
-        // Send the form data to the server
-        const response = await fetch('/api/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password })
-        });
-        if (response.status !== 200) {
-            console.error('Login failed with status', response.status);
-            return { error: true }
-        }
+            // Send the form data to the server
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+            });
+            if (response.status !== 200) {
+                console.error('Login failed with status', response.status);
+                return { error: true };
+            }
 
-        const { token } = await response.json();
-        localStorage.setItem('gredice-token', token);
+            const { token } = await response.json();
+            localStorage.setItem('gredice-token', token);
 
-        await queryClient.invalidateQueries({ queryKey: authCurrentUserQueryKeys });
-        await invalidatePage();
-    }, null);
+            await queryClient.invalidateQueries({
+                queryKey: authCurrentUserQueryKeys,
+            });
+            await invalidatePage();
+        },
+        null,
+    );
 
     return (
         <div className="h-[100vh] flex items-center justify-center">
-            <Modal open dismissible={false} hideClose title="Prijava" className="md:max-w-md">
+            <Modal
+                open
+                dismissible={false}
+                hideClose
+                title="Prijava"
+                className="md:max-w-md"
+            >
                 <Stack spacing={4}>
-                    <Typography level="h4" component="p">Prijava</Typography>
+                    <Typography level="h4" component="p">
+                        Prijava
+                    </Typography>
                     <form action={submitAction}>
                         <Stack spacing={4}>
                             <Stack spacing={1}>
-                                <Input name="email" label="Email" placeholder="email@email.com" type="email" autoComplete="email" />
-                                <Input name="password" label="Zaporka" type="password" autoComplete="current-password" />
+                                <Input
+                                    name="email"
+                                    label="Email"
+                                    placeholder="email@email.com"
+                                    type="email"
+                                    autoComplete="email"
+                                />
+                                <Input
+                                    name="password"
+                                    label="Zaporka"
+                                    type="password"
+                                    autoComplete="current-password"
+                                />
                             </Stack>
-                            <Button type="submit" loading={isPending} variant="solid">Prijavi se</Button>
+                            <Button
+                                type="submit"
+                                loading={isPending}
+                                variant="solid"
+                            >
+                                Prijavi se
+                            </Button>
                             {error && (
-                                <Alert color="danger" startDecorator={<Warning />}>
+                                <Alert
+                                    color="danger"
+                                    startDecorator={<Warning />}
+                                >
                                     Greška prilikom prijave. Pokušajte ponovo.
                                 </Alert>
                             )}
@@ -59,5 +92,5 @@ export function LoginDialog() {
                 </Stack>
             </Modal>
         </div>
-    )
+    );
 }

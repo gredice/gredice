@@ -1,6 +1,6 @@
-import { client } from "@gredice/client";
-import { clientStripe } from "@gredice/stripe/client";
-import { useMutation } from "@tanstack/react-query";
+import { client } from '@gredice/client';
+import { clientStripe } from '@gredice/stripe/client';
+import { useMutation } from '@tanstack/react-query';
 
 export interface CheckoutData {
     cartId: number;
@@ -14,28 +14,40 @@ export interface CheckoutData {
 }
 
 // Type guard to check if delivery selection is complete
-export function isCompleteDeliverySelection(selection: any): selection is CheckoutData['deliveryInfo'] {
-    return selection &&
+export function isCompleteDeliverySelection(
+    // biome-ignore lint/suspicious/noExplicitAny: Valid for validation
+    selection: any,
+): selection is CheckoutData['deliveryInfo'] {
+    return (
+        Boolean(selection) &&
+        selection !== null &&
+        selection !== undefined &&
         typeof selection.slotId === 'number' &&
         (selection.mode === 'delivery' || selection.mode === 'pickup') &&
-        (selection.mode === 'delivery' ? typeof selection.addressId === 'number' : typeof selection.locationId === 'number');
+        (selection.mode === 'delivery'
+            ? typeof selection.addressId === 'number'
+            : typeof selection.locationId === 'number')
+    );
 }
 
 export function useCheckout() {
     return useMutation({
         mutationFn: async (data: CheckoutData) => {
             const response = await client().api.checkout.checkout.$post({
-                json: data
+                json: data,
             });
             if (!response.ok) {
-                console.error("Failed to create checkout session:", response.statusText);
+                console.error(
+                    'Failed to create checkout session:',
+                    response.statusText,
+                );
                 // TODO: Show notification to user
                 return;
             }
 
             const responseData = await response.json();
             if (!responseData) {
-                console.error("Failed to create checkout session");
+                console.error('Failed to create checkout session');
                 return;
             }
 
@@ -57,13 +69,13 @@ export function useCheckout() {
                 sessionId,
             });
             if (result?.error) {
-                console.error("Stripe checkout error:", result.error);
+                console.error('Stripe checkout error:', result.error);
                 // TODO: Show notification to user
             }
         },
         // Prevent the mutation from being run in parallel
         scope: {
             id: 'checkout',
-        }
+        },
     });
 }

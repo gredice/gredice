@@ -1,4 +1,4 @@
-import type { Route } from "next";
+import type { Route } from 'next';
 
 export const KnownPages = {
     Landing: '/',
@@ -7,13 +7,15 @@ export const KnownPages = {
     DeliverySlots: '/dostava/termini',
     Plants: '/biljke',
     Plant: (alias: string) => `/biljke/${encodeURIComponent(alias)}` as Route,
-    PlantSort: (alias: string, sortName: string) => `/biljke/${encodeURIComponent(alias)}/sorte/${encodeURIComponent(sortName)}` as Route,
+    PlantSort: (alias: string, sortName: string) =>
+        `/biljke/${encodeURIComponent(alias)}/sorte/${encodeURIComponent(sortName)}` as Route,
     Blocks: '/blokovi',
     Block: (alias: string) => `/blokovi/${encodeURIComponent(alias)}` as Route,
     Sunflowers: '/suncokreti',
     RaisedBeds: '/podignuta-gredica',
     Operations: '/radnje',
-    Operation: (alias: string) => `/radnje/${encodeURIComponent(alias)}` as Route,
+    Operation: (alias: string) =>
+        `/radnje/${encodeURIComponent(alias)}` as Route,
     AboutUs: '/o-nama',
     FAQ: '/cesta-pitanja',
     Contact: '/kontakt',
@@ -27,5 +29,5 @@ export const KnownPages = {
 
     GardenApp: 'https://vrt.gredice.com',
 
-    GoogleMapsGrediceHQ: 'https://maps.app.goo.gl/hJbidDQzhHWGCZwS6'
+    GoogleMapsGrediceHQ: 'https://maps.app.goo.gl/hJbidDQzhHWGCZwS6',
 } as const;

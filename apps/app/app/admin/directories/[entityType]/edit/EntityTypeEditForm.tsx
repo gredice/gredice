@@ -1,26 +1,37 @@
 'use client';
 
-import { useState } from "react";
-import { Button } from "@signalco/ui-primitives/Button";
-import { Input } from "@signalco/ui-primitives/Input";
-import { SelectItems } from "@signalco/ui-primitives/SelectItems";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { ModalConfirm } from "@signalco/ui/ModalConfirm";
-import { updateEntityTypeFromEditPage, deleteEntityTypeFromEditPage } from "../../../../(actions)/entityActions";
-import { SelectEntityType, SelectEntityTypeCategory } from "@gredice/storage";
+import type {
+    SelectEntityType,
+    SelectEntityTypeCategory,
+} from '@gredice/storage';
+import { ModalConfirm } from '@signalco/ui/ModalConfirm';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Input } from '@signalco/ui-primitives/Input';
+import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useState } from 'react';
+import {
+    deleteEntityTypeFromEditPage,
+    updateEntityTypeFromEditPage,
+} from '../../../../(actions)/entityActions';
 
 interface EntityTypeEditFormProps {
-    entityType: SelectEntityType & { category: SelectEntityTypeCategory | null };
+    entityType: SelectEntityType & {
+        category: SelectEntityTypeCategory | null;
+    };
     categories: SelectEntityTypeCategory[];
 }
 
-export function EntityTypeEditForm({ entityType, categories }: EntityTypeEditFormProps) {
+export function EntityTypeEditForm({
+    entityType,
+    categories,
+}: EntityTypeEditFormProps) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     const categoryItems = [
         { value: 'none', label: 'Bez kategorije' },
-        ...categories.map(category => ({
+        ...categories.map((category) => ({
             value: category.id.toString(),
             label: category.label,
         })),
@@ -37,19 +48,26 @@ export function EntityTypeEditForm({ entityType, categories }: EntityTypeEditFor
         <div className="max-w-2xl mx-auto p-6">
             <Stack spacing={4}>
                 <Stack spacing={1}>
-                    <Typography level="h4">
-                        Uredi tip zapisa
-                    </Typography>
+                    <Typography level="h4">Uredi tip zapisa</Typography>
                     <Typography level="body2">
-                        Uredite podatke za tip zapisa &quot;{entityType.label}&quot;.
+                        Uredite podatke za tip zapisa &quot;{entityType.label}
+                        &quot;.
                     </Typography>
                 </Stack>
 
                 <form action={updateEntityTypeFromEditPage}>
                     <Stack spacing={4}>
                         <Stack spacing={3}>
-                            <input type="hidden" name="id" value={entityType.id} />
-                            <input type="hidden" name="originalName" value={entityType.name} />
+                            <input
+                                type="hidden"
+                                name="id"
+                                value={entityType.id}
+                            />
+                            <input
+                                type="hidden"
+                                name="originalName"
+                                value={entityType.name}
+                            />
 
                             <Input
                                 name="name"
@@ -72,7 +90,9 @@ export function EntityTypeEditForm({ entityType, categories }: EntityTypeEditFor
                                 label="Kategorija"
                                 placeholder="Odaberite kategoriju"
                                 items={categoryItems}
-                                defaultValue={entityType.categoryId?.toString() || ''}
+                                defaultValue={
+                                    entityType.categoryId?.toString() || ''
+                                }
                                 helperText="Kategorija pomaže u organizaciji tipova zapisa"
                             />
                         </Stack>
@@ -91,7 +111,9 @@ export function EntityTypeEditForm({ entityType, categories }: EntityTypeEditFor
                     onConfirm={handleDelete}
                 >
                     <Typography>
-                        Jeste li sigurni da želite obrisati tip zapisa <strong>{entityType.label}</strong>? Ova akcija se ne može poništiti.
+                        Jeste li sigurni da želite obrisati tip zapisa{' '}
+                        <strong>{entityType.label}</strong>? Ova akcija se ne
+                        može poništiti.
                     </Typography>
                 </ModalConfirm>
 

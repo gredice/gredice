@@ -1,5 +1,5 @@
-import { getUser } from "@gredice/storage";
-import { withAuth } from "../../../../lib/auth/auth";
+import { getUser } from '@gredice/storage';
+import { withAuth } from '../../../../lib/auth/auth';
 
 export async function GET() {
     return await withAuth(['user', 'admin'], async (user) => {

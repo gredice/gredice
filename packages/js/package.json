@@ -1,15 +1,19 @@
 {
-  "name": "@gredice/js",
-  "version": "1.0.0",
-  "private": true,
-  "exports": {
-    "./*": "./src/*/index.ts"
-  },
-  "devDependencies": {
-    "@types/node": "22.17.2",
-    "typescript": "5.9.2"
-  },
-  "dependencies": {
-    "@signalco/js": "0.1.0"
-  }
+    "name": "@gredice/js",
+    "version": "1.0.0",
+    "private": true,
+    "exports": {
+        "./*": "./src/*/index.ts"
+    },
+    "scripts": {
+        "lint": "biome check"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.2.2",
+        "@types/node": "22.17.2",
+        "typescript": "5.9.2"
+    },
+    "dependencies": {
+        "@signalco/js": "0.1.0"
+    }
 }

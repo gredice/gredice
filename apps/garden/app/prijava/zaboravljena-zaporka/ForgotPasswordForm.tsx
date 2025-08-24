@@ -1,28 +1,30 @@
-'use client'
+'use client';
 
-import { FormEvent, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Button } from "@signalco/ui-primitives/Button"
-import { Input } from "@signalco/ui-primitives/Input"
-import { Stack } from '@signalco/ui-primitives/Stack'
-import { Typography } from '@signalco/ui-primitives/Typography'
-import { errorMessages } from '../../../misc/errorMessages'
-import { client } from '@gredice/client'
+import { client } from '@gredice/client';
+import { Button } from '@signalco/ui-primitives/Button';
+import { Input } from '@signalco/ui-primitives/Input';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { type FormEvent, useState } from 'react';
+import { errorMessages } from '../../../misc/errorMessages';
 
 export function ForgotPasswordForm() {
-    const router = useRouter()
-    const searchParams = useSearchParams()
-    const [email, setEmail] = useState(searchParams.get('email') || '')
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const [email, setEmail] = useState(searchParams.get('email') || '');
     const [error, setError] = useState('');
 
     const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault()
+        e.preventDefault();
 
         setError('');
-        const response = await client().api.auth['send-change-password-email'].$post({
+        const response = await client().api.auth[
+            'send-change-password-email'
+        ].$post({
             json: {
-                email
-            }
+                email,
+            },
         });
 
         if (!response.ok) {
@@ -31,22 +33,28 @@ export function ForgotPasswordForm() {
             return;
         }
 
-        router.push('/prijava/zaboravljena-zaporka/poslano')
-    }
+        router.push('/prijava/zaboravljena-zaporka/poslano');
+    };
 
     return (
         <form onSubmit={handleSubmit}>
             <Stack spacing={3}>
-                <Typography level='body2' center>Unesi svoj email za promjenu zaporke</Typography>
+                <Typography level="body2" center>
+                    Unesi svoj email za promjenu zaporke
+                </Typography>
                 <Input
                     id="email"
                     type="email"
-                    label='Email'
+                    label="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                 />
-                {error && <Typography level='body2' color='danger' semiBold>{error}</Typography>}
+                {error && (
+                    <Typography level="body2" color="danger" semiBold>
+                        {error}
+                    </Typography>
+                )}
                 <Button type="submit" variant="soft" fullWidth>
                     Pošalji email
                 </Button>

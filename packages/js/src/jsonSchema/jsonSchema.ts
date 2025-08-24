@@ -1,8 +1,8 @@
-export type JsonSchema = { [key: string]: string | JsonSchema; };
+export type JsonSchema = { [key: string]: string | JsonSchema };
 
 /**
  * Unwraps the schema string to schema object model.
- * 
+ *
  * Format:
  *   key1:type,key2:type,...
  *   key is name of the property

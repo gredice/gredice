@@ -3,29 +3,39 @@ import { useQuery } from '@tanstack/react-query';
 
 export const notificationsQueryKey = ['notifications'];
 
-export function useNotifications(userId: string | undefined, read?: boolean, page?: number, limit?: number) {
-  return useQuery({
-    queryKey: (read || page || limit) ? [...notificationsQueryKey, { read, page, limit }] : notificationsQueryKey,
-    queryFn: async () => {
-      if (!userId) return [];
-      const response = await client().api.notifications.$get({
-        query: {
-          userId,
-          read: read ? "true" : undefined,
-          page: page?.toString(),
-          limit: limit?.toString()
-        }
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch notifications');
-      }
-      return (await response.json()).map((notification) => ({
-        ...notification,
-        timestamp: new Date(notification.timestamp),
-        createdAt: new Date(notification.createdAt),
-        readAt: notification.readAt ? new Date(notification.readAt) : null,
-      }));
-    },
-    enabled: Boolean(userId),
-  });
+export function useNotifications(
+    userId: string | undefined,
+    read?: boolean,
+    page?: number,
+    limit?: number,
+) {
+    return useQuery({
+        queryKey:
+            read || page || limit
+                ? [...notificationsQueryKey, { read, page, limit }]
+                : notificationsQueryKey,
+        queryFn: async () => {
+            if (!userId) return [];
+            const response = await client().api.notifications.$get({
+                query: {
+                    userId,
+                    read: read ? 'true' : undefined,
+                    page: page?.toString(),
+                    limit: limit?.toString(),
+                },
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch notifications');
+            }
+            return (await response.json()).map((notification) => ({
+                ...notification,
+                timestamp: new Date(notification.timestamp),
+                createdAt: new Date(notification.createdAt),
+                readAt: notification.readAt
+                    ? new Date(notification.readAt)
+                    : null,
+            }));
+        },
+        enabled: Boolean(userId),
+    });
 }

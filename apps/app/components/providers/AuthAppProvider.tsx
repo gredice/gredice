@@ -1,7 +1,7 @@
 'use client';
 
-import { PropsWithChildren } from 'react';
 import { AuthProvider } from '@signalco/auth-client/components';
+import type { PropsWithChildren } from 'react';
 
 export type User = {
     id: string;
@@ -14,7 +14,7 @@ async function currentUserFactory() {
         return null;
     }
 
-    return await response.json() as User;
+    return (await response.json()) as User;
 }
 
 export function AuthAppProvider({ children }: PropsWithChildren) {

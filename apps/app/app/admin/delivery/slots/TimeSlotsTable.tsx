@@ -1,40 +1,51 @@
-import { getAllTimeSlots, getPickupLocations } from "@gredice/storage";
-import { Table } from "@signalco/ui-primitives/Table";
-import { Chip } from "@signalco/ui-primitives/Chip";
-import { NoDataPlaceholder } from "../../../../components/shared/placeholders/NoDataPlaceholder";
-import { TimeRange } from "@gredice/ui/LocalDateTime";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { SlotActionButtons } from "./SlotActionButtons";
+import { getAllTimeSlots, getPickupLocations } from '@gredice/storage';
+import { TimeRange } from '@gredice/ui/LocalDateTime';
+import { Chip } from '@signalco/ui-primitives/Chip';
+import { Table } from '@signalco/ui-primitives/Table';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
+import { SlotActionButtons } from './SlotActionButtons';
 
 export async function TimeSlotsTable() {
     const [timeSlots, pickupLocations] = await Promise.all([
         getAllTimeSlots(),
-        getPickupLocations()
+        getPickupLocations(),
     ]);
 
     function getStatusColor(status: string) {
         switch (status) {
-            case 'scheduled': return 'success';
-            case 'closed': return 'warning';
-            case 'archived': return 'neutral';
-            default: return 'neutral';
+            case 'scheduled':
+                return 'success';
+            case 'closed':
+                return 'warning';
+            case 'archived':
+                return 'neutral';
+            default:
+                return 'neutral';
         }
     }
 
     function getStatusLabel(status: string) {
         switch (status) {
-            case 'scheduled': return 'Dostupan';
-            case 'closed': return 'Zatvoren';
-            case 'archived': return 'Arhiviran';
-            default: return status;
+            case 'scheduled':
+                return 'Dostupan';
+            case 'closed':
+                return 'Zatvoren';
+            case 'archived':
+                return 'Arhiviran';
+            default:
+                return status;
         }
     }
 
     function getTypeLabel(type: string) {
         switch (type) {
-            case 'delivery': return 'Dostava';
-            case 'pickup': return 'Preuzimanje';
-            default: return type;
+            case 'delivery':
+                return 'Dostava';
+            case 'pickup':
+                return 'Preuzimanje';
+            default:
+                return type;
         }
     }
 
@@ -59,8 +70,10 @@ export async function TimeSlotsTable() {
                         </Table.Cell>
                     </Table.Row>
                 )}
-                {timeSlots.map(slot => {
-                    const location = pickupLocations.find(loc => loc.id === slot.locationId);
+                {timeSlots.map((slot) => {
+                    const location = pickupLocations.find(
+                        (loc) => loc.id === slot.locationId,
+                    );
 
                     return (
                         <Table.Row key={slot.id}>
@@ -70,15 +83,24 @@ export async function TimeSlotsTable() {
                                 </Chip>
                             </Table.Cell>
                             <Table.Cell>
-                                <Typography>{location?.name || `Lokacija ${slot.locationId}`}</Typography>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Typography level="body2">
-                                    <TimeRange startAt={slot.startAt} endAt={slot.endAt} />
+                                <Typography>
+                                    {location?.name ||
+                                        `Lokacija ${slot.locationId}`}
                                 </Typography>
                             </Table.Cell>
                             <Table.Cell>
-                                <Chip color={getStatusColor(slot.status)} className="w-fit">
+                                <Typography level="body2">
+                                    <TimeRange
+                                        startAt={slot.startAt}
+                                        endAt={slot.endAt}
+                                    />
+                                </Typography>
+                            </Table.Cell>
+                            <Table.Cell>
+                                <Chip
+                                    color={getStatusColor(slot.status)}
+                                    className="w-fit"
+                                >
                                     {getStatusLabel(slot.status)}
                                 </Chip>
                             </Table.Cell>

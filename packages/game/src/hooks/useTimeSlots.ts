@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
 import { client } from '@gredice/client';
+import { useQuery } from '@tanstack/react-query';
 
 export const timeSlotsQueryKey = ['delivery', 'timeSlots'];
 
@@ -12,22 +12,26 @@ export function useTimeSlots(params?: {
     return useQuery({
         queryKey: [...timeSlotsQueryKey, params],
         queryFn: async () => {
-            const queryParams = params ? {
-                type: params.type,
-                from: params.from,
-                to: params.to,
-                locationId: params.locationId?.toString()
-            } : {};
+            const queryParams = params
+                ? {
+                      type: params.type,
+                      from: params.from,
+                      to: params.to,
+                      locationId: params.locationId?.toString(),
+                  }
+                : {};
 
             const response = await client().api.delivery.slots.$get({
-                query: queryParams
+                query: queryParams,
             });
             if (response.status !== 200) {
                 throw new Error('Failed to fetch time slots');
             }
             return await response.json();
-        }
+        },
     });
 }
 
-export type TimeSlotData = NonNullable<Awaited<ReturnType<typeof useTimeSlots>['data']>>[0];
+export type TimeSlotData = NonNullable<
+    Awaited<ReturnType<typeof useTimeSlots>['data']>
+>[0];

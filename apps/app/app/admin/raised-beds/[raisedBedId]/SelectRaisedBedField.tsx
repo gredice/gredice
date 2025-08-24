@@ -1,8 +1,8 @@
 'use client';
 
+import { useControllableState } from '@signalco/hooks/useControllableState';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { useEffect, useState } from 'react';
-import { useControllableState } from '@signalco/hooks/useControllableState';
 import { getRaisedBedFields } from '../../../(actions)/gardenDataActions';
 
 export type SelectRaisedBedFieldProps = {
@@ -15,7 +15,7 @@ export type SelectRaisedBedFieldProps = {
     label?: string;
     required?: boolean;
     disabled?: boolean;
-}
+};
 
 export function SelectRaisedBedField({
     value,
@@ -26,10 +26,16 @@ export function SelectRaisedBedField({
     name,
     label,
     required,
-    disabled
+    disabled,
 }: SelectRaisedBedFieldProps) {
-    const [internalValue, setValue] = useControllableState(value, defaultValue, onChange);
-    const [raisedBedFields, setRaisedBedFields] = useState<Awaited<ReturnType<typeof getRaisedBedFields>>>([]);
+    const [internalValue, setValue] = useControllableState(
+        value,
+        defaultValue,
+        onChange,
+    );
+    const [raisedBedFields, setRaisedBedFields] = useState<
+        Awaited<ReturnType<typeof getRaisedBedFields>>
+    >([]);
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
@@ -55,16 +61,19 @@ export function SelectRaisedBedField({
     }, [raisedBedId, gardenId]);
 
     const items = [
-        { value: '-', label: disabled ? 'Odaberite gredicu prvo' : 'Odaberite polje...' },
+        {
+            value: '-',
+            label: disabled ? 'Odaberite gredicu prvo' : 'Odaberite polje...',
+        },
         ...(raisedBedFields?.map((field) => ({
             value: field.id.toString(),
             label: `Polje ${field.positionIndex + 1}`,
         })) ?? []),
-    ]
+    ];
 
     const handleOnChange = (newValue: string) => {
         setValue(newValue !== '-' ? newValue : null);
-    }
+    };
 
     return (
         <>

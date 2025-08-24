@@ -1,10 +1,14 @@
 'use server';
 
+import { sendEmail } from '@gredice/email/acs';
 import MarkdownEmailTemplate from '@gredice/transactional/emails/markdown';
 import { auth } from '../../../../lib/auth/auth';
-import { sendEmail } from '@gredice/email/acs';
 
-export async function submitEmailForm(attachments: File[], _prevState: unknown, formData: FormData) {
+export async function submitEmailForm(
+    attachments: File[],
+    _prevState: unknown,
+    formData: FormData,
+) {
     const { user } = await auth(['admin']);
     const userName = user.userName;
 
@@ -13,14 +17,15 @@ export async function submitEmailForm(attachments: File[], _prevState: unknown, 
     const to = formData.get('to') as string;
     const subject = formData.get('subject') as string;
     const message = formData.get('message') as string;
-    const emailAttachments = await Promise.all(attachments
-        .map(async (file) => {
-            return ({
+    const emailAttachments = await Promise.all(
+        attachments.map(async (file) => {
+            return {
                 name: file.name,
                 contentType: file.type,
-                content: await file.arrayBuffer()
-            });
-        }));
+                content: await file.arrayBuffer(),
+            };
+        }),
+    );
 
     await sendEmail({
         from: predefinedFrom,
@@ -28,12 +33,12 @@ export async function submitEmailForm(attachments: File[], _prevState: unknown, 
         subject,
         template: MarkdownEmailTemplate({
             content: message,
-            previewText: subject
+            previewText: subject,
         }),
-        attachments: emailAttachments
+        attachments: emailAttachments,
     });
 
     return {
-        success: true
+        success: true,
     };
 }

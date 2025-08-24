@@ -1,9 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
-import { directoriesClient } from "@gredice/client";
+import { directoriesClient } from '@gredice/client';
+import { useQuery } from '@tanstack/react-query';
 
 async function getOperations() {
-    const operations = await directoriesClient().GET("/entities/operation")
-    return operations.data?.sort((a, b) => a.information.name.localeCompare(b.information.name));
+    const operations = await directoriesClient().GET('/entities/operation');
+    return operations.data?.sort((a, b) =>
+        a.information.name.localeCompare(b.information.name),
+    );
 }
 
 export function useOperations() {

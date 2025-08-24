@@ -1,11 +1,15 @@
 'use client';
 
-import { SelectItems } from "@signalco/ui-primitives/SelectItems";
-import { raisedBedFieldUpdatePlant } from "../../../(actions)/raisedBedFieldsActions";
+import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { raisedBedFieldUpdatePlant } from '../../../(actions)/raisedBedFieldsActions';
 
 export const dynamic = 'force-dynamic';
 
-export function RaisedBedFieldPlantStatusSelector({ raisedBedId, positionIndex, status }: {
+export function RaisedBedFieldPlantStatusSelector({
+    raisedBedId,
+    positionIndex,
+    status,
+}: {
     raisedBedId: number;
     positionIndex: number;
     status: string;
@@ -14,7 +18,11 @@ export function RaisedBedFieldPlantStatusSelector({ raisedBedId, positionIndex, 
         <SelectItems
             value={status}
             onValueChange={(newValue) => {
-                raisedBedFieldUpdatePlant({ raisedBedId, positionIndex, status: newValue });
+                raisedBedFieldUpdatePlant({
+                    raisedBedId,
+                    positionIndex,
+                    status: newValue,
+                });
             }}
             items={[
                 { value: 'new', label: 'Novo', icon: '🆕' },
@@ -25,7 +33,7 @@ export function RaisedBedFieldPlantStatusSelector({ raisedBedId, positionIndex, 
                 { value: 'died', label: 'Uginulo', icon: '💀' },
                 { value: 'ready', label: 'Spremno', icon: '🥕' },
                 { value: 'harvested', label: 'Ubrane', icon: '🌾' },
-                { value: 'removed', label: 'Uklonjene', icon: '🗑️' }
+                { value: 'removed', label: 'Uklonjene', icon: '🗑️' },
             ]}
         />
     );

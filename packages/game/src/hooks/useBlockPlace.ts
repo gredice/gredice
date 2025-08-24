@@ -1,10 +1,10 @@
-import { client } from "@gredice/client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { currentGardenKeys, useCurrentGarden } from "./useCurrentGarden";
-import { currentAccountKeys } from "./useCurrentAccount";
-import { handleOptimisticUpdate } from "../helpers/queryHelpers";
+import { client } from '@gredice/client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
-import { Vector3 } from "three";
+import { handleOptimisticUpdate } from '../helpers/queryHelpers';
+import { currentAccountKeys } from './useCurrentAccount';
+import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'blockPlace'];
 
@@ -13,19 +13,27 @@ export function useBlockPlace() {
     const { data: garden } = useCurrentGarden();
     return useMutation({
         mutationKey,
-        mutationFn: async ({ blockName, position }: { blockName: string, position: [x: number, y: number] }) => {
+        mutationFn: async ({
+            blockName,
+            position,
+        }: {
+            blockName: string;
+            position: [x: number, y: number];
+        }) => {
             if (!garden) {
                 throw new Error('No garden selected');
             }
 
             // Generate block
-            const response = await client().api.gardens[":gardenId"].blocks.$post({
+            const response = await client().api.gardens[
+                ':gardenId'
+            ].blocks.$post({
                 param: {
-                    gardenId: garden?.id.toString()
+                    gardenId: garden?.id.toString(),
                 },
                 json: {
-                    blockName: blockName
-                }
+                    blockName: blockName,
+                },
             });
             if (response.status !== 200) {
                 const body = await response.text();
@@ -35,13 +43,17 @@ export function useBlockPlace() {
             const { id } = await response.json();
 
             // Place block
-            await client().api.gardens[":gardenId"].stacks.$patch({
+            await client().api.gardens[':gardenId'].stacks.$patch({
                 param: {
-                    gardenId: garden?.id.toString()
+                    gardenId: garden?.id.toString(),
                 },
                 json: [
-                    { op: 'add', path: `/${position[0]}/${position[1]}/-`, value: id }
-                ]
+                    {
+                        op: 'add',
+                        path: `/${position[0]}/${position[1]}/-`,
+                        value: id,
+                    },
+                ],
             });
 
             return id;
@@ -52,45 +64,63 @@ export function useBlockPlace() {
             }
 
             const newBlock = { id: uuidv4(), name: blockName, rotation: 0 };
-            const stack = garden.stacks.find(stack => stack.position.x === position[0] && stack.position.z === position[1]);
+            const stack = garden.stacks.find(
+                (stack) =>
+                    stack.position.x === position[0] &&
+                    stack.position.z === position[1],
+            );
             const updatedStacks = stack
-                ? garden.stacks.map(stack => {
-                    if (stack.position.x === position[0] && stack.position.z === position[1]) {
-                        return {
-                            ...stack,
-                            blocks: [...stack.blocks, newBlock]
-                        }
-                    }
-                    return stack;
-                })
+                ? garden.stacks.map((stack) => {
+                      if (
+                          stack.position.x === position[0] &&
+                          stack.position.z === position[1]
+                      ) {
+                          return {
+                              ...stack,
+                              blocks: [...stack.blocks, newBlock],
+                          };
+                      }
+                      return stack;
+                  })
                 : [
-                    ...garden.stacks,
-                    {
-                        position: new Vector3(position[0], 0, position[1]),
-                        blocks: [newBlock]
-                    }
-                ];
+                      ...garden.stacks,
+                      {
+                          position: new Vector3(position[0], 0, position[1]),
+                          blocks: [newBlock],
+                      },
+                  ];
 
-            const previousItem = await handleOptimisticUpdate(queryClient, currentGardenKeys, {
-                stacks: [...updatedStacks]
-            });
+            const previousItem = await handleOptimisticUpdate(
+                queryClient,
+                currentGardenKeys,
+                {
+                    stacks: [...updatedStacks],
+                },
+            );
 
             return {
-                previousItem
+                previousItem,
             };
         },
         onError: (error, _variables, context) => {
             console.error('Error creating block', error);
             if (context?.previousItem) {
-                queryClient.setQueryData(currentGardenKeys, context.previousItem);
+                queryClient.setQueryData(
+                    currentGardenKeys,
+                    context.previousItem,
+                );
             }
         },
         onSettled: async () => {
             // Invalidate queries
-            await queryClient.invalidateQueries({ queryKey: currentAccountKeys });
+            await queryClient.invalidateQueries({
+                queryKey: currentAccountKeys,
+            });
             if (queryClient.isMutating({ mutationKey }) === 1) {
-                await queryClient.invalidateQueries({ queryKey: currentGardenKeys });
+                await queryClient.invalidateQueries({
+                    queryKey: currentGardenKeys,
+                });
             }
-        }
-    })
+        },
+    });
 }

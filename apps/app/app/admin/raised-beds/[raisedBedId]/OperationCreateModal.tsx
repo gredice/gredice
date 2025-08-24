@@ -1,17 +1,17 @@
 'use client';
 
-import { Input } from "@signalco/ui-primitives/Input";
-import { Button } from "@signalco/ui-primitives/Button";
-import { Modal } from "@signalco/ui-primitives/Modal";
-import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Add } from "@signalco/ui-icons";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Stack } from "@signalco/ui-primitives/Stack";
-import { createOperationAction } from "../../../(actions)/operationActions";
-import { SelectEntity } from "./SelectEntity";
-import { SelectRaisedBed } from "./SelectRaisedBed";
-import { SelectRaisedBedField } from "./SelectRaisedBedField";
-import { useState } from "react";
+import { Add } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Input } from '@signalco/ui-primitives/Input';
+import { Modal } from '@signalco/ui-primitives/Modal';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { useState } from 'react';
+import { createOperationAction } from '../../../(actions)/operationActions';
+import { SelectEntity } from './SelectEntity';
+import { SelectRaisedBed } from './SelectRaisedBed';
+import { SelectRaisedBedField } from './SelectRaisedBedField';
 
 type OperationCreateModalProps = {
     accountId: string;
@@ -20,8 +20,15 @@ type OperationCreateModalProps = {
     raisedBedFieldId?: number;
 };
 
-export function OperationCreateModal({ accountId, gardenId, raisedBedId, raisedBedFieldId }: OperationCreateModalProps) {
-    const [selectedRaisedBedId, setSelectedRaisedBedId] = useState<string | null>(raisedBedId?.toString() ?? null);
+export function OperationCreateModal({
+    accountId,
+    gardenId,
+    raisedBedId,
+    raisedBedFieldId,
+}: OperationCreateModalProps) {
+    const [selectedRaisedBedId, setSelectedRaisedBedId] = useState<
+        string | null
+    >(raisedBedId?.toString() ?? null);
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -36,26 +43,43 @@ export function OperationCreateModal({ accountId, gardenId, raisedBedId, raisedB
 
     return (
         <Modal
-            title={"Nova operacija"}
-            trigger={(
+            title={'Nova operacija'}
+            trigger={
                 <IconButton title="Nova operacija" variant="outlined">
                     <Add className="size-4" />
                 </IconButton>
-            )}>
+            }
+        >
             <Stack spacing={4}>
                 <Typography level="h5">Nova operacija</Typography>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <Stack spacing={2}>
                         <div className="grid grid-cols-2 gap-4">
-                            <Input name="entityTypeName" label="Tip entiteta" defaultValue="operation" required hidden />
+                            <Input
+                                name="entityTypeName"
+                                label="Tip entiteta"
+                                defaultValue="operation"
+                                required
+                                hidden
+                            />
                             <SelectEntity
                                 name="entityId"
                                 label="ID entiteta"
                                 required
                                 entityTypeName={'operation'}
                             />
-                            <Input name="accountId" defaultValue={accountId} label="Account ID" required />
-                            <Input name="gardenId" defaultValue={gardenId} label="Vrt ID (opcionalno)" type="number" />
+                            <Input
+                                name="accountId"
+                                defaultValue={accountId}
+                                label="Account ID"
+                                required
+                            />
+                            <Input
+                                name="gardenId"
+                                defaultValue={gardenId}
+                                label="Vrt ID (opcionalno)"
+                                type="number"
+                            />
                             <SelectRaisedBed
                                 name="raisedBedId"
                                 label="Gredica"
@@ -68,17 +92,27 @@ export function OperationCreateModal({ accountId, gardenId, raisedBedId, raisedB
                             <SelectRaisedBedField
                                 name="raisedBedFieldId"
                                 label="Polje gredice"
-                                raisedBedId={selectedRaisedBedId ? parseInt(selectedRaisedBedId) : undefined}
+                                raisedBedId={
+                                    selectedRaisedBedId
+                                        ? parseInt(selectedRaisedBedId, 10)
+                                        : undefined
+                                }
                                 gardenId={gardenId}
                                 defaultValue={raisedBedFieldId?.toString()}
                                 disabled={!selectedRaisedBedId}
                             />
-                            <Input name="timestamp" type="datetime-local" label="Datum kreiranja (opcionalno)" />
-                            <Input name="scheduledDate" type="datetime-local" label="Planirani datum (opcionalno)" />
+                            <Input
+                                name="timestamp"
+                                type="datetime-local"
+                                label="Datum kreiranja (opcionalno)"
+                            />
+                            <Input
+                                name="scheduledDate"
+                                type="datetime-local"
+                                label="Planirani datum (opcionalno)"
+                            />
                         </div>
-                        <Button type="submit">
-                            Kreiraj
-                        </Button>
+                        <Button type="submit">Kreiraj</Button>
                     </Stack>
                 </form>
             </Stack>

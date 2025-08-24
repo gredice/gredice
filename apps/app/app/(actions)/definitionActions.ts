@@ -1,30 +1,32 @@
 'use server';
 
 import {
-    InsertAttributeDefinition,
-    getAttributeDefinition as storageGetAttributeDefinition,
+    type InsertAttributeDefinition,
+    type InsertAttributeDefinitionCategory,
     createAttributeDefinition as storageCreateAttributeDefinition,
-    updateAttributeDefinition as storageUpdateAttributeDefinition,
-    deleteAttributeDefinition as storageDeleteAttributeDefinition,
     createAttributeDefinitionCategory as storageCreateAttributeDefinitionCategory,
+    deleteAttributeDefinition as storageDeleteAttributeDefinition,
+    getAttributeDefinition as storageGetAttributeDefinition,
+    updateAttributeDefinition as storageUpdateAttributeDefinition,
     updateAttributeDefinitionCategory as storageUpdateAttributeDefinitionCategory,
-    InsertAttributeDefinitionCategory,
-    UpdateAttributeDefinitionCategory,
-    UpdateAttributeDefinition
-} from "@gredice/storage";
-import { auth } from "../../lib/auth/auth";
-import { KnownPages } from "../../src/KnownPages";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+    type UpdateAttributeDefinition,
+    type UpdateAttributeDefinitionCategory,
+} from '@gredice/storage';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { auth } from '../../lib/auth/auth';
+import { KnownPages } from '../../src/KnownPages';
 
-export async function upsertAttributeDefinition(definition: InsertAttributeDefinition | UpdateAttributeDefinition) {
+export async function upsertAttributeDefinition(
+    definition: InsertAttributeDefinition | UpdateAttributeDefinition,
+) {
     await auth(['admin']);
 
     const id = definition.id;
     if (id) {
         await storageUpdateAttributeDefinition({
             ...definition,
-            id
+            id,
         });
     } else {
         // Validate required fields
@@ -34,7 +36,13 @@ export async function upsertAttributeDefinition(definition: InsertAttributeDefin
         const category = definition.category;
         const dataType = definition.dataType;
         if (!name || !label || !entityTypeName || !category || !dataType) {
-            console.error('Missing required fields', { name, label, entityTypeName, category, dataType });
+            console.error('Missing required fields', {
+                name,
+                label,
+                entityTypeName,
+                category,
+                dataType,
+            });
             throw new Error('Missing required fields.');
         }
 
@@ -44,39 +52,56 @@ export async function upsertAttributeDefinition(definition: InsertAttributeDefin
             label,
             entityTypeName,
             category,
-            dataType
+            dataType,
         });
     }
 
     // Retrieve the entity type name from the definition
     const entityTypeName = definition.entityTypeName;
     if (entityTypeName) {
-        revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName));
+        revalidatePath(
+            KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
+        );
     } else if (!entityTypeName && id) {
         const definition = await storageGetAttributeDefinition(id);
         if (!definition) {
             throw new Error('Definition not found');
         }
-        revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(definition.entityTypeName));
+        revalidatePath(
+            KnownPages.DirectoryEntityTypeAttributeDefinitions(
+                definition.entityTypeName,
+            ),
+        );
     }
 }
 
-export async function deleteAttributeDefinition(entityTypeName: string, definitionId: number) {
+export async function deleteAttributeDefinition(
+    entityTypeName: string,
+    definitionId: number,
+) {
     await auth(['admin']);
 
     await storageDeleteAttributeDefinition(definitionId);
-    revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName));
-    redirect(KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName));
+    revalidatePath(
+        KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
+    );
+    redirect(
+        KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
+    );
 }
 
-export async function upsertAttributeDefinitionCategory(category: InsertAttributeDefinitionCategory | UpdateAttributeDefinitionCategory) {
+export async function upsertAttributeDefinitionCategory(
+    category:
+        | InsertAttributeDefinitionCategory
+        | UpdateAttributeDefinitionCategory,
+) {
     await auth(['admin']);
 
     const id = category.id;
     if (id) {
         await storageUpdateAttributeDefinitionCategory({
             ...category,
-            id
+            id,
         });
     } else {
         const name = category.name;
@@ -90,10 +115,14 @@ export async function upsertAttributeDefinitionCategory(category: InsertAttribut
             ...category,
             name,
             label,
-            entityTypeName
+            entityTypeName,
         });
     }
     if (category.entityTypeName) {
-        revalidatePath(KnownPages.DirectoryEntityTypeAttributeDefinitions(category.entityTypeName));
+        revalidatePath(
+            KnownPages.DirectoryEntityTypeAttributeDefinitions(
+                category.entityTypeName,
+            ),
+        );
     }
 }

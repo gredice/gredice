@@ -1,15 +1,15 @@
-import { getAccounts } from "@gredice/storage";
-import { Card, CardOverflow } from "@signalco/ui-primitives/Card";
-import { Chip } from "@signalco/ui-primitives/Chip";
-import { Table } from "@signalco/ui-primitives/Table";
-import { auth } from "../../../lib/auth/auth";
-import { KnownPages } from "../../../src/KnownPages";
-import Link from "next/link";
-import { NoDataPlaceholder } from "../../../components/shared/placeholders/NoDataPlaceholder";
-import { LocalDateTime } from "@gredice/ui/LocalDateTime";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Row } from "@signalco/ui-primitives/Row";
-import { Stack } from "@signalco/ui-primitives/Stack";
+import { getAccounts } from '@gredice/storage';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
+import { Chip } from '@signalco/ui-primitives/Chip';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Table } from '@signalco/ui-primitives/Table';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import Link from 'next/link';
+import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
+import { auth } from '../../../lib/auth/auth';
+import { KnownPages } from '../../../src/KnownPages';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +20,9 @@ export default async function AccountsPage() {
     return (
         <Stack spacing={2}>
             <Row spacing={1}>
-                <Typography level="h1" className="text-2xl" semiBold>{"Računi"}</Typography>
+                <Typography level="h1" className="text-2xl" semiBold>
+                    {'Računi'}
+                </Typography>
                 <Chip color="primary">{accounts.length}</Chip>
             </Row>
             <Card>
@@ -43,18 +45,28 @@ export default async function AccountsPage() {
                                     </Table.Cell>
                                 </Table.Row>
                             )}
-                            {accounts.map(account => {
+                            {accounts.map((account) => {
                                 const user = account.accountUsers.at(0)?.user;
                                 return (
                                     <Table.Row key={account.id}>
                                         <Table.Cell>
-                                            <Link href={KnownPages.Account(account.id)}>
+                                            <Link
+                                                href={KnownPages.Account(
+                                                    account.id,
+                                                )}
+                                            >
                                                 {account.id}
                                             </Link>
                                         </Table.Cell>
                                         <Table.Cell>
-                                            <Link href={KnownPages.User(user?.id ?? '')}>
-                                                {user?.displayName || user?.userName || 'N/A'}
+                                            <Link
+                                                href={KnownPages.User(
+                                                    user?.id ?? '',
+                                                )}
+                                            >
+                                                {user?.displayName ||
+                                                    user?.userName ||
+                                                    'N/A'}
                                             </Link>
                                         </Table.Cell>
                                         <Table.Cell>

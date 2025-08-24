@@ -1,9 +1,9 @@
-import { useRef, useState } from "react";
-import { useGameState } from "../useGameState";
-import { audioConfig } from "../utils/audioConfig";
+import { useRef, useState } from 'react';
+import { useGameState } from '../useGameState';
+import { audioConfig } from '../utils/audioConfig';
 
 export function useGameAudio() {
-    const { ambient, effects } = useGameState(state => state.audio);
+    const { ambient, effects } = useGameState((state) => state.audio);
     const mixers = [ambient, effects];
     const masterVolume = useRef(audioConfig().config.masterVolume);
     const masterIsMuted = useRef(audioConfig().config.masterIsMuted);
@@ -11,17 +11,23 @@ export function useGameAudio() {
     function setVolume(value: number) {
         const oldVolume = masterVolume.current;
         masterVolume.current = value;
-        mixers.forEach(mixer => mixer.setVolume((mixer.getState().volume / oldVolume) * value));
+        mixers.forEach((mixer) => {
+            mixer.setVolume((mixer.getState().volume / oldVolume) * value);
+        });
     }
 
     function setMuted(newMuted: boolean) {
         console.debug('Setting all mixers to muted:', newMuted);
         masterIsMuted.current = newMuted;
-        mixers.forEach(mixer => mixer.setMuted(newMuted));
+        mixers.forEach((mixer) => {
+            mixer.setMuted(newMuted);
+        });
     }
 
-    function refreshStateAfter(func: (...props: any) => Promise<any> | any) {
-        return async (...props: any) => {
+    function refreshStateAfter<T extends unknown[], R>(
+        func: (...props: T) => Promise<R> | R,
+    ) {
+        return async (...props: T) => {
             await func(...props);
             const newState = getState();
             setState(newState);
@@ -33,12 +39,12 @@ export function useGameAudio() {
                 effectsVolume: newState.effects.volume,
                 effectsIsMuted: newState.effects.isMuted,
             });
-        }
+        };
     }
 
     function getState() {
         return {
-            isSuspended: mixers.some(mixer => mixer.getState().isSuspended),
+            isSuspended: mixers.some((mixer) => mixer.getState().isSuspended),
             isMuted: masterIsMuted.current,
             setMuted: refreshStateAfter(setMuted),
             volume: masterVolume.current,
@@ -47,15 +53,23 @@ export function useGameAudio() {
                 isMuted: ambient.getState().isMuted,
                 volume: ambient.getState().volume / masterVolume.current,
                 setMuted: refreshStateAfter(ambient.setMuted),
-                setVolume: refreshStateAfter((value) => ambient.setVolume(value * masterVolume.current)),
+                setVolume: refreshStateAfter<[number], void>((value) =>
+                    ambient.setVolume(value * masterVolume.current),
+                ),
             },
             effects: {
                 isMuted: effects.getState().isMuted,
                 volume: effects.getState().volume / masterVolume.current,
                 setMuted: refreshStateAfter(effects.setMuted),
-                setVolume: refreshStateAfter((value) => effects.setVolume(value * masterVolume.current)),
+                setVolume: refreshStateAfter<[number], void>((value) =>
+                    effects.setVolume(value * masterVolume.current),
+                ),
             },
-            resumeIfNeeded: refreshStateAfter(() => Promise.all(mixers.map(mixer => mixer.resumeContextIfNeeded()))),
+            resumeIfNeeded: refreshStateAfter(() =>
+                Promise.all(
+                    mixers.map((mixer) => mixer.resumeContextIfNeeded()),
+                ),
+            ),
         };
     }
 

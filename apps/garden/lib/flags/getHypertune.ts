@@ -1,10 +1,16 @@
-import "server-only";
-import { unstable_noStore as noStore } from "next/cache";
-import { createSource } from "./generated/hypertune";
-import { getContext } from "./identify";
+import 'server-only';
+import { unstable_noStore as noStore } from 'next/cache';
+import { createSource } from './generated/hypertune';
+import { getContext } from './identify';
+
+function getHypertuneToken() {
+    const token = process.env.NEXT_PUBLIC_HYPERTUNE_TOKEN;
+    if (!token) throw new Error('Missing Hypertune token');
+    return token;
+}
 
 const hypertuneSource = createSource({
-    token: process.env.NEXT_PUBLIC_HYPERTUNE_TOKEN!,
+    token: getHypertuneToken(),
 });
 
 export default async function getHypertune() {
@@ -14,7 +20,7 @@ export default async function getHypertune() {
 
     return hypertuneSource.root({
         args: {
-            context
+            context,
         },
     });
 }

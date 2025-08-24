@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { client } from '@gredice/client';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -22,14 +22,16 @@ export function DeleteAccountCard() {
         setLoading(true);
         const res = await client().api.accounts.$delete({
             query: {
-                token
-            }
+                token,
+            },
         });
         setLoading(false);
         if (res.ok || res.status === 404) {
             setResult('Brisanje računa je uspješno izvršeno.');
         } else {
-            setResult('Greška prilikom brisanja računa. Osvježite stranicu i pokušajte ponovno.');
+            setResult(
+                'Greška prilikom brisanja računa. Osvježite stranicu i pokušajte ponovno.',
+            );
         }
     }
 
@@ -37,10 +39,13 @@ export function DeleteAccountCard() {
         <Card className="max-w-md mx-auto mt-10 p-6 text-center bg-background">
             <h2 className="text-xl font-bold mb-4">Potvrdi brisanje računa</h2>
             {result ? (
-                <Typography level='body1'>{result}</Typography>
+                <Typography level="body1">{result}</Typography>
             ) : (
                 <>
-                    <Typography level='body1' gutterBottom>Ova radnja će trajno obrisati vaš račun i sve povezane podatke. Jeste li sigurni?</Typography>
+                    <Typography level="body1" gutterBottom>
+                        Ova radnja će trajno obrisati vaš račun i sve povezane
+                        podatke. Jeste li sigurni?
+                    </Typography>
                     <Button
                         className="bg-red-600 hover:bg-red-700"
                         onClick={handleDelete}

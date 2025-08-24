@@ -8,8 +8,8 @@ const nextConfig: NextConfig = {
         typedEnv: true,
         reactCompiler: true,
         serverActions: {
-            bodySizeLimit: '10mb'
-        }
+            bodySizeLimit: '10mb',
+        },
     },
     // Ignore TypeScript errors in the build process
     typescript: {
@@ -24,13 +24,13 @@ const nextConfig: NextConfig = {
             },
             {
                 hostname: 'www.gredice.com',
-                protocol: 'https'
+                protocol: 'https',
             },
             {
                 hostname: 'vrt.gredice.com',
-                protocol: 'https'
-            }
-        ]
+                protocol: 'https',
+            },
+        ],
     },
     productionBrowserSourceMaps: true,
 };

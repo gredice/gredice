@@ -1,17 +1,21 @@
-import { getInvoice } from "@gredice/storage";
-import { auth } from "../../../../../lib/auth/auth";
-import { notFound, redirect } from "next/navigation";
-import { KnownPages } from "../../../../../src/KnownPages";
-import InvoiceForm from "../../shared/InvoiceForm";
-import { canEditInvoice } from "../invoiceUtils";
+import { getInvoice } from '@gredice/storage';
+import { notFound, redirect } from 'next/navigation';
+import { auth } from '../../../../../lib/auth/auth';
+import { KnownPages } from '../../../../../src/KnownPages';
+import InvoiceForm from '../../shared/InvoiceForm';
+import { canEditInvoice } from '../invoiceUtils';
 
 export const dynamic = 'force-dynamic';
 
-export default async function EditInvoicePage({ params }: { params: { invoiceId: string } }) {
+export default async function EditInvoicePage({
+    params,
+}: {
+    params: { invoiceId: string };
+}) {
     await auth(['admin']);
 
-    const invoiceId = parseInt(params.invoiceId);
-    if (isNaN(invoiceId)) {
+    const invoiceId = parseInt(params.invoiceId, 10);
+    if (Number.isNaN(invoiceId)) {
         notFound();
     }
 

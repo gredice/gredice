@@ -1,11 +1,16 @@
-import { animated } from "@react-spring/three";
-import { EntityInstanceProps } from "../types/runtime/EntityInstanceProps";
-import { useStackHeight } from "../utils/getStackHeight";
-import { useGameGLTF } from "../utils/useGameGLTF";
-import { useAnimatedEntityRotation } from "./helpers/useAnimatedEntityRotation";
-import { models } from "../data/models";
+import { animated } from '@react-spring/three';
+import { models } from '../data/models';
+import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
+import { useStackHeight } from '../utils/getStackHeight';
+import { useGameGLTF } from '../utils/useGameGLTF';
+import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
-export function BlockGround({ stack, block, rotation, variant }: EntityInstanceProps) {
+export function BlockGround({
+    stack,
+    block,
+    rotation,
+    variant,
+}: EntityInstanceProps) {
     const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
@@ -15,7 +20,8 @@ export function BlockGround({ stack, block, rotation, variant }: EntityInstanceP
     return (
         <animated.group
             position={stack.position.clone().setY(currentStackHeight + 1)}
-            rotation={animatedRotation as unknown as [number, number, number]}>
+            rotation={animatedRotation as unknown as [number, number, number]}
+        >
             <mesh
                 castShadow
                 receiveShadow

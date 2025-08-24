@@ -1,40 +1,63 @@
-"use server";
+'use server';
 
-import { auth } from "../../lib/auth/auth";
-import { revalidatePath } from "next/cache";
-import { KnownPages } from "../../src/KnownPages";
-import { createEvent, createNotification, createOperation, getEntityFormatted, getOperationById, getRaisedBed, InsertOperation, knownEvents, earnSunflowers, getEntitiesFormatted } from "@gredice/storage";
-import { EntityStandardized } from "../../lib/@types/EntityStandardized";
+import {
+    createEvent,
+    createNotification,
+    createOperation,
+    earnSunflowers,
+    getEntityFormatted,
+    getOperationById,
+    getRaisedBed,
+    type InsertOperation,
+    knownEvents,
+} from '@gredice/storage';
+import { revalidatePath } from 'next/cache';
+import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
+import { auth } from '../../lib/auth/auth';
+import { KnownPages } from '../../src/KnownPages';
 
 export async function createOperationAction(formData: FormData) {
-    await auth(["admin"]);
-    const entityId = formData.get("entityId") ? Number(formData.get("entityId")) : undefined;
+    await auth(['admin']);
+    const entityId = formData.get('entityId')
+        ? Number(formData.get('entityId'))
+        : undefined;
     if (!entityId) {
-        throw new Error("Entity ID is required");
+        throw new Error('Entity ID is required');
     }
-    const accountId = formData.get("accountId") as string;
+    const accountId = formData.get('accountId') as string;
     if (!accountId) {
-        throw new Error("Account ID is required");
+        throw new Error('Account ID is required');
     }
 
-    const scheduledDate = formData.get("scheduledDate")
-        ? new Date(formData.get("scheduledDate") as string)
+    const scheduledDate = formData.get('scheduledDate')
+        ? new Date(formData.get('scheduledDate') as string)
         : undefined;
 
     const operation: InsertOperation = {
         entityId,
-        entityTypeName: formData.get("entityTypeName") as string,
+        entityTypeName: formData.get('entityTypeName') as string,
         accountId,
-        gardenId: formData.get("gardenId") ? Number(formData.get("gardenId")) : undefined,
-        raisedBedId: formData.get("raisedBedId") ? Number(formData.get("raisedBedId")) : undefined,
-        raisedBedFieldId: formData.get("raisedBedFieldId") ? Number(formData.get("raisedBedFieldId")) : undefined,
-        timestamp: formData.get("timestamp") ? new Date(formData.get("timestamp") as string) : undefined,
+        gardenId: formData.get('gardenId')
+            ? Number(formData.get('gardenId'))
+            : undefined,
+        raisedBedId: formData.get('raisedBedId')
+            ? Number(formData.get('raisedBedId'))
+            : undefined,
+        raisedBedFieldId: formData.get('raisedBedFieldId')
+            ? Number(formData.get('raisedBedFieldId'))
+            : undefined,
+        timestamp: formData.get('timestamp')
+            ? new Date(formData.get('timestamp') as string)
+            : undefined,
     };
     const operationId = await createOperation(operation);
     await Promise.all([
-        scheduledDate && createEvent(knownEvents.operations.scheduledV1(operationId.toString(), {
-            scheduledDate: scheduledDate.toISOString()
-        })),
+        scheduledDate &&
+            createEvent(
+                knownEvents.operations.scheduledV1(operationId.toString(), {
+                    scheduledDate: scheduledDate.toISOString(),
+                }),
+            ),
     ]);
     revalidatePath(KnownPages.Schedule);
     if (operation.accountId)
@@ -47,14 +70,16 @@ export async function createOperationAction(formData: FormData) {
 }
 
 export async function rescheduleOperationAction(formData: FormData) {
-    await auth(["admin"]);
-    const operationId = formData.get("operationId") ? Number(formData.get("operationId")) : undefined;
+    await auth(['admin']);
+    const operationId = formData.get('operationId')
+        ? Number(formData.get('operationId'))
+        : undefined;
     if (!operationId) {
-        throw new Error("Operation ID is required");
+        throw new Error('Operation ID is required');
     }
-    const scheduledDate = formData.get("scheduledDate") as string;
+    const scheduledDate = formData.get('scheduledDate') as string;
     if (!scheduledDate) {
-        throw new Error("Scheduled Date is required");
+        throw new Error('Scheduled Date is required');
     }
 
     const operation = await getOperationById(operationId);
@@ -63,9 +88,11 @@ export async function rescheduleOperationAction(formData: FormData) {
     }
 
     // Create a new scheduled event to reschedule the operation
-    await createEvent(knownEvents.operations.scheduledV1(operationId.toString(), {
-        scheduledDate: new Date(scheduledDate).toISOString()
-    }));
+    await createEvent(
+        knownEvents.operations.scheduledV1(operationId.toString(), {
+            scheduledDate: new Date(scheduledDate).toISOString(),
+        }),
+    );
 
     revalidatePath(KnownPages.Schedule);
     if (operation.accountId)
@@ -77,14 +104,19 @@ export async function rescheduleOperationAction(formData: FormData) {
     return { success: true };
 }
 
-export async function completeOperation(operationId: number, completedBy: string) {
-    await auth(["admin"]);
+export async function completeOperation(
+    operationId: number,
+    completedBy: string,
+) {
+    await auth(['admin']);
     const operation = await getOperationById(operationId);
     if (!operation) {
         throw new Error(`Operation with ID ${operationId} not found.`);
     }
 
-    const operationData = await getEntityFormatted<EntityStandardized>(operation.entityId);
+    const operationData = await getEntityFormatted<EntityStandardized>(
+        operation.entityId,
+    );
 
     // TODO: Add operation icon
     const header = `${operationData?.information?.label}`;
@@ -92,10 +124,14 @@ export async function completeOperation(operationId: number, completedBy: string
     if (operation.raisedBedId) {
         const raisedBed = await getRaisedBed(operation.raisedBedId);
         if (!raisedBed) {
-            console.error(`Raised bed with ID ${operation.raisedBedId} not found.`);
+            console.error(
+                `Raised bed with ID ${operation.raisedBedId} not found.`,
+            );
         } else {
             const positionIndex = operation.raisedBedFieldId
-                ? raisedBed.fields.find(f => f.id === operation.raisedBedFieldId)?.positionIndex
+                ? raisedBed.fields.find(
+                      (f) => f.id === operation.raisedBedFieldId,
+                  )?.positionIndex
                 : null;
             if (typeof positionIndex === 'number') {
                 content = `Danas je na gredici **${raisedBed.name}** za polje **${positionIndex + 1}** odrađeno **${operationData?.information?.label}**.`;
@@ -106,18 +142,21 @@ export async function completeOperation(operationId: number, completedBy: string
     }
 
     await Promise.all([
-        createEvent(knownEvents.operations.completedV1(operationId.toString(), {
-            completedBy
-        })),
-        (operation.accountId) ?
-            createNotification({
-                accountId: operation.accountId,
-                gardenId: operation.gardenId,
-                raisedBedId: operation.raisedBedId,
-                header,
-                content,
-                timestamp: new Date(),
-            }) : undefined
+        createEvent(
+            knownEvents.operations.completedV1(operationId.toString(), {
+                completedBy,
+            }),
+        ),
+        operation.accountId
+            ? createNotification({
+                  accountId: operation.accountId,
+                  gardenId: operation.gardenId,
+                  raisedBedId: operation.raisedBedId,
+                  header,
+                  content,
+                  timestamp: new Date(),
+              })
+            : undefined,
     ]);
 
     revalidatePath(KnownPages.Schedule);
@@ -130,14 +169,16 @@ export async function completeOperation(operationId: number, completedBy: string
 }
 
 export async function cancelOperationAction(formData: FormData) {
-    const { userId } = await auth(["admin"]);
-    const operationId = formData.get("operationId") ? Number(formData.get("operationId")) : undefined;
+    const { userId } = await auth(['admin']);
+    const operationId = formData.get('operationId')
+        ? Number(formData.get('operationId'))
+        : undefined;
     if (!operationId) {
-        throw new Error("Operation ID is required");
+        throw new Error('Operation ID is required');
     }
-    const reason = formData.get("reason") as string;
+    const reason = formData.get('reason') as string;
     if (!reason || reason.trim().length === 0) {
-        throw new Error("Cancellation reason is required");
+        throw new Error('Cancellation reason is required');
     }
 
     const operation = await getOperationById(operationId);
@@ -146,26 +187,39 @@ export async function cancelOperationAction(formData: FormData) {
     }
 
     // Only allow canceling new or planned operations
-    if (operation.status === 'completed' || operation.status === 'failed' || operation.status === 'canceled') {
-        throw new Error(`Cannot cancel operation with status ${operation.status}`);
+    if (
+        operation.status === 'completed' ||
+        operation.status === 'failed' ||
+        operation.status === 'canceled'
+    ) {
+        throw new Error(
+            `Cannot cancel operation with status ${operation.status}`,
+        );
     }
 
     // Get operation details for notification and refund calculation
-    const operationData = await getEntityFormatted<EntityStandardized>(operation.entityId);
+    const operationData = await getEntityFormatted<EntityStandardized>(
+        operation.entityId,
+    );
 
     // Calculate refund amount (operation price in sunflowers - multiplied by 1000 as per checkout logic)
-    const refundAmount = operationData?.prices?.perOperation ?
-        Math.round(operationData.prices.perOperation * 1000) : 0;
+    const refundAmount = operationData?.prices?.perOperation
+        ? Math.round(operationData.prices.perOperation * 1000)
+        : 0;
 
-    const header = "Radnje je otkazana";
+    const header = 'Radnje je otkazana';
     let content = `Radnja **${operationData?.information?.label}** je otkazana.`;
     if (operation.raisedBedId) {
         const raisedBed = await getRaisedBed(operation.raisedBedId);
         if (!raisedBed) {
-            console.error(`Raised bed with ID ${operation.raisedBedId} not found.`);
+            console.error(
+                `Raised bed with ID ${operation.raisedBedId} not found.`,
+            );
         } else {
             const positionIndex = operation.raisedBedFieldId
-                ? raisedBed.fields.find(f => f.id === operation.raisedBedFieldId)?.positionIndex
+                ? raisedBed.fields.find(
+                      (f) => f.id === operation.raisedBedFieldId,
+                  )?.positionIndex
                 : null;
             if (typeof positionIndex === 'number') {
                 content = `Radnja **${operationData?.information?.label}** na gredici **${raisedBed.name}** za polje **${positionIndex + 1}** je otkazana.`;
@@ -187,24 +241,31 @@ export async function cancelOperationAction(formData: FormData) {
 
     await Promise.all([
         // Create cancellation event
-        createEvent(knownEvents.operations.canceledV1(operationId.toString(), {
-            canceledBy: userId,
-            reason
-        })),
+        createEvent(
+            knownEvents.operations.canceledV1(operationId.toString(), {
+                canceledBy: userId,
+                reason,
+            }),
+        ),
         // Refund sunflowers if operation had a cost
-        refundAmount > 0 && operation.accountId ?
-            earnSunflowers(operation.accountId, refundAmount, `refund:operation:${operationId}`) :
-            Promise.resolve(),
+        refundAmount > 0 && operation.accountId
+            ? earnSunflowers(
+                  operation.accountId,
+                  refundAmount,
+                  `refund:operation:${operationId}`,
+              )
+            : Promise.resolve(),
         // Send notification to user
-        (operation.accountId) ?
-            createNotification({
-                accountId: operation.accountId,
-                gardenId: operation.gardenId,
-                raisedBedId: operation.raisedBedId,
-                header,
-                content,
-                timestamp: new Date(),
-            }) : undefined
+        operation.accountId
+            ? createNotification({
+                  accountId: operation.accountId,
+                  gardenId: operation.gardenId,
+                  raisedBedId: operation.raisedBedId,
+                  header,
+                  content,
+                  timestamp: new Date(),
+              })
+            : undefined,
     ]);
 
     revalidatePath(KnownPages.Schedule);

@@ -1,4 +1,4 @@
-import { loadStripe, Stripe } from '@stripe/stripe-js';
+import { loadStripe, type Stripe } from '@stripe/stripe-js';
 import { getPublishableKey } from '../config';
 
 let stripePromise: Promise<Stripe | null>;

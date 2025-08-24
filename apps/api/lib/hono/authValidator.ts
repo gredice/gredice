@@ -1,4 +1,4 @@
-import { Context } from 'hono';
+import type { Context } from 'hono';
 import { auth } from '../auth/auth';
 
 export type AuthVariables = {

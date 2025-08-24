@@ -1,8 +1,8 @@
-import { cx } from "@signalco/ui-primitives/cx";
-import { IconButton } from "@signalco/ui-primitives/IconButton";
-import { Row } from "@signalco/ui-primitives/Row";
-import { ThumbsDown, ThumbsUp } from "@signalco/ui-icons";
-import { ButtonHTMLAttributes, HTMLAttributes } from "react";
+import { ThumbsDown, ThumbsUp } from '@signalco/ui-icons';
+import { cx } from '@signalco/ui-primitives/cx';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Row } from '@signalco/ui-primitives/Row';
+import type { ButtonHTMLAttributes, HTMLAttributes } from 'react';
 
 export type FeedbackTriggerProps = {
     onFeedback: (feedback: 'like' | 'dislike') => void;
@@ -14,22 +14,30 @@ export function FeedbackTrigger({
     className,
     onFeedback,
     onClick,
-    "aria-haspopup": ariaHaspopup,
-    "aria-expanded": ariaExpanded,
-    "aria-controls": ariaControls,
+    'aria-haspopup': ariaHaspopup,
+    'aria-expanded': ariaExpanded,
+    'aria-controls': ariaControls,
     ...rest
 }: FeedbackTriggerProps) {
-    function handleLike(event: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
+    function handleLike(
+        event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+    ) {
         onFeedback('like');
         onClick?.(event);
     }
-    function handleDislike(event: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
+    function handleDislike(
+        event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+    ) {
         onFeedback('dislike');
         onClick?.(event);
     }
 
     return (
-        <Row spacing={0.5} className={cx("w-fit", className)} {...rest as HTMLAttributes<HTMLDivElement>}>
+        <Row
+            spacing={0.5}
+            className={cx('w-fit', className)}
+            {...(rest as HTMLAttributes<HTMLDivElement>)}
+        >
             <IconButton
                 type="button"
                 aria-haspopup={ariaHaspopup}
@@ -39,7 +47,8 @@ export function FeedbackTrigger({
                 className="p-1 size-6"
                 variant="plain"
                 title="Ne sviđa mi se"
-                onClick={handleDislike}>
+                onClick={handleDislike}
+            >
                 <ThumbsDown />
             </IconButton>
             <IconButton
@@ -51,9 +60,10 @@ export function FeedbackTrigger({
                 className="p-1 size-6"
                 variant="plain"
                 title="Sviđa mi se"
-                onClick={handleLike}>
+                onClick={handleLike}
+            >
                 <ThumbsUp />
             </IconButton>
         </Row>
-    )
+    );
 }

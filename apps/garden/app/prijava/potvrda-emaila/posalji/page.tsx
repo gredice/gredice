@@ -1,9 +1,14 @@
-import { Card, CardHeader, CardTitle, CardContent } from "@signalco/ui-primitives/Card"
-import { MailCheck } from '@signalco/ui-icons'
-import { Stack } from '@signalco/ui-primitives/Stack'
-import { Typography } from '@signalco/ui-primitives/Typography'
-import { SendVerifyEmailButton } from "../../SendVerifyEmailButton"
-import { Suspense } from "react"
+import { MailCheck } from '@signalco/ui-icons';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { Suspense } from 'react';
+import { SendVerifyEmailButton } from '../../SendVerifyEmailButton';
 
 export default function EmailVerificationSendPage() {
     return (
@@ -13,12 +18,15 @@ export default function EmailVerificationSendPage() {
                     <div className="flex items-center justify-center size-12 rounded-full bg-[#2f6e40] mx-auto mb-4">
                         <MailCheck className="w-6 h-6 text-white" />
                     </div>
-                    <CardTitle className='text-center'>Potvrda email adrese</CardTitle>
+                    <CardTitle className="text-center">
+                        Potvrda email adrese
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Stack spacing={3}>
                         <Typography level="body2" center>
-                            Potrebna je potvrda email adrese za nastavak prijave.
+                            Potrebna je potvrda email adrese za nastavak
+                            prijave.
                         </Typography>
                         <Suspense>
                             <SendVerifyEmailButton />
@@ -27,6 +35,5 @@ export default function EmailVerificationSendPage() {
                 </CardContent>
             </Card>
         </div>
-    )
+    );
 }
-

@@ -1,5 +1,5 @@
-import { NextRequest } from "next/server";
-import { archivePastSlots } from "@gredice/storage";
+import { archivePastSlots } from '@gredice/storage';
+import type { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         return Response.json({
             success: true,
             archivedSlotsCount: archivedCount,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     } catch (error) {
         console.error('Failed to archive past slots:', error);
@@ -27,9 +27,9 @@ export async function GET(request: NextRequest) {
             {
                 success: false,
                 error: error instanceof Error ? error.message : 'Unknown error',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             },
-            { status: 500 }
+            { status: 500 },
         );
     }
 }

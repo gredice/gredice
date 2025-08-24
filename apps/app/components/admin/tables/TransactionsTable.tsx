@@ -1,22 +1,23 @@
-import { getAllTransactions } from "@gredice/storage";
-import { Chip } from "@signalco/ui-primitives/Chip";
-import { Table } from "@signalco/ui-primitives/Table";
-import { auth } from "../../../lib/auth/auth";
-import { KnownPages } from "../../../src/KnownPages";
-import Link from "next/link";
-import { NoDataPlaceholder } from "../../shared/placeholders/NoDataPlaceholder";
-import { LocalDateTime } from "@gredice/ui/LocalDateTime";
-import { Typography } from "@signalco/ui-primitives/Typography";
-import { Row } from "@signalco/ui-primitives/Row";
-import { ExternalLink } from "@signalco/ui-icons";
+import { getAllTransactions } from '@gredice/storage';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { ExternalLink } from '@signalco/ui-icons';
+import { Chip } from '@signalco/ui-primitives/Chip';
+import { Row } from '@signalco/ui-primitives/Row';
+import { Table } from '@signalco/ui-primitives/Table';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import Link from 'next/link';
+import { auth } from '../../../lib/auth/auth';
+import { KnownPages } from '../../../src/KnownPages';
+import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 
 export async function TransactionsTable({ accountId }: { accountId?: string }) {
     await auth(['admin']);
     const allTransactions = await getAllTransactions({ filter: { accountId } });
 
     // Sort transactions by newest first (createdAt descending)
-    const transactions = (allTransactions || []).sort((a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    const transactions = (allTransactions || []).sort(
+        (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
     const hasAccountFilter = !!accountId;
@@ -26,9 +27,7 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
             <Table.Header>
                 <Table.Row>
                     <Table.Head>ID</Table.Head>
-                    {!hasAccountFilter && (
-                        <Table.Head>Račun</Table.Head>
-                    )}
+                    {!hasAccountFilter && <Table.Head>Račun</Table.Head>}
                     <Table.Head>Status</Table.Head>
                     <Table.Head>Iznos</Table.Head>
                     <Table.Head>Ponude</Table.Head>
@@ -46,22 +45,39 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
                         </Table.Cell>
                     </Table.Row>
                 )}
-                {transactions.map(transaction => {
+                {transactions.map((transaction) => {
                     const invoiceCount = transaction.invoices?.length || 0;
                     const hasNoInvoices = invoiceCount === 0;
-                    const isTest = transaction.stripePaymentId?.startsWith('cs_test_') || false;
+                    const isTest =
+                        transaction.stripePaymentId?.startsWith('cs_test_') ||
+                        false;
 
                     return (
-                        <Table.Row key={transaction.id} className={hasNoInvoices ? 'bg-green-50 dark:bg-green-950' : ''}>
+                        <Table.Row
+                            key={transaction.id}
+                            className={
+                                hasNoInvoices
+                                    ? 'bg-green-50 dark:bg-green-950'
+                                    : ''
+                            }
+                        >
                             <Table.Cell>
-                                <Link href={KnownPages.Transaction(transaction.id)}>
+                                <Link
+                                    href={KnownPages.Transaction(
+                                        transaction.id,
+                                    )}
+                                >
                                     {transaction.id}
                                 </Link>
                             </Table.Cell>
                             {!hasAccountFilter && (
                                 <Table.Cell>
                                     {transaction.accountId && (
-                                        <Link href={KnownPages.Account(transaction.accountId)}>
+                                        <Link
+                                            href={KnownPages.Account(
+                                                transaction.accountId,
+                                            )}
+                                        >
                                             {transaction.accountId}
                                         </Link>
                                     )}
@@ -105,16 +121,27 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
                             </Table.Cell>
                             <Table.Cell>
                                 {transaction.stripePaymentId ? (
-                                    <Link href={KnownPages.StripePayment(transaction.stripePaymentId)}>
+                                    <Link
+                                        href={KnownPages.StripePayment(
+                                            transaction.stripePaymentId,
+                                        )}
+                                    >
                                         <Chip
                                             className="w-fit"
-                                            color={isTest ? 'warning' : 'neutral'}
-                                            startDecorator={<ExternalLink className="size-4" />}>
+                                            color={
+                                                isTest ? 'warning' : 'neutral'
+                                            }
+                                            startDecorator={
+                                                <ExternalLink className="size-4" />
+                                            }
+                                        >
                                             Stripe{isTest && ' (test)'}
                                         </Chip>
                                     </Link>
                                 ) : (
-                                    <Typography level="body3">Nema Stripe poveznicu</Typography>
+                                    <Typography level="body3">
+                                        Nema Stripe poveznicu
+                                    </Typography>
                                 )}
                             </Table.Cell>
                         </Table.Row>
@@ -122,5 +149,5 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
                 })}
             </Table.Body>
         </Table>
-    )
+    );
 }

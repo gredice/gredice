@@ -14,9 +14,9 @@ const nextConfig: NextConfig = {
             },
             {
                 hostname: 'www.gredice.com',
-                protocol: 'https'
-            }
-        ]
+                protocol: 'https',
+            },
+        ],
     },
     productionBrowserSourceMaps: true,
 };

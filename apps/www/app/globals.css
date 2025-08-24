@@ -18,7 +18,7 @@
         --card-foreground: 28 47.4% 11.2%;
 
         --border: 28 31.8% 91.4%;
-            --input: 28 31.8% 91.4%;
+        --input: 28 31.8% 91.4%;
 
         --primary: 28 47.4% 11.2%;
         --primary-foreground: 28 40% 98%;
@@ -52,7 +52,9 @@
 
     body {
         @apply bg-background text-foreground;
-        font-feature-settings: "rlig" 1, "calt" 1;
+        font-feature-settings:
+            "rlig" 1,
+            "calt" 1;
     }
 
     button,
@@ -60,9 +62,9 @@
         @apply cursor-auto;
     }
 
-                :target {
-                    scroll-margin-top: 4rem;
-                }
+    :target {
+        scroll-margin-top: 4rem;
+    }
     ::selection {
         background: var(--bg-selection);
         color: var(--text-selection);
