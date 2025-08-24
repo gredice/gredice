@@ -13,7 +13,7 @@
     "@gredice/js": "workspace:*",
     "@gredice/storage": "workspace:*",
     "openapi-types": "12.1.3",
-    "tsx": "4.20.4",
+    "tsx": "4.20.5",
     "typescript": "5.9.2"
   }
 }
