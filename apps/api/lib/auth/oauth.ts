@@ -8,36 +8,10 @@ export interface OAuthConfig {
     userInfoUrl: string;
 }
 
-const googleClientId = process.env.GOOGLE_CLIENT_ID;
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
-const facebookClientId = process.env.FACEBOOK_CLIENT_ID;
-const facebookClientSecret = process.env.FACEBOOK_CLIENT_SECRET;
-
-function getGoogleSecrets() {
-    if (!googleClientId || !googleClientSecret) {
-        throw new Error('Missing Google OAuth secrets');
-    }
-
-    return {
-        clientId: googleClientId,
-        clientSecret: googleClientSecret,
-    };
-}
-
-function getFacebookSecrets() {
-    if (!facebookClientId || !facebookClientSecret) {
-        throw new Error('Missing Facebook OAuth secrets');
-    }
-
-    return {
-        clientId: facebookClientId,
-        clientSecret: facebookClientSecret,
-    };
-}
-
 const oauthConfigs = {
     google: {
-        ...getGoogleSecrets(),
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
         redirectUri: `https://api.gredice.com/api/auth/google/callback`,
         scope: 'openid email profile',
         authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -45,7 +19,8 @@ const oauthConfigs = {
         userInfoUrl: 'https://www.googleapis.com/oauth2/v2/userinfo',
     },
     facebook: {
-        ...getFacebookSecrets(),
+        clientId: process.env.FACEBOOK_CLIENT_ID,
+        clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
         redirectUri: `https://api.gredice.com/api/auth/facebook/callback`,
         scope: 'email,public_profile',
         authUrl: 'https://www.facebook.com/v23.0/dialog/oauth',
@@ -59,6 +34,9 @@ export function generateAuthUrl(
     state: string,
 ) {
     const config = oauthConfigs[provider];
+    if (!config.clientId || !config.clientSecret) {
+        throw new Error('Missing OAuth client ID or secret');
+    }
     const params = new URLSearchParams({
         client_id: config.clientId,
         redirect_uri: config.redirectUri,
@@ -75,7 +53,9 @@ export async function exchangeCodeForToken(
     code: string,
 ) {
     const config = oauthConfigs[provider];
-
+    if (!config.clientId || !config.clientSecret) {
+        throw new Error('Missing OAuth client ID or secret');
+    }
     const response = await fetch(config.tokenUrl, {
         method: 'POST',
         headers: {
