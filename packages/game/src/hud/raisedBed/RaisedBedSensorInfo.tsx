@@ -192,9 +192,9 @@ function SensorInfoModal({
     const trend = currentMoisture - previousMoisture;
     const avgMoisture = dataWithSmartLabels
         ? Math.round(
-            dataWithSmartLabels.reduce((sum, item) => sum + item.value, 0) /
-            (dataWithSmartLabels.length || 1),
-        )
+              dataWithSmartLabels.reduce((sum, item) => sum + item.value, 0) /
+                  (dataWithSmartLabels.length || 1),
+          )
         : 0;
 
     // Determine moisture status
@@ -407,11 +407,11 @@ function SensorInfoModal({
                                             domain={[
                                                 new Date(
                                                     Date.now() -
-                                                    duration *
-                                                    24 *
-                                                    60 *
-                                                    60 *
-                                                    1000,
+                                                        duration *
+                                                            24 *
+                                                            60 *
+                                                            60 *
+                                                            1000,
                                                 ).getTime(),
                                                 Date.now(),
                                             ]}
@@ -667,22 +667,18 @@ export function RaisedBedSensorInfo({
                                 className={cx(
                                     'size-5 shrink-0 stroke-blue-400',
                                     Number(soilMoisture?.value ?? '0') >= 20 &&
-                                    'fill-blue-300',
+                                        'fill-blue-300',
                                 )}
                             />
                             {isLoading && <Skeleton className="w-6 h-4" />}
-                            {
-                                !isLoading && error && (
-                                    <Warning className="size-5 shrink-0 text-red-500" />
-                                )
-                            }
-                            {
-                                !isLoading && !error && (
-                                    <span>{soilMoisture?.value ?? '-'}%</span>
-                                )
-                            }
-                        </Row >
-                    </ButtonGreen >
+                            {!isLoading && error && (
+                                <Warning className="size-5 shrink-0 text-red-500" />
+                            )}
+                            {!isLoading && !error && (
+                                <span>{soilMoisture?.value ?? '-'}%</span>
+                            )}
+                        </Row>
+                    </ButtonGreen>
                 }
                 gardenId={gardenId}
                 raisedBedId={raisedBedId}
@@ -710,22 +706,18 @@ export function RaisedBedSensorInfo({
                                 className={cx(
                                     'size-5 shrink-0 stroke-red-400',
                                     Number(soilTemperature?.value ?? '0') >=
-                                    20 && 'fill-red-300',
+                                        20 && 'fill-red-300',
                                 )}
                             />
                             {isLoading && <Skeleton className="w-6 h-4" />}
-                            {
-                                !isLoading && error && (
-                                    <Warning className="size-5 shrink-0 text-red-500" />
-                                )
-                            }
-                            {
-                                !isLoading && !error && (
-                                    <span>{soilTemperature?.value ?? '-'}°C</span>
-                                )
-                            }
-                        </Row >
-                    </ButtonGreen >
+                            {!isLoading && error && (
+                                <Warning className="size-5 shrink-0 text-red-500" />
+                            )}
+                            {!isLoading && !error && (
+                                <span>{soilTemperature?.value ?? '-'}°C</span>
+                            )}
+                        </Row>
+                    </ButtonGreen>
                 }
                 gardenId={gardenId}
                 raisedBedId={raisedBedId}
@@ -733,6 +725,6 @@ export function RaisedBedSensorInfo({
                 sensorId={soilTemperature?.id}
                 type="soil_temperature"
             />
-        </Row >
+        </Row>
     );
 }

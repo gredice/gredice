@@ -79,15 +79,15 @@ export async function OperationsTable({
                 {operationsWithDetails.map((operation) => {
                     const operationRaisedBed = operation.raisedBedId
                         ? raisedBeds.find(
-                            (rb) => rb.id === operation.raisedBedId,
-                        )
+                              (rb) => rb.id === operation.raisedBedId,
+                          )
                         : null;
                     const operationRaisedBedField =
                         operationRaisedBed && operation.raisedBedFieldId
                             ? operationRaisedBed.fields.find(
-                                (field) =>
-                                    field.id === operation.raisedBedFieldId,
-                            )
+                                  (field) =>
+                                      field.id === operation.raisedBedFieldId,
+                              )
                             : null;
 
                     return (
@@ -104,11 +104,11 @@ export async function OperationsTable({
                                             operation.status === 'completed'
                                                 ? 'success'
                                                 : operation.status === 'planned'
-                                                    ? 'info'
-                                                    : operation.status ===
-                                                        'canceled'
-                                                        ? 'neutral'
-                                                        : 'warning'
+                                                  ? 'info'
+                                                  : operation.status ===
+                                                      'canceled'
+                                                    ? 'neutral'
+                                                    : 'warning'
                                         }
                                     >
                                         {operation.status}
@@ -127,8 +127,8 @@ export async function OperationsTable({
                                             <LocalDateTime time={false}>
                                                 {operation.completedAt
                                                     ? new Date(
-                                                        operation.completedAt,
-                                                    )
+                                                          operation.completedAt,
+                                                      )
                                                     : null}
                                             </LocalDateTime>
                                         </Row>

@@ -1,3 +1,4 @@
+import { signalcoClient } from '@gredice/signalco';
 import {
     createEvent,
     createGardenBlock,
@@ -20,7 +21,6 @@ import {
     updateGardenStack,
     updateRaisedBed,
 } from '@gredice/storage';
-import { signalcoClient } from '@gredice/signalco';
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { describeRoute } from 'hono-openapi';
@@ -131,11 +131,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             };
                         })
                         .filter(Boolean) as {
-                            id: string;
-                            name: string;
-                            rotation?: number | null;
-                            variant?: number | null;
-                        }[];
+                        id: string;
+                        name: string;
+                        rotation?: number | null;
+                        variant?: number | null;
+                    }[];
                     return acc;
                 },
                 {} as Record<
