@@ -8,31 +8,30 @@ export interface OAuthConfig {
     userInfoUrl: string;
 }
 
-function getGoogleSecrets() {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const facebookClientId = process.env.FACEBOOK_CLIENT_ID;
+const facebookClientSecret = process.env.FACEBOOK_CLIENT_SECRET;
 
-    if (!clientId || !clientSecret) {
+function getGoogleSecrets() {
+    if (!googleClientId || !googleClientSecret) {
         throw new Error('Missing Google OAuth secrets');
     }
 
     return {
-        clientId,
-        clientSecret,
+        clientId: googleClientId,
+        clientSecret: googleClientSecret,
     };
 }
 
 function getFacebookSecrets() {
-    const clientId = process.env.FACEBOOK_CLIENT_ID;
-    const clientSecret = process.env.FACEBOOK_CLIENT_SECRET;
-
-    if (!clientId || !clientSecret) {
+    if (!facebookClientId || !facebookClientSecret) {
         throw new Error('Missing Facebook OAuth secrets');
     }
 
     return {
-        clientId,
-        clientSecret,
+        clientId: facebookClientId,
+        clientSecret: facebookClientSecret,
     };
 }
 
