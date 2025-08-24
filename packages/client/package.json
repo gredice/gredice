@@ -1,25 +1,27 @@
 {
-  "name": "@gredice/client",
-  "version": "0.0.0",
-  "private": true,
-  "sideEffects": false,
-  "type": "module",
-  "license": "MIT",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "scripts": {
-    "regenerate": "pnpm run /^regenerate:.*/",
-    "regenerate:directories-api": "pnpm dlx openapi-typescript http://localhost:3005/api/docs/directories -o ./src/lib/directories-api/v1.d.ts"
-  },
-  "dependencies": {
-    "openapi-fetch": "0.14.0"
-  },
-  "devDependencies": {
-    "@gredice/api": "workspace:*",
-    "@types/node": "22.17.2",
-    "hono": "4.9.4",
-    "openapi-typescript": "7.9.1",
-    "typescript": "5.9.2"
-  }
+    "name": "@gredice/client",
+    "version": "0.0.0",
+    "private": true,
+    "sideEffects": false,
+    "type": "module",
+    "license": "MIT",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "lint": "biome check",
+        "regenerate": "pnpm run /^regenerate:.*/",
+        "regenerate:directories-api": "pnpm dlx openapi-typescript http://localhost:3005/api/docs/directories -o ./src/lib/directories-api/v1.d.ts"
+    },
+    "dependencies": {
+        "openapi-fetch": "0.14.0"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.2.2",
+        "@gredice/api": "workspace:*",
+        "@types/node": "22.17.2",
+        "hono": "4.9.4",
+        "openapi-typescript": "7.9.1",
+        "typescript": "5.9.2"
+    }
 }

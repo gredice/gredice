@@ -1,0 +1,7 @@
+{
+    "recommendations": [
+        "biomejs.biome",
+        "ms-playwright.playwright",
+        "bradlc.vscode-tailwindcss"
+    ]
+}

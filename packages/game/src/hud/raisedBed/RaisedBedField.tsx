@@ -27,7 +27,7 @@ function RaisedBedFieldItem({
     const hasField = Boolean(field);
 
     if (isGardenLoading) {
-        return <RaisedBedFieldItemButton isLoading={true} />;
+        return <RaisedBedFieldItemButton isLoading={true} positionIndex={positionIndex} />;
     }
 
     if (!hasField) {
