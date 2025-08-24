@@ -53,7 +53,7 @@ export function DayNightCycleHud() {
     return (
         <button
             type="button"
-            className="absolute w-48 h-12 -top-2 left-1/2 -translate-x-1/2 group"
+            className="absolute w-48 h-12 -top-8 left-1/2 -translate-x-1/2 group"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
@@ -62,7 +62,7 @@ export function DayNightCycleHud() {
                 className="w-64 -left-8 top-0"
                 position="top"
             >
-                <Stack className="pt-10 pb-2 px-4">
+                <Stack className="pt-16 pb-2 px-4">
                     <Row justifyContent="space-between">
                         <Typography level="body3">
                             {(isDaytime ? sunrise : sunset)?.toLocaleTimeString(

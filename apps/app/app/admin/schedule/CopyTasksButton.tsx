@@ -1,7 +1,7 @@
 'use client';
 
 import { Duplicate } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Button } from '@signalco/ui-primitives/Button';
 import { Row } from '@signalco/ui-primitives/Row';
 import { useState } from 'react';
 
@@ -47,12 +47,15 @@ export function CopyTasksButton({ physicalId, tasks }: CopyTasksButtonProps) {
 
     return (
         <Row spacing={1}>
-            <IconButton
+            <Button
                 title="Kopiraj zadatke u međuspremnik"
                 onClick={handleCopy}
+                variant="plain"
+                disabled={tasks.length === 0}
+                startDecorator={<Duplicate className="size-4 shrink-0" />}
             >
-                <Duplicate className="size-4" />
-            </IconButton>
+                Kopiraj zadatke
+            </Button>
             {copied && (
                 <span className="text-sm text-green-500">Kopirano!</span>
             )}
