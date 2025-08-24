@@ -102,23 +102,9 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             </Row>
                         </Row>
                     )}
-                {item.shopData.description && (
-                    <Typography level="body3" secondary>
-                        {item.shopData.description}
-                    </Typography>
-                )}
                 <Row justifyContent="space-between">
                     <Stack spacing={1}>
                         <Row spacing={1}>
-                            <Row justifyContent="space-between" spacing={0.5}>
-                                <Typography level="body3">Kol.</Typography>
-                                <Typography level="body2" bold>
-                                    {item.amount}
-                                </Typography>
-                            </Row>
-                            {(hasGarden || hasRaisedBed || hasPosition) && (
-                                <span className="shrink-0 inline-block h-1 w-1 rounded-full bg-muted-foreground mx-1"></span>
-                            )}
                             <Row spacing={0.5} className="flex-wrap gap-y-0">
                                 {hasGarden && (
                                     <Typography level="body3" secondary>

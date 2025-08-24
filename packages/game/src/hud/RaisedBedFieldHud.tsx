@@ -1,10 +1,10 @@
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Check } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import type { SVGProps } from 'react';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import { useGameState } from '../useGameState';
@@ -13,24 +13,6 @@ import { RaisedBedFieldSuggestions } from './raisedBed/RaisedBedFieldSuggestions
 import { RaisedBedInfo } from './raisedBed/RaisedBedInfo';
 import { RaisedBedSensorInfo } from './raisedBed/RaisedBedSensorInfo';
 import { RaisedBedWatering } from './raisedBed/RaisedBedWatering';
-
-const RaisedBedIcon = (props: SVGProps<SVGSVGElement>) => (
-    <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width={24}
-        height={24}
-        fill="none"
-        viewBox="0 0 500 500"
-        {...props}
-    >
-        <title>Podignuta gredica</title>
-        <path
-            stroke="currentColor"
-            strokeWidth={20}
-            d="M42 191v118.5l208 122M42 191 250 68l210.5 123M42 191l208 118.5M460.5 191v118.5L250 431.5M460.5 191 250 309.5m0 122v-122m0-199L111.5 191l29 17.2M250 110.5 391.5 191l-31 17.2M250 110.5V143m-109.5 65.2L250 270.5l110.5-62.3m-220 0L250 143m0 0 110.5 65.2"
-        />
-    </svg>
-);
 
 export function RaisedBedFieldHud(_props: {
     flags?: {
@@ -55,7 +37,7 @@ export function RaisedBedFieldHud(_props: {
             className={cx(
                 'opacity-0 transition-opacity pointer-events-none duration-300',
                 view === 'closeup' &&
-                    'opacity-100 [transition-delay:950ms] pointer-events-auto',
+                'opacity-100 [transition-delay:950ms] pointer-events-auto',
             )}
         >
             {currentGarden && raisedBed && (

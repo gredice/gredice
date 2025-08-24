@@ -58,12 +58,12 @@ export function RaisedBedFieldItemPlanted({
     const isLoading =
         isGardenLoading || (Boolean(plantSortId) && isPlantSortLoading);
     if (isLoading) {
-        return <RaisedBedFieldItemButton isLoading={true} />;
+        return <RaisedBedFieldItemButton isLoading={true} positionIndex={positionIndex} />;
     }
 
     if (!plantSort) {
         return (
-            <RaisedBedFieldItemButton>
+            <RaisedBedFieldItemButton positionIndex={positionIndex}>
                 <Warning className="size-10" />
             </RaisedBedFieldItemButton>
         );
@@ -71,36 +71,36 @@ export function RaisedBedFieldItemPlanted({
 
     const segments = field.toBeRemoved
         ? [
-              {
-                  value: 100,
-                  percentage: 100,
-                  color: 'stroke-red-500',
-                  trackColor: 'stroke-red-50 dark:stroke-red-50/80',
-              },
-          ]
+            {
+                value: 100,
+                percentage: 100,
+                color: 'stroke-red-500',
+                trackColor: 'stroke-red-50 dark:stroke-red-50/80',
+            },
+        ]
         : [
-              {
-                  value: germinationValue,
-                  percentage: germinationPercentage,
-                  color: 'stroke-yellow-500',
-                  trackColor: 'stroke-yellow-50 dark:stroke-yellow-50/80',
-                  pulse: !field.plantGrowthDate,
-              },
-              {
-                  value: growthValue,
-                  percentage: growthPercentage,
-                  color: 'stroke-green-500',
-                  trackColor: 'stroke-green-50 dark:stroke-green-50/80',
-                  pulse: !field.plantReadyDate,
-              },
-              {
-                  value: harvestValue,
-                  percentage: harvestPercentage,
-                  color: 'stroke-blue-500',
-                  trackColor: 'stroke-blue-50 dark:stroke-blue-50/80',
-                  pulse: Boolean(harvestValue),
-              },
-          ];
+            {
+                value: germinationValue,
+                percentage: germinationPercentage,
+                color: 'stroke-yellow-500',
+                trackColor: 'stroke-yellow-50 dark:stroke-yellow-50/80',
+                pulse: !field.plantGrowthDate,
+            },
+            {
+                value: growthValue,
+                percentage: growthPercentage,
+                color: 'stroke-green-500',
+                trackColor: 'stroke-green-50 dark:stroke-green-50/80',
+                pulse: !field.plantReadyDate,
+            },
+            {
+                value: harvestValue,
+                percentage: harvestPercentage,
+                color: 'stroke-blue-500',
+                trackColor: 'stroke-blue-50 dark:stroke-blue-50/80',
+                pulse: Boolean(harvestValue),
+            },
+        ];
 
     return (
         <Modal
@@ -108,7 +108,7 @@ export function RaisedBedFieldItemPlanted({
             modal={false}
             className="md:border-tertiary md:border-b-4 max-w-xl"
             trigger={
-                <RaisedBedFieldItemButton>
+                <RaisedBedFieldItemButton positionIndex={positionIndex}>
                     <SegmentedCircularProgress
                         size={80}
                         strokeWidth={4}

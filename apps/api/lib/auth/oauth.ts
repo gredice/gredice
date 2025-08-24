@@ -35,7 +35,7 @@ function getFacebookSecrets() {
     };
 }
 
-export const oauthConfigs = {
+const oauthConfigs = {
     google: {
         ...getGoogleSecrets(),
         redirectUri: `https://api.gredice.com/api/auth/google/callback`,
