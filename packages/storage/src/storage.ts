@@ -1,7 +1,13 @@
-import { drizzle as neonDrizzle, NeonDatabase } from 'drizzle-orm/neon-serverless';
-import { drizzle as nodeDrizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from '@neondatabase/serverless';
+import {
+    type NeonDatabase,
+    drizzle as neonDrizzle,
+} from 'drizzle-orm/neon-serverless';
 import { migrate as neonMigrate } from 'drizzle-orm/neon-serverless/migrator';
+import {
+    type NodePgDatabase,
+    drizzle as nodeDrizzle,
+} from 'drizzle-orm/node-postgres';
 import { migrate as nodeMigrate } from 'drizzle-orm/node-postgres/migrator';
 import * as schema from './schema';
 
@@ -11,18 +17,19 @@ const isTest = process.env.TEST_ENV === '1';
 function getDbConnectionString() {
     const connectionString = process.env.POSTGRES_URL;
     if (!connectionString) {
-        throw new Error("POSTGRES_URL environment variable is not set.");
+        throw new Error('POSTGRES_URL environment variable is not set.');
     }
     return connectionString;
 }
 
 let pool: Pool | null = null;
-let client: NodePgDatabase<typeof schema> | NeonDatabase<typeof schema> | null = null;
+let client: NodePgDatabase<typeof schema> | NeonDatabase<typeof schema> | null =
+    null;
 export function storage() {
     if (isTest) {
         if (!client) {
             console.debug('Instantiating NodePgDatabase for testing');
-            client = nodeDrizzle(getDbConnectionString(), { schema }) as any
+            client = nodeDrizzle(getDbConnectionString(), { schema }) as any;
         }
         return client as NodePgDatabase<typeof schema>;
     }
@@ -33,7 +40,7 @@ export function storage() {
     if (!client) {
         client = neonDrizzle({
             client: pool,
-            schema
+            schema,
         });
     }
     return client as NeonDatabase<typeof schema>;

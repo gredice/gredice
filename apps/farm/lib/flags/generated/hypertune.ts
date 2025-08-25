@@ -242,6 +242,8 @@ export function createSourceForServerOnly({
     : emptySource;
 }
 
+export const overrideCookieName = "hypertuneOverride";
+
 /**
  * @deprecated use createSource instead.
  */

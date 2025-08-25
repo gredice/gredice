@@ -1,516 +1,515 @@
--- -- Current sql file was generated after introspecting the database
--- -- If you want to run this migration please uncomment this code before executing migrations
--- /*
--- CREATE TABLE "attribute_definitions" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"category" text NOT NULL,
--- 	"name" text NOT NULL,
--- 	"entity_type" text NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"data_type" text NOT NULL,
--- 	"multiple" boolean DEFAULT false NOT NULL,
--- 	"label" text NOT NULL,
--- 	"default_value" text,
--- 	"is_deleted" boolean DEFAULT false NOT NULL,
--- 	"order" text,
--- 	"required" boolean DEFAULT false NOT NULL,
--- 	"description" text
--- );
--- --> statement-breakpoint
--- CREATE TABLE "accounts" (
--- 	"id" text PRIMARY KEY NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"stripe_customer_id" text,
--- 	"address_street1" text,
--- 	"address_street2" text,
--- 	"address_city" text,
--- 	"address_zip" text
--- );
--- --> statement-breakpoint
--- CREATE TABLE "attribute_definition_categories" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"name" text NOT NULL,
--- 	"label" text NOT NULL,
--- 	"entity_type" text NOT NULL,
--- 	"order" text,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "user_logins" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"user_id" text NOT NULL,
--- 	"login_type" text NOT NULL,
--- 	"login_id" text NOT NULL,
--- 	"login_data" text NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"failed_attempts" smallint DEFAULT 0 NOT NULL,
--- 	"last_failed_attempt" timestamp,
--- 	"blocked_until" timestamp,
--- 	"last_login" timestamp
--- );
--- --> statement-breakpoint
--- CREATE TABLE "entity_types" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"name" text NOT NULL,
--- 	"label" text NOT NULL,
--- 	"order" text,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL,
--- 	"category_id" integer
--- );
--- --> statement-breakpoint
--- CREATE TABLE "attribute_values" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"attribute_definition_id" integer NOT NULL,
--- 	"entity_type" text NOT NULL,
--- 	"entity_id" integer NOT NULL,
--- 	"value" text,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL,
--- 	"order" text
--- );
--- --> statement-breakpoint
--- CREATE TABLE "entities" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"entity_type" text NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL,
--- 	"state" text DEFAULT 'draft' NOT NULL,
--- 	"published_at" timestamp
--- );
--- --> statement-breakpoint
--- CREATE TABLE "account_users" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"account_id" text NOT NULL,
--- 	"user_id" text NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "garden_blocks" (
--- 	"id" text PRIMARY KEY NOT NULL,
--- 	"garden_id" integer NOT NULL,
--- 	"name" text NOT NULL,
--- 	"rotation" integer,
--- 	"variant" integer,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "events" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"type" text NOT NULL,
--- 	"version" integer NOT NULL,
--- 	"aggregate_id" text NOT NULL,
--- 	"data" jsonb,
--- 	"created_at" timestamp DEFAULT now() NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "users" (
--- 	"id" text PRIMARY KEY DEFAULT nextval('users_id_seq'::regclass) NOT NULL,
--- 	"username" text NOT NULL,
--- 	"role" text NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"avatar_url" text,
--- 	"display_name" text
--- );
--- --> statement-breakpoint
--- CREATE TABLE "garden_stacks" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"garden_id" integer NOT NULL,
--- 	"position_x" integer NOT NULL,
--- 	"position_y" integer NOT NULL,
--- 	"blocks" text[] DEFAULT '{""}' NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "farms" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"name" text NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL,
--- 	"latitude" real NOT NULL,
--- 	"longitude" real NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "gardens" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"account_id" text NOT NULL,
--- 	"name" text NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL,
--- 	"farm_id" integer NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "feedbacks" (
--- 	"id" text PRIMARY KEY NOT NULL,
--- 	"topic" text NOT NULL,
--- 	"data" json,
--- 	"score" text,
--- 	"comment" text,
--- 	"created_at" timestamp DEFAULT now() NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "raised_beds" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"account_id" text,
--- 	"garden_id" integer,
--- 	"block_id" text,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL,
--- 	"name" text NOT NULL,
--- 	"status" text DEFAULT 'new' NOT NULL,
--- 	"physical_id" text
--- );
--- --> statement-breakpoint
--- CREATE TABLE "transactions" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"account_id" text,
--- 	"garden_id" integer,
--- 	"stripe_payment_id" text NOT NULL,
--- 	"amount" integer NOT NULL,
--- 	"currency" text NOT NULL,
--- 	"status" text NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "notifications" (
--- 	"id" text PRIMARY KEY NOT NULL,
--- 	"header" text NOT NULL,
--- 	"content" text NOT NULL,
--- 	"image" text,
--- 	"link_url" text,
--- 	"account_id" text NOT NULL,
--- 	"user_id" text,
--- 	"garden_id" integer,
--- 	"block_id" text,
--- 	"read_at" timestamp,
--- 	"read_where" text,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"raised_bed_id" integer,
--- 	"timestamp" timestamp NOT NULL,
--- 	"icon_url" text
--- );
--- --> statement-breakpoint
--- CREATE TABLE "shopping_cart_items" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"cart_id" integer NOT NULL,
--- 	"entity_id" text NOT NULL,
--- 	"entity_type_name" text NOT NULL,
--- 	"garden_id" integer,
--- 	"raised_bed_id" integer,
--- 	"amount" integer NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL,
--- 	"position_index" integer,
--- 	"additional_data" text,
--- 	"status" text DEFAULT 'new' NOT NULL,
--- 	"currency" text DEFAULT 'eur' NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "shopping_carts" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"account_id" text,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL,
--- 	"status" text DEFAULT 'new' NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "raised_bed_fields" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"raised_bed_id" integer NOT NULL,
--- 	"position_index" integer NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "notification_email_log" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"user_id" text NOT NULL,
--- 	"notification_id" text NOT NULL,
--- 	"emailed_at" timestamp DEFAULT now() NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "user_notification_settings" (
--- 	"user_id" text PRIMARY KEY NOT NULL,
--- 	"email_enabled" boolean DEFAULT true NOT NULL,
--- 	"daily_digest" boolean DEFAULT true NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "raised_bed_sensors" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"raised_bed_id" integer NOT NULL,
--- 	"sensor_signalco_id" text,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL,
--- 	"status" text DEFAULT 'new' NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "operations" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"entity_id" integer NOT NULL,
--- 	"entity_type_name" text NOT NULL,
--- 	"account_id" text,
--- 	"garden_id" integer,
--- 	"raised_bed_id" integer,
--- 	"raised_bed_field_id" integer,
--- 	"timestamp" timestamp DEFAULT now() NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "invoices" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"invoice_number" text NOT NULL,
--- 	"account_id" text NOT NULL,
--- 	"transaction_id" integer,
--- 	"subtotal" numeric(10, 2) NOT NULL,
--- 	"tax_amount" numeric(10, 2) DEFAULT '0.00' NOT NULL,
--- 	"total_amount" numeric(10, 2) NOT NULL,
--- 	"currency" text DEFAULT 'eur' NOT NULL,
--- 	"status" text DEFAULT 'draft' NOT NULL,
--- 	"issue_date" timestamp NOT NULL,
--- 	"due_date" timestamp NOT NULL,
--- 	"paid_date" timestamp,
--- 	"bill_to_name" text,
--- 	"bill_to_email" text NOT NULL,
--- 	"bill_to_address" text,
--- 	"bill_to_city" text,
--- 	"bill_to_state" text,
--- 	"bill_to_zip" text,
--- 	"bill_to_country" text,
--- 	"notes" text,
--- 	"terms" text,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL,
--- 	CONSTRAINT "invoices_invoice_number_unique" UNIQUE("invoice_number")
--- );
--- --> statement-breakpoint
--- CREATE TABLE "invoice_items" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"invoice_id" integer NOT NULL,
--- 	"description" text NOT NULL,
--- 	"quantity" numeric(10, 2) DEFAULT '1.00' NOT NULL,
--- 	"unit_price" numeric(10, 2) NOT NULL,
--- 	"total_price" numeric(10, 2) NOT NULL,
--- 	"entity_id" text,
--- 	"entity_type_name" text,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "fiscalization_pos_settings" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"name" text NOT NULL,
--- 	"pos_id" text NOT NULL,
--- 	"premise_id" text NOT NULL,
--- 	"is_active" boolean DEFAULT true NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "fiscalization_user_settings" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"pin" text NOT NULL,
--- 	"use_vat" boolean DEFAULT false NOT NULL,
--- 	"receipt_number_on_device" boolean DEFAULT false NOT NULL,
--- 	"environment" text DEFAULT 'educ' NOT NULL,
--- 	"cert_base64" text NOT NULL,
--- 	"cert_password" text NOT NULL,
--- 	"is_active" boolean DEFAULT true NOT NULL,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL
--- );
--- --> statement-breakpoint
--- CREATE TABLE "receipts" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"invoice_id" integer NOT NULL,
--- 	"receipt_number" text NOT NULL,
--- 	"subtotal" numeric(10, 2) NOT NULL,
--- 	"tax_amount" numeric(10, 2) NOT NULL,
--- 	"total_amount" numeric(10, 2) NOT NULL,
--- 	"currency" text NOT NULL,
--- 	"payment_method" text NOT NULL,
--- 	"payment_reference" text,
--- 	"jir" text,
--- 	"zki" text,
--- 	"cis_status" text DEFAULT 'pending' NOT NULL,
--- 	"cis_reference" text,
--- 	"cis_error_message" text,
--- 	"cis_timestamp" timestamp,
--- 	"issued_at" timestamp DEFAULT now() NOT NULL,
--- 	"business_pin" text,
--- 	"business_name" text,
--- 	"business_address" text,
--- 	"customer_pin" text,
--- 	"customer_name" text,
--- 	"customer_address" text,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL,
--- 	"year_receipt_number" text NOT NULL,
--- 	"cis_response" text,
--- 	CONSTRAINT "receipts_year_receipt_number_unique" UNIQUE("year_receipt_number")
--- );
--- --> statement-breakpoint
--- CREATE TABLE "entity_type_categories" (
--- 	"id" serial PRIMARY KEY NOT NULL,
--- 	"name" text NOT NULL,
--- 	"label" text NOT NULL,
--- 	"order" text,
--- 	"created_at" timestamp DEFAULT now() NOT NULL,
--- 	"updated_at" timestamp NOT NULL,
--- 	"is_deleted" boolean DEFAULT false NOT NULL
--- );
--- --> statement-breakpoint
--- ALTER TABLE "user_logins" ADD CONSTRAINT "user_logins_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "entity_types" ADD CONSTRAINT "entity_types_category_id_entity_type_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."entity_type_categories"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "attribute_values" ADD CONSTRAINT "attribute_values_attribute_definition_id_attribute_definitions_" FOREIGN KEY ("attribute_definition_id") REFERENCES "public"."attribute_definitions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "attribute_values" ADD CONSTRAINT "attribute_values_entity_id_entities_id_fk" FOREIGN KEY ("entity_id") REFERENCES "public"."entities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "account_users" ADD CONSTRAINT "account_users_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "account_users" ADD CONSTRAINT "account_users_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "garden_blocks" ADD CONSTRAINT "garden_blocks_garden_id_gardens_id_fk" FOREIGN KEY ("garden_id") REFERENCES "public"."gardens"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "garden_stacks" ADD CONSTRAINT "garden_stacks_garden_id_gardens_id_fk" FOREIGN KEY ("garden_id") REFERENCES "public"."gardens"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "gardens" ADD CONSTRAINT "gardens_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "gardens" ADD CONSTRAINT "gardens_farm_id_farms_id_fk" FOREIGN KEY ("farm_id") REFERENCES "public"."farms"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "raised_beds" ADD CONSTRAINT "raised_beds_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "raised_beds" ADD CONSTRAINT "raised_beds_garden_id_gardens_id_fk" FOREIGN KEY ("garden_id") REFERENCES "public"."gardens"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "raised_beds" ADD CONSTRAINT "raised_beds_block_id_garden_blocks_id_fk" FOREIGN KEY ("block_id") REFERENCES "public"."garden_blocks"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "transactions" ADD CONSTRAINT "transactions_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "transactions" ADD CONSTRAINT "transactions_garden_id_gardens_id_fk" FOREIGN KEY ("garden_id") REFERENCES "public"."gardens"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "notifications" ADD CONSTRAINT "notifications_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "notifications" ADD CONSTRAINT "notifications_garden_id_gardens_id_fk" FOREIGN KEY ("garden_id") REFERENCES "public"."gardens"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "notifications" ADD CONSTRAINT "notifications_block_id_garden_blocks_id_fk" FOREIGN KEY ("block_id") REFERENCES "public"."garden_blocks"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "notifications" ADD CONSTRAINT "notifications_raised_bed_id_raised_beds_id_fk" FOREIGN KEY ("raised_bed_id") REFERENCES "public"."raised_beds"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "shopping_cart_items" ADD CONSTRAINT "shopping_cart_items_cart_id_shopping_carts_id_fk" FOREIGN KEY ("cart_id") REFERENCES "public"."shopping_carts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "shopping_cart_items" ADD CONSTRAINT "shopping_cart_items_garden_id_gardens_id_fk" FOREIGN KEY ("garden_id") REFERENCES "public"."gardens"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "shopping_cart_items" ADD CONSTRAINT "shopping_cart_items_raised_bed_id_raised_beds_id_fk" FOREIGN KEY ("raised_bed_id") REFERENCES "public"."raised_beds"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "shopping_carts" ADD CONSTRAINT "shopping_carts_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "raised_bed_fields" ADD CONSTRAINT "raised_bed_fields_raised_bed_id_raised_beds_id_fk" FOREIGN KEY ("raised_bed_id") REFERENCES "public"."raised_beds"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "notification_email_log" ADD CONSTRAINT "notification_email_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "notification_email_log" ADD CONSTRAINT "notification_email_log_notification_id_notifications_id_fk" FOREIGN KEY ("notification_id") REFERENCES "public"."notifications"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "user_notification_settings" ADD CONSTRAINT "user_notification_settings_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "raised_bed_sensors" ADD CONSTRAINT "raised_bed_sensors_raised_bed_id_raised_beds_id_fk" FOREIGN KEY ("raised_bed_id") REFERENCES "public"."raised_beds"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "invoices" ADD CONSTRAINT "invoices_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "invoices" ADD CONSTRAINT "invoices_transaction_id_transactions_id_fk" FOREIGN KEY ("transaction_id") REFERENCES "public"."transactions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "invoice_items" ADD CONSTRAINT "invoice_items_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- ALTER TABLE "receipts" ADD CONSTRAINT "receipts_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
--- CREATE INDEX "cms_ad_category_idx" ON "attribute_definitions" USING btree ("category" text_ops);--> statement-breakpoint
--- CREATE INDEX "cms_ad_entity_type_name_idx" ON "attribute_definitions" USING btree ("entity_type" text_ops);--> statement-breakpoint
--- CREATE INDEX "cms_ad_is_deleted_idx" ON "attribute_definitions" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "cms_ad_order_idx" ON "attribute_definitions" USING btree ("order" text_ops);--> statement-breakpoint
--- CREATE INDEX "cms_adc_entity_type_name_idx" ON "attribute_definition_categories" USING btree ("entity_type" text_ops);--> statement-breakpoint
--- CREATE INDEX "cms_adc_is_deleted_idx" ON "attribute_definition_categories" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "cms_adc_order_idx" ON "attribute_definition_categories" USING btree ("order" text_ops);--> statement-breakpoint
--- CREATE INDEX "users_ul_login_id_idx" ON "user_logins" USING btree ("login_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "users_ul_login_type_idx" ON "user_logins" USING btree ("login_type" text_ops);--> statement-breakpoint
--- CREATE INDEX "users_ul_user_id_idx" ON "user_logins" USING btree ("user_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "cms_et_category_id_idx" ON "entity_types" USING btree ("category_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "cms_et_is_deleted_idx" ON "entity_types" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "cms_et_order_idx" ON "entity_types" USING btree ("order" text_ops);--> statement-breakpoint
--- CREATE INDEX "cms_av_attribute_definition_id_idx" ON "attribute_values" USING btree ("attribute_definition_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "cms_av_entity_id_idx" ON "attribute_values" USING btree ("entity_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "cms_av_entity_type_name_idx" ON "attribute_values" USING btree ("entity_type" text_ops);--> statement-breakpoint
--- CREATE INDEX "cms_av_is_deleted_idx" ON "attribute_values" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "cms_av_order_idx" ON "attribute_values" USING btree ("order" text_ops);--> statement-breakpoint
--- CREATE INDEX "cms_e_entity_type_name_idx" ON "entities" USING btree ("entity_type" text_ops);--> statement-breakpoint
--- CREATE INDEX "cms_e_is_deleted_idx" ON "entities" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "cms_e_state_idx" ON "entities" USING btree ("state" text_ops);--> statement-breakpoint
--- CREATE INDEX "users_au_account_id_idx" ON "account_users" USING btree ("account_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "users_au_user_id_idx" ON "account_users" USING btree ("user_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "garden_gb_garden_id_idx" ON "garden_blocks" USING btree ("garden_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "garden_gb_is_deleted_idx" ON "garden_blocks" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "events_e_aggregate_id_idx" ON "events" USING btree ("aggregate_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "events_e_created_at_idx" ON "events" USING btree ("created_at" timestamp_ops);--> statement-breakpoint
--- CREATE INDEX "events_e_type_idx" ON "events" USING btree ("type" text_ops);--> statement-breakpoint
--- CREATE INDEX "users_u_username_idx" ON "users" USING btree ("username" text_ops);--> statement-breakpoint
--- CREATE INDEX "garden_gs_garden_id_idx" ON "garden_stacks" USING btree ("garden_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "garden_gs_is_deleted_idx" ON "garden_stacks" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "farms_f_is_deleted_idx" ON "farms" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "garden_g_account_id_idx" ON "gardens" USING btree ("account_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "garden_g_farm_id_idx" ON "gardens" USING btree ("farm_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "garden_g_is_deleted_idx" ON "gardens" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "raised_beds_account_id_idx" ON "raised_beds" USING btree ("account_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "raised_beds_block_id_idx" ON "raised_beds" USING btree ("block_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "raised_beds_garden_id_idx" ON "raised_beds" USING btree ("garden_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "raised_beds_is_deleted_idx" ON "raised_beds" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "transactions_account_id_idx" ON "transactions" USING btree ("account_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "transactions_garden_id_idx" ON "transactions" USING btree ("garden_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "transactions_is_deleted_idx" ON "transactions" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "transactions_stripe_payment_id_idx" ON "transactions" USING btree ("stripe_payment_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "notifications_account_id_idx" ON "notifications" USING btree ("account_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "notifications_created_at_idx" ON "notifications" USING btree ("created_at" timestamp_ops);--> statement-breakpoint
--- CREATE INDEX "notifications_readAt_idx" ON "notifications" USING btree ("read_at" timestamp_ops);--> statement-breakpoint
--- CREATE INDEX "notifications_user_id_idx" ON "notifications" USING btree ("user_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "shopping_cart_items_cart_id_idx" ON "shopping_cart_items" USING btree ("cart_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "shopping_cart_items_entity_id_idx" ON "shopping_cart_items" USING btree ("entity_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "shopping_cart_items_garden_id_idx" ON "shopping_cart_items" USING btree ("garden_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "shopping_cart_items_is_deleted_idx" ON "shopping_cart_items" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "shopping_cart_items_raised_bed_id_idx" ON "shopping_cart_items" USING btree ("raised_bed_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "shopping_cart_items_status_idx" ON "shopping_cart_items" USING btree ("status" text_ops);--> statement-breakpoint
--- CREATE INDEX "shopping_carts_account_id_idx" ON "shopping_carts" USING btree ("account_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "shopping_carts_is_deleted_idx" ON "shopping_carts" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "shopping_carts_status_idx" ON "shopping_carts" USING btree ("status" text_ops);--> statement-breakpoint
--- CREATE INDEX "raised_bed_fields_is_deleted_idx" ON "raised_bed_fields" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "raised_bed_fields_raised_bed_id_idx" ON "raised_bed_fields" USING btree ("raised_bed_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "raised_bed_sensors_is_deleted_idx" ON "raised_bed_sensors" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "raised_bed_sensors_raised_bed_id_idx" ON "raised_bed_sensors" USING btree ("raised_bed_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "operations_account_id_idx" ON "operations" USING btree ("account_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "operations_entity_id_idx" ON "operations" USING btree ("entity_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "operations_entity_type_name_idx" ON "operations" USING btree ("entity_type_name" text_ops);--> statement-breakpoint
--- CREATE INDEX "operations_garden_id_idx" ON "operations" USING btree ("garden_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "operations_is_deleted_idx" ON "operations" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "operations_raised_bed_field_id_idx" ON "operations" USING btree ("raised_bed_field_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "operations_raised_bed_id_idx" ON "operations" USING btree ("raised_bed_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "operations_timestamp_idx" ON "operations" USING btree ("timestamp" timestamp_ops);--> statement-breakpoint
--- CREATE INDEX "invoices_account_id_idx" ON "invoices" USING btree ("account_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "invoices_due_date_idx" ON "invoices" USING btree ("due_date" timestamp_ops);--> statement-breakpoint
--- CREATE INDEX "invoices_invoice_number_idx" ON "invoices" USING btree ("invoice_number" text_ops);--> statement-breakpoint
--- CREATE INDEX "invoices_is_deleted_idx" ON "invoices" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "invoices_issue_date_idx" ON "invoices" USING btree ("issue_date" timestamp_ops);--> statement-breakpoint
--- CREATE INDEX "invoices_status_idx" ON "invoices" USING btree ("status" text_ops);--> statement-breakpoint
--- CREATE INDEX "invoices_transaction_id_idx" ON "invoices" USING btree ("transaction_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "invoice_items_entity_id_idx" ON "invoice_items" USING btree ("entity_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "invoice_items_entity_type_idx" ON "invoice_items" USING btree ("entity_type_name" text_ops);--> statement-breakpoint
--- CREATE INDEX "invoice_items_invoice_id_idx" ON "invoice_items" USING btree ("invoice_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "fiscalization_pos_settings_is_active_idx" ON "fiscalization_pos_settings" USING btree ("is_active" bool_ops);--> statement-breakpoint
--- CREATE INDEX "fiscalization_pos_settings_is_deleted_idx" ON "fiscalization_pos_settings" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "fiscalization_pos_settings_pos_id_idx" ON "fiscalization_pos_settings" USING btree ("pos_id" text_ops);--> statement-breakpoint
--- CREATE INDEX "fiscalization_user_settings_is_active_idx" ON "fiscalization_user_settings" USING btree ("is_active" bool_ops);--> statement-breakpoint
--- CREATE INDEX "fiscalization_user_settings_is_deleted_idx" ON "fiscalization_user_settings" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "receipts_business_pin_idx" ON "receipts" USING btree ("business_pin" text_ops);--> statement-breakpoint
--- CREATE INDEX "receipts_cis_status_idx" ON "receipts" USING btree ("cis_status" text_ops);--> statement-breakpoint
--- CREATE INDEX "receipts_invoice_id_idx" ON "receipts" USING btree ("invoice_id" int4_ops);--> statement-breakpoint
--- CREATE INDEX "receipts_is_deleted_idx" ON "receipts" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "receipts_issued_at_idx" ON "receipts" USING btree ("issued_at" timestamp_ops);--> statement-breakpoint
--- CREATE INDEX "receipts_jir_idx" ON "receipts" USING btree ("jir" text_ops);--> statement-breakpoint
--- CREATE INDEX "receipts_receipt_number_idx" ON "receipts" USING btree ("receipt_number" text_ops);--> statement-breakpoint
--- CREATE INDEX "receipts_zki_idx" ON "receipts" USING btree ("zki" text_ops);--> statement-breakpoint
--- CREATE INDEX "cms_etc_is_deleted_idx" ON "entity_type_categories" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
--- CREATE INDEX "cms_etc_order_idx" ON "entity_type_categories" USING btree ("order" text_ops);
--- */
+-- Current sql file was generated after introspecting the database
+-- If you want to run this migration please uncomment this code before executing migrations
+
+CREATE TABLE "attribute_definitions" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"category" text NOT NULL,
+	"name" text NOT NULL,
+	"entity_type" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"data_type" text NOT NULL,
+	"multiple" boolean DEFAULT false NOT NULL,
+	"label" text NOT NULL,
+	"default_value" text,
+	"is_deleted" boolean DEFAULT false NOT NULL,
+	"order" text,
+	"required" boolean DEFAULT false NOT NULL,
+	"description" text
+);
+--> statement-breakpoint
+CREATE TABLE "accounts" (
+	"id" text PRIMARY KEY NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"stripe_customer_id" text,
+	"address_street1" text,
+	"address_street2" text,
+	"address_city" text,
+	"address_zip" text
+);
+--> statement-breakpoint
+CREATE TABLE "attribute_definition_categories" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"label" text NOT NULL,
+	"entity_type" text NOT NULL,
+	"order" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "user_logins" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"login_type" text NOT NULL,
+	"login_id" text NOT NULL,
+	"login_data" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"failed_attempts" smallint DEFAULT 0 NOT NULL,
+	"last_failed_attempt" timestamp,
+	"blocked_until" timestamp,
+	"last_login" timestamp
+);
+--> statement-breakpoint
+CREATE TABLE "entity_types" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"label" text NOT NULL,
+	"order" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL,
+	"category_id" integer
+);
+--> statement-breakpoint
+CREATE TABLE "attribute_values" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"attribute_definition_id" integer NOT NULL,
+	"entity_type" text NOT NULL,
+	"entity_id" integer NOT NULL,
+	"value" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL,
+	"order" text
+);
+--> statement-breakpoint
+CREATE TABLE "entities" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"entity_type" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL,
+	"state" text DEFAULT 'draft' NOT NULL,
+	"published_at" timestamp
+);
+--> statement-breakpoint
+CREATE TABLE "account_users" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"account_id" text NOT NULL,
+	"user_id" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "garden_blocks" (
+	"id" text PRIMARY KEY NOT NULL,
+	"garden_id" integer NOT NULL,
+	"name" text NOT NULL,
+	"rotation" integer,
+	"variant" integer,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "events" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"type" text NOT NULL,
+	"version" integer NOT NULL,
+	"aggregate_id" text NOT NULL,
+	"data" jsonb,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "users" (
+	"id" text PRIMARY KEY NOT NULL,
+	"username" text NOT NULL,
+	"role" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"avatar_url" text,
+	"display_name" text
+);
+--> statement-breakpoint
+CREATE TABLE "garden_stacks" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"garden_id" integer NOT NULL,
+	"position_x" integer NOT NULL,
+	"position_y" integer NOT NULL,
+	"blocks" text[] DEFAULT '{""}' NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "farms" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL,
+	"latitude" real NOT NULL,
+	"longitude" real NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "gardens" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"account_id" text NOT NULL,
+	"name" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL,
+	"farm_id" integer NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "feedbacks" (
+	"id" text PRIMARY KEY NOT NULL,
+	"topic" text NOT NULL,
+	"data" json,
+	"score" text,
+	"comment" text,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "raised_beds" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"account_id" text,
+	"garden_id" integer,
+	"block_id" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL,
+	"name" text NOT NULL,
+	"status" text DEFAULT 'new' NOT NULL,
+	"physical_id" text
+);
+--> statement-breakpoint
+CREATE TABLE "transactions" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"account_id" text,
+	"garden_id" integer,
+	"stripe_payment_id" text NOT NULL,
+	"amount" integer NOT NULL,
+	"currency" text NOT NULL,
+	"status" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "notifications" (
+	"id" text PRIMARY KEY NOT NULL,
+	"header" text NOT NULL,
+	"content" text NOT NULL,
+	"image" text,
+	"link_url" text,
+	"account_id" text NOT NULL,
+	"user_id" text,
+	"garden_id" integer,
+	"block_id" text,
+	"read_at" timestamp,
+	"read_where" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"raised_bed_id" integer,
+	"timestamp" timestamp NOT NULL,
+	"icon_url" text
+);
+--> statement-breakpoint
+CREATE TABLE "shopping_cart_items" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"cart_id" integer NOT NULL,
+	"entity_id" text NOT NULL,
+	"entity_type_name" text NOT NULL,
+	"garden_id" integer,
+	"raised_bed_id" integer,
+	"amount" integer NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL,
+	"position_index" integer,
+	"additional_data" text,
+	"status" text DEFAULT 'new' NOT NULL,
+	"currency" text DEFAULT 'eur' NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "shopping_carts" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"account_id" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL,
+	"status" text DEFAULT 'new' NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "raised_bed_fields" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"raised_bed_id" integer NOT NULL,
+	"position_index" integer NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "notification_email_log" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"notification_id" text NOT NULL,
+	"emailed_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "user_notification_settings" (
+	"user_id" text PRIMARY KEY NOT NULL,
+	"email_enabled" boolean DEFAULT true NOT NULL,
+	"daily_digest" boolean DEFAULT true NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "raised_bed_sensors" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"raised_bed_id" integer NOT NULL,
+	"sensor_signalco_id" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL,
+	"status" text DEFAULT 'new' NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "operations" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"entity_id" integer NOT NULL,
+	"entity_type_name" text NOT NULL,
+	"account_id" text,
+	"garden_id" integer,
+	"raised_bed_id" integer,
+	"raised_bed_field_id" integer,
+	"timestamp" timestamp DEFAULT now() NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "invoices" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"invoice_number" text NOT NULL,
+	"account_id" text NOT NULL,
+	"transaction_id" integer,
+	"subtotal" numeric(10, 2) NOT NULL,
+	"tax_amount" numeric(10, 2) DEFAULT '0.00' NOT NULL,
+	"total_amount" numeric(10, 2) NOT NULL,
+	"currency" text DEFAULT 'eur' NOT NULL,
+	"status" text DEFAULT 'draft' NOT NULL,
+	"issue_date" timestamp NOT NULL,
+	"due_date" timestamp NOT NULL,
+	"paid_date" timestamp,
+	"bill_to_name" text,
+	"bill_to_email" text NOT NULL,
+	"bill_to_address" text,
+	"bill_to_city" text,
+	"bill_to_state" text,
+	"bill_to_zip" text,
+	"bill_to_country" text,
+	"notes" text,
+	"terms" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL,
+	CONSTRAINT "invoices_invoice_number_unique" UNIQUE("invoice_number")
+);
+--> statement-breakpoint
+CREATE TABLE "invoice_items" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"invoice_id" integer NOT NULL,
+	"description" text NOT NULL,
+	"quantity" numeric(10, 2) DEFAULT '1.00' NOT NULL,
+	"unit_price" numeric(10, 2) NOT NULL,
+	"total_price" numeric(10, 2) NOT NULL,
+	"entity_id" text,
+	"entity_type_name" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "fiscalization_pos_settings" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"pos_id" text NOT NULL,
+	"premise_id" text NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "fiscalization_user_settings" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"pin" text NOT NULL,
+	"use_vat" boolean DEFAULT false NOT NULL,
+	"receipt_number_on_device" boolean DEFAULT false NOT NULL,
+	"environment" text DEFAULT 'educ' NOT NULL,
+	"cert_base64" text NOT NULL,
+	"cert_password" text NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "receipts" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"invoice_id" integer NOT NULL,
+	"receipt_number" text NOT NULL,
+	"subtotal" numeric(10, 2) NOT NULL,
+	"tax_amount" numeric(10, 2) NOT NULL,
+	"total_amount" numeric(10, 2) NOT NULL,
+	"currency" text NOT NULL,
+	"payment_method" text NOT NULL,
+	"payment_reference" text,
+	"jir" text,
+	"zki" text,
+	"cis_status" text DEFAULT 'pending' NOT NULL,
+	"cis_reference" text,
+	"cis_error_message" text,
+	"cis_timestamp" timestamp,
+	"issued_at" timestamp DEFAULT now() NOT NULL,
+	"business_pin" text,
+	"business_name" text,
+	"business_address" text,
+	"customer_pin" text,
+	"customer_name" text,
+	"customer_address" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL,
+	"year_receipt_number" text NOT NULL,
+	"cis_response" text,
+	CONSTRAINT "receipts_year_receipt_number_unique" UNIQUE("year_receipt_number")
+);
+--> statement-breakpoint
+CREATE TABLE "entity_type_categories" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"label" text NOT NULL,
+	"order" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp NOT NULL,
+	"is_deleted" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "user_logins" ADD CONSTRAINT "user_logins_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "entity_types" ADD CONSTRAINT "entity_types_category_id_entity_type_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."entity_type_categories"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attribute_values" ADD CONSTRAINT "attribute_values_attribute_definition_id_attribute_definitions_" FOREIGN KEY ("attribute_definition_id") REFERENCES "public"."attribute_definitions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "attribute_values" ADD CONSTRAINT "attribute_values_entity_id_entities_id_fk" FOREIGN KEY ("entity_id") REFERENCES "public"."entities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "account_users" ADD CONSTRAINT "account_users_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "account_users" ADD CONSTRAINT "account_users_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "garden_blocks" ADD CONSTRAINT "garden_blocks_garden_id_gardens_id_fk" FOREIGN KEY ("garden_id") REFERENCES "public"."gardens"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "garden_stacks" ADD CONSTRAINT "garden_stacks_garden_id_gardens_id_fk" FOREIGN KEY ("garden_id") REFERENCES "public"."gardens"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "gardens" ADD CONSTRAINT "gardens_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "gardens" ADD CONSTRAINT "gardens_farm_id_farms_id_fk" FOREIGN KEY ("farm_id") REFERENCES "public"."farms"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "raised_beds" ADD CONSTRAINT "raised_beds_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "raised_beds" ADD CONSTRAINT "raised_beds_garden_id_gardens_id_fk" FOREIGN KEY ("garden_id") REFERENCES "public"."gardens"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "raised_beds" ADD CONSTRAINT "raised_beds_block_id_garden_blocks_id_fk" FOREIGN KEY ("block_id") REFERENCES "public"."garden_blocks"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "transactions" ADD CONSTRAINT "transactions_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "transactions" ADD CONSTRAINT "transactions_garden_id_gardens_id_fk" FOREIGN KEY ("garden_id") REFERENCES "public"."gardens"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_garden_id_gardens_id_fk" FOREIGN KEY ("garden_id") REFERENCES "public"."gardens"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_block_id_garden_blocks_id_fk" FOREIGN KEY ("block_id") REFERENCES "public"."garden_blocks"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_raised_bed_id_raised_beds_id_fk" FOREIGN KEY ("raised_bed_id") REFERENCES "public"."raised_beds"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "shopping_cart_items" ADD CONSTRAINT "shopping_cart_items_cart_id_shopping_carts_id_fk" FOREIGN KEY ("cart_id") REFERENCES "public"."shopping_carts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "shopping_cart_items" ADD CONSTRAINT "shopping_cart_items_garden_id_gardens_id_fk" FOREIGN KEY ("garden_id") REFERENCES "public"."gardens"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "shopping_cart_items" ADD CONSTRAINT "shopping_cart_items_raised_bed_id_raised_beds_id_fk" FOREIGN KEY ("raised_bed_id") REFERENCES "public"."raised_beds"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "shopping_carts" ADD CONSTRAINT "shopping_carts_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "raised_bed_fields" ADD CONSTRAINT "raised_bed_fields_raised_bed_id_raised_beds_id_fk" FOREIGN KEY ("raised_bed_id") REFERENCES "public"."raised_beds"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notification_email_log" ADD CONSTRAINT "notification_email_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notification_email_log" ADD CONSTRAINT "notification_email_log_notification_id_notifications_id_fk" FOREIGN KEY ("notification_id") REFERENCES "public"."notifications"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_notification_settings" ADD CONSTRAINT "user_notification_settings_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "raised_bed_sensors" ADD CONSTRAINT "raised_bed_sensors_raised_bed_id_raised_beds_id_fk" FOREIGN KEY ("raised_bed_id") REFERENCES "public"."raised_beds"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invoices" ADD CONSTRAINT "invoices_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invoices" ADD CONSTRAINT "invoices_transaction_id_transactions_id_fk" FOREIGN KEY ("transaction_id") REFERENCES "public"."transactions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "invoice_items" ADD CONSTRAINT "invoice_items_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "receipts" ADD CONSTRAINT "receipts_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "cms_ad_category_idx" ON "attribute_definitions" USING btree ("category" text_ops);--> statement-breakpoint
+CREATE INDEX "cms_ad_entity_type_name_idx" ON "attribute_definitions" USING btree ("entity_type" text_ops);--> statement-breakpoint
+CREATE INDEX "cms_ad_is_deleted_idx" ON "attribute_definitions" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "cms_ad_order_idx" ON "attribute_definitions" USING btree ("order" text_ops);--> statement-breakpoint
+CREATE INDEX "cms_adc_entity_type_name_idx" ON "attribute_definition_categories" USING btree ("entity_type" text_ops);--> statement-breakpoint
+CREATE INDEX "cms_adc_is_deleted_idx" ON "attribute_definition_categories" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "cms_adc_order_idx" ON "attribute_definition_categories" USING btree ("order" text_ops);--> statement-breakpoint
+CREATE INDEX "users_ul_login_id_idx" ON "user_logins" USING btree ("login_id" text_ops);--> statement-breakpoint
+CREATE INDEX "users_ul_login_type_idx" ON "user_logins" USING btree ("login_type" text_ops);--> statement-breakpoint
+CREATE INDEX "users_ul_user_id_idx" ON "user_logins" USING btree ("user_id" text_ops);--> statement-breakpoint
+CREATE INDEX "cms_et_category_id_idx" ON "entity_types" USING btree ("category_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "cms_et_is_deleted_idx" ON "entity_types" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "cms_et_order_idx" ON "entity_types" USING btree ("order" text_ops);--> statement-breakpoint
+CREATE INDEX "cms_av_attribute_definition_id_idx" ON "attribute_values" USING btree ("attribute_definition_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "cms_av_entity_id_idx" ON "attribute_values" USING btree ("entity_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "cms_av_entity_type_name_idx" ON "attribute_values" USING btree ("entity_type" text_ops);--> statement-breakpoint
+CREATE INDEX "cms_av_is_deleted_idx" ON "attribute_values" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "cms_av_order_idx" ON "attribute_values" USING btree ("order" text_ops);--> statement-breakpoint
+CREATE INDEX "cms_e_entity_type_name_idx" ON "entities" USING btree ("entity_type" text_ops);--> statement-breakpoint
+CREATE INDEX "cms_e_is_deleted_idx" ON "entities" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "cms_e_state_idx" ON "entities" USING btree ("state" text_ops);--> statement-breakpoint
+CREATE INDEX "users_au_account_id_idx" ON "account_users" USING btree ("account_id" text_ops);--> statement-breakpoint
+CREATE INDEX "users_au_user_id_idx" ON "account_users" USING btree ("user_id" text_ops);--> statement-breakpoint
+CREATE INDEX "garden_gb_garden_id_idx" ON "garden_blocks" USING btree ("garden_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "garden_gb_is_deleted_idx" ON "garden_blocks" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "events_e_aggregate_id_idx" ON "events" USING btree ("aggregate_id" text_ops);--> statement-breakpoint
+CREATE INDEX "events_e_created_at_idx" ON "events" USING btree ("created_at" timestamp_ops);--> statement-breakpoint
+CREATE INDEX "events_e_type_idx" ON "events" USING btree ("type" text_ops);--> statement-breakpoint
+CREATE INDEX "users_u_username_idx" ON "users" USING btree ("username" text_ops);--> statement-breakpoint
+CREATE INDEX "garden_gs_garden_id_idx" ON "garden_stacks" USING btree ("garden_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "garden_gs_is_deleted_idx" ON "garden_stacks" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "farms_f_is_deleted_idx" ON "farms" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "garden_g_account_id_idx" ON "gardens" USING btree ("account_id" text_ops);--> statement-breakpoint
+CREATE INDEX "garden_g_farm_id_idx" ON "gardens" USING btree ("farm_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "garden_g_is_deleted_idx" ON "gardens" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "raised_beds_account_id_idx" ON "raised_beds" USING btree ("account_id" text_ops);--> statement-breakpoint
+CREATE INDEX "raised_beds_block_id_idx" ON "raised_beds" USING btree ("block_id" text_ops);--> statement-breakpoint
+CREATE INDEX "raised_beds_garden_id_idx" ON "raised_beds" USING btree ("garden_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "raised_beds_is_deleted_idx" ON "raised_beds" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "transactions_account_id_idx" ON "transactions" USING btree ("account_id" text_ops);--> statement-breakpoint
+CREATE INDEX "transactions_garden_id_idx" ON "transactions" USING btree ("garden_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "transactions_is_deleted_idx" ON "transactions" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "transactions_stripe_payment_id_idx" ON "transactions" USING btree ("stripe_payment_id" text_ops);--> statement-breakpoint
+CREATE INDEX "notifications_account_id_idx" ON "notifications" USING btree ("account_id" text_ops);--> statement-breakpoint
+CREATE INDEX "notifications_created_at_idx" ON "notifications" USING btree ("created_at" timestamp_ops);--> statement-breakpoint
+CREATE INDEX "notifications_readAt_idx" ON "notifications" USING btree ("read_at" timestamp_ops);--> statement-breakpoint
+CREATE INDEX "notifications_user_id_idx" ON "notifications" USING btree ("user_id" text_ops);--> statement-breakpoint
+CREATE INDEX "shopping_cart_items_cart_id_idx" ON "shopping_cart_items" USING btree ("cart_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "shopping_cart_items_entity_id_idx" ON "shopping_cart_items" USING btree ("entity_id" text_ops);--> statement-breakpoint
+CREATE INDEX "shopping_cart_items_garden_id_idx" ON "shopping_cart_items" USING btree ("garden_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "shopping_cart_items_is_deleted_idx" ON "shopping_cart_items" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "shopping_cart_items_raised_bed_id_idx" ON "shopping_cart_items" USING btree ("raised_bed_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "shopping_cart_items_status_idx" ON "shopping_cart_items" USING btree ("status" text_ops);--> statement-breakpoint
+CREATE INDEX "shopping_carts_account_id_idx" ON "shopping_carts" USING btree ("account_id" text_ops);--> statement-breakpoint
+CREATE INDEX "shopping_carts_is_deleted_idx" ON "shopping_carts" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "shopping_carts_status_idx" ON "shopping_carts" USING btree ("status" text_ops);--> statement-breakpoint
+CREATE INDEX "raised_bed_fields_is_deleted_idx" ON "raised_bed_fields" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "raised_bed_fields_raised_bed_id_idx" ON "raised_bed_fields" USING btree ("raised_bed_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "raised_bed_sensors_is_deleted_idx" ON "raised_bed_sensors" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "raised_bed_sensors_raised_bed_id_idx" ON "raised_bed_sensors" USING btree ("raised_bed_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "operations_account_id_idx" ON "operations" USING btree ("account_id" text_ops);--> statement-breakpoint
+CREATE INDEX "operations_entity_id_idx" ON "operations" USING btree ("entity_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "operations_entity_type_name_idx" ON "operations" USING btree ("entity_type_name" text_ops);--> statement-breakpoint
+CREATE INDEX "operations_garden_id_idx" ON "operations" USING btree ("garden_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "operations_is_deleted_idx" ON "operations" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "operations_raised_bed_field_id_idx" ON "operations" USING btree ("raised_bed_field_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "operations_raised_bed_id_idx" ON "operations" USING btree ("raised_bed_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "operations_timestamp_idx" ON "operations" USING btree ("timestamp" timestamp_ops);--> statement-breakpoint
+CREATE INDEX "invoices_account_id_idx" ON "invoices" USING btree ("account_id" text_ops);--> statement-breakpoint
+CREATE INDEX "invoices_due_date_idx" ON "invoices" USING btree ("due_date" timestamp_ops);--> statement-breakpoint
+CREATE INDEX "invoices_invoice_number_idx" ON "invoices" USING btree ("invoice_number" text_ops);--> statement-breakpoint
+CREATE INDEX "invoices_is_deleted_idx" ON "invoices" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "invoices_issue_date_idx" ON "invoices" USING btree ("issue_date" timestamp_ops);--> statement-breakpoint
+CREATE INDEX "invoices_status_idx" ON "invoices" USING btree ("status" text_ops);--> statement-breakpoint
+CREATE INDEX "invoices_transaction_id_idx" ON "invoices" USING btree ("transaction_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "invoice_items_entity_id_idx" ON "invoice_items" USING btree ("entity_id" text_ops);--> statement-breakpoint
+CREATE INDEX "invoice_items_entity_type_idx" ON "invoice_items" USING btree ("entity_type_name" text_ops);--> statement-breakpoint
+CREATE INDEX "invoice_items_invoice_id_idx" ON "invoice_items" USING btree ("invoice_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "fiscalization_pos_settings_is_active_idx" ON "fiscalization_pos_settings" USING btree ("is_active" bool_ops);--> statement-breakpoint
+CREATE INDEX "fiscalization_pos_settings_is_deleted_idx" ON "fiscalization_pos_settings" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "fiscalization_pos_settings_pos_id_idx" ON "fiscalization_pos_settings" USING btree ("pos_id" text_ops);--> statement-breakpoint
+CREATE INDEX "fiscalization_user_settings_is_active_idx" ON "fiscalization_user_settings" USING btree ("is_active" bool_ops);--> statement-breakpoint
+CREATE INDEX "fiscalization_user_settings_is_deleted_idx" ON "fiscalization_user_settings" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "receipts_business_pin_idx" ON "receipts" USING btree ("business_pin" text_ops);--> statement-breakpoint
+CREATE INDEX "receipts_cis_status_idx" ON "receipts" USING btree ("cis_status" text_ops);--> statement-breakpoint
+CREATE INDEX "receipts_invoice_id_idx" ON "receipts" USING btree ("invoice_id" int4_ops);--> statement-breakpoint
+CREATE INDEX "receipts_is_deleted_idx" ON "receipts" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "receipts_issued_at_idx" ON "receipts" USING btree ("issued_at" timestamp_ops);--> statement-breakpoint
+CREATE INDEX "receipts_jir_idx" ON "receipts" USING btree ("jir" text_ops);--> statement-breakpoint
+CREATE INDEX "receipts_receipt_number_idx" ON "receipts" USING btree ("receipt_number" text_ops);--> statement-breakpoint
+CREATE INDEX "receipts_zki_idx" ON "receipts" USING btree ("zki" text_ops);--> statement-breakpoint
+CREATE INDEX "cms_etc_is_deleted_idx" ON "entity_type_categories" USING btree ("is_deleted" bool_ops);--> statement-breakpoint
+CREATE INDEX "cms_etc_order_idx" ON "entity_type_categories" USING btree ("order" text_ops);
