@@ -215,12 +215,10 @@ export function HypertuneClientLogger({
   return null;
 }
 
-export const overrideCookieName = "hypertuneOverride";
-
 function setOverrideCookie(newOverride: any): void {
   const d = new Date();
   d.setTime(d.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
   let expires = "expires=" + d.toUTCString();
 
-  document.cookie = `${overrideCookieName}=${JSON.stringify(newOverride)};${expires};path=/`;
+  document.cookie = `${hypertune.overrideCookieName}=${JSON.stringify(newOverride)};${expires};path=/`;
 }

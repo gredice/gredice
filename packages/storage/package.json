@@ -13,9 +13,9 @@
         "db-push": "tsx --env-file=.env ./src/migrate.ts",
         "dev": "drizzle-kit studio",
         "test": "pnpm run test:node",
-        "test:db:start": "zsh ./tests/startTestDb.sh",
+        "test:db:start": "bash ./tests/startTestDb.sh",
         "test:db:migrate": "tsx --env-file=.env.test --conditions=react-server ./src/migrate.ts",
-        "test:db:stop": "zsh ./tests/stopTestDb.sh",
+        "test:db:stop": "bash ./tests/stopTestDb.sh",
         "test:node": "pnpm run test:db:start && pnpm run test:db:migrate && tsx --test --env-file=.env.test --conditions=react-server ./tests/**/*.node.spec.ts && pnpm run test:db:stop"
     },
     "devDependencies": {
