@@ -4,14 +4,14 @@
  */
 
 export interface paths {
-    "/status": {
+    '/status': {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["HealthFunctions"];
+        get: operations['HealthFunctions'];
         put?: never;
         post?: never;
         delete?: never;
@@ -20,7 +20,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/website/newsletter-subscribe": {
+    '/website/newsletter-subscribe': {
         parameters: {
             query?: never;
             header?: never;
@@ -30,21 +30,21 @@ export interface paths {
         get?: never;
         put?: never;
         /** @description Subscribe to a newsletter. */
-        post: operations["NewsletterFunction"];
+        post: operations['NewsletterFunction'];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/stations/logging/download": {
+    '/stations/logging/download': {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["StationLoggingDownloadFunction"];
+        get: operations['StationLoggingDownloadFunction'];
         put?: never;
         post?: never;
         delete?: never;
@@ -53,14 +53,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/station/logging/list": {
+    '/station/logging/list': {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["StationLoggingListFunction"];
+        get: operations['StationLoggingListFunction'];
         put?: never;
         post?: never;
         delete?: never;
@@ -69,7 +69,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/station/logging/persist": {
+    '/station/logging/persist': {
         parameters: {
             query?: never;
             header?: never;
@@ -79,14 +79,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** @description Appends logging entries. */
-        post: operations["StationLoggingPersistFunction"];
+        post: operations['StationLoggingPersistFunction'];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/station/refresh-token": {
+    '/station/refresh-token': {
         parameters: {
             query?: never;
             header?: never;
@@ -96,14 +96,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** @description Refreshes the access token. */
-        post: operations["StationRefreshTokenFunction"];
+        post: operations['StationRefreshTokenFunction'];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/signalr/conducts/negotiate": {
+    '/signalr/conducts/negotiate': {
         parameters: {
             query?: never;
             header?: never;
@@ -113,14 +113,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** @description Negotiates SignalR connection for conducts hub. */
-        post: operations["ConductsNegotiateFunction"];
+        post: operations['ConductsNegotiateFunction'];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/signalr/contacts/negotiate": {
+    '/signalr/contacts/negotiate': {
         parameters: {
             query?: never;
             header?: never;
@@ -130,14 +130,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** @description Negotiates SignalR connection for entities hub. */
-        post: operations["ContactsNegotiateFunction"];
+        post: operations['ContactsNegotiateFunction'];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/share/entity": {
+    '/share/entity': {
         parameters: {
             query?: never;
             header?: never;
@@ -147,15 +147,15 @@ export interface paths {
         get?: never;
         put?: never;
         /** @description Shared the entity with users. */
-        post: operations["ShareEntityFunction"];
+        post: operations['ShareEntityFunction'];
         /** @description Un-shared the entity from users. */
-        delete: operations["UnShareEntityFunction"];
+        delete: operations['UnShareEntityFunction'];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/entity": {
+    '/entity': {
         parameters: {
             query?: never;
             header?: never;
@@ -163,18 +163,18 @@ export interface paths {
             cookie?: never;
         };
         /** @description Retrieves all available entities. */
-        get: operations["EntityRetrieveFunction"];
+        get: operations['EntityRetrieveFunction'];
         put?: never;
         /** @description Creates or updates entity. Will create entity if Id is not provided. */
-        post: operations["EntityUpsertFunction"];
+        post: operations['EntityUpsertFunction'];
         /** @description Deletes the entity. */
-        delete: operations["EntityDeleteFunction"];
+        delete: operations['EntityDeleteFunction'];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/entities": {
+    '/entities': {
         parameters: {
             query?: never;
             header?: never;
@@ -182,17 +182,17 @@ export interface paths {
             cookie?: never;
         };
         /** @description Retrieves entities. */
-        get: operations["EntityRetrieveFunction"];
+        get: operations['EntityRetrieveFunction'];
         put?: never;
         post?: never;
         /** @description Deletes the entity. */
-        delete: operations["EntityDeleteFunction"];
+        delete: operations['EntityDeleteFunction'];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/entity/{id}": {
+    '/entity/{id}': {
         parameters: {
             query?: never;
             header?: never;
@@ -200,7 +200,7 @@ export interface paths {
             cookie?: never;
         };
         /** @description Retrieves single entity. */
-        get: operations["EntityRetrieveSingleFunction"];
+        get: operations['EntityRetrieveSingleFunction'];
         put?: never;
         post?: never;
         delete?: never;
@@ -209,7 +209,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/entity/{id}/contacts/{channelName}/{contactName}": {
+    '/entity/{id}/contacts/{channelName}/{contactName}': {
         parameters: {
             query?: never;
             header?: never;
@@ -218,16 +218,16 @@ export interface paths {
         };
         get?: never;
         /** @description Sets contact value. */
-        put: operations["EntityContactSet"];
+        put: operations['EntityContactSet'];
         post?: never;
         /** @description Deletes the contact. */
-        delete: operations["ContactDeleteFunction"];
+        delete: operations['ContactDeleteFunction'];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/contact/history": {
+    '/contact/history': {
         parameters: {
             query?: never;
             header?: never;
@@ -235,7 +235,7 @@ export interface paths {
             cookie?: never;
         };
         /** @description Retrieves the contact history for provided duration. */
-        get: operations["ContactHistoryRetrieveFunction"];
+        get: operations['ContactHistoryRetrieveFunction'];
         put?: never;
         post?: never;
         delete?: never;
@@ -244,7 +244,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/contact/metadata": {
+    '/contact/metadata': {
         parameters: {
             query?: never;
             header?: never;
@@ -254,14 +254,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** @description Contact metadata. */
-        post: operations["ContactMetadataFunction"];
+        post: operations['ContactMetadataFunction'];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/contact/set": {
+    '/contact/set': {
         parameters: {
             query?: never;
             header?: never;
@@ -271,14 +271,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** @description Sets contact value. */
-        post: operations["ContactSetFunction"];
+        post: operations['ContactSetFunction'];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/conducts/request": {
+    '/conducts/request': {
         parameters: {
             query?: never;
             header?: never;
@@ -288,14 +288,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** @description Requests conduct to be executed. */
-        post: operations["ConductRequestFunction"];
+        post: operations['ConductRequestFunction'];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/conducts/request-multiple": {
+    '/conducts/request-multiple': {
         parameters: {
             query?: never;
             header?: never;
@@ -305,14 +305,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** @description Requests multiple conducts to be executed. */
-        post: operations["ConductRequestMultipleFunction"];
+        post: operations['ConductRequestMultipleFunction'];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/auth/pats": {
+    '/auth/pats': {
         parameters: {
             query?: never;
             header?: never;
@@ -320,10 +320,10 @@ export interface paths {
             cookie?: never;
         };
         /** @description Retrieve all user PATs. */
-        get: operations["PatsRetrieveFunction"];
+        get: operations['PatsRetrieveFunction'];
         put?: never;
         /** @description Creates new PAT. */
-        post: operations["PatsCreateFunction"];
+        post: operations['PatsCreateFunction'];
         delete?: never;
         options?: never;
         head?: never;
@@ -361,7 +361,7 @@ export interface components {
             metadata?: string;
         };
         contactHistoryResponseDto: {
-            values?: components["schemas"]["timeStampValuePair"][];
+            values?: components['schemas']['timeStampValuePair'][];
         };
         contactMetadataDto: {
             entityId?: string;
@@ -389,8 +389,8 @@ export interface components {
             type: 0 | 1 | 2 | 3 | 4 | 5 | 6;
             id?: string;
             alias?: string;
-            contacts?: components["schemas"]["contactDto"][];
-            sharedWith?: components["schemas"]["userDto"][];
+            contacts?: components['schemas']['contactDto'][];
+            sharedWith?: components['schemas']['userDto'][];
         };
         entityUpsertDto: {
             id?: string;
@@ -452,7 +452,7 @@ export interface components {
         };
         stationsLoggingPersistRequestDto: {
             stationId: string;
-            entries: components["schemas"]["entry"][];
+            entries: components['schemas']['entry'][];
         };
         timeStampValuePair: {
             /** Format: date-time */
@@ -500,7 +500,7 @@ export interface operations {
             query?: never;
             header?: {
                 /** @description hCaptcha response. */
-                "HCAPTCHA-RESPONSE"?: string;
+                'HCAPTCHA-RESPONSE'?: string;
             };
             path?: never;
             cookie?: never;
@@ -508,7 +508,7 @@ export interface operations {
         /** @description Subscribe with email address. */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["newsletterSubscribeDto"];
+                'application/json': components['schemas']['newsletterSubscribeDto'];
             };
         };
         responses: {
@@ -569,7 +569,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["blobInfoDto"][];
+                    'application/json': components['schemas']['blobInfoDto'][];
                 };
             };
             /** @description One or more required property is missing in request. */
@@ -591,7 +591,7 @@ export interface operations {
         /** @description The logging entries to persist per station. */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["stationsLoggingPersistRequestDto"];
+                'application/json': components['schemas']['stationsLoggingPersistRequestDto'];
             };
         };
         responses: {
@@ -620,7 +620,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["stationRefreshTokenRequestDto"];
+                'application/json': components['schemas']['stationRefreshTokenRequestDto'];
             };
         };
         responses: {
@@ -630,7 +630,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["stationRefreshTokenResponseDto"];
+                    'application/json': components['schemas']['stationRefreshTokenResponseDto'];
                 };
             };
             /** @description One or more required property is missing in request. */
@@ -657,7 +657,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["signalRConnectionInfo"];
+                    'application/json': components['schemas']['signalRConnectionInfo'];
                 };
             };
         };
@@ -677,7 +677,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["signalRConnectionInfo"];
+                    'application/json': components['schemas']['signalRConnectionInfo'];
                 };
             };
         };
@@ -692,7 +692,7 @@ export interface operations {
         /** @description Share one entity with one or more users. */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["shareRequestDto"];
+                'application/json': components['schemas']['shareRequestDto'];
             };
         };
         responses: {
@@ -722,7 +722,7 @@ export interface operations {
         /** @description Un-share one entity with one or more users. */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["unShareRequestDto"];
+                'application/json': components['schemas']['unShareRequestDto'];
             };
         };
         responses: {
@@ -757,7 +757,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["entityDetailsDto"][];
+                    'application/json': components['schemas']['entityDetailsDto'][];
                 };
             };
         };
@@ -771,7 +771,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["entityUpsertDto"];
+                'application/json': components['schemas']['entityUpsertDto'];
             };
         };
         responses: {
@@ -781,7 +781,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["entityUpsertResponseDto"];
+                    'application/json': components['schemas']['entityUpsertResponseDto'];
                 };
             };
         };
@@ -796,7 +796,7 @@ export interface operations {
         /** @description Information about entity to delete. */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["entityDeleteDto"];
+                'application/json': components['schemas']['entityDeleteDto'];
             };
         };
         responses: {
@@ -841,7 +841,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["entityDetailsDto"][];
+                    'application/json': components['schemas']['entityDetailsDto'][];
                 };
             };
         };
@@ -899,7 +899,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["entityDetailsDto"];
+                    'application/json': components['schemas']['entityDetailsDto'];
                 };
             };
             /** @description No description */
@@ -927,7 +927,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["contactSetDto"];
+                'application/json': components['schemas']['contactSetDto'];
             };
         };
         responses: {
@@ -987,7 +987,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["contactHistoryResponseDto"];
+                    'application/json': components['schemas']['contactHistoryResponseDto'];
                 };
             };
             /** @description One or more required property is missing in request. */
@@ -1008,7 +1008,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["contactMetadataDto"];
+                'application/json': components['schemas']['contactMetadataDto'];
             };
         };
         responses: {
@@ -1037,7 +1037,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["contactSetDto"];
+                'application/json': components['schemas']['contactSetDto'];
             };
         };
         responses: {
@@ -1067,7 +1067,7 @@ export interface operations {
         /** @description The conduct to execute. */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["conductRequestDto"];
+                'application/json': components['schemas']['conductRequestDto'];
             };
         };
         responses: {
@@ -1097,7 +1097,7 @@ export interface operations {
         /** @description Collection of conducts to execute. */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["conductRequestDto"][];
+                'application/json': components['schemas']['conductRequestDto'][];
             };
         };
         responses: {
@@ -1132,7 +1132,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["patDto"][];
+                    'application/json': components['schemas']['patDto'][];
                 };
             };
         };
@@ -1146,7 +1146,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["patCreateDto"];
+                'application/json': components['schemas']['patCreateDto'];
             };
         };
         responses: {
@@ -1156,7 +1156,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["patCreateResponseDto"];
+                    'application/json': components['schemas']['patCreateResponseDto'];
                 };
             };
         };

@@ -25,7 +25,9 @@ export function RaisedBedFieldItemButton({
             {...rest}
         >
             <div className="absolute left-1.5 top-1">
-                <Typography bold className='text-lime-700'>{positionIndex + 1}</Typography>
+                <Typography bold className="text-lime-700">
+                    {positionIndex + 1}
+                </Typography>
             </div>
             {isLoading && (
                 <div className="absolute right-1 top-1">

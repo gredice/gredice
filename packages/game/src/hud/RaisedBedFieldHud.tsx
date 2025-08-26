@@ -37,7 +37,7 @@ export function RaisedBedFieldHud(_props: {
             className={cx(
                 'opacity-0 transition-opacity pointer-events-none duration-300',
                 view === 'closeup' &&
-                'opacity-100 [transition-delay:950ms] pointer-events-auto',
+                    'opacity-100 [transition-delay:950ms] pointer-events-auto',
             )}
         >
             {currentGarden && raisedBed && (
