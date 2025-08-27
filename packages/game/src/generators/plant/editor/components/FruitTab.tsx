@@ -21,8 +21,7 @@ export function FruitTab({
 
     return (
         <div className="space-y-4">
-            <Checkbox
-                id="vegetable-enabled§"
+                id="vegetable-enabled"
                 label="Omogući plodove"
                 checked={state.definition.vegetable.enabled}
                 onCheckedChange={(checked: boolean) =>
