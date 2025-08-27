@@ -1,14 +1,12 @@
 import ffmpegPath from '@ffmpeg-installer/ffmpeg';
-import ffmpeg from 'fluent-ffmpeg';
 import { S3, ListObjectsV2Command, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createReadStream, createWriteStream } from 'fs';
 import path from 'path';
 import { mkdir, unlink } from 'fs/promises';
 import stream from 'stream';
+import { spawn } from 'child_process';
 
 console.info('Regenerating sound effects...');
-
-ffmpeg.setFfmpegPath(ffmpegPath.path);
 
 const s3 = new S3({
     endpoint: 'https://16b6e8d38ba0b62ad0a3a702243b1265.eu.r2.cloudflarestorage.com',
@@ -18,6 +16,39 @@ const s3 = new S3({
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
     },
 });
+
+// Helper function to run FFmpeg directly
+function runFFmpeg(inputPath: string, outputPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const args = [
+            '-i', inputPath,
+            '-codec:a', 'libmp3lame',
+            '-qscale:a', '7',
+            '-y', // Overwrite output file if it exists
+            outputPath
+        ];
+
+        const ffmpegProcess = spawn(ffmpegPath.path, args);
+
+        let stderr = '';
+        
+        ffmpegProcess.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+
+        ffmpegProcess.on('close', (code) => {
+            if (code === 0) {
+                resolve();
+            } else {
+                reject(new Error(`FFmpeg process exited with code ${code}. Error: ${stderr}`));
+            }
+        });
+
+        ffmpegProcess.on('error', (error) => {
+            reject(error);
+        });
+    });
+}
 
 // Example function to download, convert, and re-upload WAV files
 async function convertWavToMp3(bucketName: string, prefix: string) {
@@ -43,16 +74,7 @@ async function convertWavToMp3(bucketName: string, prefix: string) {
         await new Promise<void>((res) => wavStream.on('finish', () => res()));
 
         // Convert
-        await new Promise<void>((res, rej) => {
-            ffmpeg()
-                .input(localWav)
-                .outputOptions('-codec:a libmp3lame')
-                .addOutputOption('-qscale:a 7')
-                .output(localMp3)
-                .on('end', () => res())
-                .on('error', (err) => rej(err))
-                .run();
-        });
+        await runFFmpeg(localWav, localMp3);
 
         // Upload converted file
         console.info('Uploading', localMp3);
