@@ -1,40 +1,40 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTestDb } from './testDb';
+import test from 'node:test';
 import {
+    addInvoiceItem,
+    calculateInvoiceTotals,
+    canCancelInvoice,
+    cancelInvoice,
+    canDeleteInvoice,
+    canEditInvoice,
+    changeInvoiceStatus,
     createInvoice,
-    getInvoice,
-    getInvoices,
+    createTransaction,
+    deleteInvoice,
     getAllInvoices,
+    getInvoice,
     getInvoiceByNumber,
+    getInvoiceItems,
+    getInvoices,
     getInvoicesByStatus,
     getOverdueInvoices,
-    updateInvoice,
-    markInvoiceAsPaid,
-    deleteInvoice,
-    addInvoiceItem,
-    getInvoiceItems,
-    calculateInvoiceTotals,
     getReceipt,
     getReceiptByInvoice,
     getReceiptByNumber,
-    updateReceiptFiscalization,
     getReceiptsByStatus,
-    ReceiptCreationData,
-    InsertInvoice,
-    InsertInvoiceItem,
-    createTransaction,
-    InsertTransaction,
-    isValidStatusTransition,
-    canEditInvoice,
-    canDeleteInvoice,
-    canCancelInvoice,
+    type InsertInvoice,
+    type InsertInvoiceItem,
+    type InsertTransaction,
     isOverdue,
-    changeInvoiceStatus,
-    cancelInvoice,
-    softDeleteInvoice
+    isValidStatusTransition,
+    markInvoiceAsPaid,
+    type ReceiptCreationData,
+    softDeleteInvoice,
+    updateInvoice,
+    updateReceiptFiscalization,
 } from '@gredice/storage';
 import { createTestAccount } from './helpers/testHelpers';
+import { createTestDb } from './testDb';
 
 async function baseInvoice(transactionId?: number): Promise<InsertInvoice> {
     const accountId = await createTestAccount();
@@ -60,7 +60,7 @@ async function baseInvoice(transactionId?: number): Promise<InsertInvoice> {
         billToZip: '12345',
         billToCountry: 'US',
         notes: 'Test invoice',
-        terms: 'Net 30'
+        terms: 'Net 30',
     };
 }
 
@@ -70,7 +70,7 @@ async function baseTransaction(): Promise<InsertTransaction> {
         amount: 10800, // $108.00 in cents
         currency: 'usd',
         status: 'completed',
-        stripePaymentId: 'stripe-test-' + Date.now()
+        stripePaymentId: `stripe-test-${Date.now()}`,
     };
 }
 
@@ -82,7 +82,7 @@ async function baseInvoiceItem(invoiceId: number): Promise<InsertInvoiceItem> {
         unitPrice: '50.00',
         totalPrice: '100.00',
         entityId: 'prod-123',
-        entityTypeName: 'plant'
+        entityTypeName: 'plant',
     };
 }
 
@@ -94,7 +94,10 @@ test('createInvoice and getInvoice', async () => {
 
     assert.ok(invoice);
     assert.strictEqual(invoice.id, invoiceId);
-    assert.ok(Boolean(invoice.invoiceNumber), 'Invoice number should be generated');
+    assert.ok(
+        Boolean(invoice.invoiceNumber),
+        'Invoice number should be generated',
+    );
     assert.strictEqual(invoice.totalAmount, invoiceData.totalAmount);
     assert.strictEqual(invoice.status, 'draft');
 });
@@ -112,7 +115,7 @@ test('createInvoice with items', async () => {
         unitPrice: '50.00',
         totalPrice: '50.00',
         entityId: 'prod-1',
-        entityTypeName: 'plant'
+        entityTypeName: 'plant',
     });
 
     await addInvoiceItem({
@@ -122,7 +125,7 @@ test('createInvoice with items', async () => {
         unitPrice: '50.00',
         totalPrice: '50.00',
         entityId: 'prod-2',
-        entityTypeName: 'plant'
+        entityTypeName: 'plant',
     });
 
     const invoice = await getInvoice(invoiceId);
@@ -168,7 +171,7 @@ test('getInvoices returns invoices for account', async () => {
 
     const invoices = await getInvoices(invoiceData.accountId);
     assert.ok(Array.isArray(invoices));
-    assert.ok(invoices.some(inv => inv.id === invoiceId));
+    assert.ok(invoices.some((inv) => inv.id === invoiceId));
 });
 
 test('getAllInvoices returns all invoices', async () => {
@@ -178,7 +181,7 @@ test('getAllInvoices returns all invoices', async () => {
 
     const invoices = await getAllInvoices();
     assert.ok(Array.isArray(invoices));
-    assert.ok(invoices.some(inv => inv.id === invoiceId));
+    assert.ok(invoices.some((inv) => inv.id === invoiceId));
 });
 
 test('getInvoicesByTransaction', async () => {
@@ -202,11 +205,11 @@ test('getInvoicesByStatus', async () => {
 
     const draftInvoices = await getInvoicesByStatus('draft');
     assert.ok(Array.isArray(draftInvoices));
-    assert.ok(draftInvoices.some(inv => inv.id === invoiceId));
+    assert.ok(draftInvoices.some((inv) => inv.id === invoiceId));
 
     const paidInvoices = await getInvoicesByStatus('paid');
     assert.ok(Array.isArray(paidInvoices));
-    assert.ok(!paidInvoices.some(inv => inv.id === invoiceId));
+    assert.ok(!paidInvoices.some((inv) => inv.id === invoiceId));
 });
 
 test('updateInvoice status', async () => {
@@ -216,7 +219,7 @@ test('updateInvoice status', async () => {
 
     await updateInvoice({
         id: invoiceId,
-        status: 'sent'
+        status: 'sent',
     });
 
     const updatedInvoice = await getInvoice(invoiceId);
@@ -292,7 +295,7 @@ test('calculateInvoiceTotals', async () => {
         description: 'Item 1',
         quantity: '2.00',
         unitPrice: '25.00',
-        totalPrice: '50.00'
+        totalPrice: '50.00',
     });
 
     await addInvoiceItem({
@@ -300,7 +303,7 @@ test('calculateInvoiceTotals', async () => {
         description: 'Item 2',
         quantity: '1.00',
         unitPrice: '30.00',
-        totalPrice: '30.00'
+        totalPrice: '30.00',
     });
 
     const totals = await calculateInvoiceTotals(invoiceId);
@@ -323,7 +326,7 @@ test('getOverdueInvoices finds overdue invoices', async () => {
 
     const overdueInvoices = await getOverdueInvoices();
     assert.ok(Array.isArray(overdueInvoices));
-    assert.ok(overdueInvoices.some(inv => inv.id === invoiceId));
+    assert.ok(overdueInvoices.some((inv) => inv.id === invoiceId));
 });
 
 test('getReceiptByInvoice returns receipt for paid invoice', async () => {
@@ -360,7 +363,7 @@ test('getReceiptByNumber finds receipt by number', async () => {
     const receiptId = await markInvoiceAsPaid(invoiceId, receiptData);
     const receipt = await getReceipt(receiptId);
 
-    const foundReceipt = await getReceiptByNumber(receipt!.receiptNumber);
+    const foundReceipt = await getReceiptByNumber(receipt?.receiptNumber);
     assert.ok(foundReceipt);
     assert.strictEqual(foundReceipt.id, receiptId);
     assert.strictEqual(foundReceipt.paymentReference, 'bank-ref-456');
@@ -395,7 +398,10 @@ test('updateReceiptFiscalization updates Croatian fiscalization data', async () 
 
     const fiscalizedReceipt = await getReceipt(receiptId);
     assert.ok(fiscalizedReceipt);
-    assert.strictEqual(fiscalizedReceipt.jir, '12345678-1234-1234-1234-123456789012');
+    assert.strictEqual(
+        fiscalizedReceipt.jir,
+        '12345678-1234-1234-1234-123456789012',
+    );
     assert.strictEqual(fiscalizedReceipt.zki, 'ab123456');
     assert.strictEqual(fiscalizedReceipt.cisStatus, 'confirmed');
     assert.strictEqual(fiscalizedReceipt.cisReference, 'CIS-REF-789');
@@ -417,7 +423,7 @@ test('getReceiptsByStatus filters receipts by CIS status', async () => {
     // Initially should be pending
     const pendingReceipts = await getReceiptsByStatus('pending');
     assert.ok(Array.isArray(pendingReceipts));
-    assert.ok(pendingReceipts.some(r => r.id === receiptId));
+    assert.ok(pendingReceipts.some((r) => r.id === receiptId));
 
     // Update to confirmed
     await updateReceiptFiscalization(receiptId, {
@@ -427,7 +433,7 @@ test('getReceiptsByStatus filters receipts by CIS status', async () => {
 
     const confirmedReceipts = await getReceiptsByStatus('confirmed');
     assert.ok(Array.isArray(confirmedReceipts));
-    assert.ok(confirmedReceipts.some(r => r.id === receiptId));
+    assert.ok(confirmedReceipts.some((r) => r.id === receiptId));
 });
 
 test('receipt contains all financial data from invoice', async () => {
@@ -509,7 +515,9 @@ test('isOverdue correctly identifies overdue invoices', async () => {
     assert.ok(!isOverdue({ status: 'sent', dueDate: futureDate }));
 
     // Not overdue - paid invoice
-    assert.ok(!isOverdue({ status: 'paid', dueDate: pastDate, paidDate: new Date() }));
+    assert.ok(
+        !isOverdue({ status: 'paid', dueDate: pastDate, paidDate: new Date() }),
+    );
 
     // Not overdue - not sent yet
     assert.ok(!isOverdue({ status: 'draft', dueDate: pastDate }));
@@ -542,7 +550,7 @@ test('changeInvoiceStatus prevents invalid transitions', async () => {
     // Try invalid transition from sent to draft
     await assert.rejects(
         () => changeInvoiceStatus(invoiceId, 'draft'),
-        /Invalid status transition from sent to draft/
+        /Invalid status transition from sent to draft/,
     );
 });
 
@@ -567,7 +575,7 @@ test('cancelInvoice prevents cancelling paid invoices', async () => {
 
     await assert.rejects(
         () => cancelInvoice(invoiceId),
-        /Cannot cancel invoice with status paid/
+        /Cannot cancel invoice with status paid/,
     );
 });
 
@@ -590,6 +598,6 @@ test('softDeleteInvoice prevents deleting sent/paid invoices', async () => {
 
     await assert.rejects(
         () => softDeleteInvoice(invoiceId),
-        /Cannot delete invoice with status sent/
+        /Cannot delete invoice with status sent/,
     );
 });

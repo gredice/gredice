@@ -1,19 +1,18 @@
 import 'server-only';
-import { and, eq, desc, isNull, lte, like, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, like, lte, sql } from 'drizzle-orm';
 import {
-    invoices,
+    type InsertInvoice,
+    type InsertInvoiceItem,
+    type InsertReceipt,
     invoiceItems,
+    invoices,
     receipts,
-    InsertInvoice,
-    UpdateInvoice,
-    InsertInvoiceItem,
-    UpdateInvoiceItem,
-    InsertReceipt,
-    UpdateReceipt
-} from "../schema";
-import { storage } from "../storage";
-import { createEvent, knownEvents } from "./eventsRepo";
-import { PgTransaction } from 'drizzle-orm/pg-core';
+    type UpdateInvoice,
+    type UpdateInvoiceItem,
+    type UpdateReceipt,
+} from '../schema';
+import { storage } from '../storage';
+import { createEvent, knownEvents } from './eventsRepo';
 
 // Receipt creation data interface
 export interface ReceiptCreationData {
@@ -31,9 +30,12 @@ export interface ReceiptCreationData {
 }
 
 // Invoice CRUD operations
-export async function createInvoice(invoice: InsertInvoice, items?: Omit<InsertInvoiceItem, 'invoiceId'>[]) {
+export async function createInvoice(
+    invoice: InsertInvoice,
+    items?: Omit<InsertInvoiceItem, 'invoiceId'>[],
+) {
     if (!invoice.accountId) {
-        throw new Error("Invoice must have an accountId");
+        throw new Error('Invoice must have an accountId');
     }
 
     const maxRetries = 10;
@@ -43,32 +45,36 @@ export async function createInvoice(invoice: InsertInvoice, items?: Omit<InsertI
     while (attempt < maxRetries) {
         try {
             const invoiceNumber = await generateInvoiceNumber();
-            const invoiceId = (await storage()
-                .insert(invoices)
-                .values({
-                    ...invoice,
-                    invoiceNumber
-                })
-                .returning({ id: invoices.id }))[0].id;
+            const invoiceId = (
+                await storage()
+                    .insert(invoices)
+                    .values({
+                        ...invoice,
+                        invoiceNumber,
+                    })
+                    .returning({ id: invoices.id })
+            )[0].id;
 
-            if (typeof invoiceId !== "number") {
-                throw new Error("Failed to create invoice");
+            if (typeof invoiceId !== 'number') {
+                throw new Error('Failed to create invoice');
             }
 
             if (items && items.length > 0) {
-                const invoiceItemsData = items.map(item => ({
+                const invoiceItemsData = items.map((item) => ({
                     ...item,
                     invoiceId: invoiceId as number,
                 }));
                 await storage().insert(invoiceItems).values(invoiceItemsData);
             }
 
-            await createEvent(knownEvents.invoices.createdV1(invoiceId.toString(), {
-                accountId: invoice.accountId,
-                invoiceNumber: invoiceNumber,
-                totalAmount: invoice.totalAmount,
-                status: invoice.status || 'draft',
-            }));
+            await createEvent(
+                knownEvents.invoices.createdV1(invoiceId.toString(), {
+                    accountId: invoice.accountId,
+                    invoiceNumber: invoiceNumber,
+                    totalAmount: invoice.totalAmount,
+                    status: invoice.status || 'draft',
+                }),
+            );
 
             return invoiceId;
         } catch (error) {
@@ -76,7 +82,8 @@ export async function createInvoice(invoice: InsertInvoice, items?: Omit<InsertI
             lastError = error as Error;
 
             // Check if the error is a unique constraint violation for invoice_number
-            const isUniqueConstraintError = error instanceof Error &&
+            const isUniqueConstraintError =
+                error instanceof Error &&
                 (error.message.includes('unique constraint') ||
                     error.message.includes('duplicate key') ||
                     error.message.includes('UNIQUE violation') ||
@@ -86,14 +93,20 @@ export async function createInvoice(invoice: InsertInvoice, items?: Omit<InsertI
                 break;
             }
 
-            console.warn(`Retrying invoice creation (${attempt}/${maxRetries}) due to unique constraint violation: ${error.message}`);
+            console.warn(
+                `Retrying invoice creation (${attempt}/${maxRetries}) due to unique constraint violation: ${error.message}`,
+            );
 
             // Wait a small random amount before retrying to reduce collision chances
-            await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
+            await new Promise((resolve) =>
+                setTimeout(resolve, Math.random() * 100),
+            );
         }
     }
 
-    throw new Error(`Failed to create invoice after ${attempt} attempts. Last error: ${lastError?.message}`);
+    throw new Error(
+        `Failed to create invoice after ${attempt} attempts. Last error: ${lastError?.message}`,
+    );
 }
 
 export async function getInvoice(invoiceId: number) {
@@ -109,7 +122,10 @@ export async function getInvoice(invoiceId: number) {
 
 export async function getInvoiceByNumber(invoiceNumber: string) {
     return storage().query.invoices.findFirst({
-        where: and(eq(invoices.invoiceNumber, invoiceNumber), eq(invoices.isDeleted, false)),
+        where: and(
+            eq(invoices.invoiceNumber, invoiceNumber),
+            eq(invoices.isDeleted, false),
+        ),
         with: {
             invoiceItems: true,
             account: true,
@@ -120,7 +136,10 @@ export async function getInvoiceByNumber(invoiceNumber: string) {
 
 export async function getInvoices(accountId: string) {
     return storage().query.invoices.findMany({
-        where: and(eq(invoices.accountId, accountId), eq(invoices.isDeleted, false)),
+        where: and(
+            eq(invoices.accountId, accountId),
+            eq(invoices.isDeleted, false),
+        ),
         with: {
             invoiceItems: true,
             transaction: true,
@@ -132,8 +151,10 @@ export async function getInvoices(accountId: string) {
 export async function getAllInvoices(filters?: { transactionId?: number }) {
     return storage().query.invoices.findMany({
         where: and(
-            filters?.transactionId ? eq(invoices.transactionId, filters.transactionId) : undefined,
-            eq(invoices.isDeleted, false)
+            filters?.transactionId
+                ? eq(invoices.transactionId, filters.transactionId)
+                : undefined,
+            eq(invoices.isDeleted, false),
         ),
         with: {
             invoiceItems: true,
@@ -147,7 +168,7 @@ export async function getAllInvoices(filters?: { transactionId?: number }) {
 export async function getInvoicesByStatus(status: string, accountId?: string) {
     const whereConditions = [
         eq(invoices.status, status),
-        eq(invoices.isDeleted, false)
+        eq(invoices.isDeleted, false),
     ];
 
     if (accountId) {
@@ -171,7 +192,7 @@ export async function getOverdueInvoices(accountId?: string) {
         eq(invoices.status, 'sent'),
         lte(invoices.dueDate, today),
         isNull(invoices.paidDate),
-        eq(invoices.isDeleted, false)
+        eq(invoices.isDeleted, false),
     ];
 
     if (accountId) {
@@ -193,30 +214,31 @@ export async function updateInvoice(invoice: UpdateInvoice) {
     await storage()
         .update(invoices)
         .set(invoice)
-        .where(
-            and(
-                eq(invoices.id, invoice.id),
-                eq(invoices.isDeleted, false)
-            ));
+        .where(and(eq(invoices.id, invoice.id), eq(invoices.isDeleted, false)));
 
     // Only create status update event if status is being updated
     if (invoice.status) {
-        await createEvent(knownEvents.invoices.updatedV1(invoice.id.toString(), {
-            status: invoice.status,
-        }));
+        await createEvent(
+            knownEvents.invoices.updatedV1(invoice.id.toString(), {
+                status: invoice.status,
+            }),
+        );
     }
 }
 
 // Invoice status validation and transition functions
 export type InvoiceStatus = 'draft' | 'pending' | 'sent' | 'paid' | 'cancelled';
 
-export function isValidStatusTransition(currentStatus: InvoiceStatus, newStatus: InvoiceStatus): boolean {
+export function isValidStatusTransition(
+    currentStatus: InvoiceStatus,
+    newStatus: InvoiceStatus,
+): boolean {
     const validTransitions: Record<InvoiceStatus, InvoiceStatus[]> = {
-        'draft': ['pending', 'cancelled'],
-        'pending': ['sent', 'cancelled'],
-        'sent': ['paid'],
-        'paid': [], // Cannot transition from paid
-        'cancelled': [] // Cannot transition from cancelled
+        draft: ['pending', 'cancelled'],
+        pending: ['sent', 'cancelled'],
+        sent: ['paid'],
+        paid: [], // Cannot transition from paid
+        cancelled: [], // Cannot transition from cancelled
     };
 
     return validTransitions[currentStatus]?.includes(newStatus) ?? false;
@@ -234,14 +256,21 @@ export function canCancelInvoice(status: InvoiceStatus): boolean {
     return status === 'draft' || status === 'pending' || status === 'sent';
 }
 
-export function isOverdue(invoice: { status: string; dueDate: Date; paidDate?: Date | null }): boolean {
+export function isOverdue(invoice: {
+    status: string;
+    dueDate: Date;
+    paidDate?: Date | null;
+}): boolean {
     if (invoice.status === 'paid' || invoice.paidDate) {
         return false;
     }
     return invoice.status === 'sent' && new Date() > new Date(invoice.dueDate);
 }
 
-export async function changeInvoiceStatus(invoiceId: number, newStatus: InvoiceStatus) {
+export async function changeInvoiceStatus(
+    invoiceId: number,
+    newStatus: InvoiceStatus,
+) {
     const invoice = await getInvoice(invoiceId);
     if (!invoice) {
         throw new Error(`Invoice with id ${invoiceId} not found`);
@@ -250,7 +279,9 @@ export async function changeInvoiceStatus(invoiceId: number, newStatus: InvoiceS
     const currentStatus = invoice.status as InvoiceStatus;
 
     if (!isValidStatusTransition(currentStatus, newStatus)) {
-        throw new Error(`Invalid status transition from ${currentStatus} to ${newStatus}`);
+        throw new Error(
+            `Invalid status transition from ${currentStatus} to ${newStatus}`,
+        );
     }
 
     // Special validation for cancelling paid invoices
@@ -260,7 +291,7 @@ export async function changeInvoiceStatus(invoiceId: number, newStatus: InvoiceS
 
     await updateInvoice({
         id: invoiceId,
-        status: newStatus
+        status: newStatus,
     });
 
     return invoice;
@@ -280,12 +311,14 @@ export async function cancelInvoice(invoiceId: number) {
 
     await updateInvoice({
         id: invoiceId,
-        status: 'cancelled'
+        status: 'cancelled',
     });
 
-    await createEvent(knownEvents.invoices.updatedV1(invoiceId.toString(), {
-        status: 'cancelled',
-    }));
+    await createEvent(
+        knownEvents.invoices.updatedV1(invoiceId.toString(), {
+            status: 'cancelled',
+        }),
+    );
 
     return invoice;
 }
@@ -299,7 +332,9 @@ export async function softDeleteInvoice(invoiceId: number) {
     const currentStatus = invoice.status as InvoiceStatus;
 
     if (!canDeleteInvoice(currentStatus)) {
-        throw new Error(`Cannot delete invoice with status ${currentStatus}. Only draft and pending invoices can be deleted.`);
+        throw new Error(
+            `Cannot delete invoice with status ${currentStatus}. Only draft and pending invoices can be deleted.`,
+        );
     }
 
     await deleteInvoice(invoiceId);
@@ -309,7 +344,7 @@ export async function softDeleteInvoice(invoiceId: number) {
 export async function markInvoiceAsPaid(
     invoiceId: number,
     receiptData: ReceiptCreationData,
-    paidDate: Date = new Date()
+    paidDate: Date = new Date(),
 ) {
     // First get the invoice to copy financial data to receipt
     const invoice = await getInvoice(invoiceId);
@@ -327,13 +362,9 @@ export async function markInvoiceAsPaid(
         .set({
             status: 'paid',
             paidDate,
-            updatedAt: new Date()
+            updatedAt: new Date(),
         })
-        .where(
-            and(
-                eq(invoices.id, invoiceId),
-                eq(invoices.isDeleted, false)
-            ));
+        .where(and(eq(invoices.id, invoiceId), eq(invoices.isDeleted, false)));
 
     // Create receipt
     const receiptId = await createReceipt({
@@ -360,11 +391,13 @@ export async function markInvoiceAsPaid(
         throw new Error(`Failed to create receipt for invoice ${invoiceId}`);
     }
 
-    await createEvent(knownEvents.invoices.paidV1(invoiceId.toString(), {
-        paidDate: paidDate.toISOString(),
-        receiptId: receiptId.toString(),
-        receiptNumber: receipt.receiptNumber,
-    }));
+    await createEvent(
+        knownEvents.invoices.paidV1(invoiceId.toString(), {
+            paidDate: paidDate.toISOString(),
+            receiptId: receiptId.toString(),
+            receiptNumber: receipt.receiptNumber,
+        }),
+    );
 
     return receiptId;
 }
@@ -380,10 +413,12 @@ export async function deleteInvoice(invoiceId: number) {
 
 // Invoice Items CRUD operations
 export async function addInvoiceItem(item: InsertInvoiceItem) {
-    return (await storage()
-        .insert(invoiceItems)
-        .values(item)
-        .returning({ id: invoiceItems.id }))[0].id;
+    return (
+        await storage()
+            .insert(invoiceItems)
+            .values(item)
+            .returning({ id: invoiceItems.id })
+    )[0].id;
 }
 
 export async function updateInvoiceItem(item: UpdateInvoiceItem) {
@@ -394,9 +429,7 @@ export async function updateInvoiceItem(item: UpdateInvoiceItem) {
 }
 
 export async function deleteInvoiceItem(itemId: number) {
-    await storage()
-        .delete(invoiceItems)
-        .where(eq(invoiceItems.id, itemId));
+    await storage().delete(invoiceItems).where(eq(invoiceItems.id, itemId));
 }
 
 export async function getInvoiceItems(invoiceId: number) {
@@ -414,13 +447,15 @@ async function generateInvoiceNumber(): Promise<string> {
     // Get the latest invoice number for this year
     // Pull the deleted invoices too so we don't run into unique constraint issues
     const latestInvoice = await storage().query.invoices.findFirst({
-        where: and(
-            like(invoices.invoiceNumber, `${prefix}%`)
-        ),
+        where: and(like(invoices.invoiceNumber, `${prefix}%`)),
         orderBy: sql`CAST(SUBSTRING(${invoices.invoiceNumber} FROM ${prefix.length + 1}) AS INTEGER) DESC`,
     });
 
-    const nextNumber = parseInt(latestInvoice?.invoiceNumber.substring(prefix.length) ?? "0", 10) + 1;
+    const nextNumber =
+        parseInt(
+            latestInvoice?.invoiceNumber.substring(prefix.length) ?? '0',
+            10,
+        ) + 1;
 
     // Check if the incremented number already exists, retry up to 100 times to find next available
     const maxAttempts = 100;
@@ -429,9 +464,7 @@ async function generateInvoiceNumber(): Promise<string> {
 
         // Check if this number already exists
         const existingInvoice = await storage().query.invoices.findFirst({
-            where: and(
-                eq(invoices.invoiceNumber, candidateNumber)
-            ),
+            where: and(eq(invoices.invoiceNumber, candidateNumber)),
         });
 
         if (!existingInvoice) {
@@ -440,7 +473,9 @@ async function generateInvoiceNumber(): Promise<string> {
         }
     }
 
-    throw new Error(`Failed to generate unique invoice number after ${maxAttempts} attempts`);
+    throw new Error(
+        `Failed to generate unique invoice number after ${maxAttempts} attempts`,
+    );
 }
 
 export async function calculateInvoiceTotals(invoiceId: number) {
@@ -461,22 +496,22 @@ export async function calculateInvoiceTotals(invoiceId: number) {
 
 export async function createReceiptFromInvoice(
     invoiceId: number,
-    receiptData: Omit<ReceiptCreationData, 'jir' | 'zki'>
+    receiptData: Omit<ReceiptCreationData, 'jir' | 'zki'>,
 ) {
     // Get the invoice details
     const invoice = await getInvoice(invoiceId);
     if (!invoice) {
-        throw new Error("Invoice not found");
+        throw new Error('Invoice not found');
     }
 
     if (invoice.status !== 'paid') {
-        throw new Error("Can only create receipt for paid invoices");
+        throw new Error('Can only create receipt for paid invoices');
     }
 
     // Check if receipt already exists for this invoice
     const existingReceipt = await getReceiptByInvoice(invoiceId);
     if (existingReceipt) {
-        throw new Error("Receipt already exists for this invoice");
+        throw new Error('Receipt already exists for this invoice');
     }
 
     // Generate receipt number
@@ -502,7 +537,9 @@ export async function createReceiptFromInvoice(
 }
 
 // Receipt CRUD operations
-export async function createReceipt(receipt: Omit<InsertReceipt, 'yearReceiptNumber'>) {
+export async function createReceipt(
+    receipt: Omit<InsertReceipt, 'yearReceiptNumber'>,
+) {
     const maxRetries = 10;
     let attempt = 0;
     let lastError: Error | null = null;
@@ -512,21 +549,25 @@ export async function createReceipt(receipt: Omit<InsertReceipt, 'yearReceiptNum
             const receiptNumber = await generateReceiptNumber();
             const yearReceiptNumber = `${new Date().getFullYear()}-${receiptNumber}`;
 
-            const receiptId = (await storage()
-                .insert(receipts)
-                .values({
-                    ...receipt,
-                    receiptNumber,
-                    yearReceiptNumber
-                })
-                .returning({ id: receipts.id }))[0].id;
+            const receiptId = (
+                await storage()
+                    .insert(receipts)
+                    .values({
+                        ...receipt,
+                        receiptNumber,
+                        yearReceiptNumber,
+                    })
+                    .returning({ id: receipts.id })
+            )[0].id;
 
-            await createEvent(knownEvents.receipts.createdV1(receiptId.toString(), {
-                invoiceId: receipt.invoiceId.toString(),
-                receiptNumber,
-                totalAmount: receipt.totalAmount,
-                paymentMethod: receipt.paymentMethod,
-            }));
+            await createEvent(
+                knownEvents.receipts.createdV1(receiptId.toString(), {
+                    invoiceId: receipt.invoiceId.toString(),
+                    receiptNumber,
+                    totalAmount: receipt.totalAmount,
+                    paymentMethod: receipt.paymentMethod,
+                }),
+            );
 
             return receiptId;
         } catch (error) {
@@ -534,7 +575,8 @@ export async function createReceipt(receipt: Omit<InsertReceipt, 'yearReceiptNum
             lastError = error as Error;
 
             // Check if the error is a unique constraint violation for year_receipt_number or receipt_number
-            const isUniqueConstraintError = error instanceof Error &&
+            const isUniqueConstraintError =
+                error instanceof Error &&
                 (error.message.includes('unique constraint') ||
                     error.message.includes('duplicate key') ||
                     error.message.includes('UNIQUE violation') ||
@@ -546,11 +588,15 @@ export async function createReceipt(receipt: Omit<InsertReceipt, 'yearReceiptNum
             }
 
             // Wait a small random amount before retrying to reduce collision chances
-            await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
+            await new Promise((resolve) =>
+                setTimeout(resolve, Math.random() * 100),
+            );
         }
     }
 
-    throw new Error(`Failed to create receipt after ${maxRetries} attempts. Last error: ${lastError?.message}`);
+    throw new Error(
+        `Failed to create receipt after ${maxRetries} attempts. Last error: ${lastError?.message}`,
+    );
 }
 
 export async function getReceipt(receiptId: number) {
@@ -560,7 +606,7 @@ export async function getReceipt(receiptId: number) {
             invoice: {
                 with: {
                     invoiceItems: true,
-                }
+                },
             },
         },
     });
@@ -568,18 +614,24 @@ export async function getReceipt(receiptId: number) {
 
 export async function getReceiptByInvoice(invoiceId: number) {
     return storage().query.receipts.findFirst({
-        where: and(eq(receipts.invoiceId, invoiceId), eq(receipts.isDeleted, false)),
+        where: and(
+            eq(receipts.invoiceId, invoiceId),
+            eq(receipts.isDeleted, false),
+        ),
     });
 }
 
 export async function getReceiptByNumber(receiptNumber: string) {
     return storage().query.receipts.findFirst({
-        where: and(eq(receipts.receiptNumber, receiptNumber), eq(receipts.isDeleted, false)),
+        where: and(
+            eq(receipts.receiptNumber, receiptNumber),
+            eq(receipts.isDeleted, false),
+        ),
         with: {
             invoice: {
                 with: {
                     invoiceItems: true,
-                }
+                },
             },
         },
     });
@@ -589,11 +641,7 @@ export async function updateReceipt(receipt: UpdateReceipt) {
     await storage()
         .update(receipts)
         .set(receipt)
-        .where(
-            and(
-                eq(receipts.id, receipt.id),
-                eq(receipts.isDeleted, false)
-            ));
+        .where(and(eq(receipts.id, receipt.id), eq(receipts.isDeleted, false)));
 
     await createEvent(knownEvents.receipts.updatedV1(receipt.id.toString()));
 }
@@ -609,7 +657,7 @@ export async function updateReceiptFiscalization(
         cisErrorMessage?: string | null;
         cisTimestamp?: Date;
         cisResponse?: string | null;
-    }
+    },
 ) {
     await storage()
         .update(receipts)
@@ -623,23 +671,24 @@ export async function updateReceiptFiscalization(
             cisResponse: fiscalizationData.cisResponse,
             updatedAt: new Date(),
         })
-        .where(
-            and(
-                eq(receipts.id, receiptId),
-                eq(receipts.isDeleted, false)
-            ));
+        .where(and(eq(receipts.id, receiptId), eq(receipts.isDeleted, false)));
 
-    await createEvent(knownEvents.receipts.fiscalizedV1(receiptId.toString(), {
-        jir: fiscalizationData.jir,
-        zki: fiscalizationData.zki,
-        cisStatus: fiscalizationData.cisStatus,
-        cisResponse: fiscalizationData.cisResponse,
-    }));
+    await createEvent(
+        knownEvents.receipts.fiscalizedV1(receiptId.toString(), {
+            jir: fiscalizationData.jir,
+            zki: fiscalizationData.zki,
+            cisStatus: fiscalizationData.cisStatus,
+            cisResponse: fiscalizationData.cisResponse,
+        }),
+    );
 }
 
 export async function getReceiptsByStatus(cisStatus: string) {
     return storage().query.receipts.findMany({
-        where: and(eq(receipts.cisStatus, cisStatus), eq(receipts.isDeleted, false)),
+        where: and(
+            eq(receipts.cisStatus, cisStatus),
+            eq(receipts.isDeleted, false),
+        ),
         with: {
             invoice: true,
         },
@@ -654,10 +703,8 @@ async function generateReceiptNumber(): Promise<string> {
     // Order by id desc to get the most recently created receipt, which should have the highest number
     // Pull the deleted invoices too so we don't run into unique constraint issues
     const latestReceipt = await storage().query.receipts.findFirst({
-        where: and(
-            gte(receipts.issuedAt, firstDateOfYear),
-        ),
-        orderBy: sql`CAST(${receipts.receiptNumber} AS INTEGER) DESC`
+        where: and(gte(receipts.issuedAt, firstDateOfYear)),
+        orderBy: sql`CAST(${receipts.receiptNumber} AS INTEGER) DESC`,
     });
 
     const nextNumber = parseInt(latestReceipt?.receiptNumber ?? '0', 10) + 1;
@@ -681,7 +728,9 @@ async function generateReceiptNumber(): Promise<string> {
         }
     }
 
-    throw new Error(`Failed to generate unique receipt number after ${maxAttempts} attempts`);
+    throw new Error(
+        `Failed to generate unique receipt number after ${maxAttempts} attempts`,
+    );
 }
 
 export async function softDeleteReceipt(receiptId: number) {
@@ -695,13 +744,9 @@ export async function softDeleteReceipt(receiptId: number) {
         .set({
             isDeleted: true,
             updatedAt: new Date(),
-            yearReceiptNumber: `${receipt.yearReceiptNumber}-deleted-${new Date().toISOString()}`
+            yearReceiptNumber: `${receipt.yearReceiptNumber}-deleted-${new Date().toISOString()}`,
         })
-        .where(
-            and(
-                eq(receipts.id, receiptId),
-                eq(receipts.isDeleted, false)
-            ));
+        .where(and(eq(receipts.id, receiptId), eq(receipts.isDeleted, false)));
 
     // Create event using the same pattern as other receipt operations
     await createEvent(knownEvents.receipts.updatedV1(receiptId.toString()));

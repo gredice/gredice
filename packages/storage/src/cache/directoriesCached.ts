@@ -14,17 +14,25 @@ function cacheClient() {
 
 export const cacheKeys = {
     entity: (entityId: number) => `entity:${entityId}`,
-    entityTypeName: (entityTypeName: string) => `entityTypeName:${entityTypeName}`,
-}
+    entityTypeName: (entityTypeName: string) =>
+        `entityTypeName:${entityTypeName}`,
+};
 
-export async function directoriesCached<T>(key: string, fn: () => Promise<T>, ttl: number = 60) {
+export async function directoriesCached<T>(
+    key: string,
+    fn: () => Promise<T>,
+    ttl: number = 60,
+) {
     const client = cacheClient();
-    const cachedValue = await client.get<T>(key)
+    const cachedValue = await client.get<T>(key);
     if (cachedValue) {
         try {
             return cachedValue as T;
         } catch (error) {
-            console.error(`Error parsing cached value for key "${key}":`, error);
+            console.error(
+                `Error parsing cached value for key "${key}":`,
+                error,
+            );
             // Optionally, you could delete the corrupted cache entry
             await client.del(key);
         }
@@ -41,17 +49,17 @@ export async function directoriesCachedInfo() {
     try {
         const client = cacheClient();
         const keys: string[] = [];
-        let cursor = "0";
+        let cursor = '0';
 
         do {
             const scanResult = await client.scan(cursor);
             cursor = scanResult[0];
             keys.push(...scanResult[1]);
-        } while (cursor !== "0");
+        } while (cursor !== '0');
 
         return {
-            keys
-        }
+            keys,
+        };
     } catch (error) {
         console.error('Error fetching Redis info:', error);
         return null;

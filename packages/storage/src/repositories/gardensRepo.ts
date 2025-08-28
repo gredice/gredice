@@ -398,17 +398,31 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         // let operationStatus = undefined;
 
         for (const event of events) {
-            const data = event.data as Record<string, any> | undefined;
+            const data = event.data as Record<string, unknown> | undefined;
             if (event.type === knownEventTypes.raisedBedFields.plantPlace) {
-                if (data?.plantSortId) {
+                if (data?.plantSortId && typeof data.plantSortId === 'string') {
                     plantSortId = parseInt(data.plantSortId, 10);
                 }
-                plantScheduledDate = data?.scheduledDate || plantScheduledDate;
+                if (
+                    data?.scheduledDate &&
+                    typeof data.scheduledDate === 'string'
+                ) {
+                    plantScheduledDate = new Date(data.scheduledDate);
+                } else if (
+                    data?.scheduledDate &&
+                    typeof data.scheduledDate === 'object' &&
+                    data?.scheduledDate instanceof Date
+                ) {
+                    plantScheduledDate = data?.scheduledDate;
+                }
                 plantStatus = 'new';
             } else if (
                 event.type === knownEventTypes.raisedBedFields.plantUpdate
             ) {
-                plantStatus = data?.status ?? plantStatus;
+                plantStatus =
+                    typeof data?.status === 'string'
+                        ? data?.status
+                        : plantStatus;
                 if (plantStatus === 'sowed') {
                     plantSowDate = event.createdAt;
                 } else if (plantStatus === 'sprouted') {

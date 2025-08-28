@@ -1,18 +1,17 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTestDb } from './testDb';
+import test from 'node:test';
 import {
-    createAccount,
-    getAccounts,
-    getAccount,
-    getAccountUsers,
     assignStripeCustomerId,
+    earnSunflowers,
+    getAccount,
+    getAccounts,
+    getAccountUsers,
     getSunflowers,
     getSunflowersHistory,
-    earnSunflowers,
-    spendSunflowers
+    spendSunflowers,
 } from '@gredice/storage';
 import { createTestAccount } from './helpers/testHelpers';
+import { createTestDb } from './testDb';
 
 test('createAccount creates a new account', async () => {
     createTestDb();
@@ -28,7 +27,7 @@ test('getAccounts returns all accounts', async () => {
     const accountId = await createTestAccount();
     const accounts = await getAccounts();
     assert.ok(Array.isArray(accounts));
-    assert.ok(accounts.some(a => a.id === accountId));
+    assert.ok(accounts.some((a) => a.id === accountId));
 });
 
 test('getAccount returns undefined for non-existent account', async () => {
@@ -80,7 +79,10 @@ test('spendSunflowers decreases sunflowers', async () => {
 test('spendSunflowers throws if insufficient sunflowers', async () => {
     createTestDb();
     const accountId = await createTestAccount();
-    await assert.rejects(() => spendSunflowers(accountId, 2000, 'fail'), /Insufficient sunflowers/);
+    await assert.rejects(
+        () => spendSunflowers(accountId, 2000, 'fail'),
+        /Insufficient sunflowers/,
+    );
 });
 
 test('getSunflowersHistory returns correct history', async () => {
@@ -90,6 +92,6 @@ test('getSunflowersHistory returns correct history', async () => {
     await spendSunflowers(accountId, 50, 'test-spend');
     const history = await getSunflowersHistory(accountId, 0, 10);
     assert.ok(Array.isArray(history));
-    assert.ok(history.some(e => e.reason === 'test-earn'));
-    assert.ok(history.some(e => e.reason === 'test-spend'));
+    assert.ok(history.some((e) => e.reason === 'test-earn'));
+    assert.ok(history.some((e) => e.reason === 'test-spend'));
 });

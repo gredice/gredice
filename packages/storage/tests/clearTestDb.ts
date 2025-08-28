@@ -1,9 +1,13 @@
-import { drizzle } from "drizzle-orm/node-postgres";
+import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from '../src/schema';
 
 // This script truncates all tables in the test database to ensure a clean state between tests.
-export const storage = drizzle(process.env.POSTGRES_URL!, {
-    schema
+const dbUrl = process.env.POSTGRES_URL;
+if (!dbUrl) {
+    throw new Error('POSTGRES_URL environment variable is not set');
+}
+export const storage = drizzle(dbUrl, {
+    schema,
 });
 
 export async function clearTestDb() {
@@ -22,7 +26,7 @@ export async function clearTestDb() {
     await storage.$client.query('SET session_replication_role = replica;');
     try {
         await storage.$client.query(
-            `TRUNCATE TABLE ${tables.map((t) => '"' + t + '"').join(', ')} RESTART IDENTITY CASCADE;`
+            `TRUNCATE TABLE ${tables.map((t) => `"${t}"`).join(', ')} RESTART IDENTITY CASCADE;`,
         );
     } finally {
         await storage.$client.query('SET session_replication_role = DEFAULT;');

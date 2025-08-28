@@ -1,22 +1,23 @@
 import 'server-only';
-import { eq, and, inArray, sql } from "drizzle-orm";
-import { storage } from "../storage";
+import { and, eq, inArray } from 'drizzle-orm';
 import {
-    shoppingCartItems,
-    attributeValues,
     attributeDefinitions,
-    entities,
-    SelectShoppingCartItem
-} from "../schema";
+    attributeValues,
+    type SelectShoppingCartItem,
+    shoppingCartItems,
+} from '../schema';
+import { storage } from '../storage';
 
 // Check if a shopping cart contains any deliverable items
-export async function cartContainsDeliverableItems(cartId: number): Promise<boolean> {
+export async function cartContainsDeliverableItems(
+    cartId: number,
+): Promise<boolean> {
     const items = await storage().query.shoppingCartItems.findMany({
         where: and(
             eq(shoppingCartItems.cartId, cartId),
             eq(shoppingCartItems.isDeleted, false),
-            eq(shoppingCartItems.status, 'new') // Only check unpaid items
-        )
+            eq(shoppingCartItems.status, 'new'), // Only check unpaid items
+        ),
     });
 
     if (items.length === 0) {
@@ -24,20 +25,25 @@ export async function cartContainsDeliverableItems(cartId: number): Promise<bool
     }
 
     // Get unique entity IDs from cart items (convert string to integer)
-    const entityIdStrings = Array.from(new Set(items.map(item => item.entityId)));
-    const entityIds = entityIdStrings.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    const entityIdStrings = Array.from(
+        new Set(items.map((item) => item.entityId)),
+    );
+    const entityIds = entityIdStrings
+        .map((id) => parseInt(id, 10))
+        .filter((id) => !Number.isNaN(id));
     if (entityIds.length === 0) {
         return false;
     }
 
     // Find attribute definition for 'deliverable' attribute of `operation` type
-    const deliverableAttributeDef = await storage().query.attributeDefinitions.findFirst({
-        where: and(
-            eq(attributeDefinitions.name, 'deliverable'),
-            eq(attributeDefinitions.entityTypeName, 'operation'),
-            eq(attributeDefinitions.isDeleted, false)
-        )
-    });
+    const deliverableAttributeDef =
+        await storage().query.attributeDefinitions.findFirst({
+            where: and(
+                eq(attributeDefinitions.name, 'deliverable'),
+                eq(attributeDefinitions.entityTypeName, 'operation'),
+                eq(attributeDefinitions.isDeleted, false),
+            ),
+        });
 
     if (!deliverableAttributeDef) {
         return false; // No deliverable attribute defined
@@ -47,31 +53,39 @@ export async function cartContainsDeliverableItems(cartId: number): Promise<bool
     const deliverableEntities = await storage()
         .select({
             entityId: attributeValues.entityId,
-            value: attributeValues.value
+            value: attributeValues.value,
         })
         .from(attributeValues)
         .where(
             and(
                 inArray(attributeValues.entityId, entityIds),
-                eq(attributeValues.attributeDefinitionId, deliverableAttributeDef.id),
+                eq(
+                    attributeValues.attributeDefinitionId,
+                    deliverableAttributeDef.id,
+                ),
                 eq(attributeValues.entityTypeName, 'operation'),
-                eq(attributeValues.isDeleted, false)
-            )
+                eq(attributeValues.isDeleted, false),
+            ),
         );
 
-    return deliverableEntities.some(entity =>
-        entity.value === 'true' || entity.value === '1' || entity.value === 'True'
+    return deliverableEntities.some(
+        (entity) =>
+            entity.value === 'true' ||
+            entity.value === '1' ||
+            entity.value === 'True',
     );
 }
 
 // Get deliverable items from a cart
-export async function getDeliverableCartItems(cartId: number): Promise<SelectShoppingCartItem[]> {
+export async function getDeliverableCartItems(
+    cartId: number,
+): Promise<SelectShoppingCartItem[]> {
     const items = await storage().query.shoppingCartItems.findMany({
         where: and(
             eq(shoppingCartItems.cartId, cartId),
             eq(shoppingCartItems.isDeleted, false),
-            eq(shoppingCartItems.status, 'new')
-        )
+            eq(shoppingCartItems.status, 'new'),
+        ),
     });
 
     if (items.length === 0) {
@@ -79,21 +93,26 @@ export async function getDeliverableCartItems(cartId: number): Promise<SelectSho
     }
 
     // Get entity IDs that are deliverable
-    const entityIdStrings = Array.from(new Set(items.map(item => item.entityId)));
-    const entityIds = entityIdStrings.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    const entityIdStrings = Array.from(
+        new Set(items.map((item) => item.entityId)),
+    );
+    const entityIds = entityIdStrings
+        .map((id) => parseInt(id, 10))
+        .filter((id) => !Number.isNaN(id));
 
     if (entityIds.length === 0) {
         return [];
     }
 
     // Find attribute definition for 'deliverable' attribute of `operation` type
-    const deliverableAttributeDef = await storage().query.attributeDefinitions.findFirst({
-        where: and(
-            eq(attributeDefinitions.name, 'deliverable'),
-            eq(attributeDefinitions.entityTypeName, 'operation'),
-            eq(attributeDefinitions.isDeleted, false)
-        )
-    });
+    const deliverableAttributeDef =
+        await storage().query.attributeDefinitions.findFirst({
+            where: and(
+                eq(attributeDefinitions.name, 'deliverable'),
+                eq(attributeDefinitions.entityTypeName, 'operation'),
+                eq(attributeDefinitions.isDeleted, false),
+            ),
+        });
 
     if (!deliverableAttributeDef) {
         return []; // No deliverable attribute defined
@@ -102,43 +121,56 @@ export async function getDeliverableCartItems(cartId: number): Promise<SelectSho
     const deliverableEntities = await storage()
         .select({
             entityId: attributeValues.entityId,
-            value: attributeValues.value
+            value: attributeValues.value,
         })
         .from(attributeValues)
         .where(
             and(
                 inArray(attributeValues.entityId, entityIds),
-                eq(attributeValues.attributeDefinitionId, deliverableAttributeDef.id),
+                eq(
+                    attributeValues.attributeDefinitionId,
+                    deliverableAttributeDef.id,
+                ),
                 eq(attributeValues.entityTypeName, 'operation'),
-                eq(attributeValues.isDeleted, false)
-            )
+                eq(attributeValues.isDeleted, false),
+            ),
         );
 
     const deliverableEntityIds = new Set(
         deliverableEntities
-            .filter(entity => entity.value === 'true' || entity.value === '1' || entity.value === 'True')
-            .map(entity => entity.entityId.toString())
+            .filter(
+                (entity) =>
+                    entity.value === 'true' ||
+                    entity.value === '1' ||
+                    entity.value === 'True',
+            )
+            .map((entity) => entity.entityId.toString()),
     );
 
     // Filter items to only include those with deliverable entities
-    return items.filter(item => deliverableEntityIds.has(item.entityId));
+    return items.filter((item) => deliverableEntityIds.has(item.entityId));
 }
 
 // Check if specific cart item is deliverable
-export async function isCartItemDeliverable({ entityId }: { entityId: number }): Promise<boolean> {
-    if (isNaN(entityId)) {
+export async function isCartItemDeliverable({
+    entityId,
+}: {
+    entityId: number;
+}): Promise<boolean> {
+    if (Number.isNaN(entityId)) {
         return false;
     }
 
     // Find attribute definition for 'deliverable' attribute of `operation` type
-    const deliverableAttributeDef = await storage().query.attributeDefinitions.findFirst({
-        where: and(
-            // TODO: Use better targeting than just by name
-            eq(attributeDefinitions.name, 'deliverable'),
-            eq(attributeDefinitions.entityTypeName, 'operation'),
-            eq(attributeDefinitions.isDeleted, false)
-        )
-    });
+    const deliverableAttributeDef =
+        await storage().query.attributeDefinitions.findFirst({
+            where: and(
+                // TODO: Use better targeting than just by name
+                eq(attributeDefinitions.name, 'deliverable'),
+                eq(attributeDefinitions.entityTypeName, 'operation'),
+                eq(attributeDefinitions.isDeleted, false),
+            ),
+        });
 
     if (!deliverableAttributeDef) {
         return false; // No deliverable attribute defined
@@ -147,10 +179,17 @@ export async function isCartItemDeliverable({ entityId }: { entityId: number }):
     const attributeValue = await storage().query.attributeValues.findFirst({
         where: and(
             eq(attributeValues.entityId, entityId),
-            eq(attributeValues.attributeDefinitionId, deliverableAttributeDef.id),
-            eq(attributeValues.isDeleted, false)
-        )
+            eq(
+                attributeValues.attributeDefinitionId,
+                deliverableAttributeDef.id,
+            ),
+            eq(attributeValues.isDeleted, false),
+        ),
     });
 
-    return attributeValue?.value === 'true' || attributeValue?.value === '1' || attributeValue?.value === 'True';
+    return (
+        attributeValue?.value === 'true' ||
+        attributeValue?.value === '1' ||
+        attributeValue?.value === 'True'
+    );
 }

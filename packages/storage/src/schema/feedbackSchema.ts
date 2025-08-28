@@ -1,4 +1,4 @@
-import { json, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { json, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 export const feedbacks = pgTable('feedbacks', {
     id: text('id').primaryKey(),
@@ -9,5 +9,8 @@ export const feedbacks = pgTable('feedbacks', {
     createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-export type InsertFeedback = Omit<typeof feedbacks.$inferInsert, 'id' | 'createdAt'>;
+export type InsertFeedback = Omit<
+    typeof feedbacks.$inferInsert,
+    'id' | 'createdAt'
+>;
 export type SelectFeedback = typeof feedbacks.$inferSelect;

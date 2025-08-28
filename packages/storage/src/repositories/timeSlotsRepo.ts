@@ -1,20 +1,22 @@
 import 'server-only';
-import { and, eq, gte, lte, desc, asc } from "drizzle-orm";
-import { storage } from "../storage";
+import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
 import {
+    type InsertTimeSlot,
+    type SelectTimeSlot,
+    TimeSlotStatuses,
     timeSlots,
-    InsertTimeSlot,
-    UpdateTimeSlot,
-    SelectTimeSlot,
-    TimeSlotStatuses
-} from "../schema";
+    type UpdateTimeSlot,
+} from '../schema';
+import { storage } from '../storage';
 
-export function getTimeSlot(slotId: number): Promise<SelectTimeSlot | undefined> {
+export function getTimeSlot(
+    slotId: number,
+): Promise<SelectTimeSlot | undefined> {
     return storage().query.timeSlots.findFirst({
         where: eq(timeSlots.id, slotId),
         with: {
-            location: true
-        }
+            location: true,
+        },
     });
 }
 
@@ -22,7 +24,7 @@ export function getTimeSlot(slotId: number): Promise<SelectTimeSlot | undefined>
 export function getAllTimeSlots(
     type?: 'delivery' | 'pickup',
     locationId?: number,
-    status?: string
+    status?: string,
 ): Promise<SelectTimeSlot[]> {
     const conditions = [];
 
@@ -42,8 +44,8 @@ export function getAllTimeSlots(
         where: conditions.length > 0 ? and(...conditions) : undefined,
         orderBy: [desc(timeSlots.startAt)],
         with: {
-            location: true
-        }
+            location: true,
+        },
     });
 }
 
@@ -67,12 +69,14 @@ export async function createTimeSlot(data: InsertTimeSlot): Promise<number> {
         where: and(
             eq(timeSlots.locationId, data.locationId),
             eq(timeSlots.type, data.type),
-            eq(timeSlots.startAt, data.startAt)
-        )
+            eq(timeSlots.startAt, data.startAt),
+        ),
     });
 
     if (existingSlot) {
-        throw new Error('Slot already exists for this location, type, and time');
+        throw new Error(
+            'Slot already exists for this location, type, and time',
+        );
     }
 
     const result = await storage()
@@ -119,7 +123,9 @@ export interface BulkSlotCreationParams {
     locationId: number;
 }
 
-export async function bulkGenerateTimeSlots(params: BulkSlotCreationParams): Promise<{ created: number; skippedExisting: number }> {
+export async function bulkGenerateTimeSlots(
+    params: BulkSlotCreationParams,
+): Promise<{ created: number; skippedExisting: number }> {
     const { startDate, daysAhead, windows, type, locationId } = params;
 
     let created = 0;
@@ -143,12 +149,15 @@ export async function bulkGenerateTimeSlots(params: BulkSlotCreationParams): Pro
                     type,
                     startAt,
                     endAt,
-                    status: TimeSlotStatuses.SCHEDULED
+                    status: TimeSlotStatuses.SCHEDULED,
                 });
                 created++;
             } catch (error) {
                 // If slot already exists, skip it
-                if (error instanceof Error && error.message.includes('already exists')) {
+                if (
+                    error instanceof Error &&
+                    error.message.includes('already exists')
+                ) {
                     skippedExisting++;
                 } else {
                     throw error; // Re-throw other errors
@@ -169,12 +178,18 @@ export interface GetTimeSlotsParams {
     status?: string;
 }
 
-export function getTimeSlots(params: GetTimeSlotsParams = {}): Promise<SelectTimeSlot[]> {
-    const { type, locationId, fromDate, toDate, status = TimeSlotStatuses.SCHEDULED } = params;
+export function getTimeSlots(
+    params: GetTimeSlotsParams = {},
+): Promise<SelectTimeSlot[]> {
+    const {
+        type,
+        locationId,
+        fromDate,
+        toDate,
+        status = TimeSlotStatuses.SCHEDULED,
+    } = params;
 
-    const conditions = [
-        eq(timeSlots.status, status)
-    ];
+    const conditions = [eq(timeSlots.status, status)];
 
     if (type) {
         conditions.push(eq(timeSlots.type, type));
@@ -196,8 +211,8 @@ export function getTimeSlots(params: GetTimeSlotsParams = {}): Promise<SelectTim
         where: and(...conditions),
         orderBy: [asc(timeSlots.startAt)],
         with: {
-            location: true
-        }
+            location: true,
+        },
     });
 }
 
@@ -210,10 +225,12 @@ export async function archivePastSlots(): Promise<number> {
     const result = await storage()
         .update(timeSlots)
         .set({ status: TimeSlotStatuses.ARCHIVED })
-        .where(and(
-            lte(timeSlots.endAt, yesterday),
-            eq(timeSlots.status, TimeSlotStatuses.SCHEDULED)
-        ))
+        .where(
+            and(
+                lte(timeSlots.endAt, yesterday),
+                eq(timeSlots.status, TimeSlotStatuses.SCHEDULED),
+            ),
+        )
         .returning({ id: timeSlots.id });
 
     return result.length;

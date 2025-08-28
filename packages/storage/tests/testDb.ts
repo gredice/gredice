@@ -2,14 +2,18 @@
 // It is used to mock the database for integration tests without mocking repositories themselves.
 
 import 'dotenv/config';
-import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../src/schema';
 
 let db: NodePgDatabase<typeof schema> | undefined;
 
 export function createTestDb() {
     if (!db) {
-        db = drizzle<typeof schema>(process.env.POSTGRES_URL!, { schema });
+        const dbUrl = process.env.POSTGRES_URL;
+        if (!dbUrl) {
+            throw new Error('POSTGRES_URL environment variable is not set');
+        }
+        db = drizzle<typeof schema>(dbUrl, { schema });
     }
     return db;
 }

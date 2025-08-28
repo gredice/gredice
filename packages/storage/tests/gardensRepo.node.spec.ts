@@ -1,25 +1,25 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTestDb } from './testDb';
+import test from 'node:test';
 import {
     createAccount,
-    getGardens,
+    createGardenBlock,
+    createGardenStack,
+    deleteGarden,
+    deleteGardenBlock,
+    deleteGardenStack,
     getAccountGardens,
     getGarden,
-    updateGarden,
-    deleteGarden,
-    getGardenBlocks,
     getGardenBlock,
-    createGardenBlock,
-    updateGardenBlock,
-    deleteGardenBlock,
-    getGardenStacks,
+    getGardenBlocks,
     getGardenStack,
-    createGardenStack,
+    getGardenStacks,
+    getGardens,
+    updateGarden,
+    updateGardenBlock,
     updateGardenStack,
-    deleteGardenStack
 } from '@gredice/storage';
 import { createTestGarden, ensureFarmId } from './helpers/testHelpers';
+import { createTestDb } from './testDb';
 
 test('can create and retrieve a garden', async () => {
     createTestDb();
@@ -35,11 +35,23 @@ test('can create and retrieve a garden', async () => {
     });
     const gardens = await getGardens();
     assert.ok(Array.isArray(gardens));
-    const createdGarden = gardens.find(g => g.id === gardenId);
+    const createdGarden = gardens.find((g) => g.id === gardenId);
     assert.ok(createdGarden, 'Garden should be created');
-    assert.strictEqual(createdGarden?.name, 'Test Garden', 'Garden name should match');
-    assert.strictEqual(createdGarden?.accountId, accountId, 'Garden accountId should match');
-    assert.strictEqual(createdGarden?.farmId, farmId, 'Garden farmId should match');
+    assert.strictEqual(
+        createdGarden?.name,
+        'Test Garden',
+        'Garden name should match',
+    );
+    assert.strictEqual(
+        createdGarden?.accountId,
+        accountId,
+        'Garden accountId should match',
+    );
+    assert.strictEqual(
+        createdGarden?.farmId,
+        farmId,
+        'Garden farmId should match',
+    );
 });
 
 test('getGardens returns all gardens', async () => {
@@ -59,7 +71,7 @@ test('getAccountGardens returns gardens for account', async () => {
     const gardenId = await createTestGarden({ accountId, farmId });
     const gardens = await getAccountGardens(accountId);
     assert.ok(Array.isArray(gardens));
-    assert.ok(gardens.some(g => g.id === gardenId));
+    assert.ok(gardens.some((g) => g.id === gardenId));
 });
 
 test('getGarden returns correct garden', async () => {
@@ -100,7 +112,7 @@ test('createGardenBlock and getGardenBlocks', async () => {
     const gardenId = await createTestGarden({ accountId, farmId });
     const blockId = await createGardenBlock(gardenId, 'BlockA');
     const blocks = await getGardenBlocks(gardenId);
-    assert.ok(blocks.some(b => b.id === blockId));
+    assert.ok(blocks.some((b) => b.id === blockId));
 });
 
 test('getGardenBlock returns correct block', async () => {
@@ -176,7 +188,11 @@ test('updateGardenStack updates stack blocks', async () => {
     const farmId = await ensureFarmId();
     const gardenId = await createTestGarden({ accountId, farmId });
     await createGardenStack(gardenId, { x: 2, y: 3 });
-    await updateGardenStack(gardenId, { x: 2, y: 3, blocks: ['block1', 'block2'] });
+    await updateGardenStack(gardenId, {
+        x: 2,
+        y: 3,
+        blocks: ['block1', 'block2'],
+    });
     const stack = await getGardenStack(gardenId, { x: 2, y: 3 });
     assert.ok(stack);
     assert.deepStrictEqual(stack?.blocks, ['block1', 'block2']);
@@ -187,7 +203,10 @@ test('updateGardenStack throws if stack does not exist', async () => {
     const accountId = await createAccount();
     const farmId = await ensureFarmId();
     const gardenId = await createTestGarden({ accountId, farmId });
-    await assert.rejects(() => updateGardenStack(gardenId, { x: 99, y: 99, blocks: [] }), /Stack not found/);
+    await assert.rejects(
+        () => updateGardenStack(gardenId, { x: 99, y: 99, blocks: [] }),
+        /Stack not found/,
+    );
 });
 
 test('deleteGardenStack marks stack as deleted', async () => {
