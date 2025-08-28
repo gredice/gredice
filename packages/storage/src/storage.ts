@@ -9,6 +9,8 @@ import {
     drizzle as nodeDrizzle,
 } from 'drizzle-orm/node-postgres';
 import { migrate as nodeMigrate } from 'drizzle-orm/node-postgres/migrator';
+// @ts-expect-error Type definitions for 'pg' ESM entry may not be resolved under NodeNext; runtime is fine for tests
+import { Pool as PgPool } from 'pg';
 import * as schema from './schema';
 
 // Switch between test and production clients based on environment variable
@@ -23,13 +25,19 @@ function getDbConnectionString() {
 }
 
 let pool: Pool | null = null;
+let testPool: PgPool | null = null;
 let client: NodePgDatabase<typeof schema> | NeonDatabase<typeof schema> | null =
     null;
 export function storage() {
     if (isTest) {
         if (!client) {
             console.debug('Instantiating NodePgDatabase for testing');
-            client = nodeDrizzle(getDbConnectionString(), { schema }) as any;
+            if (!testPool) {
+                testPool = new PgPool({
+                    connectionString: getDbConnectionString(),
+                });
+            }
+            client = nodeDrizzle(testPool, { schema });
         }
         return client as NodePgDatabase<typeof schema>;
     }
@@ -52,4 +60,21 @@ export async function migrate() {
     } else {
         await neonMigrate(storage(), { migrationsFolder: './src/migrations' });
     }
+}
+
+export async function closeStorage() {
+    if (isTest) {
+        if (testPool) {
+            await testPool.end();
+            testPool = null;
+        }
+        client = null;
+        return;
+    }
+    // Non-test close (not used in tests, but safe to have)
+    if (pool) {
+        await pool.end();
+    }
+    pool = null;
+    client = null;
 }
