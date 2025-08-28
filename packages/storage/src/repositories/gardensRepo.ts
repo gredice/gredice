@@ -511,16 +511,26 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
     ]);
 
     const raisedBedsEventDiaryEntries = events
-        .map((event) => ({
-            id: event.id,
-            name:
-                event.type === knownEventTypes.raisedBeds.create
-                    ? 'Gredica stvorena'
-                    : 'Gredica obrisana',
-            description: '',
-            status: null,
-            timestamp: event.createdAt,
-        }))
+        .map((event) => {
+            const data = event.data as Record<string, unknown> | undefined;
+            return {
+                id: event.id,
+                name:
+                    event.type === knownEventTypes.raisedBeds.create
+                        ? 'Gredica stvorena'
+                        : 'Gredica obrisana',
+                description: '',
+                status: null,
+                timestamp: event.createdAt,
+                imageUrls: Array.isArray(data?.imageUrls)
+                    ? data.imageUrls.filter(
+                          (url: unknown) => typeof url === 'string',
+                      )
+                    : typeof data?.imageUrl === 'string'
+                      ? [data.imageUrl]
+                      : undefined,
+            };
+        })
         .filter((op) => op.name);
     const operationsDiaryEntries = operations
         .filter((op) => !op.raisedBedFieldId) // Filter out operations with raisedBedFieldId
@@ -534,6 +544,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
             )?.information?.shortDescription,
             status: operationStatusToLabel(op.status),
             timestamp: op.completedAt ?? op.scheduledDate ?? op.createdAt,
+            imageUrls: op.imageUrls,
         }))
         .filter((op) => op.name)
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -608,6 +619,7 @@ export async function getRaisedBedFieldDiaryEntries(
 
     const raisedBedsEventDiaryEntries = events
         .map((event) => {
+            const data = event.data as Record<string, unknown> | undefined;
             let name = 'Nepoznato';
             let description = '';
             switch (event.type) {
@@ -651,6 +663,13 @@ export async function getRaisedBedFieldDiaryEntries(
                 description,
                 status: null,
                 timestamp: event.createdAt,
+                imageUrls: Array.isArray(data?.imageUrls)
+                    ? data.imageUrls.filter(
+                          (url: unknown) => typeof url === 'string',
+                      )
+                    : typeof data?.imageUrl === 'string'
+                      ? [data.imageUrl]
+                      : undefined,
             };
         })
         .filter((event) => event.name);
@@ -666,6 +685,7 @@ export async function getRaisedBedFieldDiaryEntries(
             )?.information?.shortDescription,
             status: operationStatusToLabel(op.status),
             timestamp: op.completedAt ?? op.scheduledDate ?? op.createdAt,
+            imageUrls: op.imageUrls,
         }))
         .filter((op) => op.name)
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());

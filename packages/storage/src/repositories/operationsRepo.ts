@@ -35,6 +35,7 @@ async function fillOperationAggregares(operations: SelectOperation[]) {
         let canceledBy: string | undefined;
         let canceledAt: Date | undefined;
         let cancelReason: string | undefined;
+        let imageUrls: string[] | undefined;
 
         for (const event of events) {
             const data = event.data as Record<string, any> | undefined;
@@ -44,6 +45,13 @@ async function fillOperationAggregares(operations: SelectOperation[]) {
                 completedAt = data?.completedAt
                     ? new Date(data.completedAt)
                     : undefined;
+                if (Array.isArray(data?.imageUrls)) {
+                    imageUrls = data.imageUrls.filter(
+                        (url: unknown) => typeof url === 'string',
+                    );
+                } else if (typeof data?.imageUrl === 'string') {
+                    imageUrls = [data.imageUrl];
+                }
             } else if (event.type === knownEventTypes.operations.fail) {
                 status = 'failed';
                 error = data?.error;
@@ -74,6 +82,7 @@ async function fillOperationAggregares(operations: SelectOperation[]) {
             canceledBy,
             canceledAt,
             cancelReason,
+            imageUrls,
         };
     });
 }
