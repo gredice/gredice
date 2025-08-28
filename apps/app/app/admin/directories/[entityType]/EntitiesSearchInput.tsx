@@ -1,28 +1,31 @@
 'use client';
 
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Close, Search } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Input } from '@signalco/ui-primitives/Input';
 
-export function EntitiesSearchInput() {
-    const [search, setSearch] = useSearchParam('search');
-
+export function EntitiesSearchInput({
+    value,
+    onChange,
+}: {
+    value: string;
+    onChange: (value: string) => void;
+}) {
     return (
         <Input
-            value={search || ''}
-            onChange={(e) => setSearch(e.target.value)}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
             placeholder="Pretraži..."
             startDecorator={<Search className="size-5" />}
             endDecorator={
                 <IconButton
                     className={cx(
                         'hover:bg-neutral-300 mr-1 rounded-full aspect-square',
-                        search ? 'visible' : 'invisible',
+                        value ? 'visible' : 'invisible',
                     )}
                     title="Očisti pretragu"
-                    onClick={() => setSearch('')}
+                    onClick={() => onChange('')}
                     size="sm"
                     variant="plain"
                 >
