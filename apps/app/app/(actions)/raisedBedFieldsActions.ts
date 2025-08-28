@@ -15,11 +15,13 @@ import { KnownPages } from '../../src/KnownPages';
 export async function raisedBedPlanted(
     raisedBedId: number,
     positionIndex: number,
+    plantSortId: number,
 ) {
     await raisedBedFieldUpdatePlant({
         raisedBedId,
         positionIndex,
         status: 'sowed',
+        plantSortId,
     });
 
     revalidatePath(KnownPages.Schedule);
@@ -29,10 +31,12 @@ export async function raisedBedFieldUpdatePlant({
     raisedBedId,
     positionIndex,
     status,
+    plantSortId,
 }: {
     raisedBedId: number;
     positionIndex: number;
     status: string;
+    plantSortId?: number;
 }) {
     await auth(['admin']);
 
@@ -41,20 +45,30 @@ export async function raisedBedFieldUpdatePlant({
         throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
     }
 
-    await createEvent(
-        knownEvents.raisedBedFields.plantUpdateV1(
-            `${raisedBedId.toString()}|${positionIndex.toString()}`,
-            { status: status },
-        ),
-    );
-
-    const field = raisedBed.fields.find(
+    // If a plant sort id is provided and differs from current field, place the plant
+    const aggregateId = `${raisedBedId.toString()}|${positionIndex.toString()}`;
+    const existingField = raisedBed.fields.find(
         (field) => field.positionIndex === positionIndex,
     );
-    if (field?.plantSortId) {
-        const sortData = await getEntityFormatted<EntityStandardized>(
-            field.plantSortId,
+    if (plantSortId && existingField?.plantSortId !== plantSortId) {
+        await createEvent(
+            knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+                plantSortId: plantSortId.toString(),
+                scheduledDate: null,
+            }),
         );
+    }
+
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: status,
+        }),
+    );
+
+    const sortIdToUse = plantSortId ?? existingField?.plantSortId;
+    if (sortIdToUse) {
+        const sortData =
+            await getEntityFormatted<EntityStandardized>(sortIdToUse);
         if (sortData) {
             // Create sprouted notification
             let header: string | null = null;
