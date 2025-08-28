@@ -196,7 +196,7 @@ export function HypertuneHydrator({
 export function HypertuneClientLogger({
   flagPaths,
 }: {
-  flagPaths: hypertune.FlagPaths[];
+  flagPaths: hypertune.FlagPath[];
 }): null {
   const hypertuneRoot = useHypertune();
   const isReady = hypertuneRoot.isReady();

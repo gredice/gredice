@@ -33,7 +33,7 @@ export type FlagValues = {
   "enableDebugHud": boolean;
 }
 
-export type FlagPaths = keyof FlagValues & string;
+export type FlagPath = keyof FlagValues & string;
 
 export const flagFallbacks: FlagValues = {
   "raisedBedFieldWatering": false,
@@ -46,11 +46,11 @@ export const flagFallbacks: FlagValues = {
   "enableDebugHud": false,
 }
 
-export function decodeFlagValues<TFlagPaths extends keyof FlagValues & string>(
-  encodedValues: string,
-  flagPaths: TFlagPaths[]
-): Pick<FlagValues, TFlagPaths> {
-  return sdk.decodeFlagValues({ flagPaths, encodedValues })
+export function decodeFlagValues<TFlagPath extends keyof FlagValues & string>(
+  encodedFlagValues: string,
+  flagPaths: TFlagPath[]
+): Pick<FlagValues, TFlagPath> {
+  return sdk.decodeFlagValues({ encodedValues: encodedFlagValues, flagPaths })
 }
 
 export type VariableValues = {};
