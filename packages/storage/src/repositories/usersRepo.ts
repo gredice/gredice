@@ -320,7 +320,7 @@ export async function clearLoginFailedAttempts(loginId: number) {
 
 export async function updateLoginData(
     loginId: number,
-    data: Record<string, any>,
+    data: Record<string, unknown>,
 ) {
     await storage()
         .update(userLogins)
