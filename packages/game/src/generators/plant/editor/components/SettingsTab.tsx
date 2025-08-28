@@ -6,7 +6,7 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Slider } from '@signalco/ui-primitives/Slider';
-import { plantNames, plantTypes } from '../../lib/plant-definitions';
+import { plantTypeNames, plantTypes } from '../../lib/plant-definitions';
 import type { PlantControlsProps } from '../@types/plant-generator';
 import { CreatePlantModal } from './CreatePlantModal';
 import { VisibilityControls } from './VisibilityControls';
@@ -22,8 +22,11 @@ export function SettingsTab({
     onDeleteCustomPlant,
 }: PlantControlsProps) {
     const allPlants = { ...plantTypes, ...state.customPlants };
-    const allPlantNames = [...plantNames, ...Object.keys(state.customPlants)];
-    const isCustomPlant = !plantNames.includes(state.plantType);
+    const allPlantNames = [
+        ...plantTypeNames,
+        ...Object.keys(state.customPlants),
+    ];
+    const isCustomPlant = !plantTypeNames.includes(state.plantType);
 
     return (
         <div className="space-y-4">

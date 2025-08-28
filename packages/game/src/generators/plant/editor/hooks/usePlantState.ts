@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { plantNames, plantTypes } from '../../lib/plant-definitions';
+import { plantTypeNames, plantTypes } from '../../lib/plant-definitions';
 import type {
     PlantGeneratorState,
     VisibilityState,
@@ -22,8 +22,8 @@ export function usePlantState() {
     const [state, setState] = useState<PlantGeneratorState>({
         generation: 5,
         seed: 'gredice',
-        plantType: plantNames[0],
-        definition: plantTypes[plantNames[0]],
+        plantType: plantTypeNames[0],
+        definition: plantTypes[plantTypeNames[0]],
         flowerGrowth: 1,
         fruitGrowth: 1,
         activeTab: 'settings',
@@ -62,9 +62,10 @@ export function usePlantState() {
             if (savedDefinitions) {
                 try {
                     const parsedDefs = JSON.parse(savedDefinitions);
-                    if (parsedDefs[state.plantType]) {
-                        const baseDef = plantTypes[state.plantType];
-                        const savedDef = parsedDefs[state.plantType];
+                    const defaultPlantType = plantTypeNames[0];
+                    if (parsedDefs[defaultPlantType]) {
+                        const baseDef = plantTypes[defaultPlantType];
+                        const savedDef = parsedDefs[defaultPlantType];
                         const mergedDef = {
                             ...baseDef,
                             ...savedDef,
@@ -89,7 +90,7 @@ export function usePlantState() {
                 }
             }
         }
-    }, [state.plantType]); // Run only once on mount
+    }, []);
 
     /**
      * Get all available plants (base + custom)
@@ -102,7 +103,7 @@ export function usePlantState() {
      * Get all plant names (base + custom)
      */
     const getAllPlantNames = useCallback(() => {
-        return [...plantNames, ...Object.keys(state.customPlants)];
+        return [...plantTypeNames, ...Object.keys(state.customPlants)];
     }, [state.customPlants]);
 
     /**
@@ -224,7 +225,9 @@ export function usePlantState() {
                 ...prev,
                 customPlants: newCustomPlants,
                 plantType:
-                    prev.plantType === name ? plantNames[0] : prev.plantType,
+                    prev.plantType === name
+                        ? plantTypeNames[0]
+                        : prev.plantType,
             }));
             saveCustomPlantsToStorage(newCustomPlants);
 

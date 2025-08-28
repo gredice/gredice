@@ -264,4 +264,4 @@ export const plantTypes: Record<string, PlantDefinition> = {
     },
 };
 
-export const plantNames = Object.keys(plantTypes);
+export const plantTypeNames = Object.keys(plantTypes);

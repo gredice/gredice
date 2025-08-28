@@ -115,8 +115,7 @@ export function RuleEditor({ rules, onRulesChange }: RuleEditorProps) {
                     {Array.isArray(ruleSet) ? (
                         ruleSet.map((part, index) => (
                             <div
-                                // biome-ignore lint/suspicious/noArrayIndexKey: Allowed here, since rules are array/index based
-                                key={index}
+                                key={`${part.rule}|w${part.weight}`}
                                 className="flex items-center gap-2"
                             >
                                 <Input

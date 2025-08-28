@@ -23,6 +23,8 @@ interface PlantGeneratorProps {
 }
 
 const MAX_GROWTH_GENERATION = 8; // Generation at which stems/leaves reach their max potential size
+const MIN_SEGMENT_LENGTH = 0.001;
+const MIN_LEAF_SIZE = 0.01;
 
 export function PlantGenerator({
     plantDefinition,
@@ -143,7 +145,10 @@ export function PlantGenerator({
                             );
                     }
 
-                    if (segmentLength < 0.001 || currentPosition.y < 0)
+                    if (
+                        segmentLength < MIN_SEGMENT_LENGTH ||
+                        currentPosition.y < 0
+                    )
                         continue;
 
                     const radiusBottom = calculateRadius(
@@ -178,7 +183,7 @@ export function PlantGenerator({
                         const leafSize =
                             calculateLeafSize(currentPosition.length()) *
                             renderRng.nextRange(0.8, 1.2);
-                        if (leafSize < 0.01) continue;
+                        if (leafSize < MIN_LEAF_SIZE) continue;
                         const leafScale = new THREE.Vector3(
                             leafSize,
                             leafSize,
