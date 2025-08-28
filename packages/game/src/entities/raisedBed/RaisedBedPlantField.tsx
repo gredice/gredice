@@ -66,11 +66,11 @@ export function RaisedBedPlantField({
             {Array.from({ length: seedsCount }).map((_, index) => {
                 const position = [
                     Math.floor(index / plantsPerRow) *
-                    seedMap[plantsPerRow].multiplier -
-                    plantsPerRow * seedMap[plantsPerRow].offset,
+                        seedMap[plantsPerRow].multiplier -
+                        plantsPerRow * seedMap[plantsPerRow].offset,
                     0,
                     (index % plantsPerRow) * seedMap[plantsPerRow].multiplier -
-                    plantsPerRow * seedMap[plantsPerRow].offset,
+                        plantsPerRow * seedMap[plantsPerRow].offset,
                 ] as const;
                 return (
                     <mesh

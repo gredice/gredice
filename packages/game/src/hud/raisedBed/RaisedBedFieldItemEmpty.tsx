@@ -53,13 +53,21 @@ export function RaisedBedFieldItemEmpty({
         isGardenPending ||
         (Boolean(cartPlantSortId) && isCartPlantSortPending);
     if (isLoading) {
-        return <RaisedBedFieldItemButton isLoading={true} positionIndex={positionIndex} />;
+        return (
+            <RaisedBedFieldItemButton
+                isLoading={true}
+                positionIndex={positionIndex}
+            />
+        );
     }
 
     return (
         <PlantPicker
             trigger={
-                <RaisedBedFieldItemButton isLoading={isLoading} positionIndex={positionIndex}>
+                <RaisedBedFieldItemButton
+                    isLoading={isLoading}
+                    positionIndex={positionIndex}
+                >
                     {(isLoading || !cartPlantItem) && (
                         <PlantingSeed className="size-10 stroke-green-800" />
                     )}

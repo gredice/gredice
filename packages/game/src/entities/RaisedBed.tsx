@@ -1,4 +1,4 @@
-import { animated, } from '@react-spring/three';
+import { animated } from '@react-spring/three';
 import { useHoveredBlockStore } from '../controls/SelectableGroup';
 import { models } from '../data/models';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -66,7 +66,11 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                     castShadow
                     receiveShadow
                     geometry={nodes[`Raised_Bed_${shape}_2`].geometry}
-                    material={materials[shape === 'O' ? 'Material.Dirt' : 'Material.Planks']}
+                    material={
+                        materials[
+                            shape === 'O' ? 'Material.Dirt' : 'Material.Planks'
+                        ]
+                    }
                 >
                     <HoverOutline hovered={hovered} />
                 </mesh>
@@ -74,7 +78,11 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                     castShadow
                     receiveShadow
                     geometry={nodes[`Raised_Bed_${shape}_1`].geometry}
-                    material={materials[shape === 'O' ? 'Material.Planks' : 'Material.Dirt']}
+                    material={
+                        materials[
+                            shape === 'O' ? 'Material.Planks' : 'Material.Dirt'
+                        ]
+                    }
                 >
                     <HoverOutline hovered={hovered} />
                 </mesh>
