@@ -1,21 +1,33 @@
 import 'server-only';
-import { and, eq } from "drizzle-orm";
-import { storage } from "../storage";
-import { entityTypeCategories, entityTypes, InsertEntityTypeCategory, UpdateEntityTypeCategory } from '../schema';
+import { and, eq } from 'drizzle-orm';
+import {
+    entityTypeCategories,
+    entityTypes,
+    type InsertEntityTypeCategory,
+    type UpdateEntityTypeCategory,
+} from '../schema';
+import { storage } from '../storage';
 
 export function getEntityTypeCategories() {
-    return storage().select().from(entityTypeCategories)
+    return storage()
+        .select()
+        .from(entityTypeCategories)
         .where(eq(entityTypeCategories.isDeleted, false))
         .orderBy(entityTypeCategories.order);
 }
 
 export function getEntityTypeCategoryById(id: number) {
     return storage().query.entityTypeCategories.findFirst({
-        where: and(eq(entityTypeCategories.id, id), eq(entityTypeCategories.isDeleted, false)),
+        where: and(
+            eq(entityTypeCategories.id, id),
+            eq(entityTypeCategories.isDeleted, false),
+        ),
     });
 }
 
-export async function upsertEntityTypeCategory(value: InsertEntityTypeCategory | UpdateEntityTypeCategory) {
+export async function upsertEntityTypeCategory(
+    value: InsertEntityTypeCategory | UpdateEntityTypeCategory,
+) {
     if ('id' in value) {
         if (!value.id) {
             throw new Error('Entity type category id is required');
@@ -32,7 +44,7 @@ export async function upsertEntityTypeCategory(value: InsertEntityTypeCategory |
             .onConflictDoUpdate({
                 target: entityTypeCategories.id,
                 set: {
-                    ...value
+                    ...value,
                 },
             });
     }

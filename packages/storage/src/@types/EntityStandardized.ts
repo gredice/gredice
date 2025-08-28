@@ -11,10 +11,10 @@ export type EntityStandardized = {
     };
     attributes?: {
         seedingDistance?: number; // in cm
-    },
+    };
     images?: {
         cover?: { url?: string };
-    },
+    };
     image?: {
         cover?: { url?: string };
     };
@@ -22,4 +22,4 @@ export type EntityStandardized = {
         perPlant?: number;
         perOperation?: number;
     };
-}
+};

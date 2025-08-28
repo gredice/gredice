@@ -1,10 +1,17 @@
 import 'server-only';
-import { and, eq, isNull } from "drizzle-orm";
-import { storage } from "../storage";
-import { entityTypes, entityTypeCategories, InsertEntityType, UpdateEntityType } from '../schema';
+import { and, eq, isNull } from 'drizzle-orm';
+import {
+    entityTypeCategories,
+    entityTypes,
+    type InsertEntityType,
+    type UpdateEntityType,
+} from '../schema';
+import { storage } from '../storage';
 
 export function getEntityTypes() {
-    return storage().select().from(entityTypes)
+    return storage()
+        .select()
+        .from(entityTypes)
         .where(eq(entityTypes.isDeleted, false))
         .orderBy(entityTypes.order);
 }
@@ -23,7 +30,7 @@ export function getEntityTypesByCategory(categoryId: number) {
     return storage().query.entityTypes.findMany({
         where: and(
             eq(entityTypes.categoryId, categoryId),
-            eq(entityTypes.isDeleted, false)
+            eq(entityTypes.isDeleted, false),
         ),
         orderBy: entityTypes.order,
     });
@@ -33,7 +40,7 @@ export function getEntityTypesWithoutCategory() {
     return storage().query.entityTypes.findMany({
         where: and(
             isNull(entityTypes.categoryId),
-            eq(entityTypes.isDeleted, false)
+            eq(entityTypes.isDeleted, false),
         ),
         orderBy: entityTypes.order,
     });
@@ -41,13 +48,19 @@ export function getEntityTypesWithoutCategory() {
 
 export function getEntityTypeByName(entityTypeName: string) {
     return storage().query.entityTypes.findFirst({
-        where: and(eq(entityTypes.name, entityTypeName), eq(entityTypes.isDeleted, false)),
+        where: and(
+            eq(entityTypes.name, entityTypeName),
+            eq(entityTypes.isDeleted, false),
+        ),
     });
 }
 
 export function getEntityTypeByNameWithCategory(entityTypeName: string) {
     return storage().query.entityTypes.findFirst({
-        where: and(eq(entityTypes.name, entityTypeName), eq(entityTypes.isDeleted, false)),
+        where: and(
+            eq(entityTypes.name, entityTypeName),
+            eq(entityTypes.isDeleted, false),
+        ),
         with: {
             category: true,
         },
@@ -75,7 +88,9 @@ export async function getEntityTypesOrganizedByCategories() {
     };
 }
 
-export async function upsertEntityType(value: InsertEntityType | UpdateEntityType) {
+export async function upsertEntityType(
+    value: InsertEntityType | UpdateEntityType,
+) {
     if ('id' in value) {
         if (!value.id) {
             throw new Error('Entity type id is required');
@@ -92,7 +107,7 @@ export async function upsertEntityType(value: InsertEntityType | UpdateEntityTyp
             .onConflictDoUpdate({
                 target: entityTypes.id,
                 set: {
-                    ...value
+                    ...value,
                 },
             });
     }

@@ -1,11 +1,11 @@
 import 'server-only';
 
-import { farms, InsertFarm, storage } from "..";
 import { desc } from 'drizzle-orm';
+import { farms, type InsertFarm, storage } from '..';
 
 export async function getFarms() {
     return storage().query.farms.findMany({
-        orderBy: desc(farms.createdAt)
+        orderBy: desc(farms.createdAt),
     });
 }
 

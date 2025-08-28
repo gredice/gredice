@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq } from 'drizzle-orm';
 import {
     attributeDefinitions,
     attributeValues,
@@ -9,25 +9,35 @@ import {
     type SelectEntity,
     type SelectEntityType,
     storage,
-    type UpdateEntity
-} from "..";
-import { bustCached, cacheKeys, directoriesCached } from '../cache/directoriesCached';
+    type UpdateEntity,
+} from '..';
+import {
+    bustCached,
+    cacheKeys,
+    directoriesCached,
+} from '../cache/directoriesCached';
 
-function populateMissingAttributes(entity: SelectEntity & {
-    attributes: (SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition })[];
-    entityType: SelectEntityType & {
-        attributeDefinitions: SelectAttributeDefinition[];
-    };
-}) {
+function populateMissingAttributes(
+    entity: SelectEntity & {
+        attributes: (SelectAttributeValue & {
+            attributeDefinition: SelectAttributeDefinition;
+        })[];
+        entityType: SelectEntityType & {
+            attributeDefinitions: SelectAttributeDefinition[];
+        };
+    },
+) {
     // Create missing attributes that have default value based on entity type definitions
     for (const definition of entity.entityType.attributeDefinitions) {
         const hasAtleastOneAttributeValue = entity.attributes.some(
-            (a) => a.attributeDefinition.id === definition.id && !a.isDeleted
+            (a) => a.attributeDefinition.id === definition.id && !a.isDeleted,
         );
         // If attribute is missing and we have default defined, create a default one
-        if (!hasAtleastOneAttributeValue &&
-            typeof definition.defaultValue !== "undefined" &&
-            definition.defaultValue !== null) {
+        if (
+            !hasAtleastOneAttributeValue &&
+            typeof definition.defaultValue !== 'undefined' &&
+            definition.defaultValue !== null
+        ) {
             entity.attributes.push({
                 entityId: entity.id,
                 entityTypeName: entity.entityType.name,
@@ -38,7 +48,7 @@ function populateMissingAttributes(entity: SelectEntity & {
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 isDeleted: false,
-                id: 0 // Placeholder ID, will be replaced by database
+                id: 0, // Placeholder ID, will be replaced by database
             });
         }
     }
@@ -56,24 +66,31 @@ function populateMissingAttributes(entity: SelectEntity & {
 export async function getEntitiesRaw(entityTypeName: string, state?: string) {
     const rawEntities = await storage().query.entities.findMany({
         where: state
-            ? and(eq(entities.entityTypeName, entityTypeName), eq(entities.state, state), eq(entities.isDeleted, false))
-            : and(eq(entities.entityTypeName, entityTypeName), eq(entities.isDeleted, false)),
+            ? and(
+                  eq(entities.entityTypeName, entityTypeName),
+                  eq(entities.state, state),
+                  eq(entities.isDeleted, false),
+              )
+            : and(
+                  eq(entities.entityTypeName, entityTypeName),
+                  eq(entities.isDeleted, false),
+              ),
         orderBy: desc(entities.updatedAt),
         with: {
             attributes: {
                 where: eq(attributeValues.isDeleted, false),
                 with: {
-                    attributeDefinition: true
-                }
+                    attributeDefinition: true,
+                },
             },
             entityType: {
                 with: {
                     attributeDefinitions: {
-                        where: eq(attributeDefinitions.isDeleted, false)
-                    }
-                }
-            }
-        }
+                        where: eq(attributeDefinitions.isDeleted, false),
+                    },
+                },
+            },
+        },
     });
 
     return rawEntities.map(populateMissingAttributes);
@@ -81,7 +98,9 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
 
 // Add a type for the cache, ensuring attributes and entityType are included
 interface EntityWithAttributesAndType extends SelectEntity {
-    attributes: (SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition })[];
+    attributes: (SelectAttributeValue & {
+        attributeDefinition: SelectAttributeDefinition;
+    })[];
     entityType: SelectEntityType;
 }
 interface EntityTypeCache {
@@ -91,22 +110,22 @@ interface EntityTypeCache {
 // Update expandEntity to accept a cache
 async function expandEntity(
     entityRaw: EntityWithAttributesAndType | undefined,
-    cache: EntityTypeCache = {}
+    cache: EntityTypeCache = {},
 ) {
     if (!entityRaw) {
         return null;
     }
 
     const entity: {
-        id: number,
+        id: number;
         entityType: {
-            id: number,
-            name: string,
-            label: string,
-        },
-        createdAt: Date,
-        updatedAt: Date,
-        [key: string]: unknown
+            id: number;
+            name: string;
+            label: string;
+        };
+        createdAt: Date;
+        updatedAt: Date;
+        [key: string]: unknown;
     } = {
         id: entityRaw.id,
         entityType: {
@@ -115,7 +134,7 @@ async function expandEntity(
             label: entityRaw.entityType.label,
         },
         createdAt: entityRaw.createdAt,
-        updatedAt: entityRaw.updatedAt
+        updatedAt: entityRaw.updatedAt,
     };
     return await expandEntityAttributes(entity, entityRaw.attributes, cache);
 }
@@ -123,24 +142,38 @@ async function expandEntity(
 // Update expandEntityAttributes to accept a cache
 async function expandEntityAttributes<T extends Record<string, unknown>>(
     entity: T,
-    attributes: (SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition })[],
-    cache: EntityTypeCache = {}
+    attributes: (SelectAttributeValue & {
+        attributeDefinition: SelectAttributeDefinition;
+    })[],
+    cache: EntityTypeCache = {},
 ) {
     const expandedEntity = { ...entity };
     // Prepare all attribute expansion promises
     const attributePromises = attributes.map(async (attribute) => {
         // Create category object if it doesn't exist
-        if (expandedEntity[attribute.attributeDefinition.category] === undefined) {
-            (expandedEntity as Record<string, unknown>)[attribute.attributeDefinition.category] = {};
+        if (
+            expandedEntity[attribute.attributeDefinition.category] === undefined
+        ) {
+            (expandedEntity as Record<string, unknown>)[
+                attribute.attributeDefinition.category
+            ] = {};
         }
-        const category = expandedEntity[attribute.attributeDefinition.category] as Record<string, unknown>;
+        const category = expandedEntity[
+            attribute.attributeDefinition.category
+        ] as Record<string, unknown>;
         if (attribute.attributeDefinition.multiple) {
             // Create array if it doesn't exist
             if (category[attribute.attributeDefinition.name] === undefined) {
                 category[attribute.attributeDefinition.name] = [];
             }
-            const array = category[attribute.attributeDefinition.name] as unknown[];
-            const result = await expandValue(attribute.value, attribute.attributeDefinition, cache);
+            const array = category[
+                attribute.attributeDefinition.name
+            ] as unknown[];
+            const result = await expandValue(
+                attribute.value,
+                attribute.attributeDefinition,
+                cache,
+            );
 
             // When expanding to array, ignore the null values
             if (typeof result !== 'undefined' && result !== null) {
@@ -151,7 +184,11 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
                 }
             }
         } else {
-            category[attribute.attributeDefinition.name] = await expandValue(attribute.value, attribute.attributeDefinition, cache);
+            category[attribute.attributeDefinition.name] = await expandValue(
+                attribute.value,
+                attribute.attributeDefinition,
+                cache,
+            );
         }
     });
     await Promise.all(attributePromises);
@@ -162,7 +199,7 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
 async function expandValue(
     value: string | null | undefined,
     attributeDefinition: SelectAttributeDefinition,
-    cache: EntityTypeCache = {}
+    cache: EntityTypeCache = {},
 ) {
     if (value === null || value === undefined) {
         return null;
@@ -173,27 +210,28 @@ async function expandValue(
     }
     if (attributeDefinition.dataType === 'number') {
         return parseFloat(value);
-    }
-    else if (attributeDefinition.dataType === 'boolean') {
+    } else if (attributeDefinition.dataType === 'boolean') {
         return value === 'true';
-    }
-    else if (attributeDefinition.dataType.startsWith('json')) {
+    } else if (attributeDefinition.dataType.startsWith('json')) {
         if (!value) return null;
         return JSON.parse(value);
-    }
-    else if (attributeDefinition.dataType === 'image') {
+    } else if (attributeDefinition.dataType === 'image') {
         // Assuming the value is a URL or path to the image
         const data = JSON.parse(value) as unknown;
         let url = '';
-        if (typeof data === 'object' && data !== null && 'url' in data && typeof data.url === 'string') {
+        if (
+            typeof data === 'object' &&
+            data !== null &&
+            'url' in data &&
+            typeof data.url === 'string'
+        ) {
             url = data.url;
         }
         return {
             url,
             // TODO: Alt, image size, etc. can be added here
         } as const;
-    }
-    else {
+    } else {
         return value;
     }
 }
@@ -202,7 +240,7 @@ async function expandValue(
 async function resolveRef(
     value: string | null,
     attributeDefinition: SelectAttributeDefinition,
-    cache: EntityTypeCache = {}
+    cache: EntityTypeCache = {},
 ) {
     const refEntityTypeName = attributeDefinition.dataType.split(':')[1];
     if (!value) {
@@ -233,43 +271,82 @@ async function resolveRef(
     // Use cache key based on entity type and state
     const cacheKey = `${refEntityTypeName}:published`;
     if (!cache[cacheKey]) {
-        cache[cacheKey] = getEntitiesRaw(refEntityTypeName, 'published') as Promise<EntityWithAttributesAndType[]>;
+        cache[cacheKey] = getEntitiesRaw(
+            refEntityTypeName,
+            'published',
+        ) as Promise<EntityWithAttributesAndType[]>;
     }
     const refEntitiesByType = await cache[cacheKey];
     const refNameSet = new Set(refNames);
-    const refEntities = refEntitiesByType.filter((e: EntityWithAttributesAndType) =>
-        e.attributes.some((a: SelectAttributeValue & { attributeDefinition: SelectAttributeDefinition }) =>
-            a.value != null &&
-            a.attributeDefinition.category === 'information' &&
-            a.attributeDefinition.name === 'name' &&
-            refNameSet.has(a.value))
+    const refEntities = refEntitiesByType.filter(
+        (e: EntityWithAttributesAndType) =>
+            e.attributes.some(
+                (
+                    a: SelectAttributeValue & {
+                        attributeDefinition: SelectAttributeDefinition;
+                    },
+                ) =>
+                    a.value != null &&
+                    a.attributeDefinition.category === 'information' &&
+                    a.attributeDefinition.name === 'name' &&
+                    refNameSet.has(a.value),
+            ),
     );
 
     if (attributeDefinition.multiple) {
-        return await Promise.all(refEntities.map(ref => expandEntityAttributes({
-            id: ref.id,
-        }, ref.attributes, cache)));
+        return await Promise.all(
+            refEntities.map((ref) =>
+                expandEntityAttributes(
+                    {
+                        id: ref.id,
+                    },
+                    ref.attributes,
+                    cache,
+                ),
+            ),
+        );
     } else {
-        return refEntities[0] ? await expandEntityAttributes({
-            id: refEntities[0].id,
-        }, refEntities[0].attributes, cache) : null;
+        return refEntities[0]
+            ? await expandEntityAttributes(
+                  {
+                      id: refEntities[0].id,
+                  },
+                  refEntities[0].attributes,
+                  cache,
+              )
+            : null;
     }
 }
 
-export async function getEntitiesFormatted<T extends unknown>(entityTypeName: string) {
-    return directoriesCached(cacheKeys.entityTypeName(entityTypeName), async () => {
-        const cache: EntityTypeCache = {};
-        const entities = await getEntitiesRaw(entityTypeName, 'published') as EntityWithAttributesAndType[];
-        return await Promise.all(entities.map(e => expandEntity(e, cache))) as T[];
-    }, 60 * 60);
+export async function getEntitiesFormatted<T>(entityTypeName: string) {
+    return directoriesCached(
+        cacheKeys.entityTypeName(entityTypeName),
+        async () => {
+            const cache: EntityTypeCache = {};
+            const entities = (await getEntitiesRaw(
+                entityTypeName,
+                'published',
+            )) as EntityWithAttributesAndType[];
+            return (await Promise.all(
+                entities.map((e) => expandEntity(e, cache)),
+            )) as T[];
+        },
+        60 * 60,
+    );
 }
 
-export async function getEntityFormatted<T extends unknown>(id: number) {
-    return directoriesCached(cacheKeys.entity(id), async () => {
-        const cache: EntityTypeCache = {};
-        const entity = await getEntityRaw(id) as EntityWithAttributesAndType | undefined;
-        return await expandEntity(entity, cache) as T;
-    }, 60 * 60);
+export async function getEntityFormatted<T>(id: number) {
+    return directoriesCached(
+        cacheKeys.entity(id),
+        async () => {
+            const cache: EntityTypeCache = {};
+            const entity = (await getEntityRaw(id)) as
+                | EntityWithAttributesAndType
+                | undefined;
+            return (await expandEntity(entity, cache)) as T;
+        },
+        60 * 60,
+    );
 }
 
 export async function getEntityRaw(id: number) {
@@ -279,17 +356,17 @@ export async function getEntityRaw(id: number) {
             attributes: {
                 where: eq(attributeValues.isDeleted, false),
                 with: {
-                    attributeDefinition: true
-                }
+                    attributeDefinition: true,
+                },
             },
             entityType: {
                 with: {
                     attributeDefinitions: {
-                        where: eq(attributeDefinitions.isDeleted, false)
-                    }
-                }
-            }
-        }
+                        where: eq(attributeDefinitions.isDeleted, false),
+                    },
+                },
+            },
+        },
     });
     if (!entity) {
         return undefined;
@@ -303,7 +380,7 @@ export async function createEntity(entityTypeName: string) {
             .insert(entities)
             .values({ entityTypeName })
             .returning({ id: entities.id }),
-        bustCached(cacheKeys.entityTypeName(entityTypeName))
+        bustCached(cacheKeys.entityTypeName(entityTypeName)),
     ]);
     return result[0].id;
 }
@@ -315,7 +392,7 @@ export async function duplicateEntity(id: number) {
     }
 
     const newEntityId = await createEntity(entity.entityTypeName);
-    const newAttributes = entity.attributes.map(attr => ({
+    const newAttributes = entity.attributes.map((attr) => ({
         entityId: newEntityId,
         entityTypeName: entity.entityTypeName,
         attributeDefinitionId: attr.attributeDefinition.id,
@@ -324,11 +401,9 @@ export async function duplicateEntity(id: number) {
     }));
 
     await Promise.all([
-        storage()
-            .insert(attributeValues)
-            .values(newAttributes),
+        storage().insert(attributeValues).values(newAttributes),
         bustCached(cacheKeys.entityTypeName(entity.entityTypeName)),
-        bustCached(cacheKeys.entity(newEntityId))
+        bustCached(cacheKeys.entity(newEntityId)),
     ]);
 
     return newEntityId;
@@ -336,7 +411,7 @@ export async function duplicateEntity(id: number) {
 
 export async function updateEntity(entity: UpdateEntity) {
     const updateData = {
-        ...entity
+        ...entity,
     };
 
     if (updateData.state === 'published') {
@@ -349,15 +424,31 @@ export async function updateEntity(entity: UpdateEntity) {
             .set(entity)
             .where(eq(entities.id, entity.id)),
         bustCached(cacheKeys.entity(entity.id)),
-        entity.id ? storage().select().from(entities).where(eq(entities.id, entity.id)).then(
-            entityToUpdate => {
-                return Promise.all([
-                    entityToUpdate?.[0].id ? bustCached(cacheKeys.entity(entityToUpdate?.[0]?.id)) : undefined,
-                    entityToUpdate?.[0].entityTypeName ? bustCached(cacheKeys.entityTypeName(entityToUpdate?.[0].entityTypeName)) : undefined
-                ]);
-            }
-        ) : undefined,
-        entity.entityTypeName ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName)) : null
+        entity.id
+            ? storage()
+                  .select()
+                  .from(entities)
+                  .where(eq(entities.id, entity.id))
+                  .then((entityToUpdate) => {
+                      return Promise.all([
+                          entityToUpdate?.[0].id
+                              ? bustCached(
+                                    cacheKeys.entity(entityToUpdate?.[0]?.id),
+                                )
+                              : undefined,
+                          entityToUpdate?.[0].entityTypeName
+                              ? bustCached(
+                                    cacheKeys.entityTypeName(
+                                        entityToUpdate?.[0].entityTypeName,
+                                    ),
+                                )
+                              : undefined,
+                      ]);
+                  })
+            : undefined,
+        entity.entityTypeName
+            ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
+            : null,
     ]);
 }
 
@@ -373,6 +464,8 @@ export async function deleteEntity(id: number) {
             .set({ isDeleted: true })
             .where(eq(entities.id, id)),
         bustCached(cacheKeys.entity(id)),
-        entity.entityTypeName ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName)) : null
+        entity.entityTypeName
+            ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
+            : null,
     ]);
 }

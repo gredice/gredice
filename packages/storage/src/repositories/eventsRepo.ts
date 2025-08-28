@@ -1,89 +1,156 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
-import { storage } from "../storage";
-import { events } from "../schema";
+import { and, asc, eq, inArray } from 'drizzle-orm';
+import { events } from '../schema';
+import { storage } from '../storage';
 
 export const knownEventTypes = {
     accounts: {
-        create: "account.create",
-        assignUser: "account.assignUser",
-        earnSunflowers: "account.earnSunflowers",
-        spendSunflowers: "account.spendSunflowers",
+        create: 'account.create',
+        assignUser: 'account.assignUser',
+        earnSunflowers: 'account.earnSunflowers',
+        spendSunflowers: 'account.spendSunflowers',
     },
     users: {
-        create: "user.create",
+        create: 'user.create',
     },
     gardens: {
-        create: "garden.create",
-        rename: "garden.rename",
-        delete: "garden.delete",
-        blockPlace: "garden.blockPlace",
+        create: 'garden.create',
+        rename: 'garden.rename',
+        delete: 'garden.delete',
+        blockPlace: 'garden.blockPlace',
     },
     transactions: {
-        create: "transaction.create",
-        update: "transaction.update",
-        delete: "transaction.delete",
+        create: 'transaction.create',
+        update: 'transaction.update',
+        delete: 'transaction.delete',
     },
     invoices: {
-        create: "invoice.create",
-        update: "invoice.update",
-        delete: "invoice.delete",
-        paid: "invoice.paid",
+        create: 'invoice.create',
+        update: 'invoice.update',
+        delete: 'invoice.delete',
+        paid: 'invoice.paid',
     },
     receipts: {
-        create: "receipt.create",
-        update: "receipt.update",
-        fiscalize: "receipt.fiscalize",
+        create: 'receipt.create',
+        update: 'receipt.update',
+        fiscalize: 'receipt.fiscalize',
     },
     raisedBeds: {
-        create: "raisedBed.create",
-        place: "raisedBed.place",
-        delete: "raisedBed.delete",
-        abandon: "raisedBed.abandon",
+        create: 'raisedBed.create',
+        place: 'raisedBed.place',
+        delete: 'raisedBed.delete',
+        abandon: 'raisedBed.abandon',
     },
     raisedBedFields: {
-        create: "raisedBedField.create",
-        delete: "raisedBedField.delete",
-        plantPlace: "raisedBedField.plantPlace",
-        plantUpdate: "raisedBedField.plantUpdate",
+        create: 'raisedBedField.create',
+        delete: 'raisedBedField.delete',
+        plantPlace: 'raisedBedField.plantPlace',
+        plantUpdate: 'raisedBedField.plantUpdate',
     },
     operations: {
-        schedule: "operation.schedule",
-        complete: "operation.complete",
-        fail: "operation.fail",
-        cancel: "operation.cancel",
+        schedule: 'operation.schedule',
+        complete: 'operation.complete',
+        fail: 'operation.fail',
+        cancel: 'operation.cancel',
     },
     delivery: {
-        requestCreated: "delivery.request.created",
-        requestSlotChanged: "delivery.request.slot.changed",
-        requestAddressChanged: "delivery.request.address.changed",
-        requestConfirmed: "delivery.request.confirmed",
-        requestPreparing: "delivery.request.preparing",
-        requestReady: "delivery.request.ready",
-        requestCancelled: "delivery.request.cancelled",
-        requestFulfilled: "delivery.request.fulfilled",
-        userCancelled: "delivery.request.user_cancelled",
-    }
-}
+        requestCreated: 'delivery.request.created',
+        requestSlotChanged: 'delivery.request.slot.changed',
+        requestAddressChanged: 'delivery.request.address.changed',
+        requestConfirmed: 'delivery.request.confirmed',
+        requestPreparing: 'delivery.request.preparing',
+        requestReady: 'delivery.request.ready',
+        requestCancelled: 'delivery.request.cancelled',
+        requestFulfilled: 'delivery.request.fulfilled',
+        userCancelled: 'delivery.request.user_cancelled',
+    },
+};
 
 export const knownEvents = {
     accounts: {
-        createdV1: (aggregateId: string) => ({ type: knownEventTypes.accounts.create, version: 1, aggregateId }),
-        assignedUserV1: (aggregateId: string, data: { userId: string }) => ({ type: knownEventTypes.accounts.assignUser, version: 1, aggregateId, data }),
-        sunflowersEarnedV1: (aggregateId: string, data: { amount: number, reason: string }) => ({ type: knownEventTypes.accounts.earnSunflowers, version: 1, aggregateId, data }),
-        sunflowersSpentV1: (aggregateId: string, data: { amount: number, reason: string }) => ({ type: knownEventTypes.accounts.spendSunflowers, version: 1, aggregateId, data }),
+        createdV1: (aggregateId: string) => ({
+            type: knownEventTypes.accounts.create,
+            version: 1,
+            aggregateId,
+        }),
+        assignedUserV1: (aggregateId: string, data: { userId: string }) => ({
+            type: knownEventTypes.accounts.assignUser,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        sunflowersEarnedV1: (
+            aggregateId: string,
+            data: { amount: number; reason: string },
+        ) => ({
+            type: knownEventTypes.accounts.earnSunflowers,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        sunflowersSpentV1: (
+            aggregateId: string,
+            data: { amount: number; reason: string },
+        ) => ({
+            type: knownEventTypes.accounts.spendSunflowers,
+            version: 1,
+            aggregateId,
+            data,
+        }),
     },
     users: {
-        createdV1: (aggregateId: string) => ({ type: knownEventTypes.users.create, version: 1, aggregateId }),
+        createdV1: (aggregateId: string) => ({
+            type: knownEventTypes.users.create,
+            version: 1,
+            aggregateId,
+        }),
     },
     gardens: {
-        createdV1: (aggregateId: string, data: { name: string, accountId: string }) => ({ type: knownEventTypes.gardens.create, version: 1, aggregateId, data }),
-        renamedV1: (aggregateId: string, data: { name: string }) => ({ type: knownEventTypes.gardens.rename, version: 1, aggregateId, data }),
-        deletedV1: (aggregateId: string) => ({ type: knownEventTypes.gardens.delete, version: 1, aggregateId }),
-        blockPlacedV1: (aggregateId: string, data: { id: string, name: string }) => ({ type: knownEventTypes.gardens.blockPlace, version: 1, aggregateId, data }),
-        blockRemovedV1: (aggregateId: string, data: { id: string }) => ({ type: knownEventTypes.gardens.blockPlace, version: 1, aggregateId, data }),
+        createdV1: (
+            aggregateId: string,
+            data: { name: string; accountId: string },
+        ) => ({
+            type: knownEventTypes.gardens.create,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        renamedV1: (aggregateId: string, data: { name: string }) => ({
+            type: knownEventTypes.gardens.rename,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        deletedV1: (aggregateId: string) => ({
+            type: knownEventTypes.gardens.delete,
+            version: 1,
+            aggregateId,
+        }),
+        blockPlacedV1: (
+            aggregateId: string,
+            data: { id: string; name: string },
+        ) => ({
+            type: knownEventTypes.gardens.blockPlace,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        blockRemovedV1: (aggregateId: string, data: { id: string }) => ({
+            type: knownEventTypes.gardens.blockPlace,
+            version: 1,
+            aggregateId,
+            data,
+        }),
     },
     transactions: {
-        createdV1: (aggregateId: string, data: { accountId: string; amount: number; currency: string; status: string }) => ({
+        createdV1: (
+            aggregateId: string,
+            data: {
+                accountId: string;
+                amount: number;
+                currency: string;
+                status: string;
+            },
+        ) => ({
             type: knownEventTypes.transactions.create,
             version: 1,
             aggregateId,
@@ -102,7 +169,15 @@ export const knownEvents = {
         }),
     },
     invoices: {
-        createdV1: (aggregateId: string, data: { accountId: string; invoiceNumber: string; totalAmount: string; status: string }) => ({
+        createdV1: (
+            aggregateId: string,
+            data: {
+                accountId: string;
+                invoiceNumber: string;
+                totalAmount: string;
+                status: string;
+            },
+        ) => ({
             type: knownEventTypes.invoices.create,
             version: 1,
             aggregateId,
@@ -114,7 +189,14 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
-        paidV1: (aggregateId: string, data: { paidDate: string; receiptId?: string; receiptNumber?: string }) => ({
+        paidV1: (
+            aggregateId: string,
+            data: {
+                paidDate: string;
+                receiptId?: string;
+                receiptNumber?: string;
+            },
+        ) => ({
             type: knownEventTypes.invoices.paid,
             version: 1,
             aggregateId,
@@ -127,7 +209,15 @@ export const knownEvents = {
         }),
     },
     receipts: {
-        createdV1: (aggregateId: string, data: { invoiceId: string; receiptNumber: string; totalAmount: string; paymentMethod: string }) => ({
+        createdV1: (
+            aggregateId: string,
+            data: {
+                invoiceId: string;
+                receiptNumber: string;
+                totalAmount: string;
+                paymentMethod: string;
+            },
+        ) => ({
             type: knownEventTypes.receipts.create,
             version: 1,
             aggregateId,
@@ -138,7 +228,15 @@ export const knownEvents = {
             version: 1,
             aggregateId,
         }),
-        fiscalizedV1: (aggregateId: string, data: { jir?: string; zki?: string; cisStatus: string, cisResponse?: string | null }) => ({
+        fiscalizedV1: (
+            aggregateId: string,
+            data: {
+                jir?: string;
+                zki?: string;
+                cisStatus: string;
+                cisResponse?: string | null;
+            },
+        ) => ({
             type: knownEventTypes.receipts.fiscalize,
             version: 1,
             aggregateId,
@@ -146,7 +244,10 @@ export const knownEvents = {
         }),
     },
     raisedBeds: {
-        createdV1: (aggregateId: string, data: { gardenId: number; blockId: string }) => ({
+        createdV1: (
+            aggregateId: string,
+            data: { gardenId: number; blockId: string },
+        ) => ({
             type: knownEventTypes.raisedBeds.create,
             version: 1,
             aggregateId,
@@ -161,7 +262,7 @@ export const knownEvents = {
             type: knownEventTypes.raisedBeds.abandon,
             version: 1,
             aggregateId,
-            data: { status: "abandoned" },
+            data: { status: 'abandoned' },
         }),
     },
     raisedBedFields: {
@@ -176,7 +277,13 @@ export const knownEvents = {
             version: 1,
             aggregateId,
         }),
-        plantPlaceV1: (aggregateId: string, data: { plantSortId: string, scheduledDate: string | null | undefined }) => ({
+        plantPlaceV1: (
+            aggregateId: string,
+            data: {
+                plantSortId: string;
+                scheduledDate: string | null | undefined;
+            },
+        ) => ({
             type: knownEventTypes.raisedBedFields.plantPlace,
             version: 1,
             aggregateId,
@@ -187,77 +294,109 @@ export const knownEvents = {
             version: 1,
             aggregateId,
             data,
-        })
+        }),
     },
     operations: {
-        scheduledV1: (aggregateId: string, data: { scheduledDate: string }) => ({
+        scheduledV1: (
+            aggregateId: string,
+            data: { scheduledDate: string },
+        ) => ({
             type: knownEventTypes.operations.schedule,
             version: 1,
             aggregateId,
-            data
+            data,
         }),
         completedV1: (aggregateId: string, data: { completedBy: string }) => ({
             type: knownEventTypes.operations.complete,
             version: 1,
             aggregateId,
-            data
+            data,
         }),
-        failedV1: (aggregateId: string, data: { error: string, errorCode: string }) => ({
+        failedV1: (
+            aggregateId: string,
+            data: { error: string; errorCode: string },
+        ) => ({
             type: knownEventTypes.operations.fail,
             version: 1,
             aggregateId,
-            data
+            data,
         }),
-        canceledV1: (aggregateId: string, data: { canceledBy: string, reason: string }) => ({
+        canceledV1: (
+            aggregateId: string,
+            data: { canceledBy: string; reason: string },
+        ) => ({
             type: knownEventTypes.operations.cancel,
             version: 1,
             aggregateId,
-            data
+            data,
         }),
     },
     delivery: {
-        requestCreatedV1: (aggregateId: string, data: {
-            operationId: number;
-            slotId: number;
-            mode: string;
-            addressId?: number;
-            locationId?: number;
-            notes?: string;
-            accountId: string;
-            gardenId?: string;
-            raisedBedId?: string;
-            raisedBedFieldId?: string;
-        }) => ({
+        requestCreatedV1: (
+            aggregateId: string,
+            data: {
+                operationId: number;
+                slotId: number;
+                mode: string;
+                addressId?: number;
+                locationId?: number;
+                notes?: string;
+                accountId: string;
+                gardenId?: string;
+                raisedBedId?: string;
+                raisedBedFieldId?: string;
+            },
+        ) => ({
             type: knownEventTypes.delivery.requestCreated,
             version: 1,
             aggregateId,
             data,
         }),
-        requestSlotChangedV1: (aggregateId: string, data: { previousSlotId: number; newSlotId: number }) => ({
+        requestSlotChangedV1: (
+            aggregateId: string,
+            data: { previousSlotId: number; newSlotId: number },
+        ) => ({
             type: knownEventTypes.delivery.requestSlotChanged,
             version: 1,
             aggregateId,
             data,
         }),
-        requestAddressChangedV1: (aggregateId: string, data: { addressId: number }) => ({
+        requestAddressChangedV1: (
+            aggregateId: string,
+            data: { addressId: number },
+        ) => ({
             type: knownEventTypes.delivery.requestAddressChanged,
             version: 1,
             aggregateId,
             data,
         }),
-        requestCancelledV1: (aggregateId: string, data: { actorType: string; cancelReason: string; note?: string; cancelledBy?: string }) => ({
+        requestCancelledV1: (
+            aggregateId: string,
+            data: {
+                actorType: string;
+                cancelReason: string;
+                note?: string;
+                cancelledBy?: string;
+            },
+        ) => ({
             type: knownEventTypes.delivery.requestCancelled,
             version: 1,
             aggregateId,
             data,
         }),
-        requestConfirmedV1: (aggregateId: string, data: { status: string }) => ({
+        requestConfirmedV1: (
+            aggregateId: string,
+            data: { status: string },
+        ) => ({
             type: knownEventTypes.delivery.requestConfirmed,
             version: 1,
             aggregateId,
             data,
         }),
-        requestPreparingV1: (aggregateId: string, data: { status: string }) => ({
+        requestPreparingV1: (
+            aggregateId: string,
+            data: { status: string },
+        ) => ({
             type: knownEventTypes.delivery.requestPreparing,
             version: 1,
             aggregateId,
@@ -269,7 +408,10 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
-        requestFulfilledV1: (aggregateId: string, data: { status: string; deliveryNotes?: string }) => ({
+        requestFulfilledV1: (
+            aggregateId: string,
+            data: { status: string; deliveryNotes?: string },
+        ) => ({
             type: knownEventTypes.delivery.requestFulfilled,
             version: 1,
             aggregateId,
@@ -278,21 +420,27 @@ export const knownEvents = {
         userCancelledV1: (aggregateId: string) => ({
             type: knownEventTypes.delivery.userCancelled,
             version: 1,
-            aggregateId
+            aggregateId,
         }),
     },
-}
+};
 
-export function getEvents(type: string | string[], aggregateIds: string[], offset: number = 0, limit: number = 1000) {
+export function getEvents(
+    type: string | string[],
+    aggregateIds: string[],
+    offset: number = 0,
+    limit: number = 1000,
+) {
     return storage().query.events.findMany({
         where: and(
             inArray(events.aggregateId, aggregateIds),
             Array.isArray(type)
                 ? inArray(events.type, type)
-                : eq(events.type, type)),
+                : eq(events.type, type),
+        ),
         orderBy: [asc(events.createdAt)],
         offset,
-        limit
+        limit,
     });
 }
 
@@ -300,8 +448,8 @@ export type Event = {
     type: string;
     version: number;
     aggregateId: string;
-    data?: any | null | undefined;
-}
+    data?: unknown | null | undefined;
+};
 
 export function createEvent({ type, version, aggregateId, data }: Event) {
     return storage().insert(events).values({

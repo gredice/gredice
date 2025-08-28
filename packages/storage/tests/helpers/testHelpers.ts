@@ -1,11 +1,19 @@
-import { createFarm, getFarms, getAccount, createAccount as storageCreateAccount, createAccount, getAccounts, createGardenBlock } from '@gredice/storage';
-import { accounts } from '../../src/schema/usersSchema';
+import {
+    createAccount,
+    createFarm,
+    createGardenBlock,
+    getFarms,
+} from '@gredice/storage';
 
 /**
  * Helper to create a garden for tests
  * @param opts - { name, accountId, farmId }
  */
-export async function createTestGarden(opts: { name?: string; accountId: string; farmId: number }) {
+export async function createTestGarden(opts: {
+    name?: string;
+    accountId: string;
+    farmId: number;
+}) {
     const { name = 'Test Garden', accountId, farmId } = opts;
     // Import createGarden only when used to avoid circular deps in helpers
     const { createGarden } = await import('@gredice/storage');
@@ -18,7 +26,7 @@ export async function ensureFarmId() {
         return await createFarm({
             name: 'Default Farm',
             longitude: 0,
-            latitude: 0
+            latitude: 0,
         });
     }
     return farms[0].id;
@@ -38,7 +46,11 @@ export async function createTestAccount() {
  * @param accountId - The account ID associated with the raised bed
  * @param blockId - The block ID where the raised bed will be located
  */
-export async function createTestRaisedBed(gardenId: number, accountId: string, blockId: string) {
+export async function createTestRaisedBed(
+    gardenId: number,
+    accountId: string,
+    blockId: string,
+) {
     const { createRaisedBed } = await import('@gredice/storage');
     return await createRaisedBed({
         accountId,

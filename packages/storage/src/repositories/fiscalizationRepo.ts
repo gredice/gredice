@@ -1,12 +1,12 @@
 import 'server-only';
-import { and, eq } from "drizzle-orm";
-import { storage } from "../storage";
+import { and, eq } from 'drizzle-orm';
 import {
-    fiscalizationUserSettings,
     fiscalizationPosSettings,
-    SelectFiscalizationUserSettings,
-    SelectFiscalizationPosSettings,
-} from "../schema";
+    fiscalizationUserSettings,
+    type SelectFiscalizationPosSettings,
+    type SelectFiscalizationUserSettings,
+} from '../schema';
+import { storage } from '../storage';
 
 // Get active fiscalization user settings for an account
 export async function getFiscalizationUserSettings(): Promise<SelectFiscalizationUserSettings | null> {
@@ -16,8 +16,8 @@ export async function getFiscalizationUserSettings(): Promise<SelectFiscalizatio
         .where(
             and(
                 eq(fiscalizationUserSettings.isActive, true),
-                eq(fiscalizationUserSettings.isDeleted, false)
-            )
+                eq(fiscalizationUserSettings.isDeleted, false),
+            ),
         )
         .limit(1);
 
@@ -32,8 +32,8 @@ export async function getFiscalizationPosSettings(): Promise<SelectFiscalization
         .where(
             and(
                 eq(fiscalizationPosSettings.isActive, true),
-                eq(fiscalizationPosSettings.isDeleted, false)
-            )
+                eq(fiscalizationPosSettings.isDeleted, false),
+            ),
         )
         .limit(1);
 
@@ -49,6 +49,6 @@ export async function getAllFiscalizationSettings() {
 
     return {
         userSettings,
-        posSettings
+        posSettings,
     };
 }
