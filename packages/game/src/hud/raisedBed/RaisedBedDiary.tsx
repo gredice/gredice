@@ -1,4 +1,3 @@
-import { client } from '@gredice/client';
 import { Alert } from '@signalco/ui/Alert';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { List } from '@signalco/ui-primitives/List';
@@ -7,43 +6,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { useQuery } from '@tanstack/react-query';
-
-function useRaiedBedDiaryEntries(gardenId: number, raisedBedId: number) {
-    return useQuery({
-        queryKey: ['raisedBeds', raisedBedId, 'diary'],
-        queryFn: async () => {
-            const entries = await client().api.gardens[':gardenId'][
-                'raised-beds'
-            ][':raisedBedId']['diary-entries'].$get({
-                param: {
-                    gardenId: gardenId.toString(),
-                    raisedBedId: raisedBedId.toString(),
-                },
-            });
-            if (entries.status === 400) {
-                console.error(
-                    'Failed to fetch diary entries - bad request',
-                    entries,
-                );
-                return [];
-            }
-            if (entries.status === 404) {
-                console.error(
-                    'Raised bed not found or no diary entries available',
-                    entries,
-                );
-                return [];
-            }
-            return (await entries.json()).map((entry) => ({
-                ...entry,
-                timestamp: new Date(entry.timestamp),
-            }));
-        },
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        enabled: Boolean(gardenId) && Boolean(raisedBedId),
-    });
-}
+import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';
 
 export function RaisedBedDiary({
     gardenId,
@@ -56,7 +19,7 @@ export function RaisedBedDiary({
         data: entries,
         isLoading,
         error,
-    } = useRaiedBedDiaryEntries(gardenId, raisedBedId);
+    } = useRaisedBedDiaryEntries(gardenId, raisedBedId);
     return (
         <List>
             {error && (
