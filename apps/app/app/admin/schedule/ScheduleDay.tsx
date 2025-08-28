@@ -271,9 +271,11 @@ export function ScheduleDay({
                                     ) ** 2;
 
                                 const handlePlantConfirm = async () => {
+                                    if (!field.plantSortId) return;
                                     await raisedBedPlanted(
                                         field.raisedBedId,
                                         field.positionIndex,
+                                        field.plantSortId,
                                     );
                                 };
 
