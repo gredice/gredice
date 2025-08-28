@@ -1,3 +1,4 @@
+import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Chip } from '@signalco/ui-primitives/Chip';
@@ -218,45 +219,31 @@ export function RaisedBedFieldLifecycleTab({
         : null;
 
     let icon: ReactNode | null = null;
-    let localizedStatus = field.plantStatus;
-    switch (localizedStatus) {
+    const localizedStatus = plantFieldStatusLabel(field.plantStatus);
+    switch (field.plantStatus) {
         case 'new':
             icon = <span className="mr-0.5">{'🌟'}</span>;
-            localizedStatus = 'Čeka sijanje';
             break;
         case 'planned':
             icon = <span className="mr-0.5">{'⌛'}</span>;
-            localizedStatus = 'Planirana';
             break;
         case 'sowed':
             icon = <span className="mr-0.5">{'𓇢'}</span>;
-            localizedStatus = 'Posijana';
             break;
         case 'notSprouted':
             icon = <span className="mr-0.5">{'😢'}</span>;
-            localizedStatus = 'Nije proklijala';
             break;
         case 'sprouted':
             icon = <span className="mr-0.5">{'🌱'}</span>;
-            localizedStatus = 'Proklijala';
             break;
         case 'ready':
             icon = <span className="mr-0.5">{'🌿'}</span>;
-            localizedStatus = 'Spremna za berbu';
             break;
         case 'harvested':
             icon = <span className="mr-0.5">{'✅'}</span>;
-            localizedStatus = 'Ubrana';
             break;
         case 'died':
             icon = <span className="mr-0.5">{'😢'}</span>;
-            localizedStatus = 'Neuspjela';
-            break;
-        case 'uprooted':
-            localizedStatus = 'Uklonjena';
-            break;
-        default:
-            localizedStatus = 'Nepoznato';
             break;
     }
 
@@ -326,7 +313,7 @@ export function RaisedBedFieldLifecycleTab({
                             className="text-center"
                             semiBold
                         >
-                            {localizedStatus}
+                            {localizedStatus.shortLabel}
                         </Typography>
                     </Stack>
                 </SegmentedCircularProgress>

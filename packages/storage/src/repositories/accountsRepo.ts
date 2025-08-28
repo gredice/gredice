@@ -1,17 +1,22 @@
 import 'server-only';
-import { accounts, accountUsers, storage } from "..";
-import { desc, eq } from 'drizzle-orm';
-import { createEvent, getEvents, knownEvents, knownEventTypes } from './eventsRepo';
 import { randomUUID } from 'node:crypto';
+import { desc, eq } from 'drizzle-orm';
+import { accounts, accountUsers, storage } from '..';
+import {
+    createEvent,
+    getEvents,
+    knownEvents,
+    knownEventTypes,
+} from './eventsRepo';
 
 export function getAccounts() {
     return storage().query.accounts.findMany({
         with: {
             accountUsers: {
                 with: {
-                    user: true
-                }
-            }
+                    user: true,
+                },
+            },
         },
         orderBy: desc(accounts.createdAt),
     });
@@ -27,8 +32,8 @@ export function getAccountUsers(accountId: string) {
     return storage().query.accountUsers.findMany({
         where: eq(accountUsers.accountId, accountId),
         with: {
-            user: true
-        }
+            user: true,
+        },
     });
 }
 
@@ -50,7 +55,10 @@ export async function createAccount() {
     return accountId;
 }
 
-export async function assignStripeCustomerId(accountId: string, stripeCustomerId: string) {
+export async function assignStripeCustomerId(
+    accountId: string,
+    stripeCustomerId: string,
+) {
     const result = await storage()
         .update(accounts)
         .set({ stripeCustomerId })
@@ -63,20 +71,35 @@ export async function getSunflowers(accountId: string) {
     // Calculate sunflowers based on events
     let currentSunflowers = 0;
     const events = await getEvents(
-        [knownEventTypes.accounts.earnSunflowers, knownEventTypes.accounts.spendSunflowers],
-        [accountId]);
+        [
+            knownEventTypes.accounts.earnSunflowers,
+            knownEventTypes.accounts.spendSunflowers,
+        ],
+        [accountId],
+    );
     for (const event of events) {
-        currentSunflowers += event.type === knownEventTypes.accounts.spendSunflowers
-            ? -Number((event.data as any).amount ?? 0)
-            : Number((event.data as any).amount ?? 0);
+        currentSunflowers +=
+            event.type === knownEventTypes.accounts.spendSunflowers
+                ? -Number((event.data as any).amount ?? 0)
+                : Number((event.data as any).amount ?? 0);
     }
     return currentSunflowers;
 }
 
-export async function getSunflowersHistory(accountId: string, offset: number = 0, limit: number = 10) {
+export async function getSunflowersHistory(
+    accountId: string,
+    offset: number = 0,
+    limit: number = 10,
+) {
     const earnEvents = await getEvents(
-        [knownEventTypes.accounts.earnSunflowers, knownEventTypes.accounts.spendSunflowers],
-        [accountId], offset, limit);
+        [
+            knownEventTypes.accounts.earnSunflowers,
+            knownEventTypes.accounts.spendSunflowers,
+        ],
+        [accountId],
+        offset,
+        limit,
+    );
     return earnEvents.reverse().map((event) => ({
         ...event,
         amount: Number((event.data as any).amount),
@@ -84,12 +107,21 @@ export async function getSunflowersHistory(accountId: string, offset: number = 0
     }));
 }
 
-export async function earnSunflowers(accountId: string, amount: number, reason: string) {
+export async function earnSunflowers(
+    accountId: string,
+    amount: number,
+    reason: string,
+) {
     if (amount === 0) return;
-    await createEvent(knownEvents.accounts.sunflowersEarnedV1(accountId, { amount, reason }));
+    await createEvent(
+        knownEvents.accounts.sunflowersEarnedV1(accountId, { amount, reason }),
+    );
 }
 
-export async function earnSunflowersForPayment(accountId: string, payment: number) {
+export async function earnSunflowersForPayment(
+    accountId: string,
+    payment: number,
+) {
     // Calculate sunflowers based on payment amount
     // For every 1 unit spent, earn 10 sunflowers
     const sunflowers = Math.round(payment * 10);
@@ -98,11 +130,17 @@ export async function earnSunflowersForPayment(accountId: string, payment: numbe
     }
 }
 
-export async function spendSunflowers(accountId: string, amount: number, reason: string) {
+export async function spendSunflowers(
+    accountId: string,
+    amount: number,
+    reason: string,
+) {
     const currentSunflowers = await getSunflowers(accountId);
     if (currentSunflowers < amount) {
         throw new Error('Insufficient sunflowers');
     }
 
-    await createEvent(knownEvents.accounts.sunflowersSpentV1(accountId, { amount, reason }));
+    await createEvent(
+        knownEvents.accounts.sunflowersSpentV1(accountId, { amount, reason }),
+    );
 }

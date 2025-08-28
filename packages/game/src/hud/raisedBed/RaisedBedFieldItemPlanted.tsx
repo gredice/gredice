@@ -1,5 +1,6 @@
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
-import { Hammer, Sprout, Warning } from '@signalco/ui-icons';
+import { Book, Hammer, Sprout, Warning } from '@signalco/ui-icons';
+import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -13,6 +14,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
+import { RaisedBedFieldDiary } from './RaisedBedDiary';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import {
     RaisedBedFieldLifecycleTab,
@@ -150,6 +152,12 @@ export function RaisedBedFieldItemPlanted({
                                 <Typography>Biljka</Typography>
                             </Row>
                         </TabsTrigger>
+                        <TabsTrigger value="diary">
+                            <Row spacing={1}>
+                                <Book className="size-4 shrink-0" />
+                                <Typography>Dnevnik</Typography>
+                            </Row>
+                        </TabsTrigger>
                         <TabsTrigger value="operations">
                             <Row spacing={1}>
                                 <Hammer className="size-4 shrink-0" />
@@ -165,6 +173,19 @@ export function RaisedBedFieldItemPlanted({
                                 positionIndex={positionIndex}
                                 plantSortId={field.plantSortId}
                             />
+                        )}
+                    </TabsContent>
+                    <TabsContent value="diary">
+                        {garden && (
+                            <Card>
+                                <CardOverflow className="overflow-auto max-h-96">
+                                    <RaisedBedFieldDiary
+                                        gardenId={garden.id}
+                                        raisedBedId={raisedBed.id}
+                                        positionIndex={positionIndex}
+                                    />
+                                </CardOverflow>
+                            </Card>
                         )}
                     </TabsContent>
                     <TabsContent value="lifecycle">

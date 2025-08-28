@@ -22,6 +22,7 @@
         "@biomejs/biome": "2.2.2",
         "@neondatabase/serverless": "1.0.1",
         "@signalco/js": "0.1.0",
+        "@gredice/js": "workspace:*",
         "@upstash/redis": "1.35.3",
         "dotenv": "17.2.1",
         "drizzle-kit": "0.31.4",
