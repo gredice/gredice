@@ -16,7 +16,7 @@
     },
     "dependencies": {
         "hypertune": "2.7.3",
-        "next": "15.5.0",
+        "next": "15.5.2",
         "react": "19.1.1",
         "react-dom": "19.1.1",
         "server-only": "0.0.1"
