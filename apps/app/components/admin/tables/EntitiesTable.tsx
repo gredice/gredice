@@ -1,10 +1,11 @@
-import { getEntitiesRaw } from '@gredice/storage';
+import { getAttributeDefinitions, getEntitiesRaw } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Duplicate } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
+import { cache } from 'react';
 import { duplicateEntity } from '../../../app/(actions)/entityActions';
 import { entityDisplayName } from '../../../src/entities/entityAttributes';
 import { KnownPages } from '../../../src/KnownPages';
@@ -12,12 +13,47 @@ import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 import { ServerActionIconButton } from '../../shared/ServerActionIconButton';
 import { EntityAttributeProgress } from '../directories/EntityAttributeProgress';
 
+const definitionsCache = cache(getAttributeDefinitions);
+
 export async function EntitiesTable({
     entityTypeName,
+    search = '',
 }: {
     entityTypeName: string;
+    search?: string;
 }) {
-    const entities = await getEntitiesRaw(entityTypeName);
+    const [entities, definitions] = await Promise.all([
+        getEntitiesRaw(entityTypeName),
+        definitionsCache(entityTypeName),
+    ]);
+
+    const requiredDefinitions = definitions.filter((d) => d.required);
+    const numberOfRequiredAttributes = requiredDefinitions.length;
+
+    const filteredEntities = entities.filter((entity) => {
+        const notPopulatedRequiredAttributes = requiredDefinitions.filter(
+            (d) =>
+                !d.defaultValue &&
+                !entity.attributes.some(
+                    (a) =>
+                        a.attributeDefinitionId === d.id &&
+                        (a.value?.length ?? 0) > 0,
+                ),
+        );
+        const progress =
+            numberOfRequiredAttributes > 0
+                ? ((numberOfRequiredAttributes -
+                      notPopulatedRequiredAttributes.length) /
+                      numberOfRequiredAttributes) *
+                  100
+                : 100;
+        const statusLabel =
+            entity.state === 'draft' ? 'U izradi' : 'Objavljeno';
+        const searchString = `${entityDisplayName(entity)} ${progress.toFixed(
+            0,
+        )}% ${statusLabel} ${entity.updatedAt}`.toLowerCase();
+        return searchString.includes(search.toLowerCase());
+    });
 
     return (
         <Table>
@@ -31,14 +67,14 @@ export async function EntitiesTable({
                 </Table.Row>
             </Table.Header>
             <Table.Body>
-                {!entities.length && (
+                {!filteredEntities.length && (
                     <Table.Row>
                         <Table.Cell colSpan={4}>
                             <NoDataPlaceholder />
                         </Table.Cell>
                     </Table.Row>
                 )}
-                {entities.map((entity) => {
+                {filteredEntities.map((entity) => {
                     return (
                         <Table.Row key={entity.id} className="group">
                             <Table.Cell>
