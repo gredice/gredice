@@ -1,3 +1,4 @@
+import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { Alert } from '@signalco/ui/Alert';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { List } from '@signalco/ui-primitives/List';
@@ -23,6 +24,7 @@ function DiaryList({
               description: string | undefined;
               status: string | null;
               timestamp: Date;
+              imageUrls?: string[] | null;
           }>
         | undefined;
 }) {
@@ -59,17 +61,31 @@ function DiaryList({
                     label={
                         <Row
                             spacing={2}
-                            justifyContent="space-between"
-                            className="font-normal"
+                            className="justify-between font-normal"
                         >
-                            <Stack>
-                                <Typography level="body1" semiBold>
-                                    {entry.name}
-                                </Typography>
-                                <Typography level="body2">
-                                    {entry.description}
-                                </Typography>
-                            </Stack>
+                            <Row spacing={2} className="items-start flex-1">
+                                {entry.imageUrls?.length ? (
+                                    <Row spacing={1} className="items-start">
+                                        {entry.imageUrls.map((url) => (
+                                            <ImageViewer
+                                                key={url}
+                                                src={url}
+                                                alt={entry.name}
+                                                previewWidth={80}
+                                                previewHeight={80}
+                                            />
+                                        ))}
+                                    </Row>
+                                ) : null}
+                                <Stack>
+                                    <Typography level="body1" semiBold>
+                                        {entry.name}
+                                    </Typography>
+                                    <Typography level="body2">
+                                        {entry.description}
+                                    </Typography>
+                                </Stack>
+                            </Row>
                             <Stack>
                                 {entry.status && (
                                     <Chip
