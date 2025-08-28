@@ -910,6 +910,9 @@ importers:
       '@biomejs/biome':
         specifier: 2.2.2
         version: 2.2.2
+      '@gredice/js':
+        specifier: workspace:*
+        version: link:../js
       '@neondatabase/serverless':
         specifier: 1.0.1
         version: 1.0.1

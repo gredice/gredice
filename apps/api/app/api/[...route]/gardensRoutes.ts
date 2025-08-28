@@ -12,6 +12,7 @@ import {
     getGardenStack,
     getRaisedBed,
     getRaisedBedDiaryEntries,
+    getRaisedBedFieldDiaryEntries,
     getRaisedBedSensors,
     getRaisedBeds,
     knownEvents,
@@ -1202,9 +1203,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Invalid position index' }, 400);
             }
 
-            const { accountId } = context.get('authContext');
-
             // Verify the raised bed exists and belongs to the user
+            const { accountId } = context.get('authContext');
             const raisedBed = await getRaisedBed(raisedBedIdNumber);
             if (
                 !raisedBed ||
@@ -1258,6 +1258,53 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     500,
                 );
             }
+        },
+    )
+    .get(
+        '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/diary-entries',
+        describeRoute({
+            description: 'Get diary entries for a raised bed field',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                positionIndex: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, positionIndex } =
+                context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+            const positionIndexNumber = parseInt(positionIndex, 10);
+            if (Number.isNaN(positionIndexNumber) || positionIndexNumber < 0) {
+                return context.json({ error: 'Invalid position index' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (
+                !raisedBed ||
+                raisedBed.gardenId !== gardenIdNumber ||
+                raisedBed.accountId !== accountId
+            ) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            const diaryEntries = await getRaisedBedFieldDiaryEntries(
+                raisedBedIdNumber,
+                positionIndexNumber,
+            );
+            return context.json(diaryEntries);
         },
     );
 
