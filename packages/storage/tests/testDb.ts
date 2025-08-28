@@ -1,9 +1,8 @@
-// This file sets up an in-memory SQLite database for testing Drizzle ORM repositories.
-// It is used to mock the database for integration tests without mocking repositories themselves.
-
+// Initialize a shared Node Postgres Drizzle client for tests using the storage() factory.
 import 'dotenv/config';
-import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
-import * as schema from '../src/schema';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type * as schema from '../src/schema';
+import { storage } from '../src/storage';
 
 let db: NodePgDatabase<typeof schema> | undefined;
 
@@ -13,7 +12,8 @@ export function createTestDb() {
         if (!dbUrl) {
             throw new Error('POSTGRES_URL environment variable is not set');
         }
-        db = drizzle<typeof schema>(dbUrl, { schema });
+        // storage() uses TEST_ENV to create a NodePgDatabase backed by a pg Pool
+        db = storage() as NodePgDatabase<typeof schema>;
     }
     return db;
 }
