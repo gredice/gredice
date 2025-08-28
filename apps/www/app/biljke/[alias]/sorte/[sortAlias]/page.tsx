@@ -37,7 +37,10 @@ export async function generateMetadata(
     }
     return {
         title: sort.information.name,
-        description: sort.information.description,
+        description:
+            sort.information.shortDescription ??
+            sort.information.description ??
+            sort.information.plant.information?.description,
     };
 }
 
