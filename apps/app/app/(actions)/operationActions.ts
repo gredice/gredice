@@ -174,6 +174,7 @@ export async function completeOperation(
 }
 
 export async function completeOperationWithImages(formData: FormData) {
+    await auth(['admin']);
     const operationId = formData.get('operationId')
         ? Number(formData.get('operationId'))
         : undefined;
