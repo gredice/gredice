@@ -22,4 +22,8 @@ export type EntityStandardized = {
         perPlant?: number;
         perOperation?: number;
     };
+    conditions?: {
+        completionAttachImages?: boolean;
+        completionAttachImagesRequired?: boolean;
+    };
 };

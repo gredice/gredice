@@ -10,9 +10,9 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { KnownPages } from '../../../src/KnownPages';
-import { completeOperation } from '../../(actions)/operationActions';
 import { raisedBedPlanted } from '../../(actions)/raisedBedFieldsActions';
 import { CancelOperationModal } from './CancelOperationModal';
+import { CompleteOperationModal } from './CompleteOperationModal';
 import { CopyTasksButton } from './CopyTasksButton';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
 
@@ -304,11 +304,6 @@ export function ScheduleDay({
                                 const operationData = operationsData?.find(
                                     (data) => data.id === op.entityId,
                                 );
-
-                                const handleOperationConfirm = async () => {
-                                    await completeOperation(op.id, userId);
-                                };
-
                                 return (
                                     <div key={op.id}>
                                         <Row
@@ -316,22 +311,14 @@ export function ScheduleDay({
                                             className="hover:bg-muted"
                                         >
                                             <Row spacing={1}>
-                                                <ModalConfirm
-                                                    title="Potvrda završetka operacije"
-                                                    header="Označavanje operacije kao završene"
-                                                    onConfirm={
-                                                        handleOperationConfirm
+                                                <CompleteOperationModal
+                                                    operationId={op.id}
+                                                    userId={userId}
+                                                    label={`${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`}
+                                                    conditions={
+                                                        operationData?.conditions
                                                     }
-                                                    trigger={<Checkbox />}
-                                                >
-                                                    <Typography>
-                                                        Jeste li sigurni da
-                                                        želite označiti
-                                                        operaciju kao završenu:{' '}
-                                                        <strong>{`${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`}</strong>
-                                                        ?
-                                                    </Typography>
-                                                </ModalConfirm>
+                                                />
                                                 <a
                                                     href={
                                                         operationData
