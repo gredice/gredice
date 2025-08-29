@@ -28,7 +28,7 @@ type EntityAttribute = {
 type Entity = {
     id: number;
     state: string;
-    updatedAt: string;
+    updatedAt: Date;
     entityType: { label: string };
     attributes: EntityAttribute[];
 };

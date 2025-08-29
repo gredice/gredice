@@ -1,10 +1,16 @@
 'use client';
 
-import { createContext, useContext, useState } from 'react';
+import {
+    createContext,
+    type Dispatch,
+    type SetStateAction,
+    useContext,
+    useState,
+} from 'react';
 
 export type FilterContextType = {
     filter: string;
-    setFilter: (value: string) => void;
+    setFilter: Dispatch<SetStateAction<string>>;
 };
 
 const FilterContext = createContext<FilterContextType | undefined>(undefined);
