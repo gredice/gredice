@@ -1,4 +1,5 @@
-import { getAttributeDefinitions, type getEntitiesRaw } from '@gredice/storage';
+'use client';
+
 import { cx } from '@signalco/ui-primitives/cx';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -8,18 +9,25 @@ import {
     TooltipTrigger,
 } from '@signalco/ui-primitives/Tooltip';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { cache } from 'react';
 
-const definitionsCache = cache(getAttributeDefinitions);
+type AttributeDefinition = {
+    id: number;
+    label: string;
+    required: boolean;
+    defaultValue: string | null;
+};
 
-export async function EntityAttributeProgress({
-    entityTypeName,
+type Entity = {
+    attributes: { attributeDefinitionId: number; value: string | null }[];
+};
+
+export function EntityAttributeProgress({
     entity,
+    definitions,
 }: {
-    entityTypeName: string;
-    entity: Awaited<ReturnType<typeof getEntitiesRaw>>[0];
+    entity: Entity;
+    definitions: AttributeDefinition[];
 }) {
-    const definitions = await definitionsCache(entityTypeName);
     const numberOfRequiredAttributes = definitions.filter(
         (d) => d.required,
     ).length;
