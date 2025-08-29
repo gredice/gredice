@@ -136,9 +136,8 @@ export function ImageViewer({
         }
     }, [zoomLevel]);
 
-    // Track mounting for portal usage
-    useEffect(() => {
         setMounted(true);
+        return () => setMounted(false);
     }, []);
 
     // Prevent body scroll when modal is open
