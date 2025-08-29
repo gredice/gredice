@@ -306,7 +306,10 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
-        completedV1: (aggregateId: string, data: { completedBy: string }) => ({
+        completedV1: (
+            aggregateId: string,
+            data: { completedBy: string; images?: string[] },
+        ) => ({
             type: knownEventTypes.operations.complete,
             version: 1,
             aggregateId,
