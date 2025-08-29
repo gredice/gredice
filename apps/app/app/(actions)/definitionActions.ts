@@ -126,3 +126,28 @@ export async function upsertAttributeDefinitionCategory(
         );
     }
 }
+
+export async function createAttributeDefinition(
+    entityTypeName: string,
+    categoryName: string,
+    formData: FormData,
+) {
+    await upsertAttributeDefinition({
+        name: formData.get('name') as string,
+        label: formData.get('label') as string,
+        dataType: formData.get('dataType') as string,
+        entityTypeName,
+        category: categoryName,
+    });
+}
+
+export async function createAttributeDefinitionCategory(
+    entityTypeName: string,
+    formData: FormData,
+) {
+    await upsertAttributeDefinitionCategory({
+        name: formData.get('name') as string,
+        label: formData.get('label') as string,
+        entityTypeName,
+    });
+}
