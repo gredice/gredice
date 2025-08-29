@@ -5,6 +5,7 @@ import { Button } from '@signalco/ui-primitives/Button';
 import Image from 'next/image';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ImageViewerProps {
     src: string;
@@ -20,6 +21,7 @@ export function ImageViewer({
     previewHeight = 200,
 }: ImageViewerProps) {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const [zoomLevel, setZoomLevel] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -134,6 +136,11 @@ export function ImageViewer({
         }
     }, [zoomLevel]);
 
+    // Track mounting for portal usage
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     // Prevent body scroll when modal is open
     useEffect(() => {
         if (isExpanded) {
@@ -177,98 +184,102 @@ export function ImageViewer({
             </div>
 
             {/* Expanded Modal */}
-            {isExpanded && (
-                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur flex items-center justify-center p-4">
-                    {/* Controls */}
-                    <div className="absolute top-4 right-4 flex gap-2 z-10">
-                        <Button
-                            size="sm"
-                            variant="solid"
-                            onClick={handleZoomOut}
-                            disabled={zoomLevel <= 0.5}
-                        >
-                            <Remove className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="solid"
-                            onClick={handleZoomIn}
-                            disabled={zoomLevel >= 5}
-                        >
-                            <Add className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="solid"
-                            onClick={handleDownload}
-                        >
-                            <Save className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="solid"
-                            onClick={closeExpanded}
-                        >
-                            <Close className="h-4 w-4" />
-                        </Button>
-                    </div>
-
-                    {/* Image Container */}
-                    <div
-                        ref={imageRef}
-                        role="option"
-                        tabIndex={0}
-                        className="relative max-w-full max-h-full overflow-hidden cursor-grab active:cursor-grabbing"
-                        onMouseDown={handleMouseDown}
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
-                        onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
-                        onWheel={handleWheel}
-                    >
-                        <div
-                            className="transition-transform duration-200 ease-out"
-                            style={{
-                                transform: `scale(${zoomLevel}) translate(${position.x / zoomLevel}px, ${position.y / zoomLevel}px)`,
-                                transformOrigin: 'center center',
-                            }}
-                        >
-                            <Image
-                                src={src}
-                                alt={alt}
-                                width={800}
-                                height={600}
-                                className="max-w-[90vw] max-h-[90vh] object-contain select-none pointer-events-none"
-                                draggable={false}
-                            />
+            {mounted &&
+                isExpanded &&
+                createPortal(
+                    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur flex items-center justify-center p-4">
+                        {/* Controls */}
+                        <div className="absolute top-4 right-4 flex gap-2 z-10">
+                            <Button
+                                size="sm"
+                                variant="solid"
+                                onClick={handleZoomOut}
+                                disabled={zoomLevel <= 0.5}
+                            >
+                                <Remove className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="solid"
+                                onClick={handleZoomIn}
+                                disabled={zoomLevel >= 5}
+                            >
+                                <Add className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="solid"
+                                onClick={handleDownload}
+                            >
+                                <Save className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="solid"
+                                onClick={closeExpanded}
+                            >
+                                <Close className="h-4 w-4" />
+                            </Button>
                         </div>
-                    </div>
 
-                    {/* Zoom Level Indicator */}
-                    <div className="absolute top-4 left-4 bg-black/80 backdrop-blur text-white px-3 py-1 rounded-full text-sm">
-                        {Math.round(zoomLevel * 100)}%
-                    </div>
+                        {/* Image Container */}
+                        <div
+                            ref={imageRef}
+                            role="option"
+                            tabIndex={0}
+                            className="relative max-w-full max-h-full overflow-hidden cursor-grab active:cursor-grabbing"
+                            onMouseDown={handleMouseDown}
+                            onMouseMove={handleMouseMove}
+                            onMouseUp={handleMouseUp}
+                            onMouseLeave={handleMouseUp}
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                            onWheel={handleWheel}
+                        >
+                            <div
+                                className="transition-transform duration-200 ease-out"
+                                style={{
+                                    transform: `scale(${zoomLevel}) translate(${position.x / zoomLevel}px, ${position.y / zoomLevel}px)`,
+                                    transformOrigin: 'center center',
+                                }}
+                            >
+                                <Image
+                                    src={src}
+                                    alt={alt}
+                                    width={800}
+                                    height={600}
+                                    className="max-w-[90vw] max-h-[90vh] object-contain select-none pointer-events-none"
+                                    draggable={false}
+                                />
+                            </div>
+                        </div>
 
-                    {/* Instructions */}
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/70 text-sm text-center">
-                        <p className="hidden sm:block">
-                            Koristi kotač za zoom • Povuci za pomicanje slike
-                        </p>
-                        <p className="sm:hidden">
-                            Dodirni i drži za pomicanje • Uštipni za zoom
-                        </p>
-                    </div>
+                        {/* Zoom Level Indicator */}
+                        <div className="absolute top-4 left-4 bg-black/80 backdrop-blur text-white px-3 py-1 rounded-full text-sm">
+                            {Math.round(zoomLevel * 100)}%
+                        </div>
 
-                    {/* Background Click to Close */}
-                    <button
-                        type="button"
-                        className="absolute inset-0 -z-10"
-                        onClick={closeExpanded}
-                    />
-                </div>
-            )}
+                        {/* Instructions */}
+                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/70 text-sm text-center">
+                            <p className="hidden sm:block">
+                                Koristi kotač za zoom • Povuci za pomicanje
+                                slike
+                            </p>
+                            <p className="sm:hidden">
+                                Dodirni i drži za pomicanje • Uštipni za zoom
+                            </p>
+                        </div>
+
+                        {/* Background Click to Close */}
+                        <button
+                            type="button"
+                            className="absolute inset-0 -z-10"
+                            onClick={closeExpanded}
+                        />
+                    </div>,
+                    document.body,
+                )}
         </>
     );
 }
