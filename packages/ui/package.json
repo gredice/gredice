@@ -12,6 +12,7 @@
         "@biomejs/biome": "2.2.2",
         "@types/node": "22.18.0",
         "@types/react": "19.1.12",
+        "@types/react-dom": "19.1.12",
         "typescript": "5.9.2"
     },
     "dependencies": {

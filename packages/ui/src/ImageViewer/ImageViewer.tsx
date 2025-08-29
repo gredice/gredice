@@ -136,6 +136,7 @@ export function ImageViewer({
         }
     }, [zoomLevel]);
 
+    useEffect(() => {
         setMounted(true);
         return () => setMounted(false);
     }, []);
