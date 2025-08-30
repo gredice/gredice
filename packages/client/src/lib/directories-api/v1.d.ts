@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    '/entities/plant': {
+    "/entities/plant": {
         parameters: {
             query?: never;
             header?: never;
@@ -30,7 +30,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        'application/json': components['schemas']['entity-plant'][];
+                        "application/json": components["schemas"]["entity-plant"][];
                     };
                 };
             };
@@ -43,7 +43,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/entities/plantSort': {
+    "/entities/plantSort": {
         parameters: {
             query?: never;
             header?: never;
@@ -69,7 +69,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        'application/json': components['schemas']['entity-plantSort'][];
+                        "application/json": components["schemas"]["entity-plantSort"][];
                     };
                 };
             };
@@ -82,7 +82,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/entities/plantStage': {
+    "/entities/plantStage": {
         parameters: {
             query?: never;
             header?: never;
@@ -108,7 +108,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        'application/json': components['schemas']['entity-plantStage'][];
+                        "application/json": components["schemas"]["entity-plantStage"][];
                     };
                 };
             };
@@ -121,7 +121,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/entities/seed': {
+    "/entities/seed": {
         parameters: {
             query?: never;
             header?: never;
@@ -147,7 +147,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        'application/json': components['schemas']['entity-seed'][];
+                        "application/json": components["schemas"]["entity-seed"][];
                     };
                 };
             };
@@ -160,7 +160,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/entities/brand': {
+    "/entities/brand": {
         parameters: {
             query?: never;
             header?: never;
@@ -186,7 +186,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        'application/json': components['schemas']['entity-brand'][];
+                        "application/json": components["schemas"]["entity-brand"][];
                     };
                 };
             };
@@ -199,7 +199,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/entities/operation': {
+    "/entities/operation": {
         parameters: {
             query?: never;
             header?: never;
@@ -225,7 +225,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        'application/json': components['schemas']['entity-operation'][];
+                        "application/json": components["schemas"]["entity-operation"][];
                     };
                 };
             };
@@ -238,7 +238,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/entities/operationFrequency': {
+    "/entities/operationFrequency": {
         parameters: {
             query?: never;
             header?: never;
@@ -264,7 +264,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        'application/json': components['schemas']['entity-operationFrequency'][];
+                        "application/json": components["schemas"]["entity-operationFrequency"][];
                     };
                 };
             };
@@ -277,7 +277,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/entities/faq': {
+    "/entities/faq": {
         parameters: {
             query?: never;
             header?: never;
@@ -303,7 +303,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        'application/json': components['schemas']['entity-faq'][];
+                        "application/json": components["schemas"]["entity-faq"][];
                     };
                 };
             };
@@ -316,7 +316,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/entities/faq-category': {
+    "/entities/faq-category": {
         parameters: {
             query?: never;
             header?: never;
@@ -342,7 +342,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        'application/json': components['schemas']['entity-faq-category'][];
+                        "application/json": components["schemas"]["entity-faq-category"][];
                     };
                 };
             };
@@ -355,7 +355,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    '/entities/block': {
+    "/entities/block": {
         parameters: {
             query?: never;
             header?: never;
@@ -381,7 +381,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        'application/json': components['schemas']['entity-block'][];
+                        "application/json": components["schemas"]["entity-block"][];
                     };
                 };
             };
@@ -402,7 +402,7 @@ export interface components {
             /** Format: uri */
             url: string;
         };
-        'entity-plant': {
+        "entity-plant": {
             id: number;
             entityType: {
                 /** @default 1 */
@@ -452,7 +452,7 @@ export interface components {
                         deliverable: boolean;
                     };
                     image?: {
-                        cover: components['schemas']['image'];
+                        cover: components["schemas"]["image"];
                     };
                     information?: {
                         /** @description (prevedeni naziv operacije) */
@@ -541,7 +541,7 @@ export interface components {
                 perPlant: number;
             };
             image: {
-                cover: components['schemas']['image'];
+                cover: components["schemas"]["image"];
             };
             store: {
                 availableInStore: boolean;
@@ -551,7 +551,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        'entity-plantSort': {
+        "entity-plantSort": {
             id: number;
             entityType: {
                 /** @default 11 */
@@ -606,7 +606,7 @@ export interface components {
                                 deliverable: boolean;
                             };
                             image?: {
-                                cover: components['schemas']['image'];
+                                cover: components["schemas"]["image"];
                             };
                             information?: {
                                 /** @description (prevedeni naziv operacije) */
@@ -695,7 +695,7 @@ export interface components {
                         perPlant: number;
                     };
                     image?: {
-                        cover: components['schemas']['image'];
+                        cover: components["schemas"]["image"];
                     };
                     store?: {
                         availableInStore: boolean;
@@ -715,7 +715,7 @@ export interface components {
                 shortDescription: string;
             };
             image: {
-                cover?: components['schemas']['image'];
+                cover?: components["schemas"]["image"];
             };
             store: {
                 availableInStore: boolean;
@@ -725,7 +725,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        'entity-plantStage': {
+        "entity-plantStage": {
             id: number;
             entityType: {
                 /** @default 12 */
@@ -744,7 +744,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        'entity-seed': {
+        "entity-seed": {
             id: number;
             entityType: {
                 /** @default 15 */
@@ -806,7 +806,7 @@ export interface components {
                                 deliverable: boolean;
                             };
                             image?: {
-                                cover: components['schemas']['image'];
+                                cover: components["schemas"]["image"];
                             };
                             information?: {
                                 /** @description (prevedeni naziv operacije) */
@@ -895,7 +895,7 @@ export interface components {
                         perPlant: number;
                     };
                     image?: {
-                        cover: components['schemas']['image'];
+                        cover: components["schemas"]["image"];
                     };
                     store?: {
                         availableInStore: boolean;
@@ -948,7 +948,7 @@ export interface components {
                                         deliverable: boolean;
                                     };
                                     image?: {
-                                        cover: components['schemas']['image'];
+                                        cover: components["schemas"]["image"];
                                     };
                                     information?: {
                                         /** @description (prevedeni naziv operacije) */
@@ -1037,7 +1037,7 @@ export interface components {
                                 perPlant: number;
                             };
                             image?: {
-                                cover: components['schemas']['image'];
+                                cover: components["schemas"]["image"];
                             };
                             store?: {
                                 availableInStore: boolean;
@@ -1057,7 +1057,7 @@ export interface components {
                         shortDescription: string;
                     };
                     image?: {
-                        cover?: components['schemas']['image'];
+                        cover?: components["schemas"]["image"];
                     };
                     store?: {
                         availableInStore: boolean;
@@ -1080,7 +1080,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        'entity-brand': {
+        "entity-brand": {
             id: number;
             entityType: {
                 /** @default 16 */
@@ -1099,7 +1099,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        'entity-operation': {
+        "entity-operation": {
             id: number;
             entityType: {
                 /** @default 10 */
@@ -1128,7 +1128,7 @@ export interface components {
                 deliverable: boolean;
             };
             image: {
-                cover: components['schemas']['image'];
+                cover: components["schemas"]["image"];
             };
             information: {
                 /** @description (prevedeni naziv operacije) */
@@ -1161,7 +1161,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        'entity-operationFrequency': {
+        "entity-operationFrequency": {
             id: number;
             entityType: {
                 /** @default 13 */
@@ -1176,7 +1176,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        'entity-faq': {
+        "entity-faq": {
             id: number;
             entityType: {
                 /** @default 2 */
@@ -1206,7 +1206,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        'entity-faq-category': {
+        "entity-faq-category": {
             id: number;
             entityType: {
                 /** @default 14 */
@@ -1225,7 +1225,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        'entity-block': {
+        "entity-block": {
             id: number;
             entityType: {
                 /** @default 8 */

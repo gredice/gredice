@@ -50,7 +50,7 @@ export function decodeFlagValues<TFlagPath extends keyof FlagValues & string>(
   encodedFlagValues: string,
   flagPaths: TFlagPath[]
 ): Pick<FlagValues, TFlagPath> {
-  return sdk.decodeFlagValues({ encodedValues: encodedFlagValues, flagPaths })
+  return sdk.decodeFlagValues({ encodedFlagValues, flagPaths })
 }
 
 export type VariableValues = {};
