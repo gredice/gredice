@@ -161,7 +161,7 @@ export function ShoppingCart() {
                                 {(cart?.totalSunflowers ?? 0) > 0 && (
                                     <Typography level="body1" bold>
                                         {(cart?.totalSunflowers ?? 0) > 0
-                                            ? `-${cart?.totalSunflowers ?? 0}`
+                                            ? `${cart?.totalSunflowers ?? 0}`
                                             : '0'}{' '}
                                         <span className={'text-lg'}>🌻</span>
                                     </Typography>
