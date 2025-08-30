@@ -1,5 +1,7 @@
 'use client';
 
+import { cx } from '@signalco/ui-primitives/cx';
+import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import { useEffect, useState } from 'react';
 
 export interface LocalDateTimeProps {
@@ -37,7 +39,7 @@ export function LocalDateTime({
 
     if (!mounted) {
         // Return a placeholder with the same approximate size to avoid layout shifts
-        return <span className={className}>...</span>;
+        return <Skeleton className={cx('w-20 h-6', className)} />;
     }
 
     if (date === false && time === false) {

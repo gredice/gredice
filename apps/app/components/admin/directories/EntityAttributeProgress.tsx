@@ -1,5 +1,9 @@
 'use client';
 
+import type {
+    getEntitiesRaw,
+    SelectAttributeDefinition,
+} from '@gredice/storage';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -10,23 +14,12 @@ import {
 } from '@signalco/ui-primitives/Tooltip';
 import { Typography } from '@signalco/ui-primitives/Typography';
 
-type AttributeDefinition = {
-    id: number;
-    label: string;
-    required: boolean;
-    defaultValue: string | null;
-};
-
-type Entity = {
-    attributes: { attributeDefinitionId: number; value: string | null }[];
-};
-
 export function EntityAttributeProgress({
     entity,
     definitions,
 }: {
-    entity: Entity;
-    definitions: AttributeDefinition[];
+    entity: Awaited<ReturnType<typeof getEntitiesRaw>>[number];
+    definitions: SelectAttributeDefinition[];
 }) {
     const numberOfRequiredAttributes = definitions.filter(
         (d) => d.required,
