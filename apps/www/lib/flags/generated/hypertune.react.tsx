@@ -169,25 +169,15 @@ export function useHypertune(): hypertune.RootNode {
 
 export function HypertuneHydrator({
   dehydratedState,
-  rootArgs,
   children,
 }: {
   dehydratedState?: hypertune.DehydratedState | null;
-  rootArgs?: hypertune.RootArgs;
   children: React.ReactElement | null;
 }): React.ReactElement | null {
   const hypertuneSource = useHypertuneSource();
 
   if (dehydratedState) {
     hypertuneSource.hydrate(dehydratedState);
-  }
-
-  if (rootArgs) {
-    return (
-      <HypertuneRootProvider rootArgs={rootArgs}>
-        {children}
-      </HypertuneRootProvider>
-    );
   }
 
   return children;
