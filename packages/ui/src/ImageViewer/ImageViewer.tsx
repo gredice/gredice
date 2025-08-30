@@ -166,7 +166,7 @@ export function ImageViewer({
                 title="Pregled slike"
                 hideClose
                 dismissible={false}
-                className="p-0 m-0 max-w-none max-h-none w-screen h-screen border-0"
+                className="p-0 m-0 max-w-none max-h-none w-[100dvw] h-[100dvh] border-0"
             >
                 <div className="relative w-full h-full flex items-center justify-center">
                     {/* Controls */}
