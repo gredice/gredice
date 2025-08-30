@@ -1,5 +1,9 @@
 'use client';
 
+import type {
+    getEntitiesRaw,
+    SelectAttributeDefinition,
+} from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Duplicate } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
@@ -12,31 +16,12 @@ import { ServerActionIconButton } from '../../shared/ServerActionIconButton';
 import { EntityAttributeProgress } from '../directories/EntityAttributeProgress';
 import { useFilter } from '../providers';
 
-type AttributeDefinition = {
-    id: number;
-    label: string;
-    required: boolean;
-    defaultValue: string | null;
-};
-
-type EntityAttribute = {
-    attributeDefinitionId: number;
-    attributeDefinition: { category: string; name: string };
-    value: string | null;
-};
-
-type Entity = {
-    id: number;
-    state: string;
-    updatedAt: Date;
-    entityType: { label: string };
-    attributes: EntityAttribute[];
-};
+type Entities = Awaited<ReturnType<typeof getEntitiesRaw>>;
 
 type EntitiesTableProps = {
     entityTypeName: string;
-    entities: Entity[];
-    attributeDefinitions: AttributeDefinition[];
+    entities: Entities;
+    attributeDefinitions: SelectAttributeDefinition[];
     onDuplicate: (entityId: number) => Promise<void>;
 };
 
@@ -132,7 +117,7 @@ export function EntitiesTable({
     );
 }
 
-function entityDisplayName(entity: Entity) {
+function entityDisplayName(entity: Entities[number]) {
     return (
         entityAttributeValue(entity, 'information', 'label') ??
         entityAttributeValue(entity, 'information', 'name') ??
@@ -141,7 +126,7 @@ function entityDisplayName(entity: Entity) {
 }
 
 function entityAttributeValue(
-    entity: Entity,
+    entity: Entities[number],
     categoryName: string,
     attributeName: string,
 ) {
