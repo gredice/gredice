@@ -103,7 +103,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         </Row>
                     )}
                 <Row justifyContent="space-between">
-                    <Stack spacing={1}>
+                    <Stack spacing={0.5}>
                         <Row spacing={1}>
                             <Row spacing={0.5} className="flex-wrap gap-y-0">
                                 {hasGarden && (

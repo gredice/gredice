@@ -21,7 +21,7 @@ export function ButtonPricePickPaymentMethod({
     const displayPrice = isSunflower ? price * 1000 : price;
 
     return (
-        <Row spacing={1} className="overflow-hidden px-0.5 py-1">
+        <Row spacing={1}>
             {/* Price Display */}
             <Typography level="body1" semiBold>
                 {displayPrice.toFixed(2)}
@@ -31,7 +31,7 @@ export function ButtonPricePickPaymentMethod({
             <button
                 type="button"
                 onClick={handleToggle}
-                className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#2f6e40] focus:ring-offset-0 ${isSunflower ? 'bg-yellow-200 dark:bg-yellow-400' : 'bg-gray-300 dark:bg-slate-600'}`}
+                className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-1 focus:outline-[#2f6e40] focus:outline-offset-2 ${isSunflower ? 'bg-yellow-200 dark:bg-yellow-400' : 'bg-gray-300 dark:bg-slate-600'}`}
                 role="switch"
                 aria-checked={isSunflower}
             >

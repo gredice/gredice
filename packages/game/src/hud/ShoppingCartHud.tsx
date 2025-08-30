@@ -123,7 +123,10 @@ export function ShoppingCart() {
                     </Alert>
                 </div>
                 <Stack>
-                    <Stack spacing={2} className="max-h-[50vh] overflow-y-auto">
+                    <Stack
+                        spacing={2}
+                        className="max-h-[50vh] overflow-x-visible overflow-y-scroll px-2 py-1 -mx-2"
+                    >
                         {isLoading && (
                             <Typography level="body1">Učitavanje...</Typography>
                         )}
