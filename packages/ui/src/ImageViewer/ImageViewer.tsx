@@ -26,7 +26,15 @@ export function ImageViewer({
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [lastPinchDistance, setLastPinchDistance] = useState(0);
+    const [isPinching, setIsPinching] = useState(false);
     const imageRef = useRef<HTMLDivElement>(null);
+
+    const getTouchDistance = (touch1: React.Touch, touch2: React.Touch) => {
+        const dx = touch1.clientX - touch2.clientX;
+        const dy = touch1.clientY - touch2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    };
 
     const handleZoomIn = (e?: React.MouseEvent) => {
         e?.stopPropagation();
@@ -62,6 +70,9 @@ export function ImageViewer({
         // Reset zoom and position when closing
         setZoomLevel(1);
         setPosition({ x: 0, y: 0 });
+        setIsDragging(false);
+        setIsPinching(false);
+        setLastPinchDistance(0);
     };
 
     const handleMouseDown = (e: React.MouseEvent) => {
@@ -101,27 +112,63 @@ export function ImageViewer({
     const handleTouchStart = (e: React.TouchEvent) => {
         e.stopPropagation();
         if (e.touches.length === 1) {
+            // Single touch for dragging
+            setIsDragging(true);
+            setDragStart({
+                x: e.touches[0].clientX - position.x,
+                y: e.touches[0].clientY - position.y,
+            });
+        } else if (e.touches.length === 2) {
+            // Two touches for pinching
+            setIsPinching(true);
+            setIsDragging(false);
+            const distance = getTouchDistance(e.touches[0], e.touches[1]);
+            setLastPinchDistance(distance);
+        }
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        e.stopPropagation();
+        e.preventDefault(); // Prevent default scrolling behavior
+
+        if (e.touches.length === 1 && isDragging && !isPinching) {
+            // Single touch dragging
+            setPosition({
+                x: e.touches[0].clientX - dragStart.x,
+                y: e.touches[0].clientY - dragStart.y,
+            });
+        } else if (e.touches.length === 2 && isPinching) {
+            // Two touch pinching
+            const distance = getTouchDistance(e.touches[0], e.touches[1]);
+            const scale = distance / lastPinchDistance;
+
+            if (scale > 0 && Number.isFinite(scale)) {
+                const newZoomLevel = Math.min(
+                    Math.max(zoomLevel * scale, 0.5),
+                    5,
+                );
+                setZoomLevel(newZoomLevel);
+                setLastPinchDistance(distance);
+            }
+        }
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        e.stopPropagation();
+        if (e.touches.length === 0) {
+            // All touches ended
+            setIsDragging(false);
+            setIsPinching(false);
+            setLastPinchDistance(0);
+        } else if (e.touches.length === 1 && isPinching) {
+            // Went from pinch to single touch
+            setIsPinching(false);
             setIsDragging(true);
             setDragStart({
                 x: e.touches[0].clientX - position.x,
                 y: e.touches[0].clientY - position.y,
             });
         }
-    };
-
-    const handleTouchMove = (e: React.TouchEvent) => {
-        e.stopPropagation();
-        if (isDragging && e.touches.length === 1) {
-            setPosition({
-                x: e.touches[0].clientX - dragStart.x,
-                y: e.touches[0].clientY - dragStart.y,
-            });
-        }
-    };
-
-    const handleTouchEnd = (e: React.TouchEvent) => {
-        e.stopPropagation();
-        setIsDragging(false);
     };
 
     const handleWheel = (e: React.WheelEvent) => {
@@ -136,6 +183,9 @@ export function ImageViewer({
             // Reset zoom and position when closing
             setZoomLevel(1);
             setPosition({ x: 0, y: 0 });
+            setIsDragging(false);
+            setIsPinching(false);
+            setLastPinchDistance(0);
         }
     };
 
@@ -220,7 +270,7 @@ export function ImageViewer({
                         ref={imageRef}
                         role="option"
                         tabIndex={0}
-                        className="relative max-w-full max-h-full overflow-hidden cursor-grab active:cursor-grabbing"
+                        className="relative max-w-full max-h-full overflow-hidden cursor-grab active:cursor-grabbing touch-none"
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
@@ -231,6 +281,7 @@ export function ImageViewer({
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
                         onWheel={handleWheel}
+                        style={{ touchAction: 'none' }}
                     >
                         <div
                             className="transition-transform duration-200 ease-out select-none pointer-events-none"
