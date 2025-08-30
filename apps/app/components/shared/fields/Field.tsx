@@ -20,7 +20,7 @@ export function Field({
             <Typography
                 level="body1"
                 mono={mono}
-                component={typeof value !== 'object' ? 'p' : 'div'}
+                component={typeof value === 'object' ? 'div' : 'p'}
                 noWrap={typeof value === 'string' || typeof value === 'number'}
                 title={
                     typeof value === 'string' || typeof value === 'number'

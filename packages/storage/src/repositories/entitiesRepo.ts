@@ -421,7 +421,7 @@ export async function updateEntity(entity: UpdateEntity) {
     await Promise.all([
         storage()
             .update(entities)
-            .set(entity)
+            .set(updateData)
             .where(eq(entities.id, entity.id)),
         bustCached(cacheKeys.entity(entity.id)),
         entity.id
