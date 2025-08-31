@@ -66,7 +66,7 @@ async function reconstructDeliveryRequestFromEvents(
         } else if (event.type === knownEventTypes.delivery.requestFulfilled) {
             state = DeliveryRequestStates.FULFILLED;
         } else if (event.type === knownEventTypes.delivery.requestSlotChanged) {
-            slotId = data?.slotId;
+            slotId = data?.newSlotId;
         } else if (event.type === knownEventTypes.delivery.userCancelled) {
             state = DeliveryRequestStates.CANCELLED;
         } else if (event.type === knownEventTypes.delivery.requestCancelled) {
@@ -341,6 +341,47 @@ export async function createDeliveryRequest(data: {
     );
 
     return requestId;
+}
+
+// Change the time slot for an existing delivery request
+export async function changeDeliveryRequestSlot(
+    requestId: string,
+    newSlotId: number,
+): Promise<void> {
+    const request = await getDeliveryRequest(requestId);
+
+    if (!request) {
+        throw new Error('Delivery request not found');
+    }
+
+    if (!request.slot?.id) {
+        throw new Error('Delivery request has no slot to change');
+    }
+
+    // If slot is the same, no-op
+    if (request.slot.id === newSlotId) {
+        return;
+    }
+
+    // Validate new slot
+    const slot = await storage().query.timeSlots.findFirst({
+        where: eq(timeSlots.id, newSlotId),
+    });
+
+    if (!slot) {
+        throw new Error('Time slot not found');
+    }
+
+    if (slot.status === 'archived') {
+        throw new Error('Time slot is archived and cannot be used');
+    }
+
+    await createEvent(
+        knownEvents.delivery.requestSlotChangedV1(requestId, {
+            previousSlotId: request.slot.id,
+            newSlotId,
+        }),
+    );
 }
 
 // Cancel a delivery request
