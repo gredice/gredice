@@ -38,11 +38,6 @@ export function ImageInput({
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        if (file.size > 3 * 1024 * 1024) {
-            alert(
-                'Slika je veća od 3MB. Razmotri smanjenje, ali možeš nastaviti.',
-            );
-        }
         setEditorFile(file);
     };
 
@@ -79,7 +74,7 @@ export function ImageInput({
                 onChange={handleFileChange}
             />
             <Button onClick={triggerFileInput}>
-                {imageUrl ? 'Zameni sliku' : 'Dodaj sliku'}
+                {imageUrl ? 'Zamijeni sliku' : 'Dodaj sliku'}
             </Button>
             {editorFile && (
                 <ImageEditor

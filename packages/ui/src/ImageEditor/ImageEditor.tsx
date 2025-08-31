@@ -3,6 +3,7 @@
 import { Button } from '@signalco/ui-primitives/Button';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Modal } from '@signalco/ui-primitives/Modal';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -97,16 +98,22 @@ export function ImageEditor({ file, onSave, onCancel }: ImageEditorProps) {
         setScale(Math.round((height / crop.height) * 100));
     };
 
+    function handleOpenChange(newOpen: boolean) {
+        if (!newOpen) {
+            onCancel();
+        }
+    }
+
     return (
         <Modal
             open
-            onClose={onCancel}
+            onOpenChange={handleOpenChange}
             title="Uredi sliku"
             className="md:max-w-lg"
         >
             <Stack spacing={3}>
                 <canvas ref={canvasRef} className="max-w-full" />
-                <Stack direction="row" spacing={2}>
+                <Row spacing={2}>
                     <div className="flex flex-col">
                         <span>X</span>
                         <Input
@@ -159,8 +166,8 @@ export function ImageEditor({ file, onSave, onCancel }: ImageEditorProps) {
                             }
                         />
                     </div>
-                </Stack>
-                <Stack direction="row" spacing={2}>
+                </Row>
+                <Row spacing={2}>
                     <div className="flex flex-col">
                         <span>Rotacija</span>
                         <Input
@@ -205,13 +212,13 @@ export function ImageEditor({ file, onSave, onCancel }: ImageEditorProps) {
                             }
                         />
                     </div>
-                </Stack>
-                <Stack direction="row" spacing={2} justifyContent="end">
+                </Row>
+                <Row spacing={2} justifyContent="end">
                     <Button variant="outlined" onClick={onCancel}>
                         Odustani
                     </Button>
                     <Button onClick={handleSave}>Spremi</Button>
-                </Stack>
+                </Row>
             </Stack>
         </Modal>
     );
