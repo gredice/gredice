@@ -344,18 +344,20 @@ export function ScheduleDay({
                                                 justifyContent="space-between"
                                                 className="grow"
                                             >
-                                                {op.scheduledDate && (
-                                                    <Typography
-                                                        level="body2"
-                                                        className="select-none"
-                                                    >
+                                                <Typography
+                                                    level="body2"
+                                                    className="select-none"
+                                                >
+                                                    {op.scheduledDate ? (
                                                         <LocalDateTime
                                                             time={false}
                                                         >
                                                             {op.scheduledDate}
                                                         </LocalDateTime>
-                                                    </Typography>
-                                                )}
+                                                    ) : (
+                                                        <span>Danas</span>
+                                                    )}
+                                                </Typography>
                                                 <Row>
                                                     <RescheduleOperationModal
                                                         operation={{
