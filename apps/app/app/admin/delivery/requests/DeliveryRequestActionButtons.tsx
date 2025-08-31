@@ -1,7 +1,14 @@
 'use client';
 
 import type { SelectTimeSlot } from '@gredice/storage';
-import { Check, Edit, ShoppingCart, Truck } from '@signalco/ui-icons';
+import {
+    Calendar,
+    Check,
+    Edit,
+    Navigate,
+    ShoppingCart,
+    Truck,
+} from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -142,68 +149,75 @@ export function DeliveryRequestActionButtons({
                 </Button>
             )}
 
-            {showSlotForm ? (
-                <form
-                    onSubmit={handleSlotSubmit}
-                    className="flex flex-col gap-1"
-                >
-                    <input type="hidden" name="requestId" value={request.id} />
-                    <select
-                        name="slotId"
-                        value={selectedSlot}
-                        onChange={(e) =>
-                            setSelectedSlot(Number(e.target.value))
-                        }
-                        className="border rounded p-1 text-sm"
+            {request.state !== 'fulfilled' &&
+                (showSlotForm ? (
+                    <form
+                        onSubmit={handleSlotSubmit}
+                        className="flex flex-col gap-1"
                     >
-                        {slots
-                            .filter((s) => s.status !== 'archived')
-                            .map((slot) => (
-                                <option key={slot.id} value={slot.id}>
-                                    {new Date(slot.startAt).toLocaleString(
-                                        'hr-HR',
-                                    )}
-                                </option>
-                            ))}
-                    </select>
-                    <Row spacing={1}>
-                        <Button
-                            type="submit"
-                            size="sm"
-                            variant="outlined"
-                            disabled={isPending}
+                        <input
+                            type="hidden"
+                            name="requestId"
+                            value={request.id}
+                        />
+                        <select
+                            name="slotId"
+                            value={selectedSlot}
+                            onChange={(e) =>
+                                setSelectedSlot(Number(e.target.value))
+                            }
+                            className="border rounded p-1 text-sm"
                         >
-                            Spremi
-                        </Button>
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="plain"
-                            onClick={() => setShowSlotForm(false)}
-                        >
-                            Odustani
-                        </Button>
-                    </Row>
-                </form>
-            ) : (
-                <Button
-                    variant="outlined"
-                    size="sm"
-                    onClick={() => setShowSlotForm(true)}
-                    disabled={isPending}
-                    startDecorator={<Edit className="size-4" />}
-                >
-                    Promijeni termin
-                </Button>
-            )}
+                            {slots
+                                .filter((s) => s.status !== 'archived')
+                                .map((slot) => (
+                                    <option key={slot.id} value={slot.id}>
+                                        {new Date(slot.startAt).toLocaleString(
+                                            'hr-HR',
+                                        )}
+                                    </option>
+                                ))}
+                        </select>
+                        <Row spacing={1}>
+                            <Button
+                                type="submit"
+                                size="sm"
+                                variant="outlined"
+                                disabled={isPending}
+                            >
+                                Spremi
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="plain"
+                                onClick={() => setShowSlotForm(false)}
+                            >
+                                Odustani
+                            </Button>
+                        </Row>
+                    </form>
+                ) : (
+                    <Button
+                        variant="outlined"
+                        size="sm"
+                        onClick={() => setShowSlotForm(true)}
+                        disabled={isPending}
+                        startDecorator={
+                            <Calendar className="size-4 shrink-0" />
+                        }
+                    >
+                        Promijeni termin
+                    </Button>
+                ))}
 
             <Button
                 variant="plain"
                 size="sm"
-                startDecorator={<Edit className="size-4" />}
+                endDecorator={<Navigate className="size-4 shrink-0" />}
                 href={`/admin/operations/${request.operationId}`}
             >
-                Vidi
+                Radnja
             </Button>
         </Stack>
     );
