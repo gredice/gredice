@@ -7,6 +7,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useGameAudio } from '../hooks/useGameAudio';
 import { useGameState } from '../useGameState';
 
@@ -40,7 +41,10 @@ const messageTypes = {
 };
 
 export function WelcomeMessage() {
+    const { data: currentUser } = useCurrentUser();
     const show = useMemo(() => {
+        if (!currentUser) return false;
+
         let showWelcomeMessage = false;
         const now = new Date();
 
@@ -69,7 +73,7 @@ export function WelcomeMessage() {
         }
 
         return showWelcomeMessage;
-    }, []);
+    }, [currentUser]);
 
     const [open, setOpen] = useState(show);
     const { resumeIfNeeded } = useGameAudio();
