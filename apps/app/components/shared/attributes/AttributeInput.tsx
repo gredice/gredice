@@ -16,6 +16,7 @@ import {
 import type { AttributeInputProps } from './AttributeInputProps';
 import { BarcodeInput } from './typed/BarcodeInput';
 import { BooleanInput } from './typed/BooleanInput';
+import { ImageInput } from './typed/ImageInput';
 import { JsonInput } from './typed/JsonInput';
 import { NumberInput } from './typed/NumberInput';
 import { SelectEntity } from './typed/SelectEntity';
@@ -93,6 +94,8 @@ export function AttributeInput({
         AttributeInputComponent = NumberInput;
     } else if (attributeDefinition.dataType === 'barcode') {
         AttributeInputComponent = BarcodeInput;
+    } else if (attributeDefinition.dataType === 'image') {
+        AttributeInputComponent = ImageInput;
     } else if (attributeDefinition.dataType.startsWith('json')) {
         AttributeInputComponent = JsonInput;
         // Extract schema from json|{schema} string

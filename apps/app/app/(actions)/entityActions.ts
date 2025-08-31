@@ -1,5 +1,7 @@
 'use server';
 
+import { randomUUID } from 'node:crypto';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import {
     deleteAttributeValue,
     deleteEntity,
@@ -146,6 +148,53 @@ export async function handleValueDelete(attributeValue: SelectAttributeValue) {
     revalidatePath(
         `/admin/directories/${attributeValue.entityTypeName}/${attributeValue.entityId}`,
     );
+}
+
+export async function uploadAttributeImage(formData: FormData) {
+    await auth(['admin']);
+    const file = formData.get('file');
+    if (!(file instanceof File)) {
+        throw new Error('Image file is required');
+    }
+    const fileName = `entity-attributes/${randomUUID()}-${file.name}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const {
+        CDN_R2_ACCESS_KEY_ID,
+        CDN_R2_SECRET_ACCESS_KEY,
+        CDN_R2_BUCKET_NAME,
+        CDN_R2_ENDPOINT,
+        CDN_R2_PUBLIC_URL,
+    } = process.env;
+    if (
+        !CDN_R2_ACCESS_KEY_ID ||
+        !CDN_R2_SECRET_ACCESS_KEY ||
+        !CDN_R2_BUCKET_NAME ||
+        !CDN_R2_ENDPOINT ||
+        !CDN_R2_PUBLIC_URL
+    ) {
+        throw new Error('R2 configuration is missing');
+    }
+
+    const client = new S3Client({
+        region: 'auto',
+        endpoint: CDN_R2_ENDPOINT,
+        credentials: {
+            accessKeyId: CDN_R2_ACCESS_KEY_ID,
+            secretAccessKey: CDN_R2_SECRET_ACCESS_KEY,
+        },
+    });
+
+    await client.send(
+        new PutObjectCommand({
+            Bucket: CDN_R2_BUCKET_NAME,
+            Key: fileName,
+            Body: buffer,
+            ContentType: file.type,
+        }),
+    );
+
+    const url = `${CDN_R2_PUBLIC_URL}/${fileName}`;
+    return { url };
 }
 
 export async function handleEntityDelete(
