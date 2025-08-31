@@ -11,7 +11,9 @@ import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
+import Link from 'next/link';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
+import { KnownPages } from '../../src/KnownPages';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
 import { OperationCancelButton } from './OperationCancelButton';
 import { OperationRescheduleButton } from './OperationRescheduleButton';
@@ -92,7 +94,11 @@ export async function OperationsTable({
 
                     return (
                         <Table.Row key={operation.id} className="group">
-                            <Table.Cell>{operation.id}</Table.Cell>
+                            <Table.Cell>
+                                <Link href={KnownPages.Operation(operation.id)}>
+                                    {operation.id}
+                                </Link>
+                            </Table.Cell>
                             <Table.Cell>
                                 {operation.details.label || operation.entityId}
                             </Table.Cell>
