@@ -1,13 +1,14 @@
 'use client';
 
+import type { SelectTimeSlot } from '@gredice/storage';
 import { Check, Edit, ShoppingCart, Truck } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { useState, useTransition } from 'react';
-import type { SelectTimeSlot } from '@gredice/storage';
 import {
-    updateDeliveryRequestStatusAction,
     changeDeliveryRequestSlotAction,
+    updateDeliveryRequestStatusAction,
 } from './actions';
 
 type DeliveryRequest = {
@@ -142,23 +143,30 @@ export function DeliveryRequestActionButtons({
             )}
 
             {showSlotForm ? (
-                <form onSubmit={handleSlotSubmit} className="flex flex-col gap-1">
+                <form
+                    onSubmit={handleSlotSubmit}
+                    className="flex flex-col gap-1"
+                >
                     <input type="hidden" name="requestId" value={request.id} />
                     <select
                         name="slotId"
                         value={selectedSlot}
-                        onChange={(e) => setSelectedSlot(Number(e.target.value))}
+                        onChange={(e) =>
+                            setSelectedSlot(Number(e.target.value))
+                        }
                         className="border rounded p-1 text-sm"
                     >
                         {slots
                             .filter((s) => s.status !== 'archived')
                             .map((slot) => (
                                 <option key={slot.id} value={slot.id}>
-                                    {new Date(slot.startAt).toLocaleString('hr-HR')}
+                                    {new Date(slot.startAt).toLocaleString(
+                                        'hr-HR',
+                                    )}
                                 </option>
                             ))}
                     </select>
-                    <Stack direction="row" spacing={1}>
+                    <Row spacing={1}>
                         <Button
                             type="submit"
                             size="sm"
@@ -175,7 +183,7 @@ export function DeliveryRequestActionButtons({
                         >
                             Odustani
                         </Button>
-                    </Stack>
+                    </Row>
                 </form>
             ) : (
                 <Button

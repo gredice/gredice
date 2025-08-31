@@ -2,12 +2,12 @@
 
 import {
     cancelDeliveryRequest,
-    confirmDeliveryRequest,
-    DeliveryRequestStates,
     changeDeliveryRequestSlot,
+    confirmDeliveryRequest,
     createNotification,
-    getDeliveryRequest,
+    DeliveryRequestStates,
     fulfillDeliveryRequest,
+    getDeliveryRequest,
     prepareDeliveryRequest,
     readyDeliveryRequest,
 } from '@gredice/storage';
@@ -87,9 +87,8 @@ export async function changeDeliveryRequestSlotAction(
         await changeDeliveryRequestSlot(requestId, slotId);
         const updatedRequest = await getDeliveryRequest(requestId);
         if (updatedRequest?.accountId && updatedRequest.slot) {
-            const formatted = updatedRequest.slot.startAt.toLocaleString(
-                'hr-HR',
-            );
+            const formatted =
+                updatedRequest.slot.startAt.toLocaleString('hr-HR');
             await createNotification({
                 accountId: updatedRequest.accountId,
                 header: 'Termin dostave promijenjen',
