@@ -1,9 +1,12 @@
 import {
+    getAccount,
     getAccounts,
     getAllRaisedBeds,
     getEntitiesFormatted,
+    getGarden,
     getGardens,
     getOperationById,
+    getRaisedBed,
 } from '@gredice/storage';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
@@ -24,6 +27,7 @@ import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,26 +51,24 @@ export default async function OperationDetailsPage({
         return notFound();
     }
 
-    const [operationsData, accounts, gardens, raisedBeds] = await Promise.all([
+    if (!operation.accountId) {
+        return notFound();
+    }
+
+    const [operationsData, account, garden, raisedBed] = await Promise.all([
         getEntitiesFormatted<EntityStandardized>('operation'),
-        getAccounts(),
-        getGardens(),
-        getAllRaisedBeds(),
+        getAccount(operation.accountId),
+        operation.gardenId ? getGarden(operation.gardenId) : Promise.resolve(undefined),
+        operation.raisedBedId ? getRaisedBed(operation.raisedBedId) : Promise.resolve(undefined)
     ]);
 
     const operationDetails = operationsData?.find(
         (op) => op.id === operation.entityId,
     );
-    const accountUsers = accounts
-        .find((a) => a.id === operation.accountId)
-        ?.accountUsers.map((u) => u.user.userName)
+    const accountUsers = account?.accountUsers
+        .map((au) => au.user.displayName ?? au.user.userName)
         .join(', ');
-    const gardenName = operation.gardenId
-        ? gardens.find((g) => g.id === operation.gardenId)?.name
-        : undefined;
-    const raisedBed = operation.raisedBedId
-        ? raisedBeds.find((rb) => rb.id === operation.raisedBedId)
-        : undefined;
+    const gardenName = garden?.name;
     const raisedBedField =
         raisedBed && operation.raisedBedFieldId
             ? raisedBed.fields.find((f) => f.id === operation.raisedBedFieldId)
@@ -185,14 +187,22 @@ export default async function OperationDetailsPage({
                         </>
                     )}
                     {accountUsers && (
-                        <Field name="Korisnici računa" value={accountUsers} />
+                        <Link href={KnownPages.Account(operation.accountId)}>
+                            <Field name="Korisnici računa" value={accountUsers} />
+                        </Link>
                     )}
-                    {gardenName && <Field name="Vrt" value={gardenName} />}
+                    {gardenName && (
+                        <Link href={KnownPages.Garden(garden.id)}>
+                            <Field name="Vrt" value={gardenName} />
+                        </Link>
+                    )}
                     {raisedBed && (
-                        <Field
-                            name="Gredica"
-                            value={`Gr ${raisedBed.physicalId}`}
-                        />
+                        <Link href={KnownPages.RaisedBed(raisedBed.id)}>
+                            <Field
+                                name="Gredica"
+                                value={`Gr ${raisedBed.physicalId}`}
+                            />
+                        </Link>
                     )}
                     {raisedBedField && (
                         <Field

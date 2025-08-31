@@ -25,6 +25,13 @@ export function getAccounts() {
 export function getAccount(accountId: string) {
     return storage().query.accounts.findFirst({
         where: eq(accounts.id, accountId),
+        with: {
+            accountUsers: {
+                with: {
+                    user: true,
+                },
+            },
+        },
     });
 }
 
