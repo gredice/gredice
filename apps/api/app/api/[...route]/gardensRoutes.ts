@@ -924,6 +924,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 name: z.string().optional(),
+                physicalId: z.string().optional().nullable(),
             }),
         ),
         authValidator(['user', 'admin']),
@@ -941,6 +942,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             await updateRaisedBed({
                 id: raisedBedIdNumber,
                 name: context.req.valid('json').name || undefined,
+                physicalId: context.req.valid('json').physicalId ?? undefined,
             });
         },
     )

@@ -17,6 +17,7 @@ import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { OperationsTableCard } from './OperationsTableCard';
+import { RaisedBedPhysicalIdInput } from './RaisedBedPhysicalIdInput';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,9 +65,9 @@ export default async function RaisedBedPage({
                     <FieldSet>
                         <Field name="ID" value={raisedBed?.id} mono />
                         <Field name="Naziv" value={raisedBed?.name} />
-                        <Field
-                            name="Fizička oznaka"
-                            value={raisedBed?.physicalId}
+                        <RaisedBedPhysicalIdInput
+                            raisedBedId={raisedBed.id}
+                            physicalId={raisedBed.physicalId}
                         />
                         <Field
                             name="Datum kreiranja"
