@@ -1,10 +1,7 @@
 import {
     getAccount,
-    getAccounts,
-    getAllRaisedBeds,
     getEntitiesFormatted,
     getGarden,
-    getGardens,
     getOperationById,
     getRaisedBed,
 } from '@gredice/storage';
@@ -21,13 +18,13 @@ import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
-import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,8 +55,12 @@ export default async function OperationDetailsPage({
     const [operationsData, account, garden, raisedBed] = await Promise.all([
         getEntitiesFormatted<EntityStandardized>('operation'),
         getAccount(operation.accountId),
-        operation.gardenId ? getGarden(operation.gardenId) : Promise.resolve(undefined),
-        operation.raisedBedId ? getRaisedBed(operation.raisedBedId) : Promise.resolve(undefined)
+        operation.gardenId
+            ? getGarden(operation.gardenId)
+            : Promise.resolve(undefined),
+        operation.raisedBedId
+            ? getRaisedBed(operation.raisedBedId)
+            : Promise.resolve(undefined),
     ]);
 
     const operationDetails = operationsData?.find(
@@ -188,7 +189,10 @@ export default async function OperationDetailsPage({
                     )}
                     {accountUsers && (
                         <Link href={KnownPages.Account(operation.accountId)}>
-                            <Field name="Korisnici računa" value={accountUsers} />
+                            <Field
+                                name="Korisnici računa"
+                                value={accountUsers}
+                            />
                         </Link>
                     )}
                     {gardenName && (

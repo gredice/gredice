@@ -13,7 +13,8 @@
             "!.next",
             "!dist",
             "!build",
-            "!lib/flags/generated"
+            "!lib/flags/generated",
+            "!**/*.d.ts"
         ]
     },
     "formatter": {
