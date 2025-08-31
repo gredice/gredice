@@ -8,14 +8,20 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { auth } from '../../../../lib/auth/auth';
 import { BulkGenerateModal } from './BulkGenerateModal';
 import { CreateTimeSlotModal } from './CreateTimeSlotModal';
+import { TimeSlotsFilters } from './TimeSlotsFilters';
 import { TimeSlotsTable } from './TimeSlotsTable';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminTimeSlotsPage() {
+export default async function AdminTimeSlotsPage({
+    searchParams,
+}: {
+    searchParams: { [key: string]: string | string[] | undefined };
+}) {
     await auth(['admin']);
 
     const pickupLocations = await getPickupLocations();
+    const statusParam = searchParams.status === 'all' ? 'all' : 'active';
 
     return (
         <Stack spacing={4}>
@@ -49,9 +55,11 @@ export default async function AdminTimeSlotsPage() {
                 </Row>
             </Row>
 
+            <TimeSlotsFilters />
+
             <Card>
                 <CardOverflow>
-                    <TimeSlotsTable />
+                    <TimeSlotsTable status={statusParam} />
                 </CardOverflow>
             </Card>
         </Stack>
