@@ -56,9 +56,9 @@ export async function DeliveryRequestsTable() {
     function getModeLabel(mode: string) {
         switch (mode) {
             case 'delivery':
-                return 'Dostava';
+                return '🛻 Dostava';
             case 'pickup':
-                return 'Preuzimanje';
+                return '🚶 Preuzimanje';
             default:
                 return mode || '-';
         }
