@@ -151,6 +151,13 @@ export async function createOperation({
     return result.id;
 }
 
+export async function acceptOperation(id: number) {
+    await storage()
+        .update(operations)
+        .set({ isAccepted: true })
+        .where(eq(operations.id, id));
+}
+
 export async function deleteOperation(id: number) {
     await storage()
         .update(operations)
