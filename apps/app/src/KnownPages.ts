@@ -51,6 +51,8 @@ export const KnownPages = {
     ShoppingCart: (cartId: number) =>
         `/admin/shopping-carts/${cartId}` as Route,
     Operations: '/admin/operations',
+    Operation: (operationId: number) =>
+        `/admin/operations/${operationId}` as Route,
     Sensors: '/admin/sensors',
     Cache: '/admin/cache',
 
