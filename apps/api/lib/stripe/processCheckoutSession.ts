@@ -214,10 +214,10 @@ export async function processItem(itemData: {
     amount_total: number; // Amount in cents or sunflowers
 }) {
     console.debug(
-        `Processing item with entityId ${itemData.entityId} and entityTypeName ${itemData.entityTypeName} for account ${itemData.accountId}`,
+        `Processing item with entityId ${itemData.entityId} and entityTypeName ${itemData.entityTypeName} for account ${itemData.accountId} in total amount ${itemData.amount_total}`,
     );
 
-    const earnSunflowers = () =>
+    const earnSunflowersFunc = () =>
         itemData.accountId && itemData.currency === 'eur'
             ? earnSunflowersForPayment(
                   itemData.accountId,
@@ -238,7 +238,7 @@ export async function processItem(itemData: {
                     createRaisedBedSensor({
                         raisedBedId: itemData.raisedBedId,
                     }),
-                    earnSunflowers,
+                    earnSunflowersFunc(),
                 ]);
                 console.debug(
                     `Installed sensor in raised bed ${itemData.raisedBedId}.`,
@@ -250,6 +250,7 @@ export async function processItem(itemData: {
                 );
             }
         } else {
+            // Validate item data
             if (
                 !itemData.accountId ||
                 !itemData.entityId ||
@@ -310,12 +311,13 @@ export async function processItem(itemData: {
                     raisedBedId: itemData.raisedBedId,
                     raisedBedFieldId: fieldId,
                 }),
-                earnSunflowers,
+                earnSunflowersFunc(),
             ]);
             console.debug(
                 `Created operation ${itemData.entityId} of type ${itemData.entityTypeName} for account ${itemData.accountId} in garden ${itemData.gardenId ?? 'N/A'} with raised bed ${itemData.raisedBedId ?? 'N/A'} and field ${fieldId ?? 'N/A'}.`,
             );
 
+            // Make operation scheduled event if there is schedule date in the request
             if (scheduledDate) {
                 await createEvent(
                     knownEvents.operations.scheduledV1(operationId.toString(), {
@@ -408,7 +410,7 @@ export async function processItem(itemData: {
                 id: itemData.raisedBedId,
                 status: 'active',
             }),
-            earnSunflowers,
+            earnSunflowersFunc(),
         ]);
         console.debug(
             `Placed plant sort ${itemData.entityId} in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`,
