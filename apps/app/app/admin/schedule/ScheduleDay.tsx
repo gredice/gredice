@@ -12,6 +12,7 @@ import type { EntityStandardized } from '../../../lib/@types/EntityStandardized'
 import { KnownPages } from '../../../src/KnownPages';
 import { raisedBedPlanted } from '../../(actions)/raisedBedFieldsActions';
 import { CancelOperationModal } from './CancelOperationModal';
+import { AcceptOperationModal } from './AcceptOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { CopyTasksButton } from './CopyTasksButton';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
@@ -54,6 +55,7 @@ type Operation = {
     completedBy?: string;
     timestamp: Date;
     createdAt: Date;
+    isAccepted: boolean;
     isDeleted: boolean;
 };
 
@@ -306,6 +308,7 @@ export function ScheduleDay({
                                 const operationData = operationsData?.find(
                                     (data) => data.id === op.entityId,
                                 );
+                                const operationLabel = `${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`;
                                 return (
                                     <div key={op.id}>
                                         <Row
@@ -313,14 +316,21 @@ export function ScheduleDay({
                                             className="hover:bg-muted"
                                         >
                                             <Row spacing={1}>
-                                                <CompleteOperationModal
-                                                    operationId={op.id}
-                                                    userId={userId}
-                                                    label={`${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`}
-                                                    conditions={
-                                                        operationData?.conditions
-                                                    }
-                                                />
+                                                {op.isAccepted ? (
+                                                    <CompleteOperationModal
+                                                        operationId={op.id}
+                                                        userId={userId}
+                                                        label={operationLabel}
+                                                        conditions={
+                                                            operationData?.conditions
+                                                        }
+                                                    />
+                                                ) : (
+                                                    <AcceptOperationModal
+                                                        operationId={op.id}
+                                                        label={operationLabel}
+                                                    />
+                                                )}
                                                 <a
                                                     href={
                                                         operationData
@@ -336,9 +346,17 @@ export function ScheduleDay({
                                                     rel="noopener noreferrer"
                                                 >
                                                     <Typography>
-                                                        {`${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`}
+                                                        {operationLabel}
                                                     </Typography>
                                                 </a>
+                                                <Typography
+                                                    level="body2"
+                                                    className={`ml-1 italic ${op.isAccepted ? 'text-green-600' : 'text-muted-foreground'}`}
+                                                >
+                                                    {op.isAccepted
+                                                        ? 'Potvrđeno'
+                                                        : 'Nije potvrđeno'}
+                                                </Typography>
                                             </Row>
                                             <Row
                                                 justifyContent="space-between"

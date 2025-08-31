@@ -48,6 +48,7 @@ type Operation = {
     completedBy?: string;
     timestamp: Date;
     createdAt: Date;
+    isAccepted: boolean;
     isDeleted: boolean;
 };
 
