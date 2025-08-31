@@ -64,10 +64,29 @@ export default function DeliveryPage() {
                         </a>
                         .
                     </p>
+                    <div>
+                        <figure className="w-full aspect-[4/3] mb-4 text-center">
+                            <figcaption>
+                                <strong>Zone dostave</strong> -{' '}
+                                <em>
+                                    zone su okvirne, a stvarne zone dostave mogu
+                                    se razlikovati.
+                                </em>
+                            </figcaption>
+                            <iframe
+                                title="Zone dostave"
+                                src="https://www.google.com/maps/d/u/4/embed?mid=1hya16VbRWVVdH4G-8-iCHHrLl8pAISA&ehbc=2E312F&ll=45.778793753891875%2C15.983640700842331&z=9"
+                                className="w-full h-full border-0 rounded-lg"
+                            ></iframe>
+                        </figure>
+                    </div>
                     <table
                         style={{
                             width: '100%',
                             borderCollapse: 'collapse',
+                            borderStyle: 'hidden',
+                            boxShadow: '0 0 0 1px #ddd',
+                            borderRadius: '12px',
                             marginBottom: '1rem',
                         }}
                     >
@@ -84,6 +103,8 @@ export default function DeliveryPage() {
                                     style={{
                                         border: '1px solid #ddd',
                                         padding: '8px',
+                                        backgroundColor: '#faf4e3',
+                                        borderTopLeftRadius: '12px',
                                     }}
                                 >
                                     Mjesto
@@ -92,14 +113,17 @@ export default function DeliveryPage() {
                                     style={{
                                         border: '1px solid #ddd',
                                         padding: '8px',
+                                        backgroundColor: '#faf4e3',
                                     }}
                                 >
-                                    Prva dostava
+                                    Prva dostava biljke
                                 </th>
                                 <th
                                     style={{
                                         border: '1px solid #ddd',
                                         padding: '8px',
+                                        backgroundColor: '#faf4e3',
+                                        borderTopRightRadius: '12px',
                                     }}
                                 >
                                     Ostale dostave
@@ -247,7 +271,7 @@ export default function DeliveryPage() {
                                     <strong>Ostala mjesta</strong>
                                     <br />(
                                     <em>
-                                        unutar 200km od lokacije za osobno
+                                        unutar 100km od lokacije za osobno
                                         preuzimanje
                                     </em>
                                     )
@@ -275,7 +299,7 @@ export default function DeliveryPage() {
                     <p>
                         Dostava nije moguća na udaljenost veću od{' '}
                         <strong>
-                            200 km od naše{' '}
+                            100 km od naše{' '}
                             <a href="#osobno-preuzimanje">
                                 lokacije za osobno preuzimanje
                             </a>
