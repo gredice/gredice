@@ -1,8 +1,4 @@
-import {
-    getAllTimeSlots,
-    getDeliveryRequests,
-    getPickupLocations,
-} from '@gredice/storage';
+import { getAllTimeSlots, getDeliveryRequests } from '@gredice/storage';
 import { LocalDateTime, TimeRange } from '@gredice/ui/LocalDateTime';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -12,9 +8,8 @@ import { NoDataPlaceholder } from '../../../../components/shared/placeholders/No
 import { DeliveryRequestActionButtons } from './DeliveryRequestActionButtons';
 
 export async function DeliveryRequestsTable() {
-    const [deliveryRequests] = await Promise.all([
+    const [deliveryRequests, timeSlots] = await Promise.all([
         getDeliveryRequests(),
-        getPickupLocations(),
         getAllTimeSlots(),
     ]);
 
@@ -189,6 +184,7 @@ export async function DeliveryRequestsTable() {
                             <Table.Cell>
                                 <DeliveryRequestActionButtons
                                     request={request}
+                                    slots={timeSlots}
                                 />
                             </Table.Cell>
                         </Table.Row>

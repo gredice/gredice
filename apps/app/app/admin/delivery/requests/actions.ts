@@ -4,6 +4,9 @@ import {
     cancelDeliveryRequest,
     confirmDeliveryRequest,
     DeliveryRequestStates,
+    changeDeliveryRequestSlot,
+    createNotification,
+    getDeliveryRequest,
     fulfillDeliveryRequest,
     prepareDeliveryRequest,
     readyDeliveryRequest,
@@ -60,6 +63,52 @@ export async function updateDeliveryRequestStatusAction(
         return {
             success: false,
             message: 'Greška pri ažuriranju statusa zahtjeva',
+        };
+    }
+}
+
+export async function changeDeliveryRequestSlotAction(
+    _prevState: unknown,
+    formData: FormData,
+) {
+    try {
+        await auth(['admin']);
+
+        const requestId = formData.get('requestId') as string;
+        const slotId = Number(formData.get('slotId'));
+
+        if (!requestId || !slotId) {
+            return {
+                success: false,
+                message: 'Molimo popunite sva obavezna polja',
+            };
+        }
+
+        await changeDeliveryRequestSlot(requestId, slotId);
+        const updatedRequest = await getDeliveryRequest(requestId);
+        if (updatedRequest?.accountId && updatedRequest.slot) {
+            const formatted = updatedRequest.slot.startAt.toLocaleString(
+                'hr-HR',
+            );
+            await createNotification({
+                accountId: updatedRequest.accountId,
+                header: 'Termin dostave promijenjen',
+                content: `Tvoj termin dostave je promijenjen na ${formatted}.`,
+                timestamp: new Date(),
+            });
+        }
+
+        revalidatePath('/admin/delivery/requests');
+
+        return {
+            success: true,
+            message: 'Termin dostave je uspješno promijenjen',
+        };
+    } catch (error) {
+        console.error('Error changing delivery request slot:', error);
+        return {
+            success: false,
+            message: 'Greška pri promjeni termina dostave',
         };
     }
 }
