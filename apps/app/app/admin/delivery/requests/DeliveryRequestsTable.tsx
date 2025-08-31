@@ -13,6 +13,28 @@ export async function DeliveryRequestsTable() {
         getAllTimeSlots(),
     ]);
 
+    const now = new Date();
+    const sortedDeliveryRequests = deliveryRequests.toSorted((a, b) => {
+        const aSlot = a.slot?.startAt;
+        const bSlot = b.slot?.startAt;
+
+        if (!aSlot && !bSlot) return 0;
+        if (!aSlot) return 1;
+        if (!bSlot) return -1;
+
+        const aFuture = aSlot >= now;
+        const bFuture = bSlot >= now;
+
+        if (aFuture && !bFuture) return -1;
+        if (!aFuture && bFuture) return 1;
+
+        if (aFuture && bFuture) {
+            return aSlot.getTime() - bSlot.getTime();
+        }
+
+        return bSlot.getTime() - aSlot.getTime();
+    });
+
     function getStatusColor(
         status: string,
     ): 'primary' | 'warning' | 'info' | 'success' | 'neutral' | 'error' {
@@ -78,7 +100,7 @@ export async function DeliveryRequestsTable() {
                 </Table.Row>
             </Table.Header>
             <Table.Body>
-                {deliveryRequests.length === 0 && (
+                {sortedDeliveryRequests.length === 0 && (
                     <Table.Row>
                         <Table.Cell colSpan={7}>
                             <NoDataPlaceholder>
@@ -87,7 +109,7 @@ export async function DeliveryRequestsTable() {
                         </Table.Cell>
                     </Table.Row>
                 )}
-                {deliveryRequests.map((request) => {
+                {sortedDeliveryRequests.map((request) => {
                     const { slot, address, location } = request;
                     const addressString = address
                         ? [
