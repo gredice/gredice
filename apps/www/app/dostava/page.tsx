@@ -1,4 +1,5 @@
-import { Calendar } from '@signalco/ui-icons';
+import { Alert } from '@signalco/ui/Alert';
+import { Calendar, Warning } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
@@ -39,21 +40,36 @@ export default function DeliveryPage() {
                         možeš saznati kako funkcionira dostava, koje su opcije
                         dostupne i koji su uvjeti.
                     </p>
-                    <h2 id="kako-funkcionira-dostava-">
-                        Kako funkcionira dostava?
-                    </h2>
+                    <h2 id="besplatna-dostava">🆓 Besplatna dostava</h2>
                     <p>
-                        Za svako polje u gredici sa tvojim biljkama, ostvaruješ
-                        pravo na <strong>jednu besplatnu dostavu</strong> na
-                        području Zagreba, bez obzira na količinu povrća koju
-                        želiš primiti u toj dostavi. Pravo na besplatnu dostavu,
-                        možeš iskoristiti <strong>najviše jednu tjedno</strong>.
-                        Ako želiš dodatne dostave u istom tjednu možeš ih
-                        naručiti po standardnoj cijeni.
+                        Ukoliko tvoja dostava sadrži povrće od biljke za koju se
+                        radi prva dostava, ostvaruješ pravo na{' '}
+                        <strong>besplatnu dostavu</strong> za područje Zagreba,
+                        bez obzira na količinu povrća koju želiš primiti u toj
+                        dostavi.
                     </p>
+                    <Alert startDecorator={'ℹ️'} color="info">
+                        Za više besplatnih dostava, u berbu uključi barem jednu
+                        biljku koja se prvi put dostavlja.
+                        <br />
+                        Na taj način možeš ostvariti pravo na{' '}
+                        <strong>18 besplatnih</strong> dostava za gredicu sa 18
+                        posađenih biljaka.
+                    </Alert>
+                    <p>
+                        <small>
+                            <em>
+                                Pravo na besplatnu dostavu možeš iskoristiti
+                                najviše jednom tjedno. Ako želiš dodatne dostave
+                                u istom tjednu možeš ih naručiti po standardnoj
+                                cijeni.
+                            </em>
+                        </small>
+                    </p>
+                    <h2 id="cijena-dostave">🫰 Cijena dostave</h2>
                     <p>
                         Standardna cijena za dostavu je <strong>4.99 €</strong>{' '}
-                        po dostavi.
+                        po dostavi - neovisno o količini povrća.
                     </p>
                     <p>
                         Za dostavu izvan Zagreba, cijeni dostave dodaje se
@@ -64,10 +80,32 @@ export default function DeliveryPage() {
                         </a>
                         .
                     </p>
+                    <p>Vidi mapu zona dostave i tablicu s cijenama ispod:</p>
+                    <div>
+                        <figure className="w-full aspect-[4/3] mb-4 text-center">
+                            <iframe
+                                title="Zone dostave"
+                                src="https://www.google.com/maps/d/u/4/embed?mid=1hya16VbRWVVdH4G-8-iCHHrLl8pAISA&ehbc=2E312F&ll=45.778793753891875%2C15.983640700842331&z=9"
+                                className="w-full h-full border-0 rounded-lg"
+                                sandbox="allow-scripts allow-same-origin"
+                                loading="lazy"
+                            ></iframe>
+                            <figcaption>
+                                <strong>Zone dostave</strong> -{' '}
+                                <em>
+                                    zone su okvirne, a stvarne zone dostave mogu
+                                    se razlikovati.
+                                </em>
+                            </figcaption>
+                        </figure>
+                    </div>
                     <table
                         style={{
                             width: '100%',
                             borderCollapse: 'collapse',
+                            borderStyle: 'hidden',
+                            boxShadow: '0 0 0 1px #ddd',
+                            borderRadius: '12px',
                             marginBottom: '1rem',
                         }}
                     >
@@ -84,6 +122,8 @@ export default function DeliveryPage() {
                                     style={{
                                         border: '1px solid #ddd',
                                         padding: '8px',
+                                        backgroundColor: '#faf4e3',
+                                        borderTopLeftRadius: '12px',
                                     }}
                                 >
                                     Mjesto
@@ -92,14 +132,17 @@ export default function DeliveryPage() {
                                     style={{
                                         border: '1px solid #ddd',
                                         padding: '8px',
+                                        backgroundColor: '#faf4e3',
                                     }}
                                 >
-                                    Prva dostava
+                                    Prva dostava biljke
                                 </th>
                                 <th
                                     style={{
                                         border: '1px solid #ddd',
                                         padding: '8px',
+                                        backgroundColor: '#faf4e3',
+                                        borderTopRightRadius: '12px',
                                     }}
                                 >
                                     Ostale dostave
@@ -247,7 +290,7 @@ export default function DeliveryPage() {
                                     <strong>Ostala mjesta</strong>
                                     <br />(
                                     <em>
-                                        unutar 200km od lokacije za osobno
+                                        unutar 100km od lokacije za osobno
                                         preuzimanje
                                     </em>
                                     )
@@ -272,17 +315,17 @@ export default function DeliveryPage() {
                             </tr>
                         </tbody>
                     </table>
-                    <p>
+                    <Alert startDecorator={<Warning />} color="warning">
                         Dostava nije moguća na udaljenost veću od{' '}
                         <strong>
-                            200 km od naše{' '}
+                            100 km od naše{' '}
                             <a href="#osobno-preuzimanje">
                                 lokacije za osobno preuzimanje
                             </a>
                         </strong>
                         , niti nudimo dostavu <strong>izvan Hrvatske</strong>.
-                    </p>
-                    <h2 id="osobno-preuzimanje">Osobno preuzimanje</h2>
+                    </Alert>
+                    <h2 id="osobno-preuzimanje">🚶 Osobno preuzimanje</h2>
                     <p>
                         Ako ti više odgovara osobno preuzeti svoje povrće,
                         uvijek možeš doći do jedne od naših{' '}
@@ -306,7 +349,7 @@ export default function DeliveryPage() {
                         </li>
                     </ul>
                     <h2 id="planiranje-i-zakazivanje">
-                        Planiranje i zakazivanje
+                        ⌛ Planiranje i zakazivanje
                     </h2>
                     <p>
                         Dostave se zakazuju unaprijed, minimalno{' '}
