@@ -14,7 +14,7 @@ export async function DeliveryRequestsTable() {
     ]);
 
     const now = new Date();
-    deliveryRequests.sort((a, b) => {
+    const sortedDeliveryRequests = deliveryRequests.toSorted((a, b) => {
         const aSlot = a.slot?.startAt;
         const bSlot = b.slot?.startAt;
 
@@ -100,7 +100,7 @@ export async function DeliveryRequestsTable() {
                 </Table.Row>
             </Table.Header>
             <Table.Body>
-                {deliveryRequests.length === 0 && (
+                {sortedDeliveryRequests.length === 0 && (
                     <Table.Row>
                         <Table.Cell colSpan={7}>
                             <NoDataPlaceholder>
@@ -109,7 +109,7 @@ export async function DeliveryRequestsTable() {
                         </Table.Cell>
                     </Table.Row>
                 )}
-                {deliveryRequests.map((request) => {
+                {sortedDeliveryRequests.map((request) => {
                     const { slot, address, location } = request;
                     const addressString = address
                         ? [
