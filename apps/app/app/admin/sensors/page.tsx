@@ -11,6 +11,13 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { Suspense } from 'react';
+import { SensorServiceForm } from './SensorServiceForm';
+
+const statusLabels: Record<string, string> = {
+    new: 'Novi',
+    installed: 'Instaliran',
+    active: 'Aktivan',
+};
 
 async function SensorCard({ sensor }: { sensor: SelectRaisedBedSensor }) {
     const data = sensor.sensorSignalcoId
@@ -45,7 +52,9 @@ async function SensorCard({ sensor }: { sensor: SelectRaisedBedSensor }) {
                             <Typography level="h2" className="text-lg">
                                 {sensor.id}
                             </Typography>
-                            <Chip>{sensor.status}</Chip>
+                            <Chip>
+                                {statusLabels[sensor.status] ?? sensor.status}
+                            </Chip>
                         </Row>
                         <Typography level="body3">
                             {sensor.sensorSignalcoId}
@@ -81,6 +90,7 @@ async function SensorCard({ sensor }: { sensor: SelectRaisedBedSensor }) {
                             </Typography>
                         </Stack>
                     </Stack>
+                    <SensorServiceForm sensor={sensor} />
                 </Stack>
             </CardContent>
         </Card>
