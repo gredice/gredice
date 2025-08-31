@@ -145,6 +145,9 @@ importers:
 
   apps/app:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: 3.879.0
+        version: 3.879.0
       '@azure/communication-email':
         specifier: 1.0.0
         version: 1.0.0
