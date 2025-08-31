@@ -66,7 +66,7 @@ async function reconstructDeliveryRequestFromEvents(
         } else if (event.type === knownEventTypes.delivery.requestFulfilled) {
             state = DeliveryRequestStates.FULFILLED;
         } else if (event.type === knownEventTypes.delivery.requestSlotChanged) {
-            slotId = data?.slotId;
+            slotId = data?.newSlotId;
         } else if (event.type === knownEventTypes.delivery.userCancelled) {
             state = DeliveryRequestStates.CANCELLED;
         } else if (event.type === knownEventTypes.delivery.requestCancelled) {
@@ -295,8 +295,12 @@ export async function createDeliveryRequest(data: {
         throw new Error('Time slot not found');
     }
 
-    if (slot.status === 'archived') {
-        throw new Error('Time slot is archived and cannot be used');
+    if (slot.status !== 'scheduled') {
+        throw new Error('Time slot is not available for booking');
+    }
+
+    if (slot.startAt < new Date()) {
+        throw new Error('Cannot book slots in the past');
     }
 
     // Validate mode-specific requirements

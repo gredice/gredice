@@ -15,16 +15,16 @@ export async function DeliveryRequestsTable() {
 
     function getStatusColor(
         status: string,
-    ): 'primary' | 'warning' | 'info' | 'success' | 'neutral' {
+    ): 'primary' | 'warning' | 'info' | 'success' | 'neutral' | 'error' {
         switch (status) {
             case 'pending':
-                return 'warning';
+                return 'error';
             case 'confirmed':
-                return 'primary';
+                return 'warning';
             case 'preparing':
-                return 'info';
+                return 'warning';
             case 'ready':
-                return 'success';
+                return 'info';
             case 'fulfilled':
                 return 'success';
             case 'cancelled':
@@ -37,17 +37,17 @@ export async function DeliveryRequestsTable() {
     function getStatusLabel(status: string) {
         switch (status) {
             case 'pending':
-                return 'Na čekanju';
+                return '❓ Na čekanju';
             case 'confirmed':
-                return 'Potvrđen';
+                return '📆 Potvrđen';
             case 'preparing':
-                return 'U pripremi';
+                return '⌛ U pripremi';
             case 'ready':
-                return 'Spreman';
+                return '🛍️ Spreman';
             case 'fulfilled':
-                return 'Ispunjen';
+                return '✅ Ispunjen';
             case 'cancelled':
-                return 'Otkazan';
+                return '❌ Otkazan';
             default:
                 return status;
         }
