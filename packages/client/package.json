@@ -20,7 +20,7 @@
         "@biomejs/biome": "2.2.2",
         "@gredice/api": "workspace:*",
         "@types/node": "22.18.0",
-        "hono": "4.9.5",
+        "hono": "4.9.6",
         "openapi-typescript": "7.9.1",
         "typescript": "5.9.2"
     }
