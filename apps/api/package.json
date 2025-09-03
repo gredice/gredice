@@ -22,7 +22,7 @@
         "@scalar/api-reference-react": "0.7.42",
         "@upstash/redis": "1.35.3",
         "date-fns": "4.1.0",
-        "hono": "4.9.5",
+        "hono": "4.9.6",
         "hono-openapi": "0.4.8",
         "next": "15.5.2",
         "pg": "8.16.3",
