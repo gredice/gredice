@@ -98,9 +98,8 @@ export function PickableGroup({
     // Recycle block functionality
     const [isOverRecycler, setIsOverRecycler] = useState(false);
     const recycleBlock = useBlockRecycle();
-    const canRecycleRaisedBed =
-        (garden?.raisedBeds.find((rb) => rb.blockId === block.id)?.status ??
-            'new') === 'new';
+    const raisedBed = garden?.raisedBeds.find((rb) => rb.blockId === block.id);
+    const canRecycleRaisedBed = (raisedBed?.status ?? 'new') === 'new';
     const canRecycle = canRecycleRaisedBed;
 
     // Reset position animation when block is moved
@@ -204,6 +203,7 @@ export function PickableGroup({
                 await recycleBlock.mutateAsync({
                     position: stack.position,
                     blockIndex: stack.blocks.indexOf(block),
+                    raisedBedId: raisedBed?.id,
                 });
             } else {
                 dragSpringsApi.start({
