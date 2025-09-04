@@ -16,7 +16,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { EmailPasswordForm } from './EmailPasswordForm';
 import { FacebookLoginButton } from './FacebookLoginButton';
 import { GoogleLoginButton } from './GoogleLoginButton';
@@ -25,6 +25,22 @@ export default function LoginModal() {
     const router = useRouter();
     const queryClient = useQueryClient();
     const [error, setError] = useState<string>();
+    const [lastLoginProvider, setLastLoginProvider] = useState<string>();
+
+    useEffect(() => {
+        const token = localStorage.getItem('gredice-token');
+        if (!token) return;
+        client()
+            .api.auth['last-login'].$get({ query: { token } })
+            .then(async (response) => {
+                if (response.status !== 200) return;
+                const data = await response.json();
+                if (data?.provider) setLastLoginProvider(data.provider);
+            })
+            .catch(() => {
+                /* ignore */
+            });
+    }, []);
 
     const handleLogin = async (email: string, password: string) => {
         setError(undefined);
@@ -152,12 +168,42 @@ export default function LoginModal() {
                                 </div>
                             </div>
                             <Stack spacing={1}>
-                                <FacebookLoginButton
-                                    onClick={() => handleOAuthLogin('facebook')}
-                                />
-                                <GoogleLoginButton
-                                    onClick={() => handleOAuthLogin('google')}
-                                />
+                                <Row
+                                    justifyContent="between"
+                                    alignItems="center"
+                                >
+                                    <FacebookLoginButton
+                                        onClick={() =>
+                                            handleOAuthLogin('facebook')
+                                        }
+                                    />
+                                    {lastLoginProvider === 'facebook' && (
+                                        <Typography
+                                            level="body3"
+                                            className="px-2 py-0.5 rounded bg-muted text-muted-foreground"
+                                        >
+                                            Last used
+                                        </Typography>
+                                    )}
+                                </Row>
+                                <Row
+                                    justifyContent="between"
+                                    alignItems="center"
+                                >
+                                    <GoogleLoginButton
+                                        onClick={() =>
+                                            handleOAuthLogin('google')
+                                        }
+                                    />
+                                    {lastLoginProvider === 'google' && (
+                                        <Typography
+                                            level="body3"
+                                            className="px-2 py-0.5 rounded bg-muted text-muted-foreground"
+                                        >
+                                            Last used
+                                        </Typography>
+                                    )}
+                                </Row>
                             </Stack>
                         </div>
                     </TabsContent>
@@ -182,12 +228,42 @@ export default function LoginModal() {
                                 </div>
                             </div>
                             <Stack spacing={1}>
-                                <FacebookLoginButton
-                                    onClick={() => handleOAuthLogin('facebook')}
-                                />
-                                <GoogleLoginButton
-                                    onClick={() => handleOAuthLogin('google')}
-                                />
+                                <Row
+                                    justifyContent="between"
+                                    alignItems="center"
+                                >
+                                    <FacebookLoginButton
+                                        onClick={() =>
+                                            handleOAuthLogin('facebook')
+                                        }
+                                    />
+                                    {lastLoginProvider === 'facebook' && (
+                                        <Typography
+                                            level="body3"
+                                            className="px-2 py-0.5 rounded bg-muted text-muted-foreground"
+                                        >
+                                            Last used
+                                        </Typography>
+                                    )}
+                                </Row>
+                                <Row
+                                    justifyContent="between"
+                                    alignItems="center"
+                                >
+                                    <GoogleLoginButton
+                                        onClick={() =>
+                                            handleOAuthLogin('google')
+                                        }
+                                    />
+                                    {lastLoginProvider === 'google' && (
+                                        <Typography
+                                            level="body3"
+                                            className="px-2 py-0.5 rounded bg-muted text-muted-foreground"
+                                        >
+                                            Last used
+                                        </Typography>
+                                    )}
+                                </Row>
                             </Stack>
                         </div>
                     </TabsContent>

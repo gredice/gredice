@@ -6,6 +6,7 @@ import {
     createOrUpdateUserWithOauth,
     createUserPasswordLogin,
     createUserWithPassword,
+    getLastUserLogin,
     getUser,
     getUserWithLogins,
     incLoginFailedAttempts,
@@ -367,6 +368,56 @@ const app = new Hono()
                     'https://vrt.gredice.com/prijava/facebook-prijava/povratak?error=oauth_error',
                 );
             }
+        },
+    )
+    .get(
+        '/last-login',
+        describeRoute({
+            description: 'Get last login for provided token',
+        }),
+        zValidator(
+            'query',
+            z.object({
+                token: z.string(),
+            }),
+        ),
+        async (context) => {
+            const { token } = context.req.valid('query');
+
+            const { result } = await verifyJwt(token);
+            let userId = result?.payload.sub as string | undefined;
+            if (!userId) {
+                try {
+                    const payload = JSON.parse(
+                        Buffer.from(
+                            token.split('.')[1],
+                            'base64url',
+                        ).toString(),
+                    );
+                    userId =
+                        typeof payload.sub === 'string'
+                            ? payload.sub
+                            : undefined;
+                } catch {
+                    /* ignore */
+                }
+            }
+            if (!userId) {
+                return context.json(
+                    { error: 'Invalid token' },
+                    { status: 400 },
+                );
+            }
+
+            const login = await getLastUserLogin(userId);
+            if (!login) {
+                return context.json({ provider: null, lastLogin: null });
+            }
+
+            return context.json({
+                provider: login.loginType,
+                lastLogin: login.lastLogin?.toISOString() ?? null,
+            });
         },
     )
     .post(

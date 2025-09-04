@@ -59,6 +59,13 @@ export function getUserWithLogins(userName: string) {
     });
 }
 
+export function getLastUserLogin(userId: string) {
+    return storage().query.userLogins.findFirst({
+        where: eq(userLogins.userId, userId),
+        orderBy: desc(userLogins.lastLogin),
+    });
+}
+
 export function loginSuccessful(userLoginId: number) {
     return storage()
         .update(userLogins)
