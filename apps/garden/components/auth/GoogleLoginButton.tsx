@@ -1,12 +1,26 @@
 import { Button, type ButtonProps } from '@signalco/ui-primitives/Button';
+import { Chip } from '@signalco/ui-primitives/Chip';
 
-export function GoogleLoginButton({ ...props }: ButtonProps) {
+export function GoogleLoginButton({
+    lastUsed,
+    ...props
+}: ButtonProps & { lastUsed?: boolean }) {
     return (
         <Button
             type="button"
             variant="outlined"
-            className="bg-white dark:bg-black"
+            className="bg-white dark:text-black"
             fullWidth
+            endDecorator={
+                lastUsed && (
+                    <Chip
+                        className="absolute right-8 hidden sm:inline-block"
+                        size="sm"
+                    >
+                        Zadnje korišteno
+                    </Chip>
+                )
+            }
             {...props}
         >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">

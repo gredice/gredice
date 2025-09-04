@@ -1,12 +1,26 @@
 import { Button, type ButtonProps } from '@signalco/ui-primitives/Button';
+import { Chip } from '@signalco/ui-primitives/Chip';
 
-export function FacebookLoginButton({ ...props }: ButtonProps) {
+export function FacebookLoginButton({
+    lastUsed,
+    ...props
+}: ButtonProps & { lastUsed?: boolean }) {
     return (
         <Button
             type="button"
             variant="outlined"
             className="bg-white dark:bg-blue-900"
             fullWidth
+            endDecorator={
+                lastUsed && (
+                    <Chip
+                        className="absolute right-8 hidden sm:inline-block"
+                        size="sm"
+                    >
+                        Zadnje korišteno
+                    </Chip>
+                )
+            }
             {...props}
         >
             <svg
