@@ -11,6 +11,29 @@ import {
 
 const mutationKey = ['gardens', 'current', 'useBlockRecycle'];
 
+async function removeShoppingCartItems(
+    shoppingCart: ShoppingCartData,
+    raisedBedId: number,
+) {
+    const cartId = shoppingCart.id;
+    const itemsToRemove = shoppingCart.items.filter(
+        (item) => item.raisedBedId === raisedBedId,
+    );
+    await Promise.all(
+        itemsToRemove.map((item) =>
+            client().api['shopping-cart'].$post({
+                json: {
+                    id: item.id,
+                    entityTypeName: item.entityTypeName,
+                    entityId: item.entityId,
+                    amount: 0,
+                    cartId,
+                },
+            }),
+        ),
+    );
+}
+
 export function useBlockRecycle() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
@@ -43,22 +66,8 @@ export function useBlockRecycle() {
                 ],
             });
 
-            if (raisedBedId && shoppingCart) {
-                const cartId = shoppingCart.id;
-                const itemsToRemove = shoppingCart.items.filter(
-                    (item) => item.raisedBedId === raisedBedId,
-                );
-                for (const item of itemsToRemove) {
-                    await client().api['shopping-cart'].$post({
-                        json: {
-                            id: item.id,
-                            entityTypeName: item.entityTypeName,
-                            entityId: item.entityId,
-                            amount: 0,
-                            cartId,
-                        },
-                    });
-                }
+            if (shoppingCart && raisedBedId) {
+                await removeShoppingCartItems(shoppingCart, raisedBedId);
             }
         },
         onMutate: async ({ position, blockIndex, raisedBedId }) => {
@@ -100,6 +109,7 @@ export function useBlockRecycle() {
                 },
             );
 
+            // Optimistically remove from shopping cart if raisedBedId is provided
             let previousShoppingCart: ShoppingCartData | undefined;
             if (raisedBedId) {
                 previousShoppingCart =
