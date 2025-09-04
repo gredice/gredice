@@ -4,7 +4,6 @@ import { client } from '@gredice/client';
 import { Alert } from '@signalco/ui/Alert';
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
     Tabs,
@@ -12,11 +11,10 @@ import {
     TabsList,
     TabsTrigger,
 } from '@signalco/ui-primitives/Tabs';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { EmailPasswordForm } from './EmailPasswordForm';
 import { FacebookLoginButton } from './FacebookLoginButton';
 import { GoogleLoginButton } from './GoogleLoginButton';
@@ -25,6 +23,22 @@ export default function LoginModal() {
     const router = useRouter();
     const queryClient = useQueryClient();
     const [error, setError] = useState<string>();
+    const [lastLoginProvider, setLastLoginProvider] = useState<string>();
+
+    useEffect(() => {
+        const token = localStorage.getItem('gredice-token');
+        if (!token) return;
+        client()
+            .api.auth['last-login'].$get({ query: { token } })
+            .then(async (response) => {
+                if (response.status !== 200) return;
+                const data = await response.json();
+                if (data?.provider) setLastLoginProvider(data.provider);
+            })
+            .catch(() => {
+                /* ignore */
+            });
+    }, []);
 
     const handleLogin = async (email: string, password: string) => {
         setError(undefined);
@@ -107,31 +121,24 @@ export default function LoginModal() {
             open
             title="Prijava"
             className="bg-card border-tertiary border-b-4 rounded-lg shadow-2xl"
-            hideClose
             dismissible={false}
         >
-            <Stack spacing={2}>
-                <Row spacing={2} justifyContent="start">
+            <Tabs defaultValue="login" className="w-full">
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 w-full">
                     <Image
                         src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/GrediceLogomark-v1LQ0bdzsonOf0SXkAUHj0h4G36mGB.svg"
                         alt="Gredice Logo"
-                        width={48}
-                        height={48}
+                        width={32}
+                        height={32}
                         priority
                         className="dark:mix-blend-plus-lighter"
                     />
-                    <Typography
-                        level="h3"
-                        className="text-[#2f6e40] dark:mix-blend-plus-lighter"
-                    >
-                        Prijava
-                    </Typography>
-                </Row>
-                <Tabs defaultValue="login" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 border">
+                    <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="login">Prijava</TabsTrigger>
                         <TabsTrigger value="register">Registracija</TabsTrigger>
                     </TabsList>
+                </div>
+                <Stack spacing={2}>
                     <TabsContent value="login" className="mt-4">
                         <div className="space-y-4 px-1">
                             <Stack spacing={2}>
@@ -151,14 +158,6 @@ export default function LoginModal() {
                                     </span>
                                 </div>
                             </div>
-                            <Stack spacing={1}>
-                                <FacebookLoginButton
-                                    onClick={() => handleOAuthLogin('facebook')}
-                                />
-                                <GoogleLoginButton
-                                    onClick={() => handleOAuthLogin('google')}
-                                />
-                            </Stack>
                         </div>
                     </TabsContent>
                     <TabsContent value="register" className="mt-4">
@@ -181,18 +180,20 @@ export default function LoginModal() {
                                     </span>
                                 </div>
                             </div>
-                            <Stack spacing={1}>
-                                <FacebookLoginButton
-                                    onClick={() => handleOAuthLogin('facebook')}
-                                />
-                                <GoogleLoginButton
-                                    onClick={() => handleOAuthLogin('google')}
-                                />
-                            </Stack>
                         </div>
                     </TabsContent>
-                </Tabs>
-            </Stack>
+                    <Stack spacing={1}>
+                        <FacebookLoginButton
+                            onClick={() => handleOAuthLogin('facebook')}
+                            lastUsed={lastLoginProvider === 'facebook'}
+                        />
+                        <GoogleLoginButton
+                            onClick={() => handleOAuthLogin('google')}
+                            lastUsed={lastLoginProvider === 'google'}
+                        />
+                    </Stack>
+                </Stack>
+            </Tabs>
         </Modal>
     );
 }

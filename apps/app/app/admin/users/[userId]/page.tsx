@@ -233,6 +233,56 @@ export default async function UserPage({
                         </Table>
                     </CardOverflow>
                 </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Prijave</CardTitle>
+                    </CardHeader>
+                    <CardOverflow>
+                        <Table>
+                            <Table.Header>
+                                <Table.Row>
+                                    <Table.Head>Vrsta</Table.Head>
+                                    <Table.Head>Zadnja prijava</Table.Head>
+                                </Table.Row>
+                            </Table.Header>
+                            <Table.Body>
+                                {logins?.usersLogins.filter((l) => l.lastLogin)
+                                    .length === 0 && (
+                                    <Table.Row>
+                                        <Table.Cell colSpan={2}>
+                                            <NoDataPlaceholder>
+                                                Nema prijava
+                                            </NoDataPlaceholder>
+                                        </Table.Cell>
+                                    </Table.Row>
+                                )}
+                                {logins?.usersLogins
+                                    .filter((l) => l.lastLogin)
+                                    .sort(
+                                        (a, b) =>
+                                            (b.lastLogin?.getTime() ?? 0) -
+                                            (a.lastLogin?.getTime() ?? 0),
+                                    )
+                                    .map((userLogin) => (
+                                        <Table.Row key={userLogin.id}>
+                                            <Table.Cell>
+                                                {userLogin.loginType}
+                                            </Table.Cell>
+                                            <Table.Cell>
+                                                {userLogin.lastLogin ? (
+                                                    <LocalDateTime>
+                                                        {userLogin.lastLogin}
+                                                    </LocalDateTime>
+                                                ) : (
+                                                    'Nikad'
+                                                )}
+                                            </Table.Cell>
+                                        </Table.Row>
+                                    ))}
+                            </Table.Body>
+                        </Table>
+                    </CardOverflow>
+                </Card>
             </div>
         </Stack>
     );
