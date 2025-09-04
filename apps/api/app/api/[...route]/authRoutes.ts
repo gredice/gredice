@@ -416,7 +416,6 @@ const app = new Hono()
 
             return context.json({
                 provider: login.loginType,
-                lastLogin: login.lastLogin?.toISOString() ?? null,
             });
         },
     )
