@@ -9,7 +9,7 @@ export function GoogleLoginButton({
         <Button
             type="button"
             variant="outlined"
-            className="bg-white dark:text-black"
+            className="bg-white dark:text-black dark:hover:bg-white/80"
             fullWidth
             endDecorator={
                 lastUsed && (

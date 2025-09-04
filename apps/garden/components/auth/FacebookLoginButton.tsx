@@ -9,7 +9,7 @@ export function FacebookLoginButton({
         <Button
             type="button"
             variant="outlined"
-            className="bg-white dark:bg-blue-900"
+            className="bg-white dark:bg-blue-900 dark:hover:bg-blue-800"
             fullWidth
             endDecorator={
                 lastUsed && (
