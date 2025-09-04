@@ -25,6 +25,10 @@ const nextConfig: NextConfig = {
                 hostname: 'cdn.gredice.com',
             },
             {
+                protocol: 'https',
+                hostname: 'vrt.gredice.com',
+            },
+            {
                 // Garden - Vercel Blob
                 protocol: 'https',
                 hostname: 'myegtvromcktt2y7.public.blob.vercel-storage.com',
