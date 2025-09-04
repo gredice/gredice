@@ -3,20 +3,51 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { currentAccountKeys } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
+import {
+    type ShoppingCartData,
+    useShoppingCart,
+    useShoppingCartQueryKey,
+} from './useShoppingCart';
 
 const mutationKey = ['gardens', 'current', 'useBlockRecycle'];
+
+async function removeShoppingCartItems(
+    shoppingCart: ShoppingCartData,
+    raisedBedId: number,
+) {
+    const cartId = shoppingCart.id;
+    const itemsToRemove = shoppingCart.items.filter(
+        (item) => item.raisedBedId === raisedBedId,
+    );
+    await Promise.all(
+        itemsToRemove.map((item) =>
+            client().api['shopping-cart'].$post({
+                json: {
+                    id: item.id,
+                    entityTypeName: item.entityTypeName,
+                    entityId: item.entityId,
+                    amount: 0,
+                    cartId,
+                },
+            }),
+        ),
+    );
+}
 
 export function useBlockRecycle() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
+    const { data: shoppingCart } = useShoppingCart();
     return useMutation({
         mutationKey,
         mutationFn: async ({
             position,
             blockIndex,
+            raisedBedId,
         }: {
             position: { x: number; z: number };
             blockIndex: number;
+            raisedBedId?: number;
         }) => {
             console.debug('Recycling block', position, blockIndex);
             if (!garden) {
@@ -34,8 +65,12 @@ export function useBlockRecycle() {
                     },
                 ],
             });
+
+            if (shoppingCart && raisedBedId) {
+                await removeShoppingCartItems(shoppingCart, raisedBedId);
+            }
         },
-        onMutate: async ({ position, blockIndex }) => {
+        onMutate: async ({ position, blockIndex, raisedBedId }) => {
             if (!garden) {
                 return;
             }
@@ -74,8 +109,26 @@ export function useBlockRecycle() {
                 },
             );
 
+            // Optimistically remove from shopping cart if raisedBedId is provided
+            let previousShoppingCart: ShoppingCartData | undefined;
+            if (raisedBedId) {
+                previousShoppingCart =
+                    queryClient.getQueryData<ShoppingCartData>(
+                        useShoppingCartQueryKey,
+                    );
+                if (previousShoppingCart) {
+                    queryClient.setQueryData(useShoppingCartQueryKey, {
+                        ...previousShoppingCart,
+                        items: previousShoppingCart.items.filter(
+                            (item) => item.raisedBedId !== raisedBedId,
+                        ),
+                    });
+                }
+            }
+
             return {
                 previousItem,
+                previousShoppingCart,
             };
         },
         onError: (error, _variables, context) => {
@@ -86,14 +139,25 @@ export function useBlockRecycle() {
                     context.previousItem,
                 );
             }
+            if (context?.previousShoppingCart) {
+                queryClient.setQueryData(
+                    useShoppingCartQueryKey,
+                    context.previousShoppingCart,
+                );
+            }
         },
-        onSettled: async () => {
+        onSettled: async (_data, _error, variables) => {
             // Invalidate queries only on last mutation
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
                     queryKey: currentGardenKeys,
                 });
                 queryClient.invalidateQueries({ queryKey: currentAccountKeys });
+                if (variables.raisedBedId) {
+                    queryClient.invalidateQueries({
+                        queryKey: useShoppingCartQueryKey,
+                    });
+                }
             }
         },
     });
