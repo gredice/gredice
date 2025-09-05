@@ -25,7 +25,7 @@
         "@signalco/js": "0.1.0",
         "@gredice/js": "workspace:*",
         "@upstash/redis": "1.35.3",
-        "dotenv": "17.2.1",
+        "dotenv": "17.2.2",
         "drizzle-kit": "0.31.4",
         "drizzle-orm": "0.44.5",
         "openapi-types": "12.1.3",
