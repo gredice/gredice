@@ -16,6 +16,7 @@ import type { Recipe, RecipeStep } from '../../../lib/recipes/getRecipesData';
 import { StepTimer } from './StepTimer';
 import { unitDisplayMap } from './unitDisplayMap';
 import { useTimer } from './useTimer';
+import { cx } from '@signalco/ui-primitives/cx';
 
 export function StepItem({
     index,
@@ -55,8 +56,8 @@ export function StepItem({
 
     return (
         <Stack spacing={1} className="grow">
-            <div className="grid gap-2 grid-cols-1">
-                <Row spacing={2} justifyContent="space-between">
+            <Row>
+                <Row spacing={2} justifyContent="space-between" className='grow'>
                     <Row spacing={1}>
                         <div className="shrink-0 size-7">
                             <DotIndicator
@@ -67,7 +68,7 @@ export function StepItem({
                         </div>
                         <Checkbox
                             label={
-                                <Typography level="body1">
+                                <Typography level="body1" className={cx(checked && 'line-through')}>
                                     {step.shortDescription}
                                 </Typography>
                             }
@@ -102,10 +103,10 @@ export function StepItem({
                             <Down className={expanded ? 'rotate-180' : ''} />
                         </IconButton>
                     )}
-            </div>
+            </Row>
             {(step.description || (step.ingredientsUsed?.length ?? 0) > 0) && (
                 <Collapse appear={expanded ?? true}>
-                    <div className="pl-4 border-l ml-2">
+                    <div className="pl-4 border-l ml-3.5">
                         <Stack>
                             {(step.ingredientsUsed?.length ?? 0) > 0 && (
                                 <Stack>
