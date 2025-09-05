@@ -23,57 +23,63 @@ export function PlantCalendarPicker({
 }) {
     return (
         <Tabs defaultValue="year">
-            <Stack spacing={0} className="group">
-                <TabsList className="grid grid-cols-2 border w-fit">
-                    <TabsTrigger value="year" className="flex gap-2">
-                        <Calendar className="size-5 shrink-0" />
-                        <span>Kalendar sijanja</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="growth" className="flex gap-2">
-                        <Sprout className="size-5 shrink-0" />
-                        <span>Kalendar rasta</span>
-                    </TabsTrigger>
-                </TabsList>
-                {!plant.calendar || Object.keys(plant.calendar).length <= 0 ? (
-                    <NoDataPlaceholder>
-                        Nema podataka o kalendaru
-                    </NoDataPlaceholder>
-                ) : (
-                    <>
-                        <TabsContent value="year">
-                            <Card>
-                                <CardOverflow>
-                                    <PlantYearCalendar
-                                        activities={plant.calendar}
-                                    />
-                                </CardOverflow>
-                            </Card>
-                            <Typography
-                                level="body2"
-                                className="italic text-right text-balance"
-                            >
-                                Kalendar sijanja prikazuje smjernice za sjetvu i
-                                razvoj biljke kroz godinu.
-                            </Typography>
-                        </TabsContent>
-                        <TabsContent value="growth">
-                            <Card>
-                                <CardOverflow>
-                                    <PlantGrowthCalendar
-                                        windows={plant.attributes}
-                                    />
-                                </CardOverflow>
-                            </Card>
-                            <Typography
-                                level="body2"
-                                className="italic text-right text-balance"
-                            >
-                                Kalendar rasta prikazuje faze biljke ako se
-                                biljka sije danas.
-                            </Typography>
-                        </TabsContent>
-                    </>
-                )}
+            <Stack spacing={1} className="group">
+                <Stack
+                    spacing={0}
+                    className="bg-muted p-2 rounded-lg border shadow-sm"
+                >
+                    <TabsList className="grid grid-cols-2 w-fit">
+                        <TabsTrigger value="year" className="flex gap-2">
+                            <Calendar className="size-5 shrink-0" />
+                            <span>Kalendar sijanja</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="growth" className="flex gap-2">
+                            <Sprout className="size-5 shrink-0" />
+                            <span>Kalendar rasta</span>
+                        </TabsTrigger>
+                    </TabsList>
+                    {!plant.calendar ||
+                    Object.keys(plant.calendar).length <= 0 ? (
+                        <NoDataPlaceholder>
+                            Nema podataka o kalendaru
+                        </NoDataPlaceholder>
+                    ) : (
+                        <>
+                            <TabsContent value="year">
+                                <Card>
+                                    <CardOverflow>
+                                        <PlantYearCalendar
+                                            activities={plant.calendar}
+                                        />
+                                    </CardOverflow>
+                                </Card>
+                                <Typography
+                                    level="body2"
+                                    className="italic text-right text-balance"
+                                >
+                                    Kalendar sijanja prikazuje smjernice za
+                                    sjetvu i razvoj biljke kroz godinu.
+                                </Typography>
+                            </TabsContent>
+                            <TabsContent value="growth">
+                                <Card>
+                                    <CardOverflow>
+                                        <PlantGrowthCalendar
+                                            windows={plant.attributes}
+                                        />
+                                    </CardOverflow>
+                                </Card>
+                                <Typography
+                                    level="body2"
+                                    className="italic text-right text-balance"
+                                >
+                                    Kalendar rasta prikazuje faze biljke ako se
+                                    biljka sije danas.
+                                </Typography>
+                            </TabsContent>
+                        </>
+                    )}
+                </Stack>
                 <FeedbackModal
                     topic={
                         sort

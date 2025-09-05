@@ -43,6 +43,7 @@ export function OperationAttributesCards({
                         )
                     }
                     header="Primjena"
+                    subheader="Na čemu se radnja izvodi"
                     value={
                         applicationMap[attributes?.application]?.label ?? '-'
                     }
@@ -51,11 +52,13 @@ export function OperationAttributesCards({
             <AttributeCard
                 icon={<Hourglass />}
                 header="Učestalost"
+                subheader="Savjet o učestalosti izvođenja radnje"
                 value={operationFrequencyLabel(attributes?.frequency)}
             />
             <AttributeCard
                 icon={<Sprout />}
                 header="Stadij"
+                subheader="Preporučeni stadij biljke za izvođenje radnje"
                 value={attributes?.stage?.information?.label ?? '-'}
             />
         </div>

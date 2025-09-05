@@ -76,10 +76,10 @@ export default async function OperationPage(
                     subHeader={operation.information.shortDescription}
                 >
                     <Stack>
-                        <Stack spacing={1} className="group">
-                            <Typography level="h2" className="text-2xl">
-                                Informacije
-                            </Typography>
+                        <Typography level="h5" component="h2" gutterBottom>
+                            Informacije
+                        </Typography>
+                        <Stack spacing={1}>
                             <div className="grid grid-cols-2 gap-2">
                                 <AttributeCard
                                     icon={<Euro />}
@@ -96,10 +96,10 @@ export default async function OperationPage(
                                 className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
                             />
                         </Stack>
-                        <Stack spacing={1} className="group">
-                            <Typography level="h2" className="text-2xl">
-                                Svojstva
-                            </Typography>
+                        <Typography level="h5" component="h2" gutterBottom>
+                            Svojstva
+                        </Typography>
+                        <Stack spacing={1}>
                             <OperationAttributesCards
                                 attributes={operation.attributes}
                             />
@@ -120,23 +120,19 @@ export default async function OperationPage(
                             'Nema opisa za ovu radnju.'}
                     </Markdown>
                 </div>
-                <Stack>
-                    <Typography level="h2" gutterBottom className="text-2xl">
-                        Postupak
-                    </Typography>
-                    <div className="max-w-xl">
-                        <Markdown>
-                            {operation.information.instructions ||
-                                'Nema postupka za ovu radnju.'}
-                        </Markdown>
-                    </div>
-                </Stack>
-                <Stack>
-                    <Typography level="h2" className="text-2xl">
-                        Dostupno za
-                    </Typography>
-                    <OperationApplicationsList operationId={operation.id} />
-                </Stack>
+                <Typography level="h2" className="text-2xl">
+                    Postupak
+                </Typography>
+                <div className="max-w-xl">
+                    <Markdown>
+                        {operation.information.instructions ||
+                            'Nema postupka za ovu radnju.'}
+                    </Markdown>
+                </div>
+                <Typography level="h2" className="text-2xl">
+                    Dostupno za
+                </Typography>
+                <OperationApplicationsList operationId={operation.id} />
                 <Row spacing={2}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj radnji korisne?

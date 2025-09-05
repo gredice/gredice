@@ -95,7 +95,7 @@ export async function InformationSection({
                 {(applicableOperations?.length ?? 0) <= 0 && (
                     <div className="py-4">
                         <NoDataPlaceholder>
-                            Nema dostupnih akcija
+                            Nema dodatnih radnji
                         </NoDataPlaceholder>
                     </div>
                 )}

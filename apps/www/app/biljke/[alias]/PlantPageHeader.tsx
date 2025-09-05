@@ -3,7 +3,7 @@ import { AiWatermark } from '@gredice/ui/AiWatermark';
 import { SeedTimeInformationBadge } from '@gredice/ui/plants';
 import { slug } from '@signalco/js';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Euro, LayoutGrid, MapPinHouse, Sprout } from '@signalco/ui-icons';
+import { Euro, LayoutGrid, MapPinHouse } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -36,9 +36,6 @@ export function PlantPageHeader({
         plantsPerRow = 1;
     }
     const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
-    const pricePerPlant = plant.prices?.perPlant
-        ? (plant.prices.perPlant / totalPlants).toFixed(2)
-        : null;
 
     const baseLatinName = plant.information.latinName
         ? `lat. ${plant.information.latinName}`
@@ -139,7 +136,7 @@ export function PlantPageHeader({
             <Stack>
                 <PlantCalendarPicker plant={plant} sort={sort} />
                 <Stack spacing={1} className="group">
-                    <Typography level="h2" className="text-2xl">
+                    <Typography level="h5" component="h2">
                         Informacije
                     </Typography>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -151,13 +148,6 @@ export function PlantPageHeader({
                             navigateHref={KnownPages.RaisedBeds}
                             navigateLabel="Više o gredicama"
                         />
-                        {pricePerPlant && (
-                            <AttributeCard
-                                icon={<Sprout />}
-                                header="Cijena po biljci"
-                                value={`${pricePerPlant}€`}
-                            />
-                        )}
                         {plant.prices?.perPlant && (
                             <AttributeCard
                                 icon={<Euro />}
@@ -182,7 +172,7 @@ export function PlantPageHeader({
                     />
                 </Stack>
                 <Stack spacing={1} className="group">
-                    <Typography level="h2" className="text-2xl">
+                    <Typography level="h5" component="h2">
                         Svojstva
                     </Typography>
                     <PlantAttributeCards attributes={plant.attributes} />
