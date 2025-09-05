@@ -6,6 +6,7 @@ export interface RecipeStep {
     timeMinutes?: number;
     timer?: boolean;
     portionDurationScale?: number;
+    ingredientsUsed?: { id: string; quantity?: number }[];
 }
 
 export interface Recipe {
@@ -15,6 +16,7 @@ export interface Recipe {
     description: string;
     portions: number;
     ingredients: {
+        id: string;
         name: string;
         quantity: number;
         unit: 'pcs' | 'g' | 'ml' | 'tsp' | 'tbsp';
@@ -35,15 +37,22 @@ const recipes: Recipe[] = [
         plants: ['Rajčica', 'Bosiljak'],
         ingredients: [
             {
+                id: 'rajcica',
                 name: 'Rajčica',
                 quantity: 2,
                 unit: 'pcs',
                 approximateQuantity: 150,
                 approximateQuantityUnit: 'g',
             },
-            { name: 'Mozzarella', quantity: 100, unit: 'g' },
-            { name: 'Svjež bosiljak', quantity: 10, unit: 'g' },
+            { id: 'mozzarella', name: 'Mozzarella', quantity: 100, unit: 'g' },
             {
+                id: 'svjezi-bosiljak',
+                name: 'Svjež bosiljak',
+                quantity: 10,
+                unit: 'g',
+            },
+            {
+                id: 'maslinovo-ulje',
                 name: 'Maslinovo ulje',
                 quantity: 15,
                 unit: 'ml',
@@ -57,12 +66,17 @@ const recipes: Recipe[] = [
                 description:
                     'Nareži rajčice i mozzarellu na tanke ploške iste debljine.\n\nPloške slaži na tanjur naizmjenično.',
                 timeMinutes: 5,
+                ingredientsUsed: [{ id: 'rajcica' }, { id: 'mozzarella' }],
             },
             {
                 shortDescription: 'Dodaj bosiljak i maslinovo ulje',
                 description:
                     'Dodaj svježi bosiljak i maslinovo ulje preko narezanih rajčica i mozzarelle.',
                 timeMinutes: 3,
+                ingredientsUsed: [
+                    { id: 'svjezi-bosiljak' },
+                    { id: 'maslinovo-ulje' },
+                ],
             },
         ],
     },
@@ -75,6 +89,7 @@ const recipes: Recipe[] = [
         plants: ['Mrkva'],
         ingredients: [
             {
+                id: 'mrkva',
                 name: 'Mrkva',
                 quantity: 4,
                 unit: 'pcs',
@@ -82,19 +97,25 @@ const recipes: Recipe[] = [
                 approximateQuantityUnit: 'g',
             },
             {
+                id: 'med',
                 name: 'Med',
                 quantity: 30,
                 unit: 'g',
                 approximateQuantity: 2,
                 approximateQuantityUnit: 'tbsp',
             },
-            { name: 'Timijan', quantity: 5, unit: 'g' },
+            { id: 'timijan', name: 'Timijan', quantity: 5, unit: 'g' },
         ],
         steps: [
-            { shortDescription: 'Očisti i nareži mrkvu.', timeMinutes: 5 },
+            {
+                shortDescription: 'Očisti i nareži mrkvu.',
+                timeMinutes: 5,
+                ingredientsUsed: [{ id: 'mrkva' }],
+            },
             {
                 shortDescription: 'Pomiješaj s medom i timijanom',
                 timeMinutes: 1,
+                ingredientsUsed: [{ id: 'med' }, { id: 'timijan' }],
             },
             {
                 shortDescription: 'Peci na 200°C oko 25 minuta',
@@ -112,20 +133,26 @@ const recipes: Recipe[] = [
         plants: ['Krastavac'],
         ingredients: [
             {
+                id: 'krastavac',
                 name: 'Krastavac',
                 quantity: 1,
                 unit: 'pcs',
                 approximateQuantity: 200,
                 approximateQuantityUnit: 'g',
             },
-            { name: 'Jogurt', quantity: 100, unit: 'g' },
-            { name: 'Kopar', quantity: 5, unit: 'g' },
+            { id: 'jogurt', name: 'Jogurt', quantity: 100, unit: 'g' },
+            { id: 'kopar', name: 'Kopar', quantity: 5, unit: 'g' },
         ],
         steps: [
-            { shortDescription: 'Nareži krastavac', timeMinutes: 5 },
+            {
+                shortDescription: 'Nareži krastavac',
+                timeMinutes: 5,
+                ingredientsUsed: [{ id: 'krastavac' }],
+            },
             {
                 shortDescription: 'Pomiješaj s jogurtom i koprom',
                 timeMinutes: 2,
+                ingredientsUsed: [{ id: 'jogurt' }, { id: 'kopar' }],
             },
         ],
     },

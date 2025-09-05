@@ -2,15 +2,14 @@
 
 import { Share } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { Progress } from '../../../../../packages/game/src/controls/components/Progress';
 import type { Recipe } from '../../../lib/recipes/getRecipesData';
 import { IngredientItem } from './IngredientItem';
+import { PortionPicker } from './PortionPicker';
 import { StepItem } from './StepItem';
 import { WakeLock } from './WakeLock';
 
@@ -33,22 +32,28 @@ export function RecipeView({ recipe }: { recipe: Recipe }) {
             });
         } catch {
             // ignore
+            // TODO: Implement fallback for sharing eg. copy to clipboard
         }
     }
+
+    const nutritionScore = Number.NaN;
+    const numberOfIngredients = recipe.ingredients.length;
+    const totalTime = recipe.steps.reduce(
+        (sum, step) => sum + (step.timeMinutes || 0),
+        0,
+    );
 
     return (
         <Stack spacing={4} className="py-8">
             <Row spacing={2} className="justify-end">
                 <WakeLock />
-                {!!navigator.share && (
-                    <Button
-                        variant="plain"
-                        onClick={shareRecipe}
-                        startDecorator={<Share className="size-4 shrink-0" />}
-                    >
-                        Podijeli
-                    </Button>
-                )}
+                <Button
+                    variant="plain"
+                    onClick={shareRecipe}
+                    startDecorator={<Share className="size-4 shrink-0" />}
+                >
+                    Podijeli
+                </Button>
             </Row>
             <Stack spacing={2}>
                 <Typography level="h2" component="h1">
@@ -56,32 +61,33 @@ export function RecipeView({ recipe }: { recipe: Recipe }) {
                 </Typography>
                 <Typography level="body1">{recipe.description}</Typography>
             </Stack>
-            <Input
-                label="Broj porcija"
-                type="number"
-                value={portions}
-                min={1}
-                className="w-20 bg-card"
-                onChange={(e) => setPortions(Number(e.target.value) || 1)}
-            />
-            <div className="grid gap-8 md:grid-cols-[1fr_3fr]">
+            <PortionPicker value={portions} onChange={setPortions} />
+            <div className="grid gap-8 md:grid-cols-[1fr_2fr_1fr]">
                 <Stack spacing={2}>
-                    <Row justifyContent="space-between">
-                        <Typography level="h4" component="h2">
-                            Namirnice
+                    <Stack alignItems="center">
+                        <Typography level="h4">
+                            {numberOfIngredients}
                         </Typography>
-                        <Chip
-                            color={
-                                checkedIngredients.length ===
-                                recipe.ingredients.length
-                                    ? 'success'
-                                    : 'neutral'
+                        <Typography level="body1">
+                            {numberOfIngredients === 1
+                                ? 'Sastojak'
+                                : 'Sastojaka'}
+                        </Typography>
+                    </Stack>
+                    <div className="relative">
+                        <Progress
+                            value={
+                                (checkedIngredients.length /
+                                    recipe.ingredients.length) *
+                                100
                             }
-                        >
+                            className="border"
+                        />
+                        <Typography className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-semibold text-sm">
                             {checkedIngredients.length} /{' '}
                             {recipe.ingredients.length}
-                        </Chip>
-                    </Row>
+                        </Typography>
+                    </div>
                     {recipe.ingredients.map((ingredient) => (
                         <IngredientItem
                             key={ingredient.name}
@@ -91,28 +97,45 @@ export function RecipeView({ recipe }: { recipe: Recipe }) {
                     ))}
                 </Stack>
                 <Stack spacing={2}>
-                    <Row justifyContent="space-between">
+                    <Stack alignItems="center">
                         <Typography level="h4" component="h2">
-                            Koraci
+                            {totalTime} min
                         </Typography>
-                        <Chip
-                            color={
-                                checkedSteps.length === recipe.steps.length
-                                    ? 'success'
-                                    : 'neutral'
+                        <Typography level="body1">Priprema</Typography>
+                    </Stack>
+                    <div className="relative">
+                        <Progress
+                            value={
+                                (checkedSteps.length / recipe.steps.length) *
+                                100
                             }
-                        >
+                            className="border"
+                        />
+                        <Typography className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-semibold text-sm">
                             {checkedSteps.length} / {recipe.steps.length}
-                        </Chip>
-                    </Row>
+                        </Typography>
+                    </div>
                     {recipe.steps.map((step, stepIndex) => (
                         <StepItem
                             key={step.shortDescription}
                             index={stepIndex}
+                            recipe={recipe}
+                            portionMultiplier={multiplier}
                             step={step}
                             durationScale={1}
                         />
                     ))}
+                </Stack>
+                <Stack spacing={2}>
+                    <Stack alignItems="center">
+                        <Typography level="h4" component="h2">
+                            {Number.isNaN(nutritionScore)
+                                ? '-'
+                                : nutritionScore}
+                        </Typography>
+                        <Typography level="body1">Nutrijenti</Typography>
+                    </Stack>
+                    <div>Content</div>
                 </Stack>
             </div>
         </Stack>
