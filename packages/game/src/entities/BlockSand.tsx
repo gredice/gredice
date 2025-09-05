@@ -1,12 +1,11 @@
 import { animated } from '@react-spring/three';
-import { models } from '../data/models';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BlockSand({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes }: any = useGameGLTF(models.GameAssets.url);
+    const { nodes } = useGameGLTF();
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 

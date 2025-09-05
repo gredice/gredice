@@ -1,5 +1,4 @@
 import { animated } from '@react-spring/three';
-import { models } from '../data/models';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -11,11 +10,14 @@ export function BlockGround({
     rotation,
     variant,
 }: EntityInstanceProps) {
-    const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
+    const { nodes, materials } = useGameGLTF();
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 
-    const variantResolved = (variant ?? 1) % 2;
+    const variantResolved1: 'Block_Ground_1_1' | 'Block_Ground_2_1' =
+        (variant ?? 1) % 2 ? 'Block_Ground_1_1' : 'Block_Ground_2_1';
+    const variantResolved2: 'Block_Ground_1_2' | 'Block_Ground_2_2' =
+        (variant ?? 1) % 2 ? 'Block_Ground_1_2' : 'Block_Ground_2_2';
 
     return (
         <animated.group
@@ -25,13 +27,13 @@ export function BlockGround({
             <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes[`Block_Ground_${variantResolved}_1`].geometry}
-                material={nodes[`Block_Ground_${variantResolved}_1`].material}
+                geometry={nodes[variantResolved1].geometry}
+                material={nodes[variantResolved1].material}
             />
             <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes[`Block_Ground_${variantResolved}_2`].geometry}
+                geometry={nodes[variantResolved2].geometry}
                 material={materials['Material.Stone']}
             />
         </animated.group>

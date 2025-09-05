@@ -1,5 +1,4 @@
 import { animated } from '@react-spring/three';
-import { models } from '../data/models';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -7,16 +6,22 @@ import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { useEntityNeighbors } from './helpers/useEntityNeighbors';
 
 export function Fence({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
+    const { nodes, materials } = useGameGLTF();
     const currentStackHeight = useStackHeight(stack, block);
 
-    let variant = 'Solo';
+    let variant:
+        | 'Fence_Solo'
+        | 'Fence_Single'
+        | 'Fence_Middle'
+        | 'Fence_Corner'
+        | 'Fence_T'
+        | 'Fence_Cross' = 'Fence_Solo';
     let realizedRotation = rotation % 4;
     const neighbors = useEntityNeighbors(stack, block);
 
     // Variant: Solor, Single, Middle, Corner, T, Cross
     if (neighbors.total === 1) {
-        variant = 'Single';
+        variant = 'Fence_Single';
         realizedRotation = neighbors.n
             ? 3
             : neighbors.s
@@ -26,13 +31,13 @@ export function Fence({ stack, block, rotation }: EntityInstanceProps) {
                 : 2;
     } else if (neighbors.total === 2) {
         if (neighbors.n && neighbors.s) {
-            variant = 'Middle';
+            variant = 'Fence_Middle';
             realizedRotation = 1;
         } else if (neighbors.e && neighbors.w) {
-            variant = 'Middle';
+            variant = 'Fence_Middle';
             realizedRotation = 0;
         } else {
-            variant = 'Corner';
+            variant = 'Fence_Corner';
             if (neighbors.n && neighbors.e) {
                 realizedRotation = 0;
             } else if (neighbors.e && neighbors.s) {
@@ -44,7 +49,7 @@ export function Fence({ stack, block, rotation }: EntityInstanceProps) {
             }
         }
     } else if (neighbors.total === 3) {
-        variant = 'T';
+        variant = 'Fence_T';
         if (neighbors.n && neighbors.e && neighbors.s) {
             realizedRotation = 0;
         } else if (neighbors.e && neighbors.s && neighbors.w) {
@@ -55,7 +60,7 @@ export function Fence({ stack, block, rotation }: EntityInstanceProps) {
             realizedRotation = 3;
         }
     } else if (neighbors.total === 4) {
-        variant = 'Cross';
+        variant = 'Fence_Cross';
     }
 
     const [animatedRotation] = useAnimatedEntityRotation(realizedRotation);
@@ -68,7 +73,7 @@ export function Fence({ stack, block, rotation }: EntityInstanceProps) {
             <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes[`Fence_${variant}`].geometry}
+                geometry={nodes[variant].geometry}
                 material={materials['Material.Planks']}
             />
         </animated.group>
