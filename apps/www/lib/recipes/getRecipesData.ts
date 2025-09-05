@@ -1,8 +1,11 @@
 import { unstable_cache } from 'next/cache';
 
 export interface RecipeStep {
-    description: string;
+    shortDescription: string;
+    description?: string;
     timeMinutes?: number;
+    timer?: boolean;
+    portionDurationScale?: number;
 }
 
 export interface Recipe {
@@ -14,7 +17,9 @@ export interface Recipe {
     ingredients: {
         name: string;
         quantity: number;
-        unit: string;
+        unit: 'pcs' | 'g' | 'ml' | 'tsp' | 'tbsp';
+        approximateQuantity?: number;
+        approximateQuantityUnit?: 'g' | 'ml' | 'tsp' | 'tbsp';
     }[];
     steps: RecipeStep[];
     plants: string[]; // names of plants used
@@ -29,14 +34,36 @@ const recipes: Recipe[] = [
         portions: 2,
         plants: ['Rajčica', 'Bosiljak'],
         ingredients: [
-            { name: 'Rajčica', quantity: 2, unit: 'pcs' },
+            {
+                name: 'Rajčica',
+                quantity: 2,
+                unit: 'pcs',
+                approximateQuantity: 150,
+                approximateQuantityUnit: 'g',
+            },
             { name: 'Mozzarella', quantity: 100, unit: 'g' },
             { name: 'Svjež bosiljak', quantity: 10, unit: 'g' },
-            { name: 'Maslinovo ulje', quantity: 15, unit: 'ml' },
+            {
+                name: 'Maslinovo ulje',
+                quantity: 15,
+                unit: 'ml',
+                approximateQuantity: 1,
+                approximateQuantityUnit: 'tbsp',
+            },
         ],
         steps: [
-            { description: 'Nareži rajčice i mozzarellu.', timeMinutes: 5 },
-            { description: 'Dodaj bosiljak i maslinovo ulje.', timeMinutes: 3 },
+            {
+                shortDescription: 'Nareži rajčice i mozzarellu',
+                description:
+                    'Nareži rajčice i mozzarellu na tanke ploške iste debljine.\n\nPloške slaži na tanjur naizmjenično.',
+                timeMinutes: 5,
+            },
+            {
+                shortDescription: 'Dodaj bosiljak i maslinovo ulje',
+                description:
+                    'Dodaj svježi bosiljak i maslinovo ulje preko narezanih rajčica i mozzarelle.',
+                timeMinutes: 3,
+            },
         ],
     },
     {
@@ -47,15 +74,32 @@ const recipes: Recipe[] = [
         portions: 4,
         plants: ['Mrkva'],
         ingredients: [
-            { name: 'Mrkva', quantity: 500, unit: 'g' },
-            { name: 'Med', quantity: 30, unit: 'g' },
+            {
+                name: 'Mrkva',
+                quantity: 4,
+                unit: 'pcs',
+                approximateQuantity: 500,
+                approximateQuantityUnit: 'g',
+            },
+            {
+                name: 'Med',
+                quantity: 30,
+                unit: 'g',
+                approximateQuantity: 2,
+                approximateQuantityUnit: 'tbsp',
+            },
             { name: 'Timijan', quantity: 5, unit: 'g' },
         ],
         steps: [
-            { description: 'Očisti i nareži mrkvu.', timeMinutes: 10 },
+            { shortDescription: 'Očisti i nareži mrkvu.', timeMinutes: 5 },
             {
-                description: 'Pomiješaj s medom i timijanom te peci.',
+                shortDescription: 'Pomiješaj s medom i timijanom',
+                timeMinutes: 1,
+            },
+            {
+                shortDescription: 'Peci na 200°C oko 25 minuta',
                 timeMinutes: 25,
+                timer: true,
             },
         ],
     },
@@ -67,13 +111,22 @@ const recipes: Recipe[] = [
         portions: 2,
         plants: ['Krastavac'],
         ingredients: [
-            { name: 'Krastavac', quantity: 1, unit: 'pcs' },
+            {
+                name: 'Krastavac',
+                quantity: 1,
+                unit: 'pcs',
+                approximateQuantity: 200,
+                approximateQuantityUnit: 'g',
+            },
             { name: 'Jogurt', quantity: 100, unit: 'g' },
             { name: 'Kopar', quantity: 5, unit: 'g' },
         ],
         steps: [
-            { description: 'Nareži krastavac.', timeMinutes: 5 },
-            { description: 'Pomiješaj s jogurtom i koprom.', timeMinutes: 2 },
+            { shortDescription: 'Nareži krastavac', timeMinutes: 5 },
+            {
+                shortDescription: 'Pomiješaj s jogurtom i koprom',
+                timeMinutes: 2,
+            },
         ],
     },
 ];
