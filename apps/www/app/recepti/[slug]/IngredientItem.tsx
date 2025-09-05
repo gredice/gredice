@@ -2,6 +2,7 @@ import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
 import type { Recipe } from '../../../lib/recipes/getRecipesData';
+import { unitDisplayMap } from './unitDisplayMap';
 
 export function IngredientItem({
     ingredient,
@@ -20,6 +21,11 @@ export function IngredientItem({
         setChecked(checked);
     }
 
+    const unitDisplay = unitDisplayMap[unit] ?? unit;
+    const approximateQuantityUnitDisplay =
+        unitDisplayMap[ingredient.approximateQuantityUnit || ''] ??
+        ingredient.approximateQuantityUnit;
+
     return (
         <Checkbox
             key={ingredient.name}
@@ -28,9 +34,9 @@ export function IngredientItem({
             onCheckedChange={handleIngredientCheckChange}
             label={
                 <Typography level="body1">
-                    {value} {unit} {ingredient.name}
+                    {value} {unitDisplay} {ingredient.name}
                     {ingredient.approximateQuantity
-                        ? ` (~${(ingredient.approximateQuantity || 0) * portionMultiplier} ${ingredient.approximateQuantityUnit || ''})`
+                        ? ` (~${(ingredient.approximateQuantity || 0) * portionMultiplier} ${approximateQuantityUnitDisplay})`
                         : ''}
                 </Typography>
             }
