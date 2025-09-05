@@ -1,5 +1,4 @@
 import { animated } from '@react-spring/three';
-import { models } from '../data/models';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -7,7 +6,7 @@ import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { useEntityNeighbors } from './helpers/useEntityNeighbors';
 
 export function Shade({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
+    const { nodes, materials } = useGameGLTF();
     const currentStackHeight = useStackHeight(stack, block);
 
     let realizedRotation = rotation % 2;

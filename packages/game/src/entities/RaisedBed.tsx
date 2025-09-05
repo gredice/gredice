@@ -1,6 +1,5 @@
 import { animated } from '@react-spring/three';
 import { useHoveredBlockStore } from '../controls/SelectableGroup';
-import { models } from '../data/models';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -9,17 +8,27 @@ import { useEntityNeighbors } from './helpers/useEntityNeighbors';
 import { RiasedBedFields } from './raisedBed/RaisedBedFields';
 
 export function RaisedBed({ stack, block }: EntityInstanceProps) {
-    const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
+    const { nodes, materials } = useGameGLTF();
     const currentStackHeight = useStackHeight(stack, block);
     const hovered =
         useHoveredBlockStore((state) => state.hoveredBlock) === block;
 
     // Switch between shapes (O, L, I, U) based on neighbors
-    let shape = 'O';
+    let shape2:
+        | 'Raised_Bed_O_2'
+        | 'Raised_Bed_L_2'
+        | 'Raised_Bed_I_2'
+        | 'Raised_Bed_U_2' = 'Raised_Bed_O_2';
+    let shape1:
+        | 'Raised_Bed_O_1'
+        | 'Raised_Bed_L_1'
+        | 'Raised_Bed_I_1'
+        | 'Raised_Bed_U_1' = 'Raised_Bed_O_1';
     let shapeRotation = 0;
     const neighbors = useEntityNeighbors(stack, block);
     if (neighbors.total === 1) {
-        shape = 'U';
+        shape1 = 'Raised_Bed_U_1';
+        shape2 = 'Raised_Bed_U_2';
 
         if (neighbors.n) {
             shapeRotation = 0;
@@ -32,7 +41,8 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
         }
     } else if (neighbors.total === 2) {
         if ((neighbors.n && neighbors.s) || (neighbors.e && neighbors.w)) {
-            shape = 'I';
+            shape1 = 'Raised_Bed_I_1';
+            shape2 = 'Raised_Bed_I_2';
 
             if (neighbors.n && neighbors.s) {
                 shapeRotation = 1;
@@ -40,7 +50,8 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                 shapeRotation = 0;
             }
         } else {
-            shape = 'L';
+            shape1 = 'Raised_Bed_L_1';
+            shape2 = 'Raised_Bed_L_2';
 
             if (neighbors.n && neighbors.e) {
                 shapeRotation = 0;
@@ -53,7 +64,8 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
             }
         }
     } else if (neighbors.total === 3) {
-        shape = 'O';
+        shape1 = 'Raised_Bed_O_1';
+        shape2 = 'Raised_Bed_O_2';
     }
 
     return (
@@ -65,10 +77,12 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                 <mesh
                     castShadow
                     receiveShadow
-                    geometry={nodes[`Raised_Bed_${shape}_2`].geometry}
+                    geometry={nodes[shape1].geometry}
                     material={
                         materials[
-                            shape === 'O' ? 'Material.Dirt' : 'Material.Planks'
+                            shape1 === 'Raised_Bed_O_1'
+                                ? 'Material.Planks'
+                                : 'Material.Dirt'
                         ]
                     }
                 >
@@ -77,10 +91,12 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                 <mesh
                     castShadow
                     receiveShadow
-                    geometry={nodes[`Raised_Bed_${shape}_1`].geometry}
+                    geometry={nodes[shape2].geometry}
                     material={
                         materials[
-                            shape === 'O' ? 'Material.Planks' : 'Material.Dirt'
+                            shape2 === 'Raised_Bed_O_2'
+                                ? 'Material.Dirt'
+                                : 'Material.Planks'
                         ]
                     }
                 >

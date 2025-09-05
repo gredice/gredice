@@ -1,13 +1,12 @@
 import { animated } from '@react-spring/three';
 import { MeshDistortMaterial, MeshWobbleMaterial } from '@react-three/drei';
-import { models } from '../data/models';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function Bush({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials }: any = useGameGLTF(models.GameAssets.url);
+    const { nodes, materials } = useGameGLTF();
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 

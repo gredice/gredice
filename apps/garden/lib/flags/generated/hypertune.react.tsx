@@ -74,7 +74,7 @@ export function HypertuneSourceProvider({
       setStateHash(newStateHash); // Re-render
 
       if (!metadata.becameReady) {
-        // Only refresh the page if the sdk was ready before this update
+        // Only refresh the page if the SDK was ready before this update
         router.refresh();
       }
     };

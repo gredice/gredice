@@ -1,5 +1,4 @@
 import { animated, useSpring } from '@react-spring/three';
-import { models } from '../../data/models';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 
@@ -47,7 +46,8 @@ export function RaisedBedPlantField({
         cancel: Boolean(plantSowDate),
     });
 
-    const { nodes }: any = useGameGLTF(models.GameAssets.url);
+    // TODO: Move to seed block/part
+    const { nodes } = useGameGLTF();
     const resolvedPositionX = Math.floor(positionIndex / 3);
     const resolvedPositionY = positionIndex % 3;
     const fieldPosition = [
