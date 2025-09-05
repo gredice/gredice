@@ -12,6 +12,7 @@ import Markdown from 'react-markdown';
 export type AttributeCardProps = {
     icon: ReactNode;
     header: string;
+    subheader?: string;
     value: string | null | undefined;
     description?: string;
     navigateLabel?: string;
@@ -21,6 +22,7 @@ export type AttributeCardProps = {
 export function AttributeCard({
     icon,
     header,
+    subheader,
     value,
     description,
     navigateLabel,
@@ -30,12 +32,17 @@ export function AttributeCard({
         <Card className="flex items-center gap-1 justify-between">
             <Row spacing={2}>
                 <div className="flex-shrink-0 ml-2 text-primary">{icon}</div>
-                <div>
-                    <Typography level="body2" component="h3">
-                        {header}
-                    </Typography>
+                <Stack spacing={subheader ? 0.5 : 0}>
+                    <Stack>
+                        <Typography level="body2" component="h3">
+                            {header}
+                        </Typography>
+                        {subheader && (
+                            <Typography level="body3">{subheader}</Typography>
+                        )}
+                    </Stack>
                     <Typography semiBold>{value ?? '-'}</Typography>
-                </div>
+                </Stack>
             </Row>
             {description && (
                 <Modal

@@ -21,18 +21,6 @@ export type PlantsGalleryItemProps = Pick<
 
 export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
     const { information, prices, attributes, isRecommended } = props;
-    let plantsPerRow = Math.floor(30 / (attributes?.seedingDistance ?? 30));
-    if (plantsPerRow < 1) {
-        console.warn(
-            `Plants per row is less than 1 (${plantsPerRow}) for ${information.name}. Setting to 1.`,
-        );
-        plantsPerRow = 1;
-    }
-    const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
-    const pricePerPlant = prices?.perPlant
-        ? (prices.perPlant / totalPlants).toFixed(2)
-        : null;
-
     return (
         <ItemCard
             label={
@@ -43,24 +31,16 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                             level="body3"
                             tertiary
                             className="text-right"
+                            component="div"
                         >
                             <PlantYieldTooltip
                                 plant={{ information, attributes }}
                             />
                         </Typography>
                     </Row>
-                    <Row justifyContent="space-between">
-                        <Typography level="body2">
-                            {prices?.perPlant?.toFixed(2) ?? 'Nepoznato'}€
-                        </Typography>
-                        <Typography level="body3" tertiary>
-                            <span>{pricePerPlant}€</span>
-                            <span className="hidden md:inline-block">
-                                &nbsp;po biljci
-                            </span>
-                            <span className="md:hidden">/biljci</span>
-                        </Typography>
-                    </Row>
+                    <Typography level="body2" className="self-end">
+                        {prices?.perPlant?.toFixed(2) ?? 'Nepoznato'}€
+                    </Typography>
                 </Stack>
             }
             href={KnownPages.Plant(information.name)}

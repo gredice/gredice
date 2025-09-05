@@ -1,6 +1,5 @@
 import { directoriesClient } from '@gredice/client';
 import { OperationImage } from '@gredice/ui/OperationImage';
-import { Accordion } from '@signalco/ui/Accordion';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Euro } from '@signalco/ui-icons';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -77,46 +76,42 @@ export default async function OperationPage(
                     subHeader={operation.information.shortDescription}
                 >
                     <Stack>
-                        <Accordion defaultOpen className="group h-fit">
-                            <Typography level="h2" className="text-2xl px-3">
-                                Informacije
-                            </Typography>
-                            <Stack spacing={1} className="px-3 pb-3">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <AttributeCard
-                                        icon={<Euro />}
-                                        header="Cijena"
-                                        value={`${operation.prices.perOperation.toFixed(2)}€`}
-                                    />
-                                </div>
-                                <FeedbackModal
-                                    topic={'www/operations/information'}
-                                    data={{
-                                        operationId: operation.id,
-                                        operationAlias: alias,
-                                    }}
-                                    className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
+                        <Typography level="h5" component="h2" gutterBottom>
+                            Informacije
+                        </Typography>
+                        <Stack spacing={1}>
+                            <div className="grid grid-cols-2 gap-2">
+                                <AttributeCard
+                                    icon={<Euro />}
+                                    header="Cijena"
+                                    value={`${operation.prices.perOperation.toFixed(2)}€`}
                                 />
-                            </Stack>
-                        </Accordion>
-                        <Accordion defaultOpen className="group h-fit">
-                            <Typography level="h2" className="text-2xl px-3">
-                                Svojstva
-                            </Typography>
-                            <Stack spacing={1} className="px-3 pb-3">
-                                <OperationAttributesCards
-                                    attributes={operation.attributes}
-                                />
-                                <FeedbackModal
-                                    topic={'www/operations/attributes'}
-                                    data={{
-                                        operationId: operation.id,
-                                        operationAlias: alias,
-                                    }}
-                                    className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
-                                />
-                            </Stack>
-                        </Accordion>
+                            </div>
+                            <FeedbackModal
+                                topic={'www/operations/information'}
+                                data={{
+                                    operationId: operation.id,
+                                    operationAlias: alias,
+                                }}
+                                className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
+                            />
+                        </Stack>
+                        <Typography level="h5" component="h2" gutterBottom>
+                            Svojstva
+                        </Typography>
+                        <Stack spacing={1}>
+                            <OperationAttributesCards
+                                attributes={operation.attributes}
+                            />
+                            <FeedbackModal
+                                topic={'www/operations/attributes'}
+                                data={{
+                                    operationId: operation.id,
+                                    operationAlias: alias,
+                                }}
+                                className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
+                            />
+                        </Stack>
                     </Stack>
                 </PageHeader>
                 <div className="max-w-xl">
@@ -125,25 +120,19 @@ export default async function OperationPage(
                             'Nema opisa za ovu radnju.'}
                     </Markdown>
                 </div>
-                <Accordion defaultOpen className="w-full">
-                    <Typography level="h2" className="text-2xl px-3">
-                        Postupak
-                    </Typography>
-                    <div className="max-w-xl px-3 pb-3">
-                        <Markdown>
-                            {operation.information.instructions ||
-                                'Nema postupka za ovu radnju.'}
-                        </Markdown>
-                    </div>
-                </Accordion>
-                <Accordion defaultOpen className="w-full">
-                    <Typography level="h2" className="text-2xl px-3">
-                        Dostupno za
-                    </Typography>
-                    <div className="px-3 pb-3">
-                        <OperationApplicationsList operationId={operation.id} />
-                    </div>
-                </Accordion>
+                <Typography level="h2" className="text-2xl">
+                    Postupak
+                </Typography>
+                <div className="max-w-xl">
+                    <Markdown>
+                        {operation.information.instructions ||
+                            'Nema postupka za ovu radnju.'}
+                    </Markdown>
+                </div>
+                <Typography level="h2" className="text-2xl">
+                    Dostupno za
+                </Typography>
+                <OperationApplicationsList operationId={operation.id} />
                 <Row spacing={2}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj radnji korisne?
