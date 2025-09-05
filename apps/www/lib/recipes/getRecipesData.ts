@@ -39,10 +39,10 @@ const recipes: Recipe[] = [
             {
                 id: 'rajcica',
                 name: 'Rajčica',
-                quantity: 2,
-                unit: 'pcs',
-                approximateQuantity: 150,
-                approximateQuantityUnit: 'g',
+                quantity: 300,
+                unit: 'g',
+                approximateQuantity: 2,
+                approximateQuantityUnit: 'pcs',
             },
             { id: 'mozzarella', name: 'Mozzarella', quantity: 100, unit: 'g' },
             {
