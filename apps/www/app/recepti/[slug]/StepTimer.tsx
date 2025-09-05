@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 interface StepTimerProps<T> {
     stepId: T;
     duration: number; // in minutes
+    disabled?: boolean;
     onTimerCreate: (stepId: T, duration: number) => string;
     onTimerStart: (timerId: string) => void;
     onTimerPause: (timerId: string) => void;
@@ -27,6 +28,7 @@ interface StepTimerProps<T> {
 export function StepTimer<T>({
     stepId,
     duration,
+    disabled,
     onTimerCreate,
     onTimerStart,
     onTimerPause,
@@ -84,16 +86,25 @@ export function StepTimer<T>({
                 variant="outlined"
                 size="sm"
                 onClick={handleStartTimer}
-                className="shrink-0 bg-transparent"
+                className={cx(
+                    'shrink-0 rounded-full',
+                    disabled && 'disabled:opacity-100',
+                )}
+                startDecorator={<Timer className="size-4 shrink-0 mr-0.5" />}
+                disabled={disabled}
+                endDecorator={
+                    disabled ? undefined : (
+                        <Play className="size-4 shrink-0 ml-0.5" />
+                    )
+                }
             >
-                <Timer className="size-4 shrink-0 mr-1" />
-                Pokreni tajmer
+                {duration} min
             </Button>
         );
     }
 
     return (
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="grid items-center gap-x-2 shrink-0 grid-rows-1 lg:grid-cols-2">
             <div
                 className={cx(
                     'flex items-center gap-2 px-3 py-2 rounded-md border transition-colors',
