@@ -3,5 +3,5 @@ export const unitDisplayMap: Record<string, string> = {
     ml: 'mL',
     tsp: 'žličica',
     tbsp: 'žlica',
-    pcs: '',
+    pcs: 'kom',
 };

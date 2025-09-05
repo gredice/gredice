@@ -1,4 +1,5 @@
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { cx } from '@signalco/ui-primitives/cx';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
 import type { Recipe } from '../../../lib/recipes/getRecipesData';
@@ -33,7 +34,10 @@ export function IngredientItem({
             checked={checked}
             onCheckedChange={handleIngredientCheckChange}
             label={
-                <Typography level="body1">
+                <Typography
+                    level="body1"
+                    className={cx(checked && 'line-through')}
+                >
                     {value} {unitDisplay} {ingredient.name}
                     {ingredient.approximateQuantity
                         ? ` (~${(ingredient.approximateQuantity || 0) * portionMultiplier} ${approximateQuantityUnitDisplay})`
