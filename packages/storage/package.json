@@ -21,9 +21,9 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.2.3",
+        "@gredice/js": "workspace:*",
         "@neondatabase/serverless": "1.0.1",
         "@signalco/js": "0.1.0",
-        "@gredice/js": "workspace:*",
         "@upstash/redis": "1.35.3",
         "dotenv": "17.2.2",
         "drizzle-kit": "0.31.4",
