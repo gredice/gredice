@@ -54,15 +54,17 @@ export function StepItem({
     }
 
     return (
-        <Row alignItems="start" spacing={1}>
-            <DotIndicator
-                color={checked ? 'success' : 'warning'}
-                size={28}
-                content={<span>{`${index + 1}`}</span>}
-            />
-            <Stack spacing={1}>
-                <Row spacing={1} justifyContent="space-between">
-                    <Row spacing={2}>
+        <Stack spacing={1} className="grow">
+            <div className="grid gap-2 grid-cols-1">
+                <Row spacing={2} justifyContent="space-between">
+                    <Row spacing={1}>
+                        <div className="shrink-0 size-7">
+                            <DotIndicator
+                                color={checked ? 'success' : 'warning'}
+                                size={28}
+                                content={<span>{`${index + 1}`}</span>}
+                            />
+                        </div>
                         <Checkbox
                             label={
                                 <Typography level="body1">
@@ -73,16 +75,12 @@ export function StepItem({
                             checked={checked}
                             onCheckedChange={handleCheckedChange}
                         />
-                        <Chip>
-                            {step.timeMinutes
-                                ? `~${step.timeMinutes * durationScale} min`
-                                : 'Nema vremena'}
-                        </Chip>
                     </Row>
-                    {step.timer && step.timeMinutes && (
+                    {step.timeMinutes && (
                         <StepTimer
                             stepId={step.shortDescription}
                             duration={step.timeMinutes * durationScale}
+                            disabled={!step.timer}
                             onTimerCreate={createTimer}
                             onTimerStart={startTimer}
                             onTimerPause={pauseTimer}
@@ -91,7 +89,10 @@ export function StepItem({
                             timer={getTimerByStepId(step.shortDescription)}
                         />
                     )}
-                    {step.description && expanded !== null && (
+                </Row>
+                {(step.description ||
+                    (step.ingredientsUsed?.length ?? 0) > 0) &&
+                    expanded !== null && (
                         <IconButton
                             title={expanded ? 'Sakrij opis' : 'Prikaži opis'}
                             variant="plain"
@@ -101,67 +102,66 @@ export function StepItem({
                             <Down className={expanded ? 'rotate-180' : ''} />
                         </IconButton>
                     )}
-                </Row>
-                {(step.description ||
-                    (step.ingredientsUsed?.length ?? 0) > 0) && (
-                    <Collapse appear={expanded ?? true}>
-                        <div className="pl-4 border-l ml-2">
-                            <Stack>
-                                {(step.ingredientsUsed?.length ?? 0) > 0 && (
-                                    <Stack>
-                                        {step.ingredientsUsed?.map(
-                                            (ingredient) => {
-                                                const ingredientData =
-                                                    recipe.ingredients.find(
-                                                        (ing) =>
-                                                            ing.id ===
-                                                            ingredient.id,
-                                                    );
-                                                return (
-                                                    <ListItem
-                                                        key={ingredient.id}
-                                                        label={
-                                                            <Typography level="body2">
-                                                                •{' '}
-                                                                {(ingredientData?.quantity ??
-                                                                    0) *
-                                                                    portionMultiplier}{' '}
-                                                                {unitDisplayMap[
-                                                                    ingredientData?.unit ||
-                                                                        ''
-                                                                ] ??
-                                                                    ingredientData?.unit}{' '}
-                                                                {ingredientData?.name ||
-                                                                    ingredient.id}
-                                                                {ingredientData?.approximateQuantity
-                                                                    ? ` (~${
-                                                                          (ingredientData?.approximateQuantity ||
-                                                                              0) *
-                                                                          portionMultiplier
-                                                                      } ${
-                                                                          unitDisplayMap[
-                                                                              ingredientData?.approximateQuantityUnit ||
-                                                                                  ''
-                                                                          ] ??
-                                                                          ingredientData?.approximateQuantityUnit
-                                                                      })`
-                                                                    : ''}
-                                                            </Typography>
-                                                        }
-                                                    />
-                                                );
-                                            },
-                                        )}
-                                    </Stack>
-                                )}
-                                {step.description && (
-                                    <Markdown>{step.description}</Markdown>
-                                )}
-                            </Stack>
-                        </div>
-                    </Collapse>
-                )}
-            </Stack>
-        </Row>
+            </div>
+            {(step.description || (step.ingredientsUsed?.length ?? 0) > 0) && (
+                <Collapse appear={expanded ?? true}>
+                    <div className="pl-4 border-l ml-2">
+                        <Stack>
+                            {(step.ingredientsUsed?.length ?? 0) > 0 && (
+                                <Stack>
+                                    {step.ingredientsUsed?.map((ingredient) => {
+                                        const ingredientData =
+                                            recipe.ingredients.find(
+                                                (ing) =>
+                                                    ing.id === ingredient.id,
+                                            );
+                                        const quantity =
+                                            (ingredientData?.quantity ?? 0) *
+                                            (ingredient.quantityMultiplier ??
+                                                1) *
+                                            portionMultiplier;
+                                        const approximateQuantity =
+                                            (ingredientData?.approximateQuantity ||
+                                                0) *
+                                            (ingredient.quantityMultiplier ??
+                                                1) *
+                                            portionMultiplier;
+                                        return (
+                                            <ListItem
+                                                key={ingredient.id}
+                                                label={
+                                                    <Typography level="body2">
+                                                        • {quantity}{' '}
+                                                        {unitDisplayMap[
+                                                            ingredientData?.unit ||
+                                                                ''
+                                                        ] ??
+                                                            ingredientData?.unit}{' '}
+                                                        {ingredientData?.name ||
+                                                            ingredient.id}
+                                                        {ingredientData?.approximateQuantity
+                                                            ? ` (~${approximateQuantity} ${
+                                                                  unitDisplayMap[
+                                                                      ingredientData?.approximateQuantityUnit ||
+                                                                          ''
+                                                                  ] ??
+                                                                  ingredientData?.approximateQuantityUnit
+                                                              })`
+                                                            : ''}
+                                                    </Typography>
+                                                }
+                                            />
+                                        );
+                                    })}
+                                </Stack>
+                            )}
+                            {step.description && (
+                                <Markdown>{step.description}</Markdown>
+                            )}
+                        </Stack>
+                    </div>
+                </Collapse>
+            )}
+        </Stack>
     );
 }

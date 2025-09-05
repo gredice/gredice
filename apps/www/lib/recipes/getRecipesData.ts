@@ -6,7 +6,7 @@ export interface RecipeStep {
     timeMinutes?: number;
     timer?: boolean;
     portionDurationScale?: number;
-    ingredientsUsed?: { id: string; quantity?: number }[];
+    ingredientsUsed?: { id: string; quantityMultiplier?: number }[];
 }
 
 export interface Recipe {
