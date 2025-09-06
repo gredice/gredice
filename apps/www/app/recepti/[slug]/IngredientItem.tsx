@@ -2,19 +2,27 @@ import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
-import type { Recipe } from '../../../lib/recipes/getRecipesData';
+import type { RecipeIngredient } from '../../../lib/recipes/getRecipesData';
+import {
+    getIngredientDisplayName,
+    getIngredientUnit,
+} from '../../../lib/recipes/nutritionCalculator';
 import { unitDisplayMap } from './unitDisplayMap';
 
 export function IngredientItem({
     ingredient,
     portionMultiplier,
 }: {
-    ingredient: Recipe['ingredients'][number];
+    ingredient: RecipeIngredient;
     portionMultiplier: number;
 }) {
     const [checked, setChecked] = useState(false);
+
+    const ingredientInfo = getIngredientUnit(ingredient);
+    const ingredientName = getIngredientDisplayName(ingredient);
+
     const { unit, value } = {
-        unit: ingredient.unit,
+        unit: ingredientInfo.unit,
         value: ingredient.quantity * portionMultiplier,
     };
 
@@ -24,12 +32,12 @@ export function IngredientItem({
 
     const unitDisplay = unitDisplayMap[unit] ?? unit;
     const approximateQuantityUnitDisplay =
-        unitDisplayMap[ingredient.approximateQuantityUnit || ''] ??
-        ingredient.approximateQuantityUnit;
+        unitDisplayMap[ingredientInfo.approximateQuantityUnit || ''] ??
+        ingredientInfo.approximateQuantityUnit;
 
     return (
         <Checkbox
-            key={ingredient.name}
+            key={ingredientName}
             className="bg-card"
             checked={checked}
             onCheckedChange={handleIngredientCheckChange}
@@ -38,9 +46,9 @@ export function IngredientItem({
                     level="body1"
                     className={cx(checked && 'line-through')}
                 >
-                    {value} {unitDisplay} {ingredient.name}
-                    {ingredient.approximateQuantity
-                        ? ` (~${(ingredient.approximateQuantity || 0) * portionMultiplier} ${approximateQuantityUnitDisplay})`
+                    {value} {unitDisplay} {ingredientName}
+                    {ingredientInfo.approximateQuantity
+                        ? ` (~${(ingredientInfo.approximateQuantity || 0) * portionMultiplier} ${approximateQuantityUnitDisplay})`
                         : ''}
                 </Typography>
             }

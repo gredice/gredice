@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { Progress } from '../../../../../packages/game/src/controls/components/Progress';
 import type { Recipe } from '../../../lib/recipes/getRecipesData';
 import { IngredientItem } from './IngredientItem';
+import { NutritionDisplay } from './NutritionDisplay';
 import { PortionPicker } from './PortionPicker';
 import { StepItem } from './StepItem';
 import { WakeLock } from './WakeLock';
@@ -36,7 +37,6 @@ export function RecipeView({ recipe }: { recipe: Recipe }) {
         }
     }
 
-    const nutritionScore = Number.NaN;
     const numberOfIngredients = recipe.ingredients.length;
     const totalTime = recipe.steps.reduce(
         (sum, step) => sum + (step.timeMinutes || 0),
@@ -129,13 +129,11 @@ export function RecipeView({ recipe }: { recipe: Recipe }) {
                 <Stack spacing={2}>
                     <Stack alignItems="center">
                         <Typography level="h4" component="h2">
-                            {Number.isNaN(nutritionScore)
-                                ? '-'
-                                : nutritionScore}
+                            Nutrijenti
                         </Typography>
-                        <Typography level="body1">Nutrijenti</Typography>
+                        <Typography level="body1">Po porciji / Ukupno</Typography>
                     </Stack>
-                    <div>Content</div>
+                    <NutritionDisplay recipe={recipe} portionMultiplier={multiplier} />
                 </Stack>
             </div>
         </Stack>

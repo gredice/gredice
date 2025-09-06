@@ -2,7 +2,6 @@
 
 import { Down } from '@signalco/ui-icons';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Chip } from '@signalco/ui-primitives/Chip';
 import { Collapse } from '@signalco/ui-primitives/Collapse';
 import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
@@ -13,6 +12,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
 import { Markdown } from '../../../components/shared/Markdown';
 import type { Recipe, RecipeStep } from '../../../lib/recipes/getRecipesData';
+import { getIngredientDisplayName, getIngredientUnit } from '../../../lib/recipes/nutritionCalculator';
 import { StepTimer } from './StepTimer';
 import { unitDisplayMap } from './unitDisplayMap';
 import { useTimer } from './useTimer';
@@ -116,13 +116,18 @@ export function StepItem({
                                                 (ing) =>
                                                     ing.id === ingredient.id,
                                             );
+                                        if (!ingredientData) return null;
+                                        
+                                        const ingredientInfo = getIngredientUnit(ingredientData);
+                                        const ingredientName = getIngredientDisplayName(ingredientData);
+                                        
                                         const quantity =
                                             (ingredientData?.quantity ?? 0) *
                                             (ingredient.quantityMultiplier ??
                                                 1) *
                                             portionMultiplier;
                                         const approximateQuantity =
-                                            (ingredientData?.approximateQuantity ||
+                                            (ingredientInfo.approximateQuantity ||
                                                 0) *
                                             (ingredient.quantityMultiplier ??
                                                 1) *
@@ -134,19 +139,17 @@ export function StepItem({
                                                     <Typography level="body2">
                                                         • {quantity}{' '}
                                                         {unitDisplayMap[
-                                                            ingredientData?.unit ||
-                                                                ''
+                                                            ingredientInfo.unit
                                                         ] ??
-                                                            ingredientData?.unit}{' '}
-                                                        {ingredientData?.name ||
-                                                            ingredient.id}
-                                                        {ingredientData?.approximateQuantity
+                                                            ingredientInfo.unit}{' '}
+                                                        {ingredientName}
+                                                        {ingredientInfo.approximateQuantity
                                                             ? ` (~${approximateQuantity} ${
                                                                   unitDisplayMap[
-                                                                      ingredientData?.approximateQuantityUnit ||
+                                                                      ingredientInfo.approximateQuantityUnit ||
                                                                           ''
                                                                   ] ??
-                                                                  ingredientData?.approximateQuantityUnit
+                                                                  ingredientInfo.approximateQuantityUnit
                                                               })`
                                                             : ''}
                                                     </Typography>
