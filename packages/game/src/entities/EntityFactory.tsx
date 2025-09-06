@@ -6,8 +6,11 @@ import { useIsEditMode } from '../hooks/useIsEditMode';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
 import { BlockGrass } from './BlockGrass';
+import { BlockGrassAngle } from './BlockGrassAngle';
 import { BlockGround } from './BlockGround';
+import { BlockGroundAngle } from './BlockGroundAngle';
 import { BlockSand } from './BlockSand';
+import { BlockSandAngle } from './BlockSandAngle';
 import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Composter } from './Composter';
@@ -27,6 +30,9 @@ const entityNameMap: Record<
     Block_Ground: BlockGround,
     Block_Grass: BlockGrass,
     Block_Sand: BlockSand,
+    Block_Ground_Angle: BlockGroundAngle,
+    Block_Grass_Angle: BlockGrassAngle,
+    Block_Sand_Angle: BlockSandAngle,
     Composter: Composter,
     Raised_Bed: RaisedBed,
     Shade: Shade,

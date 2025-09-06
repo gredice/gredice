@@ -4,7 +4,11 @@ import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
-export function BlockSand({ stack, block, rotation }: EntityInstanceProps) {
+export function BlockSandAngle({
+    stack,
+    block,
+    rotation,
+}: EntityInstanceProps) {
     const { nodes } = useGameGLTF();
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
@@ -17,8 +21,8 @@ export function BlockSand({ stack, block, rotation }: EntityInstanceProps) {
             <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes.Block_Sand_1.geometry}
-                material={nodes.Block_Sand_1.material}
+                geometry={nodes.Block_Sand_Angle_1.geometry}
+                material={nodes.Block_Sand_Angle_1.material}
             />
         </animated.group>
     );
