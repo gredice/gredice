@@ -1,1 +1,1 @@
-& "C:\Program Files\Blender Foundation\Blender 4.3\blender.exe" '-b' './GameAssets.blend' '--python-expr' 'import bpy; bpy.ops.export_scene.gltf(filepath=''../apps/garden/public/assets/models/GameAssets.glb'',export_apply=True)'
+& "C:\Program Files\Blender Foundation\Blender 4.5\blender.exe" '-b' './GameAssets.blend' '--python-expr' 'import bpy; bpy.ops.export_scene.gltf(filepath=''../apps/garden/public/assets/models/GameAssets.glb'',export_apply=True)'

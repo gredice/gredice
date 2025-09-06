@@ -16,7 +16,12 @@ export type GLTFResult = GLTF & {
         Block_Ground_2_2: THREE.Mesh;
         Block_Grass_1_1: THREE.Mesh;
         Block_Grass_1_2: THREE.Mesh;
-        Block_Sand: THREE.Mesh;
+        Block_Sand_1: THREE.Mesh;
+        Block_Grass_Angle_1_1: THREE.Mesh;
+        Block_Grass_Angle_1_2: THREE.Mesh;
+        Block_Ground_Angle_1_1: THREE.Mesh;
+        Block_Ground_Angle_1_2: THREE.Mesh;
+        Block_Sand_Angle_1: THREE.Mesh;
         Raised_Bed_O_1: THREE.Mesh;
         Raised_Bed_O_2: THREE.Mesh;
         Raised_Bed_I_1: THREE.Mesh;
@@ -67,6 +72,11 @@ export type GLTFResult = GLTF & {
         ['Material.GrassPart']: THREE.MeshStandardMaterial;
         ['Material.Grass']: THREE.MeshStandardMaterial;
         ['Material.Sand']: THREE.MeshStandardMaterial;
+        ['Material.GrassPart.001']: THREE.MeshStandardMaterial;
+        ['Material.Grass.001']: THREE.MeshStandardMaterial;
+        ['Material.Dirt.001']: THREE.MeshStandardMaterial;
+        ['Material.Stone.003']: THREE.MeshStandardMaterial;
+        ['Material.Sand.001']: THREE.MeshStandardMaterial;
         ['Material.Planks']: THREE.MeshStandardMaterial;
         ['Material.Water']: THREE.MeshStandardMaterial;
         ['Material.Metal']: THREE.MeshStandardMaterial;
@@ -113,8 +123,33 @@ export function Model(props: JSX.IntrinsicElements['group']) {
                 />
             </group>
             <mesh
-                geometry={nodes.Block_Sand.geometry}
+                geometry={nodes.Block_Sand_1.geometry}
                 material={materials['Material.Sand']}
+                position={[0, 0.2, 0]}
+            />
+            <group position={[0, 0.2, 0]}>
+                <mesh
+                    geometry={nodes.Block_Grass_Angle_1_1.geometry}
+                    material={materials['Material.GrassPart.001']}
+                />
+                <mesh
+                    geometry={nodes.Block_Grass_Angle_1_2.geometry}
+                    material={materials['Material.Grass.001']}
+                />
+            </group>
+            <group position={[0, 1, 0]}>
+                <mesh
+                    geometry={nodes.Block_Ground_Angle_1_1.geometry}
+                    material={materials['Material.Dirt.001']}
+                />
+                <mesh
+                    geometry={nodes.Block_Ground_Angle_1_2.geometry}
+                    material={materials['Material.Stone.003']}
+                />
+            </group>
+            <mesh
+                geometry={nodes.Block_Sand_Angle_1.geometry}
+                material={materials['Material.Sand.001']}
                 position={[0, 0.2, 0]}
             />
             <group position={[0, 1, 0]}>
