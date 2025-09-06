@@ -9,20 +9,25 @@ export interface RecipeStep {
     ingredientsUsed?: { id: string; quantityMultiplier?: number }[];
 }
 
+export interface RecipeIngredient {
+    id: string;
+    quantity: number;
+    /** When linking to ingredient data source, these fields are optional */
+    name?: string;
+    unit?: 'pcs' | 'g' | 'ml' | 'tsp' | 'tbsp';
+    approximateQuantity?: number;
+    approximateQuantityUnit?: 'pcs' | 'g' | 'ml' | 'tsp' | 'tbsp';
+    /** Set to true if ingredient is from data source and has nutrition info */
+    isLinked?: boolean;
+}
+
 export interface Recipe {
     id: string;
     slug: string;
     title: string;
     description: string;
     portions: number;
-    ingredients: {
-        id: string;
-        name: string;
-        quantity: number;
-        unit: 'pcs' | 'g' | 'ml' | 'tsp' | 'tbsp';
-        approximateQuantity?: number;
-        approximateQuantityUnit?: 'g' | 'ml' | 'tsp' | 'tbsp';
-    }[];
+    ingredients: RecipeIngredient[];
     steps: RecipeStep[];
     plants: string[]; // names of plants used
 }
@@ -38,26 +43,23 @@ const recipes: Recipe[] = [
         ingredients: [
             {
                 id: 'rajcica',
-                name: 'Rajčica',
                 quantity: 300,
-                unit: 'g',
-                approximateQuantity: 2,
-                approximateQuantityUnit: 'pcs',
+                isLinked: true,
             },
-            { id: 'mozzarella', name: 'Mozzarella', quantity: 100, unit: 'g' },
+            {
+                id: 'mozzarella',
+                quantity: 100,
+                isLinked: true,
+            },
             {
                 id: 'svjezi-bosiljak',
-                name: 'Svjež bosiljak',
                 quantity: 10,
-                unit: 'g',
+                isLinked: true,
             },
             {
                 id: 'maslinovo-ulje',
-                name: 'Maslinovo ulje',
                 quantity: 15,
-                unit: 'ml',
-                approximateQuantity: 1,
-                approximateQuantityUnit: 'tbsp',
+                isLinked: true,
             },
         ],
         steps: [
@@ -90,21 +92,21 @@ const recipes: Recipe[] = [
         ingredients: [
             {
                 id: 'mrkva',
-                name: 'Mrkva',
                 quantity: 4,
-                unit: 'pcs',
-                approximateQuantity: 500,
-                approximateQuantityUnit: 'g',
+                isLinked: true,
             },
             {
                 id: 'med',
-                name: 'Med',
                 quantity: 30,
-                unit: 'g',
-                approximateQuantity: 2,
-                approximateQuantityUnit: 'tbsp',
+                isLinked: true,
             },
-            { id: 'timijan', name: 'Timijan', quantity: 5, unit: 'g' },
+            {
+                id: 'timijan',
+                name: 'Timijan',
+                quantity: 5,
+                unit: 'g',
+                isLinked: false,
+            },
         ],
         steps: [
             {
@@ -134,14 +136,21 @@ const recipes: Recipe[] = [
         ingredients: [
             {
                 id: 'krastavac',
-                name: 'Krastavac',
                 quantity: 1,
-                unit: 'pcs',
-                approximateQuantity: 200,
-                approximateQuantityUnit: 'g',
+                isLinked: true,
             },
-            { id: 'jogurt', name: 'Jogurt', quantity: 100, unit: 'g' },
-            { id: 'kopar', name: 'Kopar', quantity: 5, unit: 'g' },
+            {
+                id: 'jogurt',
+                quantity: 100,
+                isLinked: true,
+            },
+            {
+                id: 'kopar',
+                name: 'Kopar',
+                quantity: 5,
+                unit: 'g',
+                isLinked: false,
+            },
         ],
         steps: [
             {
