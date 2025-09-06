@@ -24,6 +24,7 @@ export const operations = pgTable(
         raisedBedFieldId: integer('raised_bed_field_id'),
         timestamp: timestamp('timestamp').notNull().defaultNow(),
         createdAt: timestamp('created_at').notNull().defaultNow(),
+        isAccepted: boolean('is_accepted').notNull().default(false),
         isDeleted: boolean('is_deleted').notNull().default(false),
     },
     (table) => [
@@ -35,6 +36,7 @@ export const operations = pgTable(
         index('operations_raised_bed_field_id_idx').on(table.raisedBedFieldId),
         index('operations_timestamp_idx').on(table.timestamp),
         index('operations_is_deleted_idx').on(table.isDeleted),
+        index('operations_is_accepted_idx').on(table.isAccepted),
     ],
 );
 
