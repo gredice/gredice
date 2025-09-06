@@ -91,10 +91,9 @@ export function RaisedBedField({
     gardenId: number;
     raisedBedId: number;
 }) {
-    // Check neighboring fields to determine if there is exactly one raised bed in the area next to this one
-    // if not, display a warning and illustrate the issue
-    const neighboringRaisedBeds = useNeighboringRaisedBeds(raisedBedId);
-    if (neighboringRaisedBeds?.length !== 1) {
+    const { data: garden } = useCurrentGarden();
+    const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
+    if (!raisedBed?.isValid) {
         return (
             <div className="flex flex-col mt-4 items-center h-full">
                 <Stack spacing={1}>
