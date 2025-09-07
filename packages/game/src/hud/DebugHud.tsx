@@ -1,16 +1,11 @@
 'use client';
 
 import { useControls } from 'leva';
-import { Perf } from 'r3f-perf';
 import { useEffect } from 'react';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { useGameState } from '../useGameState';
 
 export function DebugHud() {
-    const { stats } = useControls({
-        stats: { value: false, label: 'Show stats' },
-    });
-
     const setWeather = useGameState((s) => s.setWeather);
     const currentTime = useGameState((s) => s.currentTime);
     const setFreezeTime = useGameState((s) => s.setFreezeTime);
@@ -76,5 +71,5 @@ export function DebugHud() {
         setFreezeTime(date);
     }, [timeOfDay, setFreezeTime]);
 
-    return <>{stats && <Perf />}</>;
+    return null;
 }

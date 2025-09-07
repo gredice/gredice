@@ -4,24 +4,22 @@ import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
-export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
+export function Pine({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF();
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
-    // const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
-
-    const variantResolved = 1;
 
     return (
         <animated.group
-            position={stack.position.clone().setY(currentStackHeight + 0.2)}
+            position={stack.position.clone().setY(currentStackHeight + 1)}
             rotation={animatedRotation as unknown as [number, number, number]}
+            scale={[0.09, 1, 0.09]}
         >
             <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}
-                material={materials[`Material.Grass`]}
+                geometry={nodes.Tree_2.geometry}
+                material={materials['Material.ColorPaletteMain']}
             />
         </animated.group>
     );

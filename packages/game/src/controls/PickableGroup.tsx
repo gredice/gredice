@@ -92,6 +92,11 @@ export function PickableGroup({
             : 'https://cdn.gredice.com/sounds/effects/Drop Grass 01.mp3',
     );
 
+    // Pickup system
+    const pickupBlock = useGameState((state) => state.pickupBlock);
+    const setPickupBlock = useGameState((state) => state.setPickupBlock);
+
+    // Block mechanic
     const [isBlocked, setIsBlocked] = useState(false);
     const moveBlock = useBlockMove();
 
@@ -115,8 +120,17 @@ export function PickableGroup({
             dragSpringsApi.start({ internalPosition: [0, 0, 0] });
             setIsBlocked(false);
             setIsOverRecycler(false);
+            if (pickupBlock?.id === block.id) {
+                setPickupBlock(null);
+            }
         }
-    }, [isDraggingWorld, dragSpringsApi.start]);
+    }, [
+        isDraggingWorld,
+        dragSpringsApi.start,
+        block.id,
+        pickupBlock?.id,
+        setPickupBlock,
+    ]);
 
     const rect = domElement.getClientRects()[0];
 
@@ -219,6 +233,9 @@ export function PickableGroup({
                     destinationPosition: stack.position.clone().add(relative),
                     blockIndex: stack.blocks.indexOf(block),
                 });
+                if (pickupBlock?.id === block.id) {
+                    setPickupBlock(null);
+                }
             }
         } else {
             if (!didDrag.current) {
@@ -230,6 +247,7 @@ export function PickableGroup({
                     setIsOverRecycler(blockUnderRecycler);
                 }
             }
+            setPickupBlock(block);
             didDrag.current = true;
             dragSpringsApi.start({
                 internalPosition: [

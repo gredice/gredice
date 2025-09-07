@@ -5,6 +5,7 @@ import { type HTMLAttributes, useRef } from 'react';
 import { Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
 import { EntityFactory } from '../entities/EntityFactory';
+import { EntityInstances } from '../entities/EntityInstances';
 import { Environment } from '../scene/Environment';
 import { Scene } from '../scene/Scene';
 import {
@@ -44,6 +45,18 @@ export function EntityViewer({
     }
 
     const client = new QueryClient();
+    const stack = {
+        position: itemPosition
+            ? new Vector3(itemPosition[0], itemPosition[1], itemPosition[2])
+            : position,
+        blocks: [],
+    };
+    const block = {
+        id: uuidv4(),
+        name: entityName,
+        rotation: 0,
+        variant: undefined,
+    };
 
     return (
         <QueryClientProvider client={client}>
@@ -52,24 +65,11 @@ export function EntityViewer({
                     <Environment noBackground noSound noWeather />
                     <EntityFactory
                         name={entityName}
-                        stack={{
-                            position: itemPosition
-                                ? new Vector3(
-                                      itemPosition[0],
-                                      itemPosition[1],
-                                      itemPosition[2],
-                                  )
-                                : position,
-                            blocks: [],
-                        }}
-                        block={{
-                            id: uuidv4(),
-                            name: entityName,
-                            rotation: 0,
-                            variant: undefined,
-                        }}
+                        stack={stack}
+                        block={block}
                         rotation={0}
                     />
+                    <EntityInstances stacks={[stack]} />
                 </Scene>
             </GameStateContext.Provider>
         </QueryClientProvider>

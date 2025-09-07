@@ -49,6 +49,7 @@ export type GLTFResult = GLTF & {
         Tree_1_1: THREE.Mesh;
         Tree_1_2: THREE.Mesh;
         Tree_1_3: THREE.Mesh;
+        Tree_2: THREE.Mesh;
         Fence_Corner: THREE.Mesh;
         Fence_Cross: THREE.Mesh;
         Fence_Middle: THREE.Mesh;
@@ -82,6 +83,7 @@ export type GLTFResult = GLTF & {
         ['Material.Metal']: THREE.MeshStandardMaterial;
         ['Material.Stone.001']: THREE.MeshStandardMaterial;
         ['Material.Stone.002']: THREE.MeshStandardMaterial;
+        ['Material.ColorPaletteMain']: THREE.MeshStandardMaterial;
         ['Material.Leaves']: THREE.MeshStandardMaterial;
     };
 };
@@ -249,7 +251,7 @@ export function Model(props: JSX.IntrinsicElements['group']) {
             >
                 <mesh
                     geometry={nodes.Bush_1_1.geometry}
-                    material={materials['Material.Leaves']}
+                    material={materials['Material.ColorPaletteMain']}
                 />
                 <mesh
                     geometry={nodes.Bush_1_2.geometry}
@@ -270,6 +272,12 @@ export function Model(props: JSX.IntrinsicElements['group']) {
                     material={materials['Material.GrassPart']}
                 />
             </group>
+            <mesh
+                geometry={nodes.Tree_2.geometry}
+                material={materials['Material.ColorPaletteMain']}
+                position={[0, 1, 0]}
+                scale={[0.09, 1, 0.09]}
+            />
             <mesh
                 geometry={nodes.Fence_Corner.geometry}
                 material={materials['Material.Planks']}

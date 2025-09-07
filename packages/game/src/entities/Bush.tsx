@@ -18,14 +18,14 @@ export function Bush({ stack, block, rotation }: EntityInstanceProps) {
         >
             <mesh castShadow receiveShadow geometry={nodes.Bush_1_1.geometry}>
                 <MeshDistortMaterial
-                    {...materials['Material.Leaves']}
+                    {...materials['Material.ColorPaletteMain']}
                     distort={0.1}
                     speed={2}
                 />
             </mesh>
             <mesh castShadow receiveShadow geometry={nodes.Bush_1_2.geometry}>
                 <MeshWobbleMaterial
-                    {...materials['Material.GrassPart']}
+                    {...materials['Material.Leaves']}
                     factor={0.02}
                     speed={3}
                 />
