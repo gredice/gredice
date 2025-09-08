@@ -84,6 +84,10 @@ type GameState = {
     mode: GameMode;
     setMode: (mode: GameMode) => void;
 
+    // Pickup system
+    pickupBlock: Block | null;
+    setPickupBlock: (block: Block | null) => void;
+
     // Camera
     view: 'normal' | 'closeup';
     closeupBlock: Block | null;
@@ -159,6 +163,10 @@ export function createGameState({
             }
             set({ mode });
         },
+
+        // Pickaup system
+        pickupBlock: null,
+        setPickupBlock: (block: Block | null) => set({ pickupBlock: block }),
 
         // Camera
         view: 'normal',

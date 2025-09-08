@@ -1,5 +1,6 @@
 import { client } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Vector3 } from 'three';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
@@ -58,46 +59,46 @@ export function useBlockMove() {
                     stack.position.x === destinationPosition.x &&
                     stack.position.z === destinationPosition.z,
             );
-            const updatedStacks = destinationStack
-                ? garden.stacks.map((stack) => {
-                      if (
-                          stack.position.x === sourcePosition.x &&
-                          stack.position.z === sourcePosition.z
-                      ) {
-                          return {
-                              ...stack,
-                              blocks: stack.blocks.filter(
-                                  (_, index) => index !== blockIndex,
-                              ),
-                          };
-                      } else if (
-                          stack.position.x === destinationPosition.x &&
-                          stack.position.z === destinationPosition.z
-                      ) {
-                          return {
-                              ...stack,
-                              blocks: [
-                                  ...stack.blocks,
-                                  sourceStack.blocks[blockIndex],
-                              ],
-                          };
-                      }
-                      return stack;
-                  })
-                : garden.stacks.map((stack) => {
-                      if (
-                          stack.position.x === sourcePosition.x &&
-                          stack.position.z === sourcePosition.z
-                      ) {
-                          return {
-                              ...stack,
-                              blocks: stack.blocks.filter(
-                                  (_, index) => index !== blockIndex,
-                              ),
-                          };
-                      }
-                      return stack;
-                  });
+            if (!destinationStack) {
+                garden.stacks.push({
+                    position: new Vector3(
+                        destinationPosition.x,
+                        0,
+                        destinationPosition.z,
+                    ),
+                    blocks: [],
+                });
+            }
+
+            const updatedStacks = garden.stacks.map((stack) => {
+                // Update source stack
+                if (
+                    stack.position.x === sourcePosition.x &&
+                    stack.position.z === sourcePosition.z
+                ) {
+                    return {
+                        ...stack,
+                        blocks: stack.blocks.filter(
+                            (_, index) => index !== blockIndex,
+                        ),
+                    };
+                }
+
+                // Update destination stack
+                if (
+                    stack.position.x === destinationPosition.x &&
+                    stack.position.z === destinationPosition.z
+                ) {
+                    return {
+                        ...stack,
+                        blocks: [
+                            ...stack.blocks,
+                            sourceStack.blocks[blockIndex],
+                        ],
+                    };
+                }
+                return stack;
+            });
 
             const previousItem = await handleOptimisticUpdate(
                 queryClient,

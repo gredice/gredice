@@ -59,7 +59,18 @@ function getSunPosition(
         Math.trunc((timeOfDay * 24 - Math.trunc(timeOfDay * 24)) * 60),
     );
 
-    const sunPosition = getPosition(currentTime, lat, lon);
+    const sunPosition = getPosition(
+        new Date(
+            date.getFullYear(),
+            date.getMonth(),
+            date.getDate(),
+            Math.trunc(timeOfDay * 24),
+            Math.trunc((timeOfDay * 24 - Math.trunc(timeOfDay * 24)) * 60),
+            0,
+        ),
+        lat,
+        lon,
+    );
 
     const pos = new Vector3(5, 20, 0);
 
@@ -97,23 +108,6 @@ export type EnvironmentProps = {
     noBackground?: boolean;
     noSound?: boolean;
     noWeather?: boolean;
-};
-
-type EnvironmentElements = {
-    background: Color;
-    ambient: {
-        intensity: number;
-    };
-    hemisphere: {
-        color: Color;
-        groundColor: Color;
-        intensity: number;
-    };
-    directionalLight: {
-        color: Color;
-        position: Vector3;
-        intensity: number;
-    };
 };
 
 function useEnvironmentElements({
@@ -246,7 +240,7 @@ export function Environment({
         weather.snowy = overrideWeather?.snowy ?? weather.snowy;
     }
 
-    // Sound
+    // Sound management
     const morningAmbient = ambientAudioMixer.useMusic(
         'https://cdn.gredice.com/sounds/ambient/Morning 01.mp3',
     );

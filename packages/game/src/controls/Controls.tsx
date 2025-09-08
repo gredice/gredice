@@ -94,7 +94,7 @@ const useKeyboardControls = () => {
     }, [worldRotate]);
 };
 
-export function Controls({ debugCloseup }: { debugCloseup?: boolean }) {
+export function Controls() {
     const isEditMode = useIsEditMode();
     const setOrbitControls = useGameState((state) => state.setOrbitControls);
     const setIsDragging = useGameState((state) => state.setIsDragging);
@@ -114,16 +114,10 @@ export function Controls({ debugCloseup }: { debugCloseup?: boolean }) {
               )
               ?.position.toArray() as [number, number, number])
         : [0, 0, 0];
-    const { isCloseUp, targetPosition } = debugCloseup
-        ? // biome-ignore lint/correctness/useHookAtTopLevel: Debug flag, doesn't change during runtime
-          useControls({
-              isCloseUp: { value: false, label: 'Closeup' },
-              targetPosition: { value: [0, 0, 0], label: 'Target Position' },
-          })
-        : {
-              isCloseUp: isCloseUpView,
-              targetPosition: closeupPosition,
-          };
+    const { isCloseUp, targetPosition } = {
+        isCloseUp: isCloseUpView,
+        targetPosition: closeupPosition,
+    };
 
     return (
         <>

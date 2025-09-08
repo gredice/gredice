@@ -15,7 +15,6 @@ import {
 export default async function Home() {
     const flags: ComponentProps<typeof GameScene>['flags'] = {
         enableDebugHudFlag: await enableDebugHudFlag(),
-        enableDebugCloseupFlag: await enableDebugHudFlag(),
         enableRaisedBedWateringFlag: await enableRaisedBedWateringFlag(),
         enableRaisedBedDiaryFlag: await enableRaisedBedDiaryFlag(),
         enableRaisedBedOperationsFlag: await enableRaisedBedOperationsFlag(),

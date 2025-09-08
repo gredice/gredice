@@ -15,6 +15,7 @@ import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Composter } from './Composter';
 import { Fence } from './Fence';
+import { Pine } from './Pine';
 import { RaisedBed } from './RaisedBed';
 import { Shade } from './Shade';
 import { StoneLarge } from './StoneLarge';
@@ -23,7 +24,7 @@ import { StoneSmall } from './StoneSmall';
 import { Stool } from './Stool';
 import { Tree } from './Tree';
 
-const entityNameMap: Record<
+export const entityNameMap: Record<
     string,
     React.ComponentType<EntityInstanceProps>
 > = {
@@ -41,6 +42,7 @@ const entityNameMap: Record<
     Bucket: Bucket,
     Bush: Bush,
     Tree: Tree,
+    Pine: Pine,
     StoneSmall: StoneSmall,
     StoneMedium: StoneMedium,
     StoneLarge: StoneLarge,
@@ -49,6 +51,7 @@ const entityNameMap: Record<
 type EntityFactoryProps = {
     name: string;
     noControl?: boolean;
+    noRenderInView?: string[];
 };
 
 export function EntityFactory({
@@ -56,6 +59,7 @@ export function EntityFactory({
     stack,
     block,
     noControl,
+    noRenderInView,
     ...rest
 }: EntityFactoryProps & EntityInstanceProps) {
     const isEditMode = useIsEditMode();
@@ -76,6 +80,10 @@ export function EntityFactory({
             : (props: PropsWithChildren) => <>{props.children}</>;
 
     if (!isEditMode) {
+        if (noRenderInView?.includes(name)) {
+            return null;
+        }
+
         return (
             <SelectableGroupWrapper block={block}>
                 <EntityComponent stack={stack} block={block} {...rest} />

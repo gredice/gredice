@@ -1,9 +1,11 @@
 'use client';
 
 import { cx } from '@signalco/ui-primitives/cx';
+import { Perf } from 'r3f-perf';
 import type { HTMLAttributes } from 'react';
 import { Controls } from './controls/Controls';
 import { EntityFactory } from './entities/EntityFactory';
+import { EntityInstances } from './entities/EntityInstances';
 import { GameHud } from './GameHud';
 import { useBlockData } from './hooks/useBlockData';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
@@ -31,7 +33,6 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     // Development purposes
     flags?: {
         enableDebugHudFlag?: boolean;
-        enableDebugCloseupFlag?: boolean;
         enableRaisedBedWateringFlag?: boolean;
         enableRaisedBedDiaryFlag?: boolean;
         enableRaisedBedOperationsFlag?: boolean;
@@ -42,6 +43,15 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
 };
 
 const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
+
+// TODO: Move all blocks to instanced rendering
+const noRenderInViewDefault = [
+    'Block_Grass',
+    'Block_Grass_Angle',
+    'Pine',
+    'Block_Sand',
+    'Block_Sand_Angle',
+];
 
 export function GameScene({
     zoom = 'normal',
@@ -92,15 +102,14 @@ export function GameScene({
                                 block={block}
                                 rotation={block.rotation}
                                 variant={block.variant}
+                                noRenderInView={noRenderInViewDefault}
                             />
                         )),
                     )}
+                    <EntityInstances stacks={garden?.stacks} />
                 </group>
-                {!noControls && (
-                    <Controls
-                        debugCloseup={Boolean(flags?.enableDebugCloseupFlag)}
-                    />
-                )}
+                {!noControls && <Controls />}
+                {!hideHud && <Perf position="bottom-right" />}
             </Scene>
             {!hideHud && <GameHud flags={flags} />}
         </div>
