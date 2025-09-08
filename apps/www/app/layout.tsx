@@ -65,7 +65,7 @@ export default async function RootLayout({
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
 
     return (
-        <html lang="hr">
+        <html lang="hr" translate="no">
             <Head>
                 <title>Gredice</title>
                 <meta name="apple-mobile-web-app-title" content="Gredice" />

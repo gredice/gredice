@@ -22,7 +22,7 @@ export default function RootLayout({
     children: ReactNode;
 }>) {
     return (
-        <html lang="hr" suppressHydrationWarning={true}>
+        <html lang="hr" translate="no" suppressHydrationWarning={true}>
             <Head>
                 <meta name="apple-mobile-web-app-title" content="Gredice" />
                 <meta name="theme-color" content="#2e6f40" />
