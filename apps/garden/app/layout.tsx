@@ -27,7 +27,7 @@ export default function RootLayout({
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
 
     return (
-        <html lang="hr" suppressHydrationWarning={true}>
+        <html lang="hr" translate="no" suppressHydrationWarning={true}>
             <Head>
                 <meta name="theme-color" content="#2e6f40" />
                 <meta name="apple-mobile-web-app-title" content="Gredice" />
