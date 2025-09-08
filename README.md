@@ -102,6 +102,26 @@ This will generate a new `game-assets.glb` file in the `/apps/garden/public/asse
 
 Use [https://gltf.pmnd.rs/](https://gltf.pmnd.rs/) to convert the GLTF file assets to a Three.js compatible components.
 
+## Specification Driven Development
+
+We are using Specification Driven Development (SDD) to manage our development process. This involves creating detailed specifications for new features, planning their implementation, and breaking them down into executable tasks.
+
+We automate this process using [Spec Kit](https://github.com/github/spec-kit). The Spec Kit tool helps us generate specifications, plan implementations, and create tasks directly from our command line interface.
+
+### Creating a new feature
+
+Fun commands in Copilot Chat in this order to create base specification, plan and tasks:
+
+```bash
+/specify <FEATURE_DESCRIPTION>
+/plan <TECHNICAL_IMPLEMENTATION_DETAILS>
+/task
+```
+
+#### What we changed from default Spec Kit behavior
+
+- We use GitButler for branch management, so we do not create branches in the `create-new-feature.sh` script.
+
 ## Contributing
 
 ![Alt](https://repobeats.axiom.co/api/embed/ba847f4d1fae06c8250692c08295602bca8de554.svg "Repobeats analytics image")
