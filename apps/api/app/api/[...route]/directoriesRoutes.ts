@@ -1,6 +1,6 @@
 import { getEntitiesFormatted, getEntityFormatted } from '@gredice/storage';
 import { Hono } from 'hono';
-import { validator as zValidator } from 'hono-openapi/zod';
+import { validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import type { EntityStandardized } from './checkoutRoutes';
 

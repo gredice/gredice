@@ -24,8 +24,7 @@ import {
 } from '@gredice/storage';
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import { describeRoute } from 'hono-openapi';
-import { validator as zValidator } from 'hono-openapi/zod';
+import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
