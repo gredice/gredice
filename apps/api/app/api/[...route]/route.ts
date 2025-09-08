@@ -2,7 +2,7 @@ import { openApiDocs } from '@gredice/apidocs/openApiDocs';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { handle } from 'hono/vercel';
-import { openAPISpecs } from 'hono-openapi';
+import { openAPIRouteHandler } from 'hono-openapi';
 import accountsRoutes from './accountsRoutes';
 import authRoutes from './authRoutes';
 import checkoutRoutes from './checkoutRoutes';
@@ -42,7 +42,7 @@ const app = new Hono()
 
 app.get(
     `/docs/auth`,
-    openAPISpecs(authRoutes, {
+    openAPIRouteHandler(authRoutes, {
         documentation: {
             info: {
                 title: 'Auth API',
@@ -63,7 +63,7 @@ app.get(
 )
     .get(
         `/docs/accounts`,
-        openAPISpecs(accountsRoutes, {
+        openAPIRouteHandler(accountsRoutes, {
             documentation: {
                 info: {
                     title: 'Accounts API',
@@ -84,7 +84,7 @@ app.get(
     )
     .get(
         `/docs/users`,
-        openAPISpecs(usersRoutes, {
+        openAPIRouteHandler(usersRoutes, {
             documentation: {
                 info: {
                     title: 'Users API',
@@ -105,7 +105,7 @@ app.get(
     )
     .get(
         `/docs/gardens`,
-        openAPISpecs(gardensRoutes, {
+        openAPIRouteHandler(gardensRoutes, {
             documentation: {
                 info: {
                     title: 'Gardens API',
@@ -129,7 +129,7 @@ app.get(
     )
     .get(
         `/docs/data`,
-        openAPISpecs(dataRoutes, {
+        openAPIRouteHandler(dataRoutes, {
             documentation: {
                 info: {
                     title: 'Data API',

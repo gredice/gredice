@@ -17,8 +17,7 @@ import {
     stripeSessionCancel,
 } from '@gredice/stripe/server';
 import { Hono } from 'hono';
-import { describeRoute } from 'hono-openapi';
-import { validator as zValidator } from 'hono-openapi/zod';
+import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import {
     type AuthVariables,

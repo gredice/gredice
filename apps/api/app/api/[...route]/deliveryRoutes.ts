@@ -13,9 +13,8 @@ import {
     updateDeliveryAddress,
     validateDeliveryAddress,
 } from '@gredice/storage';
-import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
-import { describeRoute } from 'hono-openapi';
+import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import {
     type AuthVariables,
