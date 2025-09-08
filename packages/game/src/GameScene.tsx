@@ -1,7 +1,7 @@
 'use client';
 
 import { cx } from '@signalco/ui-primitives/cx';
-import { Perf } from 'r3f-perf';
+// import { Perf } from 'r3f-perf';
 import type { HTMLAttributes } from 'react';
 import { Controls } from './controls/Controls';
 import { EntityFactory } from './entities/EntityFactory';
@@ -109,7 +109,7 @@ export function GameScene({
                     <EntityInstances stacks={garden?.stacks} />
                 </group>
                 {!noControls && <Controls />}
-                {!hideHud && <Perf position="bottom-right" />}
+                {/* {!hideHud && <Perf position="bottom-right" />} */}
             </Scene>
             {!hideHud && <GameHud flags={flags} />}
         </div>
