@@ -3,14 +3,15 @@
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import { Calendar, Close, Tally3 } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { KnownPages } from '../../../src/KnownPages';
 import { raisedBedPlanted } from '../../(actions)/raisedBedFieldsActions';
+import { AcceptOperationModal } from './AcceptOperationModal';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { CopyTasksButton } from './CopyTasksButton';
@@ -54,6 +55,7 @@ type Operation = {
     completedBy?: string;
     timestamp: Date;
     createdAt: Date;
+    isAccepted: boolean;
     isDeleted: boolean;
 };
 
@@ -286,7 +288,9 @@ export function ScheduleDay({
                                                 title="Potvrda sijanja"
                                                 header="Označavanje kao posijano"
                                                 onConfirm={handlePlantConfirm}
-                                                trigger={<Checkbox />}
+                                                trigger={
+                                                    <Checkbox className="size-5 mx-2" />
+                                                }
                                             >
                                                 <Typography>
                                                     Jeste li sigurni da želite
@@ -306,21 +310,29 @@ export function ScheduleDay({
                                 const operationData = operationsData?.find(
                                     (data) => data.id === op.entityId,
                                 );
+                                const operationLabel = `${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`;
                                 return (
                                     <div key={op.id}>
                                         <Row
                                             spacing={1}
-                                            className="hover:bg-muted"
+                                            className="hover:bg-muted rounded"
                                         >
                                             <Row spacing={1}>
-                                                <CompleteOperationModal
-                                                    operationId={op.id}
-                                                    userId={userId}
-                                                    label={`${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`}
-                                                    conditions={
-                                                        operationData?.conditions
-                                                    }
-                                                />
+                                                {op.isAccepted ? (
+                                                    <CompleteOperationModal
+                                                        operationId={op.id}
+                                                        userId={userId}
+                                                        label={operationLabel}
+                                                        conditions={
+                                                            operationData?.conditions
+                                                        }
+                                                    />
+                                                ) : (
+                                                    <AcceptOperationModal
+                                                        operationId={op.id}
+                                                        label={operationLabel}
+                                                    />
+                                                )}
                                                 <a
                                                     href={
                                                         operationData
@@ -336,9 +348,17 @@ export function ScheduleDay({
                                                     rel="noopener noreferrer"
                                                 >
                                                     <Typography>
-                                                        {`${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`}
+                                                        {operationLabel}
                                                     </Typography>
                                                 </a>
+                                                <Typography
+                                                    level="body2"
+                                                    className={`ml-1 italic ${op.isAccepted ? 'text-green-600' : 'text-muted-foreground'}`}
+                                                >
+                                                    {op.isAccepted
+                                                        ? 'Potvrđeno'
+                                                        : 'Nije potvrđeno'}
+                                                </Typography>
                                             </Row>
                                             <Row
                                                 justifyContent="space-between"
@@ -374,10 +394,8 @@ export function ScheduleDay({
                                                             op.entityId.toString()
                                                         }
                                                         trigger={
-                                                            <Button
+                                                            <IconButton
                                                                 variant="plain"
-                                                                size="sm"
-                                                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                                                                 title={
                                                                     op.scheduledDate
                                                                         ? 'Prerasporedi operaciju'
@@ -385,7 +403,7 @@ export function ScheduleDay({
                                                                 }
                                                             >
                                                                 <Calendar className="size-4 shrink-0" />
-                                                            </Button>
+                                                            </IconButton>
                                                         }
                                                     />
                                                     <CancelOperationModal
@@ -404,14 +422,12 @@ export function ScheduleDay({
                                                             op.entityId.toString()
                                                         }
                                                         trigger={
-                                                            <Button
+                                                            <IconButton
                                                                 variant="plain"
-                                                                size="sm"
-                                                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                                                                 title="Otkaži operaciju"
                                                             >
                                                                 <Close className="size-4 shrink-0" />
-                                                            </Button>
+                                                            </IconButton>
                                                         }
                                                     />
                                                 </Row>

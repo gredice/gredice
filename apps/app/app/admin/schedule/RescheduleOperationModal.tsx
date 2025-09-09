@@ -72,7 +72,6 @@ export function RescheduleOperationModal({
 
     return (
         <Modal
-            className="border border-tertiary border-b-4"
             trigger={trigger}
             title={`${isRescheduling ? 'Prerasporedi' : 'Zakaži'}: ${operationLabel}`}
             open={open}

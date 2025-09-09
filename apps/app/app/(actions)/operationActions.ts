@@ -2,6 +2,7 @@
 
 import { randomUUID } from 'node:crypto';
 import {
+    acceptOperation,
     createEvent,
     createNotification,
     createOperation,
@@ -106,6 +107,22 @@ export async function rescheduleOperationAction(formData: FormData) {
     return { success: true };
 }
 
+export async function acceptOperationAction(operationId: number) {
+    await auth(['admin']);
+    const operation = await getOperationById(operationId);
+    if (!operation) {
+        throw new Error(`Operation with ID ${operationId} not found.`);
+    }
+    await acceptOperation(operationId);
+    revalidatePath(KnownPages.Schedule);
+    if (operation.accountId)
+        revalidatePath(KnownPages.Account(operation.accountId));
+    if (operation.gardenId)
+        revalidatePath(KnownPages.Garden(operation.gardenId));
+    if (operation.raisedBedId)
+        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+}
+
 export async function completeOperation(
     operationId: number,
     completedBy: string,
@@ -115,6 +132,9 @@ export async function completeOperation(
     const operation = await getOperationById(operationId);
     if (!operation) {
         throw new Error(`Operation with ID ${operationId} not found.`);
+    }
+    if (!operation.isAccepted) {
+        throw new Error('Operation must be accepted before completion');
     }
 
     const operationData = await getEntityFormatted<EntityStandardized>(

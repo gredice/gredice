@@ -67,7 +67,7 @@ export function CompleteOperationModal({
             title="Potvrda završetka operacije"
             open={isOpen}
             onOpenChange={handleOpenChange}
-            trigger={<Checkbox />}
+            trigger={<Checkbox className="size-5 mx-2" />}
         >
             <Stack spacing={2}>
                 <Typography>
