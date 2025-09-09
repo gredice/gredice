@@ -1,5 +1,6 @@
-import { Check, Edit } from '@signalco/ui-icons';
+import { Check } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { ShovelIcon } from '../icons/Shovel';
 import { useGameState } from '../useGameState';
 import { HudCard } from './components/HudCard';
 
@@ -16,7 +17,7 @@ export function GameModeHud() {
                 onClick={() => setMode(mode !== 'edit' ? 'edit' : 'normal')}
             >
                 {mode !== 'edit' ? (
-                    <Edit className="shrink-0 !stroke-[1.4px]" />
+                    <ShovelIcon className="shrink-0 !stroke-[1.4px]" />
                 ) : (
                     <Check className="text-green-600 !stroke-[3px] shrink-0" />
                 )}
