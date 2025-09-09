@@ -191,7 +191,7 @@ function EntityInstancesBlock({
 }
 
 export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
-    const { nodes } = useGameGLTF();
+    const { nodes, materials } = useGameGLTF();
     return (
         <>
             <EntityGrassInstances stacks={stacks} />
@@ -216,6 +216,48 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
                 scale={[0.09, 1, 0.09]}
                 geometry={nodes.Tree_2.geometry}
                 material={nodes.Tree_2.material}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Shovel_Small"
+                geometry={nodes.Shovel_Small.geometry}
+                material={materials['Material.ColorPaletteMain']}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Mulch_Hey"
+                geometry={nodes.Mulch_Hey.geometry}
+                material={materials['Material.ColorPaletteMain']}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Mulch_Coconut"
+                geometry={nodes.Mulch_Coconut.geometry}
+                material={materials['Material.ColorPaletteMain']}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Mulch_Wood"
+                geometry={nodes.Mulch_Wood.geometry}
+                material={materials['Material.ColorPaletteMain']}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Tulip"
+                geometry={nodes.Tulip.geometry}
+                material={materials['Material.ColorPaletteMain']}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Stick"
+                geometry={nodes.Stick.geometry}
+                material={nodes.Stick.material}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Seed"
+                geometry={nodes.Seed.geometry}
+                material={nodes.Seed.material}
             />
         </>
     );

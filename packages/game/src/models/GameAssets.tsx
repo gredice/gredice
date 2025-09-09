@@ -64,6 +64,11 @@ export type GLTFResult = GLTF & {
         Shade_N: THREE.Mesh;
         Shade_Single_Right: THREE.Mesh;
         Shade_Middle: THREE.Mesh;
+        Shovel_Small: THREE.Mesh;
+        Mulch_Hey: THREE.Mesh;
+        Mulch_Coconut: THREE.Mesh;
+        Mulch_Wood: THREE.Mesh;
+        Tulip: THREE.Mesh;
         Stick: THREE.Mesh;
         Seed: THREE.Mesh;
     };
@@ -347,6 +352,26 @@ export function Model(props: JSX.IntrinsicElements['group']) {
                 geometry={nodes.Shade_Middle.geometry}
                 material={materials['Material.Planks']}
                 position={[0, 1, 0]}
+            />
+            <mesh
+                geometry={nodes.Shovel_Small.geometry}
+                material={materials['Material.ColorPaletteMain']}
+            />
+            <mesh
+                geometry={nodes.Mulch_Hey.geometry}
+                material={materials['Material.ColorPaletteMain']}
+            />
+            <mesh
+                geometry={nodes.Mulch_Coconut.geometry}
+                material={materials['Material.ColorPaletteMain']}
+            />
+            <mesh
+                geometry={nodes.Mulch_Wood.geometry}
+                material={materials['Material.ColorPaletteMain']}
+            />
+            <mesh
+                geometry={nodes.Tulip.geometry}
+                material={materials['Material.ColorPaletteMain']}
             />
             <mesh
                 geometry={nodes.Stick.geometry}

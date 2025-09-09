@@ -17,12 +17,19 @@ import { Composter } from './Composter';
 import { Fence } from './Fence';
 import { Pine } from './Pine';
 import { RaisedBed } from './RaisedBed';
+import { MulchCoconut } from './raisedBed/MulchCoconut';
+import { MulchHey } from './raisedBed/MulchHey';
+import { MulchWood } from './raisedBed/MulchWood';
+import { Seed } from './raisedBed/Seed';
+import { Stick } from './raisedBed/Stick';
 import { Shade } from './Shade';
+import { ShovelSmall } from './ShovelSmall';
 import { StoneLarge } from './StoneLarge';
 import { StoneMedium } from './StoneMedium';
 import { StoneSmall } from './StoneSmall';
 import { Stool } from './Stool';
 import { Tree } from './Tree';
+import { Tulip } from './Tulip';
 
 export const entityNameMap: Record<
     string,
@@ -46,6 +53,15 @@ export const entityNameMap: Record<
     StoneSmall: StoneSmall,
     StoneMedium: StoneMedium,
     StoneLarge: StoneLarge,
+    ShovelSmall: ShovelSmall,
+    Tulip: Tulip,
+
+    // Raised bed items
+    MulchHey: MulchHey,
+    MulchCoconut: MulchCoconut,
+    MulchWood: MulchWood,
+    Stick: Stick,
+    Seed: Seed,
 };
 
 type EntityFactoryProps = {
