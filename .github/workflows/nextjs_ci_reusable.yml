@@ -24,7 +24,7 @@ env:
 
 jobs:
     lint:
-        timeout-minutes: 5
+        timeout-minutes: 10
         runs-on: ubuntu-latest
         if: github.event_name == 'pull_request'
         steps:
@@ -61,7 +61,7 @@ jobs:
             - name: 🔎 Lint app
               run: pnpm lint --filter=${{ inputs.name }}
     test:
-        timeout-minutes: 5
+        timeout-minutes: 10
         runs-on: ubuntu-latest
         needs: lint
         if: github.event_name == 'pull_request'
