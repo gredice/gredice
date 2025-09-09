@@ -80,7 +80,7 @@ export function RaisedBedFieldHud(_props: {
                     />
                 )}
             </div>
-            {currentGarden && raisedBed && (
+            {currentGarden && raisedBed && raisedBed.isValid && (
                 <>
                     <div className="absolute top-[calc(50%+160px)] left-[calc(50%-156.5px)] md:left-[calc(50%+210px)] md:top-[calc(50%+74px)]">
                         <Stack spacing={0.5}>

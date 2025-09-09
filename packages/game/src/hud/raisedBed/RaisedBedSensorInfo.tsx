@@ -215,6 +215,8 @@ function SensorInfoModal({
     const currentStatus = getStatus(currentMoisture);
     const absoluteStatus = getStatus(avgMoisture);
 
+    // Determine whether the sensor is in the shopping cart
+    // If the sensor is in the cart for this raised bed or any neighboring raised bed, consider it in the cart
     const neighboringRaisedBeds = useNeighboringRaisedBeds(raisedBedId);
     const isSensorInShoppingCart = shoppingCart?.items.some(
         (item) =>
