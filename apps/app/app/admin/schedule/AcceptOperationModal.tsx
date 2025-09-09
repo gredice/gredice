@@ -11,7 +11,10 @@ interface AcceptOperationModalProps {
     label: string;
 }
 
-export function AcceptOperationModal({ operationId, label }: AcceptOperationModalProps) {
+export function AcceptOperationModal({
+    operationId,
+    label,
+}: AcceptOperationModalProps) {
     const handleConfirm = async () => {
         try {
             await acceptOperationAction(operationId);
@@ -23,6 +26,7 @@ export function AcceptOperationModal({ operationId, label }: AcceptOperationModa
     return (
         <ModalConfirm
             title="Potvrda operacije"
+            header="Potvrda operacije"
             onConfirm={handleConfirm}
             trigger={
                 <Button
@@ -36,9 +40,9 @@ export function AcceptOperationModal({ operationId, label }: AcceptOperationModa
             }
         >
             <Typography>
-                Jeste li sigurni da želite potvrditi operaciju: <strong>{label}</strong>?
+                Jeste li sigurni da želite potvrditi operaciju:{' '}
+                <strong>{label}</strong>?
             </Typography>
         </ModalConfirm>
     );
 }
-
