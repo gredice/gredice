@@ -48,7 +48,6 @@ export function CancelOperationModal({
 
     return (
         <Modal
-            className="border border-tertiary border-b-4"
             trigger={trigger}
             title={`Otkaži: ${operationLabel}`}
             open={open}

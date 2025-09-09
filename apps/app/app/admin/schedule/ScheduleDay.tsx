@@ -3,8 +3,8 @@
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import { Calendar, Close, Tally3 } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
@@ -288,7 +288,9 @@ export function ScheduleDay({
                                                 title="Potvrda sijanja"
                                                 header="Označavanje kao posijano"
                                                 onConfirm={handlePlantConfirm}
-                                                trigger={<Checkbox />}
+                                                trigger={
+                                                    <Checkbox className="size-5 mx-2" />
+                                                }
                                             >
                                                 <Typography>
                                                     Jeste li sigurni da želite
@@ -313,7 +315,7 @@ export function ScheduleDay({
                                     <div key={op.id}>
                                         <Row
                                             spacing={1}
-                                            className="hover:bg-muted"
+                                            className="hover:bg-muted rounded"
                                         >
                                             <Row spacing={1}>
                                                 {op.isAccepted ? (
@@ -392,10 +394,8 @@ export function ScheduleDay({
                                                             op.entityId.toString()
                                                         }
                                                         trigger={
-                                                            <Button
+                                                            <IconButton
                                                                 variant="plain"
-                                                                size="sm"
-                                                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                                                                 title={
                                                                     op.scheduledDate
                                                                         ? 'Prerasporedi operaciju'
@@ -403,7 +403,7 @@ export function ScheduleDay({
                                                                 }
                                                             >
                                                                 <Calendar className="size-4 shrink-0" />
-                                                            </Button>
+                                                            </IconButton>
                                                         }
                                                     />
                                                     <CancelOperationModal
@@ -422,14 +422,12 @@ export function ScheduleDay({
                                                             op.entityId.toString()
                                                         }
                                                         trigger={
-                                                            <Button
+                                                            <IconButton
                                                                 variant="plain"
-                                                                size="sm"
-                                                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                                                                 title="Otkaži operaciju"
                                                             >
                                                                 <Close className="size-4 shrink-0" />
-                                                            </Button>
+                                                            </IconButton>
                                                         }
                                                     />
                                                 </Row>
