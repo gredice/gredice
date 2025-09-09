@@ -159,6 +159,7 @@ function mockGarden() {
                 status: 'new',
                 updatedAt: new Date().toISOString(),
                 createdAt: new Date().toISOString(),
+                isValid: true,
             },
             {
                 id: 2,
@@ -169,6 +170,7 @@ function mockGarden() {
                 status: 'new',
                 updatedAt: new Date().toISOString(),
                 createdAt: new Date().toISOString(),
+                isValid: true,
             },
         ],
     };

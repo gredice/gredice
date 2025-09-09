@@ -28,6 +28,7 @@ import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
+import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
     type AuthVariables,
     authValidator,
@@ -183,16 +184,23 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 latitude: freshGarden.farm.latitude,
                 longitude: freshGarden.farm.longitude,
                 stacks,
-                raisedBeds: freshGarden.raisedBeds.map((raisedBed) => ({
-                    id: raisedBed.id,
-                    name: raisedBed.name,
-                    physicalId: raisedBed.physicalId,
-                    blockId: raisedBed.blockId,
-                    status: raisedBed.status,
-                    fields: raisedBed.fields,
-                    createdAt: raisedBed.createdAt,
-                    updatedAt: raisedBed.updatedAt,
-                })),
+                raisedBeds: (() => {
+                    const validityMap = calculateRaisedBedsValidity(
+                        freshGarden.raisedBeds,
+                        freshGarden.stacks,
+                    );
+                    return freshGarden.raisedBeds.map((raisedBed) => ({
+                        id: raisedBed.id,
+                        name: raisedBed.name,
+                        physicalId: raisedBed.physicalId,
+                        blockId: raisedBed.blockId,
+                        status: raisedBed.status,
+                        fields: raisedBed.fields,
+                        createdAt: raisedBed.createdAt,
+                        updatedAt: raisedBed.updatedAt,
+                        isValid: validityMap.get(raisedBed.id) ?? false,
+                    }));
+                })(),
                 createdAt: freshGarden.createdAt,
             });
         },
@@ -854,13 +862,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const raisedBeds = await getRaisedBeds(gardenIdNumber);
+            const validityMap = calculateRaisedBedsValidity(
+                garden.raisedBeds,
+                garden.stacks,
+            );
             return context.json(
-                raisedBeds.map((raisedBed) => ({
+                garden.raisedBeds.map((raisedBed) => ({
                     id: raisedBed.id,
                     blockId: raisedBed.blockId,
                     createdAt: raisedBed.createdAt,
                     updatedAt: raisedBed.updatedAt,
+                    isValid: validityMap.get(raisedBed.id) ?? false,
                 })),
             );
         },
@@ -890,20 +902,27 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const { accountId } = context.get('authContext');
-            const raisedBed = await getRaisedBed(raisedBedIdNumber);
-            if (
-                !raisedBed ||
-                raisedBed.gardenId !== gardenIdNumber ||
-                raisedBed.accountId !== accountId
-            ) {
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
+            const raisedBed = garden.raisedBeds.find(
+                (rb) => rb.id === raisedBedIdNumber,
+            );
+            if (!raisedBed) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+            const validityMap = calculateRaisedBedsValidity(
+                garden.raisedBeds,
+                garden.stacks,
+            );
 
             return context.json({
                 id: raisedBed.id,
                 blockId: raisedBed.blockId,
                 createdAt: raisedBed.createdAt,
                 updatedAt: raisedBed.updatedAt,
+                isValid: validityMap.get(raisedBed.id) ?? false,
             });
         },
     )

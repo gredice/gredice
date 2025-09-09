@@ -22,6 +22,9 @@ export function RaisedBedFieldSuggestions({
     const setCartItem = useSetShoppingCartItem();
     if (!currentGarden || !raisedBed || !shoppingCart) return null;
 
+    // Only show suggestions if the raised bed is valid
+    if (!raisedBed.isValid) return null;
+
     // Check if there are already 9 plants in the cart or planted for this raised bed
     const cartItems = shoppingCart?.items.filter(
         (item) => item.raisedBedId === raisedBedId,
