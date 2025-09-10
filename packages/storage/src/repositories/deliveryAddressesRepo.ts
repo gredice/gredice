@@ -156,12 +156,13 @@ export function validateDeliveryAddress(
         errors.push('Contact name is required');
     }
 
-    if (
-        data.phone &&
-        !/^\+?[1-9]\d{1,14}$/.test(data.phone.replace(/\s/g, ''))
-    ) {
-        errors.push('Phone number must be in E.164 format');
-    }
+    // TODO: Removed for now, re-add if needed
+    // if (
+    //     data.phone &&
+    //     !/^\+?[1-9]\d{1,14}$/.test(data.phone.replace(/\s/g, ''))
+    // ) {
+    //     errors.push('Phone number must be in E.164 format');
+    // }
 
     if (data.street1 && data.street1.trim().length < 1) {
         errors.push('Street address is required');

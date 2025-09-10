@@ -1,6 +1,6 @@
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
-import { Edit, Map as MapIcon, ShoppingCart, Truck } from '@signalco/ui-icons';
+import { Edit, Map as MapIcon, Navigate, ShoppingCart, Truck } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -21,7 +21,9 @@ import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { type TimeSlotData, useTimeSlots } from '../../hooks/useTimeSlots';
 import { ButtonConfirmPayment } from '../../hud/components/shopping-cart/ButtonConfirmPayment';
 import { KnownPages } from '../../knownPages';
-import { DeliveryAddressesSection } from './DeliveryAddressesSection';
+import { AddressCard, DeliveryAddressesSection } from './DeliveryAddressesSection';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 
 export interface DeliverySelectionData {
     mode: 'delivery' | 'pickup';
@@ -52,7 +54,7 @@ export function DeliveryStep({
     const [manageAddresses, setManageAddresses] = useState(false);
     const { data: cart } = useShoppingCart();
 
-    const { data: addresses } = useDeliveryAddresses();
+    const { data: addresses, isLoading: isLoadingAddresses } = useDeliveryAddresses();
     const { data: pickupLocations } = usePickupLocations();
 
     // Get available slots based on current selection
@@ -63,6 +65,16 @@ export function DeliveryStep({
         from: new Date().toISOString(),
         to: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // Next 14 days
     });
+
+    useEffect(() => {
+        if (!isLoadingAddresses && addresses && addresses.length > 0 && !selection.addressId) {
+            const defaultAddress = addresses.find(a => a.isDefault) || addresses[0];
+            setSelection((prev) => ({
+                ...prev,
+                addressId: defaultAddress.id,
+            }));
+        }
+    }, [addresses, isLoadingAddresses]);
 
     // Update parent component when selection changes
     useEffect(() => {
@@ -116,23 +128,28 @@ export function DeliveryStep({
     if (manageAddresses) {
         return (
             <Stack spacing={4}>
-                <Row justifyContent="space-between">
-                    <Typography level="h3">Upravljanje adresama</Typography>
-                    <Button
-                        variant="outlined"
+                <Row spacing={1}>
+                    <IconButton
+                        title="Natrag na dostavu"
+                        variant="plain"
                         onClick={() => setManageAddresses(false)}
                     >
-                        Natrag na dostavu
-                    </Button>
+                        <Navigate className="size-5 rotate-180 shrink-0" />
+                    </IconButton>
+                    <Typography level="h3">Upravljanje adresama</Typography>
                 </Row>
-                <DeliveryAddressesSection />
+                <div className="overflow-y-auto max-h-[50vh]">
+                    <DeliveryAddressesSection />
+                </div>
             </Stack>
         );
     }
 
+    const selectedAddress = addresses?.find(a => a.id === selection.addressId);
+
     return (
         <Stack spacing={2}>
-            <Typography level="h3">Informacije o dostavi</Typography>
+            <Typography level="h3">Način dostave</Typography>
 
             <Alert color="info">
                 Tvoja košarica sadrži radnje koje zahtijevaju dostavu ili
@@ -141,7 +158,6 @@ export function DeliveryStep({
 
             {/* Mode Selection */}
             <Stack spacing={2}>
-                <Typography level="h6">Odaberi način dostave</Typography>
                 <Tabs
                     value={selection.mode}
                     onValueChange={(value: string) =>
@@ -167,108 +183,60 @@ export function DeliveryStep({
 
                     <TabsContent value="delivery" className="mt-4">
                         <Stack spacing={3}>
-                            <Row justifyContent="space-between">
-                                <Typography level="body1">
-                                    Odaberi adresu za dostavu
-                                </Typography>
-                                <Button
-                                    variant="soft"
-                                    size="sm"
-                                    onClick={() => setManageAddresses(true)}
-                                    startDecorator={
-                                        <Edit className="size-4 shrink-0" />
-                                    }
-                                >
-                                    Moje adrese
-                                </Button>
-                            </Row>
-
-                            {addresses && addresses.length > 0 ? (
                                 <Stack spacing={2}>
-                                    <SelectItems
-                                        placeholder="Odaberi adresu"
-                                        value={
-                                            selection.addressId?.toString() ||
-                                            ''
-                                        }
-                                        onValueChange={(value: string) =>
-                                            handleAddressChange(
-                                                parseInt(value, 10),
-                                            )
-                                        }
-                                        items={addresses.map((address) => ({
-                                            label: `${address.label} - ${address.street1}, ${address.city}`,
-                                            value: address.id.toString(),
-                                        }))}
-                                    />
+                                    <Stack spacing={1}>
+                                        <Row spacing={1}>
+                                            {isLoadingAddresses ? (
+                                                <Skeleton className="h-10 w-full rounded-md" />
+                                            ) : (
+                                                <>
+                                                    {addresses && addresses.length > 0 ? (
+                                                        <SelectItems
+                                                            label="Adresa za dostavu"
+                                                            placeholder="Odaberi adresu..."
+                                                            className="w-full"
+                                                            defaultValue={addresses.find(a => a.isDefault)?.id.toString() || ''}
+                                                            value={selection.addressId?.toString() || ''}
+                                                            onValueChange={(value: string) =>
+                                                                handleAddressChange(
+                                                                    parseInt(value, 10),
+                                                                )
+                                                            }
+                                                            items={addresses.map((address) => ({
+                                                                label: `${address.label} - ${address.street1}, ${address.city}`,
+                                                                value: address.id.toString(),
+                                                            }))}
+                                                        />
+                                                    ) : (
+                                                        <NoDataPlaceholder className="grow">
+                                                            Dodajte adresu za dostavu da biste nastavili s dostavom...
+                                                        </NoDataPlaceholder>
+                                                    )}
+                                                </>
+                                            )}
+                                            <Button
+                                                variant={!isLoadingAddresses && !addresses?.length ? "solid" : "outlined"}
+                                                size="sm"
+                                                onClick={() => setManageAddresses(true)}
+                                                className='h-10 whitespace-nowrap self-end'
+                                                startDecorator={
+                                                    <Edit className="size-4 shrink-0" />
+                                                }
+                                            >
+                                                Moje adrese
+                                            </Button>
+                                        </Row>
+                                    </Stack>
                                     {/* Show selected address details */}
-                                    {selection.addressId &&
-                                        addresses.map(
-                                            (address) =>
-                                                selection.addressId ===
-                                                    address.id && (
-                                                    <Card
-                                                        key={address.id}
-                                                        className="bg-background/50"
-                                                    >
-                                                        <CardContent className="p-3">
-                                                            <Stack spacing={1}>
-                                                                <Row
-                                                                    spacing={2}
-                                                                >
-                                                                    <Typography
-                                                                        level="body1"
-                                                                        bold
-                                                                    >
-                                                                        {
-                                                                            address.label
-                                                                        }
-                                                                    </Typography>
-                                                                    {address.isDefault && (
-                                                                        <Typography
-                                                                            level="body3"
-                                                                            className="text-primary"
-                                                                        >
-                                                                            (Zadana)
-                                                                        </Typography>
-                                                                    )}
-                                                                </Row>
-                                                                <Typography level="body2">
-                                                                    {
-                                                                        address.contactName
-                                                                    }
-                                                                </Typography>
-                                                                <Typography
-                                                                    level="body3"
-                                                                    secondary
-                                                                >
-                                                                    {
-                                                                        address.street1
-                                                                    }
-                                                                    {address.street2 &&
-                                                                        `, ${address.street2}`}
-                                                                    <br />
-                                                                    {
-                                                                        address.postalCode
-                                                                    }{' '}
-                                                                    {
-                                                                        address.city
-                                                                    }
-                                                                </Typography>
-                                                            </Stack>
-                                                        </CardContent>
-                                                    </Card>
-                                                ),
-                                        )}
+                                    {selectedAddress && (
+                                        <AddressCard 
+                                        address={selectedAddress} 
+                                        key={selection.addressId} 
+                                        readonly />
+                                    )}
                                 </Stack>
-                            ) : (
-                                <NoDataPlaceholder className="mb-4">
-                                    Dodajte adresu za dostavu da biste nastavili
-                                </NoDataPlaceholder>
-                            )}
                         </Stack>
                     </TabsContent>
-
                     <TabsContent value="pickup" className="mt-4">
                         <Stack spacing={3}>
                             {pickupLocations && pickupLocations.length > 0 ? (
