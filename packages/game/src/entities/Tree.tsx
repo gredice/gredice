@@ -1,5 +1,7 @@
 import { animated } from '@react-spring/three';
 import { MeshDistortMaterial, MeshWobbleMaterial } from '@react-three/drei';
+import { useEffect } from 'react';
+import { ParticleType, useParticles } from '../particles/ParticleSystem';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -9,6 +11,15 @@ export function Tree({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF();
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const { spawn } = useParticles();
+
+    useEffect(() => {
+        spawn(
+            ParticleType.TreeLeaf,
+            stack.position.clone().setY(currentStackHeight + 2),
+            12,
+        );
+    }, [spawn, stack.position, currentStackHeight]);
 
     return (
         <animated.group

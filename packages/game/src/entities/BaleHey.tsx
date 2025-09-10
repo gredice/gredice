@@ -15,6 +15,7 @@ export function BaleHey({ stack, block, rotation }: EntityInstanceProps) {
         spawn(
             ParticleType.Hay,
             stack.position.clone().setY(currentStackHeight),
+            12,
         );
     }, [spawn, currentStackHeight, stack.position]);
 

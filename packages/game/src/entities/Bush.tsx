@@ -17,7 +17,7 @@ export function Bush({ stack, block, rotation }: EntityInstanceProps) {
     useEffect(() => {
         const currentPos = stack.position.clone();
         if (!prevPosition.current.equals(currentPos)) {
-            spawn(ParticleType.Leaf, currentPos.setY(currentStackHeight));
+            spawn(ParticleType.Leaf, currentPos.setY(currentStackHeight), 12);
             prevPosition.current.copy(currentPos);
         }
     }, [stack.position, currentStackHeight, spawn]);
