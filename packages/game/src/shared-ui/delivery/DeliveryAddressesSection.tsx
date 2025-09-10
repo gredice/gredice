@@ -4,6 +4,7 @@ import { Add, Delete, Edit } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Modal } from '@signalco/ui-primitives/Modal';
@@ -203,7 +204,13 @@ function AddressForm({
     );
 }
 
-function AddressCard({ address }: { address: DeliveryAddressData }) {
+export function AddressCard({
+    address,
+    readonly,
+}: {
+    address: DeliveryAddressData;
+    readonly?: boolean;
+}) {
     const [isEditing, setIsEditing] = useState(false);
     const updateAddress = useUpdateDeliveryAddress();
     const deleteAddress = useDeleteDeliveryAddress();
@@ -244,62 +251,63 @@ function AddressCard({ address }: { address: DeliveryAddressData }) {
     }
 
     return (
-        <Card className={address.isDefault ? 'border-primary/30 border-2' : ''}>
+        <Card>
             <CardContent>
                 <Stack spacing={2}>
                     <Row justifyContent="space-between" alignItems="start">
                         <Stack spacing={1}>
-                            <Row spacing={1}>
+                            <Row spacing={2}>
                                 <Typography level="h6">
                                     {address.label}
                                 </Typography>
                                 {address.isDefault && (
-                                    <Typography
-                                        level="body3"
-                                        className="text-primary"
-                                    >
-                                        (Zadana)
-                                    </Typography>
+                                    <Chip className="text-primary">
+                                        ⭐ Zadana
+                                    </Chip>
                                 )}
                             </Row>
-                            <Typography level="body2">
-                                {address.contactName}
-                            </Typography>
-                            <Typography level="body3" secondary>
-                                {address.phone}
-                            </Typography>
-                        </Stack>
-                        <Row spacing={1}>
-                            <IconButton
-                                title="Uredi adresu"
-                                variant="outlined"
-                                size="sm"
-                                onClick={() => setIsEditing(true)}
-                            >
-                                <Edit className="size-4" />
-                            </IconButton>
-                            <ModalConfirm
-                                title="Potvrdi brisanje adrese"
-                                header="Brisanje adrese"
-                                onConfirm={handleDelete}
-                                trigger={
-                                    <IconButton
-                                        title="Obriši adresu"
-                                        variant="outlined"
-                                        size="sm"
-                                        className="text-red-600"
-                                        loading={deleteAddress.isPending}
-                                    >
-                                        <Delete className="size-4" />
-                                    </IconButton>
-                                }
-                            >
-                                <Typography>
-                                    Jeste li sigurni da želite obrisati adresu "
-                                    {address.label}"?
+                            <Stack>
+                                <Typography level="body2">
+                                    {address.contactName}
                                 </Typography>
-                            </ModalConfirm>
-                        </Row>
+                                <Typography level="body3">
+                                    {address.phone}
+                                </Typography>
+                            </Stack>
+                        </Stack>
+                        {!readonly && (
+                            <Row spacing={1}>
+                                <IconButton
+                                    title="Uredi adresu"
+                                    variant="outlined"
+                                    size="sm"
+                                    onClick={() => setIsEditing(true)}
+                                >
+                                    <Edit className="size-4" />
+                                </IconButton>
+                                <ModalConfirm
+                                    title="Potvrdi brisanje adrese"
+                                    header="Brisanje adrese"
+                                    onConfirm={handleDelete}
+                                    trigger={
+                                        <IconButton
+                                            title="Obriši adresu"
+                                            variant="outlined"
+                                            size="sm"
+                                            className="text-red-600"
+                                            loading={deleteAddress.isPending}
+                                        >
+                                            <Delete className="size-4" />
+                                        </IconButton>
+                                    }
+                                >
+                                    <Typography>
+                                        Jeste li sigurni da želite obrisati
+                                        adresu "{address.label}"?
+                                    </Typography>
+                                </ModalConfirm>
+                            </Row>
+                        )}
                     </Row>
                     <Stack spacing={0.5}>
                         <Typography level="body3" secondary>
