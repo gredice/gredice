@@ -5,6 +5,7 @@ import { SelectableGroup } from '../controls/SelectableGroup';
 import { useIsEditMode } from '../hooks/useIsEditMode';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
+import { BaleHey } from './BaleHey';
 import { BlockGrass } from './BlockGrass';
 import { BlockGrassAngle } from './BlockGrassAngle';
 import { BlockGround } from './BlockGround';
@@ -55,6 +56,7 @@ export const entityNameMap: Record<
     StoneLarge: StoneLarge,
     ShovelSmall: ShovelSmall,
     Tulip: Tulip,
+    BaleHey: BaleHey,
 
     // Raised bed items
     MulchHey: MulchHey,

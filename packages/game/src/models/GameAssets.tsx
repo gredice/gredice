@@ -50,6 +50,7 @@ export type GLTFResult = GLTF & {
         Tree_1_2: THREE.Mesh;
         Tree_1_3: THREE.Mesh;
         Tree_2: THREE.Mesh;
+        BaleHey: THREE.Mesh;
         Fence_Corner: THREE.Mesh;
         Fence_Cross: THREE.Mesh;
         Fence_Middle: THREE.Mesh;
@@ -284,6 +285,10 @@ export function Model(props: JSX.IntrinsicElements['group']) {
                 scale={[0.09, 1, 0.09]}
             />
             <mesh
+                geometry={nodes.BaleHey.geometry}
+                material={materials['Material.ColorPaletteMain']}
+            />
+            <mesh
                 geometry={nodes.Fence_Corner.geometry}
                 material={materials['Material.Planks']}
                 position={[0, 1, 0]}
@@ -372,6 +377,7 @@ export function Model(props: JSX.IntrinsicElements['group']) {
             <mesh
                 geometry={nodes.Tulip.geometry}
                 material={materials['Material.ColorPaletteMain']}
+                scale={0.818}
             />
             <mesh
                 geometry={nodes.Stick.geometry}
