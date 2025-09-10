@@ -249,6 +249,12 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
             />
             <EntityInstancesBlock
                 stacks={stacks}
+                name="BaleHey"
+                geometry={nodes.BaleHey.geometry}
+                material={materials['Material.ColorPaletteMain']}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
                 name="Stick"
                 geometry={nodes.Stick.geometry}
                 material={nodes.Stick.material}

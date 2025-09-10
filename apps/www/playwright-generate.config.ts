@@ -5,4 +5,5 @@ export default defineConfig({
     ...config,
     fullyParallel: false,
     testMatch: '**/*.specgen.tsx',
+    webServer: undefined,
 });
