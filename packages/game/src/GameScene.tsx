@@ -14,6 +14,7 @@ import { useThemeManager } from './hooks/useThemeManager';
 import { useWeatherNow } from './hooks/useWeatherNow';
 import { EditModeGrid } from './indicators/EditModeGrid';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
+import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import { Scene } from './scene/Scene';
 
@@ -86,30 +87,32 @@ export function GameScene({
                 zoom={zoom === 'far' ? 75 : 100}
                 className="!absolute"
             >
-                <EditModeGrid />
-                <Environment
-                    noBackground={noBackground}
-                    noWeather={noWeather}
-                    noSound={noSound}
-                />
-                <group>
-                    {garden?.stacks.map((stack) =>
-                        stack.blocks?.map((block, i) => (
-                            <EntityFactory
-                                key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
-                                name={block.name}
-                                stack={stack}
-                                block={block}
-                                rotation={block.rotation}
-                                variant={block.variant}
-                                noRenderInView={noRenderInViewDefault}
-                            />
-                        )),
-                    )}
-                    <EntityInstances stacks={garden?.stacks} />
-                </group>
-                {!noControls && <Controls />}
-                {/* {!hideHud && <Perf position="bottom-right" />} */}
+                <ParticleSystemProvider>
+                    <EditModeGrid />
+                    <Environment
+                        noBackground={noBackground}
+                        noWeather={noWeather}
+                        noSound={noSound}
+                    />
+                    <group>
+                        {garden?.stacks.map((stack) =>
+                            stack.blocks?.map((block, i) => (
+                                <EntityFactory
+                                    key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
+                                    name={block.name}
+                                    stack={stack}
+                                    block={block}
+                                    rotation={block.rotation}
+                                    variant={block.variant}
+                                    noRenderInView={noRenderInViewDefault}
+                                />
+                            )),
+                        )}
+                        <EntityInstances stacks={garden?.stacks} />
+                    </group>
+                    {!noControls && <Controls />}
+                    {/* {!hideHud && <Perf position="bottom-right" />} */}
+                </ParticleSystemProvider>
             </Scene>
             {!hideHud && <GameHud flags={flags} />}
         </div>

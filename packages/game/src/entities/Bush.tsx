@@ -1,5 +1,7 @@
 import { animated } from '@react-spring/three';
 import { MeshDistortMaterial, MeshWobbleMaterial } from '@react-three/drei';
+import { useEffect, useRef } from 'react';
+import { ParticleType, useParticles } from '../particles/ParticleSystem';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -9,6 +11,16 @@ export function Bush({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF();
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const { spawn } = useParticles();
+    const prevPosition = useRef(stack.position.clone());
+
+    useEffect(() => {
+        const currentPos = stack.position.clone();
+        if (!prevPosition.current.equals(currentPos)) {
+            spawn(ParticleType.Leaf, currentPos.setY(currentStackHeight));
+            prevPosition.current.copy(currentPos);
+        }
+    }, [stack.position, currentStackHeight, spawn]);
 
     return (
         <animated.group
