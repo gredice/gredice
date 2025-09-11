@@ -18,7 +18,6 @@ import { useBlockMove } from '../hooks/useBlockMove';
 import { useBlockRecycle } from '../hooks/useBlockRecycle';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import {
-    ParticleType,
     resolveBlockParticleType,
     useParticles,
 } from '../particles/ParticleSystem';

@@ -80,7 +80,7 @@ export function BulkOperationCreateModal({
                                             <input
                                                 type="checkbox"
                                                 name="targets"
-                                                value={`${garden.accountId ?? ''}|${garden.id}`}
+                                                value={`${garden.accountId}|${garden.id}`}
                                             />
                                             {garden.name || `Vrt ${garden.id}`}
                                         </label>
@@ -94,7 +94,7 @@ export function BulkOperationCreateModal({
                                                         <input
                                                             type="checkbox"
                                                             name="targets"
-                                                            value={`${rb.accountId ?? ''}|${rb.gardenId ?? ''}|${rb.id}`}
+                                                            value={`${rb.accountId}|${rb.gardenId ?? ''}|${rb.id}`}
                                                         />
                                                         {rb.physicalId
                                                             ? `Gr ${rb.physicalId}`
@@ -112,7 +112,7 @@ export function BulkOperationCreateModal({
                                                                     <input
                                                                         type="checkbox"
                                                                         name="targets"
-                                                                        value={`${rb.accountId ?? ''}|${rb.gardenId ?? ''}|${rb.id}|${field.id}`}
+                                                                        value={`${rb.accountId}|${rb.gardenId ?? ''}|${rb.id}|${field.id}`}
                                                                     />
                                                                     {`Polje ${field.positionIndex + 1}`}
                                                                 </label>

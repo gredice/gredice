@@ -1,6 +1,5 @@
 import { OrbitControls } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useControls } from 'leva';
 import { useEffect, useRef, useState } from 'react';
 import { MOUSE, TOUCH, Vector3 } from 'three';
 import { CameraController } from '../controllers/CameraController';

@@ -87,7 +87,7 @@ function getStatusIcon(state: string) {
     }
 }
 
-function getCutoffTime(slot: any): Date | null {
+function getCutoffTime(slot: DeliveryRequestData['slot']): Date | null {
     if (!slot) return null;
     const slotStart = new Date(slot.startAt);
     // Default cutoff is 12 hours before slot start
@@ -149,7 +149,7 @@ function CancelRequestModal({
         }
     };
 
-    const formatSlotTime = (slot: any) => {
+    const formatSlotTime = (slot: NonNullable<DeliveryRequestData['slot']>) => {
         const start = new Date(slot.startAt);
         const end = new Date(slot.endAt);
         return `${start.toLocaleDateString('hr-HR')} ${start.toLocaleTimeString(
@@ -300,7 +300,7 @@ function CancelRequestModal({
 function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
     const canCancel = canCancelRequest(request);
 
-    const formatSlotTime = (slot: any) => {
+    const formatSlotTime = (slot: NonNullable<DeliveryRequestData['slot']>) => {
         const start = new Date(slot.startAt);
         const end = new Date(slot.endAt);
         return `${start.toLocaleDateString('hr-HR')} ${start.toLocaleTimeString(
@@ -398,7 +398,7 @@ function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
                         </Stack>
                         <Row spacing={1}>
                             <Chip
-                                color={getStatusColor(request.state) as any}
+                                color={getStatusColor(request.state)}
                                 startDecorator={getStatusIcon(request.state)}
                             >
                                 {getStatusLabel(request.state)}
