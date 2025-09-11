@@ -27,7 +27,7 @@
         "prettier": "3.6.2",
         "react": "19.1.1",
         "react-dom": "19.1.1",
-        "react-email": "4.2.9",
+        "react-email": "4.2.11",
         "server-only": "0.0.1"
     },
     "devDependencies": {
