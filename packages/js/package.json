@@ -10,7 +10,7 @@
         "lint": "biome check"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.2.3",
+        "@biomejs/biome": "2.2.4",
         "@types/node": "22.18.1",
         "typescript": "5.9.2"
     },

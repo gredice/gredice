@@ -17,7 +17,7 @@
         "openapi-fetch": "0.14.0"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.2.3",
+        "@biomejs/biome": "2.2.4",
         "@gredice/api": "workspace:*",
         "@types/node": "22.18.1",
         "hono": "4.9.6",

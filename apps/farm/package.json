@@ -22,7 +22,7 @@
         "server-only": "0.0.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.2.3",
+        "@biomejs/biome": "2.2.4",
         "@gredice/storage": "workspace:*",
         "@mdxeditor/editor": "3.43.0",
         "@playwright/experimental-ct-react": "1.55.0",
