@@ -1,10 +1,18 @@
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
-import { Edit, Map as MapIcon, Navigate, ShoppingCart, Truck } from '@signalco/ui-icons';
+import {
+    Edit,
+    Map as MapIcon,
+    Navigate,
+    ShoppingCart,
+    Truck,
+} from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
     Tabs,
@@ -21,9 +29,10 @@ import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { type TimeSlotData, useTimeSlots } from '../../hooks/useTimeSlots';
 import { ButtonConfirmPayment } from '../../hud/components/shopping-cart/ButtonConfirmPayment';
 import { KnownPages } from '../../knownPages';
-import { AddressCard, DeliveryAddressesSection } from './DeliveryAddressesSection';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Skeleton } from '@signalco/ui-primitives/Skeleton';
+import {
+    AddressCard,
+    DeliveryAddressesSection,
+} from './DeliveryAddressesSection';
 
 export interface DeliverySelectionData {
     mode: 'delivery' | 'pickup';
@@ -54,7 +63,8 @@ export function DeliveryStep({
     const [manageAddresses, setManageAddresses] = useState(false);
     const { data: cart } = useShoppingCart();
 
-    const { data: addresses, isLoading: isLoadingAddresses } = useDeliveryAddresses();
+    const { data: addresses, isLoading: isLoadingAddresses } =
+        useDeliveryAddresses();
     const { data: pickupLocations } = usePickupLocations();
 
     // Get available slots based on current selection
@@ -67,14 +77,20 @@ export function DeliveryStep({
     });
 
     useEffect(() => {
-        if (!isLoadingAddresses && addresses && addresses.length > 0 && !selection.addressId) {
-            const defaultAddress = addresses.find(a => a.isDefault) || addresses[0];
+        if (
+            !isLoadingAddresses &&
+            addresses &&
+            addresses.length > 0 &&
+            !selection.addressId
+        ) {
+            const defaultAddress =
+                addresses.find((a) => a.isDefault) || addresses[0];
             setSelection((prev) => ({
                 ...prev,
                 addressId: defaultAddress.id,
             }));
         }
-    }, [addresses, isLoadingAddresses]);
+    }, [addresses, isLoadingAddresses, selection.addressId]);
 
     // Update parent component when selection changes
     useEffect(() => {
@@ -145,7 +161,9 @@ export function DeliveryStep({
         );
     }
 
-    const selectedAddress = addresses?.find(a => a.id === selection.addressId);
+    const selectedAddress = addresses?.find(
+        (a) => a.id === selection.addressId,
+    );
 
     return (
         <Stack spacing={2}>
@@ -183,58 +201,87 @@ export function DeliveryStep({
 
                     <TabsContent value="delivery" className="mt-4">
                         <Stack spacing={3}>
-                                <Stack spacing={2}>
-                                    <Stack spacing={1}>
-                                        <Row spacing={1}>
-                                            {isLoadingAddresses ? (
-                                                <Skeleton className="h-10 w-full rounded-md" />
-                                            ) : (
-                                                <>
-                                                    {addresses && addresses.length > 0 ? (
-                                                        <SelectItems
-                                                            label="Adresa za dostavu"
-                                                            placeholder="Odaberi adresu..."
-                                                            className="w-full"
-                                                            defaultValue={addresses.find(a => a.isDefault)?.id.toString() || ''}
-                                                            value={selection.addressId?.toString() || ''}
-                                                            onValueChange={(value: string) =>
-                                                                handleAddressChange(
-                                                                    parseInt(value, 10),
+                            <Stack spacing={2}>
+                                <Stack spacing={1}>
+                                    <Row spacing={1}>
+                                        {isLoadingAddresses ? (
+                                            <Skeleton className="h-10 w-full rounded-md" />
+                                        ) : (
+                                            <>
+                                                {addresses &&
+                                                addresses.length > 0 ? (
+                                                    <SelectItems
+                                                        label="Adresa za dostavu"
+                                                        placeholder="Odaberi adresu..."
+                                                        className="w-full"
+                                                        defaultValue={
+                                                            addresses
+                                                                .find(
+                                                                    (a) =>
+                                                                        a.isDefault,
                                                                 )
-                                                            }
-                                                            items={addresses.map((address) => ({
+                                                                ?.id.toString() ||
+                                                            ''
+                                                        }
+                                                        value={
+                                                            selection.addressId?.toString() ||
+                                                            ''
+                                                        }
+                                                        onValueChange={(
+                                                            value: string,
+                                                        ) =>
+                                                            handleAddressChange(
+                                                                parseInt(
+                                                                    value,
+                                                                    10,
+                                                                ),
+                                                            )
+                                                        }
+                                                        items={addresses.map(
+                                                            (address) => ({
                                                                 label: `${address.label} - ${address.street1}, ${address.city}`,
                                                                 value: address.id.toString(),
-                                                            }))}
-                                                        />
-                                                    ) : (
-                                                        <NoDataPlaceholder className="grow">
-                                                            Dodajte adresu za dostavu da biste nastavili s dostavom...
-                                                        </NoDataPlaceholder>
-                                                    )}
-                                                </>
-                                            )}
-                                            <Button
-                                                variant={!isLoadingAddresses && !addresses?.length ? "solid" : "outlined"}
-                                                size="sm"
-                                                onClick={() => setManageAddresses(true)}
-                                                className='h-10 whitespace-nowrap self-end'
-                                                startDecorator={
-                                                    <Edit className="size-4 shrink-0" />
-                                                }
-                                            >
-                                                Moje adrese
-                                            </Button>
-                                        </Row>
-                                    </Stack>
-                                    {/* Show selected address details */}
-                                    {selectedAddress && (
-                                        <AddressCard 
-                                        address={selectedAddress} 
-                                        key={selection.addressId} 
-                                        readonly />
-                                    )}
+                                                            }),
+                                                        )}
+                                                    />
+                                                ) : (
+                                                    <NoDataPlaceholder className="grow">
+                                                        Dodajte adresu za
+                                                        dostavu da biste
+                                                        nastavili s dostavom...
+                                                    </NoDataPlaceholder>
+                                                )}
+                                            </>
+                                        )}
+                                        <Button
+                                            variant={
+                                                !isLoadingAddresses &&
+                                                !addresses?.length
+                                                    ? 'solid'
+                                                    : 'outlined'
+                                            }
+                                            size="sm"
+                                            onClick={() =>
+                                                setManageAddresses(true)
+                                            }
+                                            className="h-10 whitespace-nowrap self-end"
+                                            startDecorator={
+                                                <Edit className="size-4 shrink-0" />
+                                            }
+                                        >
+                                            Moje adrese
+                                        </Button>
+                                    </Row>
                                 </Stack>
+                                {/* Show selected address details */}
+                                {selectedAddress && (
+                                    <AddressCard
+                                        address={selectedAddress}
+                                        key={selection.addressId}
+                                        readonly
+                                    />
+                                )}
+                            </Stack>
                         </Stack>
                     </TabsContent>
                     <TabsContent value="pickup" className="mt-4">

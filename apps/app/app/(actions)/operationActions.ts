@@ -72,6 +72,47 @@ export async function createOperationAction(formData: FormData) {
     return { success: true };
 }
 
+export async function bulkCreateOperationsAction(formData: FormData) {
+    await auth(['admin']);
+    const entityId = formData.get('entityId')
+        ? Number(formData.get('entityId'))
+        : undefined;
+    if (!entityId) {
+        throw new Error('Entity ID is required');
+    }
+    const entityTypeName = formData.get('entityTypeName') as string;
+    const scheduledDate = formData.get('scheduledDate')
+        ? new Date(formData.get('scheduledDate') as string)
+        : undefined;
+    const targets = formData.getAll('targets') as string[];
+
+    for (const target of targets) {
+        const [accountId, gardenId, raisedBedId, raisedBedFieldId] =
+            target.split('|');
+        const operation: InsertOperation = {
+            entityId,
+            entityTypeName,
+            accountId: accountId || undefined,
+            gardenId: gardenId ? Number(gardenId) : undefined,
+            raisedBedId: raisedBedId ? Number(raisedBedId) : undefined,
+            raisedBedFieldId: raisedBedFieldId
+                ? Number(raisedBedFieldId)
+                : undefined,
+            timestamp: undefined,
+        };
+        const operationId = await createOperation(operation);
+        if (scheduledDate) {
+            await createEvent(
+                knownEvents.operations.scheduledV1(operationId.toString(), {
+                    scheduledDate: scheduledDate.toISOString(),
+                }),
+            );
+        }
+    }
+    revalidatePath(KnownPages.Schedule);
+    revalidatePath(KnownPages.Operations);
+}
+
 export async function rescheduleOperationAction(formData: FormData) {
     await auth(['admin']);
     const operationId = formData.get('operationId')
