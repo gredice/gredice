@@ -12,7 +12,7 @@
         "lint": "biome check"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.2.3",
+        "@biomejs/biome": "2.2.4",
         "@gredice/client": "workspace:*",
         "@gredice/js": "workspace:*",
         "@gredice/stripe": "workspace:*",
