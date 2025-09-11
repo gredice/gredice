@@ -24,7 +24,7 @@
     "devDependencies": {
         "@biomejs/biome": "2.2.3",
         "@gredice/storage": "workspace:*",
-        "@mdxeditor/editor": "3.43.0",
+        "@mdxeditor/editor": "3.44.2",
         "@playwright/experimental-ct-react": "1.55.0",
         "@playwright/test": "1.55.0",
         "@signalco/auth-client": "0.3.0",
