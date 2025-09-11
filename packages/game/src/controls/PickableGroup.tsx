@@ -17,6 +17,11 @@ import { useBlockData } from '../hooks/useBlockData';
 import { useBlockMove } from '../hooks/useBlockMove';
 import { useBlockRecycle } from '../hooks/useBlockRecycle';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import {
+    ParticleType,
+    resolveBlockParticleType,
+    useParticles,
+} from '../particles/ParticleSystem';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
 import {
@@ -64,6 +69,7 @@ export function PickableGroup({
             friction: 10,
         },
     }));
+    const { spawn } = useParticles();
     const { data: garden } = useCurrentGarden();
     const { data: blocksData } = useBlockData();
     const getStack = ({ x, z }: { x: number; z: number }) => {
@@ -228,6 +234,14 @@ export function PickableGroup({
                     ],
                 });
                 dropSound.play();
+                spawn(
+                    resolveBlockParticleType(block.name),
+                    stack.position
+                        .clone()
+                        .add(relative)
+                        .setY(hoveredStackHeight + currentStackHeight),
+                    12,
+                );
                 await moveBlock.mutateAsync({
                     sourcePosition: stack.position,
                     destinationPosition: stack.position.clone().add(relative),
@@ -246,6 +260,12 @@ export function PickableGroup({
                 if (blockUnderRecycler !== isOverRecycler) {
                     setIsOverRecycler(blockUnderRecycler);
                 }
+
+                spawn(
+                    resolveBlockParticleType(block.name),
+                    stack.position.clone().setY(currentStackHeight),
+                    6,
+                );
             }
             setPickupBlock(block);
             didDrag.current = true;
