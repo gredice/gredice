@@ -24,7 +24,7 @@
         "@upstash/redis": "1.35.3",
         "date-fns": "4.1.0",
         "effect": "3.17.13",
-        "hono": "4.9.6",
+        "hono": "4.9.7",
         "hono-openapi": "1.0.4",
         "next": "15.5.3",
         "pg": "8.16.3",
