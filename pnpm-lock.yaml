@@ -173,8 +173,8 @@ importers:
         specifier: 1.1.1
         version: 1.1.1
       hypertune:
-        specifier: 2.9.0
-        version: 2.9.0
+        specifier: 2.10.0
+        version: 2.10.0
       next:
         specifier: 15.5.3
         version: 15.5.3(@babel/core@7.28.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)
@@ -300,8 +300,8 @@ importers:
   apps/farm:
     dependencies:
       hypertune:
-        specifier: 2.9.0
-        version: 2.9.0
+        specifier: 2.10.0
+        version: 2.10.0
       next:
         specifier: 15.5.3
         version: 15.5.3(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)
@@ -400,8 +400,8 @@ importers:
         specifier: 4.0.1
         version: 4.0.1(next@15.5.3(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       hypertune:
-        specifier: 2.9.0
-        version: 2.9.0
+        specifier: 2.10.0
+        version: 2.10.0
       next:
         specifier: 15.5.3
         version: 15.5.3(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)
@@ -518,8 +518,8 @@ importers:
         specifier: 4.0.1
         version: 4.0.1(next@15.5.3(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1))(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       hypertune:
-        specifier: 2.9.0
-        version: 2.9.0
+        specifier: 2.10.0
+        version: 2.10.0
       next:
         specifier: 15.5.3
         version: 15.5.3(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(sass@1.92.1)
@@ -5194,6 +5194,9 @@ packages:
     resolution: {integrity: sha512-7MptL8U0cqcFdzIzwOTHoilX9x5BrNqye7Z/LuC7kCMRio1EMSyqRK3BEAUD7sXRq4iT4AzTVuZdhgQ2TCvYLg==}
     engines: {node: '>=8.6.0'}
 
+  fast-json-stable-stringify@2.1.0:
+    resolution: {integrity: sha512-lhd/wF+Lk98HZoTCtlVraHtfh5XYijIjalXck7saUtuanSDyLMxnHhSXEDJqHxD7msR8D0uCmqlkwjCV8xvwHw==}
+
   fast-uri@3.0.6:
     resolution: {integrity: sha512-Atfo14OibSv5wAp4VWNsFYE1AchQRTv9cBGWET4pZWHzYshFSS9NQI6I57rdKn9croWVMbYFbLhJ+yJvmZIIHw==}
 
@@ -5540,12 +5543,12 @@ packages:
     resolution: {integrity: sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==}
     engines: {node: '>=10.17.0'}
 
-  hypertune@2.7.2:
-    resolution: {integrity: sha512-U+RIyPNbNAuF/RGcCkSI4iUj98LYrk3Vozv8wElMV4lEJFeLRbYTHb8+mwj4i7+tSnhU6wg+itoxdeFVa5oNEQ==}
+  hypertune@2.10.0:
+    resolution: {integrity: sha512-/WcCeCvicb1fKX+ZrcC7Iaa80Uu8oL9Q3FHaAg5mFdoGIh7usva4Sx/KxTzYWsHbAnwAt0jQi87SUoqC7xSugQ==}
     hasBin: true
 
-  hypertune@2.9.0:
-    resolution: {integrity: sha512-WOvGmfT7smrD3arvk9P578B98HSQPRI8ksEP4CagzS6RXOsEz/ZDru60zhil66tDV3JQGDiUZOy3G/XcLAwu4A==}
+  hypertune@2.7.2:
+    resolution: {integrity: sha512-U+RIyPNbNAuF/RGcCkSI4iUj98LYrk3Vozv8wElMV4lEJFeLRbYTHb8+mwj4i7+tSnhU6wg+itoxdeFVa5oNEQ==}
     hasBin: true
 
   ieee754@1.2.1:
@@ -5752,10 +5755,6 @@ packages:
 
   json-stable-stringify@1.2.1:
     resolution: {integrity: sha512-Lp6HbbBgosLmJbjx0pBLbgvx68FaFU1sdkmBuckmhhJ88kL13OA51CDtR2yJB50eCNMH9wRqtQNNiAqQH4YXnA==}
-    engines: {node: '>= 0.4'}
-
-  json-stable-stringify@1.3.0:
-    resolution: {integrity: sha512-qtYiSSFlwot9XHtF9bD9c7rwKjr+RecWT//ZnPvSmEjpV5mmPOCN4j8UjY5hbjNkOwZ/jQv3J6R1/pL7RwgMsg==}
     engines: {node: '>= 0.4'}
 
   json-stringify-deterministic@1.0.12:
@@ -12882,6 +12881,8 @@ snapshots:
       merge2: 1.4.1
       micromatch: 4.0.8
 
+  fast-json-stable-stringify@2.1.0: {}
+
   fast-uri@3.0.6: {}
 
   fast-xml-parser@5.2.5:
@@ -13312,6 +13313,21 @@ snapshots:
 
   human-signals@2.1.0: {}
 
+  hypertune@2.10.0:
+    dependencies:
+      cac: 6.7.14
+      core-js: 3.45.1
+      cross-fetch: 4.1.0
+      dotenv: 16.6.1
+      fast-json-stable-stringify: 2.1.0
+      joycon: 3.1.1
+      jsonito: 0.2.3
+      nanoid: 3.3.11
+      p-retry: 4.6.2
+      regenerator-runtime: 0.14.1
+    transitivePeerDependencies:
+      - encoding
+
   hypertune@2.7.2:
     dependencies:
       cac: 6.7.14
@@ -13321,21 +13337,6 @@ snapshots:
       joycon: 3.1.1
       json-stable-stringify: 1.2.1
       jsonito: 0.2.1
-      nanoid: 3.3.11
-      p-retry: 4.6.2
-      regenerator-runtime: 0.14.1
-    transitivePeerDependencies:
-      - encoding
-
-  hypertune@2.9.0:
-    dependencies:
-      cac: 6.7.14
-      core-js: 3.45.1
-      cross-fetch: 4.1.0
-      dotenv: 16.6.1
-      joycon: 3.1.1
-      json-stable-stringify: 1.3.0
-      jsonito: 0.2.3
       nanoid: 3.3.11
       p-retry: 4.6.2
       regenerator-runtime: 0.14.1
@@ -13483,14 +13484,6 @@ snapshots:
   json-schema-traverse@1.0.0: {}
 
   json-stable-stringify@1.2.1:
-    dependencies:
-      call-bind: 1.0.8
-      call-bound: 1.0.4
-      isarray: 2.0.5
-      jsonify: 0.0.1
-      object-keys: 1.1.1
-
-  json-stable-stringify@1.3.0:
     dependencies:
       call-bind: 1.0.8
       call-bound: 1.0.4
