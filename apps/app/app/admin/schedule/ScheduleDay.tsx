@@ -12,10 +12,13 @@ import type { EntityStandardized } from '../../../lib/@types/EntityStandardized'
 import { KnownPages } from '../../../src/KnownPages';
 import { raisedBedPlanted } from '../../(actions)/raisedBedFieldsActions';
 import { AcceptOperationModal } from './AcceptOperationModal';
+import { AcceptRaisedBedFieldModal } from './AcceptRaisedBedFieldModal';
 import { CancelOperationModal } from './CancelOperationModal';
+import { CancelRaisedBedFieldModal } from './CancelRaisedBedFieldModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { CopyTasksButton } from './CopyTasksButton';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
+import { RescheduleRaisedBedFieldModal } from './RescheduleRaisedBedFieldModal';
 
 // Type definitions for the props (without importing server-side functions)
 type RaisedBed = {
@@ -281,27 +284,81 @@ export function ScheduleDay({
                                     );
                                 };
 
+                                const fieldLabel = `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`;
+
                                 return (
                                     <div key={field.id}>
-                                        <Row spacing={1}>
-                                            <ModalConfirm
-                                                title="Potvrda sijanja"
-                                                header="Označavanje kao posijano"
-                                                onConfirm={handlePlantConfirm}
-                                                trigger={
-                                                    <Checkbox className="size-5 mx-2" />
-                                                }
-                                            >
+                                        <Row
+                                            spacing={1}
+                                            className="hover:bg-muted rounded"
+                                        >
+                                            <Row spacing={1}>
+                                                {field.plantStatus === 'new' ? (
+                                                    <AcceptRaisedBedFieldModal
+                                                        raisedBedId={
+                                                            field.raisedBedId
+                                                        }
+                                                        positionIndex={
+                                                            field.positionIndex
+                                                        }
+                                                        label={fieldLabel}
+                                                    />
+                                                ) : (
+                                                    <ModalConfirm
+                                                        title="Potvrda sijanja"
+                                                        header="Označavanje kao posijano"
+                                                        onConfirm={
+                                                            handlePlantConfirm
+                                                        }
+                                                        trigger={
+                                                            <Checkbox className="size-5 mx-2" />
+                                                        }
+                                                    >
+                                                        <Typography>
+                                                            Jeste li sigurni da
+                                                            želite označiti da
+                                                            je posijavno:{' '}
+                                                            <strong>
+                                                                {fieldLabel}
+                                                            </strong>
+                                                            ?
+                                                        </Typography>
+                                                    </ModalConfirm>
+                                                )}
                                                 <Typography>
-                                                    Jeste li sigurni da želite
-                                                    označiti da je posijavno:{' '}
-                                                    <strong>{`${field.physicalPositionIndex} - ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`}</strong>
-                                                    ?
+                                                    {fieldLabel}
                                                 </Typography>
-                                            </ModalConfirm>
-                                            <Typography>
-                                                {`${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`}
-                                            </Typography>
+                                            </Row>
+                                            <Row>
+                                                <RescheduleRaisedBedFieldModal
+                                                    field={field}
+                                                    fieldLabel={fieldLabel}
+                                                    trigger={
+                                                        <IconButton
+                                                            variant="plain"
+                                                            title={
+                                                                field.plantScheduledDate
+                                                                    ? 'Prerasporedi sijanje'
+                                                                    : 'Zakaži sijanje'
+                                                            }
+                                                        >
+                                                            <Calendar className="size-4 shrink-0" />
+                                                        </IconButton>
+                                                    }
+                                                />
+                                                <CancelRaisedBedFieldModal
+                                                    field={field}
+                                                    fieldLabel={fieldLabel}
+                                                    trigger={
+                                                        <IconButton
+                                                            variant="plain"
+                                                            title="Otkaži sijanje"
+                                                        >
+                                                            <Close className="size-4 shrink-0" />
+                                                        </IconButton>
+                                                    }
+                                                />
+                                            </Row>
                                         </Row>
                                     </div>
                                 );
