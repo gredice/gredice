@@ -3,6 +3,8 @@
 import {
     createEvent,
     createNotification,
+    deleteRaisedBedField,
+    earnSunflowers,
     getEntityFormatted,
     getRaisedBed,
     knownEvents,
@@ -128,4 +130,152 @@ export async function raisedBedFieldUpdatePlant({
     }
 
     revalidatePath(KnownPages.RaisedBed(raisedBedId));
+}
+
+export async function acceptRaisedBedFieldAction(
+    raisedBedId: number,
+    positionIndex: number,
+) {
+    await auth(['admin']);
+    await raisedBedFieldUpdatePlant({
+        raisedBedId,
+        positionIndex,
+        status: 'planned',
+    });
+    revalidatePath(KnownPages.Schedule);
+}
+
+export async function rescheduleRaisedBedFieldAction(formData: FormData) {
+    await auth(['admin']);
+    const raisedBedId = formData.get('raisedBedId')
+        ? Number(formData.get('raisedBedId'))
+        : undefined;
+    const positionIndex = formData.get('positionIndex')
+        ? Number(formData.get('positionIndex'))
+        : undefined;
+    const scheduledDate = formData.get('scheduledDate') as string;
+    if (
+        raisedBedId === undefined ||
+        positionIndex === undefined ||
+        !scheduledDate
+    ) {
+        throw new Error('Raised bed ID, position index and date are required');
+    }
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (!raisedBed) {
+        throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
+    }
+    const field = raisedBed.fields.find(
+        (f) => f.positionIndex === positionIndex,
+    );
+    if (!field || !field.plantSortId) {
+        throw new Error('Field or plant sort not found.');
+    }
+
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(
+            `${raisedBedId}|${positionIndex}`,
+            {
+                plantSortId: field.plantSortId.toString(),
+                scheduledDate: new Date(scheduledDate).toISOString(),
+            },
+        ),
+    );
+
+    revalidatePath(KnownPages.Schedule);
+    if (raisedBed.accountId)
+        revalidatePath(KnownPages.Account(raisedBed.accountId));
+    if (raisedBed.gardenId)
+        revalidatePath(KnownPages.Garden(raisedBed.gardenId));
+    revalidatePath(KnownPages.RaisedBed(raisedBedId));
+
+    return { success: true };
+}
+
+export async function cancelRaisedBedFieldAction(formData: FormData) {
+    await auth(['admin']);
+    const raisedBedId = formData.get('raisedBedId')
+        ? Number(formData.get('raisedBedId'))
+        : undefined;
+    const positionIndex = formData.get('positionIndex')
+        ? Number(formData.get('positionIndex'))
+        : undefined;
+    const reason = formData.get('reason') as string;
+    if (
+        raisedBedId === undefined ||
+        positionIndex === undefined ||
+        !reason ||
+        reason.trim().length === 0
+    ) {
+        throw new Error(
+            'Raised bed ID, position index and reason are required',
+        );
+    }
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (!raisedBed) {
+        throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
+    }
+    const field = raisedBed.fields.find(
+        (f) => f.positionIndex === positionIndex,
+    );
+    if (!field) {
+        throw new Error(
+            `Field with position ${positionIndex} not found in raised bed ${raisedBedId}.`,
+        );
+    }
+
+    let refundAmount = 0;
+    let plantName = 'Nepoznato';
+    if (field.plantSortId) {
+        const sortData = await getEntityFormatted<EntityStandardized>(
+            field.plantSortId,
+        );
+        plantName = sortData?.information?.name ?? plantName;
+        refundAmount = sortData?.prices?.perPlant
+            ? Math.round(sortData.prices.perPlant * 1000)
+            : 0;
+    }
+
+    const header = 'Sijanje biljke je otkazano';
+    let content = `Sijanje biljke **${plantName}** je otkazano.`;
+    if (reason) content += `\nRazlog otkazivanja: ${reason}`;
+    if (refundAmount > 0)
+        content += `\nSredstva su ti vraćena u iznosu od ${refundAmount} 🌻.`;
+
+    await Promise.all([
+        createEvent(
+            knownEvents.raisedBedFields.deletedV1(
+                `${raisedBedId}|${positionIndex}`,
+            ),
+        ),
+        deleteRaisedBedField(raisedBedId, positionIndex),
+        refundAmount > 0 && raisedBed.accountId
+            ? earnSunflowers(
+                  raisedBed.accountId,
+                  refundAmount,
+                  `refund:raisedBedField:${raisedBedId}:${positionIndex}`,
+              )
+            : Promise.resolve(),
+        raisedBed.accountId
+            ? createNotification({
+                  accountId: raisedBed.accountId,
+                  gardenId: raisedBed.gardenId,
+                  raisedBedId: raisedBed.id,
+                  header,
+                  content,
+                  timestamp: new Date(),
+              })
+            : undefined,
+    ]);
+
+    revalidatePath(KnownPages.Schedule);
+    if (raisedBed.accountId)
+        revalidatePath(KnownPages.Account(raisedBed.accountId));
+    if (raisedBed.gardenId)
+        revalidatePath(KnownPages.Garden(raisedBed.gardenId));
+    revalidatePath(KnownPages.RaisedBed(raisedBedId));
+
+    return { success: true };
 }
