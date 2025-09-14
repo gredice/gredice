@@ -292,7 +292,7 @@ export function ScheduleDay({
                                             spacing={1}
                                             className="hover:bg-muted rounded"
                                         >
-                                            <Row spacing={1}>
+                                            <Row spacing={1} className="grow">
                                                 {field.plantStatus === 'new' ? (
                                                     <AcceptRaisedBedFieldModal
                                                         raisedBedId={
@@ -327,6 +327,30 @@ export function ScheduleDay({
                                                 )}
                                                 <Typography>
                                                     {fieldLabel}
+                                                </Typography>
+                                                <Typography
+                                                    level="body2"
+                                                    className={`ml-1 italic ${field.plantStatus === 'new' ? 'text-muted-foreground' : 'text-green-600'}`}
+                                                >
+                                                    {field.plantStatus === 'new'
+                                                        ? 'Nije potvrđeno'
+                                                        : 'Potvrđeno'}
+                                                </Typography>
+                                                <Typography
+                                                    level="body2"
+                                                    className="select-none"
+                                                >
+                                                    {field.plantScheduledDate ? (
+                                                        <LocalDateTime
+                                                            time={false}
+                                                        >
+                                                            {
+                                                                field.plantScheduledDate
+                                                            }
+                                                        </LocalDateTime>
+                                                    ) : (
+                                                        <span>Danas</span>
+                                                    )}
                                                 </Typography>
                                             </Row>
                                             <Row>
@@ -374,7 +398,7 @@ export function ScheduleDay({
                                             spacing={1}
                                             className="hover:bg-muted rounded"
                                         >
-                                            <Row spacing={1}>
+                                            <Row spacing={1} className="grow">
                                                 {op.isAccepted ? (
                                                     <CompleteOperationModal
                                                         operationId={op.id}
@@ -416,11 +440,6 @@ export function ScheduleDay({
                                                         ? 'Potvrđeno'
                                                         : 'Nije potvrđeno'}
                                                 </Typography>
-                                            </Row>
-                                            <Row
-                                                justifyContent="space-between"
-                                                className="grow"
-                                            >
                                                 <Typography
                                                     level="body2"
                                                     className="select-none"
@@ -435,59 +454,57 @@ export function ScheduleDay({
                                                         <span>Danas</span>
                                                     )}
                                                 </Typography>
-                                                <Row>
-                                                    <RescheduleOperationModal
-                                                        operation={{
-                                                            id: op.id,
-                                                            entityId:
-                                                                op.entityId,
-                                                            scheduledDate:
-                                                                op.scheduledDate,
-                                                        }}
-                                                        operationLabel={
-                                                            operationData
-                                                                ?.information
-                                                                ?.label ??
-                                                            op.entityId.toString()
-                                                        }
-                                                        trigger={
-                                                            <IconButton
-                                                                variant="plain"
-                                                                title={
-                                                                    op.scheduledDate
-                                                                        ? 'Prerasporedi operaciju'
-                                                                        : 'Zakaži operaciju'
-                                                                }
-                                                            >
-                                                                <Calendar className="size-4 shrink-0" />
-                                                            </IconButton>
-                                                        }
-                                                    />
-                                                    <CancelOperationModal
-                                                        operation={{
-                                                            id: op.id,
-                                                            entityId:
-                                                                op.entityId,
-                                                            scheduledDate:
-                                                                op.scheduledDate,
-                                                            status: op.status,
-                                                        }}
-                                                        operationLabel={
-                                                            operationData
-                                                                ?.information
-                                                                ?.label ??
-                                                            op.entityId.toString()
-                                                        }
-                                                        trigger={
-                                                            <IconButton
-                                                                variant="plain"
-                                                                title="Otkaži operaciju"
-                                                            >
-                                                                <Close className="size-4 shrink-0" />
-                                                            </IconButton>
-                                                        }
-                                                    />
-                                                </Row>
+                                            </Row>
+                                            <Row>
+                                                <RescheduleOperationModal
+                                                    operation={{
+                                                        id: op.id,
+                                                        entityId: op.entityId,
+                                                        scheduledDate:
+                                                            op.scheduledDate,
+                                                    }}
+                                                    operationLabel={
+                                                        operationData
+                                                            ?.information
+                                                            ?.label ??
+                                                        op.entityId.toString()
+                                                    }
+                                                    trigger={
+                                                        <IconButton
+                                                            variant="plain"
+                                                            title={
+                                                                op.scheduledDate
+                                                                    ? 'Prerasporedi operaciju'
+                                                                    : 'Zakaži operaciju'
+                                                            }
+                                                        >
+                                                            <Calendar className="size-4 shrink-0" />
+                                                        </IconButton>
+                                                    }
+                                                />
+                                                <CancelOperationModal
+                                                    operation={{
+                                                        id: op.id,
+                                                        entityId: op.entityId,
+                                                        scheduledDate:
+                                                            op.scheduledDate,
+                                                        status: op.status,
+                                                    }}
+                                                    operationLabel={
+                                                        operationData
+                                                            ?.information
+                                                            ?.label ??
+                                                        op.entityId.toString()
+                                                    }
+                                                    trigger={
+                                                        <IconButton
+                                                            variant="plain"
+                                                            title="Otkaži operaciju"
+                                                        >
+                                                            <Close className="size-4 shrink-0" />
+                                                        </IconButton>
+                                                    }
+                                                />
                                             </Row>
                                         </Row>
                                     </div>
