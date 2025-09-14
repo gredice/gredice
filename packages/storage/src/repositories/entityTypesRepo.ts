@@ -68,23 +68,37 @@ export function getEntityTypeByNameWithCategory(entityTypeName: string) {
 }
 
 export async function getEntityTypesOrganizedByCategories() {
-    const [categoriesWithTypes, typesWithoutCategory] = await Promise.all([
-        storage().query.entityTypeCategories.findMany({
-            where: eq(entityTypeCategories.isDeleted, false),
-            with: {
-                entityTypes: {
-                    where: eq(entityTypes.isDeleted, false),
-                    orderBy: entityTypes.order,
+    const [categoriesWithTypes, typesWithoutCategory, shadowTypes] =
+        await Promise.all([
+            storage().query.entityTypeCategories.findMany({
+                where: eq(entityTypeCategories.isDeleted, false),
+                with: {
+                    entityTypes: {
+                        where: and(
+                            eq(entityTypes.isDeleted, false),
+                            eq(entityTypes.isRoot, true),
+                        ),
+                        orderBy: entityTypes.order,
+                    },
                 },
-            },
-            orderBy: entityTypeCategories.order,
-        }),
-        getEntityTypesWithoutCategory(),
-    ]);
+                orderBy: entityTypeCategories.order,
+            }),
+            getEntityTypesWithoutCategory(),
+            storage().query.entityTypes.findMany({
+                where: and(
+                    eq(entityTypes.isDeleted, false),
+                    eq(entityTypes.isRoot, false),
+                ),
+                orderBy: entityTypes.order,
+            }),
+        ]);
 
     return {
-        categorizedTypes: categoriesWithTypes,
-        uncategorizedTypes: typesWithoutCategory,
+        categorizedTypes: categoriesWithTypes.filter(
+            (c) => c.entityTypes.length > 0,
+        ),
+        uncategorizedTypes: typesWithoutCategory.filter((t) => t.isRoot),
+        shadowTypes,
     };
 }
 

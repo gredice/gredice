@@ -6,6 +6,7 @@ import {
     Bank,
     Book,
     Calendar,
+    Down,
     Edit,
     Euro,
     Fence,
@@ -22,8 +23,9 @@ import {
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { List, ListHeader } from '@signalco/ui-primitives/List';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import { Collapse } from '@signalco/ui-primitives/Collapse';
 import Link from 'next/link';
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { KnownPages } from '../../../src/KnownPages';
 import { NavContext } from './NavContext';
 import { NavItem } from './NavItem';
@@ -32,6 +34,8 @@ import { ProfileNavItem } from './ProfileNavItem';
 export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
     const categorizedTypes = useContext(NavContext)?.categorizedTypes || [];
     const uncategorizedTypes = useContext(NavContext)?.uncategorizedTypes || [];
+    const shadowTypes = useContext(NavContext)?.shadowTypes || [];
+    const [showShadow, setShowShadow] = useState(false);
 
     return (
         <Stack spacing={2}>
@@ -130,6 +134,43 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                             </List>
                         </Stack>
                     ))}
+
+                    {/* Shadow entity types */}
+                    {shadowTypes.length > 0 && (
+                        <Stack spacing={1}>
+                            <ListHeader
+                                header={
+                                    <button
+                                        type="button"
+                                        className="w-full text-left flex items-center justify-between"
+                                        onClick={() => setShowShadow((s) => !s)}
+                                    >
+                                        <span>Ostalo</span>
+                                        <Down
+                                            className={`size-4 transition-transform ${
+                                                showShadow ? 'rotate-180' : ''
+                                            }`}
+                                        />
+                                    </button>
+                                }
+                            />
+                            <Collapse appear={showShadow}>
+                                <List>
+                                    {shadowTypes.map((entityType) => (
+                                        <NavItem
+                                            key={entityType.id}
+                                            href={KnownPages.DirectoryEntityType(
+                                                entityType.name,
+                                            )}
+                                            label={entityType.label}
+                                            icon={<File className="size-5" />}
+                                            onClick={onItemClick}
+                                        />
+                                    ))}
+                                </List>
+                            </Collapse>
+                        </Stack>
+                    )}
                 </AuthProtectedSection>
             </Stack>
             <Stack spacing={1}>

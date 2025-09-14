@@ -66,6 +66,15 @@ export default async function CreateEntityTypePage() {
                                     placeholder="Odaberite kategoriju"
                                     items={categoryItems}
                                 />
+                                <SelectItems
+                                    name="isRoot"
+                                    label="Pozicija u izborniku"
+                                    items={[
+                                        { value: 'true', label: 'Root' },
+                                        { value: 'false', label: 'Shadow' },
+                                    ]}
+                                    defaultValue="true"
+                                />
                             </Stack>
                             <Button
                                 variant="solid"

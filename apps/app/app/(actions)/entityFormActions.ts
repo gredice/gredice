@@ -12,10 +12,12 @@ export async function submitCreateForm(formData: FormData) {
         (formData.get('categoryId') as string) === 'none'
             ? undefined
             : (formData.get('categoryId') as string);
+    const isRoot = (formData.get('isRoot') as string) !== 'false';
 
     await createEntityType(
         name,
         label,
         categoryId ? parseInt(categoryId, 10) : undefined,
+        isRoot,
     );
 }

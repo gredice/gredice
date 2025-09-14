@@ -213,6 +213,7 @@ export const entityTypes = pgTable(
             () => entityTypeCategories.id,
         ),
         order: text('order'),
+        isRoot: boolean('is_root').notNull().default(true),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
@@ -223,6 +224,7 @@ export const entityTypes = pgTable(
         index('cms_et_category_id_idx').on(table.categoryId),
         index('cms_et_order_idx').on(table.order),
         index('cms_et_is_deleted_idx').on(table.isDeleted),
+        index('cms_et_is_root_idx').on(table.isRoot),
     ],
 );
 

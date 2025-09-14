@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminLayout({ children }: PropsWithChildren) {
     const authAdmin = auth.bind(null, ['admin']);
-    const { categorizedTypes, uncategorizedTypes } =
+    const { categorizedTypes, uncategorizedTypes, shadowTypes } =
         await getEntityTypesOrganizedByCategories();
 
     return (
@@ -25,6 +25,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
             <AdminClientProvider
                 categorizedTypes={categorizedTypes}
                 uncategorizedTypes={uncategorizedTypes}
+                shadowTypes={shadowTypes}
             >
                 <div className="grow bg-secondary">
                     <MobileHeader />
