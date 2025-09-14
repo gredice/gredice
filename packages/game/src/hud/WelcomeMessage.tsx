@@ -7,9 +7,13 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { client } from '@gredice/client';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useGameAudio } from '../hooks/useGameAudio';
 import { useGameState } from '../useGameState';
+import { currentAccountKeys } from '../hooks/useCurrentAccount';
+import { dailyRewardKeys, useDailyReward } from '../hooks/useDailyReward';
 
 const messageTypes = {
     welcome: {
@@ -42,6 +46,17 @@ const messageTypes = {
 
 export function WelcomeMessage() {
     const { data: currentUser } = useCurrentUser();
+    const { data: dailyReward } = useDailyReward();
+    const queryClient = useQueryClient();
+    const claimMutation = useMutation({
+        mutationFn: async () => {
+            await client().api.accounts.current.sunflowers.daily.$post();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries(currentAccountKeys);
+            queryClient.invalidateQueries(dailyRewardKeys);
+        },
+    });
     const show = useMemo(() => {
         if (!currentUser) return false;
 
@@ -80,6 +95,9 @@ export function WelcomeMessage() {
     function handleOpenChange(newOpen: boolean) {
         setOpen(newOpen);
         resumeIfNeeded();
+        if (!newOpen && dailyReward?.canClaim) {
+            claimMutation.mutate();
+        }
     }
 
     const timeOfDay = useGameState((state) => state.timeOfDay);
@@ -117,6 +135,17 @@ export function WelcomeMessage() {
                                 {text}
                             </Typography>
                         ))}
+                        {dailyReward && (
+                            <Typography level="body1">
+                                {`Dan ${
+                                    dailyReward.current.day >= 7
+                                        ? '7+'
+                                        : dailyReward.current.day
+                                }: danas dobivaš ${
+                                    dailyReward.current.amount
+                                } 🌻 za dnevnu aktivnost.`}
+                            </Typography>
+                        )}
                     </Stack>
                     <Button
                         variant="solid"

@@ -60,6 +60,12 @@ function sunflowerReasonToDescription(reason: string) {
             label: 'Poklon',
         };
     }
+    if (reason.startsWith('daily')) {
+        return {
+            icon: <span className="text-4xl text-center size-10">📅</span>,
+            label: 'Dnevna aktivnost',
+        };
+    }
     if (reason === 'payment') {
         return {
             icon: <span className="text-4xl text-center size-10">💰</span>,

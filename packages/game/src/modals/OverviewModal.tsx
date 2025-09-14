@@ -22,6 +22,7 @@ import { DeliveryAddressesSection } from '../shared-ui/delivery/DeliveryAddresse
 import { DeliveryRequestsSection } from '../shared-ui/delivery/DeliveryRequestsSection';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
 import { SunflowersList } from '../shared-ui/sunflowers/SunflowersList';
+import { DailyRewardOverview } from '../shared-ui/sunflowers/DailyRewardOverview';
 import { SoundSettingsCard } from './components/SoundSettingsCard';
 import { UserProfileCard } from './components/UserProfileCard';
 
@@ -472,6 +473,7 @@ export function OverviewModal() {
                                         </CardContent>
                                     </Card>
                                 </div>
+                                <DailyRewardOverview />
                                 <div className="overflow-y-auto max-h-[calc(100dvh-20rem)] md:max-h-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card border shadow-sm p-4">
                                     <SunflowersList />
                                 </div>
