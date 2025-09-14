@@ -1,5 +1,6 @@
 'use server';
 
+import { lexinsert } from '@gredice/js';
 import {
     type InsertAttributeDefinition,
     type InsertAttributeDefinitionCategory,
@@ -125,4 +126,32 @@ export async function upsertAttributeDefinitionCategory(
             ),
         );
     }
+}
+
+export async function reorderAttributeDefinitionCategory(
+    entityTypeName: string,
+    categoryId: number,
+    prevOrder?: string | null,
+    nextOrder?: string | null,
+) {
+    await auth(['admin']);
+    const order = lexinsert(prevOrder ?? undefined, nextOrder ?? undefined);
+    await storageUpdateAttributeDefinitionCategory({ id: categoryId, order });
+    revalidatePath(
+        KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
+    );
+}
+
+export async function reorderAttributeDefinition(
+    entityTypeName: string,
+    definitionId: number,
+    prevOrder?: string | null,
+    nextOrder?: string | null,
+) {
+    await auth(['admin']);
+    const order = lexinsert(prevOrder ?? undefined, nextOrder ?? undefined);
+    await storageUpdateAttributeDefinition({ id: definitionId, order });
+    revalidatePath(
+        KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
+    );
 }

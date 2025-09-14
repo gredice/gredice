@@ -1,5 +1,21 @@
 'use client';
 
+import {
+    closestCenter,
+    DndContext,
+    type DragEndEvent,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    useSortable,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import type { SelectEntityType } from '@gredice/storage';
 import { AuthProtectedSection } from '@signalco/auth-client/components';
 import {
     Add,
@@ -24,11 +40,84 @@ import { List, ListHeader } from '@signalco/ui-primitives/List';
 import { ListTreeItem } from '@signalco/ui-primitives/ListTreeItem';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import Link from 'next/link';
-import { useContext } from 'react';
+import type { CSSProperties } from 'react';
+import { useContext, useState } from 'react';
+import { reorderEntityType } from '../../../app/(actions)/entityActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { NavContext } from './NavContext';
 import { NavItem } from './NavItem';
 import { ProfileNavItem } from './ProfileNavItem';
+
+function SortableNavItem({
+    entityType,
+    onClick,
+}: {
+    entityType: SelectEntityType;
+    onClick?: () => void;
+}) {
+    const { attributes, listeners, setNodeRef, transform, transition } =
+        useSortable({ id: entityType.id.toString() });
+    const style: CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+    return (
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+            <NavItem
+                href={KnownPages.DirectoryEntityType(entityType.name)}
+                label={entityType.label}
+                icon={<File className="size-5" />}
+                onClick={onClick}
+            />
+        </div>
+    );
+}
+
+function EntityTypeList({
+    items: initialItems,
+    onItemClick,
+}: {
+    items: SelectEntityType[];
+    onItemClick?: () => void;
+}) {
+    const [items, setItems] = useState(initialItems);
+    const sensors = useSensors(useSensor(PointerSensor));
+
+    async function handleDragEnd(event: DragEndEvent) {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        const oldIndex = items.findIndex((i) => i.id.toString() === active.id);
+        const newIndex = items.findIndex((i) => i.id.toString() === over.id);
+        const newItems = arrayMove(items, oldIndex, newIndex);
+        setItems(newItems);
+        const prev = newItems[newIndex - 1]?.order ?? null;
+        const next = newItems[newIndex + 1]?.order ?? null;
+        await reorderEntityType(Number(active.id), prev, next);
+    }
+
+    return (
+        <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+        >
+            <SortableContext
+                items={items.map((i) => i.id.toString())}
+                strategy={verticalListSortingStrategy}
+            >
+                <List>
+                    {items.map((entityType) => (
+                        <SortableNavItem
+                            key={entityType.id}
+                            entityType={entityType}
+                            onClick={onItemClick}
+                        />
+                    ))}
+                </List>
+            </SortableContext>
+        </DndContext>
+    );
+}
 
 export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
     const categorizedTypes = useContext(NavContext)?.categorizedTypes || [];
@@ -98,19 +187,10 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
 
                     {/* Entity types without category come first */}
                     {uncategorizedTypes.length > 0 && (
-                        <List>
-                            {uncategorizedTypes.map((entityType) => (
-                                <NavItem
-                                    key={entityType.id}
-                                    href={KnownPages.DirectoryEntityType(
-                                        entityType.name,
-                                    )}
-                                    label={entityType.label}
-                                    icon={<File className="size-5" />}
-                                    onClick={onItemClick}
-                                />
-                            ))}
-                        </List>
+                        <EntityTypeList
+                            items={uncategorizedTypes}
+                            onItemClick={onItemClick}
+                        />
                     )}
 
                     {/* Categories with their entity types */}
@@ -134,19 +214,10 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                                     </Link>,
                                 ]}
                             />
-                            <List>
-                                {category.entityTypes.map((entityType) => (
-                                    <NavItem
-                                        key={entityType.id}
-                                        href={KnownPages.DirectoryEntityType(
-                                            entityType.name,
-                                        )}
-                                        label={entityType.label}
-                                        icon={<File className="size-5" />}
-                                        onClick={onItemClick}
-                                    />
-                                ))}
-                            </List>
+                            <EntityTypeList
+                                items={category.entityTypes}
+                                onItemClick={onItemClick}
+                            />
                         </Stack>
                     ))}
                 </AuthProtectedSection>

@@ -2,6 +2,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { lexinsert } from '@gredice/js';
 import {
     deleteAttributeValue,
     deleteEntity,
@@ -221,4 +222,15 @@ export async function handleEntityDelete(
     await deleteEntity(entityId);
     revalidatePath(KnownPages.Directories);
     redirect(KnownPages.DirectoryEntityType(entityTypeName));
+}
+
+export async function reorderEntityType(
+    entityTypeId: number,
+    prevOrder?: string | null,
+    nextOrder?: string | null,
+) {
+    await auth(['admin']);
+    const order = lexinsert(prevOrder ?? undefined, nextOrder ?? undefined);
+    await upsertEntityType({ id: entityTypeId, order });
+    revalidatePath(KnownPages.Directories);
 }
