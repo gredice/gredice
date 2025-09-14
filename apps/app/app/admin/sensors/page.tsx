@@ -11,6 +11,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { Suspense } from 'react';
+import { CreateSensorForm } from './CreateSensorForm';
 import { SensorServiceForm } from './SensorServiceForm';
 
 const statusLabels: Record<string, string> = {
@@ -133,6 +134,11 @@ export default async function SensorsPage() {
         0,
     );
 
+    const createFormRaisedBeds = raisedBeds.map((bed) => ({
+        id: bed.id,
+        physicalId: bed.physicalId,
+    }));
+
     return (
         <Stack spacing={2}>
             <Row spacing={1}>
@@ -141,6 +147,7 @@ export default async function SensorsPage() {
                 </Typography>
                 <Chip color="primary">{totalSensors}</Chip>
             </Row>
+            <CreateSensorForm raisedBeds={createFormRaisedBeds} />
             <Stack spacing={2}>
                 {sensorsByPhysicalId.length === 0 ? (
                     <Typography>Nema senzora.</Typography>
