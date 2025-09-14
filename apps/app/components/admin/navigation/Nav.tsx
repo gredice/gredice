@@ -1,5 +1,3 @@
-'use client';
-
 import { AuthProtectedSection } from '@signalco/auth-client/components';
 import {
     Add,
@@ -21,6 +19,7 @@ import {
 } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { List, ListHeader } from '@signalco/ui-primitives/List';
+import { ListTreeItem } from '@signalco/ui-primitives/ListTreeItem';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import Link from 'next/link';
 import { useContext } from 'react';
@@ -32,6 +31,7 @@ import { ProfileNavItem } from './ProfileNavItem';
 export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
     const categorizedTypes = useContext(NavContext)?.categorizedTypes || [];
     const uncategorizedTypes = useContext(NavContext)?.uncategorizedTypes || [];
+    const shadowTypes = useContext(NavContext)?.shadowTypes || [];
 
     return (
         <Stack spacing={2}>
@@ -77,6 +77,23 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                     ]}
                 />
                 <AuthProtectedSection>
+                    {/* Shadow entity types */}
+                    {shadowTypes.length > 0 && (
+                        <ListTreeItem label="Ostalo">
+                            {shadowTypes.map((entityType) => (
+                                <NavItem
+                                    key={entityType.id}
+                                    href={KnownPages.DirectoryEntityType(
+                                        entityType.name,
+                                    )}
+                                    label={entityType.label}
+                                    icon={<File className="size-5" />}
+                                    onClick={onItemClick}
+                                />
+                            ))}
+                        </ListTreeItem>
+                    )}
+
                     {/* Entity types without category come first */}
                     {uncategorizedTypes.length > 0 && (
                         <List>

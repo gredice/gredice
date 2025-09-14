@@ -23,10 +23,16 @@ export async function createEntityType(
     entityTypeName: string,
     label: string,
     categoryId?: number,
+    isRoot = true,
 ) {
     await auth(['admin']);
 
-    await upsertEntityType({ name: entityTypeName, label: label, categoryId });
+    await upsertEntityType({
+        name: entityTypeName,
+        label: label,
+        categoryId,
+        isRoot,
+    });
     revalidatePath(KnownPages.Directories);
     redirect(
         KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
@@ -38,10 +44,17 @@ export async function updateEntityType(
     entityTypeName: string,
     label: string,
     categoryId?: number,
+    isRoot = true,
 ) {
     await auth(['admin']);
 
-    await upsertEntityType({ id, name: entityTypeName, label, categoryId });
+    await upsertEntityType({
+        id,
+        name: entityTypeName,
+        label,
+        categoryId,
+        isRoot,
+    });
     revalidatePath(KnownPages.Directories);
     revalidatePath(KnownPages.DirectoryEntityType(entityTypeName));
 }
@@ -68,12 +81,14 @@ export async function updateEntityTypeFromEditPage(formData: FormData) {
             ? undefined
             : (formData.get('categoryId') as string);
     const originalName = formData.get('originalName') as string;
+    const isRoot = (formData.get('isRoot') as string) !== 'false';
 
     await updateEntityType(
         id,
         name,
         label,
         categoryId ? parseInt(categoryId, 10) : undefined,
+        isRoot,
     );
 
     revalidatePath(KnownPages.Directories);

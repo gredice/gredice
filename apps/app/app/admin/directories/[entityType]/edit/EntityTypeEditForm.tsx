@@ -95,6 +95,17 @@ export function EntityTypeEditForm({
                                 }
                                 helperText="Kategorija pomaže u organizaciji tipova zapisa"
                             />
+                            <SelectItems
+                                name="isRoot"
+                                label="Pozicija u izborniku"
+                                items={[
+                                    { value: 'true', label: 'Root' },
+                                    { value: 'false', label: 'Shadow' },
+                                ]}
+                                defaultValue={
+                                    entityType.isRoot ? 'true' : 'false'
+                                }
+                            />
                         </Stack>
 
                         <Button variant="solid" type="submit">
