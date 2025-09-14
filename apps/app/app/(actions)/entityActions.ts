@@ -48,7 +48,13 @@ export async function updateEntityType(
 ) {
     await auth(['admin']);
 
-    await upsertEntityType({ id, name: entityTypeName, label, categoryId, isRoot });
+    await upsertEntityType({
+        id,
+        name: entityTypeName,
+        label,
+        categoryId,
+        isRoot,
+    });
     revalidatePath(KnownPages.Directories);
     revalidatePath(KnownPages.DirectoryEntityType(entityTypeName));
 }
