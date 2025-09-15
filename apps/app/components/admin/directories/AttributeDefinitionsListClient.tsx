@@ -35,7 +35,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
-import type { CSSProperties, HTMLAttributes } from 'react';
+import type { CSSProperties, HTMLAttributes, MouseEvent } from 'react';
 import { useState } from 'react';
 import {
     reorderAttributeDefinition,
@@ -89,15 +89,25 @@ function AttributeDataTypeIcon({
 
 function AttributeDefinitionCard({
     attributeDefinition,
+    isDragging = false,
 }: {
     attributeDefinition: ExtendedAttributeDefinition;
+    isDragging?: boolean;
 }) {
+    const handleClick = (e: MouseEvent) => {
+        if (isDragging) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    };
+
     return (
         <Link
             href={KnownPages.DirectoryEntityTypeAttributeDefinition(
                 attributeDefinition.entityTypeName,
                 attributeDefinition.id,
             )}
+            onClick={handleClick}
         >
             <Card>
                 <Row spacing={1}>
@@ -124,15 +134,25 @@ function AttributeDefinitionCard({
 
 function AttributeDefinitionCategoryCard({
     attributeDefinitionCategory,
+    isDragging = false,
 }: {
     attributeDefinitionCategory: SelectAttributeDefinitionCategory;
+    isDragging?: boolean;
 }) {
+    const handleClick = (e: MouseEvent) => {
+        if (isDragging) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    };
+
     return (
         <Link
             href={KnownPages.DirectoryEntityTypeAttributeDefinitionCategory(
                 attributeDefinitionCategory.entityTypeName,
                 attributeDefinitionCategory.id,
             )}
+            onClick={handleClick}
         >
             <Card>
                 <Row spacing={1} justifyContent="space-between">
@@ -152,8 +172,14 @@ function SortableCategory({
 }: {
     category: SelectAttributeDefinitionCategory;
 }) {
-    const { attributes, listeners, setNodeRef, transform, transition } =
-        useSortable({ id: category.id.toString() });
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: category.id.toString() });
     const style: CSSProperties = {
         transform: CSS.Transform.toString(transform),
         transition,
@@ -162,6 +188,7 @@ function SortableCategory({
         <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
             <AttributeDefinitionCategoryCard
                 attributeDefinitionCategory={category}
+                isDragging={isDragging}
             />
         </div>
     );
@@ -172,15 +199,24 @@ function SortableAttributeDefinition({
 }: {
     attribute: ExtendedAttributeDefinition;
 }) {
-    const { attributes, listeners, setNodeRef, transform, transition } =
-        useSortable({ id: attribute.id.toString() });
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: attribute.id.toString() });
     const style: CSSProperties = {
         transform: CSS.Transform.toString(transform),
         transition,
     };
     return (
         <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-            <AttributeDefinitionCard attributeDefinition={attribute} />
+            <AttributeDefinitionCard
+                attributeDefinition={attribute}
+                isDragging={isDragging}
+            />
         </div>
     );
 }

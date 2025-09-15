@@ -5,8 +5,7 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { upsertAttributeDefinition } from '../../../app/(actions)/definitionActions';
-import { auth } from '../../../lib/auth/auth';
+import { createAttributeDefinitionFromForm } from '../../../app/(actions)/definitionActions';
 
 export function CreateAttributeDefinitionButton({
     entityTypeName,
@@ -15,22 +14,11 @@ export function CreateAttributeDefinitionButton({
     entityTypeName: string;
     categoryName: string;
 }) {
-    async function submitForm(formData: FormData) {
-        'use server';
-        await auth(['admin']);
-
-        const name = formData.get('name') as string;
-        const label = formData.get('label') as string;
-        const dataType = formData.get('dataType') as string;
-
-        await upsertAttributeDefinition({
-            name,
-            label,
-            dataType,
-            entityTypeName,
-            category: categoryName,
-        });
-    }
+    const submitForm = createAttributeDefinitionFromForm.bind(
+        null,
+        entityTypeName,
+        categoryName,
+    );
 
     return (
         <Modal

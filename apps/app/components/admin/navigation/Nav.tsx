@@ -55,8 +55,14 @@ function SortableNavItem({
     entityType: SelectEntityType;
     onClick?: () => void;
 }) {
-    const { attributes, listeners, setNodeRef, transform, transition } =
-        useSortable({ id: entityType.id.toString() });
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: entityType.id.toString() });
     const style: CSSProperties = {
         transform: CSS.Transform.toString(transform),
         transition,
@@ -68,6 +74,7 @@ function SortableNavItem({
                 label={entityType.label}
                 icon={<File className="size-5" />}
                 onClick={onClick}
+                isDragging={isDragging}
             />
         </div>
     );

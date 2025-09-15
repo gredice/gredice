@@ -2,7 +2,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { lexinsert } from '@gredice/js';
+import { lexinsert } from '@gredice/js/lexorder';
 import {
     deleteAttributeValue,
     deleteEntity,
