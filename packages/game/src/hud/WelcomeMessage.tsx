@@ -1,13 +1,19 @@
 'use client';
 
+import { client } from '@gredice/client';
 import { Navigate } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { Card } from '@signalco/ui-primitives/Card';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
+import { useClaimDailyReward } from '../hooks/useClaimDailyReward';
+import { currentAccountKeys } from '../hooks/useCurrentAccount';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { dailyRewardKeys, useDailyReward } from '../hooks/useDailyReward';
 import { useGameAudio } from '../hooks/useGameAudio';
 import { useGameState } from '../useGameState';
 
@@ -42,6 +48,9 @@ const messageTypes = {
 
 export function WelcomeMessage() {
     const { data: currentUser } = useCurrentUser();
+    const { data: dailyReward } = useDailyReward();
+    const claimDailyReward = useClaimDailyReward();
+
     const show = useMemo(() => {
         if (!currentUser) return false;
 
@@ -80,6 +89,9 @@ export function WelcomeMessage() {
     function handleOpenChange(newOpen: boolean) {
         setOpen(newOpen);
         resumeIfNeeded();
+        if (!newOpen && dailyReward?.canClaim) {
+            claimDailyReward.mutate();
+        }
     }
 
     const timeOfDay = useGameState((state) => state.timeOfDay);
@@ -117,6 +129,30 @@ export function WelcomeMessage() {
                                 {text}
                             </Typography>
                         ))}
+                        {dailyReward && (
+                            <Card>
+                                <Typography
+                                    level="body1"
+                                    className="text-md font-semibold"
+                                    component="span"
+                                >
+                                    {`Dan ${
+                                        dailyReward.current.day >= 7
+                                            ? '7+'
+                                            : dailyReward.current.day
+                                    }`}
+                                </Typography>
+                                <Typography level="body1" gutterBottom>
+                                    {`Danas dobivaš ${
+                                        dailyReward.current.amount
+                                    } 🌻 za dnevnu aktivnost.`}
+                                </Typography>
+                                <Typography level="body3">
+                                    ✨ Posjeti svoj vrt svaki dan i skupljaj
+                                    suncokrete!
+                                </Typography>
+                            </Card>
+                        )}
                     </Stack>
                     <Button
                         variant="solid"

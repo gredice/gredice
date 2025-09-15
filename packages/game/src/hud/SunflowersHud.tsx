@@ -9,9 +9,31 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
+import { useDailyReward } from '../hooks/useDailyReward';
 import { KnownPages } from '../knownPages';
 import { SunflowersList } from '../shared-ui/sunflowers/SunflowersList';
 import { HudCard } from './components/HudCard';
+
+function DailyRewardInfo() {
+    const { data } = useDailyReward();
+    if (!data) return null;
+    const currentDay = data.current.day >= 7 ? '7+' : data.current.day;
+    return (
+        <Stack className="p-2">
+            <Typography level="body2" bold>
+                Dnevna aktivnost
+            </Typography>
+            <Row justifyContent="space-between">
+                <Typography level="body3">{`Danas - dan ${currentDay}`}</Typography>
+                <Typography level="body2">+{data.current.amount} 🌻</Typography>
+            </Row>
+            <Row justifyContent="space-between">
+                <Typography level="body3">{`Sutra te čeka`}</Typography>
+                <Typography level="body2">+{data.next.amount} 🌻</Typography>
+            </Row>
+        </Stack>
+    );
+}
 
 function SunflowersCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
@@ -61,6 +83,8 @@ function SunflowersCard() {
                     </Row>
                 </Popper>
             </Row>
+            <Divider />
+            <DailyRewardInfo />
             <Divider />
             <SunflowersList limit={5} />
             <Divider />
