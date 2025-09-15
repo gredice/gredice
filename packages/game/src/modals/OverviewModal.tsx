@@ -446,9 +446,12 @@ export function OverviewModal() {
                             <Typography level="h4" className="hidden md:block">
                                 Suncokreti
                             </Typography>
-                            <Stack spacing={2}>
-                                <div className="relative mt-12 md:mt-0">
-                                    <span className="absolute text-5xl -top-12 right-6">
+                            <Stack
+                                spacing={2}
+                                className="max-h-[calc(100dvh-12rem)]"
+                            >
+                                <div className="relative md:mt-0">
+                                    <span className="absolute text-5xl -top-12 right-6 hidden md:block">
                                         <Image
                                             src="https://cdn.gredice.com/sunflower-large.svg"
                                             alt="Suncokret"
