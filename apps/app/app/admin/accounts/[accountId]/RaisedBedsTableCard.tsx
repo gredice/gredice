@@ -1,7 +1,7 @@
 import {
-    getAccountGardens,
-    getAllRaisedBeds,
-    getRaisedBeds,
+    getAccountGardensFiltered,
+    getAllRaisedBedsFiltered,
+    getRaisedBedsFiltered,
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
@@ -19,17 +19,33 @@ import { KnownPages } from '../../../../src/KnownPages';
 export async function RaisedBedsTableCard({
     accountId,
     gardenId,
+    searchParams,
 }: {
     accountId?: string;
     gardenId?: number;
+    searchParams?: { [key: string]: string | string[] | undefined };
 }) {
+    // Get filter parameters
+    const statusFilter =
+        typeof searchParams?.status === 'string'
+            ? searchParams.status
+            : accountId || gardenId
+              ? ''
+              : 'active';
+
+    // Prepare filter parameters
+    const filters = {
+        status: statusFilter || undefined,
+    };
+
+    // Fetch filtered data using the repository filtering functions
     const raisedBeds = accountId
-        ? (await getAccountGardens(accountId)).flatMap(
+        ? (await getAccountGardensFiltered(accountId, filters)).flatMap(
               (garden) => garden.raisedBeds,
           )
         : gardenId
-          ? await getRaisedBeds(gardenId)
-          : await getAllRaisedBeds();
+          ? await getRaisedBedsFiltered(gardenId, filters)
+          : await getAllRaisedBedsFiltered(filters);
 
     return (
         <Card>

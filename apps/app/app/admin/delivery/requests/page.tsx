@@ -7,8 +7,14 @@ import { DeliveryRequestsTable } from './DeliveryRequestsTable';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminDeliveryRequestsPage() {
+export default async function AdminDeliveryRequestsPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
     await auth(['admin']);
+
+    const params = await searchParams;
 
     return (
         <Stack spacing={2}>
@@ -18,7 +24,7 @@ export default async function AdminDeliveryRequestsPage() {
             <DeliveryRequestsFilters />
             <Card>
                 <CardOverflow>
-                    <DeliveryRequestsTable />
+                    <DeliveryRequestsTable searchParams={params} />
                 </CardOverflow>
             </Card>
         </Stack>

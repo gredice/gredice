@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import {
     type InsertOperation,
     operations,
@@ -7,9 +7,9 @@ import {
 import { storage } from '../storage';
 import { getEvents, knownEventTypes } from './eventsRepo';
 
-async function fillOperationAggregares(operations: SelectOperation[]) {
+async function fillOperationAggregates(operations: SelectOperation[]) {
     const aggregateIds = operations.map((op) => op.id.toString());
-    const aggregaresEvents = await getEvents(
+    const aggregatesEvents = await getEvents(
         [
             knownEventTypes.operations.schedule,
             knownEventTypes.operations.complete,
@@ -22,7 +22,7 @@ async function fillOperationAggregares(operations: SelectOperation[]) {
     );
 
     return operations.map((op) => {
-        const events = aggregaresEvents.filter(
+        const events = aggregatesEvents.filter(
             (event) => event.aggregateId === op.id.toString(),
         );
 
@@ -106,15 +106,19 @@ export async function getOperations(
         orderBy: desc(operations.timestamp),
     });
 
-    return await fillOperationAggregares(query);
+    return await fillOperationAggregates(query);
 }
 
-export async function getAllOperations() {
+export async function getAllOperations(filter?: { from?: Date; to?: Date }) {
     const operationsList = await storage().query.operations.findMany({
-        where: eq(operations.isDeleted, false),
+        where: and(
+            eq(operations.isDeleted, false),
+            filter?.from ? gte(operations.timestamp, filter.from) : undefined,
+            filter?.to ? lte(operations.timestamp, filter.to) : undefined,
+        ),
         orderBy: desc(operations.timestamp),
     });
-    return await fillOperationAggregares(operationsList);
+    return await fillOperationAggregates(operationsList);
 }
 
 export async function getOperationById(id: number) {
@@ -124,7 +128,7 @@ export async function getOperationById(id: number) {
     if (!operation) {
         throw new Error(`Operation with id ${id} not found`);
     }
-    return (await fillOperationAggregares([operation]))[0];
+    return (await fillOperationAggregates([operation]))[0];
 }
 
 export async function createOperation({

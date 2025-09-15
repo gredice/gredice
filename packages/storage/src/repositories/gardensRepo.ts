@@ -1,6 +1,6 @@
 import 'server-only';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
-import { and, count, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, gte } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { getEntitiesFormatted, getOperations, storage } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
@@ -72,6 +72,30 @@ export async function getAccountGardens(accountId: string) {
             return {
                 ...garden,
                 raisedBeds: await getRaisedBeds(garden.id),
+            };
+        }),
+    );
+}
+
+export async function getAccountGardensFiltered(
+    accountId: string,
+    filters?: {
+        status?: string;
+        fromDate?: Date;
+    },
+) {
+    const accountGardens = await storage().query.gardens.findMany({
+        where: and(
+            eq(gardens.accountId, accountId),
+            eq(gardens.isDeleted, false),
+        ),
+    });
+    // For each garden, fetch and attach filtered raised beds
+    return Promise.all(
+        accountGardens.map(async (garden) => {
+            return {
+                ...garden,
+                raisedBeds: await getRaisedBedsFiltered(garden.id, filters),
             };
         }),
     );
@@ -314,6 +338,38 @@ export async function getRaisedBeds(gardenId: number) {
             eq(raisedBeds.isDeleted, false),
         ),
     });
+    // For each raised bed, fetch and attach fields with event-sourced info
+    return Promise.all(
+        beds.map(async (bed) => {
+            const fields = await getRaisedBedFieldsWithEvents(bed.id);
+            return {
+                ...bed,
+                fields,
+            };
+        }),
+    );
+}
+
+export async function getRaisedBedsFiltered(
+    gardenId: number,
+    filters?: {
+        status?: string;
+    },
+) {
+    // Build where conditions
+    const whereConditions = [
+        eq(raisedBeds.gardenId, gardenId),
+        eq(raisedBeds.isDeleted, false),
+    ];
+
+    if (filters?.status) {
+        whereConditions.push(eq(raisedBeds.status, filters.status));
+    }
+
+    const beds = await storage().query.raisedBeds.findMany({
+        where: and(...whereConditions),
+    });
+
     // For each raised bed, fetch and attach fields with event-sourced info
     return Promise.all(
         beds.map(async (bed) => {
@@ -575,6 +631,30 @@ export async function getAllRaisedBeds() {
             allRaisedBeds.map((r) => r.id).map(getRaisedBedFieldsWithEvents),
         )
     ).flat();
+    return allRaisedBeds.map((raisedBed) => ({
+        ...raisedBed,
+        fields: fields.filter((field) => field.raisedBedId === raisedBed.id),
+    }));
+}
+
+export async function getAllRaisedBedsFiltered(filters?: { status?: string }) {
+    // Build where conditions
+    const whereConditions = [eq(raisedBeds.isDeleted, false)];
+
+    if (filters?.status) {
+        whereConditions.push(eq(raisedBeds.status, filters.status));
+    }
+
+    const allRaisedBeds = await storage().query.raisedBeds.findMany({
+        where: and(...whereConditions),
+    });
+
+    const fields = (
+        await Promise.all(
+            allRaisedBeds.map((r) => r.id).map(getRaisedBedFieldsWithEvents),
+        )
+    ).flat();
+
     return allRaisedBeds.map((raisedBed) => ({
         ...raisedBed,
         fields: fields.filter((field) => field.raisedBedId === raisedBed.id),
