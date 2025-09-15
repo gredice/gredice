@@ -23,16 +23,18 @@ export async function OperationsTable({
     gardenId,
     raisedBedId,
     raisedBedFieldId,
+    fromDate,
 }: {
     accountId?: string;
     gardenId?: number;
     raisedBedId?: number;
     raisedBedFieldId?: number;
-}) {
+    fromDate?: Date;
+} = {}) {
     const [operationsData, operations, accounts, gardens, raisedBeds] =
         await Promise.all([
             getEntitiesFormatted<EntityStandardized>('operation'),
-            getAllOperations(),
+            getAllOperations(fromDate ? { from: fromDate } : undefined),
             getAccounts(),
             getGardens(),
             getAllRaisedBeds(),

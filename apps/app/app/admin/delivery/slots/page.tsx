@@ -16,12 +16,15 @@ export const dynamic = 'force-dynamic';
 export default async function AdminTimeSlotsPage({
     searchParams,
 }: {
-    searchParams: { [key: string]: string | string[] | undefined };
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     await auth(['admin']);
 
     const pickupLocations = await getPickupLocations();
-    const statusParam = searchParams.status === 'all' ? 'all' : 'active';
+    const params = await searchParams;
+    const statusParam =
+        typeof params.status === 'string' ? params.status : 'active';
+    const status = statusParam === 'all' ? 'all' : 'active';
 
     return (
         <Stack spacing={4}>
@@ -59,7 +62,7 @@ export default async function AdminTimeSlotsPage({
 
             <Card>
                 <CardOverflow>
-                    <TimeSlotsTable status={statusParam} />
+                    <TimeSlotsTable status={status} />
                 </CardOverflow>
             </Card>
         </Stack>

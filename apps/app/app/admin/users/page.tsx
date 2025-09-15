@@ -9,15 +9,47 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
+import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
 import { KnownPages } from '../../../src/KnownPages';
 import { ButtonImpersonateUser } from './ButtonImpersonateUser';
 import { SelectUserRole } from './SelectUserRole';
+import { UsersFilters } from './UsersFilters';
 
 export const dynamic = 'force-dynamic';
 
-export default async function UsersPage() {
+export default async function UsersPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
     await auth(['admin']);
-    const users = await getUsers();
+    const params = await searchParams;
+
+    // Get filter parameters
+    const roleFilter = typeof params.role === 'string' ? params.role : '';
+    const fromFilter =
+        typeof params.from === 'string' ? params.from : 'last-30-days';
+    const fromDate = getDateFromTimeFilter(fromFilter);
+
+    // Get all users
+    const allUsers = await getUsers();
+
+    // Apply filters
+    let filteredUsers = allUsers;
+
+    // Apply role filter
+    if (roleFilter) {
+        filteredUsers = filteredUsers.filter(
+            (user) => user.role === roleFilter,
+        );
+    }
+
+    // Apply date filter
+    if (fromDate) {
+        filteredUsers = filteredUsers.filter((user) => {
+            return user.createdAt && user.createdAt >= fromDate;
+        });
+    }
 
     return (
         <Stack spacing={2}>
@@ -25,8 +57,11 @@ export default async function UsersPage() {
                 <Typography level="h1" className="text-2xl" semiBold>
                     {'Korisnici'}
                 </Typography>
-                <Chip color="primary">{users.length}</Chip>
+                <Chip color="primary">{filteredUsers.length}</Chip>
             </Row>
+
+            <UsersFilters />
+
             <Card>
                 <CardOverflow>
                     <Table>
@@ -39,7 +74,7 @@ export default async function UsersPage() {
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
-                            {users.length === 0 && (
+                            {filteredUsers.length === 0 && (
                                 <Table.Row>
                                     <Table.Cell colSpan={3}>
                                         <NoDataPlaceholder>
@@ -48,7 +83,7 @@ export default async function UsersPage() {
                                     </Table.Cell>
                                 </Table.Row>
                             )}
-                            {users.map((user) => (
+                            {filteredUsers.map((user) => (
                                 <Table.Row key={user.id}>
                                     <Table.Cell>
                                         <Link href={KnownPages.User(user.id)}>

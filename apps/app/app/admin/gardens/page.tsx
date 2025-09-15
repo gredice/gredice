@@ -9,13 +9,37 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
+import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
 import { KnownPages } from '../../../src/KnownPages';
+import { GardensFilters } from './GardensFilters';
 
 export const dynamic = 'force-dynamic';
 
-export default async function GardensPage() {
+export default async function GardensPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
     await auth(['admin']);
-    const gardens = await getGardens();
+    const params = await searchParams;
+
+    // Get filter parameters
+    const fromFilter =
+        typeof params.from === 'string' ? params.from : 'last-30-days';
+    const fromDate = getDateFromTimeFilter(fromFilter);
+
+    // Get all gardens
+    const allGardens = await getGardens();
+
+    // Apply filters
+    let filteredGardens = allGardens;
+
+    // Apply date filter
+    if (fromDate) {
+        filteredGardens = filteredGardens.filter((garden) => {
+            return garden.createdAt && garden.createdAt >= fromDate;
+        });
+    }
 
     return (
         <Stack spacing={2}>
@@ -23,8 +47,11 @@ export default async function GardensPage() {
                 <Typography level="h1" className="text-2xl" semiBold>
                     Vrtovi
                 </Typography>
-                <Chip color="primary">{gardens.length}</Chip>
+                <Chip color="primary">{filteredGardens.length}</Chip>
             </Row>
+
+            <GardensFilters />
+
             <Card>
                 <CardOverflow>
                     <Table>
@@ -36,7 +63,7 @@ export default async function GardensPage() {
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
-                            {gardens.length === 0 && (
+                            {filteredGardens.length === 0 && (
                                 <Table.Row>
                                     <Table.Cell colSpan={3}>
                                         <NoDataPlaceholder>
@@ -45,7 +72,7 @@ export default async function GardensPage() {
                                     </Table.Cell>
                                 </Table.Row>
                             )}
-                            {gardens.map((garden) => (
+                            {filteredGardens.map((garden) => (
                                 <Table.Row key={garden.id}>
                                     <Table.Cell>
                                         <Link

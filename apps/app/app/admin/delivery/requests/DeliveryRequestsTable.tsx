@@ -5,16 +5,55 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
+import { getDateFromTimeFilter } from '../../../../lib/utils/timeFilters';
 import { DeliveryRequestActionButtons } from './DeliveryRequestActionButtons';
 
-export async function DeliveryRequestsTable() {
+export async function DeliveryRequestsTable({
+    searchParams,
+}: {
+    searchParams?: { [key: string]: string | string[] | undefined };
+}) {
     const [deliveryRequests, timeSlots] = await Promise.all([
         getDeliveryRequests(),
         getAllTimeSlots(),
     ]);
 
+    // Apply filters
+    const statusFilter =
+        typeof searchParams?.status === 'string' ? searchParams.status : '';
+    const modeFilter =
+        typeof searchParams?.mode === 'string' ? searchParams.mode : '';
+    const fromFilter =
+        typeof searchParams?.from === 'string' ? searchParams.from : '';
+    const fromDate = getDateFromTimeFilter(fromFilter);
+
+    // Filter delivery requests based on parameters
+    let filteredRequests = deliveryRequests;
+
+    // Apply status filter
+    if (statusFilter) {
+        filteredRequests = filteredRequests.filter(
+            (request) => request.state === statusFilter,
+        );
+    }
+
+    // Apply mode filter
+    if (modeFilter) {
+        filteredRequests = filteredRequests.filter(
+            (request) => request.mode === modeFilter,
+        );
+    }
+
+    // Apply date filter
+    if (fromDate) {
+        filteredRequests = filteredRequests.filter((request) => {
+            const requestDate = request.slot?.startAt || request.createdAt;
+            return requestDate && requestDate >= fromDate;
+        });
+    }
+
     const now = new Date();
-    const sortedDeliveryRequests = deliveryRequests.toSorted((a, b) => {
+    const sortedDeliveryRequests = filteredRequests.toSorted((a, b) => {
         const aSlot = a.slot?.startAt;
         const bSlot = b.slot?.startAt;
 

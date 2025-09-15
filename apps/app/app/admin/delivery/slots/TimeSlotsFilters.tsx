@@ -1,34 +1,30 @@
 'use client';
 
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Check } from '@signalco/ui-icons';
+import {
+    type FilterOption,
+    TableFilter,
+} from '../../../../components/shared/filters';
+
+// Status filter options for delivery slots
+const STATUS_FILTER_OPTIONS: FilterOption = {
+    key: 'status',
+    label: 'Status slotova',
+    icon: <Check className="size-4" />,
+    options: [
+        { value: 'active', label: 'Aktivni' },
+        { value: 'all', label: 'Svi slotovi' },
+    ],
+};
 
 export function TimeSlotsFilters() {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const status = searchParams.get('status') || 'active';
-
-    const handleChange = (value: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-        if (value === 'active') {
-            params.delete('status');
-        } else {
-            params.set('status', value);
-        }
-        const query = params.toString();
-        router.push(`/admin/delivery/slots${query ? `?${query}` : ''}`);
-    };
+    const filters = [STATUS_FILTER_OPTIONS];
 
     return (
-        <SelectItems
-            variant="outlined"
-            placeholder="Filtriraj po statusu"
-            value={status}
-            onValueChange={handleChange}
-            items={[
-                { value: 'active', label: 'Aktivni' },
-                { value: 'all', label: 'Svi' },
-            ]}
+        <TableFilter
+            filters={filters}
+            defaultValues={{ status: 'active' }}
+            className="flex"
         />
     );
 }
