@@ -113,7 +113,9 @@ export function ShoppingCart() {
                 <div
                     className={cx(
                         'opacity-0 h-0 transition-all duration-150',
-                        showSunflowersSuggestion && 'opacity-100 h-auto mb-4',
+                        showSunflowersSuggestion
+                            ? 'opacity-100 h-auto mb-4'
+                            : 'pointer-events-none',
                     )}
                 >
                     <Alert color="primary">
