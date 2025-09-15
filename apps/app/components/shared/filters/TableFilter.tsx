@@ -12,8 +12,9 @@ import {
     DropdownMenuTrigger,
 } from '@signalco/ui-primitives/Menu';
 import { Row } from '@signalco/ui-primitives/Row';
+import type { Route } from 'next';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 
 export interface FilterOption {
     key: string;
@@ -92,7 +93,7 @@ export function TableFilter({
             }
 
             const query = params.toString();
-            router.push(`${pathname}${query ? `?${query}` : ''}` as '/');
+            router.push(`${pathname}${query ? `?${query}` : ''}` as Route);
 
             // Notify parent component with new filters
             const newFilters: Record<string, string> = {};
@@ -114,7 +115,7 @@ export function TableFilter({
 
     // Clear all filters
     const clearAllFilters = useCallback(() => {
-        router.push(pathname as '/');
+        router.push(pathname as Route);
         onFiltersChange?.({});
     }, [router, onFiltersChange, pathname]);
 

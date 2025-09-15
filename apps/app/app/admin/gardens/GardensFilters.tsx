@@ -13,7 +13,6 @@ export function GardensFilters() {
             filters={filters}
             defaultValues={{
                 from: 'last-30-days',
-                status: '',
             }}
             className="flex"
         />
