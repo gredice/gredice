@@ -1,19 +1,21 @@
 'use client';
 
+import { client } from '@gredice/client';
 import { Navigate } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { Card } from '@signalco/ui-primitives/Card';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { client } from '@gredice/client';
+import { useClaimDailyReward } from '../hooks/useClaimDailyReward';
+import { currentAccountKeys } from '../hooks/useCurrentAccount';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { dailyRewardKeys, useDailyReward } from '../hooks/useDailyReward';
 import { useGameAudio } from '../hooks/useGameAudio';
 import { useGameState } from '../useGameState';
-import { currentAccountKeys } from '../hooks/useCurrentAccount';
-import { dailyRewardKeys, useDailyReward } from '../hooks/useDailyReward';
 
 const messageTypes = {
     welcome: {
@@ -47,16 +49,8 @@ const messageTypes = {
 export function WelcomeMessage() {
     const { data: currentUser } = useCurrentUser();
     const { data: dailyReward } = useDailyReward();
-    const queryClient = useQueryClient();
-    const claimMutation = useMutation({
-        mutationFn: async () => {
-            await client().api.accounts.current.sunflowers.daily.$post();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries(currentAccountKeys);
-            queryClient.invalidateQueries(dailyRewardKeys);
-        },
-    });
+    const claimDailyReward = useClaimDailyReward();
+
     const show = useMemo(() => {
         if (!currentUser) return false;
 
@@ -96,7 +90,7 @@ export function WelcomeMessage() {
         setOpen(newOpen);
         resumeIfNeeded();
         if (!newOpen && dailyReward?.canClaim) {
-            claimMutation.mutate();
+            claimDailyReward.mutate();
         }
     }
 
@@ -136,15 +130,28 @@ export function WelcomeMessage() {
                             </Typography>
                         ))}
                         {dailyReward && (
-                            <Typography level="body1">
-                                {`Dan ${
-                                    dailyReward.current.day >= 7
-                                        ? '7+'
-                                        : dailyReward.current.day
-                                }: danas dobivaš ${
-                                    dailyReward.current.amount
-                                } 🌻 za dnevnu aktivnost.`}
-                            </Typography>
+                            <Card>
+                                <Typography
+                                    level="body1"
+                                    className="text-md font-semibold"
+                                    component="span"
+                                >
+                                    {`Dan ${
+                                        dailyReward.current.day >= 7
+                                            ? '7+'
+                                            : dailyReward.current.day
+                                    }`}
+                                </Typography>
+                                <Typography level="body1" gutterBottom>
+                                    {`Danas dobivaš ${
+                                        dailyReward.current.amount
+                                    } 🌻 za dnevnu aktivnost.`}
+                                </Typography>
+                                <Typography level="body3">
+                                    ✨ Posjeti svoj vrt svaki dan i skupljaj
+                                    suncokrete!
+                                </Typography>
+                            </Card>
                         )}
                     </Stack>
                     <Button

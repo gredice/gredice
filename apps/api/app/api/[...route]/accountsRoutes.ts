@@ -1,12 +1,12 @@
 import {
     deleteAccountWithDependencies,
+    earnSunflowers,
     getAccount,
     getAccountUsers,
     getSunflowers,
     getSunflowersHistory,
     getUser,
     knownEventTypes,
-    earnSunflowers,
 } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
@@ -23,7 +23,7 @@ function rewardForDay(day: number) {
 }
 
 async function getDailyRewardState(accountId: string) {
-    const history = await getSunflowersHistory(accountId, 0, 30);
+    const history = await getSunflowersHistory(accountId, 0, 10000);
     const dailyEvents = history
         .filter((e) => e.reason.startsWith('daily'))
         .sort(
@@ -34,7 +34,8 @@ async function getDailyRewardState(accountId: string) {
 
     let lastDay = 0;
     let lastDate: Date | undefined;
-    const streak: Array<{ day: number; amount: number; claimedAt: string }> = [];
+    const streak: Array<{ day: number; amount: number; claimedAt: string }> =
+        [];
 
     if (dailyEvents.length > 0) {
         const latest = dailyEvents[0];

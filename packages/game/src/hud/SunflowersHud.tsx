@@ -18,19 +18,18 @@ function DailyRewardInfo() {
     const { data } = useDailyReward();
     if (!data) return null;
     const currentDay = data.current.day >= 7 ? '7+' : data.current.day;
-    const nextDay = data.next.day >= 7 ? '7+' : data.next.day;
     return (
-        <Stack className="p-4" spacing={1}>
+        <Stack className="p-2">
             <Typography level="body2" bold>
                 Dnevna aktivnost
             </Typography>
             <Row justifyContent="space-between">
-                <Typography level="body3">{`Dan ${currentDay}`}</Typography>
+                <Typography level="body3">{`Danas - dan ${currentDay}`}</Typography>
                 <Typography level="body2">+{data.current.amount} 🌻</Typography>
             </Row>
             <Row justifyContent="space-between">
-                <Typography level="body3">{`Dan ${nextDay}`}</Typography>
-                <Typography level="body2">{data.next.amount} 🌻</Typography>
+                <Typography level="body3">{`Sutra te čeka`}</Typography>
+                <Typography level="body2">+{data.next.amount} 🌻</Typography>
             </Row>
         </Stack>
     );
