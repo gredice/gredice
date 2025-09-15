@@ -1,3 +1,5 @@
+'use client';
+
 import { AuthProtectedSection } from '@signalco/auth-client/components';
 import {
     Add,
