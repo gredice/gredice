@@ -1,9 +1,10 @@
 'use client';
 
 import { ListItem } from '@signalco/ui-primitives/ListItem';
+import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactElement } from 'react';
+import type { MouseEvent, ReactElement } from 'react';
 
 export function NavItem({
     href,
@@ -11,16 +12,30 @@ export function NavItem({
     icon,
     strictMatch,
     onClick,
+    isDragging = false,
 }: {
-    href: string;
+    href: Route;
     label: string;
     icon: ReactElement;
     strictMatch?: boolean;
     onClick?: () => void;
+    isDragging?: boolean;
 }) {
     const pathname = usePathname();
+
+    const handleClick = (e: MouseEvent) => {
+        if (isDragging) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        if (onClick) {
+            onClick();
+        }
+    };
+
     return (
-        <Link href={href}>
+        <Link href={href} onClick={handleClick}>
             <ListItem
                 nodeId={href}
                 selected={
@@ -28,7 +43,7 @@ export function NavItem({
                         ? pathname === href
                         : pathname === href || pathname.startsWith(`${href}/`)
                 }
-                onSelected={onClick ? () => onClick() : () => {}}
+                onSelected={() => {}}
                 label={label}
                 startDecorator={icon}
             />

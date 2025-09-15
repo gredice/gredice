@@ -1,5 +1,6 @@
 'use server';
 
+import { lexinsert } from '@gredice/js/lexorder';
 import {
     type InsertAttributeDefinition,
     type InsertAttributeDefinitionCategory,
@@ -125,4 +126,68 @@ export async function upsertAttributeDefinitionCategory(
             ),
         );
     }
+}
+
+export async function reorderAttributeDefinitionCategory(
+    entityTypeName: string,
+    categoryId: number,
+    prevOrder?: string | null,
+    nextOrder?: string | null,
+) {
+    await auth(['admin']);
+    const order = lexinsert(prevOrder ?? undefined, nextOrder ?? undefined);
+    await storageUpdateAttributeDefinitionCategory({ id: categoryId, order });
+    revalidatePath(
+        KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
+    );
+}
+
+export async function reorderAttributeDefinition(
+    entityTypeName: string,
+    definitionId: number,
+    prevOrder?: string | null,
+    nextOrder?: string | null,
+) {
+    await auth(['admin']);
+    const order = lexinsert(prevOrder ?? undefined, nextOrder ?? undefined);
+    await storageUpdateAttributeDefinition({ id: definitionId, order });
+    revalidatePath(
+        KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
+    );
+}
+
+export async function createAttributeDefinitionFromForm(
+    entityTypeName: string,
+    categoryName: string,
+    formData: FormData,
+) {
+    await auth(['admin']);
+
+    const name = formData.get('name') as string;
+    const label = formData.get('label') as string;
+    const dataType = formData.get('dataType') as string;
+
+    await upsertAttributeDefinition({
+        name,
+        label,
+        dataType,
+        entityTypeName,
+        category: categoryName,
+    });
+}
+
+export async function createAttributeDefinitionCategoryFromForm(
+    entityTypeName: string,
+    formData: FormData,
+) {
+    await auth(['admin']);
+
+    const name = formData.get('name') as string;
+    const label = formData.get('label') as string;
+
+    await storageCreateAttributeDefinitionCategory({
+        name,
+        label,
+        entityTypeName,
+    });
 }
