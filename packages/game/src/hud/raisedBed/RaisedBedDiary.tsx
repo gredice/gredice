@@ -10,6 +10,32 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';
 import { useRaisedBedFieldDiaryEntries } from '../../hooks/useRaisedBedFieldDiaryEntries';
 
+function DiaryEntryImages({
+    name,
+    imageUrls,
+}: {
+    name: string;
+    imageUrls?: string[] | null;
+}) {
+    if (!imageUrls?.length) {
+        return null;
+    }
+
+    return (
+        <Row spacing={1} className="flex-wrap items-start shrink-0">
+            {imageUrls.map((url) => (
+                <ImageViewer
+                    key={url}
+                    src={url}
+                    alt={name}
+                    previewWidth={80}
+                    previewHeight={80}
+                />
+            ))}
+        </Row>
+    );
+}
+
 function DiaryList({
     error,
     isLoading,
@@ -64,19 +90,10 @@ function DiaryList({
                             className="justify-between font-normal"
                         >
                             <Row spacing={2} className="items-start flex-1">
-                                {entry.imageUrls?.length ? (
-                                    <Row spacing={1} className="items-start">
-                                        {entry.imageUrls.map((url) => (
-                                            <ImageViewer
-                                                key={url}
-                                                src={url}
-                                                alt={entry.name}
-                                                previewWidth={80}
-                                                previewHeight={80}
-                                            />
-                                        ))}
-                                    </Row>
-                                ) : null}
+                                <DiaryEntryImages
+                                    name={entry.name}
+                                    imageUrls={entry.imageUrls}
+                                />
                                 <Stack>
                                     <Typography level="body1" semiBold>
                                         {entry.name}
