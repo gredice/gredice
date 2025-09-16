@@ -2,7 +2,7 @@ import { getAuthToken } from '@gredice/client';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Approved, CompanyFacebook, Empty, Security } from '@signalco/ui-icons';
 import { Button, type ButtonProps } from '@signalco/ui-primitives/Button';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
+import { Card, CardActions, CardContent } from '@signalco/ui-primitives/Card';
 import { List } from '@signalco/ui-primitives/List';
 import { ListItem } from '@signalco/ui-primitives/ListItem';
 import { Modal } from '@signalco/ui-primitives/Modal';
@@ -11,11 +11,14 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { Input } from '@signalco/ui-primitives/Input';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRead';
+import { useRenameGarden } from '../hooks/useRenameGarden';
 import { useUserLogins } from '../hooks/useUserLogins';
 import { NotificationList } from '../hud/NotificationList';
 import { DeliveryAddressesSection } from '../shared-ui/delivery/DeliveryAddressesSection';
@@ -84,8 +87,43 @@ export function OverviewModal() {
     const [settingsMode, setProfileModalOpen] = useSearchParam('pregled');
     const currentUser = useCurrentUser();
     const { data: currentAccount } = useCurrentAccount();
+    const { data: currentGarden } = useCurrentGarden();
     const [notificationsFilter, setNotificationsFilter] = useState('unread');
     const markAllNotificationsRead = useMarkAllNotificationsRead();
+    const renameGarden = useRenameGarden(currentGarden?.id);
+    const [gardenName, setGardenName] = useState('');
+
+    useEffect(() => {
+        setGardenName(currentGarden?.name ?? '');
+    }, [currentGarden?.name]);
+
+    const currentGardenName = currentGarden?.name ?? '';
+    const trimmedGardenName = gardenName.trim();
+    const isRenameDisabled =
+        !currentGarden?.id ||
+        !trimmedGardenName ||
+        trimmedGardenName === currentGardenName.trim() ||
+        renameGarden.isPending;
+
+    const handleRenameGarden = async (
+        event: FormEvent<HTMLFormElement>,
+    ) => {
+        event.preventDefault();
+        if (!currentGarden?.id) {
+            return;
+        }
+
+        const nextName = gardenName.trim();
+        if (!nextName) {
+            return;
+        }
+
+        try {
+            await renameGarden.mutateAsync({ name: nextName });
+        } catch (error) {
+            console.error('Failed to rename garden', error);
+        }
+    };
 
     // Security
     const { data: userLogins, isLoading: userLoginsLoading } = useUserLogins(
@@ -128,6 +166,7 @@ export function OverviewModal() {
                         onValueChange={setProfileModalOpen}
                         items={[
                             { label: 'Generalno', value: 'generalno' },
+                            { label: 'Vrt', value: 'vrt' },
                             { label: 'Suncokreti', value: 'suncokreti' },
                             { label: 'Dostava', value: 'dostava' },
                             { label: 'Obavijesti', value: 'obavijesti' },
@@ -149,6 +188,12 @@ export function OverviewModal() {
                             label="Generalno"
                             selected={settingsMode === 'generalno'}
                             onSelected={() => setProfileModalOpen('generalno')}
+                        />
+                        <ListItem
+                            nodeId="profile-garden"
+                            label="Vrt"
+                            selected={settingsMode === 'vrt'}
+                            onSelected={() => setProfileModalOpen('vrt')}
                         />
                         <ListItem
                             nodeId="profile-sunflowers"
@@ -197,6 +242,65 @@ export function OverviewModal() {
                                 Profil
                             </Typography>
                             <UserProfileCard />
+                        </Stack>
+                    )}
+                    {settingsMode === 'vrt' && (
+                        <Stack spacing={4}>
+                            <Typography level="h4" className="hidden md:block">
+                                Vrt
+                            </Typography>
+                            {!currentGarden ? (
+                                <Card>
+                                    <CardContent noHeader>
+                                        <Typography level="body2">
+                                            Trenutno nemaš svoj vrt za uređivanje.
+                                        </Typography>
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                <Card>
+                                    <form onSubmit={handleRenameGarden}>
+                                        <CardContent noHeader>
+                                            <Stack spacing={3}>
+                                                <Stack spacing={1}>
+                                                    <Typography level="body2">
+                                                        Promijeni ime svog vrta.
+                                                    </Typography>
+                                                    <Input
+                                                        name="gardenName"
+                                                        label="Naziv vrta"
+                                                        value={gardenName}
+                                                        onChange={(event) =>
+                                                            setGardenName(
+                                                                event.target.value,
+                                                            )
+                                                        }
+                                                        placeholder="Unesite naziv vrta..."
+                                                        required
+                                                        disabled={renameGarden.isPending}
+                                                    />
+                                                    <Typography level="body3">
+                                                        Ovo ime će biti prikazano u Gredici i
+                                                        podijeljeno s drugim igračima kada posjete
+                                                        tvoj vrt.
+                                                    </Typography>
+                                                </Stack>
+                                                <CardActions className="justify-end">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="solid"
+                                                        type="submit"
+                                                        loading={renameGarden.isPending}
+                                                        disabled={isRenameDisabled}
+                                                    >
+                                                        Spremi
+                                                    </Button>
+                                                </CardActions>
+                                            </Stack>
+                                        </CardContent>
+                                    </form>
+                                </Card>
+                            )}
                         </Stack>
                     )}
                     {settingsMode === 'sigurnost' && (

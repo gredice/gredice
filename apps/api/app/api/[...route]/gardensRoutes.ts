@@ -17,6 +17,7 @@ import {
     knownEvents,
     knownEventTypes,
     spendSunflowers,
+    updateGarden,
     updateGardenBlock,
     updateGardenStack,
     updateRaisedBed,
@@ -289,6 +290,51 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 stacks,
                 createdAt: garden.createdAt,
             });
+        },
+    )
+    .patch(
+        '/:gardenId',
+        describeRoute({
+            description: 'Update garden information',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                name: z.string().min(1).optional(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const { name } = context.req.valid('json');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            // Update garden with provided fields
+            const updateData: { id: number; name?: string } = {
+                id: gardenIdNumber,
+            };
+            if (name !== undefined) {
+                updateData.name = name.trim();
+            }
+
+            await updateGarden(updateData);
+
+            return context.json({ success: true });
         },
     )
     // See: https://datatracker.ietf.org/doc/html/rfc6902
