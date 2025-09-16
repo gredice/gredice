@@ -11,10 +11,6 @@ export const initData = {"commitId":27865,"hash":"4883767446758856","reducedExpr
 
 export const vercelFlagDefinitions = {"preSeason":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3EpreSeason"}};
 
-export type RootFlagValues = {
-  "preSeason": boolean;
-}
-
 export type FlagValues = {
   "preSeason": boolean;
 }

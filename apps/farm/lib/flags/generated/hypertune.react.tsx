@@ -74,7 +74,7 @@ export function HypertuneSourceProvider({
       setStateHash(newStateHash); // Re-render
 
       if (!metadata.becameReady) {
-        // Only refresh the page if the sdk was ready before this update
+        // Only refresh the page if the SDK was ready before this update
         router.refresh();
       }
     };
@@ -127,16 +127,18 @@ export function useSetOverride(): (newOverride: sdk.DeepPartial<hypertune.Source
 
 // Hypertune Root
 
-const HypertuneRootContext = React.createContext(
-  new hypertune.RootNode({
-    context: null,
-    logger: null,
-    parent: null,
-    step: null,
-    expression: null,
-    initDataHash: null,
-  })
-);
+const emptyRoot = new hypertune.RootNode({
+  context: null,
+  logger: null,
+  parent: null,
+  step: null,
+  expression: null,
+  initDataHash: null,
+});
+
+const HypertuneRootContext = React.createContext(emptyRoot);
+
+let hypertuneRootSingleton = emptyRoot;
 
 export function HypertuneRootProvider({
   rootArgs,
@@ -147,7 +149,16 @@ export function HypertuneRootProvider({
 }): React.ReactElement {
   const hypertuneSource = useHypertuneSource();
 
-  const hypertuneRoot = hypertuneSource.root({ args: rootArgs });
+  const rootArgsKey = sdk.stableStringify(rootArgs);
+
+  const hypertuneRoot = React.useMemo(
+    () => {
+      const value = hypertuneSource.root({ args: rootArgs });
+      hypertuneRootSingleton = value;
+      return value;
+    },
+    [hypertuneSource, rootArgsKey]
+  );
 
   return (
     <HypertuneRootContext.Provider value={hypertuneRoot}>
@@ -165,6 +176,13 @@ export function useHypertune(): hypertune.RootNode {
     );
   }
   return hypertuneRoot;
+}
+
+/**
+ * Use this function if you need to use Hypertune outside of React
+ */
+export function getHypertuneSingleton(): hypertune.RootNode {
+  return hypertuneRootSingleton;
 }
 
 export function HypertuneHydrator({

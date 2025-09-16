@@ -11,17 +11,6 @@ export const initData = {"commitId":31642,"hash":"6161187454489082","reducedExpr
 
 export const vercelFlagDefinitions = {"raisedBedFieldWatering":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedFieldWatering"},"raisedBedDiary":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedDiary"},"raisedBedFieldDiary":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedFieldDiary"},"raisedBedFieldOperations":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedFieldOperations"},"raisedBedOperations":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedOperations"},"raisedBedWatering":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedWatering"},"enableDebugCloseup":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugCloseup"},"enableDebugHud":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugHud"}};
 
-export type RootFlagValues = {
-  "raisedBedFieldWatering": boolean;
-  "raisedBedDiary": boolean;
-  "raisedBedFieldDiary": boolean;
-  "raisedBedFieldOperations": boolean;
-  "raisedBedOperations": boolean;
-  "raisedBedWatering": boolean;
-  "enableDebugCloseup": boolean;
-  "enableDebugHud": boolean;
-}
-
 export type FlagValues = {
   "raisedBedFieldWatering": boolean;
   "raisedBedDiary": boolean;

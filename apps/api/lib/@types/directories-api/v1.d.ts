@@ -412,10 +412,60 @@ export interface components {
                 /** @default Biljka */
                 label: string;
             };
+            calendar: {
+                planting?: {
+                    start?: number;
+                    end?: number;
+                }[];
+                sowing?: {
+                    start?: number;
+                    end?: number;
+                }[];
+                propagating?: {
+                    start?: number;
+                    end?: number;
+                }[];
+                harvest: {
+                    start?: number;
+                    end?: number;
+                }[];
+            };
+            attributes: {
+                /** @description (u gramima) */
+                yieldMax: number;
+                /** @description (u danima) */
+                harvestWindowMax: number;
+                /** @description (u centimetrima) */
+                seedingDepth: number;
+                /** @description (u centimetrima) */
+                seedingDistance: number;
+                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                soil: string;
+                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                light: number;
+                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                water: string;
+                /** @description (u stupnjevima °C) */
+                gernimationTemperature: number;
+                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                nutrients: string;
+                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                germinationType: string;
+                germinationWindowMin: number;
+                /** @description (u danima) */
+                germinationWindowMax: number;
+                /** @description (u danima) */
+                growthWindowMin: number;
+                /** @description (u danima) */
+                growthWindowMax: number;
+                /** @description (u danima) */
+                harvestWindowMin: number;
+                /** @description (u gramima) */
+                yieldMin: number;
+                /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
+                yieldType: string;
+            };
             information: {
-                watering: string;
-                soilPreparation: string;
-                growth: string;
                 storage: string;
                 maintenance: string;
                 /** @description Informacije o berbi biljke. */
@@ -423,10 +473,7 @@ export interface components {
                 verified?: boolean;
                 origin: string;
                 planting?: string;
-                tip?: {
-                    header?: string;
-                    content?: string;
-                }[];
+                watering: string;
                 sowing?: string;
                 name: string;
                 latinName: string;
@@ -482,59 +529,12 @@ export interface components {
                     };
                 }[];
                 flowering?: string;
-            };
-            calendar: {
-                sowing?: {
-                    start?: number;
-                    end?: number;
+                tip?: {
+                    header?: string;
+                    content?: string;
                 }[];
-                propagating?: {
-                    start?: number;
-                    end?: number;
-                }[];
-                harvest: {
-                    start?: number;
-                    end?: number;
-                }[];
-                planting?: {
-                    start?: number;
-                    end?: number;
-                }[];
-            };
-            attributes: {
-                /** @description (u centimetrima) */
-                seedingDepth: number;
-                /** @description (u centimetrima) */
-                seedingDistance: number;
-                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                soil: string;
-                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                light: number;
-                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                water: string;
-                /** @description (u stupnjevima °C) */
-                gernimationTemperature: number;
-                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                nutrients: string;
-                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                germinationType: string;
-                germinationWindowMin: number;
-                /** @description (u danima) */
-                germinationWindowMax: number;
-                /** @description (u danima) */
-                growthWindowMin: number;
-                /** @description (u danima) */
-                growthWindowMax: number;
-                /** @description (u gramima) */
-                yieldMax: number;
-                /** @description (u danima) */
-                harvestWindowMin: number;
-                /** @description (u gramima) */
-                yieldMin: number;
-                /** @description (u danima) */
-                harvestWindowMax: number;
-                /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
-                yieldType: string;
+                soilPreparation: string;
+                growth: string;
             };
             prices: {
                 /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
@@ -566,10 +566,60 @@ export interface components {
                 flowering?: string;
                 plant: {
                     id?: number;
+                    calendar?: {
+                        planting?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        sowing?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        propagating?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        harvest: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                    };
+                    attributes?: {
+                        /** @description (u gramima) */
+                        yieldMax: number;
+                        /** @description (u danima) */
+                        harvestWindowMax: number;
+                        /** @description (u centimetrima) */
+                        seedingDepth: number;
+                        /** @description (u centimetrima) */
+                        seedingDistance: number;
+                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                        soil: string;
+                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                        light: number;
+                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                        water: string;
+                        /** @description (u stupnjevima °C) */
+                        gernimationTemperature: number;
+                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                        nutrients: string;
+                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                        germinationType: string;
+                        germinationWindowMin: number;
+                        /** @description (u danima) */
+                        germinationWindowMax: number;
+                        /** @description (u danima) */
+                        growthWindowMin: number;
+                        /** @description (u danima) */
+                        growthWindowMax: number;
+                        /** @description (u danima) */
+                        harvestWindowMin: number;
+                        /** @description (u gramima) */
+                        yieldMin: number;
+                        /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
+                        yieldType: string;
+                    };
                     information?: {
-                        watering: string;
-                        soilPreparation: string;
-                        growth: string;
                         storage: string;
                         maintenance: string;
                         /** @description Informacije o berbi biljke. */
@@ -577,10 +627,7 @@ export interface components {
                         verified?: boolean;
                         origin: string;
                         planting?: string;
-                        tip?: {
-                            header?: string;
-                            content?: string;
-                        }[];
+                        watering: string;
                         sowing?: string;
                         name: string;
                         latinName: string;
@@ -636,59 +683,12 @@ export interface components {
                             };
                         }[];
                         flowering?: string;
-                    };
-                    calendar?: {
-                        sowing?: {
-                            start?: number;
-                            end?: number;
+                        tip?: {
+                            header?: string;
+                            content?: string;
                         }[];
-                        propagating?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        harvest: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        planting?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                    };
-                    attributes?: {
-                        /** @description (u centimetrima) */
-                        seedingDepth: number;
-                        /** @description (u centimetrima) */
-                        seedingDistance: number;
-                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                        soil: string;
-                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                        light: number;
-                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                        water: string;
-                        /** @description (u stupnjevima °C) */
-                        gernimationTemperature: number;
-                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                        nutrients: string;
-                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                        germinationType: string;
-                        germinationWindowMin: number;
-                        /** @description (u danima) */
-                        germinationWindowMax: number;
-                        /** @description (u danima) */
-                        growthWindowMin: number;
-                        /** @description (u danima) */
-                        growthWindowMax: number;
-                        /** @description (u gramima) */
-                        yieldMax: number;
-                        /** @description (u danima) */
-                        harvestWindowMin: number;
-                        /** @description (u gramima) */
-                        yieldMin: number;
-                        /** @description (u danima) */
-                        harvestWindowMax: number;
-                        /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
-                        yieldType: string;
+                        soilPreparation: string;
+                        growth: string;
                     };
                     prices?: {
                         /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
@@ -766,10 +766,60 @@ export interface components {
                 };
                 plant: {
                     id?: number;
+                    calendar?: {
+                        planting?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        sowing?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        propagating?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        harvest: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                    };
+                    attributes?: {
+                        /** @description (u gramima) */
+                        yieldMax: number;
+                        /** @description (u danima) */
+                        harvestWindowMax: number;
+                        /** @description (u centimetrima) */
+                        seedingDepth: number;
+                        /** @description (u centimetrima) */
+                        seedingDistance: number;
+                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                        soil: string;
+                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                        light: number;
+                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                        water: string;
+                        /** @description (u stupnjevima °C) */
+                        gernimationTemperature: number;
+                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                        nutrients: string;
+                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                        germinationType: string;
+                        germinationWindowMin: number;
+                        /** @description (u danima) */
+                        germinationWindowMax: number;
+                        /** @description (u danima) */
+                        growthWindowMin: number;
+                        /** @description (u danima) */
+                        growthWindowMax: number;
+                        /** @description (u danima) */
+                        harvestWindowMin: number;
+                        /** @description (u gramima) */
+                        yieldMin: number;
+                        /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
+                        yieldType: string;
+                    };
                     information?: {
-                        watering: string;
-                        soilPreparation: string;
-                        growth: string;
                         storage: string;
                         maintenance: string;
                         /** @description Informacije o berbi biljke. */
@@ -777,10 +827,7 @@ export interface components {
                         verified?: boolean;
                         origin: string;
                         planting?: string;
-                        tip?: {
-                            header?: string;
-                            content?: string;
-                        }[];
+                        watering: string;
                         sowing?: string;
                         name: string;
                         latinName: string;
@@ -836,59 +883,12 @@ export interface components {
                             };
                         }[];
                         flowering?: string;
-                    };
-                    calendar?: {
-                        sowing?: {
-                            start?: number;
-                            end?: number;
+                        tip?: {
+                            header?: string;
+                            content?: string;
                         }[];
-                        propagating?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        harvest: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        planting?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                    };
-                    attributes?: {
-                        /** @description (u centimetrima) */
-                        seedingDepth: number;
-                        /** @description (u centimetrima) */
-                        seedingDistance: number;
-                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                        soil: string;
-                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                        light: number;
-                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                        water: string;
-                        /** @description (u stupnjevima °C) */
-                        gernimationTemperature: number;
-                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                        nutrients: string;
-                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                        germinationType: string;
-                        germinationWindowMin: number;
-                        /** @description (u danima) */
-                        germinationWindowMax: number;
-                        /** @description (u danima) */
-                        growthWindowMin: number;
-                        /** @description (u danima) */
-                        growthWindowMax: number;
-                        /** @description (u gramima) */
-                        yieldMax: number;
-                        /** @description (u danima) */
-                        harvestWindowMin: number;
-                        /** @description (u gramima) */
-                        yieldMin: number;
-                        /** @description (u danima) */
-                        harvestWindowMax: number;
-                        /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
-                        yieldType: string;
+                        soilPreparation: string;
+                        growth: string;
                     };
                     prices?: {
                         /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
@@ -908,10 +908,60 @@ export interface components {
                         flowering?: string;
                         plant: {
                             id?: number;
+                            calendar?: {
+                                planting?: {
+                                    start?: number;
+                                    end?: number;
+                                }[];
+                                sowing?: {
+                                    start?: number;
+                                    end?: number;
+                                }[];
+                                propagating?: {
+                                    start?: number;
+                                    end?: number;
+                                }[];
+                                harvest: {
+                                    start?: number;
+                                    end?: number;
+                                }[];
+                            };
+                            attributes?: {
+                                /** @description (u gramima) */
+                                yieldMax: number;
+                                /** @description (u danima) */
+                                harvestWindowMax: number;
+                                /** @description (u centimetrima) */
+                                seedingDepth: number;
+                                /** @description (u centimetrima) */
+                                seedingDistance: number;
+                                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                                soil: string;
+                                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                                light: number;
+                                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                                water: string;
+                                /** @description (u stupnjevima °C) */
+                                gernimationTemperature: number;
+                                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                                nutrients: string;
+                                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                                germinationType: string;
+                                germinationWindowMin: number;
+                                /** @description (u danima) */
+                                germinationWindowMax: number;
+                                /** @description (u danima) */
+                                growthWindowMin: number;
+                                /** @description (u danima) */
+                                growthWindowMax: number;
+                                /** @description (u danima) */
+                                harvestWindowMin: number;
+                                /** @description (u gramima) */
+                                yieldMin: number;
+                                /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
+                                yieldType: string;
+                            };
                             information?: {
-                                watering: string;
-                                soilPreparation: string;
-                                growth: string;
                                 storage: string;
                                 maintenance: string;
                                 /** @description Informacije o berbi biljke. */
@@ -919,10 +969,7 @@ export interface components {
                                 verified?: boolean;
                                 origin: string;
                                 planting?: string;
-                                tip?: {
-                                    header?: string;
-                                    content?: string;
-                                }[];
+                                watering: string;
                                 sowing?: string;
                                 name: string;
                                 latinName: string;
@@ -978,59 +1025,12 @@ export interface components {
                                     };
                                 }[];
                                 flowering?: string;
-                            };
-                            calendar?: {
-                                sowing?: {
-                                    start?: number;
-                                    end?: number;
+                                tip?: {
+                                    header?: string;
+                                    content?: string;
                                 }[];
-                                propagating?: {
-                                    start?: number;
-                                    end?: number;
-                                }[];
-                                harvest: {
-                                    start?: number;
-                                    end?: number;
-                                }[];
-                                planting?: {
-                                    start?: number;
-                                    end?: number;
-                                }[];
-                            };
-                            attributes?: {
-                                /** @description (u centimetrima) */
-                                seedingDepth: number;
-                                /** @description (u centimetrima) */
-                                seedingDistance: number;
-                                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                                soil: string;
-                                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                                light: number;
-                                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                                water: string;
-                                /** @description (u stupnjevima °C) */
-                                gernimationTemperature: number;
-                                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                                nutrients: string;
-                                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                                germinationType: string;
-                                germinationWindowMin: number;
-                                /** @description (u danima) */
-                                germinationWindowMax: number;
-                                /** @description (u danima) */
-                                growthWindowMin: number;
-                                /** @description (u danima) */
-                                growthWindowMax: number;
-                                /** @description (u gramima) */
-                                yieldMax: number;
-                                /** @description (u danima) */
-                                harvestWindowMin: number;
-                                /** @description (u gramima) */
-                                yieldMin: number;
-                                /** @description (u danima) */
-                                harvestWindowMax: number;
-                                /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
-                                yieldType: string;
+                                soilPreparation: string;
+                                growth: string;
                             };
                             prices?: {
                                 /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */

@@ -11,10 +11,6 @@ export const initData = {"commitId":19211,"hash":"4871243922453954","reducedExpr
 
 export const vercelFlagDefinitions = {"test":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4088/main/draft/logic?selected_field_path=root%3Etest"}};
 
-export type RootFlagValues = {
-  "test": boolean;
-}
-
 export type FlagValues = {
   "test": boolean;
 }
