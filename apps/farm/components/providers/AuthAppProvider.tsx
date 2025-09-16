@@ -6,6 +6,10 @@ import type { PropsWithChildren } from 'react';
 export type User = {
     id: string;
     userName: string;
+    displayName?: string;
+    avatarUrl?: string | null;
+    role: string;
+    createdAt?: string;
 };
 
 async function currentUserFactory() {
