@@ -23,7 +23,7 @@ This repository is the **Gredice** monorepo. It hosts several Next.js applicatio
 
 - **Development servers**: Use `pnpm dev` from the repo root for the turborepo pipeline, or `pnpm dev --filter <app>` to focus on a single application.
   - `www`: <http://localhost:3000>
-  - `garden`: <http://localhost:3001>  
+  - `garden`: <http://localhost:3001>
   - `farm`: <http://localhost:3002>
   - `app`: <http://localhost:3003>
   - `api`: <http://localhost:3005>
