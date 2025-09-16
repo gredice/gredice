@@ -1,6 +1,7 @@
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
-import { Book, Hammer, Sprout, Warning } from '@signalco/ui-icons';
+import { Book, ExternalLink, Hammer, Sprout, Warning } from '@signalco/ui-icons';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
+import { Link } from '@signalco/ui-primitives/Link';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -14,6 +15,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
+import { KnownPages } from '../../knownPages';
 import { RaisedBedFieldDiary } from './RaisedBedDiary';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import {
@@ -109,6 +111,11 @@ export function RaisedBedFieldItemPlanted({
               },
           ];
 
+    const plantDetailsUrl = KnownPages.GredicePlantSort(
+        plantSort.information.plant.information?.name ?? 'nepoznato',
+        plantSort.information.name,
+    );
+
     return (
         <Modal
             title={`Biljka "${plantSort.information.name}"`}
@@ -133,16 +140,40 @@ export function RaisedBedFieldItemPlanted({
             }
         >
             <Stack spacing={2}>
-                <Row spacing={2}>
+                <Row
+                    spacing={2}
+                    alignItems="center"
+                    className="flex-wrap gap-y-2"
+                >
                     <Image
                         src={`https://www.gredice.com/${plantSort.image?.cover?.url || plantSort.information.plant.image?.cover?.url}`}
                         alt={plantSort.information.name}
                         width={60}
                         height={60}
                     />
-                    <Typography level="h3">
-                        {plantSort.information.name}
-                    </Typography>
+                    <Row
+                        spacing={1}
+                        alignItems="center"
+                        className="min-w-0 flex-1"
+                    >
+                        <Typography
+                            level="h3"
+                            className="truncate"
+                            title={plantSort.information.name}
+                        >
+                            {plantSort.information.name}
+                        </Typography>
+                        <Link
+                            href={plantDetailsUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label="Detalji o biljci"
+                            className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary shrink-0"
+                        >
+                            <ExternalLink className="size-4" />
+                            <span className="hidden sm:inline">Detalji</span>
+                        </Link>
+                    </Row>
                 </Row>
                 <Tabs defaultValue="lifecycle" className="flex flex-col gap-2">
                     <TabsList className="border w-fit self-center">
