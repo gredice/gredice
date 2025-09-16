@@ -5,6 +5,7 @@ import {
     DeliveryRequestStates,
     deliveryRequests,
     type SelectDeliveryRequest,
+    TimeSlotStatuses,
     timeSlots,
 } from '../schema';
 import { storage } from '../storage';
@@ -17,7 +18,11 @@ import {
     knownEventTypes,
 } from './eventsRepo';
 import { getPickupLocation } from './pickupLocationsRepo';
-import { getTimeSlot } from './timeSlotsRepo';
+import {
+    AUTO_CLOSE_WINDOW_MS,
+    closeTimeSlot,
+    getTimeSlot,
+} from './timeSlotsRepo';
 
 // Business state projection interface
 export type DeliveryRequestWithEvents = ReturnType<
@@ -295,12 +300,22 @@ export async function createDeliveryRequest(data: {
         throw new Error('Time slot not found');
     }
 
-    if (slot.status !== 'scheduled') {
+    if (slot.status !== TimeSlotStatuses.SCHEDULED) {
         throw new Error('Time slot is not available for booking');
     }
 
-    if (slot.startAt < new Date()) {
+    const now = new Date();
+
+    if (slot.startAt < now) {
         throw new Error('Cannot book slots in the past');
+    }
+
+    if (
+        slot.type === 'delivery' &&
+        slot.startAt.getTime() - now.getTime() < AUTO_CLOSE_WINDOW_MS
+    ) {
+        await closeTimeSlot(slot.id);
+        throw new Error('Time slot is not available for booking');
     }
 
     // Validate mode-specific requirements
@@ -372,8 +387,22 @@ export async function changeDeliveryRequestSlot(
         throw new Error('Time slot not found');
     }
 
-    if (slot.status === 'archived') {
+    if (slot.status === TimeSlotStatuses.ARCHIVED) {
         throw new Error('Time slot is archived and cannot be used');
+    }
+
+    if (slot.status !== TimeSlotStatuses.SCHEDULED) {
+        throw new Error('Time slot is not available for booking');
+    }
+
+    const now = new Date();
+
+    if (
+        slot.type === 'delivery' &&
+        slot.startAt.getTime() - now.getTime() < AUTO_CLOSE_WINDOW_MS
+    ) {
+        await closeTimeSlot(slot.id);
+        throw new Error('Time slot is not available for booking');
     }
 
     await createEvent(

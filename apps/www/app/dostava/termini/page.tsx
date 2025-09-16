@@ -210,6 +210,15 @@ export default async function DeliverySlotsPage() {
                     branja.
                 </Typography>
 
+                <Typography
+                    level="body2"
+                    className="text-muted-foreground italic"
+                >
+                    Napomena: planiraj dostavu barem 48 sati unaprijed kako bi
+                    sve bilo spremno i dostavljeno na vrijeme. Termini unutar
+                    dva dana mogu biti ograničeni.
+                </Typography>
+
                 <Card className="w-fit p-4 pt-6 pr-6">
                     <CardHeader>
                         <CardTitle>💡 Kako rezervirati termin?</CardTitle>

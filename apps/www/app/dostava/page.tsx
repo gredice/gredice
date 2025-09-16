@@ -40,6 +40,15 @@ export default function DeliveryPage() {
                         možeš saznati kako funkcionira dostava, koje su opcije
                         dostupne i koji su uvjeti.
                     </p>
+                    <Typography
+                        level="body2"
+                        className="text-muted-foreground italic"
+                    >
+                        Napomena: planiraj dostavu barem 48 sati unaprijed kako
+                        bismo stigli pripremiti tvoje povrće i organizirati
+                        dostavu na vrijeme. Termini unutar dva dana često više
+                        nisu dostupni.
+                    </Typography>
                     <h2 id="besplatna-dostava">🆓 Besplatna dostava</h2>
                     <p>
                         Ukoliko tvoja dostava sadrži povrće od biljke za koju se
