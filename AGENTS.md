@@ -7,7 +7,7 @@ This repository is the **Gredice** monorepo. It hosts several Next.js applicatio
 - ✅ Use **Node.js** and **pnpm**.
 - ✅ Install dependencies from the repo root with `pnpm install`.
 - ✅ Before editing code, look for additional `AGENTS.md` files inside the path you plan to touch—nested instructions override this file.
-- ✅ Keep the worktree clean: run the relevant lint/tests locally and commit only intentional changes (never commit `node_modules` or build artefacts).
+- ✅ Keep the worktree clean: run the relevant lint/tests locally and commit only intentional changes (never commit `node_modules` or build artifacts).
 - ✅ Use Biome for linting and formatting (configured in individual `biome.json` files).
 
 ## Repository layout
