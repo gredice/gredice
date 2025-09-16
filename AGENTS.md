@@ -57,7 +57,7 @@ This repository is the **Gredice** monorepo. It hosts several Next.js applicatio
 
 - Prefer targeted Turborepo commands (`pnpm <COMMAND> --filter ...`) to speed up workflows during development and CI validation.
 - When introducing new scripts or workspace packages, update the relevant `package.json` and workspace manifests.
-- Document non-obvious behaviours (e.g., manual steps, feature flag dependencies) in `AILOGS.md`. This helps future collaborators understand the context. But don't duplicate information already covered in this file or nested `AGENTS.md` files. Maintain a single source of truth.
+- Document non-obvious behaviors (e.g., manual steps, feature flag dependencies) in `AILOGS.md`. This helps future collaborators understand the context. But don't duplicate information already covered in this file or nested `AGENTS.md` files. Maintain a single source of truth.
 - Follow the repo's existing TypeScript, React, and Biome conventions. Avoid adding alternative linting or formatting tools without prior alignment.
 
 ## Common commands reference
