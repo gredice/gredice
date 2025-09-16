@@ -112,7 +112,7 @@ export function RaisedBedFieldItemPlanted({
           ];
 
     const plantDetailsUrl = KnownPages.GredicePlantSort(
-        plantSort.information.plant.information?.name ?? 'nepoznato',
+        plantSort.information.plant.information?.name ?? plantSort.information.name,
         plantSort.information.name,
     );
 
