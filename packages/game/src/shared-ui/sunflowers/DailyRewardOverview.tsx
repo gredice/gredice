@@ -73,9 +73,9 @@ export function DailyRewardOverview() {
                                 key={col.day}
                                 type="button"
                                 className={cx(
-                                    'bg-primary-50 border border-primary-200 hover:bg-primary-100',
+                                    'border',
                                     'rounded-lg p-2 flex justify-center items-center h-full relative',
-                                    'focus:ring-2 focus:ring-primary-300 focus:outline-none',
+                                    'focus:ring-2 focus:outline-none',
                                 )}
                                 onClick={() => claimDailyReward.mutate()}
                                 disabled={claimDailyReward.isPending}
@@ -90,9 +90,9 @@ export function DailyRewardOverview() {
                             key={col.day}
                             className={cx(
                                 col.isClaimed &&
-                                    'bg-yellow-100 border border-yellow-300',
+                                    'bg-yellow-100 dark:bg-yellow-100/10 border-yellow-300 dark:border-yellow-300/20',
                                 !col.isClaimed && 'bg-muted',
-                                'rounded-lg p-2 flex justify-center items-center h-full',
+                                'rounded-lg p-2 flex justify-center items-center h-full border',
                             )}
                         >
                             {content}

@@ -447,7 +447,7 @@ export function OverviewModal() {
                                 Suncokreti
                             </Typography>
                             <Stack
-                                spacing={2}
+                                spacing={1}
                                 className="max-h-[calc(100dvh-12rem)]"
                             >
                                 <div className="relative md:mt-0">
@@ -477,7 +477,9 @@ export function OverviewModal() {
                                     </Card>
                                 </div>
                                 <Card>
-                                    <DailyRewardOverview />
+                                    <CardContent noHeader>
+                                        <DailyRewardOverview />
+                                    </CardContent>
                                 </Card>
                                 <div className="overflow-y-auto max-h-[calc(100dvh-20rem)] md:max-h-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card border shadow-sm p-4">
                                     <SunflowersList />
