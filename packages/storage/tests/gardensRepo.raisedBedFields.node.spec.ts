@@ -62,15 +62,17 @@ test('getRaisedBedFieldDiaryEntries returns newest entries first', async () => {
     await upsertRaisedBedField({ raisedBedId, positionIndex });
 
     const aggregateId = `${raisedBedId.toString()}|${positionIndex.toString()}`;
+    const olderTimestamp = new Date(Date.now() - 1000); // 1 second ago
+    const newerTimestamp = new Date(Date.now()); // now
     const olderEvent = knownEvents.raisedBedFields.createdV1(aggregateId, {
         status: 'new',
+        timestamp: olderTimestamp,
     });
     await createEvent(olderEvent);
 
-    await new Promise((resolve) => setTimeout(resolve, 10));
-
     const newerEvent = knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
         status: 'sprouted',
+        timestamp: newerTimestamp,
     });
     await createEvent(newerEvent);
 
