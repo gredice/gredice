@@ -1,5 +1,11 @@
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
-import { Book, ExternalLink, Hammer, Sprout, Warning } from '@signalco/ui-icons';
+import {
+    Book,
+    ExternalLink,
+    Hammer,
+    Sprout,
+    Warning,
+} from '@signalco/ui-icons';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Link } from '@signalco/ui-primitives/Link';
 import { Modal } from '@signalco/ui-primitives/Modal';
@@ -140,22 +146,14 @@ export function RaisedBedFieldItemPlanted({
             }
         >
             <Stack spacing={2}>
-                <Row
-                    spacing={2}
-                    alignItems="center"
-                    className="flex-wrap gap-y-2"
-                >
+                <Row spacing={2} className="flex-wrap gap-y-2">
                     <Image
                         src={`https://www.gredice.com/${plantSort.image?.cover?.url || plantSort.information.plant.image?.cover?.url}`}
                         alt={plantSort.information.name}
                         width={60}
                         height={60}
                     />
-                    <Row
-                        spacing={1}
-                        alignItems="center"
-                        className="min-w-0 flex-1"
-                    >
+                    <Row spacing={2} alignItems="end">
                         <Typography
                             level="h3"
                             className="truncate"
@@ -166,9 +164,8 @@ export function RaisedBedFieldItemPlanted({
                         <Link
                             href={plantDetailsUrl}
                             target="_blank"
-                            rel="noreferrer"
                             aria-label="Detalji o biljci"
-                            className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary shrink-0"
+                            className="inline-flex mb-1 items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-muted-foreground/60 shrink-0"
                         >
                             <ExternalLink className="size-4" />
                             <span className="hidden sm:inline">Detalji</span>
