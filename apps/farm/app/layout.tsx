@@ -4,6 +4,7 @@ import { AxiomWebVitals } from 'next-axiom';
 import './globals.css';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
+import { AuthAppProvider } from '../components/providers/AuthAppProvider';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 
 export const metadata: Metadata = {
@@ -28,8 +29,10 @@ export default function RootLayout({
                 <meta name="theme-color" content="#2e6f40" />
                 <title>Farma | Gredice</title>
             </Head>
-            <body className="antialiased min-h-screen flex">
-                <ClientAppProvider>{children}</ClientAppProvider>
+            <body className="antialiased min-h-screen flex bg-muted">
+                <ClientAppProvider>
+                    <AuthAppProvider>{children}</AuthAppProvider>
+                </ClientAppProvider>
                 <Analytics />
                 <AxiomWebVitals />
             </body>
