@@ -14,7 +14,6 @@ import {
     getRaisedBedDiaryEntries,
     getRaisedBedFieldDiaryEntries,
     getRaisedBedSensors,
-    getRaisedBeds,
     knownEvents,
     knownEventTypes,
     spendSunflowers,

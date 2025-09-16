@@ -45,12 +45,15 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                 completedAt = data?.completedAt
                     ? new Date(data.completedAt)
                     : undefined;
-                if (Array.isArray(data?.imageUrls)) {
-                    imageUrls = data.imageUrls.filter(
+                if (Array.isArray(data?.images)) {
+                    imageUrls = data.images.filter(
                         (url: unknown) => typeof url === 'string',
                     );
-                } else if (typeof data?.imageUrl === 'string') {
-                    imageUrls = [data.imageUrl];
+                }
+                if (typeof data?.imageUrl === 'string') {
+                    imageUrls = imageUrls
+                        ? [...imageUrls, data.imageUrl]
+                        : [data.imageUrl];
                 }
             } else if (event.type === knownEventTypes.operations.fail) {
                 status = 'failed';
