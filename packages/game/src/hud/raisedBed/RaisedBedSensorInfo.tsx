@@ -18,17 +18,16 @@ import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Tabs, TabsList, TabsTrigger } from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { useState } from 'react';
-import {
-    Area,
-    AreaChart,
-    CartesianGrid,
-    ReferenceLine,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from 'recharts';
+import { MouseEvent, TouchEvent, useMemo, useState } from 'react';
+import { AxisBottom, AxisLeft } from '@visx/axis';
+import { localPoint } from '@visx/event';
+import { GridColumns, GridRows } from '@visx/grid';
+import { Group } from '@visx/group';
+import { ParentSize } from '@visx/responsive';
+import { scaleLinear, scaleTime } from '@visx/scale';
+import { AreaClosed, Bar } from '@visx/shape';
+import { useTooltip, TooltipWithBounds } from '@visx/tooltip';
+import { curveMonotoneX } from '@visx/curve';
 import { useRaisedBedSensorHistory } from '../../hooks/useRaisedBedSensorHistory';
 import { useRaisedBedSensors } from '../../hooks/useRaisedBedSensors';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
@@ -36,35 +35,46 @@ import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 import { useNeighboringRaisedBeds } from './RaisedBedField';
 
+type SensorChartDatum = {
+    value: number;
+    timestamp: number;
+    date: Date;
+    timeLabel: string;
+    shortLabel: string;
+};
+
 function CustomTooltip({
-    active,
-    payload,
     header,
     textColor,
-    label,
+    datum,
     unit,
-}: any) {
-    if (active && payload && payload.length) {
-        const payloadFormatted =
-            new Date(label).toLocaleDateString('hr-HR', {
-                month: 'short',
-                day: 'numeric',
-            }) +
-            ' ' +
-            new Date(label).toLocaleTimeString('hr-HR', {
-                hour: '2-digit',
-                minute: '2-digit',
-            });
-        return (
-            <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-                <p className="text-sm font-medium text-gray-900">{`${payloadFormatted}`}</p>
-                <p
-                    className={cx('text-sm', textColor)}
-                >{`${header}: ${payload[0].value}${unit}`}</p>
-            </div>
-        );
+}: {
+    header: string;
+    textColor: string;
+    datum: SensorChartDatum | undefined;
+    unit: string;
+}) {
+    if (!datum) {
+        return null;
     }
-    return null;
+
+    const payloadFormatted =
+        datum.date.toLocaleDateString('hr-HR', {
+            month: 'short',
+            day: 'numeric',
+        }) +
+        ' ' +
+        datum.date.toLocaleTimeString('hr-HR', {
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+
+    return (
+        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+            <p className="text-sm font-medium text-gray-900">{payloadFormatted}</p>
+            <p className={cx('text-sm', textColor)}>{`${header}: ${datum.value}${unit}`}</p>
+        </div>
+    );
 }
 
 function Metric({
@@ -88,6 +98,317 @@ function Metric({
                 </Typography>
             </div>
         </Card>
+    );
+}
+
+type SensorChartProps = {
+    data: SensorChartDatum[];
+    yDomain: [number, number];
+    colors: {
+        text: string;
+        area: string;
+        areaGradientStart: string;
+        areaGradientEnd: string;
+    };
+    header: string;
+    unit: string;
+    references?: {
+        value: number;
+        label: string;
+        color: string;
+        bgColor: string;
+        strokeColor: string;
+        refStrokeColor: string;
+    }[];
+    duration: number;
+    gradientId: string;
+};
+
+function SensorChart(props: SensorChartProps) {
+    return (
+        <ParentSize>
+            {({ width, height }) => (
+                <SensorChartInner width={width} height={height} {...props} />
+            )}
+        </ParentSize>
+    );
+}
+
+function SensorChartInner({
+    width,
+    height,
+    data,
+    yDomain,
+    colors,
+    header,
+    unit,
+    references,
+    duration,
+    gradientId,
+}: SensorChartProps & { width: number; height: number }) {
+    const margin = { top: 8, right: 16, bottom: 50, left: 48 };
+    const innerWidth = Math.max(width - margin.left - margin.right, 0);
+    const innerHeight = Math.max(height - margin.top - margin.bottom, 0);
+
+    const hasDimensions = innerWidth > 0 && innerHeight > 0;
+
+    const chartData = data ?? [];
+
+    const [yMin, yMax] = yDomain;
+
+    const { tooltipData, tooltipLeft, tooltipTop, showTooltip, hideTooltip } =
+        useTooltip<SensorChartDatum>();
+
+    const xDomain = useMemo(() => {
+        if (chartData.length === 0) {
+            const now = Date.now();
+            return [
+                new Date(now - duration * 24 * 60 * 60 * 1000),
+                new Date(now),
+            ] as const;
+        }
+
+        const first = chartData[0].date.getTime();
+        const last = chartData[chartData.length - 1].date.getTime();
+        const now = Date.now();
+        const start = Math.min(first, now - duration * 24 * 60 * 60 * 1000);
+        const end = Math.max(last, now);
+        return [new Date(start), new Date(end)] as const;
+    }, [chartData, duration]);
+
+    const xScale = useMemo(
+        () =>
+            scaleTime({
+                range: [0, innerWidth],
+                domain: xDomain,
+                clamp: true,
+            }),
+        [innerWidth, xDomain],
+    );
+
+    const yScale = useMemo(
+        () =>
+            scaleLinear({
+                range: [innerHeight, 0],
+                domain: [yMin, yMax],
+                clamp: true,
+            }),
+        [innerHeight, yMin, yMax],
+    );
+
+    const handleTooltip = (
+        event: MouseEvent<SVGRectElement> | TouchEvent<SVGRectElement>,
+    ) => {
+        if (!chartData.length || !hasDimensions) {
+            hideTooltip();
+            return;
+        }
+
+        const point = localPoint(event);
+        if (!point) {
+            hideTooltip();
+            return;
+        }
+
+        const x = point.x - margin.left;
+        if (x < 0 || x > innerWidth) {
+            hideTooltip();
+            return;
+        }
+
+        const inverted = xScale.invert(x);
+        const xValue = inverted instanceof Date ? inverted.getTime() : inverted;
+
+        const nearest = chartData.reduce((prev, curr) => {
+            const prevDiff = Math.abs(prev.date.getTime() - xValue);
+            const currDiff = Math.abs(curr.date.getTime() - xValue);
+            return currDiff < prevDiff ? curr : prev;
+        }, chartData[0]);
+
+        showTooltip({
+            tooltipData: nearest,
+            tooltipLeft: margin.left + xScale(nearest.date),
+            tooltipTop: margin.top + yScale(nearest.value),
+        });
+    };
+
+    if (!hasDimensions) {
+        return null;
+    }
+
+    const tooltipX = tooltipData ? xScale(tooltipData.date) : 0;
+    const tooltipY = tooltipData ? yScale(tooltipData.value) : 0;
+
+    const formatTick = (value: Date | number) => {
+        const date = value instanceof Date ? value : new Date(value);
+        return (
+            date.toLocaleDateString('hr-HR', {
+                month: 'short',
+                day: 'numeric',
+            }) +
+            ' ' +
+            date.toLocaleTimeString('hr-HR', {
+                hour: '2-digit',
+                minute: '2-digit',
+            })
+        );
+    };
+
+    return (
+        <div className="relative h-full w-full">
+            <svg width={width} height={height} role="img">
+                <defs>
+                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                        <stop
+                            offset="0%"
+                            stopColor={colors.areaGradientStart}
+                            stopOpacity={0.6}
+                        />
+                        <stop
+                            offset="100%"
+                            stopColor={colors.areaGradientEnd}
+                            stopOpacity={0.1}
+                        />
+                    </linearGradient>
+                </defs>
+
+                <Group left={margin.left} top={margin.top}>
+                    <GridRows
+                        scale={yScale}
+                        width={innerWidth}
+                        strokeDasharray="3 3"
+                        stroke="#e5e7eb"
+                    />
+                    <GridColumns
+                        scale={xScale}
+                        height={innerHeight}
+                        strokeDasharray="3 3"
+                        stroke="#e5e7eb"
+                    />
+
+                    {references?.map((ref) => {
+                        const y = yScale(ref.value);
+                        if (Number.isNaN(y)) {
+                            return null;
+                        }
+                        return (
+                            <line
+                                key={ref.value}
+                                x1={0}
+                                x2={innerWidth}
+                                y1={y}
+                                y2={y}
+                                stroke={ref.refStrokeColor}
+                                strokeDasharray="8 8"
+                                opacity={0.5}
+                            />
+                        );
+                    })}
+
+                    {chartData.length > 0 && (
+                        <AreaClosed<SensorChartDatum>
+                            data={chartData}
+                            x={(d) => xScale(d.date) ?? 0}
+                            y={(d) => yScale(d.value) ?? 0}
+                            yScale={yScale}
+                            stroke={colors.area}
+                            strokeWidth={2}
+                            fill={`url(#${gradientId})`}
+                            curve={curveMonotoneX}
+                        />
+                    )}
+
+                    {tooltipData ? (
+                        <g pointerEvents="none">
+                            <line
+                                x1={tooltipX}
+                                x2={tooltipX}
+                                y1={0}
+                                y2={innerHeight}
+                                stroke="#9ca3af"
+                                strokeDasharray="4 4"
+                            />
+                            <circle
+                                cx={tooltipX}
+                                cy={tooltipY}
+                                r={4}
+                                fill={colors.area}
+                                stroke="#ffffff"
+                                strokeWidth={2}
+                            />
+                        </g>
+                    ) : null}
+
+                    <Bar
+                        x={0}
+                        y={0}
+                        width={innerWidth}
+                        height={innerHeight}
+                        fill="transparent"
+                        onMouseMove={handleTooltip}
+                        onTouchStart={handleTooltip}
+                        onTouchMove={handleTooltip}
+                        onMouseLeave={hideTooltip}
+                        onTouchEnd={hideTooltip}
+                    />
+                </Group>
+
+                <AxisLeft
+                    left={margin.left}
+                    top={margin.top}
+                    scale={yScale}
+                    numTicks={5}
+                    stroke="#d1d5db"
+                    tickStroke="#d1d5db"
+                    tickLabelProps={() => ({
+                        fontSize: 10,
+                        fill: 'currentColor',
+                    })}
+                    label={`${header} (${unit})`}
+                    labelProps={{
+                        fontSize: 10,
+                        fill: 'currentColor',
+                        textAnchor: 'middle',
+                    }}
+                />
+                <AxisBottom
+                    top={height - margin.bottom}
+                    left={margin.left}
+                    scale={xScale}
+                    numTicks={width < 500 ? 4 : 6}
+                    stroke="#d1d5db"
+                    tickStroke="#d1d5db"
+                    tickFormat={formatTick}
+                    tickLabelProps={() => ({
+                        fontSize: 9,
+                        fill: 'currentColor',
+                        textAnchor: 'end',
+                        transform: 'rotate(-35)',
+                        dy: '0.25em',
+                    })}
+                />
+            </svg>
+
+            {tooltipData ? (
+                <TooltipWithBounds
+                    top={tooltipTop}
+                    left={tooltipLeft}
+                    style={{
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        boxShadow: 'none',
+                        padding: 0,
+                    }}
+                >
+                    <CustomTooltip
+                        header={header}
+                        unit={unit}
+                        textColor={colors.text}
+                        datum={tooltipData}
+                    />
+                </TooltipWithBounds>
+            ) : null}
+        </div>
     );
 }
 
@@ -143,37 +464,40 @@ function SensorInfoModal({
         duration,
     );
 
+    const gradientId = useMemo(() => `valueGradient-${type}`, [type]);
+
     // Process and sort the data with smart date/time formatting
     const processedData = sensorDetails?.values
         .map((item) => ({
-            timestamp: item.timeStamp,
+            date: item.timeStamp,
             value: Number.parseFloat(item.valueSerialized),
         }))
-        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
 
     // Add smart labeling logic with mobile-friendly labels
-    const dataWithSmartLabels = processedData?.map((item, _index) => {
+    const dataWithSmartLabels = processedData?.map((item) => {
+        const timestamp = item.date.getTime();
         return {
             ...item,
-            timestamp: new Date(item.timestamp).getTime(),
+            timestamp,
             timeLabel:
-                item.timestamp.toLocaleDateString('hr-HR', {
+                item.date.toLocaleDateString('hr-HR', {
                     month: 'short',
                     day: 'numeric',
                 }) +
                 ' ' +
-                item.timestamp.toLocaleTimeString('hr-HR', {
+                item.date.toLocaleTimeString('hr-HR', {
                     hour: '2-digit',
                     minute: '2-digit',
                 }),
             // Shorter labels for mobile
             shortLabel:
-                item.timestamp.toLocaleDateString('hr-HR', {
+                item.date.toLocaleDateString('hr-HR', {
                     month: 'numeric',
                     day: 'numeric',
                 }) +
                 ' ' +
-                item.timestamp.toLocaleTimeString('hr-HR', {
+                item.date.toLocaleTimeString('hr-HR', {
                     hour: 'numeric',
                     minute: '2-digit',
                 }),
@@ -340,134 +664,17 @@ function SensorInfoModal({
                     {/* Responsive Chart */}
                     <Card>
                         <CardContent>
-                            <div className="h-[240px] sm:h-[280px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart
-                                        data={dataWithSmartLabels}
-                                        margin={{
-                                            top: 8,
-                                            right: 4,
-                                            left: 20,
-                                            bottom: 0,
-                                        }}
-                                    >
-                                        <defs>
-                                            <linearGradient
-                                                id="valueGradient"
-                                                x1="0"
-                                                y1="0"
-                                                x2="0"
-                                                y2="1"
-                                            >
-                                                <stop
-                                                    offset="0%"
-                                                    stopColor={
-                                                        colors.areaGradientStart
-                                                    }
-                                                    stopOpacity={0.6}
-                                                />
-                                                <stop
-                                                    offset="100%"
-                                                    stopColor={
-                                                        colors.areaGradientEnd
-                                                    }
-                                                    stopOpacity={0.1}
-                                                />
-                                            </linearGradient>
-                                        </defs>
-
-                                        <CartesianGrid
-                                            strokeDasharray="3 3"
-                                            className="stroke-neutral-200 dark:stroke-neutral-800"
-                                        />
-
-                                        <XAxis
-                                            dataKey="timestamp"
-                                            tick={{ fontSize: 9 }}
-                                            tickFormatter={(v) =>
-                                                new Date(v).toLocaleDateString(
-                                                    'hr-HR',
-                                                    {
-                                                        month: 'short',
-                                                        day: 'numeric',
-                                                    },
-                                                ) +
-                                                ' ' +
-                                                new Date(v).toLocaleTimeString(
-                                                    'hr-HR',
-                                                    {
-                                                        hour: '2-digit',
-                                                        minute: '2-digit',
-                                                    },
-                                                )
-                                            }
-                                            type="number"
-                                            domain={[
-                                                new Date(
-                                                    Date.now() -
-                                                        duration *
-                                                            24 *
-                                                            60 *
-                                                            60 *
-                                                            1000,
-                                                ).getTime(),
-                                                Date.now(),
-                                            ]}
-                                            angle={-35}
-                                            textAnchor="end"
-                                            height={50}
-                                            interval="preserveStartEnd"
-                                            minTickGap={10}
-                                        />
-
-                                        <YAxis
-                                            domain={yDomain}
-                                            tick={{ fontSize: 9 }}
-                                            width={30}
-                                            label={{
-                                                value: `${header} (${unit})`,
-                                                angle: -90,
-                                                position: 'insideLeft',
-                                                style: {
-                                                    textAnchor: 'middle',
-                                                    fontSize: '10px',
-                                                },
-                                            }}
-                                        />
-
-                                        {/* Reference lines - lighter on mobile */}
-                                        {references?.map((ref) => (
-                                            <ReferenceLine
-                                                key={ref.value}
-                                                y={ref.value}
-                                                stroke={ref.refStrokeColor}
-                                                strokeDasharray="8 8"
-                                                opacity={0.5}
-                                            />
-                                        ))}
-
-                                        <Tooltip
-                                            content={
-                                                <CustomTooltip
-                                                    header={header}
-                                                    unit={unit}
-                                                    textColor={colors.text}
-                                                />
-                                            }
-                                        />
-
-                                        <Area
-                                            type="monotone"
-                                            dataKey="value"
-                                            stroke={colors.area}
-                                            strokeWidth={2}
-                                            fill="url(#valueGradient)"
-                                            fillOpacity={1}
-                                            dot={false}
-                                            activeDot={false}
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
+                            <div className="relative h-[240px] sm:h-[280px] w-full">
+                                <SensorChart
+                                    data={dataWithSmartLabels ?? []}
+                                    yDomain={yDomain}
+                                    colors={colors}
+                                    header={header}
+                                    unit={unit}
+                                    references={references}
+                                    duration={duration}
+                                    gradientId={gradientId}
+                                />
                             </div>
                         </CardContent>
                     </Card>
