@@ -68,7 +68,7 @@ WORDS=$(echo "$BRANCH_NAME" | tr '-' '\n' | grep -v '^$' | head -3 | tr '\n' '-'
 BRANCH_NAME="${FEATURE_NUM}-${WORDS}"
 
 # Create and switch to new branch
-# NOTE: We use GitButtler for branch management, so we do not create branches here.
+# NOTE: We use GitButler for branch management, so we do not create branches here.
 #git checkout -b "$BRANCH_NAME"
 
 # Create feature directory
