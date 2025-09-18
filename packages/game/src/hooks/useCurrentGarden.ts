@@ -31,7 +31,7 @@ function mockGarden() {
                 position: new Vector3(-1, 0, 2),
                 blocks: [
                     {
-                        id: '1',
+                        id: '2',
                         name: 'Block_Grass',
                         rotation: 0,
                     },
@@ -41,7 +41,7 @@ function mockGarden() {
                 position: new Vector3(1, 0, 2),
                 blocks: [
                     {
-                        id: '1',
+                        id: '4',
                         name: 'Block_Grass',
                         rotation: 0,
                     },
@@ -51,7 +51,7 @@ function mockGarden() {
                 position: new Vector3(0, 0, 2),
                 blocks: [
                     {
-                        id: '1',
+                        id: '5',
                         name: 'Block_Grass',
                         rotation: 0,
                     },
@@ -61,7 +61,7 @@ function mockGarden() {
                 position: new Vector3(1, 0, 0),
                 blocks: [
                     {
-                        id: '1',
+                        id: '6',
                         name: 'Block_Grass',
                         rotation: 0,
                     },
@@ -71,12 +71,12 @@ function mockGarden() {
                 position: new Vector3(0, 0, 1),
                 blocks: [
                     {
-                        id: '1',
+                        id: '7',
                         name: 'Block_Grass',
                         rotation: 0,
                     },
                     {
-                        id: '4',
+                        id: '8',
                         name: 'Raised_Bed',
                         rotation: 0,
                     },
@@ -86,7 +86,7 @@ function mockGarden() {
                 position: new Vector3(1, 0, 1),
                 blocks: [
                     {
-                        id: '1',
+                        id: '9',
                         name: 'Block_Grass',
                         rotation: 0,
                     },
@@ -96,7 +96,7 @@ function mockGarden() {
                 position: new Vector3(-1, 0, 1),
                 blocks: [
                     {
-                        id: '1',
+                        id: '10',
                         name: 'Block_Grass',
                         rotation: 0,
                     },
@@ -106,12 +106,12 @@ function mockGarden() {
                 position: new Vector3(1, 0, -1),
                 blocks: [
                     {
-                        id: '1',
+                        id: '11',
                         name: 'Block_Grass',
                         rotation: 0,
                     },
                     {
-                        id: '4',
+                        id: '12',
                         name: 'Bush',
                         rotation: 0,
                     },
@@ -121,7 +121,7 @@ function mockGarden() {
                 position: new Vector3(-1, 0, 0),
                 blocks: [
                     {
-                        id: '2',
+                        id: '13',
                         name: 'Block_Grass',
                         rotation: 0,
                     },
@@ -131,7 +131,7 @@ function mockGarden() {
                 position: new Vector3(0, 0, -1),
                 blocks: [
                     {
-                        id: '3',
+                        id: '14',
                         name: 'Block_Grass',
                         rotation: 0,
                     },
@@ -141,7 +141,7 @@ function mockGarden() {
                 position: new Vector3(-1, 0, -1),
                 blocks: [
                     {
-                        id: '4',
+                        id: '15',
                         name: 'Block_Grass',
                         rotation: 0,
                     },

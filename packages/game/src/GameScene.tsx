@@ -52,6 +52,14 @@ const noRenderInViewDefault = [
     'Pine',
     'Block_Sand',
     'Block_Sand_Angle',
+    'Shovel_Small',
+    'Mulch_Hey',
+    'Mulch_Coconut',
+    'Mulch_Wood',
+    'Tulip',
+    'BaleHey',
+    'Stick',
+    'Seed',
 ];
 
 export function GameScene({

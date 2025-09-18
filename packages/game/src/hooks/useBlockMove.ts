@@ -46,6 +46,12 @@ export function useBlockMove() {
                 return;
             }
 
+            console.debug(
+                'Optimistically moving block',
+                sourcePosition,
+                destinationPosition,
+                blockIndex,
+            );
             const sourceStack = garden.stacks.find(
                 (stack) =>
                     stack.position.x === sourcePosition.x &&
@@ -70,12 +76,25 @@ export function useBlockMove() {
                 });
             }
 
+            // Ignore if source and destination are the same
+            if (
+                sourcePosition.x === destinationPosition.x &&
+                sourcePosition.z === destinationPosition.z
+            ) {
+                return;
+            }
+
             const updatedStacks = garden.stacks.map((stack) => {
                 // Update source stack
                 if (
                     stack.position.x === sourcePosition.x &&
                     stack.position.z === sourcePosition.z
                 ) {
+                    console.debug(
+                        'Removing block from source stack',
+                        stack,
+                        sourceStack.blocks[blockIndex],
+                    );
                     return {
                         ...stack,
                         blocks: stack.blocks.filter(
@@ -89,6 +108,11 @@ export function useBlockMove() {
                     stack.position.x === destinationPosition.x &&
                     stack.position.z === destinationPosition.z
                 ) {
+                    console.debug(
+                        'Adding block to destination stack',
+                        stack,
+                        sourceStack.blocks[blockIndex],
+                    );
                     return {
                         ...stack,
                         blocks: [
@@ -97,6 +121,8 @@ export function useBlockMove() {
                         ],
                     };
                 }
+
+                // No changes for other stacks
                 return stack;
             });
 
