@@ -124,7 +124,7 @@ Use [https://gltf.pmnd.rs/](https://gltf.pmnd.rs/) to convert GLTF assets into T
 
 ## Specification Driven Development
 
-We use Specification Driven Development (SDD) to plan and ship new features. Specifications describe the desired behavior, implementation notes capture how we will build it, and executable tasks track the actual work.
+We use Specification Driven Development (SDD) to plan and ship new features. The process is automated using Spec Kit, which generates specifications, technical plans, and executable tasks from feature descriptions. Specifications describe the desired behavior, implementation notes capture how we will build it, and executable tasks track the actual work.
 
 ### Creating a new feature
 
