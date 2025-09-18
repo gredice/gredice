@@ -52,7 +52,6 @@ const noRenderInViewDefault = [
     'Pine',
     'Block_Sand',
     'Block_Sand_Angle',
-    'Pine',
     'Shovel_Small',
     'Mulch_Hey',
     'Mulch_Coconut',
