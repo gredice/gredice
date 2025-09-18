@@ -1,11 +1,13 @@
 import type { SectionData } from '@signalco/cms-core/SectionData';
 import { SectionsView } from '@signalco/cms-core/SectionsView';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import type { Metadata } from 'next';
 import Image from 'next/image';
+import { Markdown } from '../../components/shared/Markdown';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
 
-export const metadata = {
+export const metadata: Metadata = {
     title: 'Suncokreti',
     description: 'Sve što trebaš znati o suncokretima.',
 };
@@ -24,13 +26,18 @@ const sectionsData: SectionData[] = [
             },
             {
                 header: 'Kako skupljam suncokrete?',
-                description:
-                    'Suncokrete dobiješ prilikom registracije, redovnim posjetima svog vrta, te za svaku odrađenu akciju u vrtu. Također, za svaku kupnju od 1€ dobivaš 🌻 10.',
+                description: (
+                    <Markdown>
+                        {
+                            'Suncokrete dobiješ prilikom registracije, redovnim posjetima svog vrta, te za svaku odrađenu akciju u vrtu. Također, za svaku kupnju od 1€ dobivaš 🌻10.\n\nUjedno, posjeti svoj vrt svaki dan i uvijek će te čekati novi 🌻.'
+                        }
+                    </Markdown>
+                ),
             },
             {
                 header: 'Za što se mogu koristiti suncokreti?',
                 description:
-                    'Suncokrete možeš koristiti za ukrašavanje svog vrta te brigu o gredicama i biljkama. Suncokrete možeš koristiti umjesto plaćanja pojedinih akcija. 1€ je jednako 🌻 1000 prilikom korištenja za akcije u svom vrtu.',
+                    'Suncokrete možeš koristiti za ukrašavanje svog vrta te brigu o gredicama i biljkama. Suncokrete možeš koristiti umjesto plaćanja pojedinih akcija. 🌻1000 je jednako 1€ prilikom korištenja za akcije ili kupnju biljaka u svom vrtu.',
             },
         ],
     },
@@ -41,7 +48,7 @@ export default function SunflowersPage() {
         <Stack>
             <PageHeader
                 header="Suncokreti"
-                subHeader={`Sakupljaj suncokrete i koristi ih u svom vrtu za uređenje i dekoraciju ili kupnju novih biljaka 🌱`}
+                subHeader={`Sakupljaj i koristi suncokrete za uređenje i dekoraciju vrta ili kupnju i brigu o svojim biljkama 🌱`}
                 padded
                 visual={
                     <Image
