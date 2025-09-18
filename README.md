@@ -1,12 +1,35 @@
-# gredice
+<p align="center">
+  <img src="assets/brand/gredice-logotype.svg" alt="Gredice logo" width="320">
+</p>
+
+<p align="center">
+  Tools for growing thriving gardens through collaborative planning, simulation, and automation.
+</p>
+
+---
+
+## Overview
+
+Gredice is a Turborepo monorepo that powers the entire Gredice platform. It includes multiple Next.js applications (`www`, `garden`, `farm`, `app`, and `api`) plus shared packages and assets that bring the experience together. Clone the repo to explore the user-facing products, APIs, and infrastructure that help modular gardens thrive.
+
+## Table of Contents
+
+- [Development](#development)
+  - [Prerequisites](#prerequisites)
+  - [Quick start](#quick-start)
+  - [Environment variables](#environment-variables)
+  - [API reference](#api-reference)
+- [Database migrations](#database-migrations)
+- [Assets workflow](#assets-workflow)
+  - [Regenerating the game assets GLB file](#regenerating-the-game-assets-glb-file)
+  - [Adding a new entity](#adding-a-new-entity)
+- [Specification Driven Development](#specification-driven-development)
+  - [Creating a new feature](#creating-a-new-feature)
+  - [What we changed from default Spec Kit behavior](#what-we-changed-from-default-spec-kit-behavior)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Development
-
-### API
-
-See [API Reference](https://api.gredice.com) for the official API documentation.
-
-You can use the API to interact with the Gredice platform, including managing your garden, farm, and other app-related features. Feel free to explore the API endpoints and integrate them into your applications.
 
 ### Prerequisites
 
@@ -14,103 +37,98 @@ You can use the API to interact with the Gredice platform, including managing yo
 - [pnpm](https://pnpm.io/)
 - [Vercel CLI](https://vercel.com/download)
 
-### Getting Started
+### Quick start
 
 1. Clone the repository:
 
-```bash
-git clone https://github.com/gredice/gredice.git
-```
+   ```bash
+   git clone https://github.com/gredice/gredice.git
+   cd gredice
+   ```
 
 2. Install the dependencies:
 
-```bash
-pnpm i
-```
+   ```bash
+   pnpm install
+   ```
 
-3. Pull environment variables
+3. Pull environment variables for each application (see below).
 
-For each application, you need to pull the environment variables from Vercel. You can do this by running the following command in `apps/<app-name>` directory:
+4. Start the development server from the project root:
+
+   ```bash
+   pnpm dev
+   ```
+
+### Environment variables
+
+Use the Vercel CLI to pull the environment variables for each application by running the following command inside the `apps/<app-name>` directory:
 
 ```bash
 vercel env pull .env.development.local
 ```
 
-`<app-name>` is the name of the application you want to pull the environment variables for. One of:
+`<app-name>` can be any of `www`, `garden`, `farm`, or `app`.
 
-- `www`
-- `garden`
-- `farm`
-- `app`
-
-If you are running the command for the first time on yhe development machine, make sure you are logged in to Vercel CLI. You can do this by running:
+If you are running the command for the first time on the development machine, make sure you are logged in to the Vercel CLI and that the project is linked:
 
 ```bash
 vercel login
-```
-
-After that, you need to link the project to the Vercel project. You can do this by running in `apps/<app-name>` directory:
-
-```bash
 vercel link
 ```
 
-You can then proceed with pulling the environment variables.
+After logging in and linking, you can proceed with pulling the environment variables for the applications you need.
 
-4. Start the development server in project root:
+### API reference
 
-```bash
-pnpm dev
-```
+See the [API Reference](https://api.gredice.com) for the official documentation. You can use the API to interact with the Gredice platform, manage gardens and farms, and integrate Gredice capabilities into your own applications.
 
-### Database migrations
+## Database migrations
 
-To manage and run database migrations in development:
+Use the workspace scripts to manage migrations during development:
 
-1. Generate new migrations (if you have made schema changes):
+1. Generate new migrations after making schema changes:
 
-```bash
-pnpm db-generate
-```
+   ```bash
+   pnpm db-generate
+   ```
 
-2. Apply migrations to your database (database connection string must be set in the environment variables):
+2. Apply migrations to your local database (requires the connection string in your environment):
 
-```bash
-pnpm db-push
-```
+   ```bash
+   pnpm db-push
+   ```
 
-These commands use the monorepo's Turbo tasks to run the appropriate migration scripts in the relevant packages (typically in `packages/storage`).
+These commands leverage the monorepo's Turbo tasks to execute the appropriate migration scripts in the relevant packages (typically `packages/storage`).
 
-- Use `pnpm db-generate` after making changes to your database schema to generate new migration files.
-- Use `pnpm db-push` to apply all pending migrations database (connection string must be set in the environment variables).
+- Run `pnpm db-generate` whenever you adjust the database schema to create new migration files.
+- Run `pnpm db-push` to apply all pending migrations to your database once the environment variables are configured.
 
-## Assets
+## Assets workflow
 
-Make sure you are the only one editing the game assets file. If you are not, please contact the person who is currently editing the file so you can coordinate the changes after they are done and changes are merged.
+Coordinate with teammates before editing the shared game asset files. Only one person should export changes at a time to avoid conflicting updates.
 
 ### Regenerating the game assets GLB file
 
-Run the following command in the project `/assets` directory:
+Run the following command in the project `assets/` directory:
 
 ```bash
 ./export.sh
 ```
 
-This will generate a new `game-assets.glb` file in the `/apps/garden/public/assets/models` directory.
+This generates a new `game-assets.glb` file in `apps/garden/public/assets/models`.
 
-### Adding new entity
+### Adding a new entity
 
-Use [https://gltf.pmnd.rs/](https://gltf.pmnd.rs/) to convert the GLTF file assets to a Three.js compatible components.
+Use [https://gltf.pmnd.rs/](https://gltf.pmnd.rs/) to convert GLTF assets into Three.js compatible components before integrating them into the project.
 
 ## Specification Driven Development
 
-We are using Specification Driven Development (SDD) to manage our development process. This involves creating detailed specifications for new features, planning their implementation, and breaking them down into executable tasks.
-
-We automate this process using [Spec Kit](https://github.com/github/spec-kit). The Spec Kit tool helps us generate specifications, plan implementations, and create tasks directly from our command line interface.
+We use Specification Driven Development (SDD) to plan and ship new features. Specifications describe the desired behavior, implementation notes capture how we will build it, and executable tasks track the actual work.
 
 ### Creating a new feature
 
-Fun commands in Copilot Chat in this order to create base specification, plan and tasks:
+Run these commands in Copilot Chat to generate the specification, technical plan, and task list:
 
 ```bash
 /specify <FEATURE_DESCRIPTION>
@@ -118,11 +136,13 @@ Fun commands in Copilot Chat in this order to create base specification, plan an
 /task
 ```
 
-#### What we changed from default Spec Kit behavior
+### What we changed from default Spec Kit behavior
 
-- We use GitButler for branch management, so we do not create branches in the `create-new-feature.sh` script.
+- We use GitButler for branch management, so the `create-new-feature.sh` script does not create branches.
 
 ## Contributing
+
+We welcome community contributions—check out the repository activity below and jump into issues or discussions that interest you.
 
 ![Alt](https://repobeats.axiom.co/api/embed/ba847f4d1fae06c8250692c08295602bca8de554.svg "Repobeats analytics image")
 
