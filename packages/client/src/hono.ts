@@ -3,13 +3,14 @@ import { hc, type InferResponseType } from 'hono/client';
 import { getAppUrl, getAuthHeaders } from './shared';
 
 function clientAuth() {
-    if (typeof localStorage === 'undefined') {
+    const authorization = getAuthHeaders();
+    if (!authorization) {
         return {};
     }
 
     return {
         headers: {
-            authorization: getAuthHeaders() ?? '',
+            authorization,
         },
     };
 }
