@@ -120,6 +120,7 @@ function SunflowersAmount() {
                 <Button
                     variant="plain"
                     title="Suncokreti"
+                    data-sunflowers-hud-target
                     startDecorator={
                         <Image
                             src="https://cdn.gredice.com/sunflower-large.svg"
