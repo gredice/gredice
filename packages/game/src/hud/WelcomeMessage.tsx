@@ -1,20 +1,20 @@
 'use client';
 
-import { client } from '@gredice/client';
-import { Navigate } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useClaimDailyReward } from '../hooks/useClaimDailyReward';
-import { currentAccountKeys } from '../hooks/useCurrentAccount';
 import { useCurrentUser } from '../hooks/useCurrentUser';
-import { dailyRewardKeys, useDailyReward } from '../hooks/useDailyReward';
+import { useDailyReward } from '../hooks/useDailyReward';
 import { useGameAudio } from '../hooks/useGameAudio';
+import {
+    AnimateFlyToItem,
+    useAnimateFlyToSunflowersHud,
+} from '../indicators/AnimateFlyTo';
 import { useGameState } from '../useGameState';
 
 const messageTypes = {
@@ -50,41 +50,35 @@ export function WelcomeMessage() {
     const { data: currentUser } = useCurrentUser();
     const { data: dailyReward } = useDailyReward();
     const claimDailyReward = useClaimDailyReward();
-
-    const show = useMemo(() => {
-        if (!currentUser) return false;
-
-        let showWelcomeMessage = false;
-        const now = new Date();
-
-        // Today 6am (yesterday if before 6am)
-        const today6am = new Date(now);
-        today6am.setHours(6, 0, 0, 0);
-        if (now < today6am) {
-            today6am.setDate(today6am.getDate() - 1);
+    const shouldShow = Boolean(currentUser && dailyReward?.canClaim);
+    const [open, setOpen] = useState(shouldShow);
+    const [isClosing, setIsClosing] = useState(false);
+    const previousShouldShow = useRef(shouldShow);
+    const closeTimeoutRef = useRef<number | null>(null);
+    useEffect(() => {
+        if (shouldShow && !previousShouldShow.current) {
+            setOpen(true);
         }
 
-        const lastSeenStr = localStorage.getItem('welcomeMessageLastSeen');
-        if (!lastSeenStr) {
-            showWelcomeMessage = true;
-        } else {
-            const lastSeenDate = new Date(lastSeenStr);
-            if (lastSeenDate < today6am && now >= today6am) {
-                showWelcomeMessage = true;
+        if (!shouldShow) {
+            setOpen(false);
+            setIsClosing(false);
+            if (closeTimeoutRef.current !== null) {
+                window.clearTimeout(closeTimeoutRef.current);
+                closeTimeoutRef.current = null;
             }
         }
 
-        if (showWelcomeMessage) {
-            localStorage.setItem(
-                'welcomeMessageLastSeen',
-                today6am.toISOString(),
-            );
-        }
-
-        return showWelcomeMessage;
-    }, [currentUser]);
-
-    const [open, setOpen] = useState(show);
+        previousShouldShow.current = shouldShow;
+    }, [shouldShow]);
+    useEffect(() => {
+        return () => {
+            if (closeTimeoutRef.current !== null) {
+                window.clearTimeout(closeTimeoutRef.current);
+                closeTimeoutRef.current = null;
+            }
+        };
+    }, []);
     const { resumeIfNeeded } = useGameAudio();
     function handleOpenChange(newOpen: boolean) {
         setOpen(newOpen);
@@ -93,6 +87,27 @@ export function WelcomeMessage() {
             claimDailyReward.mutate();
         }
     }
+
+    const animationDuration = 800;
+    const animateSunflowerReward = useAnimateFlyToSunflowersHud({
+        duration: animationDuration,
+    });
+
+    const handleStart = () => {
+        if (isClosing) {
+            return;
+        }
+
+        if (dailyReward?.canClaim) {
+            animateSunflowerReward.run();
+        }
+
+        setIsClosing(true);
+        closeTimeoutRef.current = window.setTimeout(() => {
+            closeTimeoutRef.current = null;
+            handleOpenChange(false);
+        }, animationDuration + 50);
+    };
 
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const isDay = timeOfDay > 0.2 && timeOfDay < 0.8;
@@ -111,12 +126,18 @@ export function WelcomeMessage() {
     }
     const messages = messageTypes[messageType];
 
+    if (!shouldShow && !open) {
+        return null;
+    }
+
     return (
         <Modal
             title={title}
             open={open}
             onOpenChange={handleOpenChange}
             className="max-w-screen-md border-tertiary border-b-4"
+            hideClose
+            dismissible={false}
         >
             <div className="grid md:grid-cols-2 [grid-template-areas:'sunflower'_'content'] md:[grid-template-areas:'content_sunflower'] md:p-4 gap-4">
                 <Stack spacing={3} className="[grid-area:content]">
@@ -157,11 +178,22 @@ export function WelcomeMessage() {
                     <Button
                         variant="solid"
                         endDecorator={
-                            <Navigate className="size-5 animate-pulse" />
+                            dailyReward && (
+                                <AnimateFlyToItem
+                                    {...animateSunflowerReward.props}
+                                    className="flex items-center gap-1 font-semibold text-yellow-500 dark:text-yellow-100"
+                                >
+                                    <span>{`+${dailyReward.current.amount}`}</span>
+                                    <span role="img" aria-hidden>
+                                        🌻
+                                    </span>
+                                </AnimateFlyToItem>
+                            )
                         }
-                        onClick={() => handleOpenChange(false)}
+                        onClick={handleStart}
+                        disabled={claimDailyReward.isPending || isClosing}
                     >
-                        Kreni u avanturu
+                        Kreni
                     </Button>
                 </Stack>
                 <div className="w-full h-full rounded-3xl bg-card flex flex-row items-end justify-center [grid-area:sunflower]">
