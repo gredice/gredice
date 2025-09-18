@@ -65,10 +65,9 @@ function SunflowersCard() {
                         />
                         <Stack spacing={2}>
                             <Typography level="body2">
-                                Suncokreti su vrsta bodova na tvom Gredice
-                                racunu koje dobiva za razne radnje i pomocu
-                                kojih mozes uciniti svoj vrt sto lijepsim i
-                                zdravijim.
+                                Sakupljaj i koristi suncokrete za uređenje i
+                                dekoraciju vrta ili kupnju i brigu o svojim
+                                biljkama 🌱
                             </Typography>
                             <Button
                                 variant="solid"
