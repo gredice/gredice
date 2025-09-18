@@ -1,14 +1,14 @@
 'use client';
 
 import { Button } from '@signalco/ui-primitives/Button';
-import { Card } from '@signalco/ui-primitives/Card';
+import { Card, CardContent } from '@signalco/ui-primitives/Card';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { useClaimDailyReward } from '../hooks/useClaimDailyReward';
-import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useDailyReward } from '../hooks/useDailyReward';
 import { useGameAudio } from '../hooks/useGameAudio';
 import {
@@ -47,10 +47,9 @@ const messageTypes = {
 };
 
 export function WelcomeMessage() {
-    const { data: currentUser } = useCurrentUser();
     const { data: dailyReward } = useDailyReward();
     const claimDailyReward = useClaimDailyReward();
-    const shouldShow = Boolean(currentUser && dailyReward?.canClaim);
+    const shouldShow = Boolean(dailyReward?.canClaim);
     const [open, setOpen] = useState(shouldShow);
     const [isClosing, setIsClosing] = useState(false);
     const previousShouldShow = useRef(shouldShow);
@@ -80,13 +79,6 @@ export function WelcomeMessage() {
         };
     }, []);
     const { resumeIfNeeded } = useGameAudio();
-    function handleOpenChange(newOpen: boolean) {
-        setOpen(newOpen);
-        resumeIfNeeded();
-        if (!newOpen && dailyReward?.canClaim) {
-            claimDailyReward.mutate();
-        }
-    }
 
     const animationDuration = 800;
     const animateSunflowerReward = useAnimateFlyToSunflowersHud({
@@ -105,7 +97,11 @@ export function WelcomeMessage() {
         setIsClosing(true);
         closeTimeoutRef.current = window.setTimeout(() => {
             closeTimeoutRef.current = null;
-            handleOpenChange(false);
+            setOpen(false);
+            resumeIfNeeded();
+            if (dailyReward?.canClaim) {
+                claimDailyReward.mutate();
+            }
         }, animationDuration + 50);
     };
 
@@ -134,7 +130,6 @@ export function WelcomeMessage() {
         <Modal
             title={title}
             open={open}
-            onOpenChange={handleOpenChange}
             className="max-w-screen-md border-tertiary border-b-4"
             hideClose
             dismissible={false}
@@ -152,48 +147,56 @@ export function WelcomeMessage() {
                         ))}
                         {dailyReward && (
                             <Card>
-                                <Typography
-                                    level="body1"
-                                    className="text-md font-semibold"
-                                    component="span"
-                                >
-                                    {`Dan ${
-                                        dailyReward.current.day >= 7
-                                            ? '7+'
-                                            : dailyReward.current.day
-                                    }`}
-                                </Typography>
-                                <Typography level="body1" gutterBottom>
-                                    {`Danas dobivaš ${
-                                        dailyReward.current.amount
-                                    } 🌻 za dnevnu aktivnost.`}
-                                </Typography>
-                                <Typography level="body3">
-                                    ✨ Posjeti svoj vrt svaki dan i skupljaj
-                                    suncokrete!
-                                </Typography>
+                                <CardContent noHeader>
+                                    <Typography
+                                        level="body1"
+                                        className="text-md font-semibold"
+                                        component="span"
+                                    >
+                                        {`Dan ${
+                                            dailyReward.current.day >= 7
+                                                ? '7+'
+                                                : dailyReward.current.day
+                                        }`}
+                                    </Typography>
+                                    <Typography level="body1" gutterBottom>
+                                        {`Danas dobivaš 🌻${
+                                            dailyReward.current.amount
+                                        } za dnevnu aktivnost.`}
+                                    </Typography>
+                                    <Typography level="body3">
+                                        ✨ Posjeti svoj vrt svaki dan i skupljaj
+                                        suncokrete!
+                                    </Typography>
+                                </CardContent>
                             </Card>
                         )}
                     </Stack>
                     <Button
                         variant="solid"
-                        endDecorator={
-                            dailyReward && (
+                        className="grid grid-cols-[1fr_auto_1fr] py-0"
+                        onClick={handleStart}
+                        disabled={claimDailyReward.isPending || isClosing}
+                    >
+                        <span></span>
+                        <span>Kreni u avanturu</span>
+                        {dailyReward ? (
+                            <Chip
+                                color="success"
+                                className="w-fit justify-self-end"
+                            >
                                 <AnimateFlyToItem
                                     {...animateSunflowerReward.props}
-                                    className="flex items-center gap-1 font-semibold text-yellow-500 dark:text-yellow-100"
                                 >
                                     <span>{`+${dailyReward.current.amount}`}</span>
                                     <span role="img" aria-hidden>
                                         🌻
                                     </span>
                                 </AnimateFlyToItem>
-                            )
-                        }
-                        onClick={handleStart}
-                        disabled={claimDailyReward.isPending || isClosing}
-                    >
-                        Kreni
+                            </Chip>
+                        ) : (
+                            <span></span>
+                        )}
                     </Button>
                 </Stack>
                 <div className="w-full h-full rounded-3xl bg-card flex flex-row items-end justify-center [grid-area:sunflower]">
