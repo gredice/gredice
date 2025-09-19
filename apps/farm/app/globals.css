@@ -1,1 +1,121 @@
-@import "@signalco/ui-themes-minimal-app/styles";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        interpolate-size: allow-keywords;
+        --background: 28 76.5% 98%;
+        --foreground: 28 47.4% 11.2%;
+
+        --muted: 28 40% 96.1%;
+        --muted-foreground: 28 16.3% 46.9%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: 28 47.4% 11.2%;
+
+        --card: 0 0% 100%;
+        --card-transparent: 0 0% 100%;
+        --card-foreground: 28 47.4% 11.2%;
+
+        --border: 28 31.8% 91.4%;
+        --input: 28 31.8% 91.4%;
+
+        --primary: 28 47.4% 11.2%;
+        --primary-foreground: 28 40% 98%;
+
+        --secondary: 28 40% 96.1%;
+        --secondary-foreground: 28 35.4% 30%;
+
+        --tertiary: 28 40% 80.1%;
+        --tertiary-foreground: 28 20% 40%;
+
+        --accent: 28 40% 90.1%;
+        --accent-foreground: 28 47.4% 11.2%;
+
+        --destructive: 0 100% 50%;
+        --destructive-foreground: 210 40% 98%;
+
+        --ring: 28 20.2% 65.1%;
+
+        --radius: 0.5rem;
+
+        --light-display: visible;
+        --dark-display: none;
+
+        --bg-selection: hsl(137, 40%, 24%);
+        --text-selection: #fff;
+    }
+
+    .dark {
+        --hue: 212;
+        --hue-primary: 212;
+        --hue-foreground: 212;
+
+        --background: var(--hue) 16% 19%;
+        --foreground: var(--hue) 47% 92%;
+
+        --muted: var(--hue-primary) 16% 10%;
+        --muted-foreground: var(--hue-foreground) 16% 98%;
+
+        --popover: var(--hue) 16% 19%;
+        --popover-foreground: var(--hue-foreground) 47% 89%;
+
+        --card: var(--hue) 16% 10%;
+        --card-transparent: var(--hue) 0% 0%;
+        --card-foreground: var(--hue-foreground) 17% 92%;
+
+        --border: var(--hue) 16% 25%;
+        --input: var(--hue) 31% 9%;
+
+        --primary: var(--hue-primary) 16% 98%;
+        --primary-foreground: var(--hue) 40% 20%;
+
+        --secondary: var(--hue) 47% 25%;
+        --secondary-foreground: var(--hue) 10% 70%;
+
+        --tertiary: var(--hue) 16% 10%;
+        --tertiary-foreground: var(--hue-foreground) 10% 65%;
+
+        --accent: var(--hue-primary) 20% 25%;
+        --accent-foreground: var(--hue-foreground) 47% 92%;
+
+        --destructive: 0 100% 50%;
+        --destructive-foreground: 210 40% 98%;
+
+        --ring: var(--hue) 20% 65%;
+
+        --radius: 0.5rem;
+
+        --light-display: visible;
+        --dark-display: none;
+
+        --bg-selection: hsl(137, 40%, 90%);
+        --text-selection: #000;
+    }
+
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+        font-feature-settings:
+            "rlig" 1,
+            "calt" 1;
+    }
+
+    button,
+    [role="button"] {
+        @apply cursor-auto;
+    }
+
+    ::selection {
+        background: var(--bg-selection);
+        color: var(--text-selection);
+    }
+}
+
+svg.lucide {
+    stroke-width: 1.75px;
+}
