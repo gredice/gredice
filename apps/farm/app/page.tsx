@@ -66,7 +66,7 @@ async function FarmerDashboard() {
     return (
         <div className="max-w-5xl mx-auto w-full px-4 py-10 space-y-6">
             <div className="rounded-2xl border border-primary/20 bg-primary/5 shadow-sm p-6 space-y-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex gap-4 flex-row items-start justify-between">
                     <div className="space-y-2">
                         <Typography level="h1" className="text-3xl" semiBold>
                             {`Dobrodošli, ${displayName}!`}
@@ -92,6 +92,29 @@ async function FarmerDashboard() {
                 </div>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
+                <Card className="h-full">
+                    <CardHeader>
+                        <Stack spacing={1}>
+                            <CardTitle>Brze radnje</CardTitle>
+                            <Typography className="text-sm text-muted-foreground">
+                                Alati za svakodnevno upravljanje farmom stižu
+                                uskoro.
+                            </Typography>
+                        </Stack>
+                    </CardHeader>
+                    <CardOverflow>
+                        <Stack spacing={2} className="p-4">
+                            <Button
+                                variant="solid"
+                                size="lg"
+                                className="justify-start"
+                                startDecorator={<Calendar className="size-4" />}
+                            >
+                                Pregled dnevnih zadataka
+                            </Button>
+                        </Stack>
+                    </CardOverflow>
+                </Card>
                 <Card className="h-full">
                     <CardHeader>
                         <Stack spacing={1}>
@@ -138,49 +161,6 @@ async function FarmerDashboard() {
                                 lokaciju.
                             </div>
                         )}
-                    </CardOverflow>
-                </Card>
-                <Card className="h-full">
-                    <CardHeader>
-                        <Stack spacing={1}>
-                            <CardTitle>Brze radnje</CardTitle>
-                            <Typography className="text-sm text-muted-foreground">
-                                Alati za svakodnevno upravljanje farmom stižu
-                                uskoro.
-                            </Typography>
-                        </Stack>
-                    </CardHeader>
-                    <CardOverflow>
-                        <Stack spacing={2} className="p-4">
-                            <Button
-                                variant="soft"
-                                className="justify-start"
-                                disabled
-                                startDecorator={<Sprout className="size-4" />}
-                            >
-                                Planiraj novu sadnju
-                            </Button>
-                            <Button
-                                variant="soft"
-                                className="justify-start"
-                                disabled
-                                startDecorator={<Droplets className="size-4" />}
-                            >
-                                Postavi raspored navodnjavanja
-                            </Button>
-                            <Button
-                                variant="soft"
-                                className="justify-start"
-                                disabled
-                                startDecorator={<Calendar className="size-4" />}
-                            >
-                                Pregled dnevnih zadataka
-                            </Button>
-                            <Typography className="text-xs text-muted-foreground pt-2">
-                                Više mogućnosti za upravljanje farmom bit će
-                                dostupno uskoro.
-                            </Typography>
-                        </Stack>
                     </CardOverflow>
                 </Card>
             </div>

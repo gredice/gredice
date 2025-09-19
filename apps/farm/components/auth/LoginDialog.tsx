@@ -8,6 +8,7 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useActionState } from 'react';
 import { queryClient } from '../providers/ClientAppProvider';
@@ -63,6 +64,14 @@ export function LoginDialog() {
 
     return (
         <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-primary/10 via-transparent to-success/10 p-4">
+            <Image
+                src="/login-bg.webp"
+                alt="Pozadina"
+                fill
+                className="object-cover"
+                quality={100}
+                priority
+            />
             <Modal
                 open
                 dismissible={false}
@@ -73,11 +82,11 @@ export function LoginDialog() {
                 <Stack spacing={4}>
                     <Stack spacing={1}>
                         <Typography level="h3" className="text-2xl" semiBold>
-                            Dobrodošli natrag
+                            Dobrodošli
                         </Typography>
                         <Typography className="text-muted-foreground">
                             Prijavi se s Gredice računom kako bi upravljao
-                            farmom.
+                            svojom farmom.
                         </Typography>
                     </Stack>
                     <form action={submitAction} className="space-y-4">
