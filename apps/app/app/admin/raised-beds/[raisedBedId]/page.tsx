@@ -11,6 +11,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { NotificationsTableCard } from '../../../../components/notifications/NotificationsTableCard';
+import { RaisedBedEventsTable } from '../../../../components/raised-beds/RaisedBedEventsTable';
 import { RaisedBedFieldsTable } from '../../../../components/raised-beds/RaisedBedFieldsTable';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
@@ -84,6 +85,16 @@ export default async function RaisedBedPage({
                     <CardOverflow>
                         <Suspense>
                             <RaisedBedFieldsTable raisedBedId={raisedBed.id} />
+                        </Suspense>
+                    </CardOverflow>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Događaji</CardTitle>
+                    </CardHeader>
+                    <CardOverflow>
+                        <Suspense>
+                            <RaisedBedEventsTable raisedBedId={raisedBed.id} />
                         </Suspense>
                     </CardOverflow>
                 </Card>
