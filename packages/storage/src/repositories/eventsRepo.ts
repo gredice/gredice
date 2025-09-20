@@ -472,3 +472,7 @@ export function createEvent({ type, version, aggregateId, data }: Event) {
         data,
     });
 }
+
+export function deleteEventById(eventId: number) {
+    return storage().delete(events).where(eq(events.id, eventId));
+}
