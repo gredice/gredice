@@ -20,6 +20,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
     [knownEventTypes.raisedBedFields.delete]: 'Polje obrisano',
     [knownEventTypes.raisedBedFields.plantPlace]: 'Biljka postavljena',
     [knownEventTypes.raisedBedFields.plantUpdate]: 'Biljka ažurirana',
+    [knownEventTypes.raisedBedFields.plantReplaceSort]: 'Biljka promijenjena',
 };
 
 type StorageEvent = Awaited<ReturnType<typeof getEvents>>[number];
@@ -33,6 +34,7 @@ const EVENT_TYPES = [
     knownEventTypes.raisedBedFields.delete,
     knownEventTypes.raisedBedFields.plantPlace,
     knownEventTypes.raisedBedFields.plantUpdate,
+    knownEventTypes.raisedBedFields.plantReplaceSort,
 ];
 
 function parseDateValue(value: unknown): Date | null {

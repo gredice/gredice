@@ -88,16 +88,6 @@ export default async function RaisedBedPage({
                         </Suspense>
                     </CardOverflow>
                 </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Događaji</CardTitle>
-                    </CardHeader>
-                    <CardOverflow>
-                        <Suspense>
-                            <RaisedBedEventsTable raisedBedId={raisedBed.id} />
-                        </Suspense>
-                    </CardOverflow>
-                </Card>
                 {raisedBed.accountId && raisedBed.gardenId && (
                     <>
                         <OperationsTableCard
@@ -112,6 +102,16 @@ export default async function RaisedBedPage({
                         />
                     </>
                 )}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Događaji</CardTitle>
+                    </CardHeader>
+                    <CardOverflow>
+                        <Suspense>
+                            <RaisedBedEventsTable raisedBedId={raisedBed.id} />
+                        </Suspense>
+                    </CardOverflow>
+                </Card>
             </div>
         </Stack>
     );
