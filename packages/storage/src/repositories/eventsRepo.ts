@@ -45,6 +45,7 @@ export const knownEventTypes = {
         delete: 'raisedBedField.delete',
         plantPlace: 'raisedBedField.plantPlace',
         plantUpdate: 'raisedBedField.plantUpdate',
+        plantReplaceSort: 'raisedBedField.plantReplaceSort',
     },
     operations: {
         schedule: 'operation.schedule',
@@ -291,6 +292,15 @@ export const knownEvents = {
         }),
         plantUpdateV1: (aggregateId: string, data: { status: string }) => ({
             type: knownEventTypes.raisedBedFields.plantUpdate,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        plantReplaceSortV1: (
+            aggregateId: string,
+            data: { plantSortId: string },
+        ) => ({
+            type: knownEventTypes.raisedBedFields.plantReplaceSort,
             version: 1,
             aggregateId,
             data,

@@ -419,6 +419,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             knownEventTypes.raisedBedFields.delete,
             knownEventTypes.raisedBedFields.plantPlace,
             knownEventTypes.raisedBedFields.plantUpdate,
+            knownEventTypes.raisedBedFields.plantReplaceSort,
         ],
         fieldAggregateIds,
         0,
@@ -503,6 +504,12 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
 
                     // Don't process any newer events for this field
                     break;
+                }
+            } else if (
+                event.type === knownEventTypes.raisedBedFields.plantReplaceSort
+            ) {
+                if (data?.plantSortId && typeof data.plantSortId === 'string') {
+                    plantSortId = parseInt(data.plantSortId, 10);
                 }
             }
             // else if (event.type === knownEventTypes.raisedBedFields.operationOrder) {
@@ -679,6 +686,7 @@ export async function getRaisedBedFieldDiaryEntries(
                 knownEventTypes.raisedBedFields.create,
                 knownEventTypes.raisedBedFields.plantPlace,
                 knownEventTypes.raisedBedFields.plantUpdate,
+                knownEventTypes.raisedBedFields.plantReplaceSort,
                 knownEventTypes.raisedBedFields.delete,
             ],
             [`${raisedBedId.toString()}|${positionIndex.toString()}`],
@@ -725,6 +733,11 @@ export async function getRaisedBedFieldDiaryEntries(
                     const statusLabels = plantFieldStatusLabel(newStatus);
                     name = statusLabels.label;
                     description = statusLabels.description;
+                    break;
+                }
+                case knownEventTypes.raisedBedFields.plantReplaceSort: {
+                    name = 'Zamjena sorte biljke';
+                    description = 'Za biljku je zamjenjena navedena sorta.';
                     break;
                 }
                 case knownEventTypes.raisedBedFields.delete: {
