@@ -1,8 +1,8 @@
 'use client';
 
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
 import { raisedBedFieldUpdatePlant } from '../../../(actions)/raisedBedFieldsActions';
-import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 
 type RaisedBedFieldPlantSortSelectorProps = {
     raisedBedId: number;
@@ -19,13 +19,15 @@ export function RaisedBedFieldPlantSortSelector({
     plantSortId,
     plantSorts,
 }: RaisedBedFieldPlantSortSelectorProps) {
-    const items = plantSorts.map((sort) => ({
-        value: sort.id.toString(),
-        label:
-            sort.information?.label ??
-            sort.information?.name ??
-            `Biljka ${sort.id}`,
-    }));
+    const items = plantSorts
+        .map((sort) => ({
+            value: sort.id.toString(),
+            label:
+                sort.information?.label ??
+                sort.information?.name ??
+                `Biljka ${sort.id}`,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
 
     if (
         plantSortId &&
@@ -50,7 +52,7 @@ export function RaisedBedFieldPlantSortSelector({
             return;
         }
 
-        void raisedBedFieldUpdatePlant({
+        raisedBedFieldUpdatePlant({
             raisedBedId,
             positionIndex,
             status: status ?? undefined,

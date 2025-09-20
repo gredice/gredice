@@ -54,9 +54,8 @@ export async function raisedBedFieldUpdatePlant({
     );
     if (plantSortId && existingField?.plantSortId !== plantSortId) {
         await createEvent(
-            knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+            knownEvents.raisedBedFields.plantReplaceSortV1(aggregateId, {
                 plantSortId: plantSortId.toString(),
-                scheduledDate: null,
             }),
         );
     }
