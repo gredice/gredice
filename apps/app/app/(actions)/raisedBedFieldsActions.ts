@@ -37,7 +37,7 @@ export async function raisedBedFieldUpdatePlant({
 }: {
     raisedBedId: number;
     positionIndex: number;
-    status: string;
+    status?: string;
     plantSortId?: number;
 }) {
     await auth(['admin']);
@@ -61,14 +61,16 @@ export async function raisedBedFieldUpdatePlant({
         );
     }
 
-    await createEvent(
-        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
-            status: status,
-        }),
-    );
+    if (status) {
+        await createEvent(
+            knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                status: status,
+            }),
+        );
+    }
 
     const sortIdToUse = plantSortId ?? existingField?.plantSortId;
-    if (sortIdToUse) {
+    if (sortIdToUse && status) {
         const sortData =
             await getEntityFormatted<EntityStandardized>(sortIdToUse);
         if (sortData) {
@@ -123,7 +125,7 @@ export async function raisedBedFieldUpdatePlant({
                 `No plant sort data found for raised bed ${raisedBedId} at position ${positionIndex}.`,
             );
         }
-    } else {
+    } else if (status && !sortIdToUse) {
         console.warn(
             `No plant sort found for raised bed ${raisedBedId} at position ${positionIndex}.`,
         );

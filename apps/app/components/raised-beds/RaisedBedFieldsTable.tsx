@@ -4,6 +4,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { RaisedBedFieldPlantSortSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantSortSelector';
 import { RaisedBedFieldPlantStatusSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantStatusSelector';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
@@ -41,16 +42,19 @@ export async function RaisedBedFieldsTable({
                 {fields
                     ?.sort((fa, fb) => fa.positionIndex - fb.positionIndex)
                     .map((field) => {
-                        const sortData = sortsData?.find(
-                            (sort) => sort.id === field.plantSortId,
-                        );
                         return (
                             <Table.Row key={field.id}>
                                 <Table.Cell>
                                     {field.positionIndex + 1}
                                 </Table.Cell>
                                 <Table.Cell>
-                                    {sortData?.information?.name}
+                                    <RaisedBedFieldPlantSortSelector
+                                        raisedBedId={raisedBedId}
+                                        positionIndex={field.positionIndex}
+                                        status={field.plantStatus ?? null}
+                                        plantSortId={field.plantSortId}
+                                        plantSorts={sortsData ?? []}
+                                    />
                                 </Table.Cell>
                                 <Table.Cell>
                                     {field.plantStatus ? (
