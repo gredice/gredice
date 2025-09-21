@@ -1,10 +1,12 @@
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
+import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Check } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useEffect } from 'react';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import { useGameState } from '../useGameState';
@@ -13,6 +15,10 @@ import { RaisedBedFieldSuggestions } from './raisedBed/RaisedBedFieldSuggestions
 import { RaisedBedInfo } from './raisedBed/RaisedBedInfo';
 import { RaisedBedSensorInfo } from './raisedBed/RaisedBedSensorInfo';
 import { RaisedBedWatering } from './raisedBed/RaisedBedWatering';
+
+function normalizeRaisedBedName(value?: string | null) {
+    return value?.trim() ?? '';
+}
 
 export function RaisedBedFieldHud(_props: {
     flags?: {
@@ -28,6 +34,154 @@ export function RaisedBedFieldHud(_props: {
     const view = useGameState((state) => state.view);
     const setView = useGameState((state) => state.setView);
     const closeupBlock = useGameState((state) => state.closeupBlock);
+    const [raisedBedParam, setRaisedBedParam] = useSearchParam('gredica');
+    const [fieldParam, setRaisedBedFieldParam] = useSearchParam('polje');
+
+    useEffect(() => {
+        if (!currentGarden) {
+            return;
+        }
+
+        if (view !== 'closeup') {
+            if (raisedBedParam) {
+                setRaisedBedParam(undefined);
+            }
+            if (fieldParam) {
+                setRaisedBedFieldParam(undefined);
+            }
+            return;
+        }
+
+        if (!closeupBlock) {
+            return;
+        }
+
+        const raisedBedForBlock = currentGarden.raisedBeds.find(
+            (bed) => bed.blockId === closeupBlock.id,
+        );
+        const nextParam = normalizeRaisedBedName(raisedBedForBlock?.name);
+
+        if (!raisedBedForBlock || !nextParam) {
+            if (raisedBedParam) {
+                setRaisedBedParam(undefined);
+            }
+            return;
+        }
+
+        if (normalizeRaisedBedName(raisedBedParam) !== nextParam) {
+            setRaisedBedParam(nextParam);
+        }
+    }, [
+        currentGarden,
+        closeupBlock,
+        fieldParam,
+        raisedBedParam,
+        setRaisedBedFieldParam,
+        setRaisedBedParam,
+        view,
+    ]);
+
+    useEffect(() => {
+        if (!currentGarden || !raisedBedParam) {
+            return;
+        }
+
+        const trimmedRaisedBedParam = normalizeRaisedBedName(raisedBedParam);
+        if (!trimmedRaisedBedParam) {
+            setRaisedBedParam(undefined);
+            setRaisedBedFieldParam(undefined);
+            return;
+        }
+
+        const raisedBedFromName = currentGarden.raisedBeds.find((bed) =>
+            normalizeRaisedBedName(bed.name).toLocaleLowerCase('hr-HR') ===
+            trimmedRaisedBedParam.toLocaleLowerCase('hr-HR'),
+        );
+
+        let raisedBedFromParam = raisedBedFromName;
+        let shouldNormalizeLegacyParams = false;
+
+        if (!raisedBedFromParam) {
+            const raisedBedId = Number.parseInt(trimmedRaisedBedParam, 10);
+            if (!Number.isNaN(raisedBedId)) {
+                raisedBedFromParam = currentGarden.raisedBeds.find(
+                    (bed) => bed.id === raisedBedId,
+                );
+                shouldNormalizeLegacyParams = Boolean(raisedBedFromParam);
+            }
+        }
+
+        if (!raisedBedFromParam) {
+            setRaisedBedParam(undefined);
+            setRaisedBedFieldParam(undefined);
+            return;
+        }
+
+        if (shouldNormalizeLegacyParams) {
+            const normalizedName = normalizeRaisedBedName(raisedBedFromParam.name);
+            if (normalizedName) {
+                if (normalizedName !== trimmedRaisedBedParam) {
+                    setRaisedBedParam(normalizedName);
+                }
+            } else {
+                setRaisedBedParam(undefined);
+            }
+
+            if (fieldParam) {
+                const trimmedFieldParam = fieldParam.trim();
+                if (!trimmedFieldParam) {
+                    setRaisedBedFieldParam(undefined);
+                } else {
+                    const parsedFieldParam = Number.parseInt(
+                        trimmedFieldParam,
+                        10,
+                    );
+                    if (Number.isNaN(parsedFieldParam)) {
+                        setRaisedBedFieldParam(undefined);
+                    } else {
+                        const normalizedFieldIndex = parsedFieldParam - 1;
+                        if (
+                            normalizedFieldIndex >= 0 &&
+                            normalizedFieldIndex <= 8
+                        ) {
+                            const normalizedValue =
+                                normalizedFieldIndex.toString();
+                            if (normalizedValue !== trimmedFieldParam) {
+                                setRaisedBedFieldParam(normalizedValue);
+                            }
+                        } else {
+                            setRaisedBedFieldParam(undefined);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!raisedBedFromParam.blockId) {
+            return;
+        }
+
+        const block = currentGarden.stacks
+            .flatMap((stack) => stack.blocks)
+            .find((item) => item.id === raisedBedFromParam.blockId);
+        if (!block) {
+            return;
+        }
+
+        if (view !== 'closeup' || closeupBlock?.id !== block.id) {
+            setView({ view: 'closeup', block });
+        }
+    }, [
+        closeupBlock,
+        currentGarden,
+        fieldParam,
+        raisedBedParam,
+        setRaisedBedFieldParam,
+        setRaisedBedParam,
+        setView,
+        view,
+    ]);
+
     const raisedBed = currentGarden?.raisedBeds.find(
         (bed) => bed.blockId === closeupBlock?.id,
     );
@@ -110,6 +264,8 @@ export function RaisedBedFieldHud(_props: {
                 )}
                 onClick={() => {
                     setView({ view: 'normal' });
+                    setRaisedBedParam(undefined);
+                    setRaisedBedFieldParam(undefined);
                 }}
                 startDecorator={<Check className="size-5 shrink-0" />}
             >

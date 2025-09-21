@@ -33,9 +33,15 @@ import { RaisedBedFieldOperationsTab } from './RaisedBedFieldOperationsTab';
 export function RaisedBedFieldItemPlanted({
     raisedBedId,
     positionIndex,
+    isSelected,
+    onSelect,
+    onClose,
 }: {
     raisedBedId: number;
     positionIndex: number;
+    isSelected: boolean;
+    onSelect: () => void;
+    onClose: () => void;
 }) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
@@ -127,6 +133,14 @@ export function RaisedBedFieldItemPlanted({
             title={`Biljka "${plantSort.information.name}"`}
             modal={false}
             className="md:border-tertiary md:border-b-4 max-w-xl"
+            open={isSelected}
+            onOpenChange={(open) => {
+                if (open) {
+                    onSelect();
+                } else {
+                    onClose();
+                }
+            }}
             trigger={
                 <RaisedBedFieldItemButton positionIndex={positionIndex}>
                     <SegmentedCircularProgress

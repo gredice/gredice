@@ -1,6 +1,8 @@
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useEffect } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { RaisedBedFieldItemEmpty } from './RaisedBedFieldItemEmpty';
@@ -10,10 +12,16 @@ function RaisedBedFieldItem({
     gardenId,
     raisedBedId,
     positionIndex,
+    isSelected,
+    onSelect,
+    onClose,
 }: {
     raisedBedId: number;
     gardenId: number;
     positionIndex: number;
+    isSelected: boolean;
+    onSelect: () => void;
+    onClose: () => void;
 }) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
@@ -41,6 +49,9 @@ function RaisedBedFieldItem({
                 gardenId={gardenId}
                 raisedBedId={raisedBedId}
                 positionIndex={positionIndex}
+                isSelected={isSelected}
+                onSelect={onSelect}
+                onClose={onClose}
             />
         );
     }
@@ -49,6 +60,9 @@ function RaisedBedFieldItem({
         <RaisedBedFieldItemPlanted
             raisedBedId={raisedBedId}
             positionIndex={positionIndex}
+            isSelected={isSelected}
+            onSelect={onSelect}
+            onClose={onClose}
         />
     );
 }
@@ -93,6 +107,44 @@ export function RaisedBedField({
 }) {
     const { data: garden } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
+    const [fieldParam, setFieldParam] = useSearchParam('polje');
+    const trimmedFieldParam = fieldParam?.trim();
+    const parsedFieldParam =
+        trimmedFieldParam && /^[0-9]+$/.test(trimmedFieldParam)
+            ? Number.parseInt(trimmedFieldParam, 10)
+            : undefined;
+    const isFieldParamValid =
+        parsedFieldParam !== undefined &&
+        !Number.isNaN(parsedFieldParam) &&
+        parsedFieldParam >= 0 &&
+        parsedFieldParam <= 8;
+    const selectedFieldIndex = isFieldParamValid ? parsedFieldParam : null;
+
+    useEffect(() => {
+        if (fieldParam && !isFieldParamValid) {
+            setFieldParam(undefined);
+        }
+    }, [fieldParam, isFieldParamValid, setFieldParam]);
+
+    useEffect(() => {
+        if (raisedBed && !raisedBed.isValid && fieldParam) {
+            setFieldParam(undefined);
+        }
+    }, [fieldParam, raisedBed, setFieldParam]);
+
+    function handleSelectField(index: number) {
+        const nextValue = index.toString();
+        if (fieldParam !== nextValue) {
+            setFieldParam(nextValue);
+        }
+    }
+
+    function handleCloseField() {
+        if (fieldParam) {
+            setFieldParam(undefined);
+        }
+    }
+
     if (!raisedBed?.isValid) {
         return (
             <div className="flex flex-col mt-4 items-center h-full">
@@ -153,6 +205,17 @@ export function RaisedBedField({
                                     positionIndex={
                                         (2 - rowIndex) * 3 + (2 - colIndex)
                                     }
+                                    isSelected={
+                                        selectedFieldIndex ===
+                                        (2 - rowIndex) * 3 + (2 - colIndex)
+                                    }
+                                    onSelect={() =>
+                                        handleSelectField(
+                                            (2 - rowIndex) * 3 +
+                                                (2 - colIndex),
+                                        )
+                                    }
+                                    onClose={handleCloseField}
                                 />
                             </div>
                         ))}
