@@ -7,6 +7,7 @@ import {
 } from '@gredice/storage';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import {
     Card,
@@ -204,7 +205,11 @@ export default async function OperationDetailsPage({
                         <Link href={KnownPages.RaisedBed(raisedBed.id)}>
                             <Field
                                 name="Gredica"
-                                value={`Gr ${raisedBed.physicalId}`}
+                                value={
+                                    <RaisedBedLabel
+                                        physicalId={raisedBed.physicalId}
+                                    />
+                                }
                             />
                         </Link>
                     )}

@@ -6,7 +6,8 @@ import {
     getGardens,
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Calendar, Tally3 } from '@signalco/ui-icons';
+import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
+import { Calendar } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -95,7 +96,7 @@ export async function OperationsTable({
                             : null;
 
                     return (
-                        <Table.Row key={operation.id} className="group">
+                        <Table.Row key={operation.id}>
                             <Table.Cell>
                                 <Link href={KnownPages.Operation(operation.id)}>
                                     {operation.id}
@@ -167,15 +168,15 @@ export async function OperationsTable({
                                         </span>
                                     )}
                                     {operation.raisedBedId && (
-                                        <span>
-                                            <Tally3 className="size-4 shrink-0 rotate-90 mt-1 inline" />{' '}
-                                            Gr{' '}
-                                            {raisedBeds.find(
-                                                (rb) =>
-                                                    rb.id ===
-                                                    operation.raisedBedId,
-                                            )?.physicalId ?? 'N/A'}
-                                        </span>
+                                        <RaisedBedLabel
+                                            physicalId={
+                                                raisedBeds.find(
+                                                    (rb) =>
+                                                        rb.id ===
+                                                        operation.raisedBedId,
+                                                )?.physicalId ?? null
+                                            }
+                                        />
                                     )}
                                     {operationRaisedBedField && (
                                         <span>

@@ -4,10 +4,7 @@ import { getRaisedBed, updateRaisedBed } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
-
-const raisedBedStatuses = ['new', 'approved', 'built', 'active'] as const;
-
-type RaisedBedStatusValue = (typeof raisedBedStatuses)[number];
+import type { RaisedBedStatusValue } from '../admin/raised-beds/[raisedBedId]/RaisedBedStatusItems';
 
 export async function setRaisedBedPhysicalId(
     raisedBedId: number,

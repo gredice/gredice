@@ -80,7 +80,6 @@ export async function bulkCreateOperationsAction(formData: FormData) {
     if (!entityId) {
         throw new Error('Entity ID is required');
     }
-    const entityTypeName = formData.get('entityTypeName') as string;
     const scheduledDate = formData.get('scheduledDate')
         ? new Date(formData.get('scheduledDate') as string)
         : undefined;
@@ -91,7 +90,7 @@ export async function bulkCreateOperationsAction(formData: FormData) {
             target.split('|');
         const operation: InsertOperation = {
             entityId,
-            entityTypeName,
+            entityTypeName: 'operation',
             accountId: accountId || undefined,
             gardenId: gardenId ? Number(gardenId) : undefined,
             raisedBedId: raisedBedId ? Number(raisedBedId) : undefined,

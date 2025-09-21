@@ -1,7 +1,7 @@
 'use client';
 
 import { Calendar } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { RescheduleOperationModal } from '../../app/admin/schedule/RescheduleOperationModal';
 
 interface OperationRescheduleButtonProps {
@@ -28,17 +28,16 @@ export function OperationRescheduleButton({
             operation={operation}
             operationLabel={operationLabel}
             trigger={
-                <Button
+                <IconButton
                     variant="plain"
-                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                     title={
                         operation.scheduledDate
                             ? 'Prerasporedi operaciju'
                             : 'Zakaži operaciju'
                     }
                 >
-                    <Calendar className="size-3" />
-                </Button>
+                    <Calendar className="size-4 shrink-0" />
+                </IconButton>
             }
         />
     );

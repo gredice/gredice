@@ -1,8 +1,9 @@
 'use client';
 
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
-import { Calendar, Close, Tally3 } from '@signalco/ui-icons';
+import { Calendar, Close } from '@signalco/ui-icons';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -250,10 +251,7 @@ export function ScheduleDay({
                 return (
                     <Stack key={physicalId} spacing={1}>
                         <Row spacing={1}>
-                            <Tally3 className="size-5 rotate-90 mt-1" />
-                            <Typography level="h5" component="p">
-                                <strong>Gr {physicalId}</strong>
-                            </Typography>
+                            <RaisedBedLabel physicalId={physicalId} />
                             <CopyTasksButton
                                 physicalId={physicalId.toString()}
                                 tasks={copyTasks}
