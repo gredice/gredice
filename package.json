@@ -3,7 +3,7 @@
     "private": true,
     "scripts": {
         "build": "turbo build",
-        "dev": "turbo dev",
+        "dev": "node ./scripts/dev-with-proxy.mjs",
         "lint": "turbo lint",
         "db-generate": "turbo db-generate",
         "db-push": "turbo db-push",
