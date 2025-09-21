@@ -19,6 +19,7 @@ import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { OperationsTableCard } from './OperationsTableCard';
 import { RaisedBedPhysicalIdInput } from './RaisedBedPhysicalIdInput';
+import { RaisedBedStatusSelect } from './RaisedBedStatusSelect';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,6 +70,15 @@ export default async function RaisedBedPage({
                         <RaisedBedPhysicalIdInput
                             raisedBedId={raisedBed.id}
                             physicalId={raisedBed.physicalId}
+                        />
+                        <Field
+                            name="Status"
+                            value={
+                                <RaisedBedStatusSelect
+                                    raisedBedId={raisedBed.id}
+                                    status={raisedBed.status}
+                                />
+                            }
                         />
                         <Field
                             name="Datum kreiranja"
