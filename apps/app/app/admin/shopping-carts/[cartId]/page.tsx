@@ -76,7 +76,6 @@ export default async function ShoppingCartDetailsPage({
             totalPrice,
         };
     });
-    console.log('cart items with entities', enhancedItems);
 
     // Helper function to format currency
     const formatCurrency = (amount: number, currency: string) => {
