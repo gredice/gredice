@@ -71,14 +71,9 @@ export default async function RaisedBedPage({
                             raisedBedId={raisedBed.id}
                             physicalId={raisedBed.physicalId}
                         />
-                        <Field
-                            name="Status"
-                            value={
-                                <RaisedBedStatusSelect
-                                    raisedBedId={raisedBed.id}
-                                    status={raisedBed.status}
-                                />
-                            }
+                        <RaisedBedStatusSelect
+                            raisedBedId={raisedBed.id}
+                            status={raisedBed.status}
                         />
                         <Field
                             name="Datum kreiranja"

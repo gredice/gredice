@@ -45,6 +45,7 @@ export function RaisedBedStatusSelect({
 
     return (
         <SelectItems
+            label="Status"
             value={status}
             onValueChange={(newValue) => {
                 if (!isRaisedBedStatus(newValue) || newValue === status) {
