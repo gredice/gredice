@@ -8,6 +8,10 @@
         {
             "path": "/api/internal/cron/notifications-digest",
             "schedule": "0 9 * * *"
+        },
+        {
+            "path": "/api/internal/cron/auto-close-slots",
+            "schedule": "0 * * * *"
         }
     ]
 }

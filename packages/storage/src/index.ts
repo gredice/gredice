@@ -1,5 +1,6 @@
 export * from './cache/directoriesCached';
 export * from './cache/grediceCached';
+export * from './helpers/timeSlotAutomation';
 export * from './repositories/accountDeletionRepo';
 export * from './repositories/accountsRepo';
 export * from './repositories/analyticsRepo';
