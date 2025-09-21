@@ -35,7 +35,7 @@ This repository is the **Gredice** monorepo. It hosts several Next.js applicatio
 ## Conventions and standards
 
 - Don't create new components or utilities without checking for existing ones in `@gredice/ui` or other shared packages.
-- If component is not present in `@gredice/ui`, consider contributing it there if it has potential for reuse and general applicability.
+- If a component is not present in `@gredice/ui`, consider contributing it there if it has potential for reuse and general applicability.
 
 ## Database & storage tooling
 
