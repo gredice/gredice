@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
-import { access } from 'node:fs/promises';
+import { access, appendFile, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { exit } from 'node:process';
@@ -14,8 +14,105 @@ const dockerImage = process.env.GREDICE_DEV_CADDY_IMAGE ?? 'caddy:2.9.1';
 const shouldSkipProxy = parseEnvFlag(process.env.SKIP_DEV_PROXY ?? '');
 const extraTurboArgs = process.argv.slice(2);
 const signalNumbers = os.constants?.signals ?? {};
+const requiredHosts = [
+    'www.gredice.local',
+    'vrt.gredice.local',
+    'farma.gredice.local',
+    'app.gredice.local',
+    'api.gredice.local',
+];
+const requiredHostsLine = `127.0.0.1 ${requiredHosts.join(' ')}`;
 
 let proxyStarted = false;
+
+function escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function getHostsFilePath() {
+    if (process.platform === 'win32') {
+        const systemRoot = process.env.SystemRoot ?? process.env.windir ?? 'C:\\Windows';
+        return resolve(systemRoot, 'System32', 'drivers', 'etc', 'hosts');
+    }
+
+    return '/etc/hosts';
+}
+
+function isHostMappedToLocalhost(contents, host) {
+    const escapedHost = escapeRegExp(host);
+    const pattern = new RegExp(`^\\s*127\\.0\\.0\\.1\\s+.*\\b${escapedHost}\\b`, 'mi');
+    return pattern.test(contents);
+}
+
+function createHostsPermissionError(hostsFilePath, cause) {
+    const error = new Error(`Insufficient permissions to modify the hosts file at ${hostsFilePath}.`);
+    error.code = 'HOSTS_PERMISSION_DENIED';
+    error.hostsFilePath = hostsFilePath;
+    error.cause = cause;
+    return error;
+}
+
+function createHostsNotFoundError(hostsFilePath, cause) {
+    const error = new Error(`Unable to find the hosts file at ${hostsFilePath}.`);
+    error.code = 'HOSTS_FILE_NOT_FOUND';
+    error.hostsFilePath = hostsFilePath;
+    error.cause = cause;
+    return error;
+}
+
+async function ensureHostsEntries() {
+    const hostsFilePath = getHostsFilePath();
+    if (!hostsFilePath) {
+        console.warn('Unable to determine the hosts file path for this platform.');
+        console.warn('Add the following entry manually to use the local dev proxy:');
+        console.warn(requiredHostsLine);
+        return;
+    }
+
+    let contents = '';
+    try {
+        contents = await readFile(hostsFilePath, 'utf8');
+    } catch (error) {
+        if (error?.code === 'ENOENT') {
+            throw createHostsNotFoundError(hostsFilePath, error);
+        }
+
+        if (error?.code === 'EACCES' || error?.code === 'EPERM') {
+            throw createHostsPermissionError(hostsFilePath, error);
+        }
+
+        throw error;
+    }
+
+    const missingHosts = requiredHosts.filter((host) => !isHostMappedToLocalhost(contents, host));
+    if (missingHosts.length === 0) {
+        console.log('Verified hosts file entries for the *.gredice.local domains.');
+        return;
+    }
+
+    const newline = contents.includes('\r\n') ? '\r\n' : '\n';
+    const needsLeadingNewline = contents.length > 0 && !contents.endsWith('\n') && !contents.endsWith('\r');
+    const hostsEntry = `127.0.0.1 ${missingHosts.join(' ')}`;
+
+    let textToAppend = '';
+    if (needsLeadingNewline) {
+        textToAppend += newline;
+    }
+
+    textToAppend += hostsEntry;
+    textToAppend += newline;
+
+    try {
+        await appendFile(hostsFilePath, textToAppend, { encoding: 'utf8' });
+        exit(0);
+    } catch (error) {
+        if (error?.code === 'EACCES' || error?.code === 'EPERM') {
+            throw createHostsPermissionError(hostsFilePath, error);
+        }
+
+        throw error;
+    }
+}
 
 function parseEnvFlag(value) {
     if (!value) {
@@ -205,9 +302,44 @@ async function main() {
         }
 
         try {
+            await ensureHostsEntries();
+        } catch (error) {
+            if (error?.code === 'HOSTS_PERMISSION_DENIED') {
+                console.error('Unable to update the hosts file automatically because elevated permissions are required.');
+                if (error?.hostsFilePath) {
+                    console.error(`Hosts file: ${error.hostsFilePath}`);
+                }
+                console.error('Re-run this command with administrative privileges or add the following entry manually:');
+                console.error(requiredHostsLine);
+                if (process.platform === 'win32') {
+                    console.error('Tip: run this command from an elevated PowerShell or Command Prompt.');
+                } else {
+                    console.error('Tip: run `sudo pnpm dev` once to add the entries, then rerun without sudo.');
+                }
+                return 1;
+            }
+
+            if (error?.code === 'HOSTS_FILE_NOT_FOUND') {
+                if (error?.hostsFilePath) {
+                    console.error(`Unable to locate the hosts file at ${error.hostsFilePath}.`);
+                } else {
+                    console.error('Unable to locate the system hosts file.');
+                }
+                console.error('Add the following entry manually and rerun the command:');
+                console.error(requiredHostsLine);
+                return 1;
+            }
+
+            console.error('Failed to verify the hosts file entries required by the local dev proxy.');
+            if (error?.message) {
+                console.error(error.message);
+            }
+            return 1;
+        }
+
+        try {
             await startProxy();
             console.log('Apps will be available on the *.gredice.local subdomains once Turbo finishes booting.');
-            console.log('Ensure that your hosts file maps these domains to 127.0.0.1.');
         } catch (error) {
             if (error?.code === 'ENOENT') {
                 console.error('Docker is required to start the local dev proxy but it was not found in PATH.');
