@@ -88,15 +88,6 @@ type GameState = {
     pickupBlock: Block | null;
     setPickupBlock: (block: Block | null) => void;
 
-    // Camera
-    view: 'normal' | 'closeup';
-    closeupBlock: Block | null;
-    setView: (
-        options:
-            | { view: 'normal'; block?: Block }
-            | { view: 'closeup'; block: Block },
-    ) => void;
-
     // Debug (overrides)
     weather?: { cloudy: number; rainy: number; snowy: number; foggy: number };
     setWeather: (weather: {
@@ -158,30 +149,12 @@ export function createGameState({
         // Game
         mode: 'normal',
         setMode: (mode) => {
-            if (get().view === 'closeup') {
-                set({ view: 'normal' });
-            }
             set({ mode });
         },
 
         // Pickaup system
         pickupBlock: null,
         setPickupBlock: (block: Block | null) => set({ pickupBlock: block }),
-
-        // Camera
-        view: 'normal',
-        closeupBlock: null,
-        setView: ({ view, block }) => {
-            if (get().mode === 'edit') {
-                get().setMode('normal');
-            }
-
-            if (view === 'closeup') {
-                set({ view, closeupBlock: block });
-            } else {
-                set({ view });
-            }
-        },
 
         isDragging: false,
         orbitControls: null,

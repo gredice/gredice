@@ -1,7 +1,7 @@
 import { type PropsWithChildren, useRef } from 'react';
 import { create } from 'zustand';
+import { useView } from '../GameHud';
 import type { Block } from '../types/Block';
-import { useGameState } from '../useGameState';
 
 type useHoveredBlockStore = {
     hoveredBlock: Block | null;
@@ -19,7 +19,7 @@ export function SelectableGroup({
 }: PropsWithChildren<{ block: Block }>) {
     const groupRef = useRef(null);
     const hovered = useHoveredBlockStore();
-    const setView = useGameState((state) => state.setView);
+    const [, setView] = useView();
 
     if (block.name !== 'Raised_Bed') {
         return children;
@@ -31,10 +31,10 @@ export function SelectableGroup({
 
     function handleOpenChange(open: boolean) {
         if (open) {
-            setView({ view: 'closeup', block });
+            setView(block.id);
             hovered.setHoveredBlock(null);
         } else {
-            setView({ view: 'normal' });
+            setView(null);
         }
     }
 

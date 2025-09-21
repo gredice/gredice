@@ -2,6 +2,7 @@ import type { PropsWithChildren } from 'react';
 import { PickableGroup } from '../controls/PickableGroup';
 import { RotatableGroup } from '../controls/RotatableGroup';
 import { SelectableGroup } from '../controls/SelectableGroup';
+import { useView } from '../GameHud';
 import { useIsEditMode } from '../hooks/useIsEditMode';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
@@ -82,7 +83,7 @@ export function EntityFactory({
 }: EntityFactoryProps & EntityInstanceProps) {
     const isEditMode = useIsEditMode();
     const EntityComponent = entityNameMap[name];
-    const view = useGameState((state) => state.view);
+    const [viewData] = useView();
 
     if (!EntityComponent) {
         console.error(
@@ -93,7 +94,7 @@ export function EntityFactory({
     }
 
     const SelectableGroupWrapper =
-        view !== 'closeup'
+        viewData.view !== 'closeup'
             ? SelectableGroup
             : (props: PropsWithChildren) => <>{props.children}</>;
 
