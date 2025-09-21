@@ -32,6 +32,11 @@ This repository is the **Gredice** monorepo. It hosts several Next.js applicatio
 - **Testing**: Use `pnpm test` to execute the configured Turborepo test tasks. Many apps expose Playwright-powered suites (`pnpm test:run --filter www`, etc.). Scope tests to the area you modified whenever possible.
 - **Builds**: Validate production builds with `pnpm build`, or filter down to specific packages/apps as needed.
 
+## Conventions and standards
+
+- Don't create new components or utilities without checking for existing ones in `@gredice/ui` or other shared packages.
+- If component is not present in `@gredice/ui`, consider contributing it there if it has potential for reuse and general applicability.
+
 ## Database & storage tooling
 
 - Schema changes live under `packages/storage`. Use `pnpm db-generate` after modifying the schema to create migrations.
