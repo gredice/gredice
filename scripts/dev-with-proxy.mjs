@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
+import { exit } from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -121,6 +122,8 @@ async function startProxy() {
         '--add-host=host.docker.internal:host-gateway',
         '-p',
         '80:80',
+        '-p',
+        '443:443',
         '-v',
         `${caddyfilePath}:/etc/caddy/Caddyfile:ro`,
         dockerImage,

@@ -67,14 +67,14 @@ Running `pnpm dev` automatically starts a Dockerized Caddy reverse proxy so that
 
 - <http://www.gredice.local> → marketing site (`apps/www`)
 - <http://vrt.gredice.local> → customer garden (`apps/garden`)
-- <http://farm.gredice.local> → farm back office (`apps/farm`)
+- <http://farma.gredice.local> → farm back office (`apps/farm`)
 - <http://app.gredice.local> → internal operations (`apps/app`)
 - <http://api.gredice.local> → API routes (`apps/api`)
 
 Add the following entry to your hosts file (e.g. `/etc/hosts` on macOS/Linux or `C:\Windows\System32\drivers\etc\hosts` on Windows) so the domains resolve to your machine:
 
 ```
-127.0.0.1 www.gredice.local vrt.gredice.local farm.gredice.local app.gredice.local api.gredice.local
+127.0.0.1 www.gredice.local vrt.gredice.local farma.gredice.local app.gredice.local api.gredice.local
 ```
 
 Make sure Docker Desktop (or the Docker daemon) is running before you start the dev server. To bypass the proxy—for example, if Docker is unavailable—run `SKIP_DEV_PROXY=1 pnpm dev`. If the proxy ever lingers after an interrupted session, you can stop it manually with `docker stop gredice-dev-caddy`.
