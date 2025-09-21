@@ -16,7 +16,7 @@ const signalNumbers = os.constants?.signals ?? {};
 const requiredHosts = [
     'www.gredice.local',
     'vrt.gredice.local',
-    'farm.gredice.local',
+    'farma.gredice.local',
     'app.gredice.local',
     'api.gredice.local',
 ];
@@ -103,6 +103,7 @@ async function ensureHostsEntries() {
 
     try {
         await appendFile(hostsFilePath, textToAppend, { encoding: 'utf8' });
+        exit(0);
     } catch (error) {
         if (error?.code === 'EACCES' || error?.code === 'EPERM') {
             throw createHostsPermissionError(hostsFilePath, error);
@@ -110,9 +111,6 @@ async function ensureHostsEntries() {
 
         throw error;
     }
-
-    console.log(`Added missing hosts entry for ${missingHosts.join(', ')} to ${hostsFilePath}.`);
-    console.log(`The following line was appended: ${hostsEntry}`);
 }
 
 function parseEnvFlag(value) {
