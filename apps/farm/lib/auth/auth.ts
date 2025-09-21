@@ -32,7 +32,7 @@ async function getUser(id: string): Promise<User | null> {
 export const { withAuth, createJwt, setCookie, auth, clearCookie } = initRbac(
     initAuth({
         security: {
-            expiry: 60 * 60 * 1000,
+            expiry: 7 * 24 * 60 * 60 * 1000,
         },
         jwt: {
             namespace: 'gredice',
