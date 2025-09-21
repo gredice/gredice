@@ -1,6 +1,7 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq } from 'drizzle-orm';
+import { AUTO_CLOSE_WINDOW_MS } from '../helpers/timeSlotAutomation';
 import {
     DeliveryRequestStates,
     deliveryRequests,
@@ -18,11 +19,7 @@ import {
     knownEventTypes,
 } from './eventsRepo';
 import { getPickupLocation } from './pickupLocationsRepo';
-import {
-    AUTO_CLOSE_WINDOW_MS,
-    closeTimeSlot,
-    getTimeSlot,
-} from './timeSlotsRepo';
+import { closeTimeSlot, getTimeSlot } from './timeSlotsRepo';
 
 // Business state projection interface
 export type DeliveryRequestWithEvents = ReturnType<
