@@ -227,6 +227,7 @@ export function ScheduleDay({
                         return {
                             id: `field-${field.id}`,
                             text: `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : '?'}`,
+                            approved: field.plantStatus === 'planned',
                         };
                     }),
                     ...dayOperations.map((op) => {
@@ -241,6 +242,7 @@ export function ScheduleDay({
                                       operationData?.information?.label,
                                   )
                                 : KnownPages.GrediceOperations,
+                            approved: op.isAccepted,
                         };
                     }),
                 ];
