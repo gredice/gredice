@@ -1,0 +1,24 @@
+{
+    auto_https off
+    admin off
+}
+
+www.gredice.local {
+    reverse_proxy http://host.docker.internal:3000
+}
+
+vrt.gredice.local {
+    reverse_proxy http://host.docker.internal:3001
+}
+
+farm.gredice.local {
+    reverse_proxy http://host.docker.internal:3002
+}
+
+app.gredice.local {
+    reverse_proxy http://host.docker.internal:3003
+}
+
+api.gredice.local {
+    reverse_proxy http://host.docker.internal:3005
+}
