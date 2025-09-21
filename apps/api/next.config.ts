@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
                 protocol: 'https',
             },
         ],
+        qualities: [80, 100],
     },
     productionBrowserSourceMaps: true,
 };
