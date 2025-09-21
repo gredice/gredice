@@ -79,6 +79,18 @@ Add the following entry to your hosts file (e.g. `/etc/hosts` on macOS/Linux or 
 
 Make sure Docker Desktop (or the Docker daemon) is running before you start the dev server. To bypass the proxy—for example, if Docker is unavailable—run `SKIP_DEV_PROXY=1 pnpm dev`. If the proxy ever lingers after an interrupted session, you can stop it manually with `docker stop gredice-dev-caddy`.
 
+### Development HTTPS certificates
+
+The development proxy terminates HTTPS locally so the applications behave the same way they do in production. When you run `pnpm dev`, the script stores Caddy's internal certificate authority in `~/.gredice/dev-caddy` (or the path specified by `GREDICE_DEV_CADDY_DATA_DIR`) and attempts to trust it automatically for your operating system. You may be prompted for your password if the trust store requires elevated access.
+
+If the automatic step fails, you can trust the authority manually from the path above:
+
+- **macOS**: open Keychain Access, import `root.crt` from the Caddy data directory, and mark it as trusted for SSL.
+- **Windows**: run `certmgr.msc`, open the *Trusted Root Certification Authorities* store (either user or local machine), and import `root.crt`.
+- **Linux**: install it into your user trust store with `trust anchor ~/.gredice/dev-caddy/caddy/pki/authorities/local/root.crt`, or use your distribution's certificate tooling.
+
+After the certificate is trusted, browsers will stop warning about the `*.gredice.local` HTTPS domains.
+
 ### Environment variables
 
 Use the Vercel CLI to pull the environment variables for each application by running the following command inside the `apps/<app-name>` directory:

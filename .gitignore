@@ -198,3 +198,4 @@ apps/www/generate/test-cases.json
 
 ## Ignore test results
 test-results/
+scripts/dev/.caddy-data/
