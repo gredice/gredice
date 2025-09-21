@@ -3,12 +3,13 @@ import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Field } from '../../../../components/shared/fields/Field';
+import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
 import { auth } from '../../../../lib/auth/auth';
@@ -53,9 +54,17 @@ export default async function ShoppingCartDetailsPage({
         const entity = entities.find((e) => e.id?.toString() === item.entityId);
 
         // Calculate price based on entity type and amount
-        const unitPrice =
-            entity?.prices?.perPlant || entity?.prices?.perOperation || 0;
-        const totalPrice = unitPrice * item.amount;
+        let unitPrice =
+            entity?.prices?.perPlant ||
+            entity?.prices?.perOperation ||
+            entity?.information?.plant?.prices?.perPlant ||
+            0;
+        let totalPrice = unitPrice * item.amount;
+
+        if (item.currency === 'sunflower') {
+            unitPrice = unitPrice * 1000;
+            totalPrice = totalPrice * 1000;
+        }
 
         return {
             ...item,
@@ -67,6 +76,7 @@ export default async function ShoppingCartDetailsPage({
             totalPrice,
         };
     });
+    console.log('cart items with entities', enhancedItems);
 
     // Helper function to format currency
     const formatCurrency = (amount: number, currency: string) => {
@@ -116,89 +126,50 @@ export default async function ShoppingCartDetailsPage({
             </Stack>
 
             {/* Cart Information */}
-            <Card>
-                <CardOverflow>
-                    <div className="p-6">
-                        <Stack spacing={3}>
-                            <Row spacing={4}>
-                                <Stack spacing={1}>
-                                    <Typography level="body2">
-                                        Status košarice
-                                    </Typography>
-                                    <Chip
-                                        className="w-fit"
-                                        color={
-                                            cart.status === 'paid'
-                                                ? 'success'
-                                                : 'neutral'
-                                        }
-                                    >
-                                        {cart.status === 'paid'
-                                            ? 'Plaćena'
-                                            : cart.status === 'new'
-                                              ? 'Nova'
-                                              : cart.status}
-                                    </Chip>
-                                </Stack>
-                                <Stack spacing={1}>
-                                    <Typography level="body2">
-                                        Account ID
-                                    </Typography>
-                                    <Link
-                                        href={`/admin/accounts/${cart.accountId}`}
-                                    >
-                                        <Typography>
-                                            {cart.accountId}
-                                        </Typography>
-                                    </Link>
-                                </Stack>
-                                <Stack spacing={1}>
-                                    <Typography level="body2">
-                                        Datum kreiranja
-                                    </Typography>
-                                    <Typography>
-                                        <LocalDateTime>
-                                            {cart.createdAt}
-                                        </LocalDateTime>
-                                    </Typography>
-                                </Stack>
-                            </Row>
-                            {Object.keys(currencyTotals).length > 0 && (
-                                <Row spacing={4}>
-                                    <Stack spacing={1}>
-                                        <Typography level="body2">
-                                            Broj stavki
-                                        </Typography>
-                                        <Typography>
-                                            {cart.items?.length || 0}
-                                        </Typography>
-                                    </Stack>
-                                    {Object.entries(currencyTotals).map(
-                                        ([currency, total]) => (
-                                            <Stack key={currency} spacing={1}>
-                                                <Typography level="body2">
-                                                    {currency === 'eur'
-                                                        ? 'Ukupno (€)'
-                                                        : currency ===
-                                                            'sunflower'
-                                                          ? 'Ukupno (🌻)'
-                                                          : `Ukupno (${currency.toUpperCase()})`}
-                                                </Typography>
-                                                <Typography level="h5" semiBold>
-                                                    {formatCurrency(
-                                                        total,
-                                                        currency,
-                                                    )}
-                                                </Typography>
-                                            </Stack>
-                                        ),
-                                    )}
-                                </Row>
-                            )}
-                        </Stack>
-                    </div>
-                </CardOverflow>
-            </Card>
+            <FieldSet>
+                <Field
+                    name="Status"
+                    value={
+                        <Chip
+                            className="w-fit"
+                            color={
+                                cart.status === 'paid' ? 'success' : 'neutral'
+                            }
+                        >
+                            {cart.status === 'paid'
+                                ? 'Plaćena'
+                                : cart.status === 'new'
+                                  ? 'Nova'
+                                  : cart.status}
+                        </Chip>
+                    }
+                />
+                <Field name="Account ID" value={cart.accountId} />
+                <Field name="Datum kreiranja" value={cart.createdAt} />
+                {Object.keys(currencyTotals).length > 0 && (
+                    <>
+                        <Field
+                            name="Broj stavki"
+                            value={cart.items?.length || 0}
+                        />
+                        {Object.entries(currencyTotals).map(
+                            ([currency, total]) => (
+                                <Field
+                                    key={currency}
+                                    name={
+                                        currency === 'eur'
+                                            ? 'Ukupno (€)'
+                                            : currency === 'sunflower'
+                                              ? 'Ukupno (🌻)'
+                                              : `Ukupno (${currency.toUpperCase()})`
+                                    }
+                                    value={formatCurrency(total, currency)}
+                                />
+                            ),
+                        )}
+                    </>
+                )}
+            </FieldSet>
 
             {/* Cart Items */}
             <Card>

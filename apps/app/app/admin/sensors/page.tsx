@@ -5,6 +5,7 @@ import {
     type SelectRaisedBedSensor,
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -156,7 +157,7 @@ export default async function SensorsPage() {
                 ) : (
                     sensorsByPhysicalId.map(({ physicalId, sensors }) => (
                         <Stack key={physicalId} spacing={1}>
-                            <Typography>Gr {physicalId}</Typography>
+                            <RaisedBedLabel physicalId={physicalId} />
                             <div className="grid grid-cols-4 gap-2">
                                 {sensors.length === 0 && (
                                     <Typography className="col-span-4">

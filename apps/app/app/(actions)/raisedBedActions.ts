@@ -4,6 +4,7 @@ import { getRaisedBed, updateRaisedBed } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+import type { RaisedBedStatusValue } from '../admin/raised-beds/[raisedBedId]/RaisedBedStatusItems';
 
 const raisedBedStatuses = ['new', 'approved', 'built', 'active'] as const;
 

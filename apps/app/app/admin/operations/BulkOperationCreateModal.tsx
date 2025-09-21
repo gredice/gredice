@@ -5,8 +5,11 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useEffect, useMemo, useState } from 'react';
+import { getEntities } from '../../../components/shared/attributes/actions/entitiesActions';
 import { bulkCreateOperationsAction } from '../../(actions)/operationActions';
 import { SelectEntity } from '../raised-beds/[raisedBedId]/SelectEntity';
+import { TargetsSelectionList } from './TargetsSelectionList';
 
 export type BulkOperationCreateModalProps = {
     gardens: Array<{
@@ -28,104 +31,63 @@ export function BulkOperationCreateModal({
     gardens,
     raisedBeds,
 }: BulkOperationCreateModalProps) {
+    const [selectedOperationId, setSelectedOperationId] = useState<
+        string | null
+    >(null);
+    const [operations, setOperations] =
+        useState<Awaited<ReturnType<typeof getEntities>>>();
+
+    useEffect(() => {
+        // Load operations metadata to determine application type
+        getEntities('operation')
+            .then((ops) => setOperations(ops))
+            .catch((e) => console.error('Failed to load operations', e));
+    }, []);
+
+    const selectionMode = useMemo(() => {
+        if (!selectedOperationId) return undefined;
+        const application = operations?.find(
+            (o) => o.id?.toString() === selectedOperationId,
+        )?.attributes?.application as
+            | 'garden'
+            | 'raisedBedFull'
+            | 'raisedBed1m'
+            | 'plant'
+            | undefined;
+        if (!application) return undefined;
+        if (application === 'garden') return 'garden' as const;
+        if (application === 'plant') return 'plant' as const;
+        // Treat both raised bed variants the same
+        return 'raisedBed' as const;
+    }, [operations, selectedOperationId]);
+
     return (
         <Modal
-            title={'Nova operacija'}
+            title={'Nova radnja'}
             trigger={<Button variant="outlined">Dodaj više</Button>}
         >
             <form action={bulkCreateOperationsAction} className="space-y-4">
                 <Stack spacing={2}>
-                    <Typography level="h5">Nova operacija</Typography>
-                    <Input
-                        name="entityTypeName"
-                        defaultValue="operation"
-                        label="Tip entiteta"
-                        hidden
-                        required
-                    />
+                    <Typography level="h5">Nove radnje</Typography>
                     <SelectEntity
                         name="entityId"
-                        label="Operacija"
+                        label="Radnja"
                         required
                         entityTypeName={'operation'}
+                        value={selectedOperationId}
+                        onChange={setSelectedOperationId}
                     />
                     <Input
                         name="scheduledDate"
                         type="datetime-local"
                         label="Planirani datum (opcionalno)"
                     />
-                    <div className="max-h-64 overflow-y-auto border rounded p-2 space-y-2">
-                        {gardens
-                            .filter((garden) => {
-                                // Only show gardens that have raised beds with physicalId
-                                const gardenRaisedBedsWithPhysicalId =
-                                    raisedBeds.filter(
-                                        (rb) =>
-                                            rb.gardenId === garden.id &&
-                                            rb.physicalId,
-                                    );
-                                return (
-                                    gardenRaisedBedsWithPhysicalId.length > 0
-                                );
-                            })
-                            .map((garden) => {
-                                const gardenRaisedBeds = raisedBeds.filter(
-                                    (rb) =>
-                                        rb.gardenId === garden.id &&
-                                        rb.physicalId,
-                                );
-                                return (
-                                    <div key={garden.id} className="space-y-1">
-                                        <label className="font-semibold flex items-center gap-2">
-                                            <input
-                                                type="checkbox"
-                                                name="targets"
-                                                value={`${garden.accountId}|${garden.id}`}
-                                            />
-                                            {garden.name || `Vrt ${garden.id}`}
-                                        </label>
-                                        <div className="ml-4 space-y-1">
-                                            {gardenRaisedBeds.map((rb) => (
-                                                <div
-                                                    key={rb.id}
-                                                    className="space-y-1"
-                                                >
-                                                    <label className="flex items-center gap-2">
-                                                        <input
-                                                            type="checkbox"
-                                                            name="targets"
-                                                            value={`${rb.accountId}|${rb.gardenId ?? ''}|${rb.id}`}
-                                                        />
-                                                        {rb.physicalId
-                                                            ? `Gr ${rb.physicalId}`
-                                                            : rb.name}
-                                                    </label>
-                                                    <div className="ml-4 space-y-1">
-                                                        {rb.fields.map(
-                                                            (field) => (
-                                                                <label
-                                                                    key={
-                                                                        field.id
-                                                                    }
-                                                                    className="flex items-center gap-2"
-                                                                >
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        name="targets"
-                                                                        value={`${rb.accountId}|${rb.gardenId ?? ''}|${rb.id}|${field.id}`}
-                                                                    />
-                                                                    {`Polje ${field.positionIndex + 1}`}
-                                                                </label>
-                                                            ),
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                    </div>
+                    <TargetsSelectionList
+                        name="targets"
+                        gardens={gardens}
+                        raisedBeds={raisedBeds}
+                        mode={selectionMode}
+                    />
                     <Button type="submit">Kreiraj</Button>
                 </Stack>
             </form>

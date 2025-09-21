@@ -4,6 +4,7 @@ import {
     getRaisedBedsFiltered,
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
 import {
     Card,
@@ -11,10 +12,12 @@ import {
     CardOverflow,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { Table } from '@signalco/ui-primitives/Table';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../../src/KnownPages';
+import { RaisedBedStatusItems } from '../../raised-beds/[raisedBedId]/RaisedBedStatusItems';
 
 export async function RaisedBedsTableCard({
     accountId,
@@ -65,8 +68,8 @@ export async function RaisedBedsTableCard({
                     <Table.Header>
                         <Table.Row>
                             <Table.Head>ID</Table.Head>
-                            <Table.Head>Naziv</Table.Head>
                             <Table.Head>Fizicka oznaka</Table.Head>
+                            <Table.Head>Naziv</Table.Head>
                             <Table.Head>Status</Table.Head>
                             <Table.Head>Broj Polja</Table.Head>
                             <Table.Head>Datum Kreiranja</Table.Head>
@@ -108,9 +111,29 @@ export async function RaisedBedsTableCard({
                                             {bed.id}
                                         </Link>
                                     </Table.Cell>
+                                    <Table.Cell>
+                                        <RaisedBedLabel
+                                            physicalId={bed.physicalId}
+                                        />
+                                    </Table.Cell>
                                     <Table.Cell>{bed.name}</Table.Cell>
-                                    <Table.Cell>{bed.physicalId}</Table.Cell>
-                                    <Table.Cell>{bed.status}</Table.Cell>
+                                    <Table.Cell>
+                                        <Chip
+                                            className="w-fit"
+                                            startDecorator={
+                                                RaisedBedStatusItems.find(
+                                                    (item) =>
+                                                        item.value ===
+                                                        bed.status,
+                                                )?.icon || 'ℹ️'
+                                            }
+                                        >
+                                            {RaisedBedStatusItems.find(
+                                                (item) =>
+                                                    item.value === bed.status,
+                                            )?.label || bed.status}
+                                        </Chip>
+                                    </Table.Cell>
                                     <Table.Cell>
                                         <SegmentedCircularProgress
                                             segments={[
