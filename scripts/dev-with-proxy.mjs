@@ -38,12 +38,20 @@ function signalExitCode(signal) {
     return 1;
 }
 
-async function runCommand(command, args, { capture = false, ignoreErrors = false } = {}) {
+async function spawnCommand(command, args, { capture = false, ignoreErrors = false, useShell = false } = {}) {
     return await new Promise((resolve, reject) => {
-        const child = spawn(command, args, {
-            stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
-            env: process.env,
-        });
+        let child;
+
+        try {
+            child = spawn(command, args, {
+                stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
+                env: process.env,
+                shell: useShell,
+            });
+        } catch (error) {
+            reject(error);
+            return;
+        }
 
         let stdout = '';
         let stderr = '';
@@ -58,11 +66,6 @@ async function runCommand(command, args, { capture = false, ignoreErrors = false
         }
 
         child.on('error', (error) => {
-            if (ignoreErrors) {
-                resolve({ code: null, stdout, stderr, error });
-                return;
-            }
-
             reject(error);
         });
 
@@ -81,6 +84,25 @@ async function runCommand(command, args, { capture = false, ignoreErrors = false
             reject(error);
         });
     });
+}
+
+async function runCommand(command, args, options = {}) {
+    const { capture = false, ignoreErrors = false } = options;
+    const runOptions = { capture, ignoreErrors, useShell: options.useShell === true };
+
+    try {
+        return await spawnCommand(command, args, runOptions);
+    } catch (error) {
+        if (error?.code === 'EINVAL' && process.platform === 'win32' && !runOptions.useShell) {
+            return await runCommand(command, args, { ...options, useShell: true });
+        }
+
+        if (ignoreErrors) {
+            return { code: null, stdout: '', stderr: '', error };
+        }
+
+        throw error;
+    }
 }
 
 async function ensureCaddyfile() {
