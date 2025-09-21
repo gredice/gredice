@@ -3,22 +3,13 @@
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { useMemo } from 'react';
 import { setRaisedBedStatus } from '../../../(actions)/raisedBedActions';
-
-type RaisedBedStatusValue = Parameters<typeof setRaisedBedStatus>[1];
-
-const STATUS_ITEMS: Array<{
-    value: RaisedBedStatusValue;
-    label: string;
-    icon: string;
-}> = [
-    { value: 'new', label: 'Nova', icon: '🆕' },
-    { value: 'approved', label: 'Odobrena', icon: '✅' },
-    { value: 'built', label: 'Izgrađena', icon: '🏗️' },
-    { value: 'active', label: 'Aktivna', icon: '🌿' },
-];
+import {
+    RaisedBedStatusItems,
+    type RaisedBedStatusValue,
+} from './RaisedBedStatusItems';
 
 function isRaisedBedStatus(value: string): value is RaisedBedStatusValue {
-    return STATUS_ITEMS.some((item) => item.value === value);
+    return RaisedBedStatusItems.some((item) => item.value === value);
 }
 
 export function RaisedBedStatusSelect({
@@ -30,7 +21,7 @@ export function RaisedBedStatusSelect({
 }) {
     const items = useMemo(() => {
         if (isRaisedBedStatus(status)) {
-            return STATUS_ITEMS;
+            return RaisedBedStatusItems;
         }
 
         return [
@@ -39,7 +30,7 @@ export function RaisedBedStatusSelect({
                 label: status,
                 icon: 'ℹ️',
             },
-            ...STATUS_ITEMS,
+            ...RaisedBedStatusItems,
         ];
     }, [status]);
 

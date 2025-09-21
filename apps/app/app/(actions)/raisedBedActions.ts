@@ -6,10 +6,6 @@ import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
 import type { RaisedBedStatusValue } from '../admin/raised-beds/[raisedBedId]/RaisedBedStatusItems';
 
-const raisedBedStatuses = ['new', 'approved', 'built', 'active'] as const;
-
-type RaisedBedStatusValue = (typeof raisedBedStatuses)[number];
-
 export async function setRaisedBedPhysicalId(
     raisedBedId: number,
     physicalId: string | null,
