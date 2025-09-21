@@ -3,22 +3,22 @@
     admin off
 }
 
-www.gredice.local {
+http://www.gredice.local {
     reverse_proxy http://host.docker.internal:3000
 }
 
-vrt.gredice.local {
+http://vrt.gredice.local {
     reverse_proxy http://host.docker.internal:3001
 }
 
-farm.gredice.local {
+http://farm.gredice.local {
     reverse_proxy http://host.docker.internal:3002
 }
 
-app.gredice.local {
+http://app.gredice.local {
     reverse_proxy http://host.docker.internal:3003
 }
 
-api.gredice.local {
+http://api.gredice.local {
     reverse_proxy http://host.docker.internal:3005
 }

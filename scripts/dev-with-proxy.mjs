@@ -154,6 +154,7 @@ async function runTurboDev() {
         const turboProcess = spawn(turboCommand, ['dev', ...extraTurboArgs], {
             stdio: 'inherit',
             env: process.env,
+            shell: process.platform === 'win32',
         });
 
         const signals = ['SIGINT', 'SIGTERM', 'SIGQUIT'];
