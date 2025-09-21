@@ -44,7 +44,13 @@ const failedAttemptsBlockTime = 1000 * 60 * 60; // 1 hour
 
 const defaultWebAppOrigin = 'https://vrt.gredice.com';
 const oauthRedirectCookieName = 'oauth_redirect';
-const allowedLocalRedirectHosts = new Set(['localhost', '127.0.0.1']);
+const allowedLocalRedirectHosts = new Set([
+    'localhost',
+    '127.0.0.1',
+    'app.gredice.local',
+    'vrt.gredice.local',
+    'farma.gredice.local',
+]);
 
 function sanitizeRedirectUrl(redirectUrl?: string) {
     if (!redirectUrl) {
