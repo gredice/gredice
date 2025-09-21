@@ -330,6 +330,9 @@ importers:
       '@gredice/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@gredice/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@mdxeditor/editor':
         specifier: 3.45.1
         version: 3.45.1(@codemirror/language@6.11.3)(@lezer/highlight@1.2.1)(@types/react-dom@19.1.9(@types/react@19.1.13))(@types/react@19.1.13)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(yjs@13.6.20)

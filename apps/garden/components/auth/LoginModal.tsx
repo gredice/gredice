@@ -1,6 +1,7 @@
 'use client';
 
 import { client } from '@gredice/client';
+import { FacebookLoginButton, GoogleLoginButton } from '@gredice/ui/auth';
 import { Alert } from '@signalco/ui/Alert';
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { Modal } from '@signalco/ui-primitives/Modal';
@@ -16,8 +17,6 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { EmailPasswordForm } from './EmailPasswordForm';
-import { FacebookLoginButton } from './FacebookLoginButton';
-import { GoogleLoginButton } from './GoogleLoginButton';
 
 export default function LoginModal() {
     const router = useRouter();
