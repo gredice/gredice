@@ -30,16 +30,12 @@ export async function setRaisedBedStatus(
 ) {
     await auth(['admin']);
 
-    if (!raisedBedStatuses.includes(status)) {
-        throw new Error(`Invalid raised bed status: ${status}`);
-    }
-
     const raisedBed = await getRaisedBed(raisedBedId);
-
     if (!raisedBed) {
         throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
     }
 
+    // Ignore if unchanged
     if (raisedBed.status === status) {
         return;
     }

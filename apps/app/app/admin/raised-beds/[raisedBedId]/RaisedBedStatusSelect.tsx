@@ -36,7 +36,7 @@ export function RaisedBedStatusSelect({
         return [
             {
                 value: status,
-                label: status?.length ? status : 'Nepoznato',
+                label: status,
                 icon: 'ℹ️',
             },
             ...STATUS_ITEMS,
@@ -52,7 +52,7 @@ export function RaisedBedStatusSelect({
                     return;
                 }
 
-                void setRaisedBedStatus(raisedBedId, newValue);
+                setRaisedBedStatus(raisedBedId, newValue);
             }}
             items={items}
         />
