@@ -8,6 +8,9 @@ import ResetPasswordEmailTemplate, {
 import WelcomeEmailTemplate, {
     type WelcomeEmailTemplateProps,
 } from '@gredice/transactional/emails/Account/welcome';
+import DeliverySurveyEmailTemplate, {
+    type DeliverySurveyEmailTemplateProps,
+} from '@gredice/transactional/emails/Notifications/delivery-survey';
 import EmailNotificationsBulkTemplate, {
     type EmailNotificationsBulkTemplateProps,
 } from '@gredice/transactional/emails/Notifications/notifications-bulk';
@@ -57,5 +60,17 @@ export async function sendNotificationsBulk(
         to,
         subject: 'Gredice - nove obavijesti',
         template: EmailNotificationsBulkTemplate(config),
+    });
+}
+
+export async function sendDeliverySurvey(
+    to: string,
+    config: DeliverySurveyEmailTemplateProps,
+) {
+    return await sendEmail({
+        from: 'suncokret@obavijesti.gredice.com',
+        to,
+        subject: 'Gredice - podijeli dojam o dostavi',
+        template: DeliverySurveyEmailTemplate(config),
     });
 }
