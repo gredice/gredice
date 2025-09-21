@@ -18,7 +18,7 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.2.4",
-        "@types/node": "22.18.4",
+        "@types/node": "22.18.5",
         "openapi-typescript": "7.9.1",
         "server-only": "0.0.1",
         "typescript": "5.9.2"
