@@ -13,7 +13,12 @@ import {
     loginSuccessful,
     updateLoginData,
 } from '@gredice/storage';
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
+import {
+    deleteCookie as deleteContextCookie,
+    getCookie,
+    setCookie as setContextCookie,
+} from 'hono/cookie';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import {
@@ -36,6 +41,75 @@ import { sendWelcome } from '../../../lib/email/transactional';
 const failedAttemptClearTime = 1000 * 60; // 1 minute
 const failedAttemptsBlock = 5;
 const failedAttemptsBlockTime = 1000 * 60 * 60; // 1 hour
+
+const defaultWebAppOrigin = 'https://vrt.gredice.com';
+const oauthRedirectCookieName = 'oauth_redirect';
+const allowedLocalRedirectHosts = new Set(['localhost', '127.0.0.1']);
+
+function sanitizeRedirectUrl(redirectUrl?: string) {
+    if (!redirectUrl) {
+        return undefined;
+    }
+
+    try {
+        const parsed = new URL(redirectUrl);
+        const hostname = parsed.hostname.toLowerCase();
+        const isSecureProtocol =
+            parsed.protocol === 'https:' ||
+            (parsed.protocol === 'http:' &&
+                allowedLocalRedirectHosts.has(hostname));
+        if (!isSecureProtocol) {
+            return undefined;
+        }
+
+        if (
+            hostname === 'gredice.com' ||
+            hostname.endsWith('.gredice.com') ||
+            allowedLocalRedirectHosts.has(hostname)
+        ) {
+            return parsed.toString();
+        }
+    } catch {
+        return undefined;
+    }
+
+    return undefined;
+}
+
+function storeRedirectCookie(context: Context, redirectUrl?: string) {
+    const sanitized = sanitizeRedirectUrl(redirectUrl);
+    if (!sanitized) {
+        deleteContextCookie(context, oauthRedirectCookieName);
+        return;
+    }
+
+    setContextCookie(context, oauthRedirectCookieName, sanitized, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Lax',
+        maxAge: 600,
+    });
+}
+
+function resolveRedirectUrl(context: Context, fallbackPath: string) {
+    const fallbackUrl = new URL(fallbackPath, defaultWebAppOrigin);
+    const stored = getCookie(context, oauthRedirectCookieName);
+    if (!stored) {
+        return fallbackUrl;
+    }
+
+    deleteContextCookie(context, oauthRedirectCookieName);
+    const sanitized = sanitizeRedirectUrl(stored);
+    if (!sanitized) {
+        return fallbackUrl;
+    }
+
+    try {
+        return new URL(sanitized);
+    } catch {
+        return fallbackUrl;
+    }
+}
 
 const app = new Hono()
     .post(
@@ -190,19 +264,23 @@ const app = new Hono()
             'query',
             z.object({
                 state: z.string().optional(),
+                redirect: z.string().optional(),
             }),
         ),
         async (context) => {
+            const query = context.req.valid('query');
             const state =
-                context.req.valid('query')?.state ??
-                randomUUID().toString().replace('-', '');
+                query?.state ?? randomUUID().toString().replace('-', '');
+            storeRedirectCookie(context, query?.redirect);
             const authUrl = generateAuthUrl('google', state);
 
             // Store state in cookie for verification
-            context.header(
-                'Set-Cookie',
-                `oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
-            );
+            setContextCookie(context, 'oauth_state', state, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'Lax',
+                maxAge: 600,
+            });
 
             return context.redirect(authUrl);
         },
@@ -264,14 +342,22 @@ const app = new Hono()
                     loginSuccessful(loginId),
                 ]);
 
-                return context.redirect(
-                    `https://vrt.gredice.com/prijava/google-prijava/povratak?session=${token}`,
+                const redirectUrl = resolveRedirectUrl(
+                    context,
+                    '/prijava/google-prijava/povratak',
                 );
+                redirectUrl.searchParams.set('session', token);
+
+                return context.redirect(redirectUrl.toString());
             } catch (error) {
                 console.error('Google OAuth error:', error);
-                return context.redirect(
-                    'https://vrt.gredice.com/prijava/google-prijava/povratak?error=oauth_error',
+                const redirectUrl = resolveRedirectUrl(
+                    context,
+                    '/prijava/google-prijava/povratak',
                 );
+                redirectUrl.searchParams.set('error', 'oauth_error');
+
+                return context.redirect(redirectUrl.toString());
             }
         },
     )
@@ -284,19 +370,23 @@ const app = new Hono()
             'query',
             z.object({
                 state: z.string().optional(),
+                redirect: z.string().optional(),
             }),
         ),
         async (context) => {
+            const query = context.req.valid('query');
             const state =
-                context.req.valid('query')?.state ??
-                randomUUID().toString().replace('-', '');
+                query?.state ?? randomUUID().toString().replace('-', '');
             const authUrl = generateAuthUrl('facebook', state);
 
             // Store state in cookie for verification
-            context.header(
-                'Set-Cookie',
-                `oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
-            );
+            storeRedirectCookie(context, query?.redirect);
+            setContextCookie(context, 'oauth_state', state, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'Lax',
+                maxAge: 600,
+            });
 
             return context.redirect(authUrl);
         },
@@ -358,14 +448,22 @@ const app = new Hono()
                     loginSuccessful(loginId),
                 ]);
 
-                return context.redirect(
-                    `https://vrt.gredice.com/prijava/facebook-prijava/povratak?session=${token}`,
+                const redirectUrl = resolveRedirectUrl(
+                    context,
+                    '/prijava/facebook-prijava/povratak',
                 );
+                redirectUrl.searchParams.set('session', token);
+
+                return context.redirect(redirectUrl.toString());
             } catch (error) {
                 console.error('Facebook OAuth error:', error);
-                return context.redirect(
-                    'https://vrt.gredice.com/prijava/facebook-prijava/povratak?error=oauth_error',
+                const redirectUrl = resolveRedirectUrl(
+                    context,
+                    '/prijava/facebook-prijava/povratak',
                 );
+                redirectUrl.searchParams.set('error', 'oauth_error');
+
+                return context.redirect(redirectUrl.toString());
             }
         },
     )

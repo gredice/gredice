@@ -108,7 +108,14 @@ export function LoginDialog() {
     }, []);
 
     const handleOAuthLogin = (provider: OAuthProvider) => {
-        window.location.href = `https://api.gredice.com/api/auth/${provider}`;
+        const callbackPath =
+            provider === 'google'
+                ? '/prijava/google-prijava/povratak'
+                : '/prijava/facebook-prijava/povratak';
+        const redirectUrl = `${window.location.origin}${callbackPath}`;
+        const authUrl = new URL(`https://api.gredice.com/api/auth/${provider}`);
+        authUrl.searchParams.set('redirect', redirectUrl);
+        window.location.href = authUrl.toString();
     };
 
     return (
