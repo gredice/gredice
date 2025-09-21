@@ -3,7 +3,7 @@ import {
     AuthProtectedSection,
     SignedOut,
 } from '@signalco/auth-server/components';
-import { Calendar, Droplets, Fence, Sprout } from '@signalco/ui-icons';
+import { Calendar, Fence } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
