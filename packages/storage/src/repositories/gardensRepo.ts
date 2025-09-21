@@ -783,7 +783,15 @@ export async function getRaisedBedFieldDiaryEntries(
         .filter((op) => op.name)
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
-    return [...raisedBedsEventDiaryEntries, ...operationsDiaryEntries];
+    return [...raisedBedsEventDiaryEntries, ...operationsDiaryEntries].sort(
+        (a, b) => {
+            const aTime =
+                a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
+            const bTime =
+                b.timestamp instanceof Date ? b.timestamp.getTime() : 0;
+            return bTime - aTime;
+        },
+    );
 }
 
 function operationStatusToLabel(status: string) {
