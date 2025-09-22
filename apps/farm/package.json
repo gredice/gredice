@@ -26,7 +26,7 @@
         "@biomejs/biome": "2.2.4",
         "@gredice/storage": "workspace:*",
         "@gredice/ui": "workspace:*",
-        "@mdxeditor/editor": "3.46.0",
+        "@mdxeditor/editor": "3.46.1",
         "@playwright/experimental-ct-react": "1.55.0",
         "@playwright/test": "1.55.0",
         "@signalco/auth-client": "0.3.0",
