@@ -1,6 +1,8 @@
 {
-    auto_https off
     admin off
+    servers {
+        protocols h1 h2
+    }
 }
 
 http://www.gredice.local {
@@ -25,11 +27,11 @@ https://vrt.gredice.local {
     }
 }
 
-http://farm.gredice.local {
-    redir https://farm.gredice.local{uri}
+http://farma.gredice.local {
+    redir https://farma.gredice.local{uri}
 }
 
-https://farm.gredice.local {
+https://farma.gredice.local {
     tls internal
     reverse_proxy http://host.docker.internal:3002 {
         header_up X-Forwarded-Proto {http.request.scheme}

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
-import { access, mkdir } from 'node:fs/promises';
+import { access, appendFile, mkdir, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { exit } from 'node:process';
@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const caddyfilePath = resolve(scriptDir, 'dev', 'Caddyfile');
 const containerName = 'gredice-dev-caddy';
-const dockerImage = process.env.GREDICE_DEV_CADDY_IMAGE ?? 'caddy:2.9.1';
+const dockerImage = process.env.GREDICE_DEV_CADDY_IMAGE ?? 'gredice-caddy-dev';
 const shouldSkipProxy = parseEnvFlag(process.env.SKIP_DEV_PROXY ?? '');
 const extraTurboArgs = process.argv.slice(2);
 const signalNumbers = os.constants?.signals ?? {};
@@ -105,7 +105,7 @@ async function ensureHostsEntries() {
         throw error;
     }
 
-    const missingHosts = requiredHosts.filter((host) => !isHostMappedToLocalhost(contents, host));
+    const missingHosts = caddyDomains.filter((host) => !isHostMappedToLocalhost(contents, host));
     if (missingHosts.length === 0) {
         console.log('Verified hosts file entries for the *.gredice.local domains.');
         return;
@@ -460,7 +460,7 @@ async function trustCertificateOnLinux(rootCertPath) {
     return {
         success: false,
         message:
-            'Install p11-kit (trust) or use your distribution\'s certificate tools to trust the Caddy development CA manually.',
+            'Install p11-kit (trust), nss-tools (certutil), or use your distribution\'s certificate tools to trust the Caddy development CA manually. For Docker: consider using a custom image with these tools installed.',
     };
 }
 
@@ -531,11 +531,59 @@ async function runCommand(command, args, options = {}) {
     }
 }
 
+async function dockerImageExists(imageName) {
+    try {
+        const result = await runCommand('docker', ['image', 'inspect', imageName], { capture: true, ignoreErrors: true });
+        return result.code === 0;
+    } catch {
+        return false;
+    }
+}
+
+async function buildCaddyImage() {
+    const dockerfilePath = resolve(scriptDir, 'dev');
+    
+    console.log('Building custom Caddy development image with certificate tools...');
+    
+    try {
+        await runCommand('docker', ['build', '-t', 'gredice-caddy-dev', dockerfilePath], { capture: false });
+        console.log('Custom Caddy development image built successfully!');
+        return true;
+    } catch (error) {
+        console.error('Failed to build custom Caddy development image:');
+        if (error?.message) {
+            console.error(error.message);
+        }
+        return false;
+    }
+}
+
+async function ensureCaddyImage() {
+    // If using the official image, no need to build
+    if (dockerImage === 'caddy:2.9.1') {
+        return true;
+    }
+    
+    // Check if custom image exists
+    if (await dockerImageExists(dockerImage)) {
+        return true;
+    }
+    
+    console.log(`Custom Docker image '${dockerImage}' not found locally.`);
+    return await buildCaddyImage();
+}
+
 async function ensureCaddyfile() {
     await access(caddyfilePath);
 }
 
 async function startProxy() {
+    // Ensure the Docker image exists before starting the container
+    const imageReady = await ensureCaddyImage();
+    if (!imageReady) {
+        throw new Error(`Failed to prepare Docker image '${dockerImage}'. Cannot start the dev proxy.`);
+    }
+
     await runCommand('docker', ['rm', '-f', containerName], { capture: true, ignoreErrors: true });
 
     const args = [
