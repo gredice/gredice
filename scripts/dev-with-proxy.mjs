@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
-import { access, appendFile, readFile } from 'node:fs/promises';
+import { access, appendFile, mkdir, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { exit } from 'node:process';
@@ -10,18 +10,39 @@ import { fileURLToPath } from 'node:url';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const caddyfilePath = resolve(scriptDir, 'dev', 'Caddyfile');
 const containerName = 'gredice-dev-caddy';
-const dockerImage = process.env.GREDICE_DEV_CADDY_IMAGE ?? 'caddy:2.9.1';
+const dockerImage = process.env.GREDICE_DEV_CADDY_IMAGE ?? 'gredice-caddy-dev';
 const shouldSkipProxy = parseEnvFlag(process.env.SKIP_DEV_PROXY ?? '');
 const extraTurboArgs = process.argv.slice(2);
 const signalNumbers = os.constants?.signals ?? {};
-const requiredHosts = [
+const defaultDataDir = (() => {
+    const homeDir = os.homedir?.();
+    if (homeDir) {
+        return resolve(homeDir, '.gredice', 'dev-caddy');
+    }
+
+    return resolve(scriptDir, 'dev', '.caddy-data');
+})();
+const configuredDataDir = process.env.GREDICE_DEV_CADDY_DATA_DIR;
+const caddyDataDir =
+    typeof configuredDataDir === 'string' && configuredDataDir.trim() !== ''
+        ? resolve(configuredDataDir)
+        : defaultDataDir;
+const caddyRootCertPath = resolve(
+    caddyDataDir,
+    'caddy',
+    'pki',
+    'authorities',
+    'local',
+    'root.crt',
+);
+const caddyDomains = [
     'www.gredice.local',
     'vrt.gredice.local',
     'farma.gredice.local',
     'app.gredice.local',
     'api.gredice.local',
 ];
-const requiredHostsLine = `127.0.0.1 ${requiredHosts.join(' ')}`;
+const caddyCertificateLabel = 'Caddy Local Authority';
 
 let proxyStarted = false;
 
@@ -84,7 +105,7 @@ async function ensureHostsEntries() {
         throw error;
     }
 
-    const missingHosts = requiredHosts.filter((host) => !isHostMappedToLocalhost(contents, host));
+    const missingHosts = caddyDomains.filter((host) => !isHostMappedToLocalhost(contents, host));
     if (missingHosts.length === 0) {
         console.log('Verified hosts file entries for the *.gredice.local domains.');
         return;
@@ -134,6 +155,313 @@ function signalExitCode(signal) {
     }
 
     return 1;
+}
+
+async function delay(milliseconds) {
+    if (milliseconds <= 0) {
+        return;
+    }
+
+    await new Promise((resolve) => {
+        setTimeout(resolve, milliseconds);
+    });
+}
+
+async function fileExists(filePath) {
+    try {
+        await access(filePath);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+async function waitForFile(filePath, { intervalMs = 250, timeoutMs = 15000 } = {}) {
+    const start = Date.now();
+
+    while (Date.now() - start <= timeoutMs) {
+        if (await fileExists(filePath)) {
+            return true;
+        }
+
+        await delay(intervalMs);
+    }
+
+    return false;
+}
+
+async function commandExists(command) {
+    const locator = process.platform === 'win32' ? 'where' : 'which';
+    const result = await runCommand(locator, [command], { capture: true, ignoreErrors: true });
+    return result.code === 0;
+}
+
+async function ensureCaddyDataDirectory() {
+    if (!caddyDataDir) {
+        return false;
+    }
+
+    await mkdir(caddyDataDir, { recursive: true });
+    return true;
+}
+
+async function warmUpCaddyCertificates() {
+    if (!caddyDomains.length) {
+        return;
+    }
+
+    const curlArgs = (domain) => [
+        '--silent',
+        '--show-error',
+        '--output',
+        '/dev/null',
+        '--insecure',
+        '--resolve',
+        `${domain}:443:127.0.0.1`,
+        `https://${domain}/`,
+        '--max-time',
+        '5',
+    ];
+
+    for (const domain of caddyDomains) {
+        try {
+            const result = await runCommand('curl', curlArgs(domain), { capture: true, ignoreErrors: true });
+            if (result.code === 0) {
+                return;
+            }
+        } catch (error) {
+            if (error?.code === 'ENOENT') {
+                return;
+            }
+
+            throw error;
+        }
+    }
+}
+
+async function trustCaddyCertificates() {
+    if (!caddyDataDir) {
+        console.warn('Skipping Caddy certificate trust step because no data directory is configured.');
+        return;
+    }
+
+    const dataDirReady = await ensureCaddyDataDirectory().catch((error) => {
+        console.warn('Unable to create the local data directory for the Caddy dev proxy.');
+        if (error?.message) {
+            console.warn(error.message);
+        }
+        return false;
+    });
+
+    if (!dataDirReady) {
+        return;
+    }
+
+    await delay(500);
+    await warmUpCaddyCertificates();
+
+    const certificateReady = await waitForFile(caddyRootCertPath, { timeoutMs: 20000 });
+    if (!certificateReady) {
+        console.warn('Timed out waiting for the Caddy development certificate authority to be created.');
+        console.warn(`If browsers report certificate errors, import the CA manually from: ${caddyRootCertPath}`);
+        return;
+    }
+
+    let result;
+    if (process.platform === 'darwin') {
+        result = await trustCertificateOnMac(caddyRootCertPath);
+    } else if (process.platform === 'win32') {
+        result = await trustCertificateOnWindows(caddyRootCertPath);
+    } else {
+        result = await trustCertificateOnLinux(caddyRootCertPath);
+    }
+
+    if (result?.success) {
+        if (result.details) {
+            console.log(`Trusted the Caddy development certificate authority (${result.details}).`);
+        } else {
+            console.log('Trusted the Caddy development certificate authority.');
+        }
+        return;
+    }
+
+    console.warn('Unable to automatically trust the Caddy development certificate authority.');
+    if (result?.message) {
+        console.warn(result.message);
+    }
+
+    console.warn(`If browsers continue to warn about HTTPS, import the CA manually from: ${caddyRootCertPath}`);
+}
+
+async function trustCertificateOnMac(rootCertPath) {
+    const homeDir = os.homedir?.();
+    const keychainCandidates = homeDir
+        ? [
+              resolve(homeDir, 'Library', 'Keychains', 'login.keychain-db'),
+              resolve(homeDir, 'Library', 'Keychains', 'login.keychain'),
+          ]
+        : [];
+    const systemKeychain = '/Library/Keychains/System.keychain';
+
+    const keychain = keychainCandidates.length
+        ? (
+              await Promise.all(
+                  keychainCandidates.map(async (candidate) => ({ candidate, exists: await fileExists(candidate) })),
+              )
+          ).find((entry) => entry.exists)?.candidate ?? keychainCandidates[0]
+        : null;
+
+    try {
+        if (keychain) {
+            await runCommand('security', ['delete-certificate', '-c', caddyCertificateLabel, keychain], {
+                ignoreErrors: true,
+            });
+        }
+    } catch (error) {
+        if (error?.code !== 'ENOENT') {
+            return { success: false, message: error?.message ?? 'Failed to manage certificates with the macOS security tool.' };
+        }
+    }
+
+    if (keychain) {
+        try {
+            const addResult = await runCommand(
+                'security',
+                ['add-trusted-cert', '-d', '-r', 'trustRoot', '-k', keychain, rootCertPath],
+                { capture: true, ignoreErrors: true },
+            );
+            if (addResult.code === 0) {
+                return { success: true, details: 'added to the login keychain' };
+            }
+        } catch (error) {
+            if (error?.code !== 'ENOENT') {
+                return { success: false, message: error?.message ?? 'Failed to add the certificate to the login keychain.' };
+            }
+        }
+    }
+
+    try {
+        const sudoResult = await runCommand(
+            'sudo',
+            ['security', 'add-trusted-cert', '-d', '-r', 'trustRoot', '-k', systemKeychain, rootCertPath],
+            { ignoreErrors: true },
+        );
+
+        if (sudoResult.code === 0) {
+            return { success: true, details: 'added to the system keychain' };
+        }
+
+        if (sudoResult.code !== 0) {
+            return {
+                success: false,
+                message:
+                    'macOS denied access to the keychain. Re-run pnpm dev with administrative privileges or import the CA manually.',
+            };
+        }
+    } catch (error) {
+        if (error?.code === 'ENOENT') {
+            return {
+                success: false,
+                message: 'sudo is not available to install the certificate. Import it manually via Keychain Access.',
+            };
+        }
+
+        return { success: false, message: error?.message ?? 'Failed to add the certificate to the system keychain.' };
+    }
+
+    return { success: false };
+}
+
+async function trustCertificateOnWindows(rootCertPath) {
+    try {
+        await runCommand('certutil', ['-user', '-delstore', 'Root', caddyCertificateLabel], { capture: true, ignoreErrors: true });
+    } catch (error) {
+        if (error?.code === 'ENOENT') {
+            return { success: false, message: 'certutil is not available on this system. Import the certificate via certmgr.msc.' };
+        }
+
+        return { success: false, message: error?.message ?? 'Failed to manage certificates with certutil.' };
+    }
+
+    const userStoreResult = await runCommand(
+        'certutil',
+        ['-user', '-addstore', 'Root', rootCertPath],
+        { capture: true, ignoreErrors: true },
+    );
+
+    if (userStoreResult.code === 0) {
+        return { success: true, details: 'added to the current user trust store' };
+    }
+
+    const machineStoreResult = await runCommand(
+        'certutil',
+        ['-addstore', 'Root', rootCertPath],
+        { ignoreErrors: true },
+    );
+
+    if (machineStoreResult.code === 0) {
+        return { success: true, details: 'added to the local machine trust store' };
+    }
+
+    return {
+        success: false,
+        message:
+            userStoreResult.stderr?.trim() ||
+            machineStoreResult.stderr?.trim() ||
+            'certutil was unable to import the certificate. Use certmgr.msc to trust it manually.',
+    };
+}
+
+async function trustCertificateOnLinux(rootCertPath) {
+    if (await commandExists('trust')) {
+        const trustResult = await runCommand(
+            'trust',
+            ['anchor', '--store', '--label', caddyCertificateLabel, rootCertPath],
+            { capture: true, ignoreErrors: true },
+        );
+
+        if (trustResult.code === 0) {
+            return { success: true, details: 'added to the user trust store' };
+        }
+    }
+
+    if (await commandExists('certutil')) {
+        const homeDir = os.homedir?.();
+        if (homeDir) {
+            const nssDbPath = resolve(homeDir, '.pki', 'nssdb');
+            await mkdir(nssDbPath, { recursive: true });
+            await runCommand('certutil', ['-d', `sql:${nssDbPath}`, '-D', '-n', caddyCertificateLabel], {
+                capture: true,
+                ignoreErrors: true,
+            });
+            const addResult = await runCommand(
+                'certutil',
+                ['-d', `sql:${nssDbPath}`, '-A', '-t', 'C,,', '-n', caddyCertificateLabel, '-i', rootCertPath],
+                { capture: true, ignoreErrors: true },
+            );
+
+            if (addResult.code === 0) {
+                return { success: true, details: 'added to the NSS trust store' };
+            }
+        }
+    }
+
+    if (await commandExists('sudo') && (await commandExists('update-ca-certificates'))) {
+        const destination = '/usr/local/share/ca-certificates/gredice-dev-caddy.crt';
+        const copyResult = await runCommand('sudo', ['cp', rootCertPath, destination], { ignoreErrors: true });
+        if (copyResult.code === 0) {
+            const updateResult = await runCommand('sudo', ['update-ca-certificates'], { ignoreErrors: true });
+            if (updateResult.code === 0) {
+                return { success: true, details: 'added to the system CA bundle' };
+            }
+        }
+    }
+
+    return {
+        success: false,
+        message:
+            'Install p11-kit (trust), nss-tools (certutil), or use your distribution\'s certificate tools to trust the Caddy development CA manually. For Docker: consider using a custom image with these tools installed.',
+    };
 }
 
 async function spawnCommand(command, args, { capture = false, ignoreErrors = false, useShell = false } = {}) {
@@ -203,11 +531,59 @@ async function runCommand(command, args, options = {}) {
     }
 }
 
+async function dockerImageExists(imageName) {
+    try {
+        const result = await runCommand('docker', ['image', 'inspect', imageName], { capture: true, ignoreErrors: true });
+        return result.code === 0;
+    } catch {
+        return false;
+    }
+}
+
+async function buildCaddyImage() {
+    const dockerfilePath = resolve(scriptDir, 'dev');
+    
+    console.log('Building custom Caddy development image with certificate tools...');
+    
+    try {
+        await runCommand('docker', ['build', '-t', 'gredice-caddy-dev', dockerfilePath], { capture: false });
+        console.log('Custom Caddy development image built successfully!');
+        return true;
+    } catch (error) {
+        console.error('Failed to build custom Caddy development image:');
+        if (error?.message) {
+            console.error(error.message);
+        }
+        return false;
+    }
+}
+
+async function ensureCaddyImage() {
+    // If using the official image, no need to build
+    if (dockerImage === 'caddy:2.9.1') {
+        return true;
+    }
+    
+    // Check if custom image exists
+    if (await dockerImageExists(dockerImage)) {
+        return true;
+    }
+    
+    console.log(`Custom Docker image '${dockerImage}' not found locally.`);
+    return await buildCaddyImage();
+}
+
 async function ensureCaddyfile() {
     await access(caddyfilePath);
 }
 
 async function startProxy() {
+    // Ensure the Docker image exists before starting the container
+    const imageReady = await ensureCaddyImage();
+    if (!imageReady) {
+        throw new Error(`Failed to prepare Docker image '${dockerImage}'. Cannot start the dev proxy.`);
+    }
+
     await runCommand('docker', ['rm', '-f', containerName], { capture: true, ignoreErrors: true });
 
     const args = [
@@ -221,16 +597,29 @@ async function startProxy() {
         '80:80',
         '-p',
         '443:443',
-        '-v',
-        `${caddyfilePath}:/etc/caddy/Caddyfile:ro`,
-        dockerImage,
     ];
+
+    if (caddyDataDir) {
+        try {
+            await ensureCaddyDataDirectory();
+            args.push('-v', `${caddyDataDir}:/data`);
+        } catch (error) {
+            console.warn('Unable to prepare persistent storage for the Caddy dev proxy. Certificates may not be trusted.');
+            if (error?.message) {
+                console.warn(error.message);
+            }
+        }
+    }
+
+    args.push('-v', `${caddyfilePath}:/etc/caddy/Caddyfile:ro`);
+    args.push(dockerImage);
 
     const { stdout } = await runCommand('docker', args, { capture: true });
     const containerId = stdout.trim();
 
     console.log(`Caddy dev proxy started${containerId ? ` (${containerId.slice(0, 12)})` : ''}.`);
     proxyStarted = true;
+    return containerId;
 }
 
 async function stopProxy() {
@@ -340,6 +729,8 @@ async function main() {
         try {
             await startProxy();
             console.log('Apps will be available on the *.gredice.local subdomains once Turbo finishes booting.');
+            console.log('Ensure that your hosts file maps these domains to 127.0.0.1.');
+            await trustCaddyCertificates();
         } catch (error) {
             if (error?.code === 'ENOENT') {
                 console.error('Docker is required to start the local dev proxy but it was not found in PATH.');
