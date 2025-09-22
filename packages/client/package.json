@@ -11,7 +11,7 @@
     "scripts": {
         "lint": "biome check",
         "regenerate": "pnpm run /^regenerate:.*/",
-        "regenerate:directories-api": "pnpm dlx openapi-typescript http://api.gredice.local/api/docs/directories -o ./src/lib/directories-api/v1.d.ts"
+        "regenerate:directories-api": "pnpm dlx openapi-typescript https://api.gredice.com/api/docs/directories -o ./src/lib/directories-api/v1.d.ts"
     },
     "dependencies": {
         "openapi-fetch": "0.14.0"

@@ -495,11 +495,13 @@ export interface components {
                         frequency?: string;
                         /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
                         application: string;
+                        /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                        duration: number;
                         /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                         deliverable: boolean;
                     };
                     image?: {
-                        cover: components["schemas"]["image"];
+                        cover?: components["schemas"]["image"];
                     };
                     information?: {
                         /** @description (prevedeni naziv operacije) */
@@ -649,11 +651,13 @@ export interface components {
                                 frequency?: string;
                                 /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
                                 application: string;
+                                /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                                duration: number;
                                 /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                                 deliverable: boolean;
                             };
                             image?: {
-                                cover: components["schemas"]["image"];
+                                cover?: components["schemas"]["image"];
                             };
                             information?: {
                                 /** @description (prevedeni naziv operacije) */
@@ -849,11 +853,13 @@ export interface components {
                                 frequency?: string;
                                 /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
                                 application: string;
+                                /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                                duration: number;
                                 /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                                 deliverable: boolean;
                             };
                             image?: {
-                                cover: components["schemas"]["image"];
+                                cover?: components["schemas"]["image"];
                             };
                             information?: {
                                 /** @description (prevedeni naziv operacije) */
@@ -991,11 +997,13 @@ export interface components {
                                         frequency?: string;
                                         /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
                                         application: string;
+                                        /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                                        duration: number;
                                         /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                                         deliverable: boolean;
                                     };
                                     image?: {
-                                        cover: components["schemas"]["image"];
+                                        cover?: components["schemas"]["image"];
                                     };
                                     information?: {
                                         /** @description (prevedeni naziv operacije) */
@@ -1124,11 +1132,13 @@ export interface components {
                 frequency?: string;
                 /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
                 application: string;
+                /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                duration: number;
                 /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                 deliverable: boolean;
             };
             image: {
-                cover: components["schemas"]["image"];
+                cover?: components["schemas"]["image"];
             };
             information: {
                 /** @description (prevedeni naziv operacije) */
