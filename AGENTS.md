@@ -22,11 +22,11 @@ This repository is the **Gredice** monorepo. It hosts several Next.js applicatio
 ## Core workflows
 
 - **Development servers**: Use `pnpm dev` from the repo root for the turborepo pipeline, or `pnpm dev --filter <app>` to focus on a single application.
-  - `www`: <http://localhost:3000>
-  - `garden`: <http://localhost:3001>
-  - `farm`: <http://localhost:3002>
-  - `app`: <http://localhost:3003>
-  - `api`: <http://localhost:3005>
+  - `www`: <https://www.gredice.local>
+  - `garden`: <https://vrt.gredice.local>
+  - `farm`: <https://farma.gredice.local>
+  - `app`: <https://app.gredice.local>
+  - `api`: <https://api.gredice.local>
 - **Linting**: Run `pnpm lint` for the full workspace. Individual apps/packages use [Biome](https://biomejs.dev) with `biome check`; you can lint a single target with `pnpm lint --filter <name>`.
 - **Formatting**: Use `pnpm biome check --write` to apply Biome formatting for single module, or `biome check --write` within individual package directories.
 - **Testing**: Use `pnpm test` to execute the configured Turborepo test tasks. Many apps expose Playwright-powered suites (`pnpm test:run --filter www`, etc.). Scope tests to the area you modified whenever possible.

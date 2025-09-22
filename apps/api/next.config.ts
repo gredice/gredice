@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
         qualities: [80, 100],
     },
     productionBrowserSourceMaps: true,
-    allowedDevOrigins: ['localhost:3005', 'api.gredice.local'],
+    allowedDevOrigins: ['api.gredice.local'],
 };
 
 export default withAxiom(nextConfig);

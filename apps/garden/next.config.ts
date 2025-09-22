@@ -40,7 +40,7 @@ const nextConfig: NextConfig = {
             },
         ],
     },
-    allowedDevOrigins: ['localhost:3001', 'vrt.gredice.local'],
+    allowedDevOrigins: ['vrt.gredice.local'],
 };
 
 const withVercelToolbar = vercelToolbar();
