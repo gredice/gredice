@@ -19,6 +19,7 @@ import {
 } from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
+import { useState } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { KnownPages } from '../../knownPages';
@@ -29,6 +30,8 @@ import {
     useRaisedBedFieldLifecycleData,
 } from './RaisedBedFieldLifecycleTab';
 import { RaisedBedFieldOperationsTab } from './RaisedBedFieldOperationsTab';
+
+type RaisedBedFieldTabValue = 'lifecycle' | 'diary' | 'operations';
 
 export function RaisedBedFieldItemPlanted({
     raisedBedId,
@@ -53,6 +56,8 @@ export function RaisedBedFieldItemPlanted({
         harvestValue,
         harvestPercentage,
     } = useRaisedBedFieldLifecycleData(raisedBedId, positionIndex);
+    const [activeTab, setActiveTab] =
+        useState<RaisedBedFieldTabValue>('lifecycle');
 
     if (!raisedBed) {
         return null;
@@ -100,6 +105,7 @@ export function RaisedBedFieldItemPlanted({
                   color: 'stroke-yellow-500',
                   trackColor: 'stroke-yellow-50 dark:stroke-yellow-50/80',
                   pulse: !field.plantGrowthDate,
+                  borderColor: 'stroke-yellow-500',
               },
               {
                   value: growthValue,
@@ -107,6 +113,7 @@ export function RaisedBedFieldItemPlanted({
                   color: 'stroke-green-500',
                   trackColor: 'stroke-green-50 dark:stroke-green-50/80',
                   pulse: !field.plantReadyDate,
+                  borderColor: 'stroke-green-500',
               },
               {
                   value: harvestValue,
@@ -114,11 +121,13 @@ export function RaisedBedFieldItemPlanted({
                   color: 'stroke-blue-500',
                   trackColor: 'stroke-blue-50 dark:stroke-blue-50/80',
                   pulse: Boolean(harvestValue),
+                  borderColor: 'stroke-blue-500',
               },
           ];
 
     const plantDetailsUrl = KnownPages.GredicePlantSort(
-        plantSort.information.plant.information?.name ?? plantSort.information.name,
+        plantSort.information.plant.information?.name ??
+            plantSort.information.name,
         plantSort.information.name,
     );
 
@@ -172,7 +181,13 @@ export function RaisedBedFieldItemPlanted({
                         </Link>
                     </Row>
                 </Row>
-                <Tabs defaultValue="lifecycle" className="flex flex-col gap-2">
+                <Tabs
+                    value={activeTab}
+                    onValueChange={(value: RaisedBedFieldTabValue) =>
+                        setActiveTab(value)
+                    }
+                    className="flex flex-col gap-2"
+                >
                     <TabsList className="border w-fit self-center">
                         <TabsTrigger value="lifecycle">
                             <Row spacing={1}>
@@ -220,6 +235,7 @@ export function RaisedBedFieldItemPlanted({
                         <RaisedBedFieldLifecycleTab
                             raisedBedId={raisedBedId}
                             positionIndex={positionIndex}
+                            onShowOperations={() => setActiveTab('operations')}
                         />
                     </TabsContent>
                 </Tabs>

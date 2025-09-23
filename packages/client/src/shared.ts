@@ -1,6 +1,6 @@
 export function getAppUrl() {
     if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'development') {
-        return `http://api.gredice.local`;
+        return `https://api.gredice.local`;
     } else {
         return `https://api.gredice.com`;
     }
