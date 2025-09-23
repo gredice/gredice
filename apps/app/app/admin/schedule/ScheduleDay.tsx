@@ -224,11 +224,16 @@ export function ScheduleDay({
                         </Typography>
                         <Typography level="body3">zadataka</Typography>
                     </Row>
-                    <Typography level="body2">
-                        Vrijeme (odobreno/ukupno):{' '}
-                        {formatMinutes(approvedDuration)} /{' '}
-                        {formatMinutes(totalDuration)}
-                    </Typography>
+                    <Row spacing={0.5}>
+                        <Typography level="body3">Vrijeme:</Typography>
+                        <Typography level="body1" semiBold>
+                            {formatMinutes(approvedDuration)}
+                        </Typography>
+                        <Typography level="body3">/</Typography>
+                        <Typography level="body3" semiBold>
+                            {formatMinutes(totalDuration)}
+                        </Typography>
+                    </Row>
                 </Row>
             </Stack>
             {!hasTasks && (
