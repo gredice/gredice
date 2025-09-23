@@ -187,7 +187,7 @@ export function RecommendationsCard({
                 </Row>
             </CardHeader>
             <CardOverflow>
-                <Stack spacing={1}>
+                <Stack>
                     {isOperationsError && (
                         <Alert color="danger">
                             Greška prilikom učitavanja radnji
@@ -229,14 +229,16 @@ export function RecommendationsCard({
                     {hasMoreOperations &&
                         onShowOperations &&
                         !isLoadingFeaturedOperations && (
-                            <Button
-                                variant="link"
-                                size="sm"
-                                className="self-start px-0"
-                                onClick={onShowOperations}
-                            >
-                                Prikaži sve radnje
-                            </Button>
+                            <div className="border-t px-4 py-2">
+                                <Button
+                                    variant="link"
+                                    size="sm"
+                                    className="self-start px-0"
+                                    onClick={onShowOperations}
+                                >
+                                    Prikaži sve radnje
+                                </Button>
+                            </div>
                         )}
                 </Stack>
             </CardOverflow>

@@ -3,6 +3,7 @@ import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Approved, CompanyFacebook, Empty, Security } from '@signalco/ui-icons';
 import { Button, type ButtonProps } from '@signalco/ui-primitives/Button';
 import { Card, CardActions, CardContent } from '@signalco/ui-primitives/Card';
+import { Input } from '@signalco/ui-primitives/Input';
 import { List } from '@signalco/ui-primitives/List';
 import { ListItem } from '@signalco/ui-primitives/ListItem';
 import { Modal } from '@signalco/ui-primitives/Modal';
@@ -11,12 +12,11 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { Input } from '@signalco/ui-primitives/Input';
 import Image from 'next/image';
-import { useEffect, useState, type FormEvent } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
-import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRead';
 import { useRenameGarden } from '../hooks/useRenameGarden';
 import { useUserLogins } from '../hooks/useUserLogins';
@@ -105,9 +105,7 @@ export function OverviewModal() {
         trimmedGardenName === currentGardenName.trim() ||
         renameGarden.isPending;
 
-    const handleRenameGarden = async (
-        event: FormEvent<HTMLFormElement>,
-    ) => {
+    const handleRenameGarden = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!currentGarden?.id) {
             return;
@@ -253,7 +251,8 @@ export function OverviewModal() {
                                 <Card>
                                     <CardContent noHeader>
                                         <Typography level="body2">
-                                            Trenutno nemaš svoj vrt za uređivanje.
+                                            Trenutno nemaš svoj vrt za
+                                            uređivanje.
                                         </Typography>
                                     </CardContent>
                                 </Card>
@@ -272,16 +271,21 @@ export function OverviewModal() {
                                                         value={gardenName}
                                                         onChange={(event) =>
                                                             setGardenName(
-                                                                event.target.value,
+                                                                event.target
+                                                                    .value,
                                                             )
                                                         }
                                                         placeholder="Unesite naziv vrta..."
                                                         required
-                                                        disabled={renameGarden.isPending}
+                                                        disabled={
+                                                            renameGarden.isPending
+                                                        }
                                                     />
                                                     <Typography level="body3">
-                                                        Ovo ime će biti prikazano u Gredici i
-                                                        podijeljeno s drugim igračima kada posjete
+                                                        Ovo ime će biti
+                                                        prikazano u Gredici i
+                                                        podijeljeno s drugim
+                                                        igračima kada posjete
                                                         tvoj vrt.
                                                     </Typography>
                                                 </Stack>
@@ -290,8 +294,12 @@ export function OverviewModal() {
                                                         size="sm"
                                                         variant="solid"
                                                         type="submit"
-                                                        loading={renameGarden.isPending}
-                                                        disabled={isRenameDisabled}
+                                                        loading={
+                                                            renameGarden.isPending
+                                                        }
+                                                        disabled={
+                                                            isRenameDisabled
+                                                        }
                                                     >
                                                         Spremi
                                                     </Button>

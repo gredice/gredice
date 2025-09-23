@@ -42,7 +42,7 @@ export const PLANT_STATUS_STAGE_SEQUENCE: Record<
     sprouted: ['maintenance', 'growth', 'watering'],
     notSprouted: ['sowing', 'maintenance'],
     ready: ['harvest', 'storage'],
-    harvested: ['storage', 'maintenance'],
+    harvested: ['storage'],
     died: ['maintenance', 'soilPreparation'],
     removed: ['maintenance', 'maintenance'],
 } as const;
@@ -60,7 +60,7 @@ export const FEATURED_OPERATIONS_BY_STAGE: Partial<
     planting: [],
     sowing: [],
     soilPreparation: [],
-    storage: [],
+    storage: ['plantRemoval'],
     watering: [],
     flowering: [],
 } as const;

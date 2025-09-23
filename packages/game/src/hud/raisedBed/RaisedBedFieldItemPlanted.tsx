@@ -105,6 +105,7 @@ export function RaisedBedFieldItemPlanted({
                   color: 'stroke-yellow-500',
                   trackColor: 'stroke-yellow-50 dark:stroke-yellow-50/80',
                   pulse: !field.plantGrowthDate,
+                  borderColor: 'stroke-yellow-500',
               },
               {
                   value: growthValue,
@@ -112,6 +113,7 @@ export function RaisedBedFieldItemPlanted({
                   color: 'stroke-green-500',
                   trackColor: 'stroke-green-50 dark:stroke-green-50/80',
                   pulse: !field.plantReadyDate,
+                  borderColor: 'stroke-green-500',
               },
               {
                   value: harvestValue,
@@ -119,6 +121,7 @@ export function RaisedBedFieldItemPlanted({
                   color: 'stroke-blue-500',
                   trackColor: 'stroke-blue-50 dark:stroke-blue-50/80',
                   pulse: Boolean(harvestValue),
+                  borderColor: 'stroke-blue-500',
               },
           ];
 
@@ -180,8 +183,8 @@ export function RaisedBedFieldItemPlanted({
                 </Row>
                 <Tabs
                     value={activeTab}
-                    onValueChange={(value) =>
-                        setActiveTab(value as RaisedBedFieldTabValue)
+                    onValueChange={(value: RaisedBedFieldTabValue) =>
+                        setActiveTab(value)
                     }
                     className="flex flex-col gap-2"
                 >
