@@ -1,32 +1,17 @@
-import type { OperationData } from '@gredice/client';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
-import { OperationImage } from '@gredice/ui/OperationImage';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
-import { Alert } from '@signalco/ui/Alert';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
-import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { type ReactNode, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
-import { useOperations } from '../../hooks/useOperations';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useRaisedBedFieldRemove } from '../../hooks/useRaisedBedFieldRemove';
-import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { ShovelIcon } from '../../icons/Shovel';
-import {
-    AnimateFlyToItem,
-    useAnimateFlyToShoppingCart,
-} from '../../indicators/AnimateFlyTo';
-import {
-    DEFAULT_FEATURED_OPERATION_LIMIT,
-    FEATURED_OPERATIONS_BY_STAGE,
-    PLANT_STAGE_LABELS,
-    PLANT_STATUS_STAGE_SEQUENCE,
-    type PlantFieldStatus,
-} from './featuredOperations';
+import type { PlantFieldStatus } from './featuredOperations';
+import { RecommendationsCard } from './RecommendationsCard';
 
 // TODO: Move to a separate file
 export function useRaisedBedFieldLifecycleData(
@@ -180,11 +165,6 @@ export function RaisedBedFieldLifecycleTab({
         readyDays,
     } = useRaisedBedFieldLifecycleData(raisedBedId, positionIndex);
     const removeFieldMutation = useRaisedBedFieldRemove();
-    const {
-        data: operations,
-        isLoading: isLoadingOperations,
-        isError: isOperationsError,
-    } = useOperations();
 
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
     const field = raisedBed?.fields.find(
@@ -192,126 +172,6 @@ export function RaisedBedFieldLifecycleTab({
             currentField.positionIndex === positionIndex && currentField.active,
     );
     const { data: plantSort } = usePlantSort(field?.plantSortId);
-
-    const plantSortOperationNames = useMemo(() => {
-        const operationNames =
-            plantSort?.information.plant.information?.operations
-                ?.map((operation) => operation.information?.name)
-                .filter((name): name is string => Boolean(name)) ?? [];
-        return operationNames.length ? new Set(operationNames) : null;
-    }, [plantSort]);
-
-    const stageSequence = field?.plantStatus
-        ? PLANT_STATUS_STAGE_SEQUENCE[field.plantStatus as PlantFieldStatus]
-        : undefined;
-
-    const { selectedStage, stageOperations } = useMemo(() => {
-        if (!stageSequence?.length) {
-            return {
-                selectedStage: undefined,
-                stageOperations: [] as OperationData[],
-            };
-        }
-
-        if (!operations) {
-            return {
-                selectedStage: stageSequence[0],
-                stageOperations: [] as OperationData[],
-            };
-        }
-
-        const plantOperations = operations.filter(
-            (operation) => operation.attributes.application === 'plant',
-        );
-
-        const filterByPlantSort = (ops: OperationData[]) => {
-            if (
-                !plantSortOperationNames ||
-                plantSortOperationNames.size === 0
-            ) {
-                return ops;
-            }
-
-            return ops.filter((operation) =>
-                plantSortOperationNames.has(operation.information.name),
-            );
-        };
-
-        for (const stage of stageSequence) {
-            const stageOps = filterByPlantSort(
-                plantOperations.filter(
-                    (operation) =>
-                        operation.attributes.stage.information?.name === stage,
-                ),
-            );
-            if (stageOps.length > 0) {
-                return { selectedStage: stage, stageOperations: stageOps };
-            }
-        }
-
-        const fallbackStage = stageSequence[0];
-        const fallbackOperations =
-            fallbackStage != null
-                ? filterByPlantSort(
-                      plantOperations.filter(
-                          (operation) =>
-                              operation.attributes.stage.information?.name ===
-                              fallbackStage,
-                      ),
-                  )
-                : [];
-
-        return {
-            selectedStage: fallbackStage,
-            stageOperations: fallbackOperations,
-        };
-    }, [operations, plantSortOperationNames, stageSequence]);
-
-    const featuredOperations = useMemo(() => {
-        if (!selectedStage || stageOperations.length === 0) {
-            return [] as OperationData[];
-        }
-
-        const sorted = [...stageOperations].sort((a, b) => {
-            const aDays = a.attributes.relativeDays ?? Number.MAX_SAFE_INTEGER;
-            const bDays = b.attributes.relativeDays ?? Number.MAX_SAFE_INTEGER;
-
-            if (aDays !== bDays) {
-                return aDays - bDays;
-            }
-
-            return a.information.label.localeCompare(b.information.label);
-        });
-
-        const configuredNames = FEATURED_OPERATIONS_BY_STAGE[selectedStage];
-
-        if (configuredNames?.length) {
-            const configuredSet = new Set(configuredNames);
-            const configuredOperations = sorted.filter((operation) =>
-                configuredSet.has(operation.information.name),
-            );
-            if (configuredOperations.length > 0) {
-                return configuredOperations;
-            }
-        }
-
-        return sorted.slice(0, DEFAULT_FEATURED_OPERATION_LIMIT);
-    }, [selectedStage, stageOperations]);
-
-    const hasMoreOperations =
-        stageOperations.length > featuredOperations.length;
-    const stageLabel = selectedStage
-        ? PLANT_STAGE_LABELS[selectedStage]
-        : undefined;
-    const isLoadingFeaturedOperations = isLoadingOperations;
-    const skeletonKeys = useMemo(
-        () =>
-            Array.from(
-                { length: DEFAULT_FEATURED_OPERATION_LIMIT },
-                (_, index) => `featured-operation-skeleton-${index}`,
-            ),
-        [],
-    );
 
     if (!garden || !plantSort || !field) {
         return null;
@@ -473,10 +333,10 @@ export function RaisedBedFieldLifecycleTab({
                                                 ).toLocaleDateString('hr-HR')
                                               : 'U tijeku...'}
                                     </Typography>
-                                    <Typography>
-                                        ({germinatingDays}{' '}
-                                        {germinatingDaysDayPlural})
-                                    </Typography>
+                                    <Chip className="w-fit">
+                                        {germinatingDays}{' '}
+                                        {germinatingDaysDayPlural}
+                                    </Chip>
                                 </>
                             )}
                         </div>
@@ -517,9 +377,9 @@ export function RaisedBedFieldLifecycleTab({
                                                 ).toLocaleDateString('hr-HR')
                                               : 'U tijeku...'}
                                     </Typography>
-                                    <Typography>
-                                        ({growingDays} {growingDaysDayPlural})
-                                    </Typography>
+                                    <Chip className="w-fit">
+                                        {growingDays} {growingDaysDayPlural}
+                                    </Chip>
                                 </>
                             )}
                         </div>
@@ -547,88 +407,24 @@ export function RaisedBedFieldLifecycleTab({
                                     : 'Nije u fazi berbe'}
                             </Typography>
                             {field.plantReadyDate && (
-                                <Typography>
-                                    ({readyDays} {readyDaysDayPlural})
-                                </Typography>
+                                <Chip className="w-fit">
+                                    {readyDays} {readyDaysDayPlural}
+                                </Chip>
                             )}
                         </Row>
                     </Stack>
                 </Stack>
             </Row>
-            {stageLabel && (
-                <Stack
-                    spacing={1}
-                    className="border border-dashed rounded-lg p-3"
-                >
-                    <Row
-                        spacing={1}
-                        justifyContent="space-between"
-                        alignItems="center"
-                    >
-                        <Stack spacing={0}>
-                            <Typography level="h5">
-                                Preporučene radnje
-                            </Typography>
-                            <Typography level="body2" secondary>
-                                Faza: {stageLabel}
-                            </Typography>
-                        </Stack>
-                        {onShowOperations && (
-                            <Button
-                                variant="link"
-                                size="sm"
-                                className="px-0"
-                                onClick={onShowOperations}
-                            >
-                                Sve radnje
-                            </Button>
-                        )}
-                    </Row>
-                    {isOperationsError && (
-                        <Alert color="danger">
-                            Greška prilikom učitavanja radnji
-                        </Alert>
-                    )}
-                    {isLoadingFeaturedOperations ? (
-                        <Stack spacing={1}>
-                            {skeletonKeys.map((skeletonKey) => (
-                                <Skeleton
-                                    key={skeletonKey}
-                                    className="h-16 w-full rounded-md"
-                                />
-                            ))}
-                        </Stack>
-                    ) : featuredOperations.length ? (
-                        <Stack spacing={1}>
-                            {featuredOperations.map((operation) => (
-                                <FeaturedOperationButton
-                                    key={operation.id}
-                                    operation={operation}
-                                    gardenId={garden.id}
-                                    raisedBedId={raisedBedId}
-                                    positionIndex={positionIndex}
-                                />
-                            ))}
-                        </Stack>
-                    ) : (
-                        <Typography level="body2" secondary>
-                            Trenutno nema dostupnih radnji za ovu fazu.
-                        </Typography>
-                    )}
-                    {hasMoreOperations &&
-                        onShowOperations &&
-                        !isLoadingFeaturedOperations && (
-                            <Button
-                                variant="link"
-                                size="sm"
-                                className="self-start px-0"
-                                onClick={onShowOperations}
-                            >
-                                Prikaži sve radnje
-                            </Button>
-                        )}
-                </Stack>
-            )}
+
+            <RecommendationsCard
+                onShowOperations={onShowOperations}
+                gardenId={garden.id}
+                raisedBedId={raisedBedId}
+                positionIndex={positionIndex}
+                plantStatus={field.plantStatus as PlantFieldStatus}
+                plantSortId={field.plantSortId}
+            />
+
             {field.toBeRemoved && (
                 <Row>
                     <Button
@@ -646,71 +442,5 @@ export function RaisedBedFieldLifecycleTab({
                 </Row>
             )}
         </Stack>
-    );
-}
-
-function formatOperationPrice(price?: number | null) {
-    if (price == null) {
-        return 'Nepoznato';
-    }
-
-    return `${price.toFixed(2)} €`;
-}
-
-function FeaturedOperationButton({
-    operation,
-    gardenId,
-    raisedBedId,
-    positionIndex,
-}: {
-    operation: OperationData;
-    gardenId: number;
-    raisedBedId: number;
-    positionIndex: number;
-}) {
-    const setShoppingCartItem = useSetShoppingCartItem();
-    const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
-
-    const handleClick = () => {
-        setShoppingCartItem.mutate({
-            amount: 1,
-            entityId: operation.id.toString(),
-            entityTypeName: operation.entityType.name,
-            gardenId,
-            raisedBedId,
-            positionIndex,
-        });
-        animateFlyToShoppingCart.run();
-    };
-
-    const price = formatOperationPrice(operation.prices?.perOperation);
-
-    return (
-        <Button
-            variant="soft"
-            className="justify-start text-left h-auto gap-3 px-3 py-2"
-            onClick={handleClick}
-            disabled={setShoppingCartItem.isPending}
-        >
-            <AnimateFlyToItem {...animateFlyToShoppingCart.props}>
-                <OperationImage operation={operation} size={36} />
-            </AnimateFlyToItem>
-            <Stack className="items-start text-left gap-0.5">
-                <Typography level="body1" semiBold>
-                    {operation.information.label}
-                </Typography>
-                {operation.information.shortDescription && (
-                    <Typography
-                        level="body2"
-                        className="text-muted-foreground line-clamp-2"
-                    >
-                        {operation.information.shortDescription}
-                    </Typography>
-                )}
-                <Typography level="body2" semiBold>
-                    {price}
-                </Typography>
-            </Stack>
-        </Button>
     );
 }

@@ -37,14 +37,14 @@ export const PLANT_STATUS_STAGE_SEQUENCE: Record<
     PlantStageName[]
 > = {
     new: ['soilPreparation', 'sowing'],
-    planned: ['sowing', 'planting'],
+    planned: ['soilPreparation', 'sowing', 'planting'],
     sowed: ['sowing', 'watering'],
-    sprouted: ['growth', 'maintenance'],
+    sprouted: ['maintenance', 'growth', 'watering'],
     notSprouted: ['sowing', 'maintenance'],
     ready: ['harvest', 'storage'],
-    harvested: ['storage', 'soilPreparation'],
+    harvested: ['storage', 'maintenance'],
     died: ['maintenance', 'soilPreparation'],
-    removed: ['soilPreparation', 'sowing'],
+    removed: ['maintenance', 'maintenance'],
 } as const;
 
 export const FEATURED_OPERATIONS_BY_STAGE: Partial<

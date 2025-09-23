@@ -65,11 +65,11 @@ Gredice is a Turborepo monorepo that powers the entire Gredice platform. It incl
 
 Running `pnpm dev` automatically starts a Dockerized Caddy reverse proxy so that each app is available on the same subdomains we use in production:
 
-- <http://www.gredice.local> → marketing site (`apps/www`)
-- <http://vrt.gredice.local> → customer garden (`apps/garden`)
-- <http://farma.gredice.local> → farm back office (`apps/farm`)
-- <http://app.gredice.local> → internal operations (`apps/app`)
-- <http://api.gredice.local> → API routes (`apps/api`)
+- <https://www.gredice.local> → marketing site (`apps/www`)
+- <https://vrt.gredice.local> → customer garden (`apps/garden`)
+- <https://farma.gredice.local> → farm back office (`apps/farm`)
+- <https://app.gredice.local> → internal operations (`apps/app`)
+- <https://api.gredice.local> → API routes (`apps/api`)
 
 Add the following entry to your hosts file (e.g. `/etc/hosts` on macOS/Linux or `C:\Windows\System32\drivers\etc\hosts` on Windows) so the domains resolve to your machine:
 

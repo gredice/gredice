@@ -491,13 +491,11 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 } else if (plantStatus === 'died') {
                     plantDeadDate = event.createdAt;
                     stoppedDate = event.createdAt;
-                    toBeRemoved = true;
                 } else if (plantStatus === 'ready') {
                     plantReadyDate = event.createdAt;
                 } else if (plantStatus === 'harvested') {
                     plantHarvestedDate = event.createdAt;
                     stoppedDate = event.createdAt;
-                    toBeRemoved = true;
                 } else if (plantStatus === 'removed') {
                     plantRemovedDate = event.createdAt;
                     active = false;

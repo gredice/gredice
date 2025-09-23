@@ -54,7 +54,7 @@ app.get(
                     description: 'Production server',
                 },
                 {
-                    url: 'http://api.gredice.local/api/auth',
+                    url: 'https://api.gredice.local/api/auth',
                     description: 'Local development server',
                 },
             ],
@@ -75,7 +75,7 @@ app.get(
                         description: 'Production server',
                     },
                     {
-                        url: 'http://api.gredice.local/api/accounts',
+                        url: 'https://api.gredice.local/api/accounts',
                         description: 'Local development server',
                     },
                 ],
@@ -96,7 +96,7 @@ app.get(
                         description: 'Production server',
                     },
                     {
-                        url: 'http://api.gredice.local/api/users',
+                        url: 'https://api.gredice.local/api/users',
                         description: 'Local development server',
                     },
                 ],
@@ -117,7 +117,7 @@ app.get(
                         description: 'Production server',
                     },
                     {
-                        url: 'http://api.gredice.local/api/gardens',
+                        url: 'https://api.gredice.local/api/gardens',
                         description: 'Local development server',
                     },
                 ],
@@ -141,7 +141,7 @@ app.get(
                         description: 'Production server',
                     },
                     {
-                        url: 'http://api.gredice.local/api/data',
+                        url: 'https://api.gredice.local/api/data',
                         description: 'Local development server',
                     },
                 ],
