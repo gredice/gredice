@@ -14,7 +14,7 @@ export const config: PlaywrightTestConfig = {
     workers: process.env.CI ? 1 : undefined,
     reporter: 'html',
     use: {
-        baseURL: 'http://127.0.0.1:3003',
+        baseURL: 'http://app.gredice.local:3003',
         trace: 'on-first-retry',
         ctPort: 3100,
     },
@@ -25,8 +25,8 @@ export const config: PlaywrightTestConfig = {
         },
     ],
     webServer: {
-        command: 'pnpm dev',
-        url: 'http://127.0.0.1:3003',
+        command: 'pnpm start',
+        url: 'http://app.gredice.local:3003',
         reuseExistingServer: !process.env.CI,
     },
 };
