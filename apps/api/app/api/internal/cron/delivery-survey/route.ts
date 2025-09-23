@@ -77,8 +77,8 @@ export async function GET(request: NextRequest) {
         try {
             await createNotification({
                 accountId: candidate.accountId,
-                header: 'Kako ti se svidjela dostava?',
-                content: `Tvoja dostava je stigla ${formattedDate}. Podijeli svoje dojmove i ispuni kratku anketu.`,
+                header: '📣 Kako ti se svidjela dostava?',
+                content: `Tvoja dostava je stigla ${formattedDate}. Podijeli svoje dojmove i ispuni kratku anketu 📋⭐️⭐️⭐️⭐️⭐️`,
                 linkUrl: SURVEY_URL,
                 timestamp: new Date(),
             });

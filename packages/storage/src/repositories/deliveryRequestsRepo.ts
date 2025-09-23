@@ -43,6 +43,7 @@ async function reconstructDeliveryRequestFromEvents(
     let requestNotes: string | undefined;
     let deliveryNotes: string | undefined;
     let accountId: string | undefined;
+    let surveySent = false;
 
     for (const event of events) {
         const data = event.data as Record<string, any> | undefined;
@@ -77,6 +78,8 @@ async function reconstructDeliveryRequestFromEvents(
         } else if (event.type === knownEventTypes.delivery.requestCancelled) {
             state = DeliveryRequestStates.CANCELLED;
             cancelReason = data?.cancelReason;
+        } else if (event.type === knownEventTypes.delivery.requestSurveySent) {
+            surveySent = true;
         }
     }
 
@@ -100,6 +103,7 @@ async function reconstructDeliveryRequestFromEvents(
         cancelReason,
         requestNotes,
         deliveryNotes,
+        surveySent,
         createdAt: request.createdAt,
         updatedAt: request.updatedAt,
         accountId,

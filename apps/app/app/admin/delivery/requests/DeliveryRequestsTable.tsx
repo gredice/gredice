@@ -129,11 +129,11 @@ export async function DeliveryRequestsTable({
         <Table>
             <Table.Header>
                 <Table.Row>
-                    <Table.Head>ID</Table.Head>
                     <Table.Head>Status</Table.Head>
                     <Table.Head>Način</Table.Head>
                     <Table.Head>Vremenski slot</Table.Head>
                     <Table.Head>Lokacija/Adresa dostave</Table.Head>
+                    <Table.Head>Anketa</Table.Head>
                     <Table.Head>Kreiran</Table.Head>
                     <Table.Head>Akcije</Table.Head>
                 </Table.Row>
@@ -164,11 +164,6 @@ export async function DeliveryRequestsTable({
                     const googleMapsDirectionsUri = `${GOOGLE_MAPS_URL}${encodeURIComponent(addressString)}`;
                     return (
                         <Table.Row key={request.id}>
-                            <Table.Cell>
-                                <Typography level="body2" className="font-mono">
-                                    {request.id.slice(0, 8)}...
-                                </Typography>
-                            </Table.Cell>
                             <Table.Cell>
                                 <Chip
                                     color={getStatusColor(request.state)}
@@ -234,6 +229,20 @@ export async function DeliveryRequestsTable({
                                         </a>
                                     </Stack>
                                 )}
+                            </Table.Cell>
+                            <Table.Cell>
+                                <Chip
+                                    color={
+                                        request.surveySent
+                                            ? 'success'
+                                            : 'neutral'
+                                    }
+                                    className="w-fit"
+                                >
+                                    {request.surveySent
+                                        ? 'Poslata'
+                                        : 'Nije poslana'}
+                                </Chip>
                             </Table.Cell>
                             <Table.Cell>
                                 <Typography level="body2" secondary>

@@ -15,7 +15,7 @@
         },
         {
             "path": "/api/internal/cron/delivery-survey",
-            "schedule": "0 12 * * *"
+            "schedule": "0 9 * * *"
         }
     ]
 }

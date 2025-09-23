@@ -42,17 +42,16 @@ export default function DeliverySurveyEmailTemplate({
                     <Header>Kakva je bila dostava?</Header>
                     <Paragraph>Pozdrav!</Paragraph>
                     <Paragraph>
-                        Nadamo se da su te posljednji paketi iz našeg vrta razveselili.{' '}
+                        Nadamo se da te povrće iz tvog vrta razveselilo.{' '}
                         Voljeli bismo čuti tvoje dojmove o dostavi kako bismo idući put bili još bolji.
                     </Paragraph>
                     {deliveryDate ? (
                         <Paragraph>
-                            Dostava je stigla {deliveryDate}.{' '}
-                            Odvoji koju minutu i reci nam kako je prošla.
+                            🚚 Dostava je bila {deliveryDate}.{' '}
                         </Paragraph>
                     ) : null}
                     <Paragraph>
-                        Kratka anketa traje manje od minute, a svaki odgovor pomaže našem timu i vrtlarima.
+                        ⏱️ Anketa traje manje od minute, a svaki odgovor pomaže našem timu i vrtlarima.
                     </Paragraph>
                     <Section className="my-[32px] text-center">
                         <PrimaryButton href={surveyUrl}>Ispuni anketu</PrimaryButton>
