@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
                     surveyUrl: SURVEY_URL,
                     deliveryDate: formattedDate,
                 });
-                sentEmails.push(user.email);
+                sentEmails.push(normalizedEmail);
                 emailsSent += 1;
             } catch (error) {
                 console.error('Failed to send delivery survey email', {
