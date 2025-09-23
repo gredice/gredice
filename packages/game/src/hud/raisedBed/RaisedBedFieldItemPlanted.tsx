@@ -183,9 +183,9 @@ export function RaisedBedFieldItemPlanted({
                 </Row>
                 <Tabs
                     value={activeTab}
-                    onValueChange={(value: RaisedBedFieldTabValue) =>
-                        setActiveTab(value)
-                    }
+                    onValueChange={(value: string) => {
+                        setActiveTab(value as RaisedBedFieldTabValue);
+                    }}
                     className="flex flex-col gap-2"
                 >
                     <TabsList className="border w-fit self-center">
