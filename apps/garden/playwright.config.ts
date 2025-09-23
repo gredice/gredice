@@ -25,7 +25,7 @@ export const config: PlaywrightTestConfig = {
         },
     ],
     webServer: {
-        command: 'pnpm dev',
+        command: 'pnpm start',
         url: 'http://127.0.0.1:3001',
         reuseExistingServer: !process.env.CI,
     },

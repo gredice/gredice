@@ -5,9 +5,9 @@
     "type": "module",
     "scripts": {
         "lint": "biome check",
-        "dev": "next dev --turbo -p 3001 --hostname 0.0.0.0",
+        "dev": "next dev --turbo -p 3001 --hostname vrt.gredice.local",
         "build": "next build --turbopack",
-        "start": "next start",
+        "start": "next start -p 3001",
         "test": "pnpm run /^test:.*/",
         "test:run": "playwright test",
         "test-ui": "playwright test --ui",
