@@ -8,7 +8,7 @@
     },
     "scripts": {
         "lint": "biome check",
-        "dev": "next dev --turbopack -p 3005 --hostname 0.0.0.0",
+        "dev": "next dev --turbopack -p 3005 --hostname api.gredice.local",
         "build": "next build --turbopack",
         "start": "next start",
         "test": "pnpm run /^test:.*/",
