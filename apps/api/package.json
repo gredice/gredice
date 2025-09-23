@@ -10,7 +10,7 @@
         "lint": "biome check",
         "dev": "next dev --turbopack -p 3005 --hostname api.gredice.local",
         "build": "next build --turbopack",
-        "start": "next start -p 3005 --hostname api.gredice.local",
+        "start": "next start -p 3005",
         "test": "pnpm run /^test:.*/",
         "test:run": "playwright test",
         "regenerate": "pnpm run /^regenerate:.*/",

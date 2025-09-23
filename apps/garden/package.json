@@ -7,7 +7,7 @@
         "lint": "biome check",
         "dev": "next dev --turbo -p 3001 --hostname vrt.gredice.local",
         "build": "next build --turbopack",
-        "start": "next start -p 3001 --hostname vrt.gredice.local",
+        "start": "next start -p 3001",
         "test": "pnpm run /^test:.*/",
         "test:run": "playwright test",
         "test-ui": "playwright test --ui",

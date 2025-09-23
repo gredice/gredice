@@ -14,7 +14,7 @@ export const config: PlaywrightTestConfig = {
     workers: process.env.CI ? 1 : undefined,
     reporter: 'html',
     use: {
-        baseURL: 'http://api.gredice.local:3005',
+        baseURL: 'http://127.0.0.1:3005',
         trace: 'on-first-retry',
     },
     projects: [
@@ -25,7 +25,7 @@ export const config: PlaywrightTestConfig = {
     ],
     webServer: {
         command: 'pnpm start',
-        url: 'http://api.gredice.local:3005',
+        url: 'http://127.0.0.1:3005',
         reuseExistingServer: !process.env.CI,
     },
 };

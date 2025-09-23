@@ -8,7 +8,7 @@
         "dev": "next dev --turbopack -p 3000 --hostname www.gredice.local",
         "build": "next build --turbopack",
         "postbuild": "next-sitemap --config next-sitemap.config.cjs",
-        "start": "next start -p 3000 --hostname www.gredice.local",
+        "start": "next start -p 3000",
         "test": "pnpm run /^test:.*/",
         "test:run": "node --experimental-strip-types ./tests/populate-test-cases.ts && playwright test",
         "test-ui": "playwright test --ui",
