@@ -209,18 +209,28 @@ export function ScheduleDay({
 
     return (
         <Stack className="grow" spacing={2}>
-            <Row spacing={1} className="items-center flex-wrap gap-y-1">
+            <Stack spacing={1}>
                 <Typography level="body1" semiBold>
                     Sažetak
                 </Typography>
-                <Typography level="body2" className="text-muted-foreground">
-                    Odobreno {approvedTasksCount}/{totalTasksCount} zadataka
-                </Typography>
-                <Typography level="body2" className="text-muted-foreground">
-                    Vrijeme (odobreno/ukupno): {formatMinutes(approvedDuration)}{' '}
-                    / {formatMinutes(totalDuration)}
-                </Typography>
-            </Row>
+                <Row spacing={1}>
+                    <Row spacing={0.5}>
+                        <Typography level="body3">Odobreno</Typography>
+                        <Typography level="body1" semiBold>
+                            {approvedTasksCount}
+                        </Typography>
+                        <Typography level="body3">
+                            /{totalTasksCount}
+                        </Typography>
+                        <Typography level="body3">zadataka</Typography>
+                    </Row>
+                    <Typography level="body2">
+                        Vrijeme (odobreno/ukupno):{' '}
+                        {formatMinutes(approvedDuration)} /{' '}
+                        {formatMinutes(totalDuration)}
+                    </Typography>
+                </Row>
+            </Stack>
             {!hasTasks && (
                 <Typography level="body2" className="leading-[56px]">
                     Trenutno nema zadataka za ovaj dan.
