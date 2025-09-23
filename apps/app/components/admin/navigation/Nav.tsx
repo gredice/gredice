@@ -144,6 +144,36 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                 />
             </List>
             <Stack spacing={1}>
+                <AuthProtectedSection>
+                    {/* Categories with their entity types */}
+                    {categorizedTypes.map((category) => (
+                        <Stack key={category.id} spacing={1}>
+                            <ListHeader
+                                header={category.label}
+                                actions={[
+                                    <Link
+                                        key={`edit-${category.id}`}
+                                        href={KnownPages.DirectoryCategoryEdit(
+                                            category.id,
+                                        )}
+                                    >
+                                        <IconButton
+                                            title="Uredi kategoriju"
+                                            variant="plain"
+                                        >
+                                            <Edit className="size-4" />
+                                        </IconButton>
+                                    </Link>,
+                                ]}
+                            />
+                            <EntityTypeList
+                                items={category.entityTypes}
+                                onItemClick={onItemClick}
+                            />
+                        </Stack>
+                    ))}
+                </AuthProtectedSection>
+
                 <ListHeader
                     header="Zapisi"
                     actions={[
@@ -199,34 +229,6 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                             onItemClick={onItemClick}
                         />
                     )}
-
-                    {/* Categories with their entity types */}
-                    {categorizedTypes.map((category) => (
-                        <Stack key={category.id} spacing={1}>
-                            <ListHeader
-                                header={category.label}
-                                actions={[
-                                    <Link
-                                        key={`edit-${category.id}`}
-                                        href={KnownPages.DirectoryCategoryEdit(
-                                            category.id,
-                                        )}
-                                    >
-                                        <IconButton
-                                            title="Uredi kategoriju"
-                                            variant="plain"
-                                        >
-                                            <Edit className="size-4" />
-                                        </IconButton>
-                                    </Link>,
-                                ]}
-                            />
-                            <EntityTypeList
-                                items={category.entityTypes}
-                                onItemClick={onItemClick}
-                            />
-                        </Stack>
-                    ))}
                 </AuthProtectedSection>
             </Stack>
             <Stack spacing={1}>

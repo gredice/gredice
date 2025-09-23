@@ -1,13 +1,16 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray } from 'drizzle-orm';
 import { AUTO_CLOSE_WINDOW_MS } from '../helpers/timeSlotAutomation';
 import {
+    accountUsers,
     DeliveryRequestStates,
     deliveryRequests,
+    events,
     type SelectDeliveryRequest,
     TimeSlotStatuses,
     timeSlots,
+    users,
 } from '../schema';
 import { storage } from '../storage';
 import { getDeliveryAddress } from './deliveryAddressesRepo';
@@ -40,6 +43,7 @@ async function reconstructDeliveryRequestFromEvents(
     let requestNotes: string | undefined;
     let deliveryNotes: string | undefined;
     let accountId: string | undefined;
+    let surveySent = false;
 
     for (const event of events) {
         const data = event.data as Record<string, any> | undefined;
@@ -74,6 +78,8 @@ async function reconstructDeliveryRequestFromEvents(
         } else if (event.type === knownEventTypes.delivery.requestCancelled) {
             state = DeliveryRequestStates.CANCELLED;
             cancelReason = data?.cancelReason;
+        } else if (event.type === knownEventTypes.delivery.requestSurveySent) {
+            surveySent = true;
         }
     }
 
@@ -97,6 +103,7 @@ async function reconstructDeliveryRequestFromEvents(
         cancelReason,
         requestNotes,
         deliveryNotes,
+        surveySent,
         createdAt: request.createdAt,
         updatedAt: request.updatedAt,
         accountId,
@@ -132,6 +139,7 @@ export async function getDeliveryRequestsWithEvents(
             knownEventTypes.delivery.requestPreparing,
             knownEventTypes.delivery.requestReady,
             knownEventTypes.delivery.requestFulfilled,
+            knownEventTypes.delivery.requestSurveySent,
             knownEventTypes.delivery.requestSlotChanged,
             knownEventTypes.delivery.userCancelled,
         ],
@@ -231,6 +239,7 @@ export async function getDeliveryRequest(
             knownEventTypes.delivery.requestPreparing,
             knownEventTypes.delivery.requestReady,
             knownEventTypes.delivery.requestFulfilled,
+            knownEventTypes.delivery.requestSurveySent,
             knownEventTypes.delivery.requestSlotChanged,
             knownEventTypes.delivery.userCancelled,
         ],
@@ -265,6 +274,7 @@ export async function getDeliveryRequestByOperation(
             knownEventTypes.delivery.requestPreparing,
             knownEventTypes.delivery.requestReady,
             knownEventTypes.delivery.requestFulfilled,
+            knownEventTypes.delivery.requestSurveySent,
             knownEventTypes.delivery.requestSlotChanged,
             knownEventTypes.delivery.userCancelled,
         ],
@@ -544,6 +554,127 @@ export async function fulfillDeliveryRequest(
         knownEvents.delivery.requestFulfilledV1(requestId, {
             status: DeliveryRequestStates.FULFILLED,
             deliveryNotes,
+        }),
+    );
+}
+
+export interface DeliverySurveyCandidate {
+    requestId: string;
+    accountId: string;
+    operationId: number;
+    fulfilledAt: Date;
+    userEmails: { userId: string; email: string }[];
+}
+
+export async function getDeliverySurveyCandidates({
+    since,
+}: {
+    since: Date;
+}): Promise<DeliverySurveyCandidate[]> {
+    const fulfilledEvents = await storage().query.events.findMany({
+        where: and(
+            eq(events.type, knownEventTypes.delivery.requestFulfilled),
+            gte(events.createdAt, since),
+        ),
+        orderBy: [asc(events.createdAt)],
+    });
+
+    if (fulfilledEvents.length === 0) {
+        return [];
+    }
+
+    const requestIds = fulfilledEvents.map((event) => event.aggregateId);
+
+    const surveySentEvents = await storage().query.events.findMany({
+        where: and(
+            eq(events.type, knownEventTypes.delivery.requestSurveySent),
+            inArray(events.aggregateId, requestIds),
+        ),
+    });
+
+    const surveySentIds = new Set(
+        surveySentEvents.map((event) => event.aggregateId),
+    );
+
+    const pendingEvents = fulfilledEvents.filter(
+        (event) => !surveySentIds.has(event.aggregateId),
+    );
+
+    if (pendingEvents.length === 0) {
+        return [];
+    }
+
+    const pendingRequestIds = pendingEvents.map((event) => event.aggregateId);
+
+    const requests = await storage().query.deliveryRequests.findMany({
+        where: inArray(deliveryRequests.id, pendingRequestIds),
+        with: {
+            operation: true,
+        },
+    });
+
+    const accountIds = Array.from(
+        new Set(
+            requests
+                .map((request) => request.operation?.accountId)
+                .filter((id): id is string => Boolean(id)),
+        ),
+    );
+
+    const accountUserRows = accountIds.length
+        ? await storage()
+              .select({
+                  accountId: accountUsers.accountId,
+                  userId: accountUsers.userId,
+                  email: users.userName,
+              })
+              .from(accountUsers)
+              .innerJoin(users, eq(accountUsers.userId, users.id))
+              .where(inArray(accountUsers.accountId, accountIds))
+        : [];
+
+    return pendingEvents
+        .map((event) => {
+            const request = requests.find(
+                (item) => item.id === event.aggregateId,
+            );
+
+            const accountId = request?.operation?.accountId;
+            const operationId = request?.operationId;
+
+            if (!accountId || !operationId) {
+                return null;
+            }
+
+            const userEmails = accountUserRows
+                .filter((row) => row.accountId === accountId)
+                .map((row) => ({
+                    userId: row.userId,
+                    email: row.email ?? '',
+                }))
+                .filter((row) => row.email.length > 0);
+
+            return {
+                requestId: event.aggregateId,
+                accountId,
+                operationId,
+                fulfilledAt: event.createdAt,
+                userEmails,
+            } satisfies DeliverySurveyCandidate;
+        })
+        .filter(
+            (candidate): candidate is DeliverySurveyCandidate =>
+                candidate !== null,
+        );
+}
+
+export async function markDeliverySurveySent(
+    requestId: string,
+    sentTo: string[],
+) {
+    await createEvent(
+        knownEvents.delivery.requestSurveySentV1(requestId, {
+            sentTo,
         }),
     );
 }

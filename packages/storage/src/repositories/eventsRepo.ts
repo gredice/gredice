@@ -62,6 +62,7 @@ export const knownEventTypes = {
         requestReady: 'delivery.request.ready',
         requestCancelled: 'delivery.request.cancelled',
         requestFulfilled: 'delivery.request.fulfilled',
+        requestSurveySent: 'delivery.request.survey_sent',
         userCancelled: 'delivery.request.user_cancelled',
     },
 };
@@ -426,6 +427,15 @@ export const knownEvents = {
             data: { status: string; deliveryNotes?: string },
         ) => ({
             type: knownEventTypes.delivery.requestFulfilled,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestSurveySentV1: (
+            aggregateId: string,
+            data: { sentTo: string[] },
+        ) => ({
+            type: knownEventTypes.delivery.requestSurveySent,
             version: 1,
             aggregateId,
             data,

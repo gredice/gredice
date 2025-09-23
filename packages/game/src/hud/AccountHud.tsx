@@ -173,11 +173,7 @@ export function AccountHud() {
     return (
         <HudCard open position="floating" className="p-0.5 md:px-2 static">
             <Row spacing={1}>
-                <DropdownMenu
-                    className="overflow-hidden"
-                    side="bottom"
-                    sideOffset={12}
-                >
+                <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <IconButton
                             className="size-10 md:size-auto relative rounded-full p-0.5 aspect-square shrink-0 md:hover:outline outline-offset-2 outline-tertiary-foreground"

@@ -39,7 +39,9 @@ export function LocalDateTime({
 
     if (!mounted) {
         // Return a placeholder with the same approximate size to avoid layout shifts
-        return <Skeleton className={cx('w-20 h-6', className)} />;
+        return (
+            <span className="w-20 h-6 animate-pulse rounded-md bg-neutral-400 dark:bg-neutral-800" />
+        );
     }
 
     if (date === false && time === false) {

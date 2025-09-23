@@ -12,6 +12,10 @@
         {
             "path": "/api/internal/cron/auto-close-slots",
             "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/delivery-survey",
+            "schedule": "0 9 * * *"
         }
     ]
 }

@@ -29,7 +29,8 @@ export default async function PlantsPage({
     searchParams,
 }: PageProps<'/biljke'>) {
     const params = await searchParams;
-    const view = params.pregled;
+    const viewParam = params.pregled;
+    const view = Array.isArray(viewParam) ? viewParam[0] : viewParam;
     const search = params.pretraga;
     const entities = await getPlantsData();
     return (
