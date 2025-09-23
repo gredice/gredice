@@ -1,6 +1,6 @@
 import 'server-only';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
-import { and, count, desc, eq, gte } from 'drizzle-orm';
+import { and, count, desc, eq } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { getEntitiesFormatted, getOperations, storage } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
