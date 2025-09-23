@@ -90,8 +90,10 @@ export function Leaves({ matrices, color, type }: LeavesProps) {
     );
 
     useLayoutEffect(() => {
-        if (!ref.current) return;
         const mesh = ref.current;
+        if (!mesh) {
+            return;
+        }
         matrices.forEach((matrix, i) => {
             mesh.setMatrixAt(i, matrix);
         });

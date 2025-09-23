@@ -37,20 +37,28 @@ export function useSetNotificationRead() {
                     queryKey[0] === notificationsQueryKey[0]
                 ) {
                     queryClient.cancelQueries({ queryKey });
-                    queryClient.setQueryData(
-                        queryKey,
-                        (data as Array<Record<string, unknown>>).map((n) => {
-                            const entry = n as Record<string, unknown>;
-                            if (String(entry.id) === variables.id) {
+                    if (Array.isArray(data)) {
+                        const updated = data.map((notification) => {
+                            if (
+                                notification &&
+                                typeof notification === 'object' &&
+                                'id' in notification &&
+                                typeof notification.id === 'string' &&
+                                notification.id === variables.id
+                            ) {
                                 return {
-                                    ...entry,
+                                    ...(notification as Record<
+                                        string,
+                                        unknown
+                                    >),
                                     readAt: variables.read ? new Date() : null,
-                                } as Record<string, unknown>;
+                                };
                             }
-                            return entry;
-                        }),
-                    );
-                    previousQueries.set(queryKey, data as unknown);
+                            return notification;
+                        });
+                        queryClient.setQueryData(queryKey, updated);
+                    }
+                    previousQueries.set(queryKey, data);
                 }
             });
 

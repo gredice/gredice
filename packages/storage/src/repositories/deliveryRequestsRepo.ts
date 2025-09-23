@@ -24,6 +24,57 @@ import {
 import { getPickupLocation } from './pickupLocationsRepo';
 import { closeTimeSlot, getTimeSlot } from './timeSlotsRepo';
 
+interface DeliveryEventData {
+    slotId?: number;
+    newSlotId?: number;
+    addressId?: number;
+    locationId?: number;
+    mode?: 'delivery' | 'pickup';
+    requestNotes?: string;
+    deliveryNotes?: string;
+    cancelReason?: string;
+    accountId?: string;
+}
+
+function parseDeliveryEventData(value: unknown): DeliveryEventData {
+    if (!value || typeof value !== 'object') {
+        return {};
+    }
+
+    const record = value as Record<string, unknown>;
+    const data: DeliveryEventData = {};
+
+    if (typeof record.slotId === 'number') {
+        data.slotId = record.slotId;
+    }
+    if (typeof record.newSlotId === 'number') {
+        data.newSlotId = record.newSlotId;
+    }
+    if (typeof record.addressId === 'number') {
+        data.addressId = record.addressId;
+    }
+    if (typeof record.locationId === 'number') {
+        data.locationId = record.locationId;
+    }
+    if (record.mode === 'delivery' || record.mode === 'pickup') {
+        data.mode = record.mode;
+    }
+    if (typeof record.requestNotes === 'string') {
+        data.requestNotes = record.requestNotes;
+    }
+    if (typeof record.deliveryNotes === 'string') {
+        data.deliveryNotes = record.deliveryNotes;
+    }
+    if (typeof record.cancelReason === 'string') {
+        data.cancelReason = record.cancelReason;
+    }
+    if (typeof record.accountId === 'string') {
+        data.accountId = record.accountId;
+    }
+
+    return data;
+}
+
 // Business state projection interface
 export type DeliveryRequestWithEvents = ReturnType<
     typeof reconstructDeliveryRequestFromEvents
@@ -62,7 +113,7 @@ async function reconstructDeliveryRequestFromEvents(
             : undefined;
 
     for (const event of events) {
-        const data = event.data as Record<string, unknown> | undefined;
+        const data = parseDeliveryEventData(event.data);
 
         if (event.type === knownEventTypes.delivery.requestCreated) {
             slotId = asNumber(data?.slotId);
@@ -87,6 +138,7 @@ async function reconstructDeliveryRequestFromEvents(
             state = DeliveryRequestStates.READY;
         } else if (event.type === knownEventTypes.delivery.requestFulfilled) {
             state = DeliveryRequestStates.FULFILLED;
+            deliveryNotes = data.deliveryNotes ?? deliveryNotes;
         } else if (event.type === knownEventTypes.delivery.requestSlotChanged) {
             slotId = asNumber(data?.newSlotId);
         } else if (event.type === knownEventTypes.delivery.userCancelled) {
@@ -171,7 +223,7 @@ export async function getDeliveryRequestsWithEvents(
                 (event) =>
                     event.aggregateId === request.id &&
                     request.createdAt <=
-                        new Date(event.createdAt.getTime() + 5000), // 5s offset
+                    new Date(event.createdAt.getTime() + 5000), // 5s offset
             );
 
             return reconstructDeliveryRequestFromEvents(request, events);
@@ -669,14 +721,14 @@ export async function getDeliverySurveyCandidates({
 
     const accountUserRows = accountIds.length
         ? await storage()
-              .select({
-                  accountId: accountUsers.accountId,
-                  userId: accountUsers.userId,
-                  email: users.userName,
-              })
-              .from(accountUsers)
-              .innerJoin(users, eq(accountUsers.userId, users.id))
-              .where(inArray(accountUsers.accountId, accountIds))
+            .select({
+                accountId: accountUsers.accountId,
+                userId: accountUsers.userId,
+                email: users.userName,
+            })
+            .from(accountUsers)
+            .innerJoin(users, eq(accountUsers.userId, users.id))
+            .where(inArray(accountUsers.accountId, accountIds))
         : [];
 
     return pendingEvents

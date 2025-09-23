@@ -36,6 +36,19 @@ import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 import { useNeighboringRaisedBeds } from './RaisedBedField';
 
+interface TooltipPayload {
+    value?: number | string;
+}
+
+interface CustomTooltipProps {
+    active?: boolean;
+    payload?: TooltipPayload[];
+    header: string;
+    textColor?: string;
+    label: string;
+    unit: string;
+}
+
 function CustomTooltip({
     active,
     payload,
@@ -43,14 +56,7 @@ function CustomTooltip({
     textColor,
     label,
     unit,
-}: {
-    active?: boolean;
-    payload?: Array<Record<string, unknown>>;
-    header?: string;
-    textColor?: string;
-    label?: string | number;
-    unit?: string;
-}) {
+}: CustomTooltipProps) {
     if (active && payload && payload.length) {
         const payloadFormatted =
             new Date(String(label)).toLocaleDateString('hr-HR', {
@@ -65,11 +71,9 @@ function CustomTooltip({
         return (
             <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
                 <p className="text-sm font-medium text-gray-900">{`${payloadFormatted}`}</p>
-                <p className={cx('text-sm', textColor)}>
-                    {`${header}: ${String(
-                        (payload[0].value as number | string) ?? '',
-                    )}${unit}`}
-                </p>
+                <p
+                    className={cx('text-sm', textColor)}
+                >{`${header}: ${payload[0]?.value ?? ''}${unit}`}</p>
             </div>
         );
     }
@@ -154,13 +158,10 @@ function SensorInfoModal({
 
     // Process and sort the data with smart date/time formatting
     const processedData = sensorDetails?.values
-        .map((item) => {
-            const it = item as Record<string, unknown>;
-            return {
-                timestamp: it.timeStamp as Date,
-                value: Number.parseFloat(String(it.valueSerialized ?? '0')),
-            };
-        })
+        .map((item) => ({
+            timestamp: item.timeStamp,
+            value: Number.parseFloat(item.valueSerialized ?? '0'),
+        }))
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
     // Add smart labeling logic with mobile-friendly labels
@@ -200,9 +201,9 @@ function SensorInfoModal({
     const trend = currentMoisture - previousMoisture;
     const avgMoisture = dataWithSmartLabels
         ? Math.round(
-              dataWithSmartLabels.reduce((sum, item) => sum + item.value, 0) /
-                  (dataWithSmartLabels.length || 1),
-          )
+            dataWithSmartLabels.reduce((sum, item) => sum + item.value, 0) /
+            (dataWithSmartLabels.length || 1),
+        )
         : 0;
 
     // Determine moisture status
@@ -417,11 +418,11 @@ function SensorInfoModal({
                                             domain={[
                                                 new Date(
                                                     Date.now() -
-                                                        duration *
-                                                            24 *
-                                                            60 *
-                                                            60 *
-                                                            1000,
+                                                    duration *
+                                                    24 *
+                                                    60 *
+                                                    60 *
+                                                    1000,
                                                 ).getTime(),
                                                 Date.now(),
                                             ]}
@@ -633,27 +634,27 @@ export function RaisedBedSensorInfo({
 
     const sensorGroups: SensorGroup[] = Array.isArray(sensors)
         ? (() => {
-              const groups = (sensors as SensorReading[]).reduce(
-                  (acc: Map<number, SensorGroup>, sensor: SensorReading) => {
-                      const existing = acc.get(sensor.id) ?? {
-                          id: sensor.id,
-                          status: sensor.status,
-                      };
-                      if (sensor.type === 'soil_moisture') {
-                          existing.soilMoisture = sensor;
-                      } else if (sensor.type === 'soil_temperature') {
-                          existing.soilTemperature = sensor;
-                      }
-                      existing.status = sensor.status;
-                      acc.set(sensor.id, existing);
-                      return acc;
-                  },
-                  new Map<number, SensorGroup>(),
-              );
-              return Array.from(groups.values()).sort(
-                  (a: SensorGroup, b: SensorGroup) => a.id - b.id,
-              );
-          })()
+            const groups = (sensors as SensorReading[]).reduce(
+                (acc: Map<number, SensorGroup>, sensor: SensorReading) => {
+                    const existing = acc.get(sensor.id) ?? {
+                        id: sensor.id,
+                        status: sensor.status,
+                    };
+                    if (sensor.type === 'soil_moisture') {
+                        existing.soilMoisture = sensor;
+                    } else if (sensor.type === 'soil_temperature') {
+                        existing.soilTemperature = sensor;
+                    }
+                    existing.status = sensor.status;
+                    acc.set(sensor.id, existing);
+                    return acc;
+                },
+                new Map<number, SensorGroup>(),
+            );
+            return Array.from(groups.values()).sort(
+                (a: SensorGroup, b: SensorGroup) => a.id - b.id,
+            );
+        })()
         : [];
 
     if (sensorGroups.length === 0) {
@@ -835,7 +836,7 @@ export function RaisedBedSensorInfo({
                                                 'size-5 shrink-0 stroke-blue-400',
                                                 Number(
                                                     group.soilMoisture?.value ??
-                                                        '0',
+                                                    '0',
                                                 ) >= 20 && 'fill-blue-300',
                                             )}
                                         />

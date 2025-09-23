@@ -2,7 +2,7 @@
  * Type definitions for the plant generator system
  */
 
-import type { PlantDefinition } from '../../lib/plant-definitions';
+import type { PlantDefinition, Rule } from '../../lib/plant-definitions';
 
 /**
  * Main application state interface
@@ -49,7 +49,7 @@ export interface PlantControlsProps {
     onStateChange: (updates: Partial<PlantGeneratorState>) => void;
     onVisibilityChange: (updates: Partial<VisibilityState>) => void;
     onDefinitionChange: (path: string, value: unknown) => void;
-    onRulesChange: (newRules: Record<string, unknown>) => void;
+    onRulesChange: (newRules: Record<string, Rule>) => void;
     onRandomizeSeed: () => void;
     onCreateCustomPlant: (name: string) => void;
     onDeleteCustomPlant: (name: string) => void;

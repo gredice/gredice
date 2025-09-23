@@ -35,6 +35,7 @@ import {
     Settings,
     ShoppingCart,
     SmileHappy,
+    Success,
     Tally3,
     Truck,
     User,
@@ -242,6 +243,12 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         href={KnownPages.Accounts}
                         label="Korisnički računi"
                         icon={<Bank className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                    <NavItem
+                        href={KnownPages.Achievements}
+                        label="Postignuća"
+                        icon={<Success className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem

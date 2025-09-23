@@ -7,7 +7,11 @@
     },
     "files": {
         "ignoreUnknown": true,
-        "includes": ["**", "!node_modules", "!src/migrations"]
+        "includes": [
+            "**",
+            "!node_modules",
+            "!src/migrations"
+        ]
     },
     "formatter": {
         "enabled": true,

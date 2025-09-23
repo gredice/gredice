@@ -1,6 +1,19 @@
 import { client } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
+interface SensorHistoryApiValue extends Record<string, unknown> {
+    timeStamp: string;
+    valueSerialized?: string;
+}
+
+interface SensorHistoryApiResponse extends Record<string, unknown> {
+    values: SensorHistoryApiValue[];
+}
+
+interface SensorHistoryValue extends SensorHistoryApiValue {
+    timeStamp: Date;
+}
+
 export function useRaisedBedSensorHistory(
     gardenId: number,
     raisedBedId: number,
@@ -50,15 +63,14 @@ export function useRaisedBedSensorHistory(
                 );
                 return null;
             }
-            const data = await response.json();
+            const data = (await response.json()) as SensorHistoryApiResponse;
+            const values: SensorHistoryValue[] = data.values.map((item) => ({
+                ...item,
+                timeStamp: new Date(item.timeStamp),
+            }));
             return {
                 ...data,
-                values: (data.values as Array<Record<string, unknown>>).map(
-                    (item) => ({
-                        ...item,
-                        timeStamp: new Date(String(item.timeStamp)),
-                    }),
-                ),
+                values,
             };
         },
         staleTime: 5 * 60 * 1000, // 5 minutes

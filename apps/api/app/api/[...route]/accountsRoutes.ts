@@ -3,6 +3,7 @@ import {
     deleteAccountWithDependencies,
     earnSunflowers,
     getAccount,
+    getAccountAchievements,
     getAccountUsers,
     getSunflowers,
     getSunflowersHistory,
@@ -198,6 +199,37 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             ? -event.amount
                             : event.amount,
                     reason: event.reason,
+                })),
+            });
+        },
+    )
+    .get(
+        '/current/achievements',
+        describeRoute({
+            description: 'Get the current account achievements',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const achievements = await getAccountAchievements(accountId);
+            return context.json({
+                achievements: achievements.map((achievement) => ({
+                    id: achievement.id,
+                    key: achievement.achievementKey,
+                    status: achievement.status,
+                    rewardSunflowers: achievement.rewardSunflowers,
+                    progressValue: achievement.progressValue,
+                    threshold: achievement.threshold,
+                    metadata: achievement.metadata,
+                    earnedAt: achievement.earnedAt?.toISOString(),
+                    approvedAt: achievement.approvedAt?.toISOString() ?? null,
+                    approvedByUserId: achievement.approvedByUserId ?? null,
+                    rewardGrantedAt:
+                        achievement.rewardGrantedAt?.toISOString() ?? null,
+                    deniedAt: achievement.deniedAt?.toISOString() ?? null,
+                    deniedByUserId: achievement.deniedByUserId ?? null,
+                    createdAt: achievement.createdAt?.toISOString() ?? null,
+                    updatedAt: achievement.updatedAt?.toISOString() ?? null,
                 })),
             });
         },

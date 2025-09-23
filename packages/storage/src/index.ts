@@ -3,6 +3,7 @@ export * from './cache/grediceCached';
 export * from './helpers/timeSlotAutomation';
 export * from './repositories/accountDeletionRepo';
 export * from './repositories/accountsRepo';
+export * from './repositories/achievementsRepo';
 export * from './repositories/analyticsRepo';
 export * from './repositories/attributeDefinitionsRepo';
 export * from './repositories/attributeValuesRepo';

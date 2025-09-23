@@ -15,6 +15,59 @@ export type OperationStatus =
     | 'failed'
     | 'canceled';
 
+interface OperationEventData {
+    completedBy?: string;
+    completedAt?: string;
+    images?: string[];
+    imageUrl?: string;
+    error?: string;
+    errorCode?: string;
+    canceledBy?: string;
+    reason?: string;
+    scheduledDate?: string;
+}
+
+function parseOperationEventData(value: unknown): OperationEventData {
+    if (!value || typeof value !== 'object') {
+        return {};
+    }
+
+    const record = value as Record<string, unknown>;
+    const data: OperationEventData = {};
+
+    if (typeof record.completedBy === 'string') {
+        data.completedBy = record.completedBy;
+    }
+    if (typeof record.completedAt === 'string') {
+        data.completedAt = record.completedAt;
+    }
+    if (Array.isArray(record.images)) {
+        data.images = record.images.filter(
+            (value): value is string => typeof value === 'string',
+        );
+    }
+    if (typeof record.imageUrl === 'string') {
+        data.imageUrl = record.imageUrl;
+    }
+    if (typeof record.error === 'string') {
+        data.error = record.error;
+    }
+    if (typeof record.errorCode === 'string') {
+        data.errorCode = record.errorCode;
+    }
+    if (typeof record.canceledBy === 'string') {
+        data.canceledBy = record.canceledBy;
+    }
+    if (typeof record.reason === 'string') {
+        data.reason = record.reason;
+    }
+    if (typeof record.scheduledDate === 'string') {
+        data.scheduledDate = record.scheduledDate;
+    }
+
+    return data;
+}
+
 async function fillOperationAggregates(operations: SelectOperation[]) {
     const aggregateIds = operations.map((op) => op.id.toString());
     const aggregatesEvents = await getEvents(
@@ -50,15 +103,38 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             typeof v === 'string' ? v : undefined;
 
         for (const event of events) {
-            const data = event.data as Record<string, unknown> | undefined;
+            const data = parseOperationEventData(event.data);
             if (event.type === knownEventTypes.operations.complete) {
                 status = 'completed';
-                completedBy = asString(data?.completedBy);
-                completedAt = event.createdAt;
+                completedBy = asString(data?.completedBy) ?? completedBy;
+                completedAt = data.completedAt
+                    ? new Date(data.completedAt)
+                    : completedAt;
                 if (Array.isArray(data?.images)) {
                     imageUrls = (data.images as unknown[]).filter(
                         (url): url is string => typeof url === 'string',
                     );
+                    if (data.imageUrl) {
+                        imageUrls = imageUrls
+                            ? [...imageUrls, data.imageUrl]
+                            : [data.imageUrl];
+                    }
+                } else if (event.type === knownEventTypes.operations.fail) {
+                    status = 'failed';
+                    error = data.error ?? error;
+                    errorCode = data.errorCode ?? errorCode;
+                } else if (event.type === knownEventTypes.operations.cancel) {
+                    status = 'canceled';
+                    canceledBy = data.canceledBy ?? canceledBy;
+                    cancelReason = data.reason ?? cancelReason;
+                    canceledAt = event.createdAt
+                        ? new Date(event.createdAt)
+                        : undefined;
+                } else if (event.type === knownEventTypes.operations.schedule) {
+                    status = 'planned';
+                    scheduledDate = data.scheduledDate
+                        ? new Date(data.scheduledDate)
+                        : scheduledDate;
                 }
                 if (typeof data?.imageUrl === 'string') {
                     imageUrls = imageUrls
@@ -80,21 +156,21 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                     ? new Date(String(data.scheduledDate))
                     : undefined;
             }
-        }
 
-        return {
-            ...op,
-            status,
-            completedAt,
-            completedBy,
-            error,
-            errorCode,
-            scheduledDate,
-            canceledBy,
-            canceledAt,
-            cancelReason,
-            imageUrls,
-        };
+            return {
+                ...op,
+                status,
+                completedAt,
+                completedBy,
+                error,
+                errorCode,
+                scheduledDate,
+                canceledBy,
+                canceledAt,
+                cancelReason,
+                imageUrls,
+            };
+        }
     });
 }
 

@@ -215,7 +215,7 @@ export function DeliveryStep({
                                         {isLoadingAddresses ? (
                                             <Skeleton className="h-10 w-full rounded-md" />
                                         ) : addresses &&
-                                          addresses.length > 0 ? (
+                                            addresses.length > 0 ? (
                                             <SelectItems
                                                 label="Adresa za dostavu"
                                                 placeholder="Odaberi adresu..."
@@ -254,7 +254,7 @@ export function DeliveryStep({
                                         <Button
                                             variant={
                                                 !isLoadingAddresses &&
-                                                !addresses?.length
+                                                    !addresses?.length
                                                     ? 'solid'
                                                     : 'outlined'
                                             }
@@ -310,7 +310,7 @@ export function DeliveryStep({
                                         pickupLocations.map(
                                             (location) =>
                                                 selection.locationId ===
-                                                    location.id && (
+                                                location.id && (
                                                     <Card
                                                         key={location.id}
                                                         className="bg-background/50"
