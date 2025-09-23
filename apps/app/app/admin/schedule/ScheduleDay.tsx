@@ -21,6 +21,38 @@ import { CopyTasksButton } from './CopyTasksButton';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
 import { RescheduleRaisedBedFieldModal } from './RescheduleRaisedBedFieldModal';
 
+const PLANTING_TASK_DURATION_MINUTES = 5;
+
+function formatMinutes(minutes: number) {
+    const rounded = Math.ceil(Math.max(0, minutes));
+    return `${rounded} min`;
+}
+
+function getOperationDurationMinutes(
+    operationData: EntityStandardized | undefined,
+) {
+    if (!operationData) {
+        return 0;
+    }
+
+    const durationValue = (
+        operationData as { attributes?: { duration?: unknown } }
+    )?.attributes?.duration;
+
+    if (typeof durationValue === 'number' && Number.isFinite(durationValue)) {
+        return Math.max(durationValue, 0);
+    }
+
+    if (typeof durationValue === 'string') {
+        const parsed = Number.parseFloat(durationValue);
+        if (Number.isFinite(parsed)) {
+            return Math.max(parsed, 0);
+        }
+    }
+
+    return 0;
+}
+
 // Type definitions for the props (without importing server-side functions)
 type RaisedBed = {
     id: number;
@@ -142,9 +174,69 @@ export function ScheduleDay({
     const { newFields, newOperations, affectedRaisedBedPhysicalIds } =
         getDaySchedule(isToday, date, allRaisedBeds, operations);
 
+    const operationDataById = new Map<number, EntityStandardized>();
+    if (operationsData) {
+        for (const operationData of operationsData) {
+            operationDataById.set(operationData.id, operationData);
+        }
+    }
+
+    const totalTasksCount = newFields.length + newOperations.length;
+    let approvedTasksCount = 0;
+    let totalDuration = 0;
+    let approvedDuration = 0;
+
+    for (const field of newFields) {
+        totalDuration += PLANTING_TASK_DURATION_MINUTES;
+        if (field.plantStatus === 'planned') {
+            approvedDuration += PLANTING_TASK_DURATION_MINUTES;
+            approvedTasksCount += 1;
+        }
+    }
+
+    for (const operation of newOperations) {
+        const operationDuration = getOperationDurationMinutes(
+            operationDataById.get(operation.entityId),
+        );
+        totalDuration += operationDuration;
+        if (operation.isAccepted) {
+            approvedDuration += operationDuration;
+            approvedTasksCount += 1;
+        }
+    }
+
+    const hasTasks = totalTasksCount > 0;
+
     return (
-        <Stack className="grow">
-            {!affectedRaisedBedPhysicalIds.length && (
+        <Stack className="grow" spacing={2}>
+            <Stack spacing={1}>
+                <Typography level="body1" semiBold>
+                    Sažetak
+                </Typography>
+                <Row spacing={1}>
+                    <Row spacing={0.5}>
+                        <Typography level="body3">Odobreno</Typography>
+                        <Typography level="body1" semiBold>
+                            {approvedTasksCount}
+                        </Typography>
+                        <Typography level="body3">
+                            /{totalTasksCount}
+                        </Typography>
+                        <Typography level="body3">zadataka</Typography>
+                    </Row>
+                    <Row spacing={0.5}>
+                        <Typography level="body3">Vrijeme:</Typography>
+                        <Typography level="body1" semiBold>
+                            {formatMinutes(approvedDuration)}
+                        </Typography>
+                        <Typography level="body3">/</Typography>
+                        <Typography level="body3" semiBold>
+                            {formatMinutes(totalDuration)}
+                        </Typography>
+                    </Row>
+                </Row>
+            </Stack>
+            {!hasTasks && (
                 <Typography level="body2" className="leading-[56px]">
                     Trenutno nema zadataka za ovaj dan.
                 </Typography>
@@ -232,8 +324,8 @@ export function ScheduleDay({
                         };
                     }),
                     ...dayOperations.map((op) => {
-                        const operationData = operationsData?.find(
-                            (data) => data.id === op.entityId,
+                        const operationData = operationDataById.get(
+                            op.entityId,
                         );
                         return {
                             id: `operation-${op.id}`,
@@ -248,10 +340,53 @@ export function ScheduleDay({
                     }),
                 ];
 
+                const raisedBedFieldDurations = dayFields.reduce(
+                    (acc, field) => {
+                        acc.total += PLANTING_TASK_DURATION_MINUTES;
+                        if (field.plantStatus === 'planned') {
+                            acc.approved += PLANTING_TASK_DURATION_MINUTES;
+                        }
+                        return acc;
+                    },
+                    { total: 0, approved: 0 },
+                );
+
+                const raisedBedOperationDurations = dayOperations.reduce(
+                    (acc, op) => {
+                        const duration = getOperationDurationMinutes(
+                            operationDataById.get(op.entityId),
+                        );
+                        acc.total += duration;
+                        if (op.isAccepted) {
+                            acc.approved += duration;
+                        }
+                        return acc;
+                    },
+                    { total: 0, approved: 0 },
+                );
+
+                const raisedBedTotalDuration =
+                    raisedBedFieldDurations.total +
+                    raisedBedOperationDurations.total;
+                const raisedBedApprovedDuration =
+                    raisedBedFieldDurations.approved +
+                    raisedBedOperationDurations.approved;
+
                 return (
                     <Stack key={physicalId} spacing={1}>
-                        <Row spacing={1}>
+                        <Row
+                            spacing={1}
+                            className="items-center flex-wrap gap-y-1"
+                        >
                             <RaisedBedLabel physicalId={physicalId} />
+                            <Typography
+                                level="body2"
+                                className="text-muted-foreground"
+                            >
+                                Vrijeme:{' '}
+                                {formatMinutes(raisedBedApprovedDuration)} /{' '}
+                                {formatMinutes(raisedBedTotalDuration)}
+                            </Typography>
                             <CopyTasksButton
                                 physicalId={physicalId.toString()}
                                 tasks={copyTasks}
@@ -388,8 +523,8 @@ export function ScheduleDay({
                                 );
                             })}
                             {dayOperations.map((op) => {
-                                const operationData = operationsData?.find(
-                                    (data) => data.id === op.entityId,
+                                const operationData = operationDataById.get(
+                                    op.entityId,
                                 );
                                 const operationLabel = `${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`;
                                 return (
