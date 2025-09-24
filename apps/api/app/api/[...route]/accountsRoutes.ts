@@ -220,16 +220,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     rewardSunflowers: achievement.rewardSunflowers,
                     progressValue: achievement.progressValue,
                     threshold: achievement.threshold,
-                    metadata: achievement.metadata,
-                    earnedAt: achievement.earnedAt?.toISOString(),
-                    approvedAt: achievement.approvedAt?.toISOString() ?? null,
-                    approvedByUserId: achievement.approvedByUserId ?? null,
                     rewardGrantedAt:
                         achievement.rewardGrantedAt?.toISOString() ?? null,
-                    deniedAt: achievement.deniedAt?.toISOString() ?? null,
-                    deniedByUserId: achievement.deniedByUserId ?? null,
-                    createdAt: achievement.createdAt?.toISOString() ?? null,
-                    updatedAt: achievement.updatedAt?.toISOString() ?? null,
                 })),
             });
         },

@@ -8,10 +8,13 @@ import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import {
     accountAchievements,
     accounts,
+    type EarnSunflowersEventData,
+    type EntityStandardized,
     earnSunflowers,
     events,
     knownEventTypes,
     operations,
+    type PlantUpdateEventData,
     raisedBeds,
     type SelectAccountAchievement,
     storage,
@@ -272,45 +275,30 @@ function parseRaisedBedId(aggregateId: string) {
     return Number.isNaN(raisedBedId) ? null : raisedBedId;
 }
 
-function isWateringOperation(
-    entity: Record<string, unknown> | null | undefined,
-) {
+function isWateringOperation(entity: EntityStandardized | null | undefined) {
     if (!entity) return false;
-    const label =
-        typeof entity?.information === 'object' && entity?.information
-            ? (entity.information as Record<string, unknown>).label
-            : undefined;
-    if (typeof label === 'string') {
-        const normalized = label.toLowerCase();
-        if (normalized.includes('zalije') || normalized.includes('water')) {
-            return true;
-        }
+
+    // Check the main information for watering-related terms
+    const name = entity.information?.name?.toLowerCase();
+    const label = entity.information?.label?.toLowerCase();
+
+    if (name?.includes('watter') || name?.includes('water')) {
+        return true;
     }
-    const attributes =
-        typeof entity?.attributes === 'object' ? entity.attributes : undefined;
-    if (
-        attributes &&
-        typeof attributes === 'object' &&
-        'stage' in attributes &&
-        attributes.stage &&
-        typeof attributes.stage === 'object'
-    ) {
-        const stage = attributes.stage as Record<string, unknown>;
-        const info =
-            typeof stage.information === 'object'
-                ? stage.information
-                : undefined;
-        const name =
-            typeof info?.name === 'string'
-                ? info.name.toLowerCase()
-                : undefined;
-        const label =
-            typeof info?.label === 'string'
-                ? info.label.toLowerCase()
-                : undefined;
-        if (name === 'watering') return true;
-        if (label?.includes('zalije')) return true;
+
+    if (label?.includes('zalije') || label?.includes('water')) {
+        return true;
     }
+
+    // Check the stage information for watering stage
+    const stageName =
+        entity.attributes?.stage?.information?.name?.toLowerCase();
+    const stageLabel =
+        entity.attributes?.stage?.information?.label?.toLowerCase();
+
+    if (stageName === 'watering') return true;
+    if (stageLabel?.includes('zalije')) return true;
+
     return false;
 }
 
@@ -385,10 +373,8 @@ export async function evaluateAchievements() {
     });
 
     for (const event of plantEvents) {
-        const data =
-            (event.data as Record<string, unknown> | undefined) ?? undefined;
-        const status =
-            typeof data?.status === 'string' ? data.status.toLowerCase() : '';
+        const data = event.data as PlantUpdateEventData | undefined;
+        const status = data?.status?.toLowerCase();
         if (status !== 'sowed' && status !== 'harvested') {
             continue;
         }
@@ -443,8 +429,7 @@ export async function evaluateAchievements() {
     }
 
     const operationEntities =
-        (await getEntitiesFormatted<Record<string, unknown>>('operation')) ??
-        [];
+        (await getEntitiesFormatted<EntityStandardized>('operation')) ?? [];
     const wateringEntityIds = new Set<number>();
     for (const entity of operationEntities) {
         if (!isWateringOperation(entity)) {
@@ -500,10 +485,8 @@ export async function evaluateAchievements() {
     });
     const registrationMap = new Map<string, Date>();
     for (const event of registrationEvents) {
-        const data =
-            (event.data as Record<string, unknown> | undefined) ?? undefined;
-        const reason =
-            typeof data?.reason === 'string' ? data.reason : undefined;
+        const data = event.data as EarnSunflowersEventData | undefined;
+        const reason = data?.reason;
         const accountId = event.aggregateId;
         if (!accountId) continue;
         if (!registrationMap.has(accountId)) {
