@@ -1,8 +1,4 @@
-export type AchievementCategory =
-    | 'registration'
-    | 'planting'
-    | 'watering'
-    | 'harvest';
+export type AchievementCategory = 'registration' | 'plants';
 
 export type AchievementStatus = 'pending' | 'approved' | 'denied';
 
@@ -70,7 +66,7 @@ export const achievementDefinitions: AchievementDefinition[] = [
         key: 'registration',
         category: 'registration',
         rewardSunflowers: 1_000,
-        title: 'Dobrodošlica u Gredicu',
+        title: 'Dobrodošlica u Gredice',
         description:
             'Registriraj račun i započni svoj vrt uz 1 000 suncokreta dobrodošlice.',
         autoApprove: true,
@@ -78,7 +74,7 @@ export const achievementDefinitions: AchievementDefinition[] = [
     },
     ...plantingThresholds.map(([threshold, reward], index) => ({
         key: `planting_${threshold}`,
-        category: 'planting' as const,
+        category: 'plants' as const,
         threshold,
         rewardSunflowers: reward,
         title: plantingTitle(threshold),
@@ -87,7 +83,7 @@ export const achievementDefinitions: AchievementDefinition[] = [
     })),
     ...wateringThresholds.map(([threshold, reward], index) => ({
         key: `watering_${threshold}`,
-        category: 'watering' as const,
+        category: 'plants' as const,
         threshold,
         rewardSunflowers: reward,
         title: wateringTitle(threshold),
@@ -96,7 +92,7 @@ export const achievementDefinitions: AchievementDefinition[] = [
     })),
     ...harvestThresholds.map(([threshold, reward], index) => ({
         key: `harvest_${threshold}`,
-        category: 'harvest' as const,
+        category: 'plants' as const,
         threshold,
         rewardSunflowers: reward,
         title: harvestTitle(threshold),
