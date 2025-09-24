@@ -7,10 +7,11 @@ import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useMemo } from 'react';
-import {
-    type AccountAchievement,
-    useAccountAchievements,
-} from '../../hooks/useAccountAchievements';
+import { useAccountAchievements } from '../../hooks/useAccountAchievements';
+
+type AccountAchievement = NonNullable<
+    ReturnType<typeof useAccountAchievements>['data']
+>[number];
 
 const categoryLabels: Record<string, string> = {
     registration: 'Dobrodošlica',
@@ -87,12 +88,12 @@ export function AchievementsOverview() {
                                     const status = achievement
                                         ? statusStyles[achievement.status]
                                         : statusStyles.locked;
-                                    const earnedAt = achievement?.earnedAt
-                                        ? new Date(achievement.earnedAt)
-                                        : null;
-                                    const approvedAt = achievement?.approvedAt
-                                        ? new Date(achievement.approvedAt)
-                                        : null;
+                                    const grantedAt =
+                                        achievement?.rewardGrantedAt
+                                            ? new Date(
+                                                  achievement.rewardGrantedAt,
+                                              )
+                                            : null;
                                     return (
                                         <Card
                                             key={definition.key}
@@ -120,13 +121,12 @@ export function AchievementsOverview() {
                                                                 definition.description
                                                             }
                                                         </Typography>
-                                                        {earnedAt && (
+                                                        {grantedAt && (
                                                             <Typography
                                                                 level="body3"
                                                                 secondary
                                                             >
-                                                                Stečeno:{' '}
-                                                                {earnedAt.toLocaleDateString(
+                                                                {grantedAt.toLocaleDateString(
                                                                     'hr-HR',
                                                                     {
                                                                         day: 'numeric',
@@ -136,22 +136,7 @@ export function AchievementsOverview() {
                                                                 )}
                                                             </Typography>
                                                         )}
-                                                        {approvedAt && (
-                                                            <Typography
-                                                                level="body3"
-                                                                secondary
-                                                            >
-                                                                Odobreno:{' '}
-                                                                {approvedAt.toLocaleDateString(
-                                                                    'hr-HR',
-                                                                    {
-                                                                        day: 'numeric',
-                                                                        month: 'long',
-                                                                        year: 'numeric',
-                                                                    },
-                                                                )}
-                                                            </Typography>
-                                                        )}
+
                                                         {!achievement && (
                                                             <Typography
                                                                 level="body3"
@@ -164,10 +149,7 @@ export function AchievementsOverview() {
                                                             </Typography>
                                                         )}
                                                     </Stack>
-                                                    <Stack
-                                                        spacing={1}
-                                                        alignItems="flex-end"
-                                                    >
+                                                    <Stack spacing={1}>
                                                         <Typography level="body2">
                                                             🌻{' '}
                                                             {definition.rewardSunflowers.toLocaleString(

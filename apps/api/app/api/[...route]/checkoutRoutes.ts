@@ -1,5 +1,6 @@
 import {
     assignStripeCustomerId,
+    type EntityStandardized,
     getAccount,
     getEntitiesFormatted,
     getRaisedBed,
@@ -24,34 +25,6 @@ import {
     authValidator,
 } from '../../../lib/hono/authValidator';
 import { processItem } from '../../../lib/stripe/processCheckoutSession';
-
-export type EntityStandardized = {
-    id: number;
-    entityType: {
-        id: number;
-        name: string;
-        label: string;
-    };
-    information?: {
-        name?: string;
-        label?: string;
-        shortDescription?: string;
-        description?: string;
-
-        // Parent items
-        plant?: EntityStandardized;
-    };
-    images?: {
-        cover?: { url?: string };
-    };
-    image?: {
-        cover?: { url?: string };
-    };
-    prices?: {
-        perPlant?: number;
-        perOperation?: number;
-    };
-};
 
 export type ShoppingCartDiscount = {
     cartItemId: number;

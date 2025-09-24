@@ -1,4 +1,9 @@
-import { getEvents, getRaisedBed, knownEventTypes } from '@gredice/storage';
+import {
+    getEvents,
+    getRaisedBed,
+    knownEventTypes,
+    type PlantUpdateEventData,
+} from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
@@ -53,14 +58,14 @@ function parseDateValue(value: unknown): Date | null {
 }
 
 function renderEventDetails(event: StorageEvent) {
-    const data = event.data as Record<string, unknown> | null | undefined;
+    const data = event.data as PlantUpdateEventData | null | undefined;
     if (!data || Object.keys(data).length === 0) {
         return null;
     }
 
     const details: ReactNode[] = [];
 
-    if (typeof data.status === 'string' && data.status.length) {
+    if (data.status) {
         details.push(<span key="status">Status: {data.status}</span>);
     }
 

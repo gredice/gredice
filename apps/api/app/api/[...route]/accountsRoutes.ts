@@ -26,7 +26,7 @@ function rewardForDay(day: number) {
 async function getDailyRewardState(accountId: string) {
     const history = await getSunflowersHistory(accountId, 0, 10000);
     const dailyEvents = history
-        .filter((e) => e.reason.startsWith('daily'))
+        .filter((e) => e.reason?.startsWith('daily'))
         .sort(
             (a, b) =>
                 new Date(b.createdAt).getTime() -
@@ -40,7 +40,7 @@ async function getDailyRewardState(accountId: string) {
 
     if (dailyEvents.length > 0) {
         const latest = dailyEvents[0];
-        lastDay = Number(latest.reason.split(':')[1] ?? '1');
+        lastDay = Number(latest.reason?.split(':')[1] ?? '1');
         lastDate = new Date(latest.createdAt);
         streak.push({
             day: lastDay,
@@ -52,7 +52,7 @@ async function getDailyRewardState(accountId: string) {
         let prevDate = lastDate;
         for (let i = 1; i < dailyEvents.length && expectedDay > 0; i++) {
             const ev = dailyEvents[i];
-            const day = Number(ev.reason.split(':')[1] ?? '1');
+            const day = Number(ev.reason?.split(':')[1] ?? '1');
             const date = new Date(ev.createdAt);
             const diff = prevDate.getTime() - date.getTime();
             if (day === expectedDay && diff <= 1000 * 60 * 60 * 48) {
@@ -171,16 +171,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     rewardSunflowers: achievement.rewardSunflowers,
                     progressValue: achievement.progressValue,
                     threshold: achievement.threshold,
-                    metadata: achievement.metadata,
-                    earnedAt: achievement.earnedAt?.toISOString(),
-                    approvedAt: achievement.approvedAt?.toISOString() ?? null,
-                    approvedByUserId: achievement.approvedByUserId ?? null,
                     rewardGrantedAt:
                         achievement.rewardGrantedAt?.toISOString() ?? null,
-                    deniedAt: achievement.deniedAt?.toISOString() ?? null,
-                    deniedByUserId: achievement.deniedByUserId ?? null,
-                    createdAt: achievement.createdAt?.toISOString() ?? null,
-                    updatedAt: achievement.updatedAt?.toISOString() ?? null,
                 })),
             });
         },
