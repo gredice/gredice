@@ -42,7 +42,7 @@
         "@signalco/ui-notifications": "0.2.0",
         "@signalco/ui-primitives": "0.6.5",
         "@signalco/ui-themes-minimal": "0.1.3",
-        "@tailwindcss/typography": "0.5.18",
+        "@tailwindcss/typography": "0.5.19",
         "@tanstack/react-query": "5.89.0",
         "@types/node": "22.18.6",
         "@types/react": "19.1.13",
