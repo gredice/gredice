@@ -7,6 +7,7 @@ import {
     serial,
     text,
     timestamp,
+    uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { gardenBlocks, gardens, raisedBeds } from './gardenSchema';
 import { accounts, users } from './usersSchema';
@@ -96,3 +97,36 @@ export const notificationEmailLog = pgTable('notification_email_log', {
         .references(() => notifications.id),
     emailedAt: timestamp('emailed_at').notNull().defaultNow(),
 });
+
+export const webPushSubscriptions = pgTable(
+    'web_push_subscriptions',
+    {
+        id: text('id').primaryKey(),
+        accountId: text('account_id')
+            .notNull()
+            .references(() => accounts.id, { onDelete: 'cascade' }),
+        userId: text('user_id')
+            .notNull()
+            .references(() => users.id, { onDelete: 'cascade' }),
+        endpoint: text('endpoint').notNull(),
+        auth: text('auth').notNull(),
+        p256dh: text('p256dh').notNull(),
+        expirationTime: timestamp('expiration_time'),
+        userAgent: text('user_agent'),
+        platform: text('platform'),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    },
+    (table) => [
+        uniqueIndex('web_push_subscriptions_endpoint_idx').on(table.endpoint),
+        index('web_push_subscriptions_account_id_idx').on(table.accountId),
+        index('web_push_subscriptions_user_id_idx').on(table.userId),
+    ],
+);
+
+export type InsertWebPushSubscription = Omit<
+    typeof webPushSubscriptions.$inferInsert,
+    'id' | 'createdAt' | 'updatedAt'
+>;
+export type SelectWebPushSubscription =
+    typeof webPushSubscriptions.$inferSelect;

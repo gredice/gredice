@@ -1,3 +1,15 @@
+## Web push configuration
+
+The API exposes endpoints that allow the Garden PWA to register Web Push subscriptions. Configure the following environment variables so the server can sign VAPID requests:
+
+- `WEB_PUSH_PUBLIC_KEY` – Base64url-encoded VAPID public key.
+- `WEB_PUSH_PRIVATE_KEY` – Base64url-encoded VAPID private key.
+- `WEB_PUSH_CONTACT_EMAIL` – Contact email used as the VAPID subject (e.g. `team@gredice.com`).
+
+You can generate a new key pair with `npx web-push generate-vapid-keys`. The remaining sections below contain the original Next.js template documentation.
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

@@ -20,6 +20,7 @@ export * from './repositories/invoicesRepo';
 export * from './repositories/notificationsRepo';
 export * from './repositories/operationsRepo';
 export * from './repositories/pickupLocationsRepo';
+export * from './repositories/pushSubscriptionsRepo';
 export * from './repositories/shoppingCartRepo';
 export * from './repositories/timeSlotsRepo';
 export * from './repositories/transactionsRepo';

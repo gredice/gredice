@@ -6,6 +6,7 @@ import { NotificationsContainer } from '@signalco/ui-notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import type { PropsWithChildren } from 'react';
+import { PushNotificationManager } from './PushNotificationManager';
 
 export type User = {
     id: string;
@@ -31,6 +32,7 @@ export function ClientAppProvider({ children }: PropsWithChildren) {
                 <AuthProvider currentUserFactory={currentUserFactory}>
                     {children}
                     <NotificationsContainer />
+                    <PushNotificationManager />
                 </AuthProvider>
             </ThemeProvider>
         </QueryClientProvider>

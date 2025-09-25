@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq, inArray, isNull, notExists, or } from 'drizzle-orm';
 import { storage } from '..';
+import { sendWebPush } from '../lib/webPush';
 import {
     accountUsers,
     type InsertNotification,
@@ -10,6 +11,10 @@ import {
     userNotificationSettings,
     users,
 } from '../schema';
+import {
+    getPushSubscriptionsForNotification,
+    removePushSubscription,
+} from './pushSubscriptionsRepo';
 
 export async function getNotification(
     id: string,
@@ -28,7 +33,9 @@ export async function createNotification(notification: InsertNotification) {
             ...notification,
         })
         .returning({ id: notifications.id });
-    return result[0].id;
+    const id = result[0].id;
+    await notifyPushSubscribers({ ...notification, id });
+    return id;
 }
 
 export function getNotificationsByUser(
@@ -103,6 +110,67 @@ export function setAllNotificationsRead(
 
 export function deleteNotification(id: string) {
     return storage().delete(notifications).where(eq(notifications.id, id));
+}
+
+async function notifyPushSubscribers(
+    notification: InsertNotification & { id: string },
+) {
+    try {
+        const subscriptions = await getPushSubscriptionsForNotification({
+            accountId: notification.accountId,
+            userId: notification.userId ?? null,
+        });
+
+        if (subscriptions.length === 0) {
+            return;
+        }
+
+        const timestamp = new Date(notification.timestamp);
+        const payload = {
+            title: notification.header,
+            body: notification.content,
+            icon: notification.iconUrl ?? null,
+            image: notification.imageUrl ?? null,
+            url: notification.linkUrl ?? null,
+            data: {
+                notificationId: notification.id,
+                accountId: notification.accountId,
+                userId: notification.userId ?? null,
+                timestamp: timestamp.toISOString(),
+            },
+        };
+
+        let configurationMissing = false;
+
+        for (const subscription of subscriptions) {
+            if (configurationMissing) {
+                break;
+            }
+
+            const result = await sendWebPush(
+                {
+                    endpoint: subscription.endpoint,
+                    auth: subscription.auth,
+                    p256dh: subscription.p256dh,
+                },
+                payload,
+            );
+
+            if (result.status === 'not-configured') {
+                configurationMissing = true;
+            } else if (
+                result.status === 'unsubscribed' ||
+                result.status === 'invalid-subscription'
+            ) {
+                await removePushSubscription(
+                    subscription.endpoint,
+                    subscription.accountId,
+                );
+            }
+        }
+    } catch (error) {
+        console.error('Failed to broadcast push notification', error);
+    }
 }
 
 export async function notificationsDigest({
