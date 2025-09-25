@@ -88,7 +88,10 @@ export async function getAnalyticsData(days: number) {
         await Promise.all([
             getAnalyticsTotals(safeDays),
             getEntityTypes(),
-            getAllOperations({ from: startDate, to: endDate }),
+            getAllOperations({
+                completedFrom: startDate,
+                completedTo: endDate,
+            }),
             getEntitiesFormatted<EntityStandardized>('operation'),
         ]);
 
@@ -118,14 +121,9 @@ export async function getAnalyticsData(days: number) {
     }
 
     for (const operation of operationsList) {
+        // Operations are already filtered by completion date and status,
+        // but double-check for safety
         if (operation.status !== 'completed' || !operation.completedAt) {
-            continue;
-        }
-
-        if (
-            operation.completedAt < startDate ||
-            operation.completedAt > endDate
-        ) {
             continue;
         }
 

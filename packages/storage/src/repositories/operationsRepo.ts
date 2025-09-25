@@ -1,5 +1,6 @@
-import { and, desc, eq, gte, inArray, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import {
+    events,
     type InsertOperation,
     operations,
     type SelectOperation,
@@ -108,7 +109,21 @@ export async function getOperations(
     return await fillOperationAggregates(query);
 }
 
-export async function getAllOperations(filter?: { from?: Date; to?: Date }) {
+export async function getAllOperations(filter?: {
+    from?: Date;
+    to?: Date;
+    completedFrom?: Date;
+    completedTo?: Date;
+}) {
+    // If completion date filtering is requested, use event-based filtering
+    if (filter?.completedFrom || filter?.completedTo) {
+        return getCompletedOperationsByCompletionDate({
+            from: filter.completedFrom || new Date('1970-01-01'),
+            to: filter.completedTo || new Date('2099-12-31'),
+        });
+    }
+
+    // Otherwise, use the original timestamp-based filtering
     const operationsList = await storage().query.operations.findMany({
         where: and(
             eq(operations.isDeleted, false),
@@ -166,4 +181,40 @@ export async function deleteOperation(id: number) {
         .update(operations)
         .set({ isDeleted: true })
         .where(eq(operations.id, id));
+}
+
+async function getCompletedOperationsByCompletionDate(filter: {
+    from: Date;
+    to: Date;
+}) {
+    // First, get completion events within the date range
+    const completionEvents = await storage().query.events.findMany({
+        where: and(
+            eq(events.type, knownEventTypes.operations.complete),
+            gte(events.createdAt, filter.from),
+            lte(events.createdAt, filter.to),
+        ),
+        orderBy: [asc(events.createdAt)],
+    });
+
+    if (completionEvents.length === 0) {
+        return [];
+    }
+
+    // Extract operation IDs from the completion events
+    const operationIds = completionEvents.map((event) =>
+        parseInt(event.aggregateId, 10),
+    );
+
+    // Get the operations that were completed
+    const completedOperations = await storage().query.operations.findMany({
+        where: and(
+            inArray(operations.id, operationIds),
+            eq(operations.isDeleted, false),
+        ),
+        orderBy: desc(operations.timestamp),
+    });
+
+    // Fill aggregates for these specific operations
+    return await fillOperationAggregates(completedOperations);
 }
