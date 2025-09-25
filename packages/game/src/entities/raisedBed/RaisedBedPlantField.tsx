@@ -1,16 +1,22 @@
 import { calculatePlantsPerField } from '@gredice/js/plants';
 import { animated, useSpring } from '@react-spring/three';
 import { usePlantSort } from '../../hooks/usePlantSorts';
+import {
+    getGridPositionFromIndex,
+    type RaisedBedOrientation,
+} from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 
 export function RaisedBedPlantField({
     field,
+    orientation,
 }: {
     field: {
         positionIndex: number;
         plantSortId: number | null | undefined;
         plantSowDate?: string | null;
     };
+    orientation: RaisedBedOrientation;
 }) {
     const { positionIndex, plantSortId, plantSowDate } = field;
     const { data: sortData } = usePlantSort(plantSortId);
@@ -43,12 +49,11 @@ export function RaisedBedPlantField({
 
     // TODO: Move to seed block/part
     const { nodes } = useGameGLTF();
-    const resolvedPositionX = Math.floor(positionIndex / 3);
-    const resolvedPositionY = positionIndex % 3;
+    const { row, col } = getGridPositionFromIndex(positionIndex, orientation);
     const fieldPosition = [
-        resolvedPositionX * multiplierX - offsetX,
+        col * multiplierX - offsetX,
         -0.75,
-        (2 - resolvedPositionY) * multiplierY - offsetY,
+        (2 - row) * multiplierY - offsetY,
     ] as const;
 
     // If no plant sort is defined, don't render

@@ -28,7 +28,10 @@ import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
-import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
+import {
+    calculateRaisedBedsValidity,
+    updateRaisedBedsOrientation,
+} from '../../../lib/garden/raisedBedsService';
 import {
     type AuthVariables,
     authValidator,
@@ -178,6 +181,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 freshGarden = refreshed;
             }
 
+            const orientationMap =
+                await updateRaisedBedsOrientation(freshGarden);
+            const raisedBedsWithOrientation = freshGarden.raisedBeds.map(
+                (raisedBed) => ({
+                    ...raisedBed,
+                    orientation:
+                        orientationMap.get(raisedBed.id) ??
+                        raisedBed.orientation ??
+                        'vertical',
+                }),
+            );
+
             return context.json({
                 id: freshGarden.id,
                 name: freshGarden.name,
@@ -186,15 +201,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 stacks,
                 raisedBeds: (() => {
                     const validityMap = calculateRaisedBedsValidity(
-                        freshGarden.raisedBeds,
+                        raisedBedsWithOrientation,
                         freshGarden.stacks,
                     );
-                    return freshGarden.raisedBeds.map((raisedBed) => ({
+                    return raisedBedsWithOrientation.map((raisedBed) => ({
                         id: raisedBed.id,
                         name: raisedBed.name,
                         physicalId: raisedBed.physicalId,
                         blockId: raisedBed.blockId,
                         status: raisedBed.status,
+                        orientation: raisedBed.orientation,
                         fields: raisedBed.fields,
                         createdAt: raisedBed.createdAt,
                         updatedAt: raisedBed.updatedAt,
@@ -703,6 +719,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
             }
 
+            const updatedGarden = await getGarden(gardenIdNumber);
+            if (updatedGarden) {
+                await updateRaisedBedsOrientation(updatedGarden);
+            }
+
             return context.json(null, 200);
         },
     )
@@ -869,6 +890,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     result.errorStatus as ContentfulStatusCode,
                 );
             }
+            const updatedGarden = await getGarden(gardenIdNumber);
+            if (updatedGarden) {
+                await updateRaisedBedsOrientation(updatedGarden);
+            }
             return context.json(null, 200);
         },
     )
@@ -903,14 +928,25 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            const orientationMap = await updateRaisedBedsOrientation(garden);
+            const raisedBedsWithOrientation = garden.raisedBeds.map(
+                (raisedBed) => ({
+                    ...raisedBed,
+                    orientation:
+                        orientationMap.get(raisedBed.id) ??
+                        raisedBed.orientation ??
+                        'vertical',
+                }),
+            );
             const validityMap = calculateRaisedBedsValidity(
-                garden.raisedBeds,
+                raisedBedsWithOrientation,
                 garden.stacks,
             );
             return context.json(
-                garden.raisedBeds.map((raisedBed) => ({
+                raisedBedsWithOrientation.map((raisedBed) => ({
                     id: raisedBed.id,
                     blockId: raisedBed.blockId,
+                    orientation: raisedBed.orientation,
                     createdAt: raisedBed.createdAt,
                     updatedAt: raisedBed.updatedAt,
                     isValid: validityMap.get(raisedBed.id) ?? false,
@@ -953,17 +989,26 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!raisedBed) {
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
+            const orientationMap = await updateRaisedBedsOrientation(garden);
+            const raisedBedWithOrientation = {
+                ...raisedBed,
+                orientation:
+                    orientationMap.get(raisedBed.id) ??
+                    raisedBed.orientation ??
+                    'vertical',
+            };
             const validityMap = calculateRaisedBedsValidity(
                 garden.raisedBeds,
                 garden.stacks,
             );
 
             return context.json({
-                id: raisedBed.id,
-                blockId: raisedBed.blockId,
-                createdAt: raisedBed.createdAt,
-                updatedAt: raisedBed.updatedAt,
-                isValid: validityMap.get(raisedBed.id) ?? false,
+                id: raisedBedWithOrientation.id,
+                blockId: raisedBedWithOrientation.blockId,
+                orientation: raisedBedWithOrientation.orientation,
+                createdAt: raisedBedWithOrientation.createdAt,
+                updatedAt: raisedBedWithOrientation.updatedAt,
+                isValid: validityMap.get(raisedBedWithOrientation.id) ?? false,
             });
         },
     )
