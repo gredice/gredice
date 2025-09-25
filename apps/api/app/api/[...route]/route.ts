@@ -16,6 +16,7 @@ import inventoryRoutes from './inventoryRoutes';
 import newsletterRoutes from './newsletterRoutes';
 import notificationsRoutes from './notificationsRoutes';
 import occasionsRoutes from './occasionsRoutes';
+import receiptsRoutes from './receiptsRoutes';
 import shoppingCartRoutes from './shoppingCartRoutes';
 import usersRoutes from './usersRoutes';
 
@@ -85,6 +86,7 @@ const app = new Hono()
     .route('/occasions', occasionsRoutes)
     .route('/inventory', inventoryRoutes)
     .route('/shopping-cart', shoppingCartRoutes)
+    .route('/receipts', receiptsRoutes)
     .route('/checkout', checkoutRoutes)
     .route('/delivery', deliveryRoutes)
     .route('/data', dataRoutes)

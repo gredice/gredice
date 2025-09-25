@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, desc, eq, gte, isNull, like, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, like, lte, sql } from 'drizzle-orm';
 import {
     type InsertInvoice,
     type InsertInvoiceItem,
@@ -7,6 +7,7 @@ import {
     invoiceItems,
     invoices,
     receipts,
+    type ReceiptPdfStatus,
     type UpdateInvoice,
     type UpdateInvoiceItem,
     type UpdateReceipt,
@@ -605,6 +606,7 @@ export async function getReceipt(receiptId: number) {
         with: {
             invoice: {
                 with: {
+                    account: true,
                     invoiceItems: true,
                 },
             },
@@ -630,6 +632,7 @@ export async function getReceiptByNumber(receiptNumber: string) {
         with: {
             invoice: {
                 with: {
+                    account: true,
                     invoiceItems: true,
                 },
             },
@@ -644,6 +647,46 @@ export async function updateReceipt(receipt: UpdateReceipt) {
         .where(and(eq(receipts.id, receipt.id), eq(receipts.isDeleted, false)));
 
     await createEvent(knownEvents.receipts.updatedV1(receipt.id.toString()));
+}
+
+export async function updateReceiptPdfMetadata(
+    receiptId: number,
+    data: {
+        pdfStatus?: ReceiptPdfStatus;
+        pdfStoragePath?: string | null;
+        pdfGeneratedAt?: Date | null;
+        pdfErrorMessage?: string | null;
+        pdfLastAttemptAt?: Date | null;
+    },
+) {
+    const updateData: Partial<typeof receipts.$inferInsert> & {
+        updatedAt: Date;
+    } = {
+        updatedAt: new Date(),
+    };
+
+    if (data.pdfStatus) {
+        updateData.pdfStatus = data.pdfStatus;
+    }
+    if (data.pdfStoragePath !== undefined) {
+        updateData.pdfStoragePath = data.pdfStoragePath;
+    }
+    if (data.pdfGeneratedAt !== undefined) {
+        updateData.pdfGeneratedAt = data.pdfGeneratedAt;
+    }
+    if (data.pdfErrorMessage !== undefined) {
+        updateData.pdfErrorMessage = data.pdfErrorMessage;
+    }
+    if (data.pdfLastAttemptAt !== undefined) {
+        updateData.pdfLastAttemptAt = data.pdfLastAttemptAt;
+    }
+
+    await storage()
+        .update(receipts)
+        .set(updateData)
+        .where(and(eq(receipts.id, receiptId), eq(receipts.isDeleted, false)));
+
+    await createEvent(knownEvents.receipts.updatedV1(receiptId.toString()));
 }
 
 // Croatian fiscalization functions
@@ -693,6 +736,26 @@ export async function getReceiptsByStatus(cisStatus: string) {
             invoice: true,
         },
         orderBy: desc(receipts.issuedAt),
+    });
+}
+
+export async function getReceiptsNeedingPdf(limit = 10) {
+    return storage().query.receipts.findMany({
+        where: and(
+            eq(receipts.isDeleted, false),
+            eq(receipts.cisStatus, 'confirmed'),
+            inArray(receipts.pdfStatus, ['pending', 'failed']),
+        ),
+        with: {
+            invoice: {
+                with: {
+                    account: true,
+                    invoiceItems: true,
+                },
+            },
+        },
+        orderBy: desc(receipts.updatedAt),
+        limit,
     });
 }
 
