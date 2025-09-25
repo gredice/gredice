@@ -104,6 +104,14 @@ export function PlantPageHeader({
                         )}
                         {plant.isRecommended && <SeedTimeInformationBadge />}
                     </Row>
+                    {sort?.store?.availableInStore === false && (
+                        <Typography
+                            level="body2"
+                            className="text-amber-600 font-semibold"
+                        >
+                            Trenutno nije dostupna za sjetvu
+                        </Typography>
+                    )}
                     {informationSections.some(
                         (section) => section.avaialble,
                     ) && (
