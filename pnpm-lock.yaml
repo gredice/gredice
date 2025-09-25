@@ -21,6 +21,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: 3.888.0
+        version: 3.888.0
       '@date-fns/tz':
         specifier: 1.4.1
         version: 1.4.1
@@ -91,6 +94,9 @@ importers:
       '@gredice/email':
         specifier: workspace:*
         version: link:../../packages/email
+      '@gredice/receipts':
+        specifier: workspace:*
+        version: link:../../packages/receipts
       '@gredice/signalco':
         specifier: workspace:*
         version: link:../../packages/signalco
@@ -224,6 +230,9 @@ importers:
       '@gredice/js':
         specifier: workspace:*
         version: link:../../packages/js
+      '@gredice/receipts':
+        specifier: workspace:*
+        version: link:../../packages/receipts
       '@gredice/signalco':
         specifier: workspace:*
         version: link:../../packages/signalco
@@ -893,6 +902,15 @@ importers:
       zustand:
         specifier: 5.0.8
         version: 5.0.8(@types/react@19.1.13)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
+
+  packages/receipts:
+    dependencies:
+      '@gredice/fiscalization':
+        specifier: workspace:*
+        version: link:../fiscalization
+      '@gredice/storage':
+        specifier: workspace:*
+        version: link:../storage
 
   packages/js:
     dependencies:
