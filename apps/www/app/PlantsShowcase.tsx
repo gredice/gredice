@@ -8,7 +8,13 @@ import { PlantsGalleryItem } from './biljke/PlantsGalleryItem';
 
 export async function PlantsShowcase() {
     const entities = await getPlantsData();
-    const plants = entities?.slice(0, 4);
+    const plants = entities
+        ?.slice()
+        ?.sort(
+            (first, second) =>
+                Number(second.isRecommended) - Number(first.isRecommended),
+        )
+        ?.slice(0, 4);
 
     return (
         <div>
@@ -27,6 +33,7 @@ export async function PlantsShowcase() {
                             attributes={plant.attributes}
                             image={plant.image}
                             prices={plant.prices}
+                            isRecommended={plant.isRecommended}
                         />
                     </div>
                 ))}
