@@ -1,6 +1,6 @@
 import 'server-only';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
-import { and, count, desc, eq, gte } from 'drizzle-orm';
+import { and, count, desc, eq } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { getEntitiesFormatted, getOperations, storage } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
@@ -571,12 +571,14 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
             const data = event.data as Record<string, unknown> | undefined;
             return {
                 id: event.id,
+                kind: 'raisedBed' as const,
                 name:
                     event.type === knownEventTypes.raisedBeds.create
                         ? 'Gredica stvorena'
                         : 'Gredica obrisana',
                 description: '',
                 status: null,
+                statusCode: null,
                 timestamp: event.createdAt,
                 imageUrls: Array.isArray(data?.imageUrls)
                     ? data.imageUrls.filter(
@@ -592,6 +594,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
         .filter((op) => !op.raisedBedFieldId) // Filter out operations with raisedBedFieldId
         .map((op) => ({
             id: op.id,
+            kind: 'operation' as const,
             name:
                 operationsData?.find((opData) => opData.id === op.entityId)
                     ?.information?.label ?? 'Nepoznato',
@@ -599,6 +602,8 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                 (opData) => opData.id === op.entityId,
             )?.information?.shortDescription,
             status: operationStatusToLabel(op.status),
+            statusCode: op.status,
+            scheduledDate: op.scheduledDate ?? null,
             timestamp: op.completedAt ?? op.scheduledDate ?? op.createdAt,
             imageUrls: op.imageUrls,
         }))
@@ -739,9 +744,11 @@ export async function getRaisedBedFieldDiaryEntries(
 
             return {
                 id: event.id,
+                kind: 'raisedBedField' as const,
                 name,
                 description,
                 status: null,
+                statusCode: null,
                 timestamp: event.createdAt,
                 imageUrls: Array.isArray(data?.imageUrls)
                     ? data.imageUrls.filter(
@@ -757,6 +764,7 @@ export async function getRaisedBedFieldDiaryEntries(
     const operationsDiaryEntries = operations
         .map((op) => ({
             id: op.id,
+            kind: 'operation' as const,
             name:
                 operationsData?.find((opData) => opData.id === op.entityId)
                     ?.information?.label ?? 'Nepoznato',
@@ -764,6 +772,8 @@ export async function getRaisedBedFieldDiaryEntries(
                 (opData) => opData.id === op.entityId,
             )?.information?.shortDescription,
             status: operationStatusToLabel(op.status),
+            statusCode: op.status,
+            scheduledDate: op.scheduledDate ?? null,
             timestamp: op.completedAt ?? op.scheduledDate ?? op.createdAt,
             imageUrls: op.imageUrls,
         }))

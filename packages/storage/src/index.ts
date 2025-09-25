@@ -25,4 +25,5 @@ export * from './repositories/timeSlotsRepo';
 export * from './repositories/transactionsRepo';
 export * from './repositories/usersRepo';
 export * from './schema';
+export * from './services/operationsService';
 export * from './storage';
