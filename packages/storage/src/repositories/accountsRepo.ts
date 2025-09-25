@@ -1,13 +1,42 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { desc, eq } from 'drizzle-orm';
-import { accounts, accountUsers, storage } from '..';
+import { accounts, accountUsers, ensureAccountAchievement, storage } from '..';
 import {
     createEvent,
     getEvents,
     knownEvents,
     knownEventTypes,
 } from './eventsRepo';
+
+interface SunflowerEventData {
+    amount: number;
+    reason?: string;
+}
+
+function parseSunflowerEventData(data: unknown): SunflowerEventData {
+    if (!data || typeof data !== 'object') {
+        return { amount: 0 };
+    }
+
+    const record = data as Record<string, unknown>;
+    const amountValue = record.amount;
+    let amount = 0;
+    if (typeof amountValue === 'number') {
+        amount = amountValue;
+    } else if (typeof amountValue === 'string') {
+        const parsed = Number.parseFloat(amountValue);
+        if (!Number.isNaN(parsed)) {
+            amount = parsed;
+        }
+    }
+
+    const reasonValue = record.reason;
+    return {
+        amount,
+        reason: typeof reasonValue === 'string' ? reasonValue : undefined,
+    };
+}
 
 export function getAccounts() {
     return storage().query.accounts.findMany({
@@ -57,7 +86,10 @@ export async function createAccount() {
     }
 
     await createEvent(knownEvents.accounts.createdV1(accountId));
-    await earnSunflowers(accountId, 1000, 'registration');
+    await ensureAccountAchievement(accountId, 'registration', {
+        earnedAt: new Date(),
+        autoApprove: true,
+    });
 
     return accountId;
 }
@@ -85,10 +117,11 @@ export async function getSunflowers(accountId: string) {
         [accountId],
     );
     for (const event of events) {
+        const { amount } = parseSunflowerEventData(event.data);
         currentSunflowers +=
             event.type === knownEventTypes.accounts.spendSunflowers
-                ? -Number((event.data as any).amount ?? 0)
-                : Number((event.data as any).amount ?? 0);
+                ? -amount
+                : amount;
     }
     return currentSunflowers;
 }
@@ -107,11 +140,14 @@ export async function getSunflowersHistory(
         offset,
         limit,
     );
-    return earnEvents.reverse().map((event) => ({
-        ...event,
-        amount: Number((event.data as any).amount),
-        reason: (event.data as any).reason,
-    }));
+    return earnEvents.reverse().map((event) => {
+        const { amount, reason } = parseSunflowerEventData(event.data);
+        return {
+            ...event,
+            amount,
+            reason,
+        };
+    });
 }
 
 export async function earnSunflowers(

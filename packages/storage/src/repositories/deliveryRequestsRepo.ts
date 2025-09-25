@@ -24,6 +24,57 @@ import {
 import { getPickupLocation } from './pickupLocationsRepo';
 import { closeTimeSlot, getTimeSlot } from './timeSlotsRepo';
 
+interface DeliveryEventData {
+    slotId?: number;
+    newSlotId?: number;
+    addressId?: number;
+    locationId?: number;
+    mode?: 'delivery' | 'pickup';
+    requestNotes?: string;
+    deliveryNotes?: string;
+    cancelReason?: string;
+    accountId?: string;
+}
+
+function parseDeliveryEventData(value: unknown): DeliveryEventData {
+    if (!value || typeof value !== 'object') {
+        return {};
+    }
+
+    const record = value as Record<string, unknown>;
+    const data: DeliveryEventData = {};
+
+    if (typeof record.slotId === 'number') {
+        data.slotId = record.slotId;
+    }
+    if (typeof record.newSlotId === 'number') {
+        data.newSlotId = record.newSlotId;
+    }
+    if (typeof record.addressId === 'number') {
+        data.addressId = record.addressId;
+    }
+    if (typeof record.locationId === 'number') {
+        data.locationId = record.locationId;
+    }
+    if (record.mode === 'delivery' || record.mode === 'pickup') {
+        data.mode = record.mode;
+    }
+    if (typeof record.requestNotes === 'string') {
+        data.requestNotes = record.requestNotes;
+    }
+    if (typeof record.deliveryNotes === 'string') {
+        data.deliveryNotes = record.deliveryNotes;
+    }
+    if (typeof record.cancelReason === 'string') {
+        data.cancelReason = record.cancelReason;
+    }
+    if (typeof record.accountId === 'string') {
+        data.accountId = record.accountId;
+    }
+
+    return data;
+}
+
 // Business state projection interface
 export type DeliveryRequestWithEvents = ReturnType<
     typeof reconstructDeliveryRequestFromEvents
@@ -46,23 +97,23 @@ async function reconstructDeliveryRequestFromEvents(
     let surveySent = false;
 
     for (const event of events) {
-        const data = event.data as Record<string, any> | undefined;
+        const data = parseDeliveryEventData(event.data);
 
         if (event.type === knownEventTypes.delivery.requestCreated) {
-            slotId = data?.slotId;
-            addressId = data?.addressId;
-            locationId = data?.locationId;
-            mode = data?.mode;
-            requestNotes = data?.requestNotes;
+            slotId = data.slotId ?? slotId;
+            addressId = data.addressId ?? addressId;
+            locationId = data.locationId ?? locationId;
+            mode = data.mode ?? mode;
+            requestNotes = data.requestNotes ?? requestNotes;
             state = DeliveryRequestStates.PENDING;
-            accountId = data?.accountId;
+            accountId = data.accountId ?? accountId;
         } else if (
             event.type === knownEventTypes.delivery.requestAddressChanged
         ) {
-            addressId = data?.addressId;
-            locationId = data?.locationId;
-            mode = data?.mode;
-            requestNotes = data?.requestNotes;
+            addressId = data.addressId ?? addressId;
+            locationId = data.locationId ?? locationId;
+            mode = data.mode ?? mode;
+            requestNotes = data.requestNotes ?? requestNotes;
         } else if (event.type === knownEventTypes.delivery.requestConfirmed) {
             state = DeliveryRequestStates.CONFIRMED;
         } else if (event.type === knownEventTypes.delivery.requestPreparing) {
@@ -71,13 +122,14 @@ async function reconstructDeliveryRequestFromEvents(
             state = DeliveryRequestStates.READY;
         } else if (event.type === knownEventTypes.delivery.requestFulfilled) {
             state = DeliveryRequestStates.FULFILLED;
+            deliveryNotes = data.deliveryNotes ?? deliveryNotes;
         } else if (event.type === knownEventTypes.delivery.requestSlotChanged) {
-            slotId = data?.newSlotId;
+            slotId = data.newSlotId ?? slotId;
         } else if (event.type === knownEventTypes.delivery.userCancelled) {
             state = DeliveryRequestStates.CANCELLED;
         } else if (event.type === knownEventTypes.delivery.requestCancelled) {
             state = DeliveryRequestStates.CANCELLED;
-            cancelReason = data?.cancelReason;
+            cancelReason = data.cancelReason ?? cancelReason;
         } else if (event.type === knownEventTypes.delivery.requestSurveySent) {
             surveySent = true;
         }

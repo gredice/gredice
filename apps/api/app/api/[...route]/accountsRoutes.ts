@@ -2,6 +2,7 @@ import {
     deleteAccountWithDependencies,
     earnSunflowers,
     getAccount,
+    getAccountAchievements,
     getAccountUsers,
     getSunflowers,
     getSunflowersHistory,
@@ -25,7 +26,7 @@ function rewardForDay(day: number) {
 async function getDailyRewardState(accountId: string) {
     const history = await getSunflowersHistory(accountId, 0, 10000);
     const dailyEvents = history
-        .filter((e) => e.reason.startsWith('daily'))
+        .filter((e) => e.reason?.startsWith('daily'))
         .sort(
             (a, b) =>
                 new Date(b.createdAt).getTime() -
@@ -39,7 +40,7 @@ async function getDailyRewardState(accountId: string) {
 
     if (dailyEvents.length > 0) {
         const latest = dailyEvents[0];
-        lastDay = Number(latest.reason.split(':')[1] ?? '1');
+        lastDay = Number(latest.reason?.split(':')[1] ?? '1');
         lastDate = new Date(latest.createdAt);
         streak.push({
             day: lastDay,
@@ -51,7 +52,7 @@ async function getDailyRewardState(accountId: string) {
         let prevDate = lastDate;
         for (let i = 1; i < dailyEvents.length && expectedDay > 0; i++) {
             const ev = dailyEvents[i];
-            const day = Number(ev.reason.split(':')[1] ?? '1');
+            const day = Number(ev.reason?.split(':')[1] ?? '1');
             const date = new Date(ev.createdAt);
             const diff = prevDate.getTime() - date.getTime();
             if (day === expectedDay && diff <= 1000 * 60 * 60 * 48) {
@@ -149,6 +150,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             ? -event.amount
                             : event.amount,
                     reason: event.reason,
+                })),
+            });
+        },
+    )
+    .get(
+        '/current/achievements',
+        describeRoute({
+            description: 'Get the current account achievements',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const achievements = await getAccountAchievements(accountId);
+            return context.json({
+                achievements: achievements.map((achievement) => ({
+                    id: achievement.id,
+                    key: achievement.achievementKey,
+                    status: achievement.status,
+                    rewardSunflowers: achievement.rewardSunflowers,
+                    progressValue: achievement.progressValue,
+                    threshold: achievement.threshold,
+                    rewardGrantedAt:
+                        achievement.rewardGrantedAt?.toISOString() ?? null,
                 })),
             });
         },

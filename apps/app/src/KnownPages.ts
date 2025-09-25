@@ -31,6 +31,7 @@ export const KnownPages = {
     Schedule: '/admin/schedule',
     Accounts: '/admin/accounts',
     Account: (accountId: string) => `/admin/accounts/${accountId}` as Route,
+    Achievements: '/admin/achievements',
     Gardens: '/admin/gardens',
     Garden: (gardenId: number) => `/admin/gardens/${gardenId}` as Route,
     CommunicationInbox: '/admin/communication/inbox',

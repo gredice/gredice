@@ -1,3 +1,4 @@
+import { getAchievementDefinition } from '@gredice/js/achievements';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Empty } from '@signalco/ui-icons';
 import { List } from '@signalco/ui-primitives/List';
@@ -14,6 +15,17 @@ function sunflowerReasonToDescription(reason: string) {
         return {
             icon: <span className="text-4xl text-center size-10">🎉</span>,
             label: 'Nagrada za registraciju',
+        };
+    }
+
+    if (reason.startsWith('achievement')) {
+        const key = reason.split(':')[1];
+        const definition = key ? getAchievementDefinition(key) : undefined;
+        return {
+            icon: <span className="text-4xl text-center size-10">🏆</span>,
+            label: definition
+                ? `Postignuće: ${definition.title}`
+                : 'Nagrada za postignuće',
         };
     }
 

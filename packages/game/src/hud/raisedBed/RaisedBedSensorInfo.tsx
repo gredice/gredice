@@ -36,6 +36,19 @@ import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 import { useNeighboringRaisedBeds } from './RaisedBedField';
 
+interface TooltipPayload {
+    value?: number | string;
+}
+
+interface CustomTooltipProps {
+    active?: boolean;
+    payload?: TooltipPayload[];
+    header: string;
+    textColor?: string;
+    label: string;
+    unit: string;
+}
+
 function CustomTooltip({
     active,
     payload,
@@ -43,7 +56,7 @@ function CustomTooltip({
     textColor,
     label,
     unit,
-}: any) {
+}: CustomTooltipProps) {
     if (active && payload && payload.length) {
         const payloadFormatted =
             new Date(label).toLocaleDateString('hr-HR', {
@@ -60,7 +73,7 @@ function CustomTooltip({
                 <p className="text-sm font-medium text-gray-900">{`${payloadFormatted}`}</p>
                 <p
                     className={cx('text-sm', textColor)}
-                >{`${header}: ${payload[0].value}${unit}`}</p>
+                >{`${header}: ${payload[0]?.value ?? ''}${unit}`}</p>
             </div>
         );
     }
@@ -147,7 +160,7 @@ function SensorInfoModal({
     const processedData = sensorDetails?.values
         .map((item) => ({
             timestamp: item.timeStamp,
-            value: Number.parseFloat(item.valueSerialized),
+            value: Number.parseFloat(item.valueSerialized ?? '0'),
         }))
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
