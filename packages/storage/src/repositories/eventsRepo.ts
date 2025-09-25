@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { events } from '../schema';
 import { storage } from '../storage';
 
@@ -464,6 +464,31 @@ export function getEvents(
         orderBy: [asc(events.createdAt)],
         offset,
         limit,
+    });
+}
+
+export async function getPlantUpdateEvents(filter?: {
+    status?: string;
+    from?: Date;
+    to?: Date;
+}) {
+    const results = await storage().query.events.findMany({
+        where: and(
+            eq(events.type, knownEventTypes.raisedBedFields.plantUpdate),
+            filter?.from ? gte(events.createdAt, filter.from) : undefined,
+            filter?.to ? lte(events.createdAt, filter.to) : undefined,
+        ),
+        orderBy: [asc(events.createdAt)],
+    });
+
+    if (!filter?.status) {
+        return results;
+    }
+
+    return results.filter((event) => {
+        const status = (event.data as { status?: unknown } | null | undefined)
+            ?.status;
+        return status === filter.status;
     });
 }
 

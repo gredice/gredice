@@ -1,16 +1,13 @@
 'use server';
 
 import {
-    events,
     getAllOperations,
     getAnalyticsTotals,
     getEntitiesFormatted,
     getEntitiesRaw,
     getEntityTypes,
-    knownEventTypes,
-    storage,
+    getPlantUpdateEvents,
 } from '@gredice/storage';
-import { and, eq, gte, lte } from 'drizzle-orm';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 
 type OperationsDurationPoint = {
@@ -167,21 +164,13 @@ export async function getAnalyticsData(days: number) {
         );
     }
 
-    const sowingEvents = await storage().query.events.findMany({
-        where: and(
-            eq(events.type, knownEventTypes.raisedBedFields.plantUpdate),
-            gte(events.createdAt, startDate),
-            lte(events.createdAt, endDate),
-        ),
+    const sowingEvents = await getPlantUpdateEvents({
+        from: startDate,
+        to: endDate,
+        status: 'sowed',
     });
 
     for (const event of sowingEvents) {
-        const status = (event.data as { status?: unknown } | null | undefined)
-            ?.status;
-        if (status !== 'sowed') {
-            continue;
-        }
-
         const key = toDateKey(event.createdAt);
         if (!sowingTotals.has(key)) {
             continue;
