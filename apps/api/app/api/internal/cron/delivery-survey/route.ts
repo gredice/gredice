@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
                 accountId: candidate.accountId,
                 fulfilledAt: candidate.fulfilledAt,
                 candidates: new Map<string, DeliverySurveyCandidate>(),
-            } satisfies DeliverySurveyGroup;
+            };
             groups.set(groupKey, group);
             orderedGroups.push(group);
         }
