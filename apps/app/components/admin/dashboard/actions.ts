@@ -7,7 +7,7 @@ import {
     getEntitiesRaw,
     getEntityTypes,
 } from '@gredice/storage';
-import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
+import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 
 type OperationsDurationPoint = {
     date: string;

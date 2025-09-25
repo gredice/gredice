@@ -42,9 +42,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             if (event.type === knownEventTypes.operations.complete) {
                 status = 'completed';
                 completedBy = data?.completedBy;
-                completedAt = data?.completedAt
-                    ? new Date(data.completedAt)
-                    : undefined;
+                completedAt = event.createdAt;
                 if (Array.isArray(data?.images)) {
                     imageUrls = data.images.filter(
                         (url: unknown) => typeof url === 'string',
@@ -63,9 +61,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                 status = 'canceled';
                 canceledBy = data?.canceledBy;
                 cancelReason = data?.reason;
-                canceledAt = event.createdAt
-                    ? new Date(event.createdAt)
-                    : undefined;
+                canceledAt = event.createdAt;
             } else if (event.type === knownEventTypes.operations.schedule) {
                 status = 'planned';
                 scheduledDate = data?.scheduledDate
