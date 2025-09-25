@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
     Tooltip,
@@ -11,11 +12,15 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 
 export type OperationsDurationPoint = {
     date: string;
-    durationMinutes: number;
+    operationsMinutes: number;
+    sowingMinutes: number;
+    totalMinutes: number;
 };
 
 export type OperationsDurationData = {
     totalMinutes: number;
+    operationsMinutes: number;
+    sowingMinutes: number;
     daily: OperationsDurationPoint[];
 };
 
@@ -61,7 +66,7 @@ export function OperationsDurationCard({
 }) {
     const maxMinutes = Math.max(
         0,
-        ...data.daily.map((day) => day.durationMinutes),
+        ...data.daily.map((day) => day.totalMinutes),
     );
     const hasData = maxMinutes > 0;
 
@@ -76,6 +81,24 @@ export function OperationsDurationCard({
                         <Typography level="h4" semiBold>
                             {formatTotalDuration(data.totalMinutes)}
                         </Typography>
+                        <Row className="gap-4 text-xs text-muted-foreground">
+                            <Row spacing={0.5} className="items-center">
+                                <span className="h-2 w-2 rounded-sm bg-primary/60" />
+                                <Typography level="body3">
+                                    Radnje{' '}
+                                    {formatTooltipDuration(
+                                        data.operationsMinutes,
+                                    )}
+                                </Typography>
+                            </Row>
+                            <Row spacing={0.5} className="items-center">
+                                <span className="h-2 w-2 rounded-sm bg-emerald-500/60" />
+                                <Typography level="body3">
+                                    Sijanje{' '}
+                                    {formatTooltipDuration(data.sowingMinutes)}
+                                </Typography>
+                            </Row>
+                        </Row>
                         <Typography
                             level="body3"
                             className="text-muted-foreground"
@@ -94,12 +117,15 @@ export function OperationsDurationCard({
                         <div className="flex items-end gap-2 h-48">
                             {data.daily.map((day) => {
                                 const normalizedHeight = maxMinutes
-                                    ? (day.durationMinutes / maxMinutes) * 100
+                                    ? (day.totalMinutes / maxMinutes) * 100
                                     : 0;
                                 const heightPercent =
-                                    day.durationMinutes > 0
+                                    day.totalMinutes > 0
                                         ? Math.max(4, normalizedHeight)
                                         : 0;
+                                const barHasSegments =
+                                    day.operationsMinutes > 0 ||
+                                    day.sowingMinutes > 0;
 
                                 return (
                                     <div
@@ -110,11 +136,38 @@ export function OperationsDurationCard({
                                             <TooltipTrigger asChild>
                                                 <div className="flex-1 flex items-end w-full">
                                                     <div
-                                                        className="w-full rounded-t bg-primary/30"
+                                                        className="w-full rounded-t overflow-hidden flex flex-col justify-end bg-primary/10"
                                                         style={{
                                                             height: `${heightPercent}%`,
                                                         }}
-                                                    />
+                                                    >
+                                                        {barHasSegments ? (
+                                                            <>
+                                                                {day.operationsMinutes >
+                                                                    0 && (
+                                                                    <div
+                                                                        className="bg-primary/60"
+                                                                        style={{
+                                                                            flexGrow:
+                                                                                day.operationsMinutes,
+                                                                            flexBasis: 0,
+                                                                        }}
+                                                                    />
+                                                                )}
+                                                                {day.sowingMinutes >
+                                                                    0 && (
+                                                                    <div
+                                                                        className="bg-emerald-500/60"
+                                                                        style={{
+                                                                            flexGrow:
+                                                                                day.sowingMinutes,
+                                                                            flexBasis: 0,
+                                                                        }}
+                                                                    />
+                                                                )}
+                                                            </>
+                                                        ) : null}
+                                                    </div>
                                                 </div>
                                             </TooltipTrigger>
                                             <TooltipContent>
@@ -125,8 +178,27 @@ export function OperationsDurationCard({
                                                         )}
                                                     </Typography>
                                                     <Typography level="body3">
+                                                        Ukupno:{' '}
                                                         {formatTooltipDuration(
-                                                            day.durationMinutes,
+                                                            day.totalMinutes,
+                                                        )}
+                                                    </Typography>
+                                                    <Typography
+                                                        level="body3"
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        Radnje:{' '}
+                                                        {formatTooltipDuration(
+                                                            day.operationsMinutes,
+                                                        )}
+                                                    </Typography>
+                                                    <Typography
+                                                        level="body3"
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        Sijanje:{' '}
+                                                        {formatTooltipDuration(
+                                                            day.sowingMinutes,
                                                         )}
                                                     </Typography>
                                                 </Stack>
@@ -146,8 +218,27 @@ export function OperationsDurationCard({
                                                 level="body3"
                                                 className="text-xs text-muted-foreground"
                                             >
+                                                Ukupno{' '}
                                                 {formatTooltipDuration(
-                                                    day.durationMinutes,
+                                                    day.totalMinutes,
+                                                )}
+                                            </Typography>
+                                            <Typography
+                                                level="body3"
+                                                className="text-[10px] text-muted-foreground"
+                                            >
+                                                Radnje{' '}
+                                                {formatTooltipDuration(
+                                                    day.operationsMinutes,
+                                                )}
+                                            </Typography>
+                                            <Typography
+                                                level="body3"
+                                                className="text-[10px] text-muted-foreground"
+                                            >
+                                                Sijanje{' '}
+                                                {formatTooltipDuration(
+                                                    day.sowingMinutes,
                                                 )}
                                             </Typography>
                                         </Stack>
