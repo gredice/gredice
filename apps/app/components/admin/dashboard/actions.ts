@@ -1,23 +1,33 @@
 'use server';
 
 import {
+    events,
     getAllOperations,
     getAnalyticsTotals,
     getEntitiesFormatted,
     getEntitiesRaw,
     getEntityTypes,
+    knownEventTypes,
+    storage,
 } from '@gredice/storage';
+import { and, eq, gte, lte } from 'drizzle-orm';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 
 type OperationsDurationPoint = {
     date: string;
-    durationMinutes: number;
+    operationsMinutes: number;
+    sowingMinutes: number;
+    totalMinutes: number;
 };
 
 type OperationsDurationData = {
     totalMinutes: number;
+    operationsMinutes: number;
+    sowingMinutes: number;
     daily: OperationsDurationPoint[];
 };
+
+const PLANT_SOWING_DURATION_MINUTES = 5;
 
 function toDateKey(date: Date) {
     const year = date.getFullYear();
@@ -41,36 +51,50 @@ function parseDuration(value: unknown) {
 
 function createDurationBuckets(startDate: Date, days: number) {
     const dateKeys: string[] = [];
-    const dailyTotals = new Map<string, number>();
+    const operationsTotals = new Map<string, number>();
+    const sowingTotals = new Map<string, number>();
     for (let i = 0; i < days; i += 1) {
         const current = new Date(startDate);
         current.setDate(startDate.getDate() + i);
         const key = toDateKey(current);
         dateKeys.push(key);
-        dailyTotals.set(key, 0);
+        operationsTotals.set(key, 0);
+        sowingTotals.set(key, 0);
     }
 
     return {
         dateKeys,
-        dailyTotals,
+        operationsTotals,
+        sowingTotals,
     };
 }
 
 function formatOperationsDurationData(
     dateKeys: string[],
-    dailyTotals: Map<string, number>,
+    operationsTotals: Map<string, number>,
+    sowingTotals: Map<string, number>,
 ): OperationsDurationData {
     const daily = dateKeys.map((date) => ({
         date,
-        durationMinutes: dailyTotals.get(date) ?? 0,
+        operationsMinutes: operationsTotals.get(date) ?? 0,
+        sowingMinutes: sowingTotals.get(date) ?? 0,
+        totalMinutes:
+            (operationsTotals.get(date) ?? 0) + (sowingTotals.get(date) ?? 0),
     }));
-    const totalMinutes = daily.reduce(
-        (total, day) => total + day.durationMinutes,
+    const operationsMinutes = daily.reduce(
+        (total, day) => total + day.operationsMinutes,
         0,
     );
+    const sowingMinutes = daily.reduce(
+        (total, day) => total + day.sowingMinutes,
+        0,
+    );
+    const totalMinutes = operationsMinutes + sowingMinutes;
 
     return {
         totalMinutes,
+        operationsMinutes,
+        sowingMinutes,
         daily,
     };
 }
@@ -106,7 +130,7 @@ export async function getAnalyticsData(days: number) {
         }),
     );
 
-    const { dateKeys, dailyTotals } = createDurationBuckets(
+    const { dateKeys, operationsTotals, sowingTotals } = createDurationBuckets(
         startDate,
         safeDays,
     );
@@ -128,7 +152,7 @@ export async function getAnalyticsData(days: number) {
         }
 
         const key = toDateKey(operation.completedAt);
-        if (!dailyTotals.has(key)) {
+        if (!operationsTotals.has(key)) {
             continue;
         }
 
@@ -137,12 +161,42 @@ export async function getAnalyticsData(days: number) {
             continue;
         }
 
-        dailyTotals.set(key, (dailyTotals.get(key) ?? 0) + durationMinutes);
+        operationsTotals.set(
+            key,
+            (operationsTotals.get(key) ?? 0) + durationMinutes,
+        );
+    }
+
+    const sowingEvents = await storage().query.events.findMany({
+        where: and(
+            eq(events.type, knownEventTypes.raisedBedFields.plantUpdate),
+            gte(events.createdAt, startDate),
+            lte(events.createdAt, endDate),
+        ),
+    });
+
+    for (const event of sowingEvents) {
+        const status = (event.data as { status?: unknown } | null | undefined)
+            ?.status;
+        if (status !== 'sowed') {
+            continue;
+        }
+
+        const key = toDateKey(event.createdAt);
+        if (!sowingTotals.has(key)) {
+            continue;
+        }
+
+        sowingTotals.set(
+            key,
+            (sowingTotals.get(key) ?? 0) + PLANT_SOWING_DURATION_MINUTES,
+        );
     }
 
     const operationsDuration = formatOperationsDurationData(
         dateKeys,
-        dailyTotals,
+        operationsTotals,
+        sowingTotals,
     );
 
     return {
