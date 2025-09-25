@@ -8,6 +8,10 @@ import { useEffect, useState, useTransition } from 'react';
 import { KnownPages } from '../../../src/KnownPages';
 import { FactCard } from '../cards/FactCard';
 import { DashboardDivider } from './DashboardDivider';
+import {
+    OperationsDurationCard,
+    type OperationsDurationData,
+} from './OperationsDurationCard';
 
 type EntityData = {
     entityTypeName: string;
@@ -20,11 +24,13 @@ export function AdminDashboardClient({
     initialEntitiesData,
     onPeriodChange,
     initialPeriod = '7',
+    initialOperationsDurationData,
 }: {
     initialAnalyticsData: Awaited<ReturnType<typeof getAnalyticsTotals>>;
     initialEntitiesData: EntityData[];
     onPeriodChange: (period: string) => void;
     initialPeriod?: string;
+    initialOperationsDurationData: OperationsDurationData;
 }) {
     const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
     const [isPending, startTransition] = useTransition();
@@ -137,6 +143,10 @@ export function AdminDashboardClient({
                         beforeValue={deliveryRequestsBeforeCount}
                     />
                 </div>
+            </Stack>
+            <Stack spacing={1}>
+                <DashboardDivider>Radnje</DashboardDivider>
+                <OperationsDurationCard data={initialOperationsDurationData} />
             </Stack>
             <Stack spacing={1}>
                 <DashboardDivider>Zapisi</DashboardDivider>
