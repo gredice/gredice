@@ -11,6 +11,7 @@ export type EntityStandardized = {
     };
     attributes?: {
         seedingDistance?: number; // in cm
+        duration?: number | string;
     };
     images?: {
         cover?: { url?: string };

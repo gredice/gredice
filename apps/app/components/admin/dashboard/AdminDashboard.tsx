@@ -24,6 +24,7 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
         <AdminDashboardClient
             initialAnalyticsData={data.analytics}
             initialEntitiesData={data.entities}
+            initialOperationsDurationData={data.operationsDuration}
             onPeriodChange={handlePeriodChange}
             initialPeriod={selectedPeriod}
         />
