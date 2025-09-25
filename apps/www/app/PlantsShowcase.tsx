@@ -33,6 +33,7 @@ export async function PlantsShowcase() {
                             attributes={plant.attributes}
                             image={plant.image}
                             prices={plant.prices}
+                            isRecommended={plant.isRecommended}
                         />
                     </div>
                 ))}
