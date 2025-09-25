@@ -10,11 +10,11 @@ export async function PlantsShowcase() {
     const entities = await getPlantsData();
     const plants = entities
         ?.slice()
-        .sort(
+        ?.sort(
             (first, second) =>
                 Number(second.isRecommended) - Number(first.isRecommended),
         )
-        .slice(0, 4);
+        ?.slice(0, 4);
 
     return (
         <div>
