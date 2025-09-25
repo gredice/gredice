@@ -17,6 +17,16 @@ export async function GET() {
             displayName: dbUser.displayName ?? dbUser.userName,
             avatarUrl: dbUser.avatarUrl,
             role: dbUser.role,
+            birthday:
+                dbUser.birthdayMonth && dbUser.birthdayDay
+                    ? {
+                          day: dbUser.birthdayDay,
+                          month: dbUser.birthdayMonth,
+                          year: dbUser.birthdayYear ?? undefined,
+                      }
+                    : null,
+            birthdayLastUpdatedAt: dbUser.birthdayLastUpdatedAt,
+            birthdayLastRewardAt: dbUser.birthdayLastRewardAt,
             createdAt: dbUser.createdAt,
         });
     });

@@ -1,18 +1,33 @@
 import { client } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { InferResponseType } from 'hono/client';
 import { queryKey, useCurrentUser } from './useCurrentUser';
+
+type ApiRoutes = ReturnType<typeof client>;
+type UpdateUserRoute = ApiRoutes['api']['users'][':userId']['$patch'];
+export type UpdateUserResponse = InferResponseType<UpdateUserRoute, 200>;
+
+export type UpdateUserVariables = {
+    displayName?: string;
+    avatarUrl?: string | null;
+    birthday?: {
+        day: number;
+        month: number;
+        year?: number | null;
+    } | null;
+    userName?: string;
+};
 
 export function useUpdateUser() {
     const queryClient = useQueryClient();
     const currentUser = useCurrentUser();
-    return useMutation({
+    return useMutation<UpdateUserResponse, Error, UpdateUserVariables>({
         mutationFn: async ({
             displayName,
             avatarUrl,
-        }: {
-            displayName?: string;
-            avatarUrl?: string | null;
-        }) => {
+            birthday,
+            userName,
+        }: UpdateUserVariables) => {
             if (!currentUser.data) {
                 throw new Error('Current user data is not available');
             }
@@ -24,12 +39,27 @@ export function useUpdateUser() {
                 json: {
                     displayName,
                     avatarUrl,
+                    birthday,
+                    userName,
                 },
             });
 
-            if (response.status === 404) {
-                throw new Error('User not found');
+            if (!response.ok) {
+                let message = 'Failed to update user';
+                try {
+                    const body = await response.json();
+                    message =
+                        (body as { error?: string; message?: string }).error ??
+                        (body as { message?: string }).message ??
+                        message;
+                } catch (error) {
+                    console.error('Failed to parse updateUser error response', error);
+                }
+                throw new Error(message);
             }
+
+            const body: UpdateUserResponse = await response.json();
+            return body;
         },
         onError: (error) => {
             console.error('Failed to update user:', error);

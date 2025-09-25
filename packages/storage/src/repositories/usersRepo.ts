@@ -41,6 +41,19 @@ export function getUser(userId: string) {
     });
 }
 
+export function getUsersWithBirthdayOn(month: number, day: number) {
+    return storage().query.users.findMany({
+        where: and(eq(users.birthdayMonth, month), eq(users.birthdayDay, day)),
+        with: {
+            accounts: {
+                with: {
+                    account: true,
+                },
+            },
+        },
+    });
+}
+
 export function updateUser(user: { id: string } & Partial<UpdateUserInfo>) {
     return storage()
         .update(users)

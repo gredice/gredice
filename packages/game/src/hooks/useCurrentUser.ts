@@ -1,21 +1,47 @@
 import { client } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
+import type { InferResponseType } from 'hono/client';
 
 export const queryKey = {
     currentUser: ['currentUser'],
 };
 
-async function getCurrentUser() {
+type ApiRoutes = ReturnType<typeof client>;
+type ApiCurrentUser = InferResponseType<
+    ApiRoutes['api']['users']['current']['$get'],
+    200
+>;
+
+export type CurrentUser = Omit<
+    ApiCurrentUser,
+    'createdAt' | 'birthdayLastUpdatedAt' | 'birthdayLastRewardAt'
+> & {
+    createdAt: Date;
+    birthdayLastUpdatedAt: Date | null;
+    birthdayLastRewardAt: Date | null;
+};
+
+async function getCurrentUser(): Promise<CurrentUser | null> {
     const response = await client().api.users.current.$get();
     if (response.status === 404) {
         console.error('User not found');
         return null;
     }
 
-    const currentUser = await response.json();
+    if (!response.ok) {
+        throw new Error('Failed to fetch current user');
+    }
+
+    const currentUser: ApiCurrentUser = await response.json();
     return {
         ...currentUser,
         createdAt: new Date(currentUser.createdAt),
+        birthdayLastUpdatedAt: currentUser.birthdayLastUpdatedAt
+            ? new Date(currentUser.birthdayLastUpdatedAt)
+            : null,
+        birthdayLastRewardAt: currentUser.birthdayLastRewardAt
+            ? new Date(currentUser.birthdayLastRewardAt)
+            : null,
     };
 }
 
