@@ -4,7 +4,67 @@ import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
+import { useGameState } from '../../useGameState';
 import { RaisedBedCard } from './RaisedBedCard';
+
+type QuickSeedType = 'spring' | 'summer' | 'fall' | 'winter';
+
+const quickSeedOptions: Record<
+    QuickSeedType,
+    { label: string; emoji: string; layout: number[] }
+> = {
+    spring: {
+        label: 'Proljetni mix',
+        emoji: '🌱',
+        layout: [282, 229, 209, 299, 234, 221, 281, 215, 204],
+    },
+    summer: {
+        label: 'Ljetni mix',
+        emoji: '☀️',
+        layout: [222, 227, 279, 223, 294, 230, 223, 215, 230],
+    },
+    fall: {
+        label: 'Jesenski mix',
+        emoji: '🍂',
+        layout: [223, 215, 204, 279, 227, 281, 209, 221, 230],
+    },
+    winter: {
+        label: 'Zimski mix',
+        emoji: '❄️',
+        layout: [299, 229, 209, 221, 282, 215, 204, 222, 223],
+    },
+};
+
+function getSeasonForDate(date: Date | null): QuickSeedType {
+    if (!date || Number.isNaN(date.getTime())) {
+        return 'spring';
+    }
+
+    const year = date.getUTCFullYear();
+    const day = Date.UTC(year, date.getUTCMonth(), date.getUTCDate());
+
+    const springStart = Date.UTC(year, 2, 20);
+    if (day < springStart) {
+        return 'winter';
+    }
+
+    const summerStart = Date.UTC(year, 5, 21);
+    if (day < summerStart) {
+        return 'spring';
+    }
+
+    const fallStart = Date.UTC(year, 8, 22);
+    if (day < fallStart) {
+        return 'summer';
+    }
+
+    const winterStart = Date.UTC(year, 11, 21);
+    if (day < winterStart) {
+        return 'fall';
+    }
+
+    return 'winter';
+}
 
 export function RaisedBedFieldSuggestions({
     gardenId,
@@ -20,6 +80,7 @@ export function RaisedBedFieldSuggestions({
     const { data: shoppingCart, isLoading: isLoadingShoppingCart } =
         useShoppingCart();
     const setCartItem = useSetShoppingCartItem();
+    const currentTime = useGameState((state) => state.currentTime);
     if (!currentGarden || !raisedBed || !shoppingCart) return null;
 
     // Only show suggestions if the raised bed is valid
@@ -35,12 +96,14 @@ export function RaisedBedFieldSuggestions({
     if (raisedBed.fields.length + (cartPlantItems?.length ?? 0) >= 9)
         return null;
 
-    async function handleQuickPick(type: 'summer' | 'salad') {
-        const layouts = {
-            summer: [222, 227, 279, 223, 294, 230, 223, 215, 230],
-            salad: [282, 229, 209, 299, 234, 221, 281, 215, 204],
-        };
+    const season = getSeasonForDate(currentTime);
+    const quickSeed = quickSeedOptions[season];
 
+    if (!quickSeed) return null;
+
+    async function handleQuickPick(type: QuickSeedType) {
+        const layout = quickSeedOptions[type]?.layout;
+        if (!layout) return;
         await Promise.all(
             Array.from({ length: 9 }).map(async (_, index) => {
                 if (!raisedBed || !shoppingCart) return;
@@ -61,9 +124,11 @@ export function RaisedBedFieldSuggestions({
                     )
                 )
                     return;
+                const plantSortId = layout[index];
+                if (plantSortId == null) return;
                 return setCartItem.mutateAsync({
                     entityTypeName: 'plantSort',
-                    entityId: layouts[type][index].toString(),
+                    entityId: plantSortId.toString(),
                     amount: 1,
                     gardenId,
                     raisedBedId,
@@ -90,23 +155,13 @@ export function RaisedBedFieldSuggestions({
                         'md:size-auto bg-black/80 dark:bg-white/10 hover:bg-black/50',
                         'rounded-full size-10 left-[calc(50%+118px)]',
                     )}
-                    startDecorator={<span className="text-xl">☀️</span>}
-                    onClick={() => handleQuickPick('summer')}
+                    startDecorator={
+                        <span className="text-xl">{quickSeed.emoji}</span>
+                    }
+                    onClick={() => handleQuickPick(season)}
                     loading={setCartItem.isPending || isLoadingShoppingCart}
                 >
-                    <span className="hidden md:block">Ljetni mix</span>
-                </ButtonGreen>
-                <ButtonGreen
-                    variant="plain"
-                    className={cx(
-                        'md:size-auto bg-black/80 dark:bg-white/10 hover:bg-black/50',
-                        'rounded-full size-10 left-[calc(50%+118px)]',
-                    )}
-                    startDecorator={<span className="text-xl">🥬</span>}
-                    onClick={() => handleQuickPick('salad')}
-                    loading={setCartItem.isPending || isLoadingShoppingCart}
-                >
-                    <span className="hidden md:block">Salatni mix</span>
+                    <span className="hidden md:block">{quickSeed.label}</span>
                 </ButtonGreen>
             </div>
         </RaisedBedCard>
