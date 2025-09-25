@@ -17,11 +17,31 @@ import { AcceptRaisedBedFieldModal } from './AcceptRaisedBedFieldModal';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CancelRaisedBedFieldModal } from './CancelRaisedBedFieldModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
+import { CopySummaryButton } from './CopySummaryButton';
 import { CopyTasksButton } from './CopyTasksButton';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
 import { RescheduleRaisedBedFieldModal } from './RescheduleRaisedBedFieldModal';
 
 const PLANTING_TASK_DURATION_MINUTES = 5;
+
+const FIELD_STATUSES_TO_INCLUDE = new Set(['new', 'planned', 'sowed']);
+const FIELD_COMPLETED_STATUSES = new Set(['sowed']);
+const OPERATION_STATUSES_TO_INCLUDE = new Set(['new', 'planned', 'completed']);
+
+function isFieldApproved(status?: string) {
+    return status === 'planned';
+}
+
+function isFieldCompleted(status?: string) {
+    if (!status) {
+        return false;
+    }
+    return FIELD_COMPLETED_STATUSES.has(status);
+}
+
+function isOperationCompleted(status?: string) {
+    return status === 'completed';
+}
 
 function formatMinutes(minutes: number) {
     const rounded = Math.ceil(Math.max(0, minutes));
@@ -111,12 +131,11 @@ function getDaySchedule(
     raisedBeds: RaisedBed[],
     operations: Operation[],
 ) {
-    const todaysNewFields = raisedBeds
+    const todaysFields = raisedBeds
         .flatMap((rb) => rb.fields)
         .filter(
             (field) =>
-                (field.plantStatus === 'new' ||
-                    field.plantStatus === 'planned') &&
+                FIELD_STATUSES_TO_INCLUDE.has(field.plantStatus ?? 'new') &&
                 ((!field.plantScheduledDate && isToday) ||
                     (field.plantScheduledDate &&
                         (date.toDateString() ===
@@ -124,9 +143,9 @@ function getDaySchedule(
                             (date > new Date(field.plantScheduledDate) &&
                                 isToday)))),
         );
-    const todaysNewOperations = operations.filter(
+    const todaysOperations = operations.filter(
         (op) =>
-            (op.status === 'new' || op.status === 'planned') &&
+            OPERATION_STATUSES_TO_INCLUDE.has(op.status) &&
             op.raisedBedId !== null && // Filter out operations without raised bed
             ((!op.scheduledDate && isToday) ||
                 (op.scheduledDate &&
@@ -138,10 +157,10 @@ function getDaySchedule(
     // Get unique raisedBedIds from new operations and fields
     const todayAffectedRaisedBedIds = [
         ...new Set([
-            ...(todaysNewOperations
+            ...(todaysOperations
                 .map((op) => op.raisedBedId)
                 .filter((id) => id !== null) as number[]),
-            ...todaysNewFields.map((field) => field.raisedBedId),
+            ...todaysFields.map((field) => field.raisedBedId),
         ]),
     ];
 
@@ -156,8 +175,8 @@ function getDaySchedule(
     ].sort((a, b) => Number(a) - Number(b));
 
     return {
-        newFields: todaysNewFields,
-        newOperations: todaysNewOperations,
+        fields: todaysFields,
+        operations: todaysOperations,
         affectedRaisedBedPhysicalIds: physicalIds,
     };
 }
@@ -171,8 +190,11 @@ export function ScheduleDay({
     operationsData,
     userId,
 }: ScheduleDayProps) {
-    const { newFields, newOperations, affectedRaisedBedPhysicalIds } =
-        getDaySchedule(isToday, date, allRaisedBeds, operations);
+    const {
+        fields: scheduledFields,
+        operations: scheduledOperations,
+        affectedRaisedBedPhysicalIds,
+    } = getDaySchedule(isToday, date, allRaisedBeds, operations);
 
     const operationDataById = new Map<number, EntityStandardized>();
     if (operationsData) {
@@ -181,31 +203,51 @@ export function ScheduleDay({
         }
     }
 
-    const totalTasksCount = newFields.length + newOperations.length;
+    const totalTasksCount = scheduledFields.length + scheduledOperations.length;
     let approvedTasksCount = 0;
+    let completedTasksCount = 0;
     let totalDuration = 0;
     let approvedDuration = 0;
+    let completedDuration = 0;
 
-    for (const field of newFields) {
+    for (const field of scheduledFields) {
+        const isCompleted = isFieldCompleted(field.plantStatus);
+        const isApproved = isFieldApproved(field.plantStatus);
         totalDuration += PLANTING_TASK_DURATION_MINUTES;
-        if (field.plantStatus === 'planned') {
+        if (isApproved) {
             approvedDuration += PLANTING_TASK_DURATION_MINUTES;
             approvedTasksCount += 1;
         }
+        if (isCompleted) {
+            completedDuration += PLANTING_TASK_DURATION_MINUTES;
+            completedTasksCount += 1;
+        }
     }
 
-    for (const operation of newOperations) {
+    for (const operation of scheduledOperations) {
         const operationDuration = getOperationDurationMinutes(
             operationDataById.get(operation.entityId),
         );
         totalDuration += operationDuration;
-        if (operation.isAccepted) {
+        const completed = isOperationCompleted(operation.status);
+        if (completed) {
+            completedDuration += operationDuration;
+            completedTasksCount += 1;
+        }
+        if (operation.isAccepted && !completed) {
             approvedDuration += operationDuration;
             approvedTasksCount += 1;
         }
     }
 
     const hasTasks = totalTasksCount > 0;
+    const summaryCopyText = [
+        `Sažetak za ${new Intl.DateTimeFormat('hr-HR', {
+            dateStyle: 'full',
+        }).format(date)}`,
+        `Odobreni zadaci: ${approvedTasksCount}`,
+        `Odobreno vrijeme: ${formatMinutes(approvedDuration)}`,
+    ].join('\n');
 
     return (
         <Stack className="grow" spacing={2}>
@@ -213,19 +255,31 @@ export function ScheduleDay({
                 <Typography level="body1" semiBold>
                     Sažetak
                 </Typography>
-                <Row spacing={1}>
+                <Row spacing={1} className="flex-wrap items-center gap-y-1">
                     <Row spacing={0.5}>
-                        <Typography level="body3">Odobreno</Typography>
+                        <Typography level="body3">
+                            Zadaci (završeno/odobreno/ukupno):
+                        </Typography>
+                        <Typography level="body1" semiBold>
+                            {completedTasksCount}
+                        </Typography>
+                        <Typography level="body3">/</Typography>
                         <Typography level="body1" semiBold>
                             {approvedTasksCount}
                         </Typography>
-                        <Typography level="body3">
-                            /{totalTasksCount}
+                        <Typography level="body3">/</Typography>
+                        <Typography level="body3" semiBold>
+                            {totalTasksCount}
                         </Typography>
-                        <Typography level="body3">zadataka</Typography>
                     </Row>
                     <Row spacing={0.5}>
-                        <Typography level="body3">Vrijeme:</Typography>
+                        <Typography level="body3">
+                            Vrijeme (završeno/odobreno/ukupno):
+                        </Typography>
+                        <Typography level="body1" semiBold>
+                            {formatMinutes(completedDuration)}
+                        </Typography>
+                        <Typography level="body3">/</Typography>
                         <Typography level="body1" semiBold>
                             {formatMinutes(approvedDuration)}
                         </Typography>
@@ -234,6 +288,10 @@ export function ScheduleDay({
                             {formatMinutes(totalDuration)}
                         </Typography>
                     </Row>
+                    <CopySummaryButton
+                        disabled={approvedTasksCount === 0}
+                        summaryText={summaryCopyText}
+                    />
                 </Row>
             </Stack>
             {!hasTasks && (
@@ -246,7 +304,7 @@ export function ScheduleDay({
                     .filter((rb) => rb.physicalId === physicalId)
                     .sort((a, b) => a.id - b.id);
 
-                const dayFields = newFields
+                const dayFields = scheduledFields
                     .filter((field) =>
                         raisedBeds.some((rb) => rb.id === field.raisedBedId),
                     )
@@ -262,7 +320,7 @@ export function ScheduleDay({
                         (a, b) =>
                             a.physicalPositionIndex - b.physicalPositionIndex,
                     );
-                const dayOperations = newOperations
+                const dayOperations = scheduledOperations
                     .filter(
                         (op) =>
                             op.raisedBedId !== null &&
@@ -317,10 +375,13 @@ export function ScheduleDay({
                                     (sortData?.information?.plant?.attributes
                                         ?.seedingDistance || 30),
                             ) ** 2;
+                        const status = field.plantStatus;
                         return {
                             id: `field-${field.id}`,
                             text: `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : '?'}`,
-                            approved: field.plantStatus === 'planned',
+                            approved:
+                                isFieldApproved(status) &&
+                                !isFieldCompleted(status),
                         };
                     }),
                     ...dayOperations.map((op) => {
@@ -335,7 +396,9 @@ export function ScheduleDay({
                                       operationData?.information?.label,
                                   )
                                 : KnownPages.GrediceOperations,
-                            approved: op.isAccepted,
+                            approved:
+                                op.isAccepted &&
+                                !isOperationCompleted(op.status),
                         };
                     }),
                 ];
@@ -343,12 +406,15 @@ export function ScheduleDay({
                 const raisedBedFieldDurations = dayFields.reduce(
                     (acc, field) => {
                         acc.total += PLANTING_TASK_DURATION_MINUTES;
-                        if (field.plantStatus === 'planned') {
+                        if (isFieldApproved(field.plantStatus)) {
                             acc.approved += PLANTING_TASK_DURATION_MINUTES;
+                        }
+                        if (isFieldCompleted(field.plantStatus)) {
+                            acc.completed += PLANTING_TASK_DURATION_MINUTES;
                         }
                         return acc;
                     },
-                    { total: 0, approved: 0 },
+                    { total: 0, approved: 0, completed: 0 },
                 );
 
                 const raisedBedOperationDurations = dayOperations.reduce(
@@ -357,12 +423,15 @@ export function ScheduleDay({
                             operationDataById.get(op.entityId),
                         );
                         acc.total += duration;
-                        if (op.isAccepted) {
+                        if (isOperationCompleted(op.status)) {
+                            acc.completed += duration;
+                        }
+                        if (op.isAccepted && !isOperationCompleted(op.status)) {
                             acc.approved += duration;
                         }
                         return acc;
                     },
-                    { total: 0, approved: 0 },
+                    { total: 0, approved: 0, completed: 0 },
                 );
 
                 const raisedBedTotalDuration =
@@ -371,6 +440,9 @@ export function ScheduleDay({
                 const raisedBedApprovedDuration =
                     raisedBedFieldDurations.approved +
                     raisedBedOperationDurations.approved;
+                const raisedBedCompletedDuration =
+                    raisedBedFieldDurations.completed +
+                    raisedBedOperationDurations.completed;
 
                 return (
                     <Stack key={physicalId} spacing={1}>
@@ -383,7 +455,8 @@ export function ScheduleDay({
                                 level="body2"
                                 className="text-muted-foreground"
                             >
-                                Vrijeme:{' '}
+                                Vrijeme (završeno/odobreno/ukupno):{' '}
+                                {formatMinutes(raisedBedCompletedDuration)} /{' '}
                                 {formatMinutes(raisedBedApprovedDuration)} /{' '}
                                 {formatMinutes(raisedBedTotalDuration)}
                             </Typography>
@@ -420,6 +493,21 @@ export function ScheduleDay({
                                 };
 
                                 const fieldLabel = `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`;
+                                const fieldStatus = field.plantStatus;
+                                const fieldCompleted =
+                                    isFieldCompleted(fieldStatus);
+                                const fieldApproved =
+                                    isFieldApproved(fieldStatus);
+                                const fieldStatusText = fieldCompleted
+                                    ? 'Završeno'
+                                    : fieldApproved
+                                      ? 'Potvrđeno'
+                                      : 'Nije potvrđeno';
+                                const fieldStatusClassName = fieldCompleted
+                                    ? 'text-green-600'
+                                    : fieldApproved
+                                      ? 'text-green-600'
+                                      : 'text-muted-foreground';
 
                                 return (
                                     <div key={field.id}>
@@ -437,6 +525,12 @@ export function ScheduleDay({
                                                             field.positionIndex
                                                         }
                                                         label={fieldLabel}
+                                                    />
+                                                ) : fieldCompleted ? (
+                                                    <Checkbox
+                                                        className="size-5 mx-2"
+                                                        checked
+                                                        disabled
                                                     />
                                                 ) : (
                                                     <ModalConfirm
@@ -460,16 +554,20 @@ export function ScheduleDay({
                                                         </Typography>
                                                     </ModalConfirm>
                                                 )}
-                                                <Typography>
+                                                <Typography
+                                                    className={
+                                                        fieldCompleted
+                                                            ? 'line-through text-muted-foreground'
+                                                            : undefined
+                                                    }
+                                                >
                                                     {fieldLabel}
                                                 </Typography>
                                                 <Typography
                                                     level="body2"
-                                                    className={`ml-1 italic ${field.plantStatus === 'new' ? 'text-muted-foreground' : 'text-green-600'}`}
+                                                    className={`ml-1 italic ${fieldStatusClassName}`}
                                                 >
-                                                    {field.plantStatus === 'new'
-                                                        ? 'Nije potvrđeno'
-                                                        : 'Potvrđeno'}
+                                                    {fieldStatusText}
                                                 </Typography>
                                                 <Typography
                                                     level="body2"
@@ -500,6 +598,9 @@ export function ScheduleDay({
                                                                     ? 'Prerasporedi sijanje'
                                                                     : 'Zakaži sijanje'
                                                             }
+                                                            disabled={
+                                                                fieldCompleted
+                                                            }
                                                         >
                                                             <Calendar className="size-4 shrink-0" />
                                                         </IconButton>
@@ -512,6 +613,9 @@ export function ScheduleDay({
                                                         <IconButton
                                                             variant="plain"
                                                             title="Otkaži sijanje"
+                                                            disabled={
+                                                                fieldCompleted
+                                                            }
                                                         >
                                                             <Close className="size-4 shrink-0" />
                                                         </IconButton>
@@ -527,6 +631,20 @@ export function ScheduleDay({
                                     op.entityId,
                                 );
                                 const operationLabel = `${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`;
+                                const operationCompleted = isOperationCompleted(
+                                    op.status,
+                                );
+                                const operationStatusText = operationCompleted
+                                    ? 'Završeno'
+                                    : op.isAccepted
+                                      ? 'Potvrđeno'
+                                      : 'Nije potvrđeno';
+                                const operationStatusClassName =
+                                    operationCompleted
+                                        ? 'text-green-600'
+                                        : op.isAccepted
+                                          ? 'text-green-600'
+                                          : 'text-muted-foreground';
                                 return (
                                     <div key={op.id}>
                                         <Row
@@ -534,7 +652,13 @@ export function ScheduleDay({
                                             className="hover:bg-muted rounded"
                                         >
                                             <Row spacing={1} className="grow">
-                                                {op.isAccepted ? (
+                                                {operationCompleted ? (
+                                                    <Checkbox
+                                                        className="size-5 mx-2"
+                                                        checked
+                                                        disabled
+                                                    />
+                                                ) : op.isAccepted ? (
                                                     <CompleteOperationModal
                                                         operationId={op.id}
                                                         userId={userId}
@@ -563,17 +687,21 @@ export function ScheduleDay({
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                 >
-                                                    <Typography>
+                                                    <Typography
+                                                        className={
+                                                            operationCompleted
+                                                                ? 'line-through text-muted-foreground'
+                                                                : undefined
+                                                        }
+                                                    >
                                                         {operationLabel}
                                                     </Typography>
                                                 </a>
                                                 <Typography
                                                     level="body2"
-                                                    className={`ml-1 italic ${op.isAccepted ? 'text-green-600' : 'text-muted-foreground'}`}
+                                                    className={`ml-1 italic ${operationStatusClassName}`}
                                                 >
-                                                    {op.isAccepted
-                                                        ? 'Potvrđeno'
-                                                        : 'Nije potvrđeno'}
+                                                    {operationStatusText}
                                                 </Typography>
                                                 <Typography
                                                     level="body2"
@@ -612,6 +740,9 @@ export function ScheduleDay({
                                                                     ? 'Prerasporedi operaciju'
                                                                     : 'Zakaži operaciju'
                                                             }
+                                                            disabled={
+                                                                operationCompleted
+                                                            }
                                                         >
                                                             <Calendar className="size-4 shrink-0" />
                                                         </IconButton>
@@ -635,6 +766,9 @@ export function ScheduleDay({
                                                         <IconButton
                                                             variant="plain"
                                                             title="Otkaži operaciju"
+                                                            disabled={
+                                                                operationCompleted
+                                                            }
                                                         >
                                                             <Close className="size-4 shrink-0" />
                                                         </IconButton>
