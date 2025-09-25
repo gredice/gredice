@@ -26,7 +26,12 @@ const PLANTING_TASK_DURATION_MINUTES = 5;
 
 const FIELD_STATUSES_TO_INCLUDE = new Set(['new', 'planned', 'sowed']);
 const FIELD_COMPLETED_STATUSES = new Set(['sowed']);
-const OPERATION_STATUSES_TO_INCLUDE = new Set(['new', 'planned', 'completed']);
+const OPERATION_STATUSES_TO_INCLUDE = new Set([
+    'new',
+    'planned',
+    'completed',
+    'cancelled',
+]);
 
 function isFieldApproved(status?: string) {
     return status === 'planned';
@@ -41,6 +46,10 @@ function isFieldCompleted(status?: string) {
 
 function isOperationCompleted(status?: string) {
     return status === 'completed';
+}
+
+function isOperationCancelled(status?: string) {
+    return status === 'cancelled';
 }
 
 function formatMinutes(minutes: number) {
@@ -143,16 +152,30 @@ function getDaySchedule(
                             (date > new Date(field.plantScheduledDate) &&
                                 isToday)))),
         );
-    const todaysOperations = operations.filter(
-        (op) =>
-            OPERATION_STATUSES_TO_INCLUDE.has(op.status) &&
-            op.raisedBedId !== null && // Filter out operations without raised bed
-            ((!op.scheduledDate && isToday) ||
-                (op.scheduledDate &&
-                    (date.toDateString() ===
-                        new Date(op.scheduledDate).toDateString() || // For specific scheduled date
-                        (date > new Date(op.scheduledDate) && isToday)))),
-    );
+    const todaysOperations = operations.filter((op) => {
+        if (!OPERATION_STATUSES_TO_INCLUDE.has(op.status)) {
+            return false;
+        }
+        if (op.raisedBedId === null) {
+            return false;
+        }
+
+        const scheduledDate = op.scheduledDate
+            ? new Date(op.scheduledDate)
+            : undefined;
+        const sameDay =
+            scheduledDate !== undefined &&
+            date.toDateString() === scheduledDate.toDateString();
+        const isUnscheduledToday = scheduledDate === undefined && isToday;
+        const isOverdueToday =
+            scheduledDate !== undefined &&
+            isToday &&
+            date > scheduledDate &&
+            !isOperationCompleted(op.status) &&
+            !isOperationCancelled(op.status);
+
+        return sameDay || isUnscheduledToday || isOverdueToday;
+    });
 
     // Get unique raisedBedIds from new operations and fields
     const todayAffectedRaisedBedIds = [
@@ -234,7 +257,11 @@ export function ScheduleDay({
             completedDuration += operationDuration;
             completedTasksCount += 1;
         }
-        if (operation.isAccepted && !completed) {
+        if (
+            operation.isAccepted &&
+            !completed &&
+            !isOperationCancelled(operation.status)
+        ) {
             approvedDuration += operationDuration;
             approvedTasksCount += 1;
         }
@@ -398,7 +425,8 @@ export function ScheduleDay({
                                 : KnownPages.GrediceOperations,
                             approved:
                                 op.isAccepted &&
-                                !isOperationCompleted(op.status),
+                                !isOperationCompleted(op.status) &&
+                                !isOperationCancelled(op.status),
                         };
                     }),
                 ];
@@ -426,7 +454,11 @@ export function ScheduleDay({
                         if (isOperationCompleted(op.status)) {
                             acc.completed += duration;
                         }
-                        if (op.isAccepted && !isOperationCompleted(op.status)) {
+                        if (
+                            op.isAccepted &&
+                            !isOperationCompleted(op.status) &&
+                            !isOperationCancelled(op.status)
+                        ) {
                             acc.approved += duration;
                         }
                         return acc;
@@ -634,17 +666,26 @@ export function ScheduleDay({
                                 const operationCompleted = isOperationCompleted(
                                     op.status,
                                 );
-                                const operationStatusText = operationCompleted
-                                    ? 'Završeno'
-                                    : op.isAccepted
-                                      ? 'Potvrđeno'
-                                      : 'Nije potvrđeno';
+                                const operationCancelled = isOperationCancelled(
+                                    op.status,
+                                );
+                                const operationStatusText = operationCancelled
+                                    ? 'Otkazano'
+                                    : operationCompleted
+                                      ? 'Završeno'
+                                      : op.isAccepted
+                                        ? 'Potvrđeno'
+                                        : 'Nije potvrđeno';
                                 const operationStatusClassName =
-                                    operationCompleted
-                                        ? 'text-green-600'
-                                        : op.isAccepted
+                                    operationCancelled
+                                        ? 'text-red-600'
+                                        : operationCompleted
                                           ? 'text-green-600'
-                                          : 'text-muted-foreground';
+                                          : op.isAccepted
+                                            ? 'text-green-600'
+                                            : 'text-muted-foreground';
+                                const operationInactive =
+                                    operationCompleted || operationCancelled;
                                 return (
                                     <div key={op.id}>
                                         <Row
@@ -656,6 +697,12 @@ export function ScheduleDay({
                                                     <Checkbox
                                                         className="size-5 mx-2"
                                                         checked
+                                                        disabled
+                                                    />
+                                                ) : operationCancelled ? (
+                                                    <Checkbox
+                                                        className="size-5 mx-2"
+                                                        checked={false}
                                                         disabled
                                                     />
                                                 ) : op.isAccepted ? (
@@ -689,7 +736,7 @@ export function ScheduleDay({
                                                 >
                                                     <Typography
                                                         className={
-                                                            operationCompleted
+                                                            operationInactive
                                                                 ? 'line-through text-muted-foreground'
                                                                 : undefined
                                                         }
@@ -741,7 +788,7 @@ export function ScheduleDay({
                                                                     : 'Zakaži operaciju'
                                                             }
                                                             disabled={
-                                                                operationCompleted
+                                                                operationInactive
                                                             }
                                                         >
                                                             <Calendar className="size-4 shrink-0" />
@@ -767,7 +814,7 @@ export function ScheduleDay({
                                                             variant="plain"
                                                             title="Otkaži operaciju"
                                                             disabled={
-                                                                operationCompleted
+                                                                operationInactive
                                                             }
                                                         >
                                                             <Close className="size-4 shrink-0" />
