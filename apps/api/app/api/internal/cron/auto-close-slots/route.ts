@@ -14,7 +14,9 @@ export async function GET(request: NextRequest) {
     try {
         await autoCloseUpcomingSlots();
 
-        console.log('Auto-closed upcoming time slots within the 48-hour window');
+        console.log(
+            'Auto-closed upcoming time slots within the 48-hour window',
+        );
 
         return Response.json({
             success: true,

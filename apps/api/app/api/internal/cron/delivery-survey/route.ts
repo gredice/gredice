@@ -1,5 +1,6 @@
 import {
     createNotification,
+    type DeliverySurveyCandidate,
     getDeliverySurveyCandidates,
     markDeliverySurveySent,
 } from '@gredice/storage';
@@ -23,6 +24,20 @@ function formatDate(date: Date) {
     }).format(date);
 }
 
+function getDateKey(date: Date) {
+    // Use local date components to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+interface DeliverySurveyGroup {
+    accountId: string;
+    fulfilledAt: Date;
+    candidates: Map<string, DeliverySurveyCandidate>;
+}
+
 export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('authorization');
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -37,27 +52,69 @@ export async function GET(request: NextRequest) {
     let emailsSent = 0;
     let notificationsCreated = 0;
 
+    const groups = new Map<string, DeliverySurveyGroup>();
+    const orderedGroups: DeliverySurveyGroup[] = [];
+
     for (const candidate of candidates) {
-        const formattedDate = formatDate(candidate.fulfilledAt);
+        const dateKey = getDateKey(candidate.fulfilledAt);
+        const groupKey = `${candidate.accountId}:${dateKey}`;
+
+        let group = groups.get(groupKey);
+        if (!group) {
+            group = {
+                accountId: candidate.accountId,
+                fulfilledAt: candidate.fulfilledAt,
+                candidates: new Map<string, DeliverySurveyCandidate>(),
+            };
+            groups.set(groupKey, group);
+            orderedGroups.push(group);
+        }
+
+        const existingCandidate = group.candidates.get(candidate.requestId);
+        if (!existingCandidate) {
+            group.candidates.set(candidate.requestId, candidate);
+        } else if (candidate.fulfilledAt < existingCandidate.fulfilledAt) {
+            group.candidates.set(candidate.requestId, candidate);
+        }
+
+        if (candidate.fulfilledAt < group.fulfilledAt) {
+            group.fulfilledAt = candidate.fulfilledAt;
+        }
+    }
+
+    for (const group of orderedGroups) {
+        const candidatesInGroup = Array.from(group.candidates.values());
+        if (candidatesInGroup.length === 0) {
+            continue;
+        }
+
+        const formattedDate = formatDate(group.fulfilledAt);
+        const requestIds = candidatesInGroup.map((item) => item.requestId);
+
+        const uniqueEmails = new Map<string, string>();
+
+        for (const candidate of candidatesInGroup) {
+            for (const user of candidate.userEmails) {
+                const trimmedEmail = user.email.trim();
+                const normalizedEmail = trimmedEmail.toLowerCase();
+
+                if (
+                    normalizedEmail.length === 0 ||
+                    uniqueEmails.has(normalizedEmail)
+                ) {
+                    continue;
+                }
+
+                uniqueEmails.set(normalizedEmail, trimmedEmail);
+            }
+        }
 
         const sentEmails: string[] = [];
-        const seenEmails = new Set<string>();
 
-        for (const user of candidate.userEmails) {
-            const normalizedEmail = user.email.trim().toLowerCase();
-            if (normalizedEmail.length === 0) {
-                continue;
-            }
-
-            if (seenEmails.has(normalizedEmail)) {
-                continue;
-            }
-
-            seenEmails.add(normalizedEmail);
-
+        for (const [normalizedEmail, email] of uniqueEmails) {
             try {
-                await sendDeliverySurvey(user.email, {
-                    email: user.email,
+                await sendDeliverySurvey(email, {
+                    email,
                     surveyUrl: SURVEY_URL,
                     deliveryDate: formattedDate,
                 });
@@ -65,8 +122,8 @@ export async function GET(request: NextRequest) {
                 emailsSent += 1;
             } catch (error) {
                 console.error('Failed to send delivery survey email', {
-                    requestId: candidate.requestId,
-                    email: user.email,
+                    requestIds,
+                    email,
                     error,
                 });
             }
@@ -76,7 +133,7 @@ export async function GET(request: NextRequest) {
 
         try {
             await createNotification({
-                accountId: candidate.accountId,
+                accountId: group.accountId,
                 header: '📣 Kako ti se svidjela dostava?',
                 content: `Tvoja dostava je stigla ${formattedDate}. Podijeli svoje dojmove i ispuni kratku anketu 📋⭐️⭐️⭐️⭐️⭐️`,
                 linkUrl: SURVEY_URL,
@@ -86,13 +143,19 @@ export async function GET(request: NextRequest) {
             notificationsCreated += 1;
         } catch (error) {
             console.error('Failed to create delivery survey notification', {
-                requestId: candidate.requestId,
+                requestIds,
                 error,
             });
         }
 
         if (notificationSuccess || sentEmails.length > 0) {
-            await markDeliverySurveySent(candidate.requestId, sentEmails);
+            const sentEmailsList = [...sentEmails];
+            for (const candidate of candidatesInGroup) {
+                await markDeliverySurveySent(
+                    candidate.requestId,
+                    sentEmailsList,
+                );
+            }
         }
     }
 
