@@ -7,31 +7,46 @@ import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 import { useGameState } from '../../useGameState';
 import { RaisedBedCard } from './RaisedBedCard';
 
-type QuickSeedType = 'spring' | 'summer' | 'fall' | 'winter';
+type QuickSeedType = 'spring' | 'summer' | 'fall' | 'winter' | 'salad';
 
 const quickSeedOptions: Record<
     QuickSeedType,
-    { label: string; emoji: string; layout: number[] }
+    {
+        label: string;
+        emoji: string;
+        layout: number[];
+        type: 'seasonal' | 'standard';
+    }
 > = {
     spring: {
         label: 'Proljetni mix',
         emoji: '🌱',
-        layout: [282, 229, 209, 299, 234, 221, 281, 215, 204],
+        layout: [],
+        type: 'seasonal',
     },
     summer: {
         label: 'Ljetni mix',
         emoji: '☀️',
         layout: [222, 227, 279, 223, 294, 230, 223, 215, 230],
+        type: 'seasonal',
     },
     fall: {
         label: 'Jesenski mix',
         emoji: '🍂',
-        layout: [223, 215, 204, 279, 227, 281, 209, 221, 230],
+        layout: [372, 355, 373, 372, 284, 373, 349, 284, 349],
+        type: 'seasonal',
     },
     winter: {
         label: 'Zimski mix',
         emoji: '❄️',
-        layout: [299, 229, 209, 221, 282, 215, 204, 222, 223],
+        layout: [],
+        type: 'seasonal',
+    },
+    salad: {
+        label: 'Salata mix',
+        emoji: '🥗',
+        layout: [282, 229, 209, 299, 234, 221, 281, 215, 204],
+        type: 'standard',
     },
 };
 
@@ -97,9 +112,14 @@ export function RaisedBedFieldSuggestions({
         return null;
 
     const season = getSeasonForDate(currentTime);
-    const quickSeed = quickSeedOptions[season];
 
-    if (!quickSeed) return null;
+    // Get seasonal option and standard options
+    const seasonalOption = quickSeedOptions[season];
+    const standardOptions = Object.entries(quickSeedOptions).filter(
+        ([_, option]) => option.type === 'standard',
+    );
+
+    if (!seasonalOption && standardOptions.length === 0) return null;
 
     async function handleQuickPick(type: QuickSeedType) {
         const layout = quickSeedOptions[type]?.layout;
@@ -149,20 +169,46 @@ export function RaisedBedFieldSuggestions({
                 Brzo sijanje
             </Typography>
             <div className="flex flex-row md:flex-col gap-2">
-                <ButtonGreen
-                    variant="plain"
-                    className={cx(
-                        'md:size-auto bg-black/80 dark:bg-white/10 hover:bg-black/50',
-                        'rounded-full size-10 left-[calc(50%+118px)]',
-                    )}
-                    startDecorator={
-                        <span className="text-xl">{quickSeed.emoji}</span>
-                    }
-                    onClick={() => handleQuickPick(season)}
-                    loading={setCartItem.isPending || isLoadingShoppingCart}
-                >
-                    <span className="hidden md:block">{quickSeed.label}</span>
-                </ButtonGreen>
+                {/* Seasonal option */}
+                {seasonalOption && (
+                    <ButtonGreen
+                        variant="plain"
+                        className={cx(
+                            'md:size-auto bg-black/80 dark:bg-white/10 hover:bg-black/50',
+                            'rounded-full size-10 left-[calc(50%+118px)]',
+                        )}
+                        startDecorator={
+                            <span className="text-xl">
+                                {seasonalOption.emoji}
+                            </span>
+                        }
+                        onClick={() => handleQuickPick(season)}
+                        loading={setCartItem.isPending || isLoadingShoppingCart}
+                    >
+                        <span className="hidden md:block">
+                            {seasonalOption.label}
+                        </span>
+                    </ButtonGreen>
+                )}
+
+                {/* Standard options */}
+                {standardOptions.map(([type, option]) => (
+                    <ButtonGreen
+                        key={type}
+                        variant="plain"
+                        className={cx(
+                            'md:size-auto bg-black/80 dark:bg-white/10 hover:bg-black/50',
+                            'rounded-full size-10 left-[calc(50%+118px)]',
+                        )}
+                        startDecorator={
+                            <span className="text-xl">{option.emoji}</span>
+                        }
+                        onClick={() => handleQuickPick(type as QuickSeedType)}
+                        loading={setCartItem.isPending || isLoadingShoppingCart}
+                    >
+                        <span className="hidden md:block">{option.label}</span>
+                    </ButtonGreen>
+                ))}
             </div>
         </RaisedBedCard>
     );
