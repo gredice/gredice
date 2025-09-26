@@ -11,7 +11,7 @@
         "resolveJsonModule": true,
         "isolatedModules": true,
         "moduleDetection": "force",
-        "jsx": "preserve",
+        "jsx": "react-jsx",
         "incremental": true,
         "plugins": [
             {
