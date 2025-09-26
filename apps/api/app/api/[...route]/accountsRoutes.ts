@@ -1,3 +1,4 @@
+import { utcToZonedTime, zonedTimeToUtc } from '@date-fns/tz';
 import {
     deleteAccountWithDependencies,
     earnSunflowers,
@@ -8,6 +9,7 @@ import {
     getUser,
     knownEventTypes,
 } from '@gredice/storage';
+import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
 import { verifyJwt } from '../../../lib/auth/auth';
@@ -17,6 +19,7 @@ import {
 } from '../../../lib/hono/authValidator';
 
 const dailyRewards = [5, 10, 15, 20, 25, 50];
+const DAILY_REWARD_TIME_ZONE = 'Europe/Zagreb';
 
 function rewardForDay(day: number) {
     return dailyRewards[Math.min(day, dailyRewards.length) - 1] ?? 0;
@@ -38,9 +41,13 @@ async function getDailyRewardState(accountId: string) {
         [];
 
     if (dailyEvents.length > 0) {
+        const toLocalDay = (date: Date) =>
+            startOfDay(utcToZonedTime(date, DAILY_REWARD_TIME_ZONE));
         const latest = dailyEvents[0];
         lastDay = Number(latest.reason.split(':')[1] ?? '1');
         lastDate = new Date(latest.createdAt);
+        const latestLocalDay = toLocalDay(lastDate);
+        const seenLocalDays = new Set<number>([latestLocalDay.getTime()]);
         streak.push({
             day: lastDay,
             amount: rewardForDay(lastDay),
@@ -48,37 +55,47 @@ async function getDailyRewardState(accountId: string) {
         });
 
         let expectedDay = lastDay - 1;
-        let prevDate = lastDate;
+        let expectedLocalDay = addDays(latestLocalDay, -1);
         for (let i = 1; i < dailyEvents.length && expectedDay > 0; i++) {
             const ev = dailyEvents[i];
             const day = Number(ev.reason.split(':')[1] ?? '1');
             const date = new Date(ev.createdAt);
-            const diff = prevDate.getTime() - date.getTime();
-            if (day === expectedDay && diff <= 1000 * 60 * 60 * 48) {
-                streak.push({
-                    day,
-                    amount: rewardForDay(day),
-                    claimedAt: date.toISOString(),
-                });
-                expectedDay--;
-                prevDate = date;
-            } else {
+            const eventLocalDay = toLocalDay(date);
+
+            const eventLocalTime = eventLocalDay.getTime();
+            if (seenLocalDays.has(eventLocalTime)) {
+                continue;
+            }
+
+            if (eventLocalTime !== expectedLocalDay.getTime()) {
                 break;
             }
+
+            streak.push({
+                day,
+                amount: rewardForDay(day),
+                claimedAt: date.toISOString(),
+            });
+            seenLocalDays.add(eventLocalTime);
+            expectedDay--;
+            expectedLocalDay = addDays(expectedLocalDay, -1);
         }
         streak.sort((a, b) => a.day - b.day);
     }
 
     const now = new Date();
+    const nowLocal = utcToZonedTime(now, DAILY_REWARD_TIME_ZONE);
     let currentDay = 1;
     let canClaim = true;
 
     if (lastDate) {
-        const diffMs = now.getTime() - lastDate.getTime();
-        if (diffMs < 1000 * 60 * 60 * 24) {
+        const lastLocal = utcToZonedTime(lastDate, DAILY_REWARD_TIME_ZONE);
+        const diffDays = differenceInCalendarDays(nowLocal, lastLocal);
+
+        if (diffDays === 0) {
             currentDay = lastDay;
             canClaim = false;
-        } else if (diffMs < 1000 * 60 * 60 * 48) {
+        } else if (diffDays === 1) {
             currentDay = Math.min(lastDay + 1, 7);
             canClaim = true;
         } else {
@@ -89,8 +106,14 @@ async function getDailyRewardState(accountId: string) {
     }
 
     const nextDay = Math.min(currentDay + 1, 7);
-    const expiresBase = lastDate ?? now;
-    const expiresAt = new Date(expiresBase.getTime() + 1000 * 60 * 60 * 48);
+    const expiresLocalBase = lastDate
+        ? utcToZonedTime(lastDate, DAILY_REWARD_TIME_ZONE)
+        : nowLocal;
+    const expiresLocal = addDays(
+        startOfDay(expiresLocalBase),
+        lastDate ? 2 : 1,
+    );
+    const expiresAt = zonedTimeToUtc(expiresLocal, DAILY_REWARD_TIME_ZONE);
 
     return {
         canClaim,
