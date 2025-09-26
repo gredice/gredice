@@ -5,6 +5,7 @@ import {
     SeedTimeInformationBadge,
 } from '@gredice/ui/plants';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
+import { isAbsoluteUrl } from '@signalco/js';
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -68,6 +69,12 @@ export function PlantsList({
                     const price = plant.prices?.perPlant
                         ? plant.prices.perPlant.toFixed(2)
                         : 'Nepoznato';
+                    const coverUrl =
+                        plant.image.cover.url ??
+                        '/assets/plants/placeholder.png';
+                    const plantImageUrl = isAbsoluteUrl(coverUrl)
+                        ? coverUrl
+                        : `https://www.gredice.com${coverUrl}`;
                     return (
                         <Stack key={plant.id}>
                             <Button
@@ -76,10 +83,7 @@ export function PlantsList({
                                 onClick={() => onChange(plant)}
                             >
                                 <Image
-                                    src={
-                                        'https://www.gredice.com/' +
-                                        plant.image.cover.url
-                                    }
+                                    src={plantImageUrl}
                                     alt={plant.information.name}
                                     width={48}
                                     height={48}
