@@ -52,9 +52,9 @@ function isOperationCancelled(status?: string) {
     return status === 'cancelled';
 }
 
-function formatMinutes(minutes: number) {
+function formatMinutes(minutes: number, hideUnit = false) {
     const rounded = Math.ceil(Math.max(0, minutes));
-    return `${rounded} min`;
+    return hideUnit ? `${rounded}` : `${rounded} min`;
 }
 
 function getOperationDurationMinutes(
@@ -141,17 +141,27 @@ function getDaySchedule(
     operations: Operation[],
 ) {
     const todaysFields = raisedBeds
+        .filter((raisedBed) => Boolean(raisedBed.physicalId))
         .flatMap((rb) => rb.fields)
-        .filter(
-            (field) =>
+        .filter((field) => {
+            // Don't display fields that were sown in the past
+            if (field.plantStatus === 'sowed' && field.plantSowDate) {
+                const sowDate = new Date(field.plantSowDate);
+                if (sowDate.toDateString() !== date.toDateString()) {
+                    return false;
+                }
+            }
+
+            return (
                 FIELD_STATUSES_TO_INCLUDE.has(field.plantStatus ?? 'new') &&
                 ((!field.plantScheduledDate && isToday) ||
                     (field.plantScheduledDate &&
                         (date.toDateString() ===
                             new Date(field.plantScheduledDate).toDateString() || // For specific scheduled date
                             (date > new Date(field.plantScheduledDate) &&
-                                isToday)))),
-        );
+                                isToday))))
+            );
+        });
     const todaysOperations = operations.filter((op) => {
         if (!OPERATION_STATUSES_TO_INCLUDE.has(op.status)) {
             return false;
@@ -226,6 +236,10 @@ export function ScheduleDay({
         }
     }
 
+    if (isToday) {
+        console.debug(scheduledOperations);
+    }
+
     const totalTasksCount = scheduledFields.length + scheduledOperations.length;
     let approvedTasksCount = 0;
     let completedTasksCount = 0;
@@ -278,47 +292,67 @@ export function ScheduleDay({
 
     return (
         <Stack className="grow" spacing={2}>
-            <Stack spacing={1}>
-                <Typography level="body1" semiBold>
-                    Sažetak
-                </Typography>
-                <Row spacing={1} className="flex-wrap items-center gap-y-1">
-                    <Row spacing={0.5}>
-                        <Typography level="body3">
-                            Zadaci (završeno/odobreno/ukupno):
-                        </Typography>
-                        <Typography level="body1" semiBold>
-                            {completedTasksCount}
-                        </Typography>
-                        <Typography level="body3">/</Typography>
-                        <Typography level="body1" semiBold>
-                            {approvedTasksCount}
-                        </Typography>
-                        <Typography level="body3">/</Typography>
-                        <Typography level="body3" semiBold>
-                            {totalTasksCount}
-                        </Typography>
+            <Stack>
+                <Row
+                    spacing={2}
+                    alignItems="start"
+                    justifyContent="space-between"
+                >
+                    <Row spacing={1} alignItems="start">
+                        <Calendar className="size-4 shrink-0 text-muted-foreground" />
+                        <Stack>
+                            <Typography level="body2">
+                                <LocalDateTime time={false}>
+                                    {date}
+                                </LocalDateTime>
+                            </Typography>
+                            <Typography level="body1" uppercase semiBold>
+                                {new Date().toDateString() ===
+                                date.toDateString()
+                                    ? 'Danas'
+                                    : new Intl.DateTimeFormat('hr-HR', {
+                                          weekday: 'long',
+                                      })
+                                          .format(date)
+                                          .substring(0, 3)}
+                            </Typography>
+                            <CopySummaryButton
+                                disabled={approvedTasksCount === 0}
+                                summaryText={summaryCopyText}
+                            />
+                        </Stack>
                     </Row>
-                    <Row spacing={0.5}>
+                    <Stack className="border p-4 py-3 rounded-lg">
+                        <Row spacing={0.5}>
+                            <Typography level="body3">Zadaci:</Typography>
+                            <Typography level="body1" semiBold>
+                                {completedTasksCount}
+                            </Typography>
+                            <Typography level="body3">/</Typography>
+                            <Typography level="body1" semiBold>
+                                {approvedTasksCount}
+                            </Typography>
+                            <Typography level="body3" semiBold>
+                                ({totalTasksCount})
+                            </Typography>
+                        </Row>
+                        <Row spacing={0.5}>
+                            <Typography level="body3">Vrijeme:</Typography>
+                            <Typography level="body1" semiBold>
+                                {formatMinutes(completedDuration, true)}
+                            </Typography>
+                            <Typography level="body3">/</Typography>
+                            <Typography level="body1" semiBold>
+                                {formatMinutes(approvedDuration)}
+                            </Typography>
+                            <Typography level="body3" semiBold>
+                                ({formatMinutes(totalDuration)})
+                            </Typography>
+                        </Row>
                         <Typography level="body3">
-                            Vrijeme (završeno/odobreno/ukupno):
+                            (završeno/odobreno/ukupno)
                         </Typography>
-                        <Typography level="body1" semiBold>
-                            {formatMinutes(completedDuration)}
-                        </Typography>
-                        <Typography level="body3">/</Typography>
-                        <Typography level="body1" semiBold>
-                            {formatMinutes(approvedDuration)}
-                        </Typography>
-                        <Typography level="body3">/</Typography>
-                        <Typography level="body3" semiBold>
-                            {formatMinutes(totalDuration)}
-                        </Typography>
-                    </Row>
-                    <CopySummaryButton
-                        disabled={approvedTasksCount === 0}
-                        summaryText={summaryCopyText}
-                    />
+                    </Stack>
                 </Row>
             </Stack>
             {!hasTasks && (
@@ -487,10 +521,13 @@ export function ScheduleDay({
                                 level="body2"
                                 className="text-muted-foreground"
                             >
-                                Vrijeme (završeno/odobreno/ukupno):{' '}
-                                {formatMinutes(raisedBedCompletedDuration)} /{' '}
-                                {formatMinutes(raisedBedApprovedDuration)} /{' '}
-                                {formatMinutes(raisedBedTotalDuration)}
+                                Vrijeme:{' '}
+                                {formatMinutes(
+                                    raisedBedCompletedDuration,
+                                    true,
+                                )}{' '}
+                                / {formatMinutes(raisedBedApprovedDuration)} (
+                                {formatMinutes(raisedBedTotalDuration)})
                             </Typography>
                             <CopyTasksButton
                                 physicalId={physicalId.toString()}

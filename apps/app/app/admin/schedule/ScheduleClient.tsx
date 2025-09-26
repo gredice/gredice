@@ -83,42 +83,15 @@ export function ScheduleClient({
                 {dates.map((date, dateIndex) => {
                     return (
                         <Fragment key={date.toISOString()}>
-                            <div className="flex flex-col md:flex-row gap-x-4 gap-y-2">
-                                <Row spacing={1}>
-                                    <Calendar className="size-5 shrink-0 ml-2 mb-1" />
-                                    <Stack>
-                                        <Typography level="body2">
-                                            <LocalDateTime time={false}>
-                                                {date}
-                                            </LocalDateTime>
-                                        </Typography>
-                                        <Typography
-                                            level="body1"
-                                            uppercase
-                                            semiBold={dateIndex !== 0}
-                                            bold={dateIndex === 0}
-                                        >
-                                            {dateIndex === 0
-                                                ? 'Danas'
-                                                : new Intl.DateTimeFormat(
-                                                      'hr-HR',
-                                                      { weekday: 'long' },
-                                                  )
-                                                      .format(date)
-                                                      .substring(0, 3)}
-                                        </Typography>
-                                    </Stack>
-                                </Row>
-                                <ScheduleDay
-                                    isToday={dateIndex === 0}
-                                    date={date}
-                                    allRaisedBeds={allRaisedBeds}
-                                    operations={operations}
-                                    plantSorts={plantSorts}
-                                    operationsData={operationsData}
-                                    userId={userId}
-                                />
-                            </div>
+                            <ScheduleDay
+                                isToday={dateIndex === 0}
+                                date={date}
+                                allRaisedBeds={allRaisedBeds}
+                                operations={operations}
+                                plantSorts={plantSorts}
+                                operationsData={operationsData}
+                                userId={userId}
+                            />
                             <Divider />
                         </Fragment>
                     );

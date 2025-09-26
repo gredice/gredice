@@ -8,6 +8,13 @@ import {
 import { storage } from '../storage';
 import { getEvents, knownEventTypes } from './eventsRepo';
 
+export type OperationStatus =
+    | 'new'
+    | 'planned'
+    | 'completed'
+    | 'failed'
+    | 'canceled';
+
 async function fillOperationAggregates(operations: SelectOperation[]) {
     const aggregateIds = operations.map((op) => op.id.toString());
     const aggregatesEvents = await getEvents(
@@ -114,25 +121,47 @@ export async function getAllOperations(filter?: {
     to?: Date;
     completedFrom?: Date;
     completedTo?: Date;
+    status?: OperationStatus | OperationStatus[];
 }) {
+    let operationsWithAggregates: Awaited<
+        ReturnType<typeof fillOperationAggregates>
+    >;
+
     // If completion date filtering is requested, use event-based filtering
     if (filter?.completedFrom || filter?.completedTo) {
-        return getCompletedOperationsByCompletionDate({
-            from: filter.completedFrom || new Date('1970-01-01'),
-            to: filter.completedTo || new Date('2099-12-31'),
+        operationsWithAggregates = await getCompletedOperationsByCompletionDate(
+            {
+                from: filter.completedFrom || new Date('1970-01-01'),
+                to: filter.completedTo || new Date('2099-12-31'),
+            },
+        );
+    } else {
+        // Otherwise, use the original timestamp-based filtering
+        const operationsList = await storage().query.operations.findMany({
+            where: and(
+                eq(operations.isDeleted, false),
+                filter?.from
+                    ? gte(operations.timestamp, filter.from)
+                    : undefined,
+                filter?.to ? lte(operations.timestamp, filter.to) : undefined,
+            ),
+            orderBy: desc(operations.timestamp),
         });
+        operationsWithAggregates =
+            await fillOperationAggregates(operationsList);
     }
 
-    // Otherwise, use the original timestamp-based filtering
-    const operationsList = await storage().query.operations.findMany({
-        where: and(
-            eq(operations.isDeleted, false),
-            filter?.from ? gte(operations.timestamp, filter.from) : undefined,
-            filter?.to ? lte(operations.timestamp, filter.to) : undefined,
-        ),
-        orderBy: desc(operations.timestamp),
-    });
-    return await fillOperationAggregates(operationsList);
+    // Apply status filtering if specified
+    if (filter?.status) {
+        const statusArray = Array.isArray(filter.status)
+            ? filter.status
+            : [filter.status];
+        operationsWithAggregates = operationsWithAggregates.filter((op) =>
+            statusArray.includes(op.status as OperationStatus),
+        );
+    }
+
+    return operationsWithAggregates;
 }
 
 export async function getOperationById(id: number) {

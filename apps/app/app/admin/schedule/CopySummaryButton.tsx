@@ -39,7 +39,7 @@ export function CopySummaryButton({
             <Button
                 title="Kopiraj sažetak u međuspremnik"
                 onClick={handleCopy}
-                variant="plain"
+                variant="link"
                 startDecorator={<Duplicate className="size-4 shrink-0" />}
                 disabled={disabled}
             >
