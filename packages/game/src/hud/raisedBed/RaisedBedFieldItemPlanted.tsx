@@ -1,4 +1,5 @@
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
+import { isAbsoluteUrl } from '@signalco/js';
 import {
     Book,
     ExternalLink,
@@ -131,6 +132,14 @@ export function RaisedBedFieldItemPlanted({
         plantSort.information.name,
     );
 
+    const coverUrl =
+        (plantSort.image?.cover?.url ||
+            plantSort.information.plant.image?.cover?.url) ??
+        '/assets/plants/placeholder.png';
+    const plantImageUrl = isAbsoluteUrl(coverUrl)
+        ? coverUrl
+        : `https://www.gredice.com/${coverUrl}`;
+
     return (
         <Modal
             title={`Biljka "${plantSort.information.name}"`}
@@ -144,7 +153,7 @@ export function RaisedBedFieldItemPlanted({
                         segments={segments}
                     >
                         <Image
-                            src={`https://www.gredice.com/${plantSort.image?.cover?.url || plantSort.information.plant.image?.cover?.url}`}
+                            src={plantImageUrl}
                             alt={plantSort.information.name}
                             className="absolute top-1/2 start-1/2 transform -translate-y-1/2 -translate-x-1/2"
                             width={60}
@@ -157,7 +166,7 @@ export function RaisedBedFieldItemPlanted({
             <Stack spacing={2}>
                 <Row spacing={2} className="flex-wrap gap-y-2">
                     <Image
-                        src={`https://www.gredice.com/${plantSort.image?.cover?.url || plantSort.information.plant.image?.cover?.url}`}
+                        src={plantImageUrl}
                         alt={plantSort.information.name}
                         width={60}
                         height={60}

@@ -1,3 +1,4 @@
+import { isAbsoluteUrl } from '@signalco/js';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import { Delete, Euro, Navigate, Timer } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
@@ -53,6 +54,12 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     // Hide delete button for paid items
     const isProcessed = item.status === 'paid';
 
+    const imageOrFallback =
+        item.shopData.image ?? '/assets/plants/placeholder.png';
+    const shopImageUrl = isAbsoluteUrl(imageOrFallback)
+        ? imageOrFallback
+        : `https://www.gredice.com${imageOrFallback}`;
+
     return (
         <Row spacing={2} alignItems="start">
             <Image
@@ -60,10 +67,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                 width={56}
                 height={56}
                 alt={item.shopData.name ?? 'Nepoznato'}
-                src={
-                    'https://www.gredice.com' +
-                    (item.shopData.image ?? '/assets/plants/placeholder.png')
-                }
+                src={shopImageUrl}
             />
             <Stack className="grow">
                 <div className="grid grid-cols-[1fr_auto] items-center gap-2">
