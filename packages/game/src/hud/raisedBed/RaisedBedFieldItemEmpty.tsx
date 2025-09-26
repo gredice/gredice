@@ -12,10 +12,16 @@ export function RaisedBedFieldItemEmpty({
     gardenId,
     raisedBedId,
     positionIndex,
+    isSelected,
+    onSelect,
+    onClose,
 }: {
     raisedBedId: number;
     gardenId: number;
     positionIndex: number;
+    isSelected: boolean;
+    onSelect: () => void;
+    onClose: () => void;
 }) {
     const { data: cart, isLoading: isCartPending } = useShoppingCart();
     const { data: garden, isLoading: isGardenPending } = useCurrentGarden();
@@ -99,6 +105,14 @@ export function RaisedBedFieldItemEmpty({
             selectedPlantId={cartPlantId}
             selectedSortId={cartPlantSortId}
             selectedPlantOptions={cartPlantOptions}
+            open={isSelected}
+            onOpenChange={(open) => {
+                if (open) {
+                    onSelect();
+                } else {
+                    onClose();
+                }
+            }}
         />
     );
 }

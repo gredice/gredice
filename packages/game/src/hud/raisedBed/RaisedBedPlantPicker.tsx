@@ -8,7 +8,7 @@ import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { type ReactElement, useState } from 'react';
+import { type ReactElement, useEffect, useState } from 'react';
 import { SegmentedProgress } from '../../controls/components/SegmentedProgress';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
@@ -33,6 +33,8 @@ type PlantPickerProps = {
     selectedPlantId?: number | null;
     selectedSortId?: number | null;
     selectedPlantOptions?: { scheduledDate: Date | null | undefined } | null;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
 };
 
 export function PlantPicker({
@@ -44,8 +46,9 @@ export function PlantPicker({
     selectedPlantId: preselectedPlantId,
     selectedSortId: preselectedSortId,
     selectedPlantOptions: preselectedPlantOptions,
+    open,
+    onOpenChange,
 }: PlantPickerProps) {
-    const [open, setOpen] = useState(false);
     const [, setSearch] = useSearchParam('pretraga', '');
     const steps = [
         {
@@ -106,13 +109,37 @@ export function PlantPicker({
         }
     }
 
+    const isOpen = open ?? false;
+
+    useEffect(() => {
+        if (isOpen) {
+            setSelectedPlantId(preselectedPlantId ?? null);
+            setSelectedSortId(preselectedSortId ?? null);
+            setPlantOptions(preselectedPlantOptions ?? null);
+        }
+    }, [
+        isOpen,
+        preselectedPlantId,
+        preselectedPlantOptions,
+        preselectedSortId,
+    ]);
+
+    function closeModal() {
+        onOpenChange?.(false);
+        setSearch(undefined);
+        setSelectedPlantId(preselectedPlantId ?? null);
+        setSelectedSortId(preselectedSortId ?? null);
+        setPlantOptions(preselectedPlantOptions ?? null);
+        setFlyToShoppingCart(false);
+    }
+
     async function handleRemove() {
-        setOpen(false);
         setSelectedPlantId(null);
         setSelectedSortId(null);
         setPlantOptions(null);
         setSearch(undefined);
         await removeFromCart();
+        closeModal();
     }
 
     async function handleConfirm() {
@@ -134,15 +161,15 @@ export function PlantPicker({
             }),
         });
         await new Promise((resolve) => setTimeout(resolve, 800)); // Wait for animation to finish
-        setOpen(false);
-        setFlyToShoppingCart(false);
+        closeModal();
     }
 
-    function handleOpenChange(open: boolean) {
-        setOpen(open);
-        setSelectedPlantId(preselectedPlantId ?? null);
-        setSelectedSortId(preselectedSortId ?? null);
-        setPlantOptions(preselectedPlantOptions ?? null);
+    function handleModalOpenChange(nextOpen: boolean) {
+        if (nextOpen) {
+            onOpenChange?.(true);
+        } else {
+            closeModal();
+        }
     }
 
     // Plant options
@@ -170,8 +197,8 @@ export function PlantPicker({
     return (
         <Modal
             trigger={trigger}
-            open={open}
-            onOpenChange={handleOpenChange}
+            open={isOpen}
+            onOpenChange={handleModalOpenChange}
             title={'Sijanje biljke'}
             modal={false}
             className="md:border-tertiary md:border-b-4 md:max-w-2xl"
