@@ -8,9 +8,6 @@ const nextConfig: NextConfig = {
     experimental: {
         typedEnv: true,
         reactCompiler: true,
-        // Scope hoisting is disabled as a workaround for current compatibility issues with Turbopack and our codebase.
-        // This should be revisited in future Next.js versions as the underlying issue may be resolved.
-        turbopackScopeHoisting: false,
     },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
     productionBrowserSourceMaps: true,
