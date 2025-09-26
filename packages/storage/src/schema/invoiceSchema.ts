@@ -187,6 +187,13 @@ export const receipts = pgTable(
         cisTimestamp: timestamp('cis_timestamp'), // When receipt was processed by CIS
         cisResponse: text('cis_response'), // Full response from CIS (for debugging)
 
+        // Receipt PDF generation metadata
+        pdfStatus: text('pdf_status').notNull().default('pending'), // 'pending', 'processing', 'succeeded', 'failed'
+        pdfStoragePath: text('pdf_storage_path'),
+        pdfGeneratedAt: timestamp('pdf_generated_at'),
+        pdfErrorMessage: text('pdf_error_message'),
+        pdfLastAttemptAt: timestamp('pdf_last_attempt_at'),
+
         // Receipt dates
         issuedAt: timestamp('issued_at').notNull().defaultNow(),
 
@@ -236,3 +243,8 @@ export type UpdateReceipt = Partial<
 > &
     Pick<typeof receipts.$inferSelect, 'id'>;
 export type SelectReceipt = typeof receipts.$inferSelect;
+export type ReceiptPdfStatus =
+    | 'pending'
+    | 'processing'
+    | 'succeeded'
+    | 'failed';

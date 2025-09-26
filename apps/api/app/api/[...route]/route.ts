@@ -12,6 +12,7 @@ import directoriesRoutes from './directoriesRoutes';
 import feedbackRoutes from './feedbackRoutes';
 import gardensRoutes from './gardensRoutes';
 import notificationsRoutes from './notificationsRoutes';
+import receiptsRoutes from './receiptsRoutes';
 import shoppingCartRoutes from './shoppingCartRoutes';
 import usersRoutes from './usersRoutes';
 
@@ -35,6 +36,7 @@ const app = new Hono()
     .route('/gardens', gardensRoutes)
     .route('/feedback', feedbackRoutes)
     .route('/shopping-cart', shoppingCartRoutes)
+    .route('/receipts', receiptsRoutes)
     .route('/checkout', checkoutRoutes)
     .route('/delivery', deliveryRoutes)
     .route('/data', dataRoutes)
