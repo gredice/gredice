@@ -1,6 +1,25 @@
 import { client } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
+export type OperationStatusCode =
+    | 'new'
+    | 'planned'
+    | 'completed'
+    | 'failed'
+    | 'canceled';
+
+export type RaisedBedDiaryEntry = {
+    id: number;
+    kind?: 'raisedBed' | 'raisedBedField' | 'operation';
+    name: string;
+    description?: string;
+    status: string | null;
+    statusCode?: OperationStatusCode | null;
+    timestamp: Date;
+    imageUrls?: string[] | null;
+    scheduledDate?: Date | null;
+};
+
 export const queryKeys = {
     byId: (raisedBedId: number) => ['raisedBeds', raisedBedId, 'diary'],
 };
@@ -9,7 +28,7 @@ export function useRaisedBedDiaryEntries(
     gardenId: number,
     raisedBedId: number,
 ) {
-    return useQuery({
+    return useQuery<RaisedBedDiaryEntry[]>({
         queryKey: queryKeys.byId(raisedBedId),
         queryFn: async () => {
             const entries = await client().api.gardens[':gardenId'][
@@ -34,8 +53,23 @@ export function useRaisedBedDiaryEntries(
                 );
                 return [];
             }
-            return (await entries.json()).map((entry) => ({
+            const data = (await entries.json()) as Array<{
+                id: number;
+                kind?: 'raisedBed' | 'raisedBedField' | 'operation';
+                name: string;
+                description?: string;
+                status: string | null;
+                statusCode?: OperationStatusCode | null;
+                timestamp: string;
+                imageUrls?: string[] | null;
+                scheduledDate?: string | null;
+            }>;
+            return data.map((entry) => ({
                 ...entry,
+                statusCode: entry.statusCode ?? null,
+                scheduledDate: entry.scheduledDate
+                    ? new Date(entry.scheduledDate)
+                    : null,
                 timestamp: new Date(entry.timestamp),
             }));
         },

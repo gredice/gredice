@@ -1,5 +1,6 @@
 import { signalcoClient } from '@gredice/signalco';
 import {
+    cancelOperation,
     createEvent,
     createGardenBlock,
     createGardenStack,
@@ -16,6 +17,10 @@ import {
     getRaisedBedSensors,
     knownEvents,
     knownEventTypes,
+    OperationInvalidStateError,
+    OperationNotFoundError,
+    OperationValidationError,
+    rescheduleOperation,
     spendSunflowers,
     updateGarden,
     updateGardenBlock,
@@ -1044,6 +1049,158 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const diaryEntries =
                 await getRaisedBedDiaryEntries(raisedBedIdNumber);
             return context.json(diaryEntries);
+        },
+    )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/operations/:operationId/reschedule',
+        describeRoute({
+            description: 'Reschedule a raised bed operation',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                operationId: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                scheduledDate: z.string().datetime(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, operationId } =
+                context.req.valid('param');
+            const { scheduledDate } = context.req.valid('json');
+
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const operationIdNumber = parseInt(operationId, 10);
+            if (Number.isNaN(operationIdNumber)) {
+                return context.json({ error: 'Invalid operation ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+
+            try {
+                const scheduledAt = new Date(scheduledDate);
+                await rescheduleOperation(operationIdNumber, scheduledAt, {
+                    accountId,
+                    gardenId: gardenIdNumber,
+                    raisedBedId: raisedBedIdNumber,
+                });
+                return context.json({ success: true });
+            } catch (error) {
+                if (error instanceof OperationValidationError) {
+                    return context.json({ error: error.message }, 400);
+                }
+                if (error instanceof OperationInvalidStateError) {
+                    return context.json({ error: error.message }, 400);
+                }
+                if (error instanceof OperationNotFoundError) {
+                    return context.json({ error: 'Operation not found' }, 404);
+                }
+                console.error('Failed to reschedule operation', {
+                    error,
+                    operationId: operationIdNumber,
+                    raisedBedId: raisedBedIdNumber,
+                    gardenId: gardenIdNumber,
+                });
+                return context.json(
+                    { error: 'Failed to reschedule operation' },
+                    500,
+                );
+            }
+        },
+    )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/operations/:operationId/cancel',
+        describeRoute({
+            description: 'Cancel a planned raised bed operation',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                operationId: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                reason: z.string().min(1),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, operationId } =
+                context.req.valid('param');
+            const { reason } = context.req.valid('json');
+
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const operationIdNumber = parseInt(operationId, 10);
+            if (Number.isNaN(operationIdNumber)) {
+                return context.json({ error: 'Invalid operation ID' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+
+            try {
+                await cancelOperation(
+                    {
+                        operationId: operationIdNumber,
+                        canceledBy: userId,
+                        reason,
+                    },
+                    {
+                        accountId,
+                        gardenId: gardenIdNumber,
+                        raisedBedId: raisedBedIdNumber,
+                    },
+                );
+                return context.json({ success: true });
+            } catch (error) {
+                if (error instanceof OperationValidationError) {
+                    return context.json({ error: error.message }, 400);
+                }
+                if (error instanceof OperationInvalidStateError) {
+                    return context.json({ error: error.message }, 400);
+                }
+                if (error instanceof OperationNotFoundError) {
+                    return context.json({ error: 'Operation not found' }, 404);
+                }
+                console.error('Failed to cancel operation', {
+                    error,
+                    operationId: operationIdNumber,
+                    raisedBedId: raisedBedIdNumber,
+                    gardenId: gardenIdNumber,
+                });
+                return context.json(
+                    { error: 'Failed to cancel operation' },
+                    500,
+                );
+            }
         },
     )
     .get(
