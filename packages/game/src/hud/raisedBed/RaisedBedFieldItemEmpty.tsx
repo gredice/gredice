@@ -1,3 +1,4 @@
+import { isAbsoluteUrl } from '@signalco/js';
 import { ShoppingCart } from '@signalco/ui-icons';
 import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
 import Image from 'next/image';
@@ -61,6 +62,12 @@ export function RaisedBedFieldItemEmpty({
         );
     }
 
+    const shopImageOrFallback =
+        cartPlantItem?.shopData.image ?? '/assets/plants/placeholder.png';
+    const plantImageUrl = isAbsoluteUrl(shopImageOrFallback)
+        ? shopImageOrFallback
+        : `https://www.gredice.com/${shopImageOrFallback}`;
+
     return (
         <PlantPicker
             trigger={
@@ -74,7 +81,7 @@ export function RaisedBedFieldItemEmpty({
                     {!isLoading && cartPlantItem && (
                         <>
                             <Image
-                                src={`https://www.gredice.com/${cartPlantItem.shopData.image}`}
+                                src={plantImageUrl}
                                 alt={cartPlantItem.shopData.name ?? 'Nepoznato'}
                                 width={60}
                                 height={60}
