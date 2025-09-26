@@ -4,7 +4,82 @@ import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
+import { useGameState } from '../../useGameState';
 import { RaisedBedCard } from './RaisedBedCard';
+
+type QuickSeedType = 'spring' | 'summer' | 'fall' | 'winter' | 'salad';
+
+const quickSeedOptions: Record<
+    QuickSeedType,
+    {
+        label: string;
+        emoji: string;
+        layout: number[];
+        type: 'seasonal' | 'standard';
+    }
+> = {
+    spring: {
+        label: 'Proljetni mix',
+        emoji: '🌱',
+        layout: [],
+        type: 'seasonal',
+    },
+    summer: {
+        label: 'Ljetni mix',
+        emoji: '☀️',
+        layout: [222, 227, 279, 223, 294, 230, 223, 215, 230],
+        type: 'seasonal',
+    },
+    fall: {
+        label: 'Jesenski mix',
+        emoji: '🍂',
+        layout: [372, 355, 373, 372, 284, 373, 349, 284, 349],
+        type: 'seasonal',
+    },
+    winter: {
+        label: 'Zimski mix',
+        emoji: '❄️',
+        layout: [],
+        type: 'seasonal',
+    },
+    salad: {
+        label: 'Salata mix',
+        emoji: '🥗',
+        layout: [282, 229, 209, 299, 234, 221, 281, 215, 204],
+        type: 'standard',
+    },
+};
+
+function getSeasonForDate(date: Date | null): QuickSeedType {
+    if (!date || Number.isNaN(date.getTime())) {
+        return 'spring';
+    }
+
+    const year = date.getUTCFullYear();
+    const day = Date.UTC(year, date.getUTCMonth(), date.getUTCDate());
+
+    const springStart = Date.UTC(year, 2, 20);
+    if (day < springStart) {
+        return 'winter';
+    }
+
+    const summerStart = Date.UTC(year, 5, 21);
+    if (day < summerStart) {
+        return 'spring';
+    }
+
+    const fallStart = Date.UTC(year, 8, 22);
+    if (day < fallStart) {
+        return 'summer';
+    }
+
+    const winterStart = Date.UTC(year, 11, 21);
+    if (day < winterStart) {
+        return 'fall';
+    }
+
+    return 'winter';
+}
 
 export function RaisedBedFieldSuggestions({
     gardenId,
@@ -20,6 +95,7 @@ export function RaisedBedFieldSuggestions({
     const { data: shoppingCart, isLoading: isLoadingShoppingCart } =
         useShoppingCart();
     const setCartItem = useSetShoppingCartItem();
+    const currentTime = useGameState((state) => state.currentTime);
     if (!currentGarden || !raisedBed || !shoppingCart) return null;
 
     // Only show suggestions if the raised bed is valid
@@ -35,12 +111,19 @@ export function RaisedBedFieldSuggestions({
     if (raisedBed.fields.length + (cartPlantItems?.length ?? 0) >= 9)
         return null;
 
-    async function handleQuickPick(type: 'summer' | 'salad') {
-        const layouts = {
-            summer: [222, 227, 279, 223, 294, 230, 223, 215, 230],
-            salad: [282, 229, 209, 299, 234, 221, 281, 215, 204],
-        };
+    const season = getSeasonForDate(currentTime);
 
+    // Get seasonal option and standard options
+    const seasonalOption = quickSeedOptions[season];
+    const standardOptions = Object.entries(quickSeedOptions).filter(
+        ([_, option]) => option.type === 'standard',
+    );
+
+    if (!seasonalOption && standardOptions.length === 0) return null;
+
+    async function handleQuickPick(type: QuickSeedType) {
+        const layout = quickSeedOptions[type]?.layout;
+        if (!layout) return;
         await Promise.all(
             Array.from({ length: 9 }).map(async (_, index) => {
                 if (!raisedBed || !shoppingCart) return;
@@ -61,9 +144,11 @@ export function RaisedBedFieldSuggestions({
                     )
                 )
                     return;
+                const plantSortId = layout[index];
+                if (plantSortId == null) return;
                 return setCartItem.mutateAsync({
                     entityTypeName: 'plantSort',
-                    entityId: layouts[type][index].toString(),
+                    entityId: plantSortId.toString(),
                     amount: 1,
                     gardenId,
                     raisedBedId,
@@ -84,30 +169,46 @@ export function RaisedBedFieldSuggestions({
                 Brzo sijanje
             </Typography>
             <div className="flex flex-row md:flex-col gap-2">
-                <ButtonGreen
-                    variant="plain"
-                    className={cx(
-                        'md:size-auto bg-black/80 dark:bg-white/10 hover:bg-black/50',
-                        'rounded-full size-10 left-[calc(50%+118px)]',
-                    )}
-                    startDecorator={<span className="text-xl">☀️</span>}
-                    onClick={() => handleQuickPick('summer')}
-                    loading={setCartItem.isPending || isLoadingShoppingCart}
-                >
-                    <span className="hidden md:block">Ljetni mix</span>
-                </ButtonGreen>
-                <ButtonGreen
-                    variant="plain"
-                    className={cx(
-                        'md:size-auto bg-black/80 dark:bg-white/10 hover:bg-black/50',
-                        'rounded-full size-10 left-[calc(50%+118px)]',
-                    )}
-                    startDecorator={<span className="text-xl">🥬</span>}
-                    onClick={() => handleQuickPick('salad')}
-                    loading={setCartItem.isPending || isLoadingShoppingCart}
-                >
-                    <span className="hidden md:block">Salatni mix</span>
-                </ButtonGreen>
+                {/* Seasonal option */}
+                {seasonalOption && (
+                    <ButtonGreen
+                        variant="plain"
+                        className={cx(
+                            'md:size-auto bg-black/80 dark:bg-white/10 hover:bg-black/50',
+                            'rounded-full size-10 left-[calc(50%+118px)]',
+                        )}
+                        startDecorator={
+                            <span className="text-xl">
+                                {seasonalOption.emoji}
+                            </span>
+                        }
+                        onClick={() => handleQuickPick(season)}
+                        loading={setCartItem.isPending || isLoadingShoppingCart}
+                    >
+                        <span className="hidden md:block">
+                            {seasonalOption.label}
+                        </span>
+                    </ButtonGreen>
+                )}
+
+                {/* Standard options */}
+                {standardOptions.map(([type, option]) => (
+                    <ButtonGreen
+                        key={type}
+                        variant="plain"
+                        className={cx(
+                            'md:size-auto bg-black/80 dark:bg-white/10 hover:bg-black/50',
+                            'rounded-full size-10 left-[calc(50%+118px)]',
+                        )}
+                        startDecorator={
+                            <span className="text-xl">{option.emoji}</span>
+                        }
+                        onClick={() => handleQuickPick(type as QuickSeedType)}
+                        loading={setCartItem.isPending || isLoadingShoppingCart}
+                    >
+                        <span className="hidden md:block">{option.label}</span>
+                    </ButtonGreen>
+                ))}
             </div>
         </RaisedBedCard>
     );

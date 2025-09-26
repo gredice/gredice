@@ -1,5 +1,6 @@
 import type { PlantSortData } from '@gredice/client';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
+import { isAbsoluteUrl } from '@signalco/js';
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
 import { Check } from '@signalco/ui-icons';
@@ -51,6 +52,14 @@ function PlantSortListItem({
         animateFlyToShoppingCart.run,
     ]);
 
+    const coverUrl =
+        sort.image?.cover?.url ??
+        sort.information.plant.image?.cover?.url ??
+        '/assets/plants/placeholder.png';
+    const plantImageUrl = isAbsoluteUrl(coverUrl)
+        ? coverUrl
+        : `https://www.gredice.com${coverUrl}`;
+
     return (
         <Stack className={cx(selectedSortId === sort.id && 'bg-muted')}>
             <Button
@@ -64,11 +73,7 @@ function PlantSortListItem({
                 <Row spacing={1.5}>
                     <AnimateFlyToItem {...animateFlyToShoppingCart.props}>
                         <Image
-                            src={
-                                'https://www.gredice.com/' +
-                                (sort.image?.cover?.url ??
-                                    sort.information.plant.image?.cover?.url)
-                            }
+                            src={plantImageUrl}
                             alt={sort.information.name}
                             width={48}
                             height={48}
