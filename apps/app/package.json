@@ -15,7 +15,7 @@
         "regenerate:feature-flags": "hypertune"
     },
     "dependencies": {
-        "@aws-sdk/client-s3": "3.894.0",
+        "@aws-sdk/client-s3": "3.896.0",
         "@azure/communication-email": "1.0.0",
         "@gredice/transactional": "workspace:*",
         "@react-email/components": "0.5.3",
