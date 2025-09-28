@@ -18,7 +18,7 @@
         "@aws-sdk/client-s3": "3.896.0",
         "@azure/communication-email": "1.0.0",
         "@gredice/transactional": "workspace:*",
-        "@react-email/components": "0.5.4",
+        "@react-email/components": "0.5.5",
         "@vercel/blob": "2.0.0",
         "hypertune": "2.10.0",
         "next": "canary",
