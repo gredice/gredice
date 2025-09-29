@@ -99,8 +99,8 @@ function ProfileCard() {
             <DropdownMenuSeparator className="my-4" />
             {currentGarden ? (
                 <DropdownMenuItem className="gap-3 bg-muted">
-                    <Check className="size-4" />
-                    <span>{currentGarden.name}</span>
+                    <Check className="size-4 shrink-0" />
+                    <Typography noWrap>{currentGarden.name}</Typography>
                 </DropdownMenuItem>
             ) : (
                 <DropdownMenuLabel className="bg-muted">
