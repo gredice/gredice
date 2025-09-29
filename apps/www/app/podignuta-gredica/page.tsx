@@ -149,11 +149,11 @@ export default function RaisedBedPage() {
                                 na tvoju adresu.
                             </p>
                             <p>
-                                Trenutno surađujemo s jednim OPG-om, a
-                                planiramo proširiti suradnju s drugim OPG-ima
-                                kako bismo ti omogućili veći izbor i
-                                fleksibilnost u odabiru lokacije i vrsta biljaka
-                                koje želiš saditi.
+                                Trenutno surađujemo s jednim OPG-om, a planiramo
+                                proširiti suradnju s drugim OPG-ima kako bismo
+                                ti omogućili veći izbor i fleksibilnost u
+                                odabiru lokacije i vrsta biljaka koje želiš
+                                saditi.
                             </p>
                             <p>OPG koji će brinuti o tvojoj gredici:</p>
                             <ul>
@@ -162,7 +162,8 @@ export default function RaisedBedPage() {
                                 </li>
                             </ul>
                             <em>
-                                Uskoro više informacija o OPG-u na stranici OPG-a
+                                Uskoro više informacija o OPG-u na stranici
+                                OPG-a
                             </em>
                         </div>
                         <Image
@@ -302,8 +303,8 @@ export default function RaisedBedPage() {
                         radnjama na njima.
                     </p>
                     <p>
-                        Sve informacije o pojedinim biljkama koje su
-                        dostupne možeš pronaći na stranicama{' '}
+                        Sve informacije o pojedinim biljkama koje su dostupne
+                        možeš pronaći na stranicama{' '}
                         <a href={KnownPages.Plants}>biljaka</a> i u{' '}
                         <a href={KnownPages.GardenApp}>aplikaciji Gredice</a>.
                     </p>
