@@ -1,4 +1,4 @@
-import { utcToZonedTime, zonedTimeToUtc } from '@date-fns/tz';
+import { tz } from '@date-fns/tz';
 import {
     deleteAccountWithDependencies,
     earnSunflowers,
@@ -27,6 +27,7 @@ function rewardForDay(day: number) {
 
 async function getDailyRewardState(accountId: string) {
     const history = await getSunflowersHistory(accountId, 0, 10000);
+    const toLocalTime = tz(DAILY_REWARD_TIME_ZONE);
     const dailyEvents = history
         .filter((e) => e.reason.startsWith('daily'))
         .sort(
@@ -41,8 +42,7 @@ async function getDailyRewardState(accountId: string) {
         [];
 
     if (dailyEvents.length > 0) {
-        const toLocalDay = (date: Date) =>
-            startOfDay(utcToZonedTime(date, DAILY_REWARD_TIME_ZONE));
+        const toLocalDay = (date: Date) => startOfDay(toLocalTime(date));
         const latest = dailyEvents[0];
         lastDay = Number(latest.reason.split(':')[1] ?? '1');
         lastDate = new Date(latest.createdAt);
@@ -84,12 +84,12 @@ async function getDailyRewardState(accountId: string) {
     }
 
     const now = new Date();
-    const nowLocal = utcToZonedTime(now, DAILY_REWARD_TIME_ZONE);
+    const nowLocal = toLocalTime(now);
     let currentDay = 1;
     let canClaim = true;
 
     if (lastDate) {
-        const lastLocal = utcToZonedTime(lastDate, DAILY_REWARD_TIME_ZONE);
+        const lastLocal = toLocalTime(lastDate);
         const diffDays = differenceInCalendarDays(nowLocal, lastLocal);
 
         if (diffDays === 0) {
@@ -106,14 +106,12 @@ async function getDailyRewardState(accountId: string) {
     }
 
     const nextDay = Math.min(currentDay + 1, 7);
-    const expiresLocalBase = lastDate
-        ? utcToZonedTime(lastDate, DAILY_REWARD_TIME_ZONE)
-        : nowLocal;
+    const expiresLocalBase = lastDate ? toLocalTime(lastDate) : nowLocal;
     const expiresLocal = addDays(
         startOfDay(expiresLocalBase),
         lastDate ? 2 : 1,
     );
-    const expiresAt = zonedTimeToUtc(expiresLocal, DAILY_REWARD_TIME_ZONE);
+    const expiresAt = new Date(+expiresLocal);
 
     return {
         canClaim,
