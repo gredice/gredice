@@ -89,7 +89,7 @@ const sectionsData: SectionData[] = [
                         href: KnownPages.LegalCookies,
                     },
                     {
-                        label: 'Licenca izvnornog koda',
+                        label: 'Licenca izvornog koda',
                         href: KnownPages.LegalLicense,
                     },
                 ],

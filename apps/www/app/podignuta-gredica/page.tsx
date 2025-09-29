@@ -91,7 +91,7 @@ export default function RaisedBedPage() {
                             />
                         </div>
                     </div>
-                    <div className="grid overflo grid-rows-[auto_1fr] grid-cols-1 sm:grid-rows-1 sm:grid-cols-[1fr_1fr] gap-8 relative">
+                    <div className="grid overflow-hidden grid-rows-[auto_1fr] grid-cols-1 sm:grid-rows-1 sm:grid-cols-[1fr_1fr] gap-8 relative">
                         <div>
                             <h3>Dimenzije i veličina</h3>
                             <p>
@@ -141,19 +141,19 @@ export default function RaisedBedPage() {
                             <h3>Lokacija</h3>
                             <p>
                                 Tvoja podignuta gredica će biti postavljena na
-                                lokaciji jednog od OPGa s kojim surađujemo. OPG
-                                izvršavati radnje na gredici, uključujući
+                                lokaciji jednog od OPG-a s kojim surađujemo. OPG
+                                će izvršavati radnje na gredici, uključujući
                                 sadnju, održavanje i berbu, mi ćemo ti omogućiti
                                 da sve to pratiš putem aplikacije Gredice i
-                                dostaviti svo povrće i plodove tvoje gredice na
-                                tvoju adresu.
+                                dostavit ćemo svo povrće i plodove tvoje gredice
+                                na tvoju adresu.
                             </p>
                             <p>
-                                Trenutno surađujemo sa jednim OPG-om, a
-                                planiramo proširiti suradnju s drugim OPG-ima
-                                kako bismo ti omogućili veći izbor i
-                                fleksibilnost u odabiru lokacije i vrsta biljaka
-                                koje želiš saditi.
+                                Trenutno surađujemo s jednim OPG-om, a planiramo
+                                proširiti suradnju s drugim OPG-ima kako bismo
+                                ti omogućili veći izbor i fleksibilnost u
+                                odabiru lokacije i vrsta biljaka koje želiš
+                                saditi.
                             </p>
                             <p>OPG koji će brinuti o tvojoj gredici:</p>
                             <ul>
@@ -162,7 +162,8 @@ export default function RaisedBedPage() {
                                 </li>
                             </ul>
                             <em>
-                                Uskoro više informacija o OPG-u na stranici OPGa
+                                Uskoro više informacija o OPG-u na stranici
+                                OPG-a
                             </em>
                         </div>
                         <Image
@@ -302,8 +303,8 @@ export default function RaisedBedPage() {
                         radnjama na njima.
                     </p>
                     <p>
-                        Sve informacije i pojedinim biljkama i biljakama koje su
-                        dostupne možeš pronaći na stranicama{' '}
+                        Sve informacije o pojedinim biljkama koje su dostupne
+                        možeš pronaći na stranicama{' '}
                         <a href={KnownPages.Plants}>biljaka</a> i u{' '}
                         <a href={KnownPages.GardenApp}>aplikaciji Gredice</a>.
                     </p>
