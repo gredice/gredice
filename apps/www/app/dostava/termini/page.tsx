@@ -206,7 +206,7 @@ export default async function DeliverySlotsPage() {
                 <Typography level="body1">
                     Ovdje možeš vidjeti sve dostupne termine za dostavu ili
                     osobno preuzimanje u sljedećih 14 dana. Termin možeš
-                    rezervirati u <strong>aplikaciju</strong> tijekom narudžbe
+                    rezervirati u <strong>aplikaciji</strong> tijekom narudžbe
                     branja.
                 </Typography>
 
