@@ -173,6 +173,20 @@ export function ShoppingCart() {
                                 )}
                             </Stack>
                         </Row>
+                        {/* Display sunflower bonus if applicable */}
+                        {(cart?.sunflowerBonus ?? 0) > 0 && (
+                            <Row
+                                justifyContent="space-between"
+                                alignItems="start"
+                                spacing={2}
+                                className="text-yellow-600 dark:text-yellow-400"
+                            >
+                                <Typography level="body2">Bonus 🌻</Typography>
+                                <Typography level="body2" bold>
+                                    +{cart?.sunflowerBonus} 🌻
+                                </Typography>
+                            </Row>
+                        )}
                         <Stack spacing={1}>
                             {/* Display notes if present */}
                             {cart && (cart?.notes?.length ?? 0) > 0 && (
