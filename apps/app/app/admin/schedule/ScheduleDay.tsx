@@ -144,12 +144,10 @@ function getDaySchedule(
         .filter((raisedBed) => Boolean(raisedBed.physicalId))
         .flatMap((rb) => rb.fields)
         .filter((field) => {
-            // Don't display fields that were sown in the past
+            // For completed fields (sowed), show them only on the day they were completed
             if (field.plantStatus === 'sowed' && field.plantSowDate) {
                 const sowDate = new Date(field.plantSowDate);
-                if (sowDate.toDateString() !== date.toDateString()) {
-                    return false;
-                }
+                return sowDate.toDateString() === date.toDateString();
             }
 
             return (
@@ -168,6 +166,12 @@ function getDaySchedule(
         }
         if (op.raisedBedId === null) {
             return false;
+        }
+
+        // Show completed operations on the day they were completed
+        if (isOperationCompleted(op.status) && op.completedAt) {
+            const completedDate = new Date(op.completedAt);
+            return completedDate.toDateString() === date.toDateString();
         }
 
         const scheduledDate = op.scheduledDate
