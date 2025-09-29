@@ -22,7 +22,7 @@ const sectionsData: SectionData[] = [
             {
                 header: 'Što su suncokreti?',
                 description:
-                    'Suncokreti su vrsta bodova na tvom Gredice računu koje dobivaš za razne radnje i pomoću kojih možeš učiniti svoj vrt što ljepšim i zdravijim.',
+                    'Sakupljaj i koristi suncokrete za uređenje i dekoraciju vrta ili kupnju i brigu o svojim biljkama 🌱',
             },
             {
                 header: 'Kako skupljam suncokrete?',
