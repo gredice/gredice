@@ -89,6 +89,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     ? [...cartInfo.notes, enoughSunflowersNote]
                     : cartInfo.notes,
                 allowPurchase: cartInfo.allowPurchase && enoughSunflowers,
+                sunflowerBonus: cartInfo.sunflowerBonus || 0,
             });
         },
     )

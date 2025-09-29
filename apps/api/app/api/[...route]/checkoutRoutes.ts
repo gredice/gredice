@@ -208,7 +208,7 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
         allowPurchase = false;
     }
 
-    // Minimum order (0.5 EUR)
+    // Minimum order (2.0 EUR)
     const totalCartValue = cartItemsWithShopInfo.reduce((sum, item) => {
         if (item.status !== 'paid' && item.currency === 'eur') {
             const price =
@@ -217,9 +217,16 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
         }
         return sum;
     }, 0);
-    if (totalCartValue > 0 && totalCartValue < 0.5) {
-        notes.push('Minimalna vrijednost narudžbe je 0,50 €.');
-        allowPurchase = false;
+
+    // Calculate sunflower bonus for orders below minimum
+    const minimumOrderAmount = 2.0;
+    let sunflowerBonus = 0;
+    if (totalCartValue > 0 && totalCartValue < minimumOrderAmount) {
+        const shortfallAmount = minimumOrderAmount - totalCartValue;
+        sunflowerBonus = Math.round(shortfallAmount * 10); // 10 sunflowers per 1 EUR
+        notes.push(
+            `Minimalna vrijednost narudžbe je ${minimumOrderAmount.toFixed(2)} €. Dobit ćeš ${sunflowerBonus} 🌻 kao bonus za razliku od ${shortfallAmount.toFixed(2)} €.`,
+        );
     }
     // --- End notes logic ---
 
@@ -227,6 +234,7 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
         notes,
         allowPurchase,
         items: cartItemsWithShopInfo,
+        sunflowerBonus,
     };
 }
 
@@ -430,6 +438,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     },
                     {
                         items: stripeItems,
+                        metadata:
+                            cartInfo.sunflowerBonus > 0
+                                ? {
+                                      sunflowerBonus:
+                                          cartInfo.sunflowerBonus.toString(),
+                                      accountId: account.id,
+                                  }
+                                : undefined,
                     },
                 );
 

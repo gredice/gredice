@@ -4,6 +4,7 @@ import {
     createOperation,
     createRaisedBedSensor,
     createTransaction,
+    earnSunflowers,
     earnSunflowersForPayment,
     getAllTransactions,
     getRaisedBedFieldsWithEvents,
@@ -199,6 +200,28 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
               })
             : undefined,
     ]);
+
+    // Award sunflower bonus if present in session metadata
+    if (accountId && session.metadata?.sunflowerBonus) {
+        const sunflowerBonus = parseInt(session.metadata.sunflowerBonus, 10);
+        if (sunflowerBonus > 0) {
+            try {
+                await earnSunflowers(
+                    accountId,
+                    sunflowerBonus,
+                    'minimum_payment_bonus',
+                );
+                console.debug(
+                    `Awarded ${sunflowerBonus} sunflowers as minimum payment bonus to account ${accountId}`,
+                );
+            } catch (error) {
+                console.error(
+                    `Failed to award sunflower bonus to account ${accountId}:`,
+                    error,
+                );
+            }
+        }
+    }
 }
 
 export async function processItem(itemData: {
