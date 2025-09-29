@@ -9,7 +9,7 @@ export type GardenDisplay2DProps = {
                 [x: string]: {
                     id: string;
                     name: string;
-                    rotation?: number;
+                    rotation?: number | null;
                 }[];
             };
         };
@@ -45,7 +45,7 @@ export function GardenDisplay2D({
     // Expand the garden data to a flat array of stacks
     const stacks: {
         position: { x: number; y: number };
-        blocks: { id: string; name: string; rotation?: number }[];
+        blocks: { id: string; name: string; rotation?: number | null }[];
     }[] = [];
     const xPositions = Object.keys(garden.stacks);
     for (const x of xPositions) {

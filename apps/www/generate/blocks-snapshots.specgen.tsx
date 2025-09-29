@@ -73,11 +73,21 @@ test.describe('block screenshots', async () => {
                         rotation={rotation}
                     />,
                 );
-                await new Promise((resolve) => setTimeout(resolve, 2000));
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+
+                // Save rotation-specific version
                 await component.screenshot({
                     omitBackground: true,
                     path: `./public/assets/blocks/${entity.information.name}_${rotation + 1}.png`,
                 });
+
+                // Save base version (unsuffixed) for the first rotation to maintain backward compatibility
+                if (rotation === 0) {
+                    await component.screenshot({
+                        omitBackground: true,
+                        path: `./public/assets/blocks/${entity.information.name}.png`,
+                    });
+                }
             });
         }
     }
