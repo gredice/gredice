@@ -12,6 +12,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { Suspense } from 'react';
+import { SensorMiniChart } from '../../../components/admin/sensors/SensorMiniChart';
 import { CreateSensorModal } from './CreateSensorModal';
 import { SensorServiceForm } from './SensorServiceForm';
 
@@ -21,6 +22,17 @@ const statusLabels: Record<string, string> = {
     active: 'Aktivan',
 };
 
+type ContactHistoryEntry = {
+    timeStamp?: string;
+    valueSerialized?: string;
+};
+
+type ContactHistoryResponse = {
+    data?: {
+        values?: ContactHistoryEntry[];
+    };
+};
+
 async function SensorCard({ sensor }: { sensor: SelectRaisedBedSensor }) {
     const data = sensor.sensorSignalcoId
         ? await signalcoClient().GET('/entity/{id}', {
@@ -28,21 +40,89 @@ async function SensorCard({ sensor }: { sensor: SelectRaisedBedSensor }) {
           })
         : null;
 
+    const moistureContact = data?.data?.contacts?.find(
+        (c) => c.contactName === 'soil_moisture',
+    );
+    const temperatureContact = data?.data?.contacts?.find(
+        (c) => c.contactName === 'temperature',
+    );
+
+    const parseHistory = (
+        history: ContactHistoryResponse | null | undefined,
+    ) => {
+        const values = history?.data?.values;
+        if (!Array.isArray(values)) {
+            return [];
+        }
+
+        const isHistoryPoint = (
+            entry: { timestamp: string; value: number } | null,
+        ): entry is { timestamp: string; value: number } => entry !== null;
+
+        return values
+            .map((entry) => {
+                if (
+                    !entry?.timeStamp ||
+                    typeof entry.valueSerialized !== 'string'
+                ) {
+                    return null;
+                }
+
+                const numericValue = Number.parseFloat(entry.valueSerialized);
+                if (Number.isNaN(numericValue)) {
+                    return null;
+                }
+
+                return {
+                    timestamp: entry.timeStamp,
+                    value: Math.round(numericValue * 100) / 100,
+                };
+            })
+            .filter(isHistoryPoint)
+            .sort(
+                (a, b) =>
+                    new Date(a.timestamp).getTime() -
+                    new Date(b.timestamp).getTime(),
+            )
+            .slice(-24);
+    };
+
+    const fetchHistory = async (
+        contactName: 'soil_moisture' | 'temperature',
+    ) => {
+        if (!sensor.sensorSignalcoId) {
+            return [];
+        }
+
+        const history = (await signalcoClient().GET('/contact/history', {
+            params: {
+                // @ts-expect-error Signalco client types do not expose the query shape correctly.
+                query: {
+                    entityId: sensor.sensorSignalcoId,
+                    channelName: 'zigbee2mqtt',
+                    contactName,
+                    duration: '1.00:00',
+                },
+            },
+        })) as ContactHistoryResponse;
+
+        return parseHistory(history);
+    };
+
+    const [moistureHistory, temperatureHistory] = await Promise.all([
+        fetchHistory('soil_moisture'),
+        fetchHistory('temperature'),
+    ]);
+
     const moisture = {
-        value:
-            data?.data?.contacts?.find((c) => c.contactName === 'soil_moisture')
-                ?.valueSerialized ?? null,
-        updatedAt:
-            data?.data?.contacts?.find((c) => c.contactName === 'soil_moisture')
-                ?.timeStamp ?? null,
+        value: moistureContact?.valueSerialized ?? null,
+        updatedAt: moistureContact?.timeStamp ?? null,
+        history: moistureHistory,
     };
     const temperature = {
-        value:
-            data?.data?.contacts?.find((c) => c.contactName === 'temperature')
-                ?.valueSerialized ?? null,
-        updatedAt:
-            data?.data?.contacts?.find((c) => c.contactName === 'temperature')
-                ?.timeStamp ?? null,
+        value: temperatureContact?.valueSerialized ?? null,
+        updatedAt: temperatureContact?.timeStamp ?? null,
+        history: temperatureHistory,
     };
 
     return (
@@ -68,6 +148,11 @@ async function SensorCard({ sensor }: { sensor: SelectRaisedBedSensor }) {
                             <Typography semiBold>
                                 {moisture.value ?? 'N/A'}%
                             </Typography>
+                            <SensorMiniChart
+                                data={moisture.history}
+                                color="#0ea5e9"
+                                unit="%"
+                            />
                             <Typography level="body3">
                                 <LocalDateTime>
                                     {moisture.updatedAt
@@ -83,6 +168,11 @@ async function SensorCard({ sensor }: { sensor: SelectRaisedBedSensor }) {
                             <Typography semiBold>
                                 {temperature.value ?? 'N/A'}°C
                             </Typography>
+                            <SensorMiniChart
+                                data={temperature.history}
+                                color="#f97316"
+                                unit="°C"
+                            />
                             <Typography level="body3">
                                 <LocalDateTime>
                                     {temperature.updatedAt
