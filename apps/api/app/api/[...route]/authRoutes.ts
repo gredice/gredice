@@ -47,9 +47,9 @@ const oauthRedirectCookieName = 'oauth_redirect';
 const allowedLocalRedirectHosts = new Set([
     'localhost',
     '127.0.0.1',
-    'app.gredice.local',
-    'vrt.gredice.local',
-    'farma.gredice.local',
+    'app.gredice.test',
+    'vrt.gredice.test',
+    'farma.gredice.test',
 ]);
 
 function sanitizeRedirectUrl(redirectUrl?: string) {

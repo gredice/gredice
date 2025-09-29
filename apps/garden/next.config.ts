@@ -37,7 +37,7 @@ const nextConfig: NextConfig = {
             },
         ],
     },
-    allowedDevOrigins: ['vrt.gredice.local'],
+    allowedDevOrigins: ['vrt.gredice.test'],
 };
 
 const withVercelToolbar = vercelToolbar();

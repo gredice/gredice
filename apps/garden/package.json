@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "lint": "biome check",
-        "dev": "next dev --turbo -p 3001 --hostname vrt.gredice.local",
+        "dev": "next dev --turbo -p 3001",
         "build": "next build --turbopack",
         "start": "next start -p 3001",
         "test": "pnpm run /^test:.*/",
