@@ -33,7 +33,7 @@ const nextConfig: NextConfig = {
         ],
     },
     productionBrowserSourceMaps: true,
-    allowedDevOrigins: ['www.gredice.local'],
+    allowedDevOrigins: ['www.gredice.test'],
 };
 
 const withVercelToolbar = vercelToolbar();

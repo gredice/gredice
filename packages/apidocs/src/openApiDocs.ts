@@ -270,7 +270,7 @@ export async function openApiDocs(config?: OpenApiDocsConfig): Promise<OpenAPIV3
                 description: 'Production API'
             },
             {
-                url: 'https://api.gredice.local/api/directories',
+                url: 'https://api.gredice.test/api/directories',
                 description: 'Local API'
             }
         ],

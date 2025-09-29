@@ -36,11 +36,11 @@ const caddyRootCertPath = resolve(
     'root.crt',
 );
 const caddyDomains = [
-    'www.gredice.local',
-    'vrt.gredice.local',
-    'farma.gredice.local',
-    'app.gredice.local',
-    'api.gredice.local',
+    'www.gredice.test',
+    'vrt.gredice.test',
+    'farma.gredice.test',
+    'app.gredice.test',
+    'api.gredice.test',
 ];
 const caddyCertificateLabel = 'Caddy Local Authority';
 
@@ -107,7 +107,7 @@ async function ensureHostsEntries() {
 
     const missingHosts = caddyDomains.filter((host) => !isHostMappedToLocalhost(contents, host));
     if (missingHosts.length === 0) {
-        console.log('Verified hosts file entries for the *.gredice.local domains.');
+        console.log('Verified hosts file entries for the *.gredice.test domains.');
         return;
     }
 
@@ -728,7 +728,7 @@ async function main() {
 
         try {
             await startProxy();
-            console.log('Apps will be available on the *.gredice.local subdomains once Turbo finishes booting.');
+            console.log('Apps will be available on the *.gredice.test subdomains once Turbo finishes booting.');
             console.log('Ensure that your hosts file maps these domains to 127.0.0.1.');
             await trustCaddyCertificates();
         } catch (error) {

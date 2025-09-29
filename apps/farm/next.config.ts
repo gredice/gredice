@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
     },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
     productionBrowserSourceMaps: true,
-    allowedDevOrigins: ['farma.gredice.local'],
+    allowedDevOrigins: ['farma.gredice.test'],
 };
 
 export default withAxiom(nextConfig);

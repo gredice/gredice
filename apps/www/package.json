@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "lint": "biome check",
-        "dev": "next dev --turbopack -p 3000 --hostname www.gredice.local",
+        "dev": "next dev --turbopack -p 3000",
         "build": "next build --turbopack",
         "postbuild": "next-sitemap --config next-sitemap.config.cjs",
         "start": "next start -p 3000",
