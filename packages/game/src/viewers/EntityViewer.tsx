@@ -26,6 +26,11 @@ export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
      */
     zoom?: number;
     itemPosition?: [number, number, number];
+    /**
+     * Rotation of the rendered entity. Values map to quarter turns clockwise.
+     * @default 0
+     */
+    rotation?: number;
 };
 
 export function EntityViewer({
@@ -34,6 +39,7 @@ export function EntityViewer({
     zoom,
     itemPosition,
     className,
+    rotation = 0,
 }: EntityViewerProps) {
     const storeRef = useRef<GameStateStore>(null);
     if (!storeRef.current) {
@@ -51,10 +57,11 @@ export function EntityViewer({
             : position,
         blocks: [],
     };
+    const normalizedRotation = ((rotation % 4) + 4) % 4;
     const block = {
         id: uuidv4(),
         name: entityName,
-        rotation: 0,
+        rotation: normalizedRotation,
         variant: undefined,
     };
 
@@ -67,7 +74,7 @@ export function EntityViewer({
                         name={entityName}
                         stack={stack}
                         block={block}
-                        rotation={0}
+                        rotation={normalizedRotation}
                     />
                     <EntityInstances stacks={[stack]} />
                 </Scene>

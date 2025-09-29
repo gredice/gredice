@@ -51,29 +51,45 @@ test.describe('block screenshots', async () => {
         readFileSync('./generate/test-cases.json', 'utf8'),
     ) as BlockData[];
     for (const entity of entities) {
-        test(entity.information.name, async ({ mount }) => {
-            const view = getSnapshotView(entity);
-            const { itemPosition, label, zoom } = getViewOptions(view);
-            console.info(
-                'Taking screenshot of',
-                entity.information.name,
-                `(${label})`,
-            );
-            const component = await mount(
-                <EntityViewer
-                    className="size-80"
-                    zoom={zoom}
-                    itemPosition={itemPosition}
-                    entityName={entity.information.name}
-                    appBaseUrl="https://vrt.gredice.com"
-                />,
-            );
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-            await component.screenshot({
-                omitBackground: true,
-                path: `./public/assets/blocks/${entity.information.name}.png`,
+        for (let rotation = 0; rotation < 4; rotation += 1) {
+            test(`${entity.information.name} rotation ${rotation + 1}`, async ({
+                mount,
+            }) => {
+                const view = getSnapshotView(entity);
+                const { itemPosition, label, zoom } = getViewOptions(view);
+                console.info(
+                    'Taking screenshot of',
+                    entity.information.name,
+                    `(${label})`,
+                    `rotation ${rotation + 1}`,
+                );
+                const component = await mount(
+                    <EntityViewer
+                        className="size-80"
+                        zoom={zoom}
+                        itemPosition={itemPosition}
+                        entityName={entity.information.name}
+                        appBaseUrl="https://vrt.gredice.com"
+                        rotation={rotation}
+                    />,
+                );
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+
+                // Save rotation-specific version
+                await component.screenshot({
+                    omitBackground: true,
+                    path: `./public/assets/blocks/${entity.information.name}_${rotation + 1}.png`,
+                });
+
+                // Save base version (unsuffixed) for the first rotation to maintain backward compatibility
+                if (rotation === 0) {
+                    await component.screenshot({
+                        omitBackground: true,
+                        path: `./public/assets/blocks/${entity.information.name}.png`,
+                    });
+                }
             });
-        });
+        }
     }
 });
 
