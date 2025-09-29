@@ -1,7 +1,9 @@
 'use client';
 
+import { Down, Up } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { cx } from '@signalco/ui-primitives/cx';
+import { Stack } from '@signalco/ui-primitives/Stack';
 import { useState } from 'react';
 
 export type ExpandableTextProps = {
@@ -22,7 +24,7 @@ export function ExpandableText({
     const [isExpanded, setIsExpanded] = useState(false);
 
     return (
-        <div className={cx('relative', className)}>
+        <Stack className={cx('relative', className)}>
             <div
                 className={cx(
                     'overflow-hidden transition-all duration-300 ease-in-out',
@@ -34,33 +36,24 @@ export function ExpandableText({
             >
                 {children}
                 {!isExpanded && (
-                    <div
-                        className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none"
-                        style={{
-                            background:
-                                'linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%)',
-                        }}
-                    />
+                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background to-transparent pointer-events-none" />
                 )}
             </div>
             <Button
-                variant="plain"
+                variant="link"
                 size="sm"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="mt-2 text-sm text-muted-foreground hover:text-foreground"
+                className="self-center"
+                startDecorator={
+                    isExpanded ? (
+                        <Up className="size-4 shrink-0" />
+                    ) : (
+                        <Down className="size-4 shrink-0" />
+                    )
+                }
             >
-                {isExpanded ? (
-                    <>
-                        <span className="mr-1">↑</span>
-                        {collapseButtonText}
-                    </>
-                ) : (
-                    <>
-                        <span className="mr-1">↓</span>
-                        {expandButtonText}
-                    </>
-                )}
+                {isExpanded ? collapseButtonText : expandButtonText}
             </Button>
-        </div>
+        </Stack>
     );
 }
