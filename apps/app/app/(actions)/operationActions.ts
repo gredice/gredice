@@ -3,13 +3,14 @@
 import { randomUUID } from 'node:crypto';
 import {
     acceptOperation,
+    cancelOperation,
     createEvent,
     createNotification,
     createOperation,
-    earnSunflowers,
     getEntityFormatted,
     getOperationById,
     getRaisedBed,
+    rescheduleOperation,
     type InsertOperation,
     knownEvents,
 } from '@gredice/storage';
@@ -125,17 +126,8 @@ export async function rescheduleOperationAction(formData: FormData) {
         throw new Error('Scheduled Date is required');
     }
 
-    const operation = await getOperationById(operationId);
-    if (!operation) {
-        throw new Error(`Operation with ID ${operationId} not found.`);
-    }
-
-    // Create a new scheduled event to reschedule the operation
-    await createEvent(
-        knownEvents.operations.scheduledV1(operationId.toString(), {
-            scheduledDate: new Date(scheduledDate).toISOString(),
-        }),
-    );
+    const scheduledAt = new Date(scheduledDate);
+    const operation = await rescheduleOperation(operationId, scheduledAt);
 
     revalidatePath(KnownPages.Schedule);
     if (operation.accountId)
@@ -276,92 +268,14 @@ export async function cancelOperationAction(formData: FormData) {
         throw new Error('Cancellation reason is required');
     }
 
-    const operation = await getOperationById(operationId);
-    if (!operation) {
-        throw new Error(`Operation with ID ${operationId} not found.`);
-    }
-
-    // Only allow canceling new or planned operations
-    if (
-        operation.status === 'completed' ||
-        operation.status === 'failed' ||
-        operation.status === 'canceled'
-    ) {
-        throw new Error(
-            `Cannot cancel operation with status ${operation.status}`,
-        );
-    }
-
-    // Get operation details for notification and refund calculation
-    const operationData = await getEntityFormatted<EntityStandardized>(
-        operation.entityId,
+    const { operation } = await cancelOperation(
+        {
+            operationId,
+            canceledBy: userId,
+            reason,
+        },
+        undefined,
     );
-
-    // Calculate refund amount (operation price in sunflowers - multiplied by 1000 as per checkout logic)
-    const refundAmount = operationData?.prices?.perOperation
-        ? Math.round(operationData.prices.perOperation * 1000)
-        : 0;
-
-    const header = 'Radnje je otkazana';
-    let content = `Radnja **${operationData?.information?.label}** je otkazana.`;
-    if (operation.raisedBedId) {
-        const raisedBed = await getRaisedBed(operation.raisedBedId);
-        if (!raisedBed) {
-            console.error(
-                `Raised bed with ID ${operation.raisedBedId} not found.`,
-            );
-        } else {
-            const positionIndex = operation.raisedBedFieldId
-                ? raisedBed.fields.find(
-                      (f) => f.id === operation.raisedBedFieldId,
-                  )?.positionIndex
-                : null;
-            if (typeof positionIndex === 'number') {
-                content = `Radnja **${operationData?.information?.label}** na gredici **${raisedBed.name}** za polje **${positionIndex + 1}** je otkazana.`;
-            } else {
-                content = `Radnja **${operationData?.information?.label}** na gredici **${raisedBed.name}** je otkazana.`;
-            }
-        }
-    }
-
-    // Add reason
-    if (reason) {
-        content += `\nRazlog otkazivanja: ${reason}`;
-    }
-
-    // Add refund information
-    if (refundAmount > 0) {
-        content += `\nSredstva su ti vraćana u iznosu od ${refundAmount} 🌻.`;
-    }
-
-    await Promise.all([
-        // Create cancellation event
-        createEvent(
-            knownEvents.operations.canceledV1(operationId.toString(), {
-                canceledBy: userId,
-                reason,
-            }),
-        ),
-        // Refund sunflowers if operation had a cost
-        refundAmount > 0 && operation.accountId
-            ? earnSunflowers(
-                  operation.accountId,
-                  refundAmount,
-                  `refund:operation:${operationId}`,
-              )
-            : Promise.resolve(),
-        // Send notification to user
-        operation.accountId
-            ? createNotification({
-                  accountId: operation.accountId,
-                  gardenId: operation.gardenId,
-                  raisedBedId: operation.raisedBedId,
-                  header,
-                  content,
-                  timestamp: new Date(),
-              })
-            : undefined,
-    ]);
 
     revalidatePath(KnownPages.Schedule);
     if (operation.accountId)
