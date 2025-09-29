@@ -113,7 +113,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 {hasGarden && (
                                     <Typography
                                         level="body3"
-                                        className="overflow-ellipsis max-w-[200px] overflow-hidden"
+                                        className="overflow-ellipsis max-w-[200px] overflow-hidden whitespace-nowrap"
                                         secondary
                                     >
                                         {garden?.name || 'Nepoznati vrt'}
