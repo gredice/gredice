@@ -51,8 +51,9 @@ test.describe('Expandable Plant Information', () => {
 
         if (expandButtonCount > 0) {
             // Check if there's a gradient element when content is collapsed
+            // The gradient is applied via Tailwind classes: bg-gradient-to-t from-background to-transparent
             const gradientElements = page.locator(
-                'div[style*="linear-gradient"]',
+                '.bg-gradient-to-t.from-background.to-transparent',
             );
             const gradientCount = await gradientElements.count();
             expect(gradientCount).toBeGreaterThan(0);
