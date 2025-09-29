@@ -3,9 +3,14 @@ import { slug } from '@signalco/js';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { ExpandableText } from '../../../components/shared/ExpandableText';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { Markdown } from '../../../components/shared/Markdown';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
+import {
+    shouldMakeExpandable,
+    splitContentForExpansion,
+} from '../../../lib/content/expandableContent';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { PlantOperations } from './PlantOperations';
 
@@ -74,7 +79,23 @@ export async function InformationSection({
                         <Typography level="body2" className="-mb-2">
                             Specifično za ovu sortu:
                         </Typography>
-                        <Markdown>{sortContent}</Markdown>
+                        {(() => {
+                            const { mainContent, additionalContent } =
+                                splitContentForExpansion(sortContent);
+                            if (shouldMakeExpandable(sortContent)) {
+                                return (
+                                    <ExpandableText maxHeight={150}>
+                                        <Markdown>{mainContent}</Markdown>
+                                        {additionalContent && (
+                                            <Markdown>
+                                                {additionalContent}
+                                            </Markdown>
+                                        )}
+                                    </ExpandableText>
+                                );
+                            }
+                            return <Markdown>{sortContent}</Markdown>;
+                        })()}
                     </Stack>
                 )}
                 <Stack>
@@ -83,7 +104,21 @@ export async function InformationSection({
                             Za biljku:
                         </Typography>
                     )}
-                    <Markdown>{content}</Markdown>
+                    {(() => {
+                        const { mainContent, additionalContent } =
+                            splitContentForExpansion(content);
+                        if (shouldMakeExpandable(content)) {
+                            return (
+                                <ExpandableText maxHeight={150}>
+                                    <Markdown>{mainContent}</Markdown>
+                                    {additionalContent && (
+                                        <Markdown>{additionalContent}</Markdown>
+                                    )}
+                                </ExpandableText>
+                            );
+                        }
+                        return <Markdown>{content}</Markdown>;
+                    })()}
                 </Stack>
             </Stack>
             <Stack
