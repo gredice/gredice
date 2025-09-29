@@ -7,6 +7,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
+import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
 import type { ShoppingCartItemData } from '../../../hooks/useShoppingCart';
@@ -14,6 +15,7 @@ import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
 
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
+    const { data: account } = useCurrentAccount();
 
     const hasDiscount = typeof item.shopData.discountPrice === 'number';
     const hasGarden = Boolean(item.gardenId && garden);
@@ -79,6 +81,9 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             price={item.shopData.price}
                             isSunflower={item.currency === 'sunflower'}
                             onChange={handleChangePaymentType}
+                            availableSunflowers={
+                                account?.sunflowers.amount ?? 0
+                            }
                         />
                     )}
                 </div>
