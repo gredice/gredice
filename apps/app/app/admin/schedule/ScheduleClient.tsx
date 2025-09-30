@@ -1,9 +1,6 @@
 'use client';
 
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Calendar } from '@signalco/ui-icons';
 import { Divider } from '@signalco/ui-primitives/Divider';
-import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { Fragment } from 'react';
