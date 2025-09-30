@@ -84,6 +84,12 @@ function sunflowerReasonToDescription(reason: string) {
             label: 'Povrat sredstava za radnju',
         };
     }
+    if (reason === 'minimum_payment_bonus') {
+        return {
+            icon: <span className="text-4xl text-center size-10">💰</span>,
+            label: 'Bonus za minimalnu narudžbu',
+        };
+    }
 
     console.warn('Unknown sunflower reason:', reason);
     return { icon: <Empty className="size-10" />, label: 'Nepoznato' };

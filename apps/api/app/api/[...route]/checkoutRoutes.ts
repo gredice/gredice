@@ -223,7 +223,7 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
     let sunflowerBonus = 0;
     if (totalCartValue > 0 && totalCartValue < minimumOrderAmount) {
         const shortfallAmount = minimumOrderAmount - totalCartValue;
-        sunflowerBonus = Math.round(shortfallAmount * 10); // 10 sunflowers per 1 EUR
+        sunflowerBonus = Math.round(shortfallAmount * 1000); // 1000 sunflowers per 1 EUR
         notes.push(
             `Minimalna vrijednost narudžbe je ${minimumOrderAmount.toFixed(2)} €. Dobit ćeš ${sunflowerBonus} 🌻 kao bonus za razliku od ${shortfallAmount.toFixed(2)} €.`,
         );
@@ -426,6 +426,38 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     },
                     quantity,
                 });
+            }
+
+            // Add sunflower bonus as a Stripe item if there's a shortfall
+            if (cartInfo.sunflowerBonus > 0) {
+                const minimumOrderAmount = 2.0;
+                const currentTotal =
+                    stripeItems.reduce((sum, item) => {
+                        return sum + item.price.valueInCents * item.quantity;
+                    }, 0) / 100; // Convert from cents to euros
+
+                if (currentTotal < minimumOrderAmount) {
+                    const shortfallAmount = minimumOrderAmount - currentTotal;
+                    const shortfallInCents = Math.round(shortfallAmount * 100);
+
+                    stripeItems.push({
+                        product: {
+                            name: 'Sunflower Bonus',
+                            description: `Bonus za minimalnu narudžbu (${cartInfo.sunflowerBonus} 🌻)`,
+                            imageUrls: [],
+                            metadata: {
+                                isSunflowerBonus: 'true',
+                                sunflowerAmount:
+                                    cartInfo.sunflowerBonus.toString(),
+                            },
+                        },
+                        price: {
+                            valueInCents: shortfallInCents,
+                            currency: 'eur',
+                        },
+                        quantity: 1,
+                    });
+                }
             }
 
             if (stripeCartItemsWithShopData.length) {

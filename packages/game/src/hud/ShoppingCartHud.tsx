@@ -161,7 +161,9 @@ export function ShoppingCart() {
                             <Typography level="body1">Ukupno</Typography>
                             <Stack>
                                 <Typography level="body1" bold>
-                                    {cart?.total.toFixed(2)} €
+                                    {(cart?.sunflowerBonus ?? 0) > 0 
+                                        ? Math.max(cart?.total ?? 0, 2.0).toFixed(2)
+                                        : (cart?.total ?? 0).toFixed(2)} €
                                 </Typography>
                                 {(cart?.totalSunflowers ?? 0) > 0 && (
                                     <Typography level="body1" bold>
