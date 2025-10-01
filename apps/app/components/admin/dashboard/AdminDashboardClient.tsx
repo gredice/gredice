@@ -117,6 +117,7 @@ export function AdminDashboardClient({
                     <FactCard
                         header="Farme"
                         value={farmsCount}
+                        href={KnownPages.Farms}
                         beforeValue={farmsBeforeCount}
                     />
                     <FactCard
