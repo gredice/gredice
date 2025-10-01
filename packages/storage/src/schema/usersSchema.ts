@@ -73,6 +73,9 @@ export const users = pgTable(
         avatarUrl: text('avatar_url'),
         displayName: text('display_name'),
         role: text('role').notNull(),
+        newsletterOptedInAt: timestamp('newsletter_opted_in_at', {
+            withTimezone: true,
+        }),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
