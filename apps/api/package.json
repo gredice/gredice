@@ -17,6 +17,7 @@
         "regenerate:directories-api": "pnpm dlx openapi-typescript https://api.gredice.com/api/docs/directories -o ./lib/@types/directories-api/v1.d.ts"
     },
     "dependencies": {
+        "@aws-sdk/client-s3": "3.888.0",
         "@date-fns/tz": "1.4.1",
         "@hono/mcp": "0.1.4",
         "@hono/standard-validator": "0.1.5",
@@ -44,6 +45,7 @@
         "@biomejs/biome": "2.2.4",
         "@gredice/apidocs": "workspace:*",
         "@gredice/email": "workspace:*",
+        "@gredice/receipts": "workspace:*",
         "@gredice/signalco": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/stripe": "workspace:*",

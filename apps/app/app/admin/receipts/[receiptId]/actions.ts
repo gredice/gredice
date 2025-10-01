@@ -1,6 +1,7 @@
 'use server';
 
 import { receiptRequest } from '@gredice/fiscalization';
+import { ensureReceiptPdf } from '@gredice/receipts';
 import {
     getAllFiscalizationSettings,
     getReceipt,
@@ -10,6 +11,7 @@ import {
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '../../../../lib/auth/auth';
+import { uploadReceiptPdfToR2 } from '../../../../lib/r2';
 import { KnownPages } from '../../../../src/KnownPages';
 
 export async function deleteReceiptAction(receiptId: number) {
@@ -129,6 +131,19 @@ export async function fiscalizeReceiptAction(receiptId: number) {
             cisReference: receiptNumber, // Assuming receiptNumber is the reference
             cisResponse: responseText,
         });
+
+        const pdfResult = await ensureReceiptPdf(
+            receiptId,
+            async ({ fileName, data }) => {
+                const key = `receipts/${fileName}`;
+                await uploadReceiptPdfToR2(key, data);
+                return { storagePath: key };
+            },
+        );
+
+        if (pdfResult.status === 'failed') {
+            console.error('Failed to generate receipt PDF:', pdfResult.error);
+        }
     } catch (error) {
         console.error('Error fiscalizing receipt:', error);
         const errorMessage =

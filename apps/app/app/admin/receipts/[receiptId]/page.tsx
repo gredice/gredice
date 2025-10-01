@@ -48,6 +48,34 @@ function getCisStatusLabel(cisStatus: string) {
     }
 }
 
+function getPdfStatusLabel(pdfStatus: string) {
+    switch (pdfStatus) {
+        case 'pending':
+            return 'Priprema';
+        case 'processing':
+            return 'Generiranje';
+        case 'succeeded':
+            return 'Spremno';
+        case 'failed':
+            return 'Neuspješno';
+        default:
+            return pdfStatus;
+    }
+}
+
+function getPdfStatusColor(pdfStatus: string) {
+    switch (pdfStatus) {
+        case 'succeeded':
+            return 'success' as const;
+        case 'processing':
+            return 'warning' as const;
+        case 'failed':
+            return 'error' as const;
+        default:
+            return 'neutral' as const;
+    }
+}
+
 export default async function ReceiptPage({
     params,
 }: {
@@ -64,6 +92,8 @@ export default async function ReceiptPage({
     if (!receipt) {
         notFound();
     }
+
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://api.gredice.com';
 
     const fiscalizeReceiptActionBound = fiscalizeReceiptAction.bind(
         null,
@@ -183,6 +213,41 @@ export default async function ReceiptPage({
                                         <Field
                                             name="CIS referenca"
                                             value={receipt.cisReference}
+                                        />
+                                    )}
+                                </FieldSet>
+                                <FieldSet>
+                                    <Field
+                                        name="PDF status"
+                                        value={
+                                            <Row spacing={1}>
+                                                <Chip
+                                                    color={getPdfStatusColor(
+                                                        receipt.pdfStatus,
+                                                    )}
+                                                    className="w-fit"
+                                                >
+                                                    {getPdfStatusLabel(
+                                                        receipt.pdfStatus,
+                                                    )}
+                                                </Chip>
+                                                {receipt.pdfStatus === 'succeeded' && (
+                                                    <Link
+                                                        href={`${apiBaseUrl}/api/receipts/${receipt.id}/pdf`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-primary-600 underline"
+                                                    >
+                                                        Preuzmi PDF
+                                                    </Link>
+                                                )}
+                                            </Row>
+                                        }
+                                    />
+                                    {receipt.pdfErrorMessage && (
+                                        <Field
+                                            name="PDF greška"
+                                            value={receipt.pdfErrorMessage}
                                         />
                                     )}
                                 </FieldSet>

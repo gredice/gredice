@@ -40,6 +40,7 @@
         "@gredice/email": "workspace:*",
         "@gredice/fiscalization": "workspace:*",
         "@gredice/js": "workspace:*",
+        "@gredice/receipts": "workspace:*",
         "@gredice/signalco": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/stripe": "workspace:*",
