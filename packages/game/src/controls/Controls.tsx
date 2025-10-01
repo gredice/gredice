@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef, useState } from 'react';
 import { MOUSE, TOUCH, Vector3 } from 'three';
 import { CameraController } from '../controllers/CameraController';
+import { useView } from '../GameHud';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useIsEditMode } from '../hooks/useIsEditMode';
 import { useGameState } from '../useGameState';
@@ -103,8 +104,10 @@ export function Controls() {
     const [isAnimating, setIsAnimating] = useState(false);
 
     // Closeup
-    const isCloseUpView = useGameState((state) => state.view) === 'closeup';
-    const closeupBlock = useGameState((state) => state.closeupBlock);
+    const [viewData] = useView();
+    const isCloseUp = viewData.view === 'closeup';
+    const closeupBlock = viewData.closeupBlock;
+
     // Find stat containing the closeup block
     const closeupPosition: [number, number, number] = closeupBlock
         ? (garden.data?.stacks
@@ -113,16 +116,12 @@ export function Controls() {
               )
               ?.position.toArray() as [number, number, number])
         : [0, 0, 0];
-    const { isCloseUp, targetPosition } = {
-        isCloseUp: isCloseUpView,
-        targetPosition: closeupPosition,
-    };
 
     return (
         <>
             <CameraController
                 isCloseUp={isCloseUp}
-                targetPosition={targetPosition}
+                targetPosition={closeupPosition}
                 onAnimationStart={() => setIsAnimating(true)}
                 onAnimationComplete={() => setIsAnimating(false)}
             />
