@@ -86,7 +86,7 @@ export function PlantStageSection({
                                 {formattedEnd ?? endFallbackText}
                             </Typography>
                             {typeof daysCount === 'number' && dayPlural && (
-                                <Chip className="w-fit">
+                                <Chip className="w-fit" size="sm">
                                     {daysCount} {dayPlural}
                                 </Chip>
                             )}

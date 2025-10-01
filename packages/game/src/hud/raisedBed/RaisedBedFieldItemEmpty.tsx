@@ -86,14 +86,10 @@ export function RaisedBedFieldItemEmpty({
                                 width={60}
                                 height={60}
                             />
-                            <div className="absolute right-1 top-1">
-                                <DotIndicator
-                                    size={30}
-                                    color={'success'}
-                                    content={
-                                        <ShoppingCart className="size-6 stroke-white" />
-                                    }
-                                />
+                            <div className="absolute right-1.5 top-1.5">
+                                <div className="rounded-full border-2 p-1 bg-yellow-600 border-white shadow-lg">
+                                    <ShoppingCart className="size-4 stroke-white" />
+                                </div>
                             </div>
                         </>
                     )}

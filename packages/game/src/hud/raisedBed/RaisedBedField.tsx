@@ -26,6 +26,7 @@ function RaisedBedFieldItem({
     );
     const hasField = Boolean(field);
 
+    // Loading state
     if (isGardenLoading) {
         return (
             <RaisedBedFieldItemButton
@@ -35,6 +36,7 @@ function RaisedBedFieldItem({
         );
     }
 
+    // Empty/in-cart state
     if (!hasField) {
         return (
             <RaisedBedFieldItemEmpty
@@ -45,6 +47,7 @@ function RaisedBedFieldItem({
         );
     }
 
+    // Planted state
     return (
         <RaisedBedFieldItemPlanted
             raisedBedId={raisedBedId}

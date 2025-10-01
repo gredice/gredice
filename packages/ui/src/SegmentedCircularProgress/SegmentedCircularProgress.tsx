@@ -59,7 +59,6 @@ export const SegmentedCircularProgress: React.FC<
                         height={size}
                         viewBox="0 0 36 36"
                         className="absolute inset-0 block pointer-events-none"
-                        style={{ zIndex: i }}
                     >
                         <title>{segment.value}</title>
                         {segment.trackColor && (

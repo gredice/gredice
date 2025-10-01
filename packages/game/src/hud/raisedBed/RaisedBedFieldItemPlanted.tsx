@@ -2,6 +2,7 @@ import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress
 import { isAbsoluteUrl } from '@signalco/js';
 import {
     Book,
+    Check,
     ExternalLink,
     Hammer,
     Sprout,
@@ -57,6 +58,7 @@ export function RaisedBedFieldItemPlanted({
         harvestValue,
         harvestPercentage,
     } = useRaisedBedFieldLifecycleData(raisedBedId, positionIndex);
+    const isHarvested = field?.plantHarvestedDate;
     const [activeTab, setActiveTab] =
         useState<RaisedBedFieldTabValue>('lifecycle');
 
@@ -71,6 +73,7 @@ export function RaisedBedFieldItemPlanted({
         return null;
     }
 
+    // Loading state
     const isLoading =
         isGardenLoading || (Boolean(plantSortId) && isPlantSortLoading);
     if (isLoading) {
@@ -82,6 +85,7 @@ export function RaisedBedFieldItemPlanted({
         );
     }
 
+    // Error state (plant sort unknown)
     if (!plantSort) {
         return (
             <RaisedBedFieldItemButton positionIndex={positionIndex}>
@@ -121,7 +125,7 @@ export function RaisedBedFieldItemPlanted({
                   percentage: harvestPercentage,
                   color: 'stroke-blue-500',
                   trackColor: 'stroke-blue-50 dark:stroke-blue-50/80',
-                  pulse: Boolean(harvestValue),
+                  pulse: harvestValue < 100 ? Boolean(harvestValue) : false,
                   borderColor: 'stroke-blue-500',
               },
           ];
@@ -159,6 +163,20 @@ export function RaisedBedFieldItemPlanted({
                             width={60}
                             height={60}
                         />
+                        {harvestValue && !isHarvested && (
+                            <div className="absolute -top-1 -end-1">
+                                <span className="inline-flex items-center justify-center p-1 bg-blue-600 rounded-full border-2 border-white shadow-lg">
+                                    <Sprout className="size-4 text-white" />
+                                </span>
+                            </div>
+                        )}
+                        {isHarvested && (
+                            <div className="absolute -top-1 -end-1">
+                                <span className="inline-flex items-center justify-center p-1 bg-green-600 rounded-full border-2 border-white shadow-lg">
+                                    <Check className="size-4 text-white" />
+                                </span>
+                            </div>
+                        )}
                     </SegmentedCircularProgress>
                 </RaisedBedFieldItemButton>
             }
