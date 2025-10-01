@@ -18,6 +18,7 @@ export * from './repositories/feedbacksRepo';
 export * from './repositories/fiscalizationRepo';
 export * from './repositories/gardensRepo';
 export * from './repositories/invoicesRepo';
+export * from './repositories/newsletterRepo';
 export * from './repositories/notificationsRepo';
 export * from './repositories/operationsRepo';
 export * from './repositories/pickupLocationsRepo';

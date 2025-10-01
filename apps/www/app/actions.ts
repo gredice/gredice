@@ -8,23 +8,36 @@ export const preSeasonNewsletterSubscribe = async (
 ) => {
     const email = formData.get('email') as string;
 
-    // Send the form data to the server
-    const response = await fetch(
-        'https://connect.mailerlite.com/api/subscribers',
-        {
+    if (!email) {
+        return { error: true };
+    }
+
+    const isDev =
+        process.env.NEXT_PUBLIC_VERCEL_ENV === 'development' ||
+        process.env.NODE_ENV !== 'production';
+    const baseUrl = isDev
+        ? 'https://api.gredice.local'
+        : 'https://api.gredice.com';
+
+    try {
+        const response = await fetch(`${baseUrl}/api/newsletter/subscribe`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${process.env.MAILERLITE_PRESEASON_API_TOKEN}`,
             },
-            body: JSON.stringify({ email, groups: ['135742419471697742'] }),
-        },
-    );
-    if (response.status >= 299) {
-        console.error(
-            'Pre-season newsletter subscribe failed with status',
-            response.status,
-        );
+            body: JSON.stringify({ email, source: 'landing-page' }),
+            cache: 'no-store',
+        });
+
+        if (!response.ok) {
+            console.error(
+                'Pre-season newsletter subscribe failed with status',
+                response.status,
+            );
+            return { error: true };
+        }
+    } catch (error) {
+        console.error('Pre-season newsletter subscribe failed', error);
         return { error: true };
     }
 

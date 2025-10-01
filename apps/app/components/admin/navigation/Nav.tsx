@@ -29,6 +29,7 @@ import {
     Hammer,
     Home,
     Inbox,
+    Megaphone,
     ShoppingCart,
     SmileHappy,
     Tally3,
@@ -320,6 +321,12 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         href={KnownPages.CommunicationInbox}
                         label="Sandučić"
                         icon={<Inbox className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                    <NavItem
+                        href={KnownPages.CommunicationNewsletter}
+                        label="Newsletter"
+                        icon={<Megaphone className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem

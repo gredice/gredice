@@ -1,7 +1,6 @@
 'use server';
 
 import { randomUUID } from 'node:crypto';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { lexinsert } from '@gredice/js/lexorder';
 import {
     deleteAttributeValue,
@@ -18,6 +17,7 @@ import {
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '../../lib/auth/auth';
+import { uploadToCdn } from '../../lib/cdn/uploadToCdn';
 import { KnownPages } from '../../src/KnownPages';
 
 export async function createEntityType(
@@ -172,44 +172,13 @@ export async function uploadAttributeImage(formData: FormData) {
     if (!(file instanceof File)) {
         throw new Error('Image file is required');
     }
-    const fileName = `entity-attributes/${randomUUID()}-${file.name}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const {
-        CDN_R2_ACCESS_KEY_ID,
-        CDN_R2_SECRET_ACCESS_KEY,
-        CDN_R2_BUCKET_NAME,
-        CDN_R2_ENDPOINT,
-        CDN_R2_PUBLIC_URL,
-    } = process.env;
-    if (
-        !CDN_R2_ACCESS_KEY_ID ||
-        !CDN_R2_SECRET_ACCESS_KEY ||
-        !CDN_R2_BUCKET_NAME ||
-        !CDN_R2_ENDPOINT ||
-        !CDN_R2_PUBLIC_URL
-    ) {
-        throw new Error('R2 configuration is missing');
-    }
-
-    const client = new S3Client({
-        region: 'auto',
-        endpoint: CDN_R2_ENDPOINT,
-        credentials: {
-            accessKeyId: CDN_R2_ACCESS_KEY_ID,
-            secretAccessKey: CDN_R2_SECRET_ACCESS_KEY,
-        },
+    const key = `entity-attributes/${randomUUID()}-${file.name}`;
+    const { url } = await uploadToCdn({
+        key,
+        data: file,
+        contentType: file.type,
     });
 
-    await client.send(
-        new PutObjectCommand({
-            Bucket: CDN_R2_BUCKET_NAME,
-            Key: fileName,
-            Body: buffer,
-            ContentType: file.type,
-        }),
-    );
-
-    const url = `${CDN_R2_PUBLIC_URL}/${fileName}`;
     return { url };
 }
 

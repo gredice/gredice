@@ -34,6 +34,7 @@ export const KnownPages = {
     Gardens: '/admin/gardens',
     Garden: (gardenId: number) => `/admin/gardens/${gardenId}` as Route,
     CommunicationInbox: '/admin/communication/inbox',
+    CommunicationNewsletter: '/admin/communication/newsletter',
     Feedback: '/admin/feedback',
     Logout: '/admin/logout',
     RaisedBeds: '/admin/raised-beds',
