@@ -57,7 +57,7 @@ export function AdminDashboardClient({
     const handlePeriodChange = (value: string) => {
         setSelectedPeriod(value);
         startTransition(() => {
-            const params = new URLSearchParams(baseSearchParams.toString());
+            const params = new URLSearchParams(baseSearchParams);
             params.set('period', value);
             const nextUrl = `${pathname}?${params.toString()}`;
             router.replace(nextUrl);
