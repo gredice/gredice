@@ -125,7 +125,7 @@ export function RaisedBedFieldItemPlanted({
                   percentage: harvestPercentage,
                   color: 'stroke-blue-500',
                   trackColor: 'stroke-blue-50 dark:stroke-blue-50/80',
-                  pulse: harvestValue < 100 ? Boolean(harvestValue) : false,
+                  pulse: Boolean(harvestValue) && harvestValue < 100,
                   borderColor: 'stroke-blue-500',
               },
           ];
