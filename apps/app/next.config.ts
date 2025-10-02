@@ -4,9 +4,9 @@ import { withAxiom } from 'next-axiom';
 const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
+    reactCompiler: true,
     experimental: {
         typedEnv: true,
-        reactCompiler: true,
         serverActions: {
             bodySizeLimit: '10mb',
         },
