@@ -4,7 +4,8 @@ import type { getAnalyticsTotals } from '@gredice/storage';
 import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { useEffect, useState, useTransition } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { KnownPages } from '../../../src/KnownPages';
 import { FactCard } from '../cards/FactCard';
 import { DashboardDivider } from './DashboardDivider';
@@ -22,23 +23,30 @@ type EntityData = {
 export function AdminDashboardClient({
     initialAnalyticsData,
     initialEntitiesData,
-    onPeriodChange,
     initialPeriod = '7',
     initialOperationsDurationData,
 }: {
     initialAnalyticsData: Awaited<ReturnType<typeof getAnalyticsTotals>>;
     initialEntitiesData: EntityData[];
-    onPeriodChange: (period: string) => void;
     initialPeriod?: string;
     initialOperationsDurationData: OperationsDurationData;
 }) {
     const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
     const [isPending, startTransition] = useTransition();
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
 
     // Sync with URL parameter changes
     useEffect(() => {
         setSelectedPeriod(initialPeriod);
     }, [initialPeriod]);
+
+    const baseSearchParams = useMemo(() => {
+        const params = new URLSearchParams(searchParams?.toString() ?? '');
+        params.delete('period');
+        return params;
+    }, [searchParams]);
 
     const periodOptions = [
         { value: '1', label: '24h' },
@@ -49,7 +57,10 @@ export function AdminDashboardClient({
     const handlePeriodChange = (value: string) => {
         setSelectedPeriod(value);
         startTransition(() => {
-            onPeriodChange(value);
+            const params = new URLSearchParams(baseSearchParams);
+            params.set('period', value);
+            const nextUrl = `${pathname}?${params.toString()}`;
+            router.replace(nextUrl);
         });
     };
 
