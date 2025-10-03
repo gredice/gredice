@@ -56,22 +56,15 @@ export function useCheckout() {
                 return;
             }
 
-            const { sessionId, url } = responseData;
-            if (url) {
-                // If a URL is provided, redirect the user to that URL
-                window.location.href = url;
+            const { url } = responseData;
+            if (!url) {
+                console.error('No URL returned from checkout session');
+                // TODO: Show notification to user
                 return;
             }
 
-            // If no URL is provided, use Stripe's redirectToCheckout
-            const stripe = await clientStripe();
-            const result = await stripe?.redirectToCheckout({
-                sessionId,
-            });
-            if (result?.error) {
-                console.error('Stripe checkout error:', result.error);
-                // TODO: Show notification to user
-            }
+            // If a URL is provided, redirect the user to that URL
+            window.location.href = url;
         },
         // Prevent the mutation from being run in parallel
         scope: {
