@@ -1013,8 +1013,8 @@ importers:
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@stripe/stripe-js':
-        specifier: 7.9.0
-        version: 7.9.0
+        specifier: 8.0.0
+        version: 8.0.0
       react:
         specifier: 19.2.0
         version: 19.2.0
@@ -4542,8 +4542,8 @@ packages:
     peerDependencies:
       react: '>= 16.3.0'
 
-  '@stripe/stripe-js@7.9.0':
-    resolution: {integrity: sha512-ggs5k+/0FUJcIgNY08aZTqpBTtbExkJMYMLSMwyucrhtWexVOEY1KJmhBsxf+E/Q15f5rbwBpj+t0t2AW2oCsQ==}
+  '@stripe/stripe-js@8.0.0':
+    resolution: {integrity: sha512-dLvD55KT1cBmrqzgYRgY42qNcw6zW4HS5oRZs0xRvHw9gBWig5yDnWNop/E+/t2JK+OZO30zsnupVBN2MqW2mg==}
     engines: {node: '>=12.16'}
 
   '@swc/helpers@0.5.15':
@@ -13509,7 +13509,7 @@ snapshots:
     dependencies:
       react: 19.2.0
 
-  '@stripe/stripe-js@7.9.0': {}
+  '@stripe/stripe-js@8.0.0': {}
 
   '@swc/helpers@0.5.15':
     dependencies:
