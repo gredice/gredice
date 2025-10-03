@@ -35,7 +35,7 @@ importers:
         version: 1.19.1
       '@scalar/api-reference-react':
         specifier: 0.7.55
-        version: 0.7.55(axios@1.12.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.2.0)(tailwindcss@3.4.17)(typescript@5.9.3)
+        version: 0.7.55(axios@1.12.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.2.0)(tailwindcss@3.4.18)(typescript@5.9.3)
       '@standard-community/standard-json':
         specifier: 0.3.5
         version: 0.3.5(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.9.3)))(effect@3.18.1)(quansync@0.2.11)(valibot@1.1.0(typescript@5.9.3))(zod-to-json-schema@3.24.6(zod@4.1.11))(zod@4.1.11)
@@ -129,16 +129,16 @@ importers:
         version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-themes-minimal-app':
         specifier: 0.1.3
-        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@types/jsonwebtoken':
         specifier: 9.0.10
         version: 9.0.10
@@ -167,8 +167,8 @@ importers:
         specifier: 8.5.6
         version: 8.5.6
       tailwindcss:
-        specifier: 3.4.17
-        version: 3.4.17
+        specifier: 3.4.18
+        version: 3.4.18
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -268,7 +268,7 @@ importers:
         version: 1.55.1
       '@signalco/auth-client':
         specifier: 0.3.0
-        version: 0.3.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.90.2(react@19.2.0))(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.3.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.2(react@19.2.0))(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/auth-server':
         specifier: 0.5.3
         version: 0.5.3(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -280,19 +280,19 @@ importers:
         version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-themes-minimal-app':
         specifier: 0.1.3
-        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@tailwindcss/typography':
         specifier: 0.5.19
-        version: 0.5.19(tailwindcss@3.4.17)
+        version: 0.5.19(tailwindcss@3.4.18)
       '@tanstack/react-query':
         specifier: 5.90.2
         version: 5.90.2(react@19.2.0)
@@ -321,8 +321,8 @@ importers:
         specifier: 8.5.6
         version: 8.5.6
       tailwindcss:
-        specifier: 3.4.17
-        version: 3.4.17
+        specifier: 3.4.18
+        version: 3.4.18
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -368,7 +368,7 @@ importers:
         version: 1.55.1
       '@signalco/auth-client':
         specifier: 0.3.0
-        version: 0.3.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.90.2(react@19.2.0))(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.3.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.2(react@19.2.0))(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/auth-server':
         specifier: 0.5.3
         version: 0.5.3(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -380,19 +380,19 @@ importers:
         version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-themes-minimal-app':
         specifier: 0.1.3
-        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@tailwindcss/typography':
         specifier: 0.5.19
-        version: 0.5.19(tailwindcss@3.4.17)
+        version: 0.5.19(tailwindcss@3.4.18)
       '@tanstack/react-query':
         specifier: 5.90.2
         version: 5.90.2(react@19.2.0)
@@ -418,8 +418,8 @@ importers:
         specifier: 8.5.6
         version: 8.5.6
       tailwindcss:
-        specifier: 3.4.17
-        version: 3.4.17
+        specifier: 3.4.18
+        version: 3.4.18
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -474,7 +474,7 @@ importers:
         version: 1.55.1
       '@signalco/auth-client':
         specifier: 0.3.0
-        version: 0.3.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.90.2(react@19.2.0))(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.3.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.2(react@19.2.0))(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/auth-server':
         specifier: 0.5.3
         version: 0.5.3(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -486,22 +486,22 @@ importers:
         version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-notifications':
         specifier: 0.2.0
-        version: 0.2.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.2.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-themes-minimal':
         specifier: 0.1.3
-        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@tailwindcss/typography':
         specifier: 0.5.19
-        version: 0.5.19(tailwindcss@3.4.17)
+        version: 0.5.19(tailwindcss@3.4.18)
       '@tanstack/react-query':
         specifier: 5.90.2
         version: 5.90.2(react@19.2.0)
@@ -530,11 +530,11 @@ importers:
         specifier: 1.93.2
         version: 1.93.2
       tailwindcss:
-        specifier: 3.4.17
-        version: 3.4.17
+        specifier: 3.4.18
+        version: 3.4.18
       tailwindcss-animate:
         specifier: 1.0.7
-        version: 1.0.7(tailwindcss@3.4.17)
+        version: 1.0.7(tailwindcss@3.4.18)
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -589,10 +589,10 @@ importers:
         version: 1.55.1
       '@signalco/cms-components-marketing':
         specifier: 0.1.1
-        version: 0.1.1(@signalco/cms-core@0.1.1(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.1.1(@signalco/cms-core@0.1.1(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/cms-core':
         specifier: 0.1.1
-        version: 0.1.1(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.1.1(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/hooks':
         specifier: 0.2.1
         version: 0.2.1(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -601,19 +601,19 @@ importers:
         version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-themes-minimal':
         specifier: 0.1.3
-        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@tailwindcss/typography':
         specifier: 0.5.19
-        version: 0.5.19(tailwindcss@3.4.17)
+        version: 0.5.19(tailwindcss@3.4.18)
       '@tanstack/react-query':
         specifier: 5.90.2
         version: 5.90.2(react@19.2.0)
@@ -651,11 +651,11 @@ importers:
         specifier: 10.1.0
         version: 10.1.0(@types/react@19.1.15)(react@19.2.0)
       tailwindcss:
-        specifier: 3.4.17
-        version: 3.4.17
+        specifier: 3.4.18
+        version: 3.4.18
       tailwindcss-animate:
         specifier: 1.0.7
-        version: 1.0.7(tailwindcss@3.4.17)
+        version: 1.0.7(tailwindcss@3.4.18)
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -829,19 +829,19 @@ importers:
         version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-themes-minimal':
         specifier: 0.1.3
-        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@tailwindcss/typography':
         specifier: 0.5.19
-        version: 0.5.19(tailwindcss@3.4.17)
+        version: 0.5.19(tailwindcss@3.4.18)
       '@tanstack/react-query':
         specifier: 5.90.2
         version: 5.90.2(react@19.2.0)
@@ -897,11 +897,11 @@ importers:
         specifier: 1.9.0
         version: 1.9.0
       tailwindcss:
-        specifier: 3.4.17
-        version: 3.4.17
+        specifier: 3.4.18
+        version: 3.4.18
       tailwindcss-animate:
         specifier: 1.0.7
-        version: 1.0.7(tailwindcss@3.4.17)
+        version: 1.0.7(tailwindcss@3.4.18)
       three:
         specifier: 0.180.0
         version: 0.180.0
@@ -1070,13 +1070,13 @@ importers:
         version: 0.2.1(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       next:
         specifier: canary
         version: 15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
@@ -1092,10 +1092,10 @@ importers:
         version: 2.2.5
       '@signalco/ui-themes-minimal':
         specifier: 0.1.3
-        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@tailwindcss/typography':
         specifier: 0.5.19
-        version: 0.5.19(tailwindcss@3.4.17)
+        version: 0.5.19(tailwindcss@3.4.18)
       '@types/node':
         specifier: 22.18.8
         version: 22.18.8
@@ -1106,11 +1106,11 @@ importers:
         specifier: 19.1.9
         version: 19.1.9(@types/react@19.1.15)
       tailwindcss:
-        specifier: 3.4.17
-        version: 3.4.17
+        specifier: 3.4.18
+        version: 3.4.18
       tailwindcss-animate:
         specifier: 1.0.7
-        version: 1.0.7(tailwindcss@3.4.17)
+        version: 1.0.7(tailwindcss@3.4.18)
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -8350,8 +8350,8 @@ packages:
     engines: {node: '>=14.0.0'}
     hasBin: true
 
-  tailwindcss@3.4.17:
-    resolution: {integrity: sha512-w33E2aCvSDP0tW9RZuNXadXlkHXqFzSkQew/aIa2i/Sj8fThxwovwlXHSPXTbAHwEIhBFXAedUhP2tueAKP8Og==}
+  tailwindcss@3.4.18:
+    resolution: {integrity: sha512-6A2rnmW5xZMdw11LYjhcI5846rt9pbLSabY5XPxo+XWdxwZaFEn47Go4NzFiHu9sNNmr/kXivP1vStfvMaK1GQ==}
     engines: {node: '>=14.0.0'}
     hasBin: true
 
@@ -10443,9 +10443,9 @@ snapshots:
       - '@vue/composition-api'
       - vue
 
-  '@headlessui/tailwindcss@0.2.2(tailwindcss@3.4.17)':
+  '@headlessui/tailwindcss@0.2.2(tailwindcss@3.4.18)':
     dependencies:
-      tailwindcss: 3.4.17
+      tailwindcss: 3.4.18
 
   '@headlessui/vue@1.7.23(vue@3.5.22(typescript@5.9.3))':
     dependencies:
@@ -12666,9 +12666,9 @@ snapshots:
     dependencies:
       zod: 3.24.1
 
-  '@scalar/api-client@2.7.0(axios@1.12.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(tailwindcss@3.4.17)(typescript@5.9.3)':
+  '@scalar/api-client@2.7.0(axios@1.12.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(tailwindcss@3.4.18)(typescript@5.9.3)':
     dependencies:
-      '@headlessui/tailwindcss': 0.2.2(tailwindcss@3.4.17)
+      '@headlessui/tailwindcss': 0.2.2(tailwindcss@3.4.18)
       '@headlessui/vue': 1.7.23(vue@3.5.22(typescript@5.9.3))
       '@scalar/analytics-client': 1.0.0
       '@scalar/components': 0.14.40(typescript@5.9.3)
@@ -12722,9 +12722,9 @@ snapshots:
       - typescript
       - universal-cookie
 
-  '@scalar/api-reference-react@0.7.55(axios@1.12.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.2.0)(tailwindcss@3.4.17)(typescript@5.9.3)':
+  '@scalar/api-reference-react@0.7.55(axios@1.12.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.2.0)(tailwindcss@3.4.18)(typescript@5.9.3)':
     dependencies:
-      '@scalar/api-reference': 1.37.0(axios@1.12.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(tailwindcss@3.4.17)(typescript@5.9.3)
+      '@scalar/api-reference': 1.37.0(axios@1.12.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(tailwindcss@3.4.18)(typescript@5.9.3)
       '@scalar/types': 0.3.0
       react: 19.2.0
     transitivePeerDependencies:
@@ -12743,11 +12743,11 @@ snapshots:
       - typescript
       - universal-cookie
 
-  '@scalar/api-reference@1.37.0(axios@1.12.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(tailwindcss@3.4.17)(typescript@5.9.3)':
+  '@scalar/api-reference@1.37.0(axios@1.12.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(tailwindcss@3.4.18)(typescript@5.9.3)':
     dependencies:
       '@floating-ui/vue': 1.1.9(vue@3.5.22(typescript@5.9.3))
       '@headlessui/vue': 1.7.23(vue@3.5.22(typescript@5.9.3))
-      '@scalar/api-client': 2.7.0(axios@1.12.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(tailwindcss@3.4.17)(typescript@5.9.3)
+      '@scalar/api-client': 2.7.0(axios@1.12.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(tailwindcss@3.4.18)(typescript@5.9.3)
       '@scalar/code-highlight': 0.2.0
       '@scalar/components': 0.14.40(typescript@5.9.3)
       '@scalar/helpers': 0.0.11
@@ -13009,17 +13009,17 @@ snapshots:
       domhandler: 5.0.3
       selderee: 0.11.0
 
-  '@signalco/auth-client@0.3.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.90.2(react@19.2.0))(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@signalco/auth-client@0.3.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.2(react@19.2.0))(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+      '@signalco/ui-primitives': 0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@tanstack/react-query': 5.90.2(react@19.2.0)
       next: 15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@signalco/auth-client@0.3.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(@tanstack/react-query@5.90.2(react@19.2.0))(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@signalco/auth-client@0.3.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.2(react@19.2.0))(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+      '@signalco/ui-primitives': 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@tanstack/react-query': 5.90.2(react@19.2.0)
       next: 15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
@@ -13037,16 +13037,16 @@ snapshots:
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@signalco/cms-components-marketing@0.1.1(@signalco/cms-core@0.1.1(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@signalco/cms-components-marketing@0.1.1(@signalco/cms-core@0.1.1(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      '@signalco/cms-core': 0.1.1(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      '@signalco/ui': 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+      '@signalco/cms-core': 0.1.1(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@signalco/ui': 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@signalco/cms-core@0.1.1(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@signalco/cms-core@0.1.1(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+      '@signalco/ui-primitives': 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
@@ -13072,69 +13072,69 @@ snapshots:
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@signalco/ui-notifications@0.2.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@signalco/ui-notifications@0.2.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+      '@signalco/ui-primitives': 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)':
+  '@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
     dependencies:
       next: 15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
-      tailwindcss: 3.4.17
-      tailwindcss-animate: 1.0.7(tailwindcss@3.4.17)
+      tailwindcss: 3.4.18
+      tailwindcss-animate: 1.0.7(tailwindcss@3.4.18)
 
-  '@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)':
+  '@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
     dependencies:
       next: 15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
-      tailwindcss: 3.4.17
-      tailwindcss-animate: 1.0.7(tailwindcss@3.4.17)
+      tailwindcss: 3.4.18
+      tailwindcss-animate: 1.0.7(tailwindcss@3.4.18)
 
-  '@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)':
+  '@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
     dependencies:
       next: 15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
-      tailwindcss: 3.4.17
-      tailwindcss-animate: 1.0.7(tailwindcss@3.4.17)
+      tailwindcss: 3.4.18
+      tailwindcss-animate: 1.0.7(tailwindcss@3.4.18)
 
-  '@signalco/ui-themes-minimal-app@0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)':
+  '@signalco/ui-themes-minimal-app@0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
     dependencies:
-      tailwindcss: 3.4.17
-      tailwindcss-animate: 1.0.7(tailwindcss@3.4.17)
+      tailwindcss: 3.4.18
+      tailwindcss-animate: 1.0.7(tailwindcss@3.4.18)
 
-  '@signalco/ui-themes-minimal@0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)':
+  '@signalco/ui-themes-minimal@0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
     dependencies:
-      tailwindcss: 3.4.17
-      tailwindcss-animate: 1.0.7(tailwindcss@3.4.17)
+      tailwindcss: 3.4.18
+      tailwindcss-animate: 1.0.7(tailwindcss@3.4.18)
 
-  '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)':
+  '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+      '@signalco/ui-primitives': 0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
-      tailwindcss: 3.4.17
-      tailwindcss-animate: 1.0.7(tailwindcss@3.4.17)
+      tailwindcss: 3.4.18
+      tailwindcss-animate: 1.0.7(tailwindcss@3.4.18)
 
-  '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)':
+  '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+      '@signalco/ui-primitives': 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
-      tailwindcss: 3.4.17
-      tailwindcss-animate: 1.0.7(tailwindcss@3.4.17)
+      tailwindcss: 3.4.18
+      tailwindcss-animate: 1.0.7(tailwindcss@3.4.18)
 
-  '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)':
+  '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.17))(tailwindcss@3.4.17)
+      '@signalco/ui-primitives': 0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
-      tailwindcss: 3.4.17
-      tailwindcss-animate: 1.0.7(tailwindcss@3.4.17)
+      tailwindcss: 3.4.18
+      tailwindcss-animate: 1.0.7(tailwindcss@3.4.18)
 
   '@smithy/abort-controller@4.2.0':
     dependencies:
@@ -13519,10 +13519,10 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@tailwindcss/typography@0.5.19(tailwindcss@3.4.17)':
+  '@tailwindcss/typography@0.5.19(tailwindcss@3.4.18)':
     dependencies:
       postcss-selector-parser: 6.0.10
-      tailwindcss: 3.4.17
+      tailwindcss: 3.4.18
 
   '@tanstack/query-core@5.90.2': {}
 
@@ -17944,9 +17944,9 @@ snapshots:
 
   tailwind-merge@3.2.0: {}
 
-  tailwindcss-animate@1.0.7(tailwindcss@3.4.17):
+  tailwindcss-animate@1.0.7(tailwindcss@3.4.18):
     dependencies:
-      tailwindcss: 3.4.17
+      tailwindcss: 3.4.18
 
   tailwindcss@3.4.0:
     dependencies:
@@ -17975,7 +17975,7 @@ snapshots:
     transitivePeerDependencies:
       - ts-node
 
-  tailwindcss@3.4.17:
+  tailwindcss@3.4.18:
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
