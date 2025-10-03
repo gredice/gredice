@@ -1,0 +1,29 @@
+{
+    "$schema": "https://turbo.build/schema.json",
+    "extends": ["//"],
+    "tasks": {
+        "build": {
+            "env": [
+                "BLOB_READ_WRITE_TOKEN",
+                "ENABLE_EXPERIMENTAL_COREPACK",
+                "FLAGS_SECRET",
+                "GREDICE_JWT_SIGN_SECRET",
+                "HYPERTUNE_FRAMEWORK",
+                "HYPERTUNE_INCLUDE_INIT_DATA",
+                "HYPERTUNE_OUTPUT_DIRECTORY_PATH",
+                "MAILERLITE_PRESEASON_API_TOKEN",
+                "NEXT_PUBLIC_HYPERTUNE_TOKEN",
+                "NEXT_PUBLIC_VERCEL_ENV",
+                "POSTGRES_DATABASE",
+                "POSTGRES_HOST",
+                "POSTGRES_PASSWORD",
+                "POSTGRES_PRISMA_URL",
+                "POSTGRES_URL",
+                "POSTGRES_URL_NON_POOLING",
+                "POSTGRES_URL_NO_SSL",
+                "POSTGRES_USER",
+                "VERCEL_OIDC_TOKEN"
+            ]
+        }
+    }
+}
