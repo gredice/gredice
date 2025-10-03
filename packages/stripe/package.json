@@ -22,7 +22,7 @@
         "@signalco/js": "0.1.0",
         "@stripe/stripe-js": "7.9.0",
         "react": "19.2.0",
-        "stripe": "18.5.0",
+        "stripe": "19.0.0",
         "typescript": "5.9.3"
     }
 }
