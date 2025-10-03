@@ -29,6 +29,7 @@ import {
     Hammer,
     Home,
     Inbox,
+    Map as MapIcon,
     ShoppingCart,
     SmileHappy,
     Tally3,
@@ -268,6 +269,12 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         href={KnownPages.Users}
                         label="Korisnici"
                         icon={<User className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                    <NavItem
+                        href={KnownPages.Farms}
+                        label="Farme"
+                        icon={<MapIcon className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
