@@ -1,5 +1,5 @@
+import { FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { BlockImage } from '@gredice/ui/BlockImage';
-import { FIELD_SIZE_LABEL } from '@gredice/ui/plants';
 import { Container } from '@signalco/ui-primitives/Container';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';

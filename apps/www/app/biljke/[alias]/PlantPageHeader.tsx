@@ -1,10 +1,7 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
+import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { AiWatermark } from '@gredice/ui/AiWatermark';
-import {
-    calculatePlantsPerField,
-    FIELD_SIZE_LABEL,
-    SeedTimeInformationBadge,
-} from '@gredice/ui/plants';
+import { SeedTimeInformationBadge } from '@gredice/ui/plants';
 import { slug } from '@signalco/js';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
 import { Euro, LayoutGrid, MapPinHouse } from '@signalco/ui-icons';

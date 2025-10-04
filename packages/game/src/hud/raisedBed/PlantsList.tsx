@@ -1,6 +1,6 @@
 import type { PlantData } from '@gredice/client';
+import { calculatePlantsPerField } from '@gredice/js/plants';
 import {
-    calculatePlantsPerField,
     PlantYieldTooltip,
     SeedTimeInformationBadge,
 } from '@gredice/ui/plants';
