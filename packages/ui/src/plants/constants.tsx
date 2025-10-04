@@ -25,7 +25,7 @@ export function calculatePlantsPerField(seedingDistance?: number | null) {
         plantsPerRow = 1;
     }
 
-    const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
+    const totalPlants = plantsPerRow * plantsPerRow;
 
     return {
         plantsPerRow,
