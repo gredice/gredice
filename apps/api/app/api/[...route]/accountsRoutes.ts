@@ -105,6 +105,24 @@ async function getDailyRewardState(accountId: string) {
         }
     }
 
+    // When user has reached day 7, ensure all days 1-6 are always marked as claimed
+    // This handles the case where user continues claiming day 7 on subsequent days
+    if (currentDay >= 7 && lastDay >= 7) {
+        // Ensure days 1-6 are in the streak
+        for (let day = 1; day <= 6; day++) {
+            const existing = streak.find((s) => s.day === day);
+            if (!existing) {
+                streak.push({
+                    day,
+                    amount: rewardForDay(day),
+                    claimedAt:
+                        lastDate?.toISOString() ?? new Date().toISOString(),
+                });
+            }
+        }
+        streak.sort((a, b) => a.day - b.day);
+    }
+
     const nextDay = Math.min(currentDay + 1, 7);
     const expiresLocalBase = lastDate ? toLocalTime(lastDate) : nowLocal;
     const expiresLocal = addDays(
