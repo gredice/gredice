@@ -27,7 +27,7 @@
         "@standard-community/standard-json": "0.3.5",
         "@standard-community/standard-openapi": "0.2.8",
         "date-fns": "4.1.0",
-        "effect": "3.18.1",
+        "effect": "3.18.2",
         "hono": "4.9.9",
         "hono-openapi": "1.1.0",
         "next": "canary",
