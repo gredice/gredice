@@ -1,3 +1,4 @@
+import { calculatePlantsPerField } from '@gredice/js/plants';
 import { Info } from '@signalco/ui-icons';
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -9,7 +10,6 @@ import {
 } from '@signalco/ui-primitives/Tooltip';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { PropsWithChildren } from 'react';
-import { calculatePlantsPerField } from './constants';
 
 export function PlantYieldTooltip({
     plant,

@@ -1,4 +1,4 @@
-import { calculatePlantsPerField } from '@gredice/ui/plants';
+import { calculatePlantsPerField } from '@gredice/js/plants';
 import { animated, useSpring } from '@react-spring/three';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useGameGLTF } from '../../utils/useGameGLTF';

@@ -1,7 +1,7 @@
 'use client';
 
+import { calculatePlantsPerField } from '@gredice/js/plants';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { calculatePlantsPerField } from '@gredice/ui/plants';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import { Calendar, Close } from '@signalco/ui-icons';

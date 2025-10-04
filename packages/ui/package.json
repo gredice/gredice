@@ -20,6 +20,7 @@
         "typescript": "5.9.3"
     },
     "dependencies": {
+        "@gredice/js": "workspace:*",
         "@signalco/hooks": "0.2.1",
         "@signalco/ui": "0.2.10",
         "@signalco/ui-icons": "0.2.2",

@@ -1,5 +1,5 @@
 import type { PlantData } from '@gredice/client';
-import { calculatePlantsPerField } from '@gredice/ui/plants';
+import { calculatePlantsPerField } from '@gredice/js/plants';
 import {
     ArrowDownToLine,
     Droplet,
