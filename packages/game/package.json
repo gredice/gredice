@@ -38,7 +38,6 @@
         "@types/three": "0.180.0",
         "@use-gesture/react": "10.3.1",
         "chroma-js": "3.1.2",
-        "leva": "0.10.0",
         "next": "canary",
         "next-themes": "0.4.6",
         "r3f-perf": "7.2.3",
