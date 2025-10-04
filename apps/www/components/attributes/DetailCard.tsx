@@ -13,7 +13,7 @@ export type AttributeCardProps = {
     icon: ReactNode;
     header: string;
     subheader?: string;
-    value: string | null | undefined;
+    value?: ReactNode;
     description?: string;
     navigateLabel?: string;
     navigateHref?: string;
@@ -28,6 +28,21 @@ export function AttributeCard({
     navigateLabel,
     navigateHref,
 }: AttributeCardProps) {
+    let valueContent: ReactNode;
+    if (value == null) {
+        valueContent = <Typography semiBold>-</Typography>;
+    } else if (typeof value === 'string') {
+        valueContent = value.trim().length ? (
+            <Typography semiBold>{value}</Typography>
+        ) : (
+            <Typography semiBold>-</Typography>
+        );
+    } else if (typeof value === 'number') {
+        valueContent = <Typography semiBold>{value}</Typography>;
+    } else {
+        valueContent = value;
+    }
+
     return (
         <Card className="flex items-center gap-1 justify-between">
             <Row spacing={2}>
@@ -41,7 +56,7 @@ export function AttributeCard({
                             <Typography level="body3">{subheader}</Typography>
                         )}
                     </Stack>
-                    <Typography semiBold>{value ?? '-'}</Typography>
+                    {valueContent}
                 </Stack>
             </Row>
             {description && (
