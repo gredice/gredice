@@ -116,7 +116,7 @@ async function getDailyRewardState(accountId: string) {
                     day,
                     amount: rewardForDay(day),
                     claimedAt:
-                        lastDate?.toISOString() ?? new Date().toISOString(),
+                        lastDate?.toISOString() ?? nowLocal.toISOString(),
                 });
             }
         }
