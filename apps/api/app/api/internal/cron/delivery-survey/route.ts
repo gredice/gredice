@@ -99,7 +99,6 @@ export async function GET(request: NextRequest) {
             for (const candidate of candidatesInGroup) {
                 await markDeliverySurveySent(candidate.requestId, []);
             }
-            sentMonthGroups.add(monthGroupKey);
             continue;
         }
 
