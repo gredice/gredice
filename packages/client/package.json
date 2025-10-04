@@ -18,8 +18,8 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.2.5",
-        "@gredice/api": "workspace:*",
         "@types/node": "22.18.8",
+        "api": "workspace:*",
         "hono": "4.9.9",
         "openapi-typescript": "7.9.1",
         "typescript": "5.9.3"

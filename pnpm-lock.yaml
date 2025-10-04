@@ -684,12 +684,12 @@ importers:
       '@biomejs/biome':
         specifier: 2.2.5
         version: 2.2.5
-      '@gredice/api':
-        specifier: workspace:*
-        version: link:../../apps/api
       '@types/node':
         specifier: 22.18.8
         version: 22.18.8
+      api:
+        specifier: workspace:*
+        version: link:../../apps/api
       hono:
         specifier: 4.9.9
         version: 4.9.9
