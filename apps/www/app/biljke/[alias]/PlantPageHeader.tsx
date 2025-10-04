@@ -1,4 +1,5 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
+import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { AiWatermark } from '@gredice/ui/AiWatermark';
 import { SeedTimeInformationBadge } from '@gredice/ui/plants';
 import { slug } from '@signalco/js';
@@ -26,16 +27,9 @@ export function PlantPageHeader({
     sort?: PlantSortData;
 }) {
     const informationSections = getPlantInforationSections(plant);
-    let plantsPerRow = Math.floor(
-        30 / (plant.attributes?.seedingDistance ?? 30),
+    const { totalPlants } = calculatePlantsPerField(
+        plant.attributes?.seedingDistance,
     );
-    if (plantsPerRow < 1) {
-        console.warn(
-            `Plants per row is less than 1 (${plantsPerRow}) for ${plant.information.name}. Setting to 1.`,
-        );
-        plantsPerRow = 1;
-    }
-    const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
 
     const baseLatinName = plant.information.latinName
         ? `lat. ${plant.information.latinName}`
@@ -150,9 +144,9 @@ export function PlantPageHeader({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <AttributeCard
                             icon={<LayoutGrid />}
-                            header="Broj biljaka na 30x30 cm"
+                            header={`Broj biljaka na ${FIELD_SIZE_LABEL}`}
                             value={totalPlants.toString()}
-                            description="Podignutim gredica podjeljena je na polja veličine 30x30 cm. Tako podignuta gredica od 2x1m ima 18 polja za sadnju tvojih biljaka. U svako polje može stati određeni broj biljaka, ovisno o vrsti odnosno o razmaku sijanje/sadnje biljke."
+                            description={`Podignutim gredica podjeljena je na polja veličine ${FIELD_SIZE_LABEL}. Tako podignuta gredica od 2x1m ima 18 polja za sadnju tvojih biljaka. U svako polje može stati određeni broj biljaka, ovisno o vrsti odnosno o razmaku sijanje/sadnje biljke.`}
                             navigateHref={KnownPages.RaisedBeds}
                             navigateLabel="Više o gredicama"
                         />

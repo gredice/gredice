@@ -1,7 +1,5 @@
 'use client';
 
-import { cx } from '@signalco/ui-primitives/cx';
-import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import { useEffect, useState } from 'react';
 
 export interface LocalDateTimeProps {

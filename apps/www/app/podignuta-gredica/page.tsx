@@ -1,3 +1,4 @@
+import { FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Container } from '@signalco/ui-primitives/Container';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -246,7 +247,8 @@ export default function RaisedBedPage() {
                     </div>
                     <h3>Sadnja biljaka</h3>
                     <p>
-                        Podignuta gredica podijeljena je na polja veličine 30x30
+                        Podignuta gredica podijeljena je na polja veličine{' '}
+                        {FIELD_SIZE_LABEL}
                         cm. Tako podignuta gredica od 2x1 m ima 18 polja za
                         sadnju tvojih biljaka. U svako polje može stati određeni
                         broj biljaka, ovisno o vrsti, odnosno o razmaku

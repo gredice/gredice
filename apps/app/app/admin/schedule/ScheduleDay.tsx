@@ -1,5 +1,6 @@
 'use client';
 
+import { calculatePlantsPerField } from '@gredice/js/plants';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
@@ -434,16 +435,14 @@ export function ScheduleDay({
                         const sortData = plantSorts?.find(
                             (ps) => ps.id === field.plantSortId,
                         );
-                        const numberOfPlants =
-                            Math.floor(
-                                30 /
-                                    (sortData?.information?.plant?.attributes
-                                        ?.seedingDistance || 30),
-                            ) ** 2;
+                        const { totalPlants } = calculatePlantsPerField(
+                            sortData?.information?.plant?.attributes
+                                ?.seedingDistance,
+                        );
                         const status = field.plantStatus;
                         return {
                             id: `field-${field.id}`,
-                            text: `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : '?'}`,
+                            text: `${field.physicalPositionIndex} - sijanje: ${totalPlants} ${field.plantSortId ? `${sortData?.information?.name}` : '?'}`,
                             approved:
                                 isFieldApproved(status) &&
                                 !isFieldCompleted(status),

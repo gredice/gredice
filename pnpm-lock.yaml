@@ -207,7 +207,7 @@ importers:
         version: 2.10.0
       next:
         specifier: canary
-        version: 15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+        version: 15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       next-themes:
         specifier: 0.4.6
         version: 0.4.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -268,106 +268,6 @@ importers:
         version: 1.55.1
       '@signalco/auth-client':
         specifier: 0.3.0
-        version: 0.3.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.2(react@19.2.0))(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      '@signalco/auth-server':
-        specifier: 0.5.3
-        version: 0.5.3(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      '@signalco/hooks':
-        specifier: 0.2.1
-        version: 0.2.1(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      '@signalco/js':
-        specifier: 0.1.0
-        version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      '@signalco/ui':
-        specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
-      '@signalco/ui-icons':
-        specifier: 0.2.2
-        version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      '@signalco/ui-primitives':
-        specifier: 0.6.5
-        version: 0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
-      '@signalco/ui-themes-minimal-app':
-        specifier: 0.1.3
-        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
-      '@tailwindcss/typography':
-        specifier: 0.5.19
-        version: 0.5.19(tailwindcss@3.4.18)
-      '@tanstack/react-query':
-        specifier: 5.90.2
-        version: 5.90.2(react@19.2.0)
-      '@types/node':
-        specifier: 22.18.8
-        version: 22.18.8
-      '@types/react':
-        specifier: 19.2.0
-        version: 19.2.0
-      '@types/react-dom':
-        specifier: 19.2.0
-        version: 19.2.0(@types/react@19.2.0)
-      '@vercel/analytics':
-        specifier: 1.5.0
-        version: 1.5.0(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
-      '@zxing/library':
-        specifier: 0.21.3
-        version: 0.21.3
-      babel-plugin-react-compiler:
-        specifier: 19.1.0-rc.3
-        version: 19.1.0-rc.3
-      next-axiom:
-        specifier: 1.9.2
-        version: 1.9.2(@aws-sdk/credential-provider-web-identity@3.901.0)(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)
-      postcss:
-        specifier: 8.5.6
-        version: 8.5.6
-      tailwindcss:
-        specifier: 3.4.18
-        version: 3.4.18
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
-
-  apps/farm:
-    dependencies:
-      hypertune:
-        specifier: 2.10.0
-        version: 2.10.0
-      next:
-        specifier: canary
-        version: 15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
-      pg:
-        specifier: 8.16.3
-        version: 8.16.3
-      react:
-        specifier: 19.2.0
-        version: 19.2.0
-      react-dom:
-        specifier: 19.2.0
-        version: 19.2.0(react@19.2.0)
-      server-only:
-        specifier: 0.0.1
-        version: 0.0.1
-    devDependencies:
-      '@biomejs/biome':
-        specifier: 2.2.5
-        version: 2.2.5
-      '@gredice/storage':
-        specifier: workspace:*
-        version: link:../../packages/storage
-      '@gredice/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
-      '@mdxeditor/editor':
-        specifier: 3.46.1
-        version: 3.46.1(@codemirror/language@6.11.3)(@lezer/highlight@1.2.1)(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(yjs@13.6.20)
-      '@playwright/experimental-ct-react':
-        specifier: 1.55.1
-        version: 1.55.1(@types/node@22.18.8)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(vite@6.3.5(@types/node@22.18.8)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.0))(yaml@2.8.0)
-      '@playwright/test':
-        specifier: 1.55.1
-        version: 1.55.1
-      '@signalco/auth-client':
-        specifier: 0.3.0
         version: 0.3.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.2(react@19.2.0))(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/auth-server':
         specifier: 0.5.3
@@ -408,12 +308,112 @@ importers:
       '@vercel/analytics':
         specifier: 1.5.0
         version: 1.5.0(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
+      '@zxing/library':
+        specifier: 0.21.3
+        version: 0.21.3
       babel-plugin-react-compiler:
         specifier: 19.1.0-rc.3
         version: 19.1.0-rc.3
       next-axiom:
         specifier: 1.9.2
         version: 1.9.2(@aws-sdk/credential-provider-web-identity@3.901.0)(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)
+      postcss:
+        specifier: 8.5.6
+        version: 8.5.6
+      tailwindcss:
+        specifier: 3.4.18
+        version: 3.4.18
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
+  apps/farm:
+    dependencies:
+      hypertune:
+        specifier: 2.10.0
+        version: 2.10.0
+      next:
+        specifier: canary
+        version: 15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      pg:
+        specifier: 8.16.3
+        version: 8.16.3
+      react:
+        specifier: 19.2.0
+        version: 19.2.0
+      react-dom:
+        specifier: 19.2.0
+        version: 19.2.0(react@19.2.0)
+      server-only:
+        specifier: 0.0.1
+        version: 0.0.1
+    devDependencies:
+      '@biomejs/biome':
+        specifier: 2.2.5
+        version: 2.2.5
+      '@gredice/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      '@gredice/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@mdxeditor/editor':
+        specifier: 3.46.1
+        version: 3.46.1(@codemirror/language@6.11.3)(@lezer/highlight@1.2.1)(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(yjs@13.6.20)
+      '@playwright/experimental-ct-react':
+        specifier: 1.55.1
+        version: 1.55.1(@types/node@22.18.8)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(vite@6.3.5(@types/node@22.18.8)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.0))(yaml@2.8.0)
+      '@playwright/test':
+        specifier: 1.55.1
+        version: 1.55.1
+      '@signalco/auth-client':
+        specifier: 0.3.0
+        version: 0.3.0(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.2(react@19.2.0))(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@signalco/auth-server':
+        specifier: 0.5.3
+        version: 0.5.3(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@signalco/hooks':
+        specifier: 0.2.1
+        version: 0.2.1(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@signalco/js':
+        specifier: 0.1.0
+        version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@signalco/ui':
+        specifier: 0.2.10
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+      '@signalco/ui-icons':
+        specifier: 0.2.2
+        version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@signalco/ui-primitives':
+        specifier: 0.6.5
+        version: 0.6.5(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+      '@signalco/ui-themes-minimal-app':
+        specifier: 0.1.3
+        version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+      '@tailwindcss/typography':
+        specifier: 0.5.19
+        version: 0.5.19(tailwindcss@3.4.18)
+      '@tanstack/react-query':
+        specifier: 5.90.2
+        version: 5.90.2(react@19.2.0)
+      '@types/node':
+        specifier: 22.18.8
+        version: 22.18.8
+      '@types/react':
+        specifier: 19.2.0
+        version: 19.2.0
+      '@types/react-dom':
+        specifier: 19.2.0
+        version: 19.2.0(@types/react@19.2.0)
+      '@vercel/analytics':
+        specifier: 1.5.0
+        version: 1.5.0(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
+      babel-plugin-react-compiler:
+        specifier: 19.1.0-rc.3
+        version: 19.1.0-rc.3
+      next-axiom:
+        specifier: 1.9.2
+        version: 1.9.2(@aws-sdk/credential-provider-web-identity@3.901.0)(next@15.6.0-canary.41(@babel/core@7.28.0)(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)
       postcss:
         specifier: 8.5.6
         version: 8.5.6
@@ -578,6 +578,9 @@ importers:
       '@gredice/game':
         specifier: workspace:*
         version: link:../../packages/game
+      '@gredice/js':
+        specifier: workspace:*
+        version: link:../../packages/js
       '@gredice/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -1050,6 +1053,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@gredice/js':
+        specifier: workspace:*
+        version: link:../js
       '@signalco/hooks':
         specifier: 0.2.1
         version: 0.2.1(next@15.6.0-canary.41(@playwright/test@1.55.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)

@@ -31,6 +31,7 @@
         "@biomejs/biome": "2.2.5",
         "@gredice/client": "workspace:*",
         "@gredice/game": "workspace:*",
+        "@gredice/js": "workspace:*",
         "@gredice/ui": "workspace:*",
         "@playwright/experimental-ct-react": "1.55.1",
         "@playwright/test": "1.55.1",

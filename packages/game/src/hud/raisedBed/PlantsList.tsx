@@ -1,4 +1,5 @@
 import type { PlantData } from '@gredice/client';
+import { calculatePlantsPerField } from '@gredice/js/plants';
 import {
     PlantYieldTooltip,
     SeedTimeInformationBadge,
@@ -61,16 +62,9 @@ export function PlantsList({
                         <PlantListItemSkeleton key={index} />
                     ))}
                 {sortedPlants?.map((plant) => {
-                    let plantsPerRow = Math.floor(
-                        30 / (plant.attributes?.seedingDistance ?? 30),
+                    const { totalPlants } = calculatePlantsPerField(
+                        plant.attributes?.seedingDistance,
                     );
-                    if (plantsPerRow < 1) {
-                        console.warn(
-                            `Plants per row is less than 1 (${plantsPerRow}) for ${plant.information.name}. Setting to 1.`,
-                        );
-                        plantsPerRow = 1;
-                    }
-                    const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
                     const price = plant.prices?.perPlant
                         ? plant.prices.perPlant.toFixed(2)
                         : 'Nepoznato';
