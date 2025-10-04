@@ -1,4 +1,4 @@
-import type { AppType } from '@gredice/api/routes';
+import type { AppType } from 'api/routes';
 import { hc, type InferResponseType } from 'hono/client';
 import { getAppUrl, getAuthHeaders } from './shared';
 

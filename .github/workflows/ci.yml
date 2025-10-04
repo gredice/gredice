@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 
-name: 'CI'
+name: "CI"
 
 on:
   pull_request:
@@ -10,139 +10,153 @@ on:
   workflow_dispatch:
 
 jobs:
-    changes:
-        name: "Detect changes"
-        runs-on: ubuntu-latest
-        permissions:
-          pull-requests: read
-          contents: read
-        steps:
-          - uses: actions/checkout@v5
-          - uses: dorny/paths-filter@v3
-            id: filter
-            with:
-              filters: |
-                app_www:
-                  - apps/www/**
-                  - packages/**
-                app_garden:
-                  - apps/garden/**
-                  - packages/**
-                app_farm:
-                  - apps/farm/**
-                  - packages/**
-                app_app:
-                  - apps/app/**
-                  - packages/**
-                packages_storage:
-                  - packages/storage/**
-        outputs:
-          app_www: ${{ steps.filter.outputs.app_www }}
-          app_garden: ${{ steps.filter.outputs.app_garden }}
-          app_farm: ${{ steps.filter.outputs.app_farm }}
-          app_app: ${{ steps.filter.outputs.app_app }}
-          packages_storage: ${{ steps.filter.outputs.packages_storage }}
-
-    ci_www:
-        name: "CI - www"
-        needs: changes
-        if: success() && needs.changes.outputs.app_www == 'true'
-        uses: ./.github/workflows/nextjs_ci_reusable.yml
+  changes:
+    name: "Detect changes"
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filter
         with:
-            name: 'www'
-            path: 'apps/www'
-            vercelProjectIdSecretName: 'VERCEL_PROJECT_ID_WWW'
-        secrets: inherit
-    
-    ci_garden:
-        name: "CI - garden"
-        needs: changes
-        if: success() && needs.changes.outputs.app_garden == 'true'
-        uses: ./.github/workflows/nextjs_ci_reusable.yml
+          filters: |
+            app_www:
+              - apps/www/**
+              - packages/**
+            app_garden:
+              - apps/garden/**
+              - packages/**
+            app_farm:
+              - apps/farm/**
+              - packages/**
+            app_app:
+              - apps/app/**
+              - packages/**
+            app_api:
+              - apps/api/**
+              - packages/**
+            packages_storage:
+              - packages/storage/**
+    outputs:
+      app_www: ${{ steps.filter.outputs.app_www }}
+      app_garden: ${{ steps.filter.outputs.app_garden }}
+      app_farm: ${{ steps.filter.outputs.app_farm }}
+      app_app: ${{ steps.filter.outputs.app_app }}
+      app_api: ${{ steps.filter.outputs.app_api }}
+      packages_storage: ${{ steps.filter.outputs.packages_storage }}
+
+  ci_www:
+    name: "CI - www"
+    needs: changes
+    if: success() && needs.changes.outputs.app_www == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "www"
+      path: "apps/www"
+      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_WWW"
+    secrets: inherit
+
+  ci_garden:
+    name: "CI - garden"
+    needs: changes
+    if: success() && needs.changes.outputs.app_garden == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "garden"
+      path: "apps/garden"
+      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_GARDEN"
+    secrets: inherit
+
+  ci_farm:
+    name: "CI - farm"
+    needs: changes
+    if: success() && needs.changes.outputs.app_farm == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "farm"
+      path: "apps/farm"
+      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_FARM"
+    secrets: inherit
+
+  ci_app:
+    name: "CI - app"
+    needs: changes
+    if: success() && needs.changes.outputs.app_app == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "app"
+      path: "apps/app"
+      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_APP"
+    secrets: inherit
+
+  ci_api:
+    name: "CI - api"
+    needs: changes
+    if: success() && needs.changes.outputs.app_api == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "api"
+      path: "apps/api"
+      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_API"
+    secrets: inherit
+
+  test_packages:
+    name: "CI - test @gredice/storage"
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    needs: changes
+    if: success() && github.event_name == 'pull_request' && needs.changes.outputs.packages_storage == 'true'
+    env:
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_APP }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+    steps:
+      - uses: actions/checkout@v5
         with:
-            name: 'garden'
-            path: 'apps/garden'
-            vercelProjectIdSecretName: 'VERCEL_PROJECT_ID_GARDEN'
-        secrets: inherit
+          fetch-depth: 2
 
-    ci_farm:
-        name: "CI - farm"
-        needs: changes
-        if: success() && needs.changes.outputs.app_farm == 'true'
-        uses: ./.github/workflows/nextjs_ci_reusable.yml
+      - uses: pnpm/action-setup@v3
+        name: ✨ Install pnpm
         with:
-            name: 'farm'
-            path: 'apps/farm'
-            vercelProjectIdSecretName: 'VERCEL_PROJECT_ID_FARM'
-        secrets: inherit
+          version: 10.18.0
 
-    ci_app:
-        name: "CI - app"
-        needs: changes
-        if: success() && needs.changes.outputs.app_app == 'true'
-        uses: ./.github/workflows/nextjs_ci_reusable.yml
+      - name: ✨ Setup Node
+        uses: actions/setup-node@v5
         with:
-            name: 'app'
-            path: 'apps/app'
-            vercelProjectIdSecretName: 'VERCEL_PROJECT_ID_APP'
-        secrets: inherit
+          node-version: "22.20.0"
 
-    test_packages:
-        name: "CI - test @gredice/storage"
-        timeout-minutes: 5
-        runs-on: ubuntu-latest
-        needs: changes
-        if: success() && github.event_name == 'pull_request' && needs.changes.outputs.packages_storage == 'true'
-        env:
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_APP }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-        steps:
-          - uses: actions/checkout@v5
-            with:
-              fetch-depth: 2
+      - name: ✨ Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-          - uses: pnpm/action-setup@v3
-            name: ✨ Install pnpm
-            with:
-              version: 10.18.0
+      - uses: actions/cache@v4
+        name: ✨ Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
-          - name: ✨ Setup Node
-            uses: actions/setup-node@v5
-            with:
-              node-version: "22.20.0"
-    
-          - name: ✨ Get pnpm store directory
-            shell: bash
-            run: |
-              echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-    
-          - uses: actions/cache@v4
-            name: ✨ Setup pnpm cache
-            with:
-              path: ${{ env.STORE_PATH }}
-              key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-              restore-keys: |
-                ${{ runner.os }}-pnpm-store-
+      - name: 📦️ Install dependencies
+        run: pnpm install --frozen-lockfile --filter @gredice/storage... --filter .
 
-          - name: 📦️ Install dependencies
-            run: pnpm install --frozen-lockfile --filter @gredice/storage... --filter .
+      - name: ✨ Setup Vercel CLI
+        run: npm i --g vercel@latest
 
-          - name: ✨ Setup Vercel CLI
-            run: npm i --g vercel@latest
+      - name: ⚙️ Pull Vercel Environment Information
+        run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: ./packages/storage/
 
-          - name: ⚙️ Pull Vercel Environment Information
-            run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
-            working-directory: ./packages/storage/
-            
-          - name: ⚒️ Test app
-            run: pnpm test --filter=@gredice/storage
+      - name: ⚒️ Test app
+        run: pnpm test --filter=@gredice/storage
 
-    ci_ok:
-        name: "[CI] OK"
-        needs: [changes, ci_www, ci_garden, ci_farm, ci_app, test_packages]
-        if: ${{ always() }}
-        runs-on: ubuntu-latest
-        steps:
-            - run: exit 1
-              if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
-    
+  ci_ok:
+    name: "[CI] OK"
+    needs: [changes, ci_www, ci_garden, ci_farm, ci_app, ci_api, test_packages]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: exit 1
+        if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
