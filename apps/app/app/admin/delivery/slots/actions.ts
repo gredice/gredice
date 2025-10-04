@@ -89,19 +89,19 @@ export async function bulkGenerateSlotsAction(
             .getAll('daysOfWeek')
             .map((day) => parseInt(day as string, 10));
 
-        // Validate required fields
+        // Validate required fields and date validity
         if (
             !locationId ||
             !type ||
-            !startDate ||
-            !endDate ||
+            isNaN(startDate.getTime()) ||
+            isNaN(endDate.getTime()) ||
             !startTime ||
             !endTime ||
             daysOfWeek.length === 0
         ) {
             return {
                 success: false,
-                message: 'Molimo popunite sva obavezna polja',
+                message: 'Molimo popunite sva obavezna polja ili unesite ispravne datume',
             };
         }
 
