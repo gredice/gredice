@@ -1,4 +1,5 @@
 import type { PlantData } from '@gredice/client';
+import { calculatePlantsPerField } from '@gredice/ui/plants';
 import {
     ArrowDownToLine,
     Droplet,
@@ -62,11 +63,8 @@ export function PlantAttributeCards({
             return null;
         }
 
-        const seedingDistance = attributes.seedingDistance ?? 30;
-        const plantsPerRow = Math.max(1, Math.floor(30 / seedingDistance));
-        const totalPlants = Math.max(
-            1,
-            Math.floor(plantsPerRow * plantsPerRow),
+        const { totalPlants } = calculatePlantsPerField(
+            attributes.seedingDistance,
         );
 
         const yieldMin = attributes.yieldMin ?? null;

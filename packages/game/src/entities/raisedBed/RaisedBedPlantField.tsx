@@ -1,3 +1,4 @@
+import { calculatePlantsPerField } from '@gredice/ui/plants';
 import { animated, useSpring } from '@react-spring/three';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useGameGLTF } from '../../utils/useGameGLTF';
@@ -18,16 +19,10 @@ export function RaisedBedPlantField({
     const multiplierX = 0.27;
     const multiplierY = 0.27;
 
-    let plantsPerRow = Math.floor(
-        30 / (sortData?.information.plant.attributes?.seedingDistance ?? 30),
+    const { plantsPerRow, totalPlants } = calculatePlantsPerField(
+        sortData?.information.plant.attributes?.seedingDistance,
     );
-    if (plantsPerRow < 1) {
-        console.warn(
-            `Plants per row is less than 1 (${plantsPerRow}) for ${sortData?.information.plant.information?.name}. Setting to 1.`,
-        );
-        plantsPerRow = 1;
-    }
-    const seedsCount = plantsPerRow * plantsPerRow;
+    const seedsCount = totalPlants;
 
     const seedMap = [
         { multiplier: 0, offset: 0, scale: 2 },
