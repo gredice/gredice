@@ -20,11 +20,15 @@ export const dynamic = 'force-dynamic';
 export default async function ShoppingCartDetailsPage({
     params,
 }: {
-    params: { cartId: number };
+    params: { cartId: string };
 }) {
     const { cartId } = params;
+    const cartIdNumber = Number(cartId);
+    if (Number.isNaN(cartIdNumber)) {
+        notFound();
+    }
     await auth(['admin']);
-    const cart = await getShoppingCart(cartId);
+    const cart = await getShoppingCart(cartIdNumber);
     if (!cart) {
         notFound();
     }
@@ -116,7 +120,7 @@ export default async function ShoppingCartDetailsPage({
                 <Breadcrumbs
                     items={[
                         { label: 'Košarice', href: KnownPages.ShoppingCarts },
-                        { label: `Košarica ${cartId}` },
+                        { label: `Košarica ${cartIdNumber}` },
                     ]}
                 />
                 <Typography level="h1" className="text-2xl" semiBold>
