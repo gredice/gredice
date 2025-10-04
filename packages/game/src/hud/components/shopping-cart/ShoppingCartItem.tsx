@@ -60,9 +60,8 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const hasShopImage = Boolean(item.shopData.image);
     const shouldShowOperationFallback =
         item.entityTypeName === 'operation' && !hasShopImage;
-    const imageOrFallback = hasShopImage
-        ? item.shopData.image
-        : '/assets/plants/placeholder.png';
+    const imageOrFallback =
+        item.shopData.image ?? '/assets/plants/placeholder.png';
     const shopImageUrl = isAbsoluteUrl(imageOrFallback)
         ? imageOrFallback
         : `https://www.gredice.com${imageOrFallback}`;
@@ -72,6 +71,8 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
             {shouldShowOperationFallback ? (
                 <div className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0 flex items-center justify-center">
                     <Hammer
+                        role="img"
+                        aria-label={item.shopData.name ?? 'Nepoznato'}
                         style={{
                             '--imageSize': '32px',
                         } as CSSProperties}
