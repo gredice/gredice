@@ -4,7 +4,7 @@ import { Button } from '@signalco/ui-primitives/Button';
 import { Input } from '@signalco/ui-primitives/Input';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { bulkGenerateSlotsAction } from './actions';
 
@@ -41,8 +41,56 @@ export function BulkGenerateForm({ locations }: BulkGenerateFormProps) {
     const defaultStartDate = tomorrow.toISOString().split('T')[0];
     const defaultEndDate = nextWeek.toISOString().split('T')[0];
 
+    // Reset form on successful submission
+    useEffect(() => {
+        if (state?.success) {
+            const timer = setTimeout(() => {
+                setSelectedLocation('');
+                setSelectedType('');
+            }, 2000); // Reset after showing success message
+            return () => clearTimeout(timer);
+        }
+    }, [state?.success]);
+
+    const handleSubmit = (formData: FormData) => {
+        // Validate required fields
+        if (!selectedLocation) {
+            alert('Molimo odaberite lokaciju');
+            return;
+        }
+        if (!selectedType) {
+            alert('Molimo odaberite tip slota');
+            return;
+        }
+
+        // Check if at least one day is selected
+        const daysOfWeek = formData.getAll('daysOfWeek');
+        if (daysOfWeek.length === 0) {
+            alert('Molimo odaberite barem jedan dan u tjednu');
+            return;
+        }
+
+        // Validate time range
+        const startTime = formData.get('startTime') as string;
+        const endTime = formData.get('endTime') as string;
+        const startDate = formData.get('startDate') as string;
+        const endDate = formData.get('endDate') as string;
+
+        if (startTime >= endTime) {
+            alert('Vrijeme završetka mora biti nakon vremena početka');
+            return;
+        }
+
+        if (new Date(endDate) < new Date(startDate)) {
+            alert('Datum završetka mora biti nakon datuma početka');
+            return;
+        }
+
+        return formAction(formData);
+    };
+
     return (
-        <form action={formAction}>
+        <form action={handleSubmit}>
             <Stack spacing={3}>
                 <SelectItems
                     variant="outlined"
@@ -53,6 +101,7 @@ export function BulkGenerateForm({ locations }: BulkGenerateFormProps) {
                         value: location.id.toString(),
                         label: location.name,
                     }))}
+                    required
                 />
                 <input
                     type="hidden"
@@ -69,6 +118,7 @@ export function BulkGenerateForm({ locations }: BulkGenerateFormProps) {
                         { value: 'delivery', label: 'Dostava' },
                         { value: 'pickup', label: 'Preuzimanje' },
                     ]}
+                    required
                 />
                 <input type="hidden" name="type" value={selectedType} />
 
@@ -103,25 +153,6 @@ export function BulkGenerateForm({ locations }: BulkGenerateFormProps) {
                     label="Vrijeme završetka"
                     defaultValue="18:00"
                     step="3600"
-                    required
-                />
-
-                <Input
-                    type="number"
-                    name="slotDurationMinutes"
-                    label="Trajanje slota (minute)"
-                    defaultValue="60"
-                    min="30"
-                    step="30"
-                    required
-                />
-
-                <Input
-                    type="number"
-                    name="maxCapacity"
-                    label="Maksimalni kapacitet po slotu"
-                    defaultValue="5"
-                    min="1"
                     required
                 />
 
