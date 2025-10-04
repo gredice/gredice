@@ -1,9 +1,14 @@
 import createClient from 'openapi-fetch';
 import type { paths } from './lib/directories-api/v1';
-import { getAppUrl } from './shared';
+import { createDevSafeFetch, getAppUrl } from './shared';
 
 export function directoriesClient() {
-    return createClient<paths>({ baseUrl: `${getAppUrl()}/api/directories` });
+    const baseUrl = `${getAppUrl()}/api/directories`;
+
+    return createClient<paths>({
+        baseUrl,
+        fetch: createDevSafeFetch(),
+    });
 }
 
 export type PlantData =
