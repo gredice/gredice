@@ -83,7 +83,7 @@ export function PlantAttributeCards({
 
         const expectedBase =
             minValue != null && maxValue != null
-                ? (maxValue - minValue) / 2 + minValue
+                ? (minValue + maxValue) / 2
                 : (minValue ?? maxValue);
 
         const expectedPerField =
