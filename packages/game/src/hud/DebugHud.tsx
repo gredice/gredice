@@ -388,98 +388,99 @@ export function DebugHud() {
                     dragging={isDraggingPanel}
                     onDragHandlePointerDown={handlePanelPointerDown}
                 >
-                <Stack spacing={2}>
-                    <DebugPanelSection
-                        title="Time of day"
-                        description="Adjust the sun position across the day."
-                    >
-                        <Slider
-                            label={`Time: ${formatTimeLabel(timeOfDay)}`}
-                            min={0}
-                            max={1}
-                            step={0.01}
-                            value={[timeOfDay]}
-                            onValueChange={(value) => {
-                                const [nextValue] = value;
-                                if (typeof nextValue === 'number') {
-                                    setTimeOfDay(clampToRange(nextValue, 0, 1));
-                                }
-                            }}
-                        />
-                        <Typography level="body3" secondary>
-                            Local time freeze is applied immediately.
-                        </Typography>
-                    </DebugPanelSection>
-                    <DebugPanelSection
-                        title="Weather"
-                        description="Override live weather data when necessary."
-                    >
-                        <Checkbox
-                            label="Override live weather"
-                            checked={overrideWeather}
-                            onCheckedChange={handleOverrideChange}
-                        />
-                        <Stack spacing={1} className="pt-1">
+                    <Stack spacing={2}>
+                        <DebugPanelSection
+                            title="Time of day"
+                            description="Adjust the sun position across the day."
+                        >
                             <Slider
-                                label={`Cloudiness: ${formatPercent(cloudy)}`}
+                                label={`Time: ${formatTimeLabel(timeOfDay)}`}
                                 min={0}
                                 max={1}
                                 step={0.01}
-                                value={[cloudy]}
-                                disabled={weatherControlsDisabled}
+                                value={[timeOfDay]}
                                 onValueChange={(value) => {
                                     const [nextValue] = value;
                                     if (typeof nextValue === 'number') {
-                                        setCloudy(clampToRange(nextValue, 0, 1));
+                                        setTimeOfDay(clampToRange(nextValue, 0, 1));
                                     }
                                 }}
                             />
-                            <Slider
-                                label={`Rain: ${formatPercent(rainy)}`}
-                                min={0}
-                                max={1}
-                                step={0.01}
-                                value={[rainy]}
-                                disabled={weatherControlsDisabled}
-                                onValueChange={(value) => {
-                                    const [nextValue] = value;
-                                    if (typeof nextValue === 'number') {
-                                        setRainy(clampToRange(nextValue, 0, 1));
-                                    }
-                                }}
+                            <Typography level="body3" secondary>
+                                Local time freeze is applied immediately.
+                            </Typography>
+                        </DebugPanelSection>
+                        <DebugPanelSection
+                            title="Weather"
+                            description="Override live weather data when necessary."
+                        >
+                            <Checkbox
+                                label="Override live weather"
+                                checked={overrideWeather}
+                                onCheckedChange={handleOverrideChange}
                             />
-                            <Slider
-                                label={`Snow: ${formatPercent(snowy)}`}
-                                min={0}
-                                max={1}
-                                step={0.01}
-                                value={[snowy]}
-                                disabled={weatherControlsDisabled}
-                                onValueChange={(value) => {
-                                    const [nextValue] = value;
-                                    if (typeof nextValue === 'number') {
-                                        setSnowy(clampToRange(nextValue, 0, 1));
-                                    }
-                                }}
-                            />
-                            <Slider
-                                label={`Fog: ${formatPercent(foggy)}`}
-                                min={0}
-                                max={1}
-                                step={0.01}
-                                value={[foggy]}
-                                disabled={weatherControlsDisabled}
-                                onValueChange={(value) => {
-                                    const [nextValue] = value;
-                                    if (typeof nextValue === 'number') {
-                                        setFoggy(clampToRange(nextValue, 0, 1));
-                                    }
-                                }}
-                            />
-                        </Stack>
-                    </DebugPanelSection>
-                </Stack>
-            </DebugPanel>
+                            <Stack spacing={1} className="pt-1">
+                                <Slider
+                                    label={`Cloudiness: ${formatPercent(cloudy)}`}
+                                    min={0}
+                                    max={1}
+                                    step={0.01}
+                                    value={[cloudy]}
+                                    disabled={weatherControlsDisabled}
+                                    onValueChange={(value) => {
+                                        const [nextValue] = value;
+                                        if (typeof nextValue === 'number') {
+                                            setCloudy(clampToRange(nextValue, 0, 1));
+                                        }
+                                    }}
+                                />
+                                <Slider
+                                    label={`Rain: ${formatPercent(rainy)}`}
+                                    min={0}
+                                    max={1}
+                                    step={0.01}
+                                    value={[rainy]}
+                                    disabled={weatherControlsDisabled}
+                                    onValueChange={(value) => {
+                                        const [nextValue] = value;
+                                        if (typeof nextValue === 'number') {
+                                            setRainy(clampToRange(nextValue, 0, 1));
+                                        }
+                                    }}
+                                />
+                                <Slider
+                                    label={`Snow: ${formatPercent(snowy)}`}
+                                    min={0}
+                                    max={1}
+                                    step={0.01}
+                                    value={[snowy]}
+                                    disabled={weatherControlsDisabled}
+                                    onValueChange={(value) => {
+                                        const [nextValue] = value;
+                                        if (typeof nextValue === 'number') {
+                                            setSnowy(clampToRange(nextValue, 0, 1));
+                                        }
+                                    }}
+                                />
+                                <Slider
+                                    label={`Fog: ${formatPercent(foggy)}`}
+                                    min={0}
+                                    max={1}
+                                    step={0.01}
+                                    value={[foggy]}
+                                    disabled={weatherControlsDisabled}
+                                    onValueChange={(value) => {
+                                        const [nextValue] = value;
+                                        if (typeof nextValue === 'number') {
+                                            setFoggy(clampToRange(nextValue, 0, 1));
+                                        }
+                                    }}
+                                />
+                            </Stack>
+                        </DebugPanelSection>
+                    </Stack>
+                </DebugPanel>
+            </div>
         </div>
     );
 }
