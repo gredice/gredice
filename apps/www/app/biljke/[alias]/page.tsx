@@ -86,6 +86,12 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                 {(plant.information.tip?.length ?? 0) > 0 && (
                     <PlantTips plant={plant} />
                 )}
+                <Typography level="body2" component="p">
+                    Želiš saznati više o tome kako naručiti sjetvu? Posjeti našu
+                    stranicu o <a href={KnownPages.Sowing}>sjetvi biljaka</a> za
+                    detalje o cijeni, rasporedu i pogodnostima ljetnog
+                    zalijevanja.
+                </Typography>
                 <Row spacing={2}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj biljci korisne?
