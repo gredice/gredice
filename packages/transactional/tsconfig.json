@@ -11,9 +11,9 @@
             "DOM",
             "DOM.Iterable"
         ],
-        "module": "NodeNext",
+        "module": "esnext",
         "moduleDetection": "force",
-        "moduleResolution": "NodeNext",
+        "moduleResolution": "bundler",
         "noUncheckedIndexedAccess": true,
         "resolveJsonModule": true,
         "skipLibCheck": true,

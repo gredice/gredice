@@ -5,6 +5,7 @@ import {
     Section,
     Tailwind,
 } from '@react-email/components';
+import { formatDeliveryCount } from '@gredice/js/i18n';
 import { ContentCard } from '../../components/ContentCard';
 import { Divider } from '../../components/Divider';
 import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
@@ -32,22 +33,10 @@ export default function DeliverySurveyEmailTemplate({
 }: DeliverySurveyEmailTemplateProps) {
     const previewText = `${appName} - Podijeli dojam o dostavi`;
 
-    const formatDeliveryCount = (count: number) => {
-        if (count === 1) {
-            return 'bila je 1 dostava';
-        }
-
-        if (count >= 2 && count <= 4) {
-            return `bile su ${count} dostave`;
-        }
-
-        return `bilo je ${count} dostava`;
-    };
-
     const periodSummary = deliveryPeriod
         ? `🚚 Tijekom ${deliveryPeriod} ${
               typeof deliveryCount === 'number'
-                  ? formatDeliveryCount(deliveryCount)
+                  ? formatDeliveryCount(deliveryCount, true)
                   : 'bilo je nekoliko dostava'
           }.`
         : null;

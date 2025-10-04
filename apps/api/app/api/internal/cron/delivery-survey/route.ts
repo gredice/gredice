@@ -1,3 +1,4 @@
+import { formatDeliveryCount } from '@gredice/js/i18n';
 import {
     createNotification,
     type DeliverySurveyCandidate,
@@ -23,18 +24,6 @@ function formatMonth(date: Date) {
         month: 'long',
         year: 'numeric',
     }).format(date);
-}
-
-function formatDeliveryCount(count: number) {
-    if (count === 1) {
-        return '1 dostava';
-    }
-
-    if (count >= 2 && count <= 4) {
-        return `${count} dostave`;
-    }
-
-    return `${count} dostava`;
 }
 
 interface DeliverySurveyGroup {
