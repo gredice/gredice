@@ -15,8 +15,24 @@ function getTimeOfDayFromDate(date: Date) {
     return totalSeconds / (24 * 60 * 60);
 }
 
+// Avoid thrashing the time-of-day slider when the live clock only moves by a
+// handful of milliseconds between frames.
+const TIME_OF_DAY_SYNC_THRESHOLD = 0.0005;
+
+function clampToRange(value: number, min: number, max: number) {
+    if (value < min) {
+        return min;
+    }
+
+    if (value > max) {
+        return max;
+    }
+
+    return value;
+}
+
 function formatTimeLabel(value: number) {
-    const clamped = Math.max(0, Math.min(1, value));
+    const clamped = clampToRange(value, 0, 1);
     const totalSeconds = Math.round(clamped * 24 * 60 * 60);
     const hours = Math.floor(totalSeconds / (60 * 60));
     const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
@@ -26,7 +42,7 @@ function formatTimeLabel(value: number) {
 }
 
 function formatPercent(value: number) {
-    return `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
+    return `${Math.round(clampToRange(value, 0, 1) * 100)}%`;
 }
 
 export function DebugHud() {
@@ -46,12 +62,14 @@ export function DebugHud() {
     useEffect(() => {
         const nextTimeOfDay = getTimeOfDayFromDate(currentTime);
         setTimeOfDay((previous) =>
-            Math.abs(previous - nextTimeOfDay) < 0.0005 ? previous : nextTimeOfDay,
+            Math.abs(previous - nextTimeOfDay) < TIME_OF_DAY_SYNC_THRESHOLD
+                ? previous
+                : nextTimeOfDay,
         );
     }, [currentTime]);
 
     useEffect(() => {
-        const seconds = Math.max(0, Math.min(1, timeOfDay)) * 24 * 60 * 60;
+        const seconds = clampToRange(timeOfDay, 0, 1) * 24 * 60 * 60;
         const date = new Date();
         date.setHours(seconds / 60 / 60);
         date.setMinutes((seconds / 60) % 60);
@@ -113,7 +131,7 @@ export function DebugHud() {
                             onValueChange={(value) => {
                                 const [nextValue] = value;
                                 if (typeof nextValue === 'number') {
-                                    setTimeOfDay(Math.max(0, Math.min(1, nextValue)));
+                                    setTimeOfDay(clampToRange(nextValue, 0, 1));
                                 }
                             }}
                         />
@@ -141,7 +159,7 @@ export function DebugHud() {
                                 onValueChange={(value) => {
                                     const [nextValue] = value;
                                     if (typeof nextValue === 'number') {
-                                        setCloudy(Math.max(0, Math.min(1, nextValue)));
+                                        setCloudy(clampToRange(nextValue, 0, 1));
                                     }
                                 }}
                             />
@@ -155,7 +173,7 @@ export function DebugHud() {
                                 onValueChange={(value) => {
                                     const [nextValue] = value;
                                     if (typeof nextValue === 'number') {
-                                        setRainy(Math.max(0, Math.min(1, nextValue)));
+                                        setRainy(clampToRange(nextValue, 0, 1));
                                     }
                                 }}
                             />
@@ -169,7 +187,7 @@ export function DebugHud() {
                                 onValueChange={(value) => {
                                     const [nextValue] = value;
                                     if (typeof nextValue === 'number') {
-                                        setSnowy(Math.max(0, Math.min(1, nextValue)));
+                                        setSnowy(clampToRange(nextValue, 0, 1));
                                     }
                                 }}
                             />
@@ -183,7 +201,7 @@ export function DebugHud() {
                                 onValueChange={(value) => {
                                     const [nextValue] = value;
                                     if (typeof nextValue === 'number') {
-                                        setFoggy(Math.max(0, Math.min(1, nextValue)));
+                                        setFoggy(clampToRange(nextValue, 0, 1));
                                     }
                                 }}
                             />
