@@ -158,8 +158,8 @@ export async function GET(request: NextRequest) {
         try {
             await createNotification({
                 accountId: group.accountId,
-                header: `📣 Kako ti se svidjele dostave u ${formattedMonth}?`,
-                content: `U ${formattedMonth} smo imali ${deliveryCountText}. Podijeli svoje dojmove i ispuni kratku anketu 📋⭐️⭐️⭐️⭐️⭐️`,
+                header: `📣 Kako su ti se svidjele dostave u ${formattedMonth}?`,
+                content: `U ${formattedMonth} imali smo ${deliveryCountText} dostava. Podijeli svoje dojmove i ispuni kratku anketu 📋⭐️⭐️⭐️⭐️⭐️`,
                 linkUrl: SURVEY_URL,
                 timestamp: new Date(),
             });

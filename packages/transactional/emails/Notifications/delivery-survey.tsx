@@ -34,21 +34,21 @@ export default function DeliverySurveyEmailTemplate({
 
     const formatDeliveryCount = (count: number) => {
         if (count === 1) {
-            return '1 dostavu';
+            return 'bila je 1 dostava';
         }
 
         if (count >= 2 && count <= 4) {
-            return `${count} dostave`;
+            return `bile su ${count} dostave`;
         }
 
-        return `${count} dostava`;
+        return `bilo je ${count} dostava`;
     };
 
     const periodSummary = deliveryPeriod
-        ? `🚚 Tijekom ${deliveryPeriod} dostavili smo ti ${
+        ? `🚚 Tijekom ${deliveryPeriod} ${
               typeof deliveryCount === 'number'
                   ? formatDeliveryCount(deliveryCount)
-                  : 'nekoliko dostava'
+                  : 'bilo je nekoliko dostava'
           }.`
         : null;
 
@@ -61,14 +61,14 @@ export default function DeliverySurveyEmailTemplate({
                     <Section className="text-center">
                         <GrediceLogotype />
                     </Section>
-                    <Header>Kakva je bila dostava?</Header>
+                    <Header>Kakva su bile dostave?</Header>
                     <Paragraph>Pozdrav!</Paragraph>
                     <Paragraph>
-                        Nadamo se da te je povrće iz tvog vrta razveselilo.{' '}
-                        Voljeli bismo čuti tvoje dojmove o dostavi kako bismo idući put bili još bolji.
+                        Nadamo se da te povrće iz tvog vrta razveselilo.{' '}
+                        Voljeli bismo čuti tvoje dojmove o dostavama kako bismo idući put bili još bolji.
                     </Paragraph>
                     {periodSummary ? (
-                        <Paragraph>{periodSummary} </Paragraph>
+                        <Paragraph>{periodSummary}</Paragraph>
                     ) : null}
                     <Paragraph>
                         ⏱️ Anketa traje manje od minute, a svaki odgovor pomaže našem timu i vrtlarima.
