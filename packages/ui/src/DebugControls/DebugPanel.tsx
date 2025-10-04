@@ -7,18 +7,22 @@ import {
 import { cx } from '@signalco/ui-primitives/cx';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import type { PropsWithChildren } from 'react';
+import type { PointerEvent, PropsWithChildren } from 'react';
 
 interface DebugPanelProps extends PropsWithChildren {
     title: string;
     description?: string;
     className?: string;
+    dragging?: boolean;
+    onDragHandlePointerDown?: (event: PointerEvent<HTMLDivElement>) => void;
 }
 
 export function DebugPanel({
     title,
     description,
     className,
+    dragging = false,
+    onDragHandlePointerDown,
     children,
 }: DebugPanelProps) {
     return (
@@ -28,7 +32,16 @@ export function DebugPanel({
                 className,
             )}
         >
-            <CardHeader className="space-y-1">
+            <CardHeader
+                className={cx(
+                    'space-y-1',
+                    onDragHandlePointerDown
+                        ? 'cursor-grab select-none touch-none active:cursor-grabbing'
+                        : undefined,
+                    dragging ? 'cursor-grabbing' : undefined,
+                )}
+                onPointerDown={onDragHandlePointerDown}
+            >
                 <CardTitle className="text-base font-semibold">
                     {title}
                 </CardTitle>

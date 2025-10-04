@@ -5,7 +5,8 @@ import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Slider } from '@signalco/ui-primitives/Slider';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { useGameState } from '../useGameState';
 
@@ -45,12 +46,254 @@ function formatPercent(value: number) {
     return `${Math.round(clampToRange(value, 0, 1) * 100)}%`;
 }
 
+const PANEL_MARGIN_PX = 16;
+const PANEL_STORAGE_KEY = 'gredice.debugPanel.position';
+
+interface PanelPosition {
+    x: number;
+    y: number;
+}
+
 export function DebugHud() {
     const setWeather = useGameState((s) => s.setWeather);
     const currentTime = useGameState((s) => s.currentTime);
     const setFreezeTime = useGameState((s) => s.setFreezeTime);
 
     const { data: weather } = useWeatherNow();
+
+    const panelWrapperRef = useRef<HTMLDivElement>(null);
+    const panelSizeRef = useRef({ width: 0, height: 0 });
+    const panelDragStateRef = useRef({ pointerId: null as number | null, offsetX: 0, offsetY: 0 });
+    const panelPositionRef = useRef<PanelPosition | null>(null);
+    const hasInitializedPanelPositionRef = useRef(false);
+
+    const [panelPosition, setPanelPosition] = useState<PanelPosition | null>(null);
+    const [isDraggingPanel, setIsDraggingPanel] = useState(false);
+
+    const clampPanelPosition = useCallback(
+        (rawPosition: PanelPosition) => {
+            if (typeof window === 'undefined') {
+                return rawPosition;
+            }
+
+            const { width, height } = panelSizeRef.current;
+            const { innerWidth, innerHeight } = window;
+
+            const maxX = Math.max(PANEL_MARGIN_PX, innerWidth - width - PANEL_MARGIN_PX);
+            const maxY = Math.max(PANEL_MARGIN_PX, innerHeight - height - PANEL_MARGIN_PX);
+
+            return {
+                x: clampToRange(rawPosition.x, PANEL_MARGIN_PX, maxX),
+                y: clampToRange(rawPosition.y, PANEL_MARGIN_PX, maxY),
+            };
+        },
+        [],
+    );
+
+    const setClampedPanelPosition = useCallback(
+        (nextPosition: PanelPosition) => {
+            const clamped = clampPanelPosition(nextPosition);
+            panelPositionRef.current = clamped;
+            setPanelPosition(clamped);
+            return clamped;
+        },
+        [clampPanelPosition],
+    );
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const panelElement = panelWrapperRef.current;
+        if (!panelElement) {
+            return;
+        }
+
+        const readStoredPosition = (): PanelPosition | null => {
+            try {
+                const storedValue = window.localStorage.getItem(PANEL_STORAGE_KEY);
+                if (!storedValue) {
+                    return null;
+                }
+
+                const parsed = JSON.parse(storedValue) as Partial<PanelPosition> | null;
+                if (
+                    parsed &&
+                    typeof parsed.x === 'number' &&
+                    Number.isFinite(parsed.x) &&
+                    typeof parsed.y === 'number' &&
+                    Number.isFinite(parsed.y)
+                ) {
+                    return { x: parsed.x, y: parsed.y };
+                }
+            } catch {
+                // Ignore malformed storage contents.
+            }
+
+            return null;
+        };
+
+        const refreshPanelSize = () => {
+            const rect = panelElement.getBoundingClientRect();
+            panelSizeRef.current = { width: rect.width, height: rect.height };
+        };
+
+        const initializePosition = () => {
+            refreshPanelSize();
+
+            const storedPosition = readStoredPosition();
+            const { innerWidth, innerHeight } = window;
+            const { width, height } = panelSizeRef.current;
+
+            const maxX = Math.max(PANEL_MARGIN_PX, innerWidth - width - PANEL_MARGIN_PX);
+            const maxY = Math.max(PANEL_MARGIN_PX, innerHeight - height - PANEL_MARGIN_PX);
+
+            const storedWithinBounds =
+                storedPosition !== null &&
+                storedPosition.x >= PANEL_MARGIN_PX &&
+                storedPosition.x <= maxX &&
+                storedPosition.y >= PANEL_MARGIN_PX &&
+                storedPosition.y <= maxY;
+
+            const targetPosition = storedWithinBounds
+                ? storedPosition
+                : {
+                      x: innerWidth - width - PANEL_MARGIN_PX,
+                      y: innerHeight - height - PANEL_MARGIN_PX,
+                  };
+
+            setClampedPanelPosition(targetPosition);
+            hasInitializedPanelPositionRef.current = true;
+        };
+
+        if (!hasInitializedPanelPositionRef.current) {
+            initializePosition();
+        } else {
+            refreshPanelSize();
+            if (panelPositionRef.current) {
+                setClampedPanelPosition(panelPositionRef.current);
+            }
+        }
+
+        let resizeObserver: ResizeObserver | undefined;
+        if (typeof ResizeObserver !== 'undefined') {
+            resizeObserver = new ResizeObserver(() => {
+                refreshPanelSize();
+
+                if (!hasInitializedPanelPositionRef.current) {
+                    initializePosition();
+                    return;
+                }
+
+                if (panelPositionRef.current) {
+                    setClampedPanelPosition(panelPositionRef.current);
+                }
+            });
+
+            resizeObserver.observe(panelElement);
+        }
+
+        const handleWindowResize = () => {
+            refreshPanelSize();
+
+            if (!hasInitializedPanelPositionRef.current) {
+                initializePosition();
+                return;
+            }
+
+            if (panelPositionRef.current) {
+                setClampedPanelPosition(panelPositionRef.current);
+            }
+        };
+
+        window.addEventListener('resize', handleWindowResize);
+
+        return () => {
+            resizeObserver?.disconnect();
+            window.removeEventListener('resize', handleWindowResize);
+        };
+    }, [setClampedPanelPosition]);
+
+    const handlePanelPointerMove = useCallback(
+        (event: PointerEvent) => {
+            const dragState = panelDragStateRef.current;
+            if (dragState.pointerId !== event.pointerId) {
+                return;
+            }
+
+            setClampedPanelPosition({
+                x: event.clientX - dragState.offsetX,
+                y: event.clientY - dragState.offsetY,
+            });
+        },
+        [setClampedPanelPosition],
+    );
+
+    const handlePanelPointerUp = useCallback(
+        (event: PointerEvent) => {
+            const dragState = panelDragStateRef.current;
+            if (dragState.pointerId !== event.pointerId) {
+                return;
+            }
+
+            dragState.pointerId = null;
+            dragState.offsetX = 0;
+            dragState.offsetY = 0;
+            setIsDraggingPanel(false);
+
+            window.removeEventListener('pointermove', handlePanelPointerMove);
+            window.removeEventListener('pointerup', handlePanelPointerUp);
+            window.removeEventListener('pointercancel', handlePanelPointerUp);
+        },
+        [handlePanelPointerMove],
+    );
+
+    const handlePanelPointerDown = useCallback(
+        (event: ReactPointerEvent<HTMLDivElement>) => {
+            if (event.button === 2) {
+                return;
+            }
+
+            const currentPosition = panelPositionRef.current;
+            if (!currentPosition) {
+                return;
+            }
+
+            const panelElement = panelWrapperRef.current;
+            if (panelElement) {
+                const rect = panelElement.getBoundingClientRect();
+                panelSizeRef.current = { width: rect.width, height: rect.height };
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (typeof window !== 'undefined') {
+                window.getSelection()?.removeAllRanges?.();
+            }
+
+            const dragState = panelDragStateRef.current;
+            dragState.pointerId = event.pointerId;
+            dragState.offsetX = event.clientX - currentPosition.x;
+            dragState.offsetY = event.clientY - currentPosition.y;
+
+            setIsDraggingPanel(true);
+
+            window.addEventListener('pointermove', handlePanelPointerMove);
+            window.addEventListener('pointerup', handlePanelPointerUp);
+            window.addEventListener('pointercancel', handlePanelPointerUp);
+        },
+        [handlePanelPointerMove, handlePanelPointerUp],
+    );
+
+    useEffect(() => {
+        return () => {
+            window.removeEventListener('pointermove', handlePanelPointerMove);
+            window.removeEventListener('pointerup', handlePanelPointerUp);
+            window.removeEventListener('pointercancel', handlePanelPointerUp);
+        };
+    }, [handlePanelPointerMove, handlePanelPointerUp]);
 
     const [timeOfDay, setTimeOfDay] = useState(() => getTimeOfDayFromDate(currentTime));
     const [overrideWeather, setOverrideWeather] = useState(false);
@@ -110,13 +353,41 @@ export function DebugHud() {
 
     const weatherControlsDisabled = !overrideWeather;
 
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        if (!panelPosition || isDraggingPanel) {
+            return;
+        }
+
+        try {
+            window.localStorage.setItem(
+                PANEL_STORAGE_KEY,
+                JSON.stringify(panelPosition),
+            );
+        } catch {
+            // Ignore storage write failures.
+        }
+    }, [panelPosition, isDraggingPanel]);
+
+    const panelContainerStyle: CSSProperties = panelPosition
+        ? { top: `${panelPosition.y}px`, left: `${panelPosition.x}px` }
+        : { bottom: `${PANEL_MARGIN_PX}px`, right: `${PANEL_MARGIN_PX}px` };
+
     return (
-        <div className="pointer-events-none fixed top-4 right-4 z-50 flex max-w-full justify-end px-2">
-            <DebugPanel
-                title="Environment"
-                description="Tune lighting and weather parameters for debugging."
-                className="pointer-events-auto"
-            >
+        <div
+            className="pointer-events-none fixed z-50"
+            style={panelContainerStyle}
+        >
+            <div ref={panelWrapperRef} className="pointer-events-auto">
+                <DebugPanel
+                    title="Environment"
+                    description="Tune lighting and weather parameters for debugging."
+                    dragging={isDraggingPanel}
+                    onDragHandlePointerDown={handlePanelPointerDown}
+                >
                 <Stack spacing={2}>
                     <DebugPanelSection
                         title="Time of day"
