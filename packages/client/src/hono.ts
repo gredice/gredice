@@ -1,6 +1,6 @@
 import type { AppType } from 'api/routes';
 import { hc, type InferResponseType } from 'hono/client';
-import { getAppUrl, getAuthHeaders } from './shared';
+import { createDevSafeFetch, getAppUrl, getAuthHeaders } from './shared';
 
 function clientAuth() {
     const authorization = getAuthHeaders();
@@ -18,6 +18,7 @@ function clientAuth() {
 export const client = () =>
     hc<AppType>(getAppUrl(), {
         ...clientAuth(),
+        fetch: createDevSafeFetch(),
     });
 
 export type GardenResponse = InferResponseType<

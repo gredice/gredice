@@ -174,9 +174,6 @@ export function PlantPageHeader({
                     />
                 </Stack>
                 <Stack spacing={1} className="group">
-                    <Typography level="h5" component="h2">
-                        Svojstva
-                    </Typography>
                     <PlantAttributeCards attributes={plant.attributes} />
                     <FeedbackModal
                         topic={
