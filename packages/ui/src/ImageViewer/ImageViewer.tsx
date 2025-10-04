@@ -196,14 +196,15 @@ export function ImageViewer({
                 type="button"
                 title="Otvori u punoj veličini"
                 className="group relative flex items-center justify-center overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
+                style={{ width: previewWidth, height: previewHeight }}
                 onClick={() => setIsExpanded(true)}
             >
                 <Image
                     src={src}
                     alt={alt}
-                    width={previewWidth}
-                    height={previewHeight}
-                    className="h-full w-full max-h-full max-w-full object-contain rounded-lg shadow-sm shrink-0"
+                    fill
+                    sizes={`${previewWidth}px`}
+                    className="h-full w-full object-contain"
                 />
                 <div className="absolute inset-0 bg-white/30 opacity-0 group-hover:opacity-50 transition-opacity"></div>
                 <Search className="size-4 shrink-0 absolute bottom-1 right-1" />
@@ -218,7 +219,7 @@ export function ImageViewer({
                 dismissible={false}
                 className="p-0 m-0 max-w-none max-h-none w-[100dvw] h-[100dvh] border-0"
             >
-                <div className="relative w-full h-full flex items-center justify-center">
+                <div className="relative flex h-full w-full items-center justify-center">
                     {/* Controls */}
                     <div className="absolute top-4 right-4 flex gap-2 z-10">
                         <IconButton
@@ -266,38 +267,40 @@ export function ImageViewer({
                     </div>
 
                     {/* Image Container */}
-                    <div
-                        ref={imageRef}
-                        role="option"
-                        tabIndex={0}
-                        className="relative max-w-full max-h-full overflow-hidden cursor-grab active:cursor-grabbing touch-none"
-                        onMouseDown={handleMouseDown}
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
-                        onClick={handleClick}
-                        onKeyDown={handleKeyDown}
-                        onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
-                        onWheel={handleWheel}
-                        style={{ touchAction: 'none' }}
-                    >
+                    <div className="flex h-full w-full items-center justify-center px-6 pb-20 pt-16">
                         <div
-                            className="transition-transform duration-200 ease-out select-none pointer-events-none"
-                            style={{
-                                transform: `scale(${zoomLevel}) translate(${position.x / zoomLevel}px, ${position.y / zoomLevel}px)`,
-                                transformOrigin: 'center center',
-                            }}
+                            ref={imageRef}
+                            role="option"
+                            tabIndex={0}
+                            className="relative h-full w-full max-h-full max-w-full overflow-hidden rounded-lg cursor-grab active:cursor-grabbing touch-none"
+                            onMouseDown={handleMouseDown}
+                            onMouseMove={handleMouseMove}
+                            onMouseUp={handleMouseUp}
+                            onMouseLeave={handleMouseUp}
+                            onClick={handleClick}
+                            onKeyDown={handleKeyDown}
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                            onWheel={handleWheel}
+                            style={{ touchAction: 'none' }}
                         >
-                            <Image
-                                src={src}
-                                alt={alt}
-                                width={800}
-                                height={600}
-                                className="max-h-full max-w-full object-contain select-none pointer-events-none"
-                                draggable={false}
-                            />
+                            <div
+                                className="relative h-full w-full select-none transition-transform duration-200 ease-out"
+                                style={{
+                                    transform: `scale(${zoomLevel}) translate(${position.x / zoomLevel}px, ${position.y / zoomLevel}px)`,
+                                    transformOrigin: 'center center',
+                                }}
+                            >
+                                <Image
+                                    src={src}
+                                    alt={alt}
+                                    fill
+                                    sizes="100vw"
+                                    className="object-contain select-none"
+                                    draggable={false}
+                                />
+                            </div>
                         </div>
                     </div>
 
