@@ -195,7 +195,7 @@ export function ImageViewer({
             <button
                 type="button"
                 title="Otvori u punoj veličini"
-                className="group relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
+                className="group relative flex items-center justify-center overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
                 onClick={() => setIsExpanded(true)}
             >
                 <Image
@@ -203,7 +203,7 @@ export function ImageViewer({
                     alt={alt}
                     width={previewWidth}
                     height={previewHeight}
-                    className="object-cover rounded-lg shadow-sm shrink-0"
+                    className="h-full w-full max-h-full max-w-full object-contain rounded-lg shadow-sm shrink-0"
                 />
                 <div className="absolute inset-0 bg-white/30 opacity-0 group-hover:opacity-50 transition-opacity"></div>
                 <Search className="size-4 shrink-0 absolute bottom-1 right-1" />
@@ -295,7 +295,7 @@ export function ImageViewer({
                                 alt={alt}
                                 width={800}
                                 height={600}
-                                className="max-w-[90vw] max-h-[90vh] object-contain select-none pointer-events-none"
+                                className="max-h-full max-w-full object-contain select-none pointer-events-none"
                                 draggable={false}
                             />
                         </div>
@@ -307,11 +307,11 @@ export function ImageViewer({
                     </Chip>
 
                     {/* Instructions */}
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/70 text-sm text-center">
-                        <p className="hidden sm:block">
+                    <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 transform justify-center text-sm text-center">
+                        <p className="hidden rounded-full bg-black/60 px-4 py-1 text-white/80 backdrop-blur-sm sm:block">
                             Koristi kotač za zoom • Povuci za pomicanje slike
                         </p>
-                        <p className="sm:hidden">
+                        <p className="rounded-full bg-black/60 px-4 py-1 text-white/80 backdrop-blur-sm sm:hidden">
                             Dodirni i drži za pomicanje • Uštipni za zoom
                         </p>
                     </div>
