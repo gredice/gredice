@@ -93,15 +93,16 @@ export async function bulkGenerateSlotsAction(
         if (
             !locationId ||
             !type ||
-            isNaN(startDate.getTime()) ||
-            isNaN(endDate.getTime()) ||
+            Number.isNaN(startDate.getTime()) ||
+            Number.isNaN(endDate.getTime()) ||
             !startTime ||
             !endTime ||
             daysOfWeek.length === 0
         ) {
             return {
                 success: false,
-                message: 'Molimo popunite sva obavezna polja ili unesite ispravne datume',
+                message:
+                    'Molimo popunite sva obavezna polja ili unesite ispravne datume',
             };
         }
 
@@ -123,7 +124,7 @@ export async function bulkGenerateSlotsAction(
 
         for (
             let minutes = startTotalMinutes;
-            minutes < endTotalMinutes;
+            minutes + slotDurationMinutes <= endTotalMinutes;
             minutes += slotDurationMinutes
         ) {
             const hours = Math.floor(minutes / 60);

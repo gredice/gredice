@@ -86,7 +86,7 @@ export function BulkGenerateForm({ locations }: BulkGenerateFormProps) {
             return;
         }
 
-        formAction(formData);
+        return formAction(formData);
     };
 
     return (
