@@ -1,12 +1,13 @@
 import { isAbsoluteUrl } from '@signalco/js';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
-import { Delete, Euro, Navigate, Timer } from '@signalco/ui-icons';
+import { Delete, Euro, Hammer, Navigate, Timer } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
+import type { CSSProperties } from 'react';
 import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
@@ -56,21 +57,36 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     // Hide delete button for paid items
     const isProcessed = item.status === 'paid';
 
-    const imageOrFallback =
-        item.shopData.image ?? '/assets/plants/placeholder.png';
+    const hasShopImage = Boolean(item.shopData.image);
+    const shouldShowOperationFallback =
+        item.entityTypeName === 'operation' && !hasShopImage;
+    const imageOrFallback = hasShopImage
+        ? item.shopData.image
+        : '/assets/plants/placeholder.png';
     const shopImageUrl = isAbsoluteUrl(imageOrFallback)
         ? imageOrFallback
         : `https://www.gredice.com${imageOrFallback}`;
 
     return (
         <Row spacing={2} alignItems="start">
-            <Image
-                className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0"
-                width={56}
-                height={56}
-                alt={item.shopData.name ?? 'Nepoznato'}
-                src={shopImageUrl}
-            />
+            {shouldShowOperationFallback ? (
+                <div className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0 flex items-center justify-center">
+                    <Hammer
+                        style={{
+                            '--imageSize': '32px',
+                        } as CSSProperties}
+                        className="size-[--imageSize] shrink-0"
+                    />
+                </div>
+            ) : (
+                <Image
+                    className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0"
+                    width={56}
+                    height={56}
+                    alt={item.shopData.name ?? 'Nepoznato'}
+                    src={shopImageUrl}
+                />
+            )}
             <Stack className="grow">
                 <div className="grid grid-cols-[1fr_auto] items-center gap-2">
                     <Typography level="body1" noWrap>
