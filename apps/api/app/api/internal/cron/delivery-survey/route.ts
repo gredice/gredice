@@ -8,7 +8,7 @@ import type { NextRequest } from 'next/server';
 import { sendDeliverySurvey } from '../../../../../lib/email/transactional';
 
 const SURVEY_URL = 'https://form.typeform.com/to/X727vyBk';
-const LOOKBACK_DAYS = 7;
+const LOOKBACK_DAYS = 45;
 
 export const dynamic = 'force-dynamic';
 
@@ -18,24 +18,30 @@ function getLookbackDate(days: number) {
     return date;
 }
 
-function formatDate(date: Date) {
+function formatMonth(date: Date) {
     return new Intl.DateTimeFormat('hr-HR', {
-        dateStyle: 'long',
+        month: 'long',
+        year: 'numeric',
     }).format(date);
 }
 
-function getDateKey(date: Date) {
-    // Use local date components to avoid timezone issues
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+function formatDeliveryCount(count: number) {
+    if (count === 1) {
+        return '1 dostava';
+    }
+
+    if (count >= 2 && count <= 4) {
+        return `${count} dostave`;
+    }
+
+    return `${count} dostava`;
 }
 
 interface DeliverySurveyGroup {
     accountId: string;
     fulfilledAt: Date;
     candidates: Map<string, DeliverySurveyCandidate>;
+    monthKey: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -55,9 +61,14 @@ export async function GET(request: NextRequest) {
     const groups = new Map<string, DeliverySurveyGroup>();
     const orderedGroups: DeliverySurveyGroup[] = [];
 
+    const sentMonthGroups = new Set<string>();
+
     for (const candidate of candidates) {
-        const dateKey = getDateKey(candidate.fulfilledAt);
-        const groupKey = `${candidate.accountId}:${dateKey}`;
+        if (candidate.monthAlreadySent) {
+            sentMonthGroups.add(`${candidate.accountId}:${candidate.monthKey}`);
+        }
+
+        const groupKey = `${candidate.accountId}:${candidate.monthKey}`;
 
         let group = groups.get(groupKey);
         if (!group) {
@@ -65,6 +76,7 @@ export async function GET(request: NextRequest) {
                 accountId: candidate.accountId,
                 fulfilledAt: candidate.fulfilledAt,
                 candidates: new Map<string, DeliverySurveyCandidate>(),
+                monthKey: candidate.monthKey,
             };
             groups.set(groupKey, group);
             orderedGroups.push(group);
@@ -88,8 +100,19 @@ export async function GET(request: NextRequest) {
             continue;
         }
 
-        const formattedDate = formatDate(group.fulfilledAt);
+        const formattedMonth = formatMonth(group.fulfilledAt);
         const requestIds = candidatesInGroup.map((item) => item.requestId);
+        const deliveryCountText = formatDeliveryCount(requestIds.length);
+
+        const monthGroupKey = `${group.accountId}:${group.monthKey}`;
+
+        if (sentMonthGroups.has(monthGroupKey)) {
+            for (const candidate of candidatesInGroup) {
+                await markDeliverySurveySent(candidate.requestId, []);
+            }
+            sentMonthGroups.add(monthGroupKey);
+            continue;
+        }
 
         const uniqueEmails = new Map<string, string>();
 
@@ -116,7 +139,8 @@ export async function GET(request: NextRequest) {
                 await sendDeliverySurvey(email, {
                     email,
                     surveyUrl: SURVEY_URL,
-                    deliveryDate: formattedDate,
+                    deliveryPeriod: formattedMonth,
+                    deliveryCount: requestIds.length,
                 });
                 sentEmails.push(normalizedEmail);
                 emailsSent += 1;
@@ -134,8 +158,8 @@ export async function GET(request: NextRequest) {
         try {
             await createNotification({
                 accountId: group.accountId,
-                header: '📣 Kako ti se svidjela dostava?',
-                content: `Tvoja dostava je stigla ${formattedDate}. Podijeli svoje dojmove i ispuni kratku anketu 📋⭐️⭐️⭐️⭐️⭐️`,
+                header: `📣 Kako ti se svidjele dostave u ${formattedMonth}?`,
+                content: `U ${formattedMonth} smo imali ${deliveryCountText}. Podijeli svoje dojmove i ispuni kratku anketu 📋⭐️⭐️⭐️⭐️⭐️`,
                 linkUrl: SURVEY_URL,
                 timestamp: new Date(),
             });
@@ -156,6 +180,7 @@ export async function GET(request: NextRequest) {
                     sentEmailsList,
                 );
             }
+            sentMonthGroups.add(monthGroupKey);
         }
     }
 

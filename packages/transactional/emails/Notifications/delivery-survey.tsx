@@ -16,7 +16,8 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 export interface DeliverySurveyEmailTemplateProps {
     email: string;
     surveyUrl: string;
-    deliveryDate?: string;
+    deliveryPeriod?: string;
+    deliveryCount?: number;
     appName?: string;
     appDomain?: string;
 }
@@ -24,11 +25,32 @@ export interface DeliverySurveyEmailTemplateProps {
 export default function DeliverySurveyEmailTemplate({
     email = 'login@example.com',
     surveyUrl = 'https://form.typeform.com/to/X727vyBk',
-    deliveryDate,
+    deliveryPeriod,
+    deliveryCount,
     appName = 'Gredice',
     appDomain = 'gredice.com',
 }: DeliverySurveyEmailTemplateProps) {
     const previewText = `${appName} - Podijeli dojam o dostavi`;
+
+    const formatDeliveryCount = (count: number) => {
+        if (count === 1) {
+            return '1 dostavu';
+        }
+
+        if (count >= 2 && count <= 4) {
+            return `${count} dostave`;
+        }
+
+        return `${count} dostava`;
+    };
+
+    const periodSummary = deliveryPeriod
+        ? `🚚 Tijekom ${deliveryPeriod} dostavili smo ti ${
+              typeof deliveryCount === 'number'
+                  ? formatDeliveryCount(deliveryCount)
+                  : 'nekoliko dostava'
+          }.`
+        : null;
 
     return (
         <Html>
@@ -42,13 +64,11 @@ export default function DeliverySurveyEmailTemplate({
                     <Header>Kakva je bila dostava?</Header>
                     <Paragraph>Pozdrav!</Paragraph>
                     <Paragraph>
-                        Nadamo se da te povrće iz tvog vrta razveselilo.{' '}
+                        Nadamo se da te je povrće iz tvog vrta razveselilo.{' '}
                         Voljeli bismo čuti tvoje dojmove o dostavi kako bismo idući put bili još bolji.
                     </Paragraph>
-                    {deliveryDate ? (
-                        <Paragraph>
-                            🚚 Dostava je bila {deliveryDate}.{' '}
-                        </Paragraph>
+                    {periodSummary ? (
+                        <Paragraph>{periodSummary} </Paragraph>
                     ) : null}
                     <Paragraph>
                         ⏱️ Anketa traje manje od minute, a svaki odgovor pomaže našem timu i vrtlarima.

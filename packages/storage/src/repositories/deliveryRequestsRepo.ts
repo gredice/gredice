@@ -564,6 +564,8 @@ export interface DeliverySurveyCandidate {
     operationId: number;
     fulfilledAt: Date;
     userEmails: { userId: string; email: string }[];
+    monthKey: string;
+    monthAlreadySent: boolean;
 }
 
 export async function getDeliverySurveyCandidates({
@@ -585,6 +587,10 @@ export async function getDeliverySurveyCandidates({
 
     const requestIds = fulfilledEvents.map((event) => event.aggregateId);
 
+    const fulfilledEventMap = new Map(
+        fulfilledEvents.map((event) => [event.aggregateId, event] as const),
+    );
+
     const surveySentEvents = await storage().query.events.findMany({
         where: and(
             eq(events.type, knownEventTypes.delivery.requestSurveySent),
@@ -604,14 +610,38 @@ export async function getDeliverySurveyCandidates({
         return [];
     }
 
-    const pendingRequestIds = pendingEvents.map((event) => event.aggregateId);
-
     const requests = await storage().query.deliveryRequests.findMany({
-        where: inArray(deliveryRequests.id, pendingRequestIds),
+        where: inArray(deliveryRequests.id, requestIds),
         with: {
             operation: true,
         },
     });
+
+    const requestsById = new Map(
+        requests.map((request) => [request.id, request] as const),
+    );
+
+    const getMonthKey = (date: Date) => {
+        const monthDate = new Date(date);
+        const year = monthDate.getFullYear();
+        const month = String(monthDate.getMonth() + 1).padStart(2, '0');
+        return `${year}-${month}`;
+    };
+
+    const sentMonthKeys = new Set<string>();
+
+    for (const event of surveySentEvents) {
+        const request = requestsById.get(event.aggregateId);
+        const fulfilledEvent = fulfilledEventMap.get(event.aggregateId);
+
+        const accountId = request?.operation?.accountId;
+        if (!accountId || !fulfilledEvent) {
+            continue;
+        }
+
+        const monthKey = getMonthKey(fulfilledEvent.createdAt);
+        sentMonthKeys.add(`${accountId}:${monthKey}`);
+    }
 
     const accountIds = Array.from(
         new Set(
@@ -635,9 +665,7 @@ export async function getDeliverySurveyCandidates({
 
     return pendingEvents
         .map((event) => {
-            const request = requests.find(
-                (item) => item.id === event.aggregateId,
-            );
+            const request = requestsById.get(event.aggregateId);
 
             const accountId = request?.operation?.accountId;
             const operationId = request?.operationId;
@@ -645,6 +673,11 @@ export async function getDeliverySurveyCandidates({
             if (!accountId || !operationId) {
                 return null;
             }
+
+            const monthKey = getMonthKey(event.createdAt);
+            const monthAlreadySent = sentMonthKeys.has(
+                `${accountId}:${monthKey}`,
+            );
 
             const userEmails = accountUserRows
                 .filter((row) => row.accountId === accountId)
@@ -660,6 +693,8 @@ export async function getDeliverySurveyCandidates({
                 operationId,
                 fulfilledAt: event.createdAt,
                 userEmails,
+                monthKey,
+                monthAlreadySent,
             } satisfies DeliverySurveyCandidate;
         })
         .filter(
