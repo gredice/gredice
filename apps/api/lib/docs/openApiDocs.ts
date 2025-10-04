@@ -1,12 +1,21 @@
-import { ExtendedAttributeDefinition, getAttributeDefinitions, getEntityTypes } from "@gredice/storage";
-import { OpenAPIV3_1 } from "openapi-types";
 import { unwrapSchema } from '@gredice/js/jsonSchema';
+import {
+    type ExtendedAttributeDefinition,
+    getAttributeDefinitions,
+    getEntityTypes,
+} from '@gredice/storage';
+import type { OpenAPIV3_1 } from 'openapi-types';
 
 function resolveJsonPropertyData(schema: string) {
     const unwrapped = unwrapSchema(schema);
 
-    function unwrapToOpenApiProperties(schemaObj: Record<string, string | Record<string, any>>): OpenAPIV3_1.SchemaObject {
-        const properties: Record<string, OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject> = {};
+    function unwrapToOpenApiProperties(
+        schemaObj: Record<string, string | Record<string, any>>,
+    ): OpenAPIV3_1.SchemaObject {
+        const properties: Record<
+            string,
+            OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject
+        > = {};
 
         for (const [key, value] of Object.entries(schemaObj)) {
             if (typeof value === 'string') {
@@ -32,52 +41,61 @@ function resolveJsonPropertyData(schema: string) {
                 const nestedSchema = unwrapToOpenApiProperties(value);
                 properties[key] = {
                     type: 'object',
-                    properties: nestedSchema.properties
+                    properties: nestedSchema.properties,
                 } as OpenAPIV3_1.SchemaObject;
             }
         }
 
         return {
             type: 'object',
-            properties: properties as Record<string, OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject>
+            properties: properties as Record<
+                string,
+                OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject
+            >,
         };
     }
 
     return unwrapToOpenApiProperties(unwrapped);
 }
 
-function resolvePropertyDataType(attributeDefinition: ExtendedAttributeDefinition) {
+function resolvePropertyDataType(
+    attributeDefinition: ExtendedAttributeDefinition,
+) {
     switch (attributeDefinition.dataType) {
         case 'number':
             return {
                 type: 'number',
-                description: attributeDefinition.description || undefined
+                description: attributeDefinition.description || undefined,
             } satisfies OpenAPIV3_1.SchemaObject;
         case 'boolean':
             return {
                 type: 'boolean',
-                description: attributeDefinition.description || undefined
+                description: attributeDefinition.description || undefined,
             } satisfies OpenAPIV3_1.SchemaObject;
         case 'image':
             return {
                 $ref: '#/components/schemas/image',
-                description: attributeDefinition.description || undefined
+                description: attributeDefinition.description || undefined,
             } satisfies OpenAPIV3_1.ReferenceObject;
         default:
             return {
                 type: 'string',
-                description: attributeDefinition.description || undefined
+                description: attributeDefinition.description || undefined,
             } satisfies OpenAPIV3_1.SchemaObject;
     }
 }
 
-async function resolvePropertyData(attributeDefinition: ExtendedAttributeDefinition) {
+async function resolvePropertyData(
+    attributeDefinition: ExtendedAttributeDefinition,
+) {
     if (attributeDefinition.dataType.startsWith('json|')) {
-        const propertyData = resolveJsonPropertyData(attributeDefinition.dataType.substring(5));
+        const propertyData = resolveJsonPropertyData(
+            attributeDefinition.dataType.substring(5),
+        );
         if (attributeDefinition.multiple) {
             return {
                 type: 'array',
-                items: propertyData
+                items: propertyData,
             } satisfies OpenAPIV3_1.SchemaObject;
         } else {
             return propertyData;
@@ -94,23 +112,27 @@ async function resolvePropertyData(attributeDefinition: ExtendedAttributeDefinit
                     type: 'object',
                     properties: {
                         id: {
-                            type: 'number'
+                            type: 'number',
                         },
-                        ...await populateAttributeDefinitionsProperties(refAttributeDefinitions)
+                        ...(await populateAttributeDefinitionsProperties(
+                            refAttributeDefinitions,
+                        )),
                     },
-                    description: attributeDefinition.description || undefined
-                }
+                    description: attributeDefinition.description || undefined,
+                },
             } satisfies OpenAPIV3_1.SchemaObject;
         }
         return {
             type: 'object',
             properties: {
                 id: {
-                    type: 'number'
+                    type: 'number',
                 },
-                ...await populateAttributeDefinitionsProperties(refAttributeDefinitions)
+                ...(await populateAttributeDefinitionsProperties(
+                    refAttributeDefinitions,
+                )),
             },
-            description: attributeDefinition.description || undefined
+            description: attributeDefinition.description || undefined,
         } satisfies OpenAPIV3_1.SchemaObject;
     }
 
@@ -118,13 +140,15 @@ async function resolvePropertyData(attributeDefinition: ExtendedAttributeDefinit
     if (attributeDefinition.multiple) {
         return {
             type: 'array',
-            items: propertyData
+            items: propertyData,
         } satisfies OpenAPIV3_1.SchemaObject;
     }
     return propertyData;
 }
 
-async function populateAttributeDefinitionsProperties(attributeDefinitions: ExtendedAttributeDefinition[]) {
+async function populateAttributeDefinitionsProperties(
+    attributeDefinitions: ExtendedAttributeDefinition[],
+) {
     const properties: OpenAPIV3_1.SchemaObject['properties'] = {};
     for (const attributeDefinition of attributeDefinitions) {
         const categoryObject = properties[attributeDefinition.category];
@@ -133,16 +157,18 @@ async function populateAttributeDefinitionsProperties(attributeDefinitions: Exte
             properties[attributeDefinition.category] = {
                 type: 'object',
                 properties: {
-                    [attributeDefinition.name]: propertyData
+                    [attributeDefinition.name]: propertyData,
                 },
-                required: attributeDefinition.required ? [attributeDefinition.name] : undefined
+                required: attributeDefinition.required
+                    ? [attributeDefinition.name]
+                    : undefined,
             };
         } else {
             const category = categoryObject as OpenAPIV3_1.SchemaObject;
             if (propertyData) {
                 category.properties = {
                     ...category.properties,
-                    [attributeDefinition.name]: propertyData
+                    [attributeDefinition.name]: propertyData,
                 };
                 // Add required attribute
                 if (attributeDefinition.required) {
@@ -157,38 +183,41 @@ async function populateAttributeDefinitionsProperties(attributeDefinitions: Exte
     return properties;
 }
 
-async function openApiEntitiesDoc(entityType: Awaited<ReturnType<typeof getEntityTypes>>[0]): Promise<Required<Pick<OpenAPIV3_1.Document, 'paths' | 'components'>>> {
+async function openApiEntitiesDoc(
+    entityType: Awaited<ReturnType<typeof getEntityTypes>>[0],
+): Promise<Required<Pick<OpenAPIV3_1.Document, 'paths' | 'components'>>> {
     let properties: OpenAPIV3_1.SchemaObject['properties'] = {
         id: {
-            type: 'number'
+            type: 'number',
         },
         entityType: {
             type: 'object',
             properties: {
                 id: {
                     type: 'number',
-                    default: entityType.id
+                    default: entityType.id,
                 },
                 name: {
                     type: 'string',
-                    default: entityType.name
+                    default: entityType.name,
                 },
                 label: {
                     type: 'string',
-                    default: entityType.label
-                }
+                    default: entityType.label,
+                },
             },
-            required: ['id', 'name', 'label']
-        }
+            required: ['id', 'name', 'label'],
+        },
     };
 
     const attributeDefinitions = await getAttributeDefinitions(entityType.name);
-    const attributeProperties = await populateAttributeDefinitionsProperties(attributeDefinitions);
+    const attributeProperties =
+        await populateAttributeDefinitionsProperties(attributeDefinitions);
 
     // Merge attribute properties into the main properties object
     properties = {
         ...properties,
-        ...attributeProperties
+        ...attributeProperties,
     };
 
     // Append other properties
@@ -196,12 +225,12 @@ async function openApiEntitiesDoc(entityType: Awaited<ReturnType<typeof getEntit
         ...properties,
         createdAt: {
             type: 'string',
-            format: 'date-time'
+            format: 'date-time',
         },
         updatedAt: {
             type: 'string',
-            format: 'date-time'
-        }
+            format: 'date-time',
+        },
     };
 
     return {
@@ -218,31 +247,43 @@ async function openApiEntitiesDoc(entityType: Awaited<ReturnType<typeof getEntit
                                     schema: {
                                         type: 'array',
                                         items: {
-                                            $ref: `#/components/schemas/entity-${entityType.name}`
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+                                            $ref: `#/components/schemas/entity-${entityType.name}`,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         },
         components: {
             schemas: {
                 [`entity-${entityType.name}`]: {
                     type: 'object',
                     properties,
-                    required: ['id', 'entityType', 'createdAt', 'updatedAt', ...attributeDefinitions.map(attribute => `${attribute.category}`)]
-                }
-            }
-        }
-    }
+                    required: [
+                        'id',
+                        'entityType',
+                        'createdAt',
+                        'updatedAt',
+                        ...attributeDefinitions.map(
+                            (attribute) => `${attribute.category}`,
+                        ),
+                    ],
+                },
+            },
+        },
+    };
 }
 
-export type OpenApiDocsConfig = Partial<Omit<OpenAPIV3_1.Document, 'openapi' | 'paths' | 'components'>>;
+export type OpenApiDocsConfig = Partial<
+    Omit<OpenAPIV3_1.Document, 'openapi' | 'paths' | 'components'>
+>;
 
-export async function openApiDocs(config?: OpenApiDocsConfig): Promise<OpenAPIV3_1.Document> {
+export async function openApiDocs(
+    config?: OpenApiDocsConfig,
+): Promise<OpenAPIV3_1.Document> {
     const baseDoc: OpenAPIV3_1.Document = {
         openapi: '3.1.0',
         info: {
@@ -253,26 +294,26 @@ export async function openApiDocs(config?: OpenApiDocsConfig): Promise<OpenAPIV3
                 name: 'Gredice',
                 url: 'http://gredice.com',
                 email: 'kontakt@gredice.com',
-                ...config?.info?.contact
+                ...config?.info?.contact,
             },
             termsOfService: 'https://www.gredice.com/legalno/uvjeti-koristenja',
             license: {
                 name: 'AGPL-3.0',
                 url: 'https://www.gredice.com/legalno/licenca',
                 identifier: 'AGPL-3.0',
-                ...config?.info?.license
+                ...config?.info?.license,
             },
-            ...config?.info
+            ...config?.info,
         },
         servers: config?.servers ?? [
             {
                 url: 'https://api.gredice.com/api/directories',
-                description: 'Production API'
+                description: 'Production API',
             },
             {
                 url: 'https://api.gredice.test/api/directories',
-                description: 'Local API'
-            }
+                description: 'Local API',
+            },
         ],
         security: [],
         paths: {},
@@ -283,23 +324,28 @@ export async function openApiDocs(config?: OpenApiDocsConfig): Promise<OpenAPIV3
                     properties: {
                         url: {
                             type: 'string',
-                            format: 'uri'
-                        }
+                            format: 'uri',
+                        },
                     },
                     required: ['url'],
-                }
-            }
-        }
-    }
+                },
+            },
+        },
+    };
 
     const entityTypes = await getEntityTypes();
-    const typeDocs = await Promise.all(entityTypes.map(entityType => openApiEntitiesDoc(entityType)))
+    const typeDocs = await Promise.all(
+        entityTypes.map((entityType) => openApiEntitiesDoc(entityType)),
+    );
     for (const typeDoc of typeDocs) {
         if (baseDoc.paths) {
             Object.assign(baseDoc.paths, typeDoc.paths);
         }
         if (baseDoc.components?.schemas) {
-            Object.assign(baseDoc.components.schemas, typeDoc.components.schemas);
+            Object.assign(
+                baseDoc.components.schemas,
+                typeDoc.components.schemas,
+            );
         }
     }
 

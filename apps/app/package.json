@@ -36,7 +36,6 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.2.5",
-        "@gredice/apidocs": "workspace:*",
         "@gredice/email": "workspace:*",
         "@gredice/fiscalization": "workspace:*",
         "@gredice/js": "workspace:*",

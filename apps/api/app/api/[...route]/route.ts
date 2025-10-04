@@ -1,8 +1,8 @@
-import { openApiDocs } from '@gredice/apidocs/openApiDocs';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { handle } from 'hono/vercel';
 import { openAPIRouteHandler } from 'hono-openapi';
+import { openApiDocs } from '../../../lib/docs/openApiDocs';
 import accountsRoutes from './accountsRoutes';
 import authRoutes from './authRoutes';
 import checkoutRoutes from './checkoutRoutes';
