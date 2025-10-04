@@ -1,0 +1,43 @@
+{
+    "$schema": "https://turbo.build/schema.json",
+    "extends": ["//"],
+    "tasks": {
+        "build": {
+            "env": [
+                "ACS_CONNECTION_STRING",
+                "BLOB_READ_WRITE_TOKEN",
+                "CDN_R2_ACCESS_KEY_ID",
+                "CDN_R2_BUCKET_NAME",
+                "CDN_R2_ENDPOINT",
+                "CDN_R2_PUBLIC_URL",
+                "CDN_R2_SECRET_ACCESS_KEY",
+                "ENABLE_EXPERIMENTAL_COREPACK",
+                "GREDICE_JWT_SIGN_SECRET",
+                "GREDICE_SILO_KV_REST_API_READ_ONLY_TOKEN",
+                "GREDICE_SILO_KV_REST_API_TOKEN",
+                "GREDICE_SILO_KV_REST_API_URL",
+                "GREDICE_SILO_KV_URL",
+                "GREDICE_SILO_REDIS_URL",
+                "HYPERTUNE_FRAMEWORK",
+                "HYPERTUNE_INCLUDE_INIT_DATA",
+                "HYPERTUNE_OUTPUT_DIRECTORY_PATH",
+                "NEXT_PUBLIC_HYPERTUNE_TOKEN",
+                "PLANTS_SILO_KV_REST_API_READ_ONLY_TOKEN",
+                "PLANTS_SILO_KV_REST_API_TOKEN",
+                "PLANTS_SILO_KV_REST_API_URL",
+                "PLANTS_SILO_KV_URL",
+                "PLANTS_SILO_REDIS_URL",
+                "POSTGRES_DATABASE",
+                "POSTGRES_HOST",
+                "POSTGRES_PASSWORD",
+                "POSTGRES_PRISMA_URL",
+                "POSTGRES_URL",
+                "POSTGRES_URL_NON_POOLING",
+                "POSTGRES_URL_NO_SSL",
+                "POSTGRES_USER",
+                "SIGNALCO_API_KEY",
+                "VERCEL_OIDC_TOKEN"
+            ]
+        }
+    }
+}
