@@ -4,6 +4,7 @@
     "tasks": {
         "build": {
             "env": [
+                "ACS_CONNECTION_STRING",
                 "BLOB_READ_WRITE_TOKEN",
                 "CRON_SECRET",
                 "ENABLE_EXPERIMENTAL_COREPACK",

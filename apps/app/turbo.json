@@ -4,6 +4,7 @@
     "tasks": {
         "build": {
             "env": [
+                "ACS_CONNECTION_STRING",
                 "BLOB_READ_WRITE_TOKEN",
                 "CDN_R2_ACCESS_KEY_ID",
                 "CDN_R2_BUCKET_NAME",
