@@ -69,6 +69,11 @@ export function OperationsDurationCard({
         ...data.daily.map((day) => day.totalMinutes),
     );
     const hasData = maxMinutes > 0;
+    const maxVisibleLabels = 10;
+    const labelStep = Math.max(
+        1,
+        Math.ceil(data.daily.length / maxVisibleLabels),
+    );
 
     return (
         <Card>
@@ -114,8 +119,8 @@ export function OperationsDurationCard({
                             Nema podataka za odabrani period.
                         </Typography>
                     ) : (
-                        <div className="flex items-end gap-2 h-48">
-                            {data.daily.map((day) => {
+                        <div className="flex h-48 w-full items-end gap-2">
+                            {data.daily.map((day, index) => {
                                 const normalizedHeight = maxMinutes
                                     ? (day.totalMinutes / maxMinutes) * 100
                                     : 0;
@@ -126,17 +131,20 @@ export function OperationsDurationCard({
                                 const barHasSegments =
                                     day.operationsMinutes > 0 ||
                                     day.sowingMinutes > 0;
+                                const shouldShowLabel =
+                                    index % labelStep === 0 ||
+                                    index === data.daily.length - 1;
 
                                 return (
                                     <div
                                         key={day.date}
-                                        className="flex-1 flex flex-col items-center gap-1 h-full"
+                                        className="flex h-full min-w-0 flex-1 flex-col items-center gap-1"
                                     >
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                <div className="flex-1 flex items-end w-full">
+                                                <div className="flex w-full flex-1 items-end">
                                                     <div
-                                                        className="w-full rounded-t overflow-hidden flex flex-col justify-end bg-primary/10"
+                                                        className="flex w-full min-w-0 flex-col justify-end overflow-hidden rounded-t bg-primary/10"
                                                         style={{
                                                             height: `${heightPercent}%`,
                                                         }}
@@ -204,44 +212,46 @@ export function OperationsDurationCard({
                                                 </Stack>
                                             </TooltipContent>
                                         </Tooltip>
-                                        <Stack
-                                            spacing={0}
-                                            className="items-center"
-                                        >
-                                            <Typography
-                                                level="body3"
-                                                className="text-xs"
+                                        {shouldShowLabel ? (
+                                            <Stack
+                                                spacing={0}
+                                                className="min-w-0 items-center text-center"
                                             >
-                                                {formatDateLabel(day.date)}
-                                            </Typography>
-                                            <Typography
-                                                level="body3"
-                                                className="text-xs text-muted-foreground"
-                                            >
-                                                Ukupno{' '}
-                                                {formatTooltipDuration(
-                                                    day.totalMinutes,
-                                                )}
-                                            </Typography>
-                                            <Typography
-                                                level="body3"
-                                                className="text-[10px] text-muted-foreground"
-                                            >
-                                                Radnje{' '}
-                                                {formatTooltipDuration(
-                                                    day.operationsMinutes,
-                                                )}
-                                            </Typography>
-                                            <Typography
-                                                level="body3"
-                                                className="text-[10px] text-muted-foreground"
-                                            >
-                                                Sijanje{' '}
-                                                {formatTooltipDuration(
-                                                    day.sowingMinutes,
-                                                )}
-                                            </Typography>
-                                        </Stack>
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-xs leading-tight"
+                                                >
+                                                    {formatDateLabel(day.date)}
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-xs leading-tight text-muted-foreground"
+                                                >
+                                                    Ukupno{' '}
+                                                    {formatTooltipDuration(
+                                                        day.totalMinutes,
+                                                    )}
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-[10px] leading-tight text-muted-foreground"
+                                                >
+                                                    Radnje{' '}
+                                                    {formatTooltipDuration(
+                                                        day.operationsMinutes,
+                                                    )}
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-[10px] leading-tight text-muted-foreground"
+                                                >
+                                                    Sijanje{' '}
+                                                    {formatTooltipDuration(
+                                                        day.sowingMinutes,
+                                                    )}
+                                                </Typography>
+                                            </Stack>
+                                        ) : null}
                                     </div>
                                 );
                             })}
