@@ -5,6 +5,7 @@ import {
     Section,
     Tailwind,
 } from '@react-email/components';
+import { formatDeliveryCount } from '@gredice/js/i18n';
 import { ContentCard } from '../../components/ContentCard';
 import { Divider } from '../../components/Divider';
 import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
@@ -16,7 +17,8 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 export interface DeliverySurveyEmailTemplateProps {
     email: string;
     surveyUrl: string;
-    deliveryDate?: string;
+    deliveryPeriod?: string;
+    deliveryCount?: number;
     appName?: string;
     appDomain?: string;
 }
@@ -24,11 +26,20 @@ export interface DeliverySurveyEmailTemplateProps {
 export default function DeliverySurveyEmailTemplate({
     email = 'login@example.com',
     surveyUrl = 'https://form.typeform.com/to/X727vyBk',
-    deliveryDate,
+    deliveryPeriod,
+    deliveryCount,
     appName = 'Gredice',
     appDomain = 'gredice.com',
 }: DeliverySurveyEmailTemplateProps) {
     const previewText = `${appName} - Podijeli dojam o dostavi`;
+
+    const periodSummary = deliveryPeriod
+        ? `🚚 Tijekom ${deliveryPeriod} ${
+              typeof deliveryCount === 'number'
+                  ? formatDeliveryCount(deliveryCount, true)
+                  : 'bilo je nekoliko dostava'
+          }.`
+        : null;
 
     return (
         <Html>
@@ -39,16 +50,14 @@ export default function DeliverySurveyEmailTemplate({
                     <Section className="text-center">
                         <GrediceLogotype />
                     </Section>
-                    <Header>Kakva je bila dostava?</Header>
+                    <Header>Kakva su bile dostave?</Header>
                     <Paragraph>Pozdrav!</Paragraph>
                     <Paragraph>
                         Nadamo se da te povrće iz tvog vrta razveselilo.{' '}
-                        Voljeli bismo čuti tvoje dojmove o dostavi kako bismo idući put bili još bolji.
+                        Voljeli bismo čuti tvoje dojmove o dostavama kako bismo idući put bili još bolji.
                     </Paragraph>
-                    {deliveryDate ? (
-                        <Paragraph>
-                            🚚 Dostava je bila {deliveryDate}.{' '}
-                        </Paragraph>
+                    {periodSummary ? (
+                        <Paragraph>{periodSummary}</Paragraph>
                     ) : null}
                     <Paragraph>
                         ⏱️ Anketa traje manje od minute, a svaki odgovor pomaže našem timu i vrtlarima.
