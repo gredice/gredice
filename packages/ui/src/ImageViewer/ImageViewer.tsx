@@ -234,7 +234,7 @@ export function ImageViewer({
                         <IconButton
                             title="Smanji"
                             variant="outlined"
-                            className="rounded-xl bg-black/60 backdrop-blur"
+                            className="rounded-xl bg-background/80 backdrop-blur"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleZoomOut(e);
@@ -246,7 +246,7 @@ export function ImageViewer({
                         <IconButton
                             title="Uvećaj"
                             variant="outlined"
-                            className="rounded-xl bg-black/60 backdrop-blur"
+                            className="rounded-xl bg-background/80 backdrop-blur"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleZoomIn(e);
@@ -258,7 +258,7 @@ export function ImageViewer({
                         <IconButton
                             title="Preuzmi"
                             variant="outlined"
-                            className="rounded-xl bg-black/60 backdrop-blur"
+                            className="rounded-xl bg-background/80 backdrop-blur"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleDownload(e);
