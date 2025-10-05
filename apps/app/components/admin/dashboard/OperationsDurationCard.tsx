@@ -69,6 +69,29 @@ export function OperationsDurationCard({
         ...data.daily.map((day) => day.totalMinutes),
     );
     const hasData = maxMinutes > 0;
+    const maxVisibleLabels = 10;
+    const labelStep = Math.max(
+        1,
+        Math.ceil(data.daily.length / maxVisibleLabels),
+    );
+    const points = data.daily.map((day, index) => {
+        const normalizedHeight = maxMinutes
+            ? (day.totalMinutes / maxMinutes) * 100
+            : 0;
+        const heightPercent =
+            day.totalMinutes > 0 ? Math.max(4, normalizedHeight) : 0;
+        const barHasSegments =
+            day.operationsMinutes > 0 || day.sowingMinutes > 0;
+        const shouldShowLabel =
+            index % labelStep === 0 || index === data.daily.length - 1;
+
+        return {
+            barHasSegments,
+            day,
+            heightPercent,
+            shouldShowLabel,
+        };
+    });
 
     return (
         <Card>
@@ -114,29 +137,19 @@ export function OperationsDurationCard({
                             Nema podataka za odabrani period.
                         </Typography>
                     ) : (
-                        <div className="flex items-end gap-2 h-48">
-                            {data.daily.map((day) => {
-                                const normalizedHeight = maxMinutes
-                                    ? (day.totalMinutes / maxMinutes) * 100
-                                    : 0;
-                                const heightPercent =
-                                    day.totalMinutes > 0
-                                        ? Math.max(4, normalizedHeight)
-                                        : 0;
-                                const barHasSegments =
-                                    day.operationsMinutes > 0 ||
-                                    day.sowingMinutes > 0;
-
-                                return (
-                                    <div
-                                        key={day.date}
-                                        className="flex-1 flex flex-col items-center gap-1 h-full"
-                                    >
-                                        <Tooltip>
+                        <>
+                            <div className="flex h-48 w-full items-end gap-[3px] sm:gap-2">
+                                {points.map(
+                                    ({
+                                        barHasSegments,
+                                        day,
+                                        heightPercent,
+                                    }) => (
+                                        <Tooltip key={day.date}>
                                             <TooltipTrigger asChild>
-                                                <div className="flex-1 flex items-end w-full">
+                                                <div className="flex h-full min-w-[6px] flex-1 basis-0 items-end">
                                                     <div
-                                                        className="w-full rounded-t overflow-hidden flex flex-col justify-end bg-primary/10"
+                                                        className="flex w-full min-w-0 flex-col justify-end overflow-hidden rounded-t bg-primary/10"
                                                         style={{
                                                             height: `${heightPercent}%`,
                                                         }}
@@ -204,48 +217,55 @@ export function OperationsDurationCard({
                                                 </Stack>
                                             </TooltipContent>
                                         </Tooltip>
-                                        <Stack
-                                            spacing={0}
-                                            className="items-center"
-                                        >
-                                            <Typography
-                                                level="body3"
-                                                className="text-xs"
+                                    ),
+                                )}
+                            </div>
+                            <div className="mt-2 flex w-full gap-[3px] sm:gap-2">
+                                {points.map(({ day, shouldShowLabel }) => (
+                                    <div
+                                        key={`${day.date}-label`}
+                                        className="min-w-[6px] flex-1 basis-0 text-center"
+                                    >
+                                        {shouldShowLabel ? (
+                                            <Stack
+                                                spacing={0}
+                                                className="min-w-0 items-center text-center"
                                             >
-                                                {formatDateLabel(day.date)}
-                                            </Typography>
-                                            <Typography
-                                                level="body3"
-                                                className="text-xs text-muted-foreground"
-                                            >
-                                                Ukupno{' '}
-                                                {formatTooltipDuration(
-                                                    day.totalMinutes,
-                                                )}
-                                            </Typography>
-                                            <Typography
-                                                level="body3"
-                                                className="text-[10px] text-muted-foreground"
-                                            >
-                                                Radnje{' '}
-                                                {formatTooltipDuration(
-                                                    day.operationsMinutes,
-                                                )}
-                                            </Typography>
-                                            <Typography
-                                                level="body3"
-                                                className="text-[10px] text-muted-foreground"
-                                            >
-                                                Sijanje{' '}
-                                                {formatTooltipDuration(
-                                                    day.sowingMinutes,
-                                                )}
-                                            </Typography>
-                                        </Stack>
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-xs font-medium leading-tight"
+                                                >
+                                                    {formatDateLabel(day.date)}
+                                                </Typography>
+                                                <Stack
+                                                    spacing={0}
+                                                    className="hidden min-w-0 items-center text-[10px] leading-tight text-muted-foreground md:flex"
+                                                >
+                                                    <Typography level="body3">
+                                                        Ukupno{' '}
+                                                        {formatTooltipDuration(
+                                                            day.totalMinutes,
+                                                        )}
+                                                    </Typography>
+                                                    <Typography level="body3">
+                                                        Radnje{' '}
+                                                        {formatTooltipDuration(
+                                                            day.operationsMinutes,
+                                                        )}
+                                                    </Typography>
+                                                    <Typography level="body3">
+                                                        Sijanje{' '}
+                                                        {formatTooltipDuration(
+                                                            day.sowingMinutes,
+                                                        )}
+                                                    </Typography>
+                                                </Stack>
+                                            </Stack>
+                                        ) : null}
                                     </div>
-                                );
-                            })}
-                        </div>
+                                ))}
+                            </div>
+                        </>
                     )}
                 </Stack>
             </CardOverflow>
