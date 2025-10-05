@@ -217,11 +217,16 @@ export function ImageViewer({
                 title="Pregled slike"
                 hideClose
                 dismissible={false}
-                className="p-0 m-0 max-w-none max-h-none w-[100dvw] h-[100dvh] border-0"
+                className="m-0 h-[100dvh] w-[100dvw] max-h-none max-w-none border-0 p-0 rounded-none"
             >
-                <div className="relative flex h-full w-full items-center justify-center">
+                <div className="relative flex h-full w-full overflow-hidden">
                     {/* Controls */}
-                    <div className="absolute top-4 right-4 flex gap-2 z-10">
+                    <div
+                        className="absolute right-4 top-4 z-10 flex gap-2"
+                        style={{
+                            top: 'calc(env(safe-area-inset-top) + 1rem)',
+                        }}
+                    >
                         <IconButton
                             title="Smanji"
                             variant="solid"
@@ -267,12 +272,12 @@ export function ImageViewer({
                     </div>
 
                     {/* Image Container */}
-                    <div className="flex h-full w-full items-center justify-center px-6 pb-20 pt-16">
+                    <div className="flex h-full w-full items-center justify-center">
                         <div
                             ref={imageRef}
                             role="option"
                             tabIndex={0}
-                            className="relative h-full w-full max-h-full max-w-full overflow-hidden rounded-lg cursor-grab active:cursor-grabbing touch-none"
+                            className="relative h-full w-full overflow-hidden cursor-grab active:cursor-grabbing touch-none bg-black"
                             onMouseDown={handleMouseDown}
                             onMouseMove={handleMouseMove}
                             onMouseUp={handleMouseUp}
@@ -286,7 +291,7 @@ export function ImageViewer({
                             style={{ touchAction: 'none' }}
                         >
                             <div
-                                className="relative h-full w-full select-none transition-transform duration-200 ease-out"
+                                className="relative h-full w-full select-none transition-transform duration-200 ease-out will-change-transform"
                                 style={{
                                     transform: `scale(${zoomLevel}) translate(${position.x / zoomLevel}px, ${position.y / zoomLevel}px)`,
                                     transformOrigin: 'center center',
@@ -305,12 +310,24 @@ export function ImageViewer({
                     </div>
 
                     {/* Zoom Level Indicator */}
-                    <Chip className="absolute top-4 left-4" variant="solid">
+                    <Chip
+                        className="absolute left-4 top-4"
+                        style={{
+                            top: 'calc(env(safe-area-inset-top) + 1rem)',
+                        }}
+                        variant="solid"
+                    >
                         {Math.round(zoomLevel * 100)}%
                     </Chip>
 
                     {/* Instructions */}
-                    <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 transform justify-center text-sm text-center">
+                    <div
+                        className="pointer-events-none absolute bottom-0 left-1/2 flex -translate-x-1/2 transform justify-center pb-4 text-center text-sm"
+                        style={{
+                            paddingBottom:
+                                'max(env(safe-area-inset-bottom), 1rem)',
+                        }}
+                    >
                         <p className="hidden rounded-full bg-black/60 px-4 py-1 text-white/80 backdrop-blur-sm sm:block">
                             Koristi kotač za zoom • Povuci za pomicanje slike
                         </p>
