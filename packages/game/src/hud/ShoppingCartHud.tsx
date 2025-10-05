@@ -327,8 +327,7 @@ export function ShoppingCartHud() {
             <Row spacing={1}>
                 <Modal
                     title="Košarica"
-                    className="bg-card border-tertiary border-b-4 md:max-w-2xl"
-                    modal={false}
+                    className="border-tertiary border-b-4 md:max-w-2xl"
                     trigger={
                         <IconButton
                             title="Košarica"

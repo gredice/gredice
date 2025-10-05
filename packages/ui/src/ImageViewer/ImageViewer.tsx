@@ -2,6 +2,7 @@
 
 import { Add, Close, Remove, Save, Search } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
+import { cx } from '@signalco/ui-primitives/cx';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import Image from 'next/image';
@@ -215,21 +216,25 @@ export function ImageViewer({
                 open={isExpanded}
                 onOpenChange={handleModalOpenChange}
                 title="Pregled slike"
-                hideClose
                 dismissible={false}
-                className="m-0 h-[100dvh] w-[100dvw] max-h-none max-w-none border-0 p-0 rounded-none"
+                className={cx(
+                    'm-0 h-[100dvh] w-[100dvw] max-h-none max-w-none border-0 p-0 rounded-none',
+                    'bg-black/60 backdrop-blur',
+                    '[&>div:last-child]:h-full [&>div:last-child]:p-0 [&>div:not(:last-child)]:hidden',
+                )}
             >
-                <div className="relative flex h-full w-full overflow-hidden">
+                <div className="relative flex h-full w-full overflow-clip">
                     {/* Controls */}
                     <div
-                        className="absolute right-4 top-4 z-10 flex gap-2"
+                        className="absolute right-4 top-4 z-10 flex gap-1"
                         style={{
                             top: 'calc(env(safe-area-inset-top) + 1rem)',
                         }}
                     >
                         <IconButton
                             title="Smanji"
-                            variant="solid"
+                            variant="outlined"
+                            className="rounded-xl bg-black/60 backdrop-blur"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleZoomOut(e);
@@ -240,7 +245,8 @@ export function ImageViewer({
                         </IconButton>
                         <IconButton
                             title="Uvećaj"
-                            variant="solid"
+                            variant="outlined"
+                            className="rounded-xl bg-black/60 backdrop-blur"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleZoomIn(e);
@@ -251,7 +257,8 @@ export function ImageViewer({
                         </IconButton>
                         <IconButton
                             title="Preuzmi"
-                            variant="solid"
+                            variant="outlined"
+                            className="rounded-xl bg-black/60 backdrop-blur"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleDownload(e);
@@ -262,6 +269,7 @@ export function ImageViewer({
                         <IconButton
                             title="Zatvori"
                             variant="solid"
+                            className="rounded-xl"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 closeExpanded(e);
@@ -277,7 +285,7 @@ export function ImageViewer({
                             ref={imageRef}
                             role="option"
                             tabIndex={0}
-                            className="relative h-full w-full overflow-hidden cursor-grab active:cursor-grabbing touch-none bg-black"
+                            className="relative h-full w-full overflow-hidden cursor-grab active:cursor-grabbing touch-none"
                             onMouseDown={handleMouseDown}
                             onMouseMove={handleMouseMove}
                             onMouseUp={handleMouseUp}
@@ -311,27 +319,18 @@ export function ImageViewer({
 
                     {/* Zoom Level Indicator */}
                     <Chip
-                        className="absolute left-4 top-4"
-                        style={{
-                            top: 'calc(env(safe-area-inset-top) + 1rem)',
-                        }}
+                        className="absolute left-4 [top:calc(env(safe-area-inset-top)+1rem)] z-10 select-none bg-black/60 text-white/80 backdrop-blur border-0"
                         variant="solid"
                     >
                         {Math.round(zoomLevel * 100)}%
                     </Chip>
 
                     {/* Instructions */}
-                    <div
-                        className="pointer-events-none absolute bottom-0 left-1/2 flex -translate-x-1/2 transform justify-center pb-4 text-center text-sm"
-                        style={{
-                            paddingBottom:
-                                'max(env(safe-area-inset-bottom), 1rem)',
-                        }}
-                    >
-                        <p className="hidden rounded-full bg-black/60 px-4 py-1 text-white/80 backdrop-blur-sm sm:block">
+                    <div className="pointer-events-none absolute bottom-0 left-1/2 flex -translate-x-1/2 transform justify-center text-center text-xs [padding-bottom:calc(env(safe-area-inset-bottom)+1rem)]">
+                        <p className="hidden rounded-full bg-black/60 px-4 py-1 text-white/80 backdrop-blur sm:block">
                             Koristi kotač za zoom • Povuci za pomicanje slike
                         </p>
-                        <p className="rounded-full bg-black/60 px-4 py-1 text-white/80 backdrop-blur-sm sm:hidden">
+                        <p className="rounded-full bg-black/60 px-4 py-1 text-white/80 backdrop-blur sm:hidden">
                             Dodirni i drži za pomicanje • Uštipni za zoom
                         </p>
                     </div>
