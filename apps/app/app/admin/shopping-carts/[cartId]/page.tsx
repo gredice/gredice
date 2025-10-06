@@ -19,10 +19,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function ShoppingCartDetailsPage({
     params,
-}: {
-    params: { cartId: string };
-}) {
-    const { cartId } = params;
+}: PageProps<'/admin/shopping-carts/[cartId]'>) {
+    const { cartId } = await params;
     const cartIdNumber = Number(cartId);
     if (Number.isNaN(cartIdNumber)) {
         notFound();
