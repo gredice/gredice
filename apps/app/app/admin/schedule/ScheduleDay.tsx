@@ -452,9 +452,15 @@ export function ScheduleDay({
                         const operationData = operationDataById.get(
                             op.entityId,
                         );
+
+                        const isFullRaisedBed =
+                            operationData?.attributes?.application ===
+                            'raisedBedFull';
+                        const text = `${isFullRaisedBed ? '' : `${op.physicalPositionIndex} - `}${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`;
+
                         return {
                             id: `operation-${op.id}`,
-                            text: `${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`,
+                            text,
                             link: operationData?.information?.label
                                 ? KnownPages.GrediceOperation(
                                       operationData?.information?.label,
@@ -702,7 +708,10 @@ export function ScheduleDay({
                                 const operationData = operationDataById.get(
                                     op.entityId,
                                 );
-                                const operationLabel = `${op.physicalPositionIndex} - ${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`;
+                                const isFullRaisedBed =
+                                    operationData?.attributes?.application ===
+                                    'raisedBedFull';
+                                const operationLabel = `${isFullRaisedBed ? '' : `${op.physicalPositionIndex} - `}${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`;
                                 const operationCompleted = isOperationCompleted(
                                     op.status,
                                 );

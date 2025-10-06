@@ -1,6 +1,6 @@
 import 'server-only';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
-import { and, count, desc, eq, gte } from 'drizzle-orm';
+import { and, count, desc, eq } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { getEntitiesFormatted, getOperations, storage } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
@@ -59,7 +59,12 @@ export async function getGardens() {
     });
 }
 
-export async function getAccountGardens(accountId: string) {
+export async function getAccountGardens(
+    accountId: string,
+    filter?: {
+        status?: string;
+    },
+) {
     const accountGardens = await storage().query.gardens.findMany({
         where: and(
             eq(gardens.accountId, accountId),
@@ -71,31 +76,7 @@ export async function getAccountGardens(accountId: string) {
         accountGardens.map(async (garden) => {
             return {
                 ...garden,
-                raisedBeds: await getRaisedBeds(garden.id),
-            };
-        }),
-    );
-}
-
-export async function getAccountGardensFiltered(
-    accountId: string,
-    filters?: {
-        status?: string;
-        fromDate?: Date;
-    },
-) {
-    const accountGardens = await storage().query.gardens.findMany({
-        where: and(
-            eq(gardens.accountId, accountId),
-            eq(gardens.isDeleted, false),
-        ),
-    });
-    // For each garden, fetch and attach filtered raised beds
-    return Promise.all(
-        accountGardens.map(async (garden) => {
-            return {
-                ...garden,
-                raisedBeds: await getRaisedBedsFiltered(garden.id, filters),
+                raisedBeds: await getRaisedBeds(garden.id, filter),
             };
         }),
     );
@@ -331,26 +312,7 @@ export async function createRaisedBed(
     )[0].id;
 }
 
-export async function getRaisedBeds(gardenId: number) {
-    const beds = await storage().query.raisedBeds.findMany({
-        where: and(
-            eq(raisedBeds.gardenId, gardenId),
-            eq(raisedBeds.isDeleted, false),
-        ),
-    });
-    // For each raised bed, fetch and attach fields with event-sourced info
-    return Promise.all(
-        beds.map(async (bed) => {
-            const fields = await getRaisedBedFieldsWithEvents(bed.id);
-            return {
-                ...bed,
-                fields,
-            };
-        }),
-    );
-}
-
-export async function getRaisedBedsFiltered(
+export async function getRaisedBeds(
     gardenId: number,
     filters?: {
         status?: string;
@@ -450,16 +412,22 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         let toBeRemoved = false;
         let stoppedDate: Date | undefined;
 
-        // TODO: Implement multiple handling
-        // let operationId = undefined;
-        // let operationStatus = undefined;
-
         for (const event of events) {
             const data = event.data as Record<string, unknown> | undefined;
+            // Handle plant placement event
             if (event.type === knownEventTypes.raisedBedFields.plantPlace) {
-                if (data?.plantSortId && typeof data.plantSortId === 'string') {
+                // Parse plant sort ID if provided
+                if (typeof data?.plantSortId === 'number') {
+                    plantSortId = data.plantSortId;
+                } else if (typeof data?.plantSortId === 'string') {
                     plantSortId = parseInt(data.plantSortId, 10);
+                } else {
+                    console.error(
+                        `Invalid plantSortId in event ${event.id} for field ${field.id}`,
+                    );
                 }
+
+                // Parse scheduled date if provided
                 if (
                     data?.scheduledDate &&
                     typeof data.scheduledDate === 'string'
@@ -472,8 +440,12 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 ) {
                     plantScheduledDate = data?.scheduledDate;
                 }
+
+                // Set status to new when plant is placed
                 plantStatus = 'new';
-            } else if (
+            }
+            // Handle plant status update event
+            else if (
                 event.type === knownEventTypes.raisedBedFields.plantUpdate
             ) {
                 plantStatus =
@@ -503,17 +475,16 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     // Don't process any newer events for this field
                     break;
                 }
-            } else if (
+            }
+            // Handle plant sort replace event
+            else if (
                 event.type === knownEventTypes.raisedBedFields.plantReplaceSort
             ) {
                 if (data?.plantSortId && typeof data.plantSortId === 'string') {
                     plantSortId = parseInt(data.plantSortId, 10);
                 }
             }
-            // else if (event.type === knownEventTypes.raisedBedFields.operationOrder) {
-            //     operationId = data?.orderId;
-            //     operationStatus = data?.status || operationStatus;
-            // }
+            // Handle field deletion event
             else if (event.type === knownEventTypes.raisedBedFields.delete) {
                 plantStatus = 'deleted';
                 plantSowDate = undefined;
