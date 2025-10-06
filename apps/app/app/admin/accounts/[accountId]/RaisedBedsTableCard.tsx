@@ -1,7 +1,7 @@
 import {
-    getAccountGardensFiltered,
+    getAccountGardens,
     getAllRaisedBedsFiltered,
-    getRaisedBedsFiltered,
+    getRaisedBeds,
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
@@ -43,11 +43,11 @@ export async function RaisedBedsTableCard({
 
     // Fetch filtered data using the repository filtering functions
     const raisedBeds = accountId
-        ? (await getAccountGardensFiltered(accountId, filters)).flatMap(
+        ? (await getAccountGardens(accountId, filters)).flatMap(
               (garden) => garden.raisedBeds,
           )
         : gardenId
-          ? await getRaisedBedsFiltered(gardenId, filters)
+          ? await getRaisedBeds(gardenId, filters)
           : await getAllRaisedBedsFiltered(filters);
 
     return (
