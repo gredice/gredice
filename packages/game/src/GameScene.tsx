@@ -60,6 +60,9 @@ const noRenderInViewDefault = [
     'BaleHey',
     'Stick',
     'Seed',
+    'StoneSmall',
+    'StoneMedium',
+    'StoneLarge',
 ];
 
 export function GameScene({

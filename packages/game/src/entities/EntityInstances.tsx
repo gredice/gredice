@@ -255,6 +255,27 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
             />
             <EntityInstancesBlock
                 stacks={stacks}
+                name="StoneSmall"
+                geometry={nodes.Stone_Small.geometry}
+                material={materials['Material.Stone']}
+                scale={[0.165, 0.165, 0.165]}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="StoneMedium"
+                geometry={nodes.Stone_Medium.geometry}
+                material={materials['Material.Stone']}
+                scale={[0.236, 0.269, 0.205]}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="StoneLarge"
+                geometry={nodes.Stone_Large.geometry}
+                material={materials['Material.Stone']}
+                scale={[0.263, 0.426, 0.291]}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
                 name="Stick"
                 geometry={nodes.Stick.geometry}
                 material={nodes.Stick.material}
