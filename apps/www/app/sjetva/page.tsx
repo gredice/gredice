@@ -28,19 +28,25 @@ export default function SowingPage() {
                         Sjetva je prvi korak prema novoj berbi u tvojoj gredici.
                         Putem{' '}
                         <a href={KnownPages.GardenApp}>aplikacije Gredice</a>{' '}
-                        možeš naručiti sjetvu za svako polje i prepustiti našem
-                        timu da pripremi zemlju, posije odabrane biljke i prati
-                        njihov rast.
+                        možeš naručiti sjetvu biljka u tvojoj gredici i
+                        prepustiti našem timu da pripremi zemlju, posije
+                        odabrane biljke i prati njihov rast.
                     </p>
-                    <h2>Cijena sjetve</h2>
+                    <h2>🫰 Cijena sjetve</h2>
                     <p>
                         Sjetva se naplaćuje po biljci i trenutno iznosi
-                        1,99&nbsp;€ ili 1.990 suncokreta. Cijena uključuje
+                        minimalno 1,99&nbsp;€ ili 1.990 🌻. Cijena uključuje
                         nabavu sjemena, pripremu tla i evidenciju radnje u
                         aplikaciji, tako da u svakom trenutku znaš što je
                         posađeno u tvojoj gredici.
                     </p>
-                    <h2>Zakazivanje kao i drugih radnji</h2>
+                    <p>
+                        Točna cijena sjetve može varirati ovisno o vrsti biljke
+                        i dostupnosti sjemena. Točne informacije o cijeni svake
+                        biljke možeš pronaći na stranici{' '}
+                        <a href={KnownPages.Plants}>biljaka</a>.
+                    </p>
+                    <h2>✍️ Zakazivanje</h2>
                     <p>
                         Kao i ostale radnje u Gredicama, sjetvu možeš zakazati
                         unaprijed. Odaberi datum koji ti odgovara, a naš će tim
@@ -48,30 +54,43 @@ export default function SowingPage() {
                         nadolazeće radnje pregledavaš na istom mjestu u
                         aplikaciji.
                     </p>
-                    <h2>Provjera kalendara sjetve</h2>
+                    <h2>🗓️ Kalendar sjetve</h2>
                     <p>
-                        Svaka biljka ima svoj preporučeni kalendar. Za odabir
+                        Svaka biljka ima svoj kalendar sjetve. Za odabir
                         idealnog termina posjeti stranicu{' '}
                         <a href={KnownPages.Plants}>biljaka</a>, gdje možeš
                         pročitati detaljne informacije o vremenu sjetve,
-                        razmacima i potrebnoj njezi.
+                        razmacima i potrebnoj njezi za svaku biljku.
                     </p>
-                    <h2>Ljetna pogodnost zalijevanja</h2>
+                    <p>
+                        Imaj na umu da je kalendar sjetve orijentacijski i da se
+                        može prilagoditi ovisno o vremenskim uvjetima i
+                        dostupnosti te tvojim željama i radoznalosti. Nema
+                        nikakvih ograničenja u broju sjetvi, kombinacijama i
+                        vremenu sjetve, pa slobodno eksperimentiraj i istražuj
+                        nove biljke!
+                    </p>
+                    <h2>☀️ Ljetne pogodnosti</h2>
                     <p>
                         Tijekom ljeta svaka naručena sjetva donosi besplatno pet
-                        dana usluge &quot;Površinsko zalijevanje
-                        (10&nbsp;L)&quot; za podignute gredice u koje je sijano.
-                        Ako posiješ novu biljku dok je prethodni besplatni
-                        period još aktivan, zalijevanje se samo produžuje. Na
-                        primjer, ako tijekom pet uzastopnih dana siješ po jednu
-                        biljku, dobit ćeš ukupno deset dana besplatnog
-                        zalijevanja, a ne dvadeset i pet dana.
+                        dana usluge* &quot;
+                        <strong>Površinsko zalijevanje (10&nbsp;L)</strong>
+                        &quot; za podignutu gredicu.
                     </p>
-                    <h2>Sljedeći koraci</h2>
+                    <small>
+                        *{' '}
+                        <i>
+                            Ako posiješ novu biljku dok je prethodni besplatni
+                            period još aktivan, zalijevanje se produžuje. Na
+                            primjer, ako tijekom pet uzastopnih dana siješ po
+                            jednu biljku, dobit ćeš ukupno deset dana besplatnog
+                            zalijevanja, a ne dvadeset i pet dana.
+                        </i>
+                    </small>
+                    <h2>💭 Sljedeći koraci</h2>
                     <p>
                         Kada biljke niknu, možeš nastaviti planirati ostale
-                        radnje poput prihrane ili berbe izravno u{' '}
-                        <a href={KnownPages.GardenApp}>aplikaciji</a>. Za
+                        radnje poput prihrane ili berbe izravno u aplikaciji. Za
                         pregled svih dostupnih aktivnosti posjeti stranicu{' '}
                         <a href={KnownPages.Operations}>radnji</a>.
                     </p>
