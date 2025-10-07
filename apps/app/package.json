@@ -37,6 +37,7 @@
     "devDependencies": {
         "@biomejs/biome": "2.2.5",
         "@gredice/email": "workspace:*",
+        "@gredice/client": "workspace:*",
         "@gredice/fiscalization": "workspace:*",
         "@gredice/js": "workspace:*",
         "@gredice/signalco": "workspace:*",

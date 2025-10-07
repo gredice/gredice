@@ -1,7 +1,5 @@
-import { isAbsoluteUrl } from '@signalco/js';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { ShoppingCart } from '@signalco/ui-icons';
-import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
-import Image from 'next/image';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
@@ -62,12 +60,6 @@ export function RaisedBedFieldItemEmpty({
         );
     }
 
-    const shopImageOrFallback =
-        cartPlantItem?.shopData.image ?? '/assets/plants/placeholder.png';
-    const plantImageUrl = isAbsoluteUrl(shopImageOrFallback)
-        ? shopImageOrFallback
-        : `https://www.gredice.com/${shopImageOrFallback}`;
-
     return (
         <PlantPicker
             trigger={
@@ -80,8 +72,8 @@ export function RaisedBedFieldItemEmpty({
                     )}
                     {!isLoading && cartPlantItem && (
                         <>
-                            <Image
-                                src={plantImageUrl}
+                            <PlantOrSortImage
+                                coverUrl={cartPlantItem.shopData.image}
                                 alt={cartPlantItem.shopData.name ?? 'Nepoznato'}
                                 width={60}
                                 height={60}

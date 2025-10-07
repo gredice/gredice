@@ -1,4 +1,4 @@
-import { isAbsoluteUrl } from '@signalco/js';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import { Delete, Euro, Hammer, Navigate, Timer } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
@@ -6,7 +6,6 @@ import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import Image from 'next/image';
 import type { CSSProperties } from 'react';
 import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
@@ -60,11 +59,6 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const hasShopImage = Boolean(item.shopData.image);
     const shouldShowOperationFallback =
         item.entityTypeName === 'operation' && !hasShopImage;
-    const imageOrFallback =
-        item.shopData.image ?? '/assets/plants/placeholder.png';
-    const shopImageUrl = isAbsoluteUrl(imageOrFallback)
-        ? imageOrFallback
-        : `https://www.gredice.com${imageOrFallback}`;
 
     return (
         <Row spacing={2} alignItems="start">
@@ -73,19 +67,22 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     <Hammer
                         role="img"
                         aria-label={item.shopData.name ?? 'Nepoznato'}
-                        style={{
-                            '--imageSize': '32px',
-                        } as CSSProperties}
+                        style={
+                            {
+                                '--imageSize': '32px',
+                            } as CSSProperties
+                        }
                         className="size-[--imageSize] shrink-0"
                     />
                 </div>
             ) : (
-                <Image
+                <PlantOrSortImage
                     className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0"
                     width={56}
                     height={56}
                     alt={item.shopData.name ?? 'Nepoznato'}
-                    src={shopImageUrl}
+                    coverUrl={item.shopData.image}
+                    baseUrl="https://www.gredice.com"
                 />
             )}
             <Stack className="grow">
