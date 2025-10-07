@@ -13,6 +13,7 @@ export const KnownPages = {
     Block: (alias: string) => `/blokovi/${encodeURIComponent(alias)}` as Route,
     Sunflowers: '/suncokreti',
     RaisedBeds: '/podignuta-gredica',
+    Sowing: '/sjetva',
     Operations: '/radnje',
     Operation: (alias: string) =>
         `/radnje/${encodeURIComponent(alias)}` as Route,

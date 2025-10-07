@@ -262,6 +262,12 @@ export default function RaisedBedPage() {
                         svoju gredicu.
                     </p>
                     <p>
+                        Detaljan pregled kako funkcionira{' '}
+                        <a href={KnownPages.Sowing}>sjetva biljaka</a>, koja je
+                        cijena i koje pogodnosti dobivaš pronađi na našoj
+                        stranici posvećenoj sjetvi.
+                    </p>
+                    <p>
                         Kada odabereš biljke koje želiš posaditi, aplikacija će
                         ti pružiti sve potrebne informacije o sadnji,
                         uključujući preporučeno vrijeme sadnje, razmak između

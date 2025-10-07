@@ -3,6 +3,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
@@ -86,6 +87,14 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                 {(plant.information.tip?.length ?? 0) > 0 && (
                     <PlantTips plant={plant} />
                 )}
+                <Typography level="body1" component="p">
+                    Želiš saznati više o tome kako naručiti sjetvu? Posjeti našu
+                    stranicu o{' '}
+                    <Link className="underline" href={KnownPages.Sowing}>
+                        sjetvi biljaka
+                    </Link>{' '}
+                    za detalje o sjetvi, rasporedu i pogodnostima.
+                </Typography>
                 <Row spacing={2}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj biljci korisne?
