@@ -339,7 +339,7 @@ export function ShoppingCartHud() {
                                 semiBold
                                 className="text-foreground"
                             >
-                                {cart.total.toFixed(2)} €
+                                {(cart.total ?? 0).toFixed(2)} €
                             </Typography>
                             {Boolean(cart?.items.length) && (
                                 <div className="absolute -right-2 -top-2">
