@@ -92,15 +92,15 @@ export function EntityFactory({
         return null;
     }
 
-    const SelectableGroupWrapper =
-        view !== 'closeup'
-            ? SelectableGroup
-            : (props: PropsWithChildren) => <>{props.children}</>;
-
     if (!isEditMode) {
         if (noRenderInView?.includes(name)) {
             return null;
         }
+
+        const SelectableGroupWrapper =
+            view !== 'closeup'
+                ? SelectableGroup
+                : (props: PropsWithChildren) => <>{props.children}</>;
 
         return (
             <SelectableGroupWrapper block={block}>
