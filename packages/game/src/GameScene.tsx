@@ -49,17 +49,22 @@ const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
 const noRenderInViewDefault = [
     'Block_Grass',
     'Block_Grass_Angle',
-    'Pine',
     'Block_Sand',
     'Block_Sand_Angle',
-    'Shovel_Small',
-    'Mulch_Hey',
-    'Mulch_Coconut',
-    'Mulch_Wood',
+    'Bush',
+    'Pine',
+    'Tree',
+    'ShovelSmall',
+    'MulchHey',
+    'MulchCoconut',
+    'MulchWood',
     'Tulip',
     'BaleHey',
     'Stick',
     'Seed',
+    'StoneSmall',
+    'StoneMedium',
+    'StoneLarge',
 ];
 
 export function GameScene({
