@@ -1,7 +1,7 @@
 'use client';
 
+import type { PlantSortData } from '@gredice/client';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
 import { raisedBedFieldUpdatePlant } from '../../../(actions)/raisedBedFieldsActions';
 
 type RaisedBedFieldPlantSortSelectorProps = {
@@ -9,7 +9,7 @@ type RaisedBedFieldPlantSortSelectorProps = {
     positionIndex: number;
     status: string | null;
     plantSortId?: number | null;
-    plantSorts: EntityStandardized[];
+    plantSorts: PlantSortData[];
 };
 
 export function RaisedBedFieldPlantSortSelector({
@@ -22,10 +22,7 @@ export function RaisedBedFieldPlantSortSelector({
     const items = plantSorts
         .map((sort) => ({
             value: sort.id.toString(),
-            label:
-                sort.information?.label ??
-                sort.information?.name ??
-                `Biljka ${sort.id}`,
+            label: sort.information?.name ?? `Sorta biljke ${sort.id}`,
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
 
@@ -35,7 +32,7 @@ export function RaisedBedFieldPlantSortSelector({
     ) {
         items.push({
             value: plantSortId.toString(),
-            label: `Biljka ${plantSortId}`,
+            label: `Sorta biljke ${plantSortId}`,
         });
     }
 

@@ -1,12 +1,12 @@
+import type { PlantSortData } from '@gredice/client';
 import { getEntitiesFormatted, getRaisedBed } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import Image from 'next/image';
 import { RaisedBedFieldPlantSortSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantSortSelector';
 import { RaisedBedFieldPlantStatusSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantStatusSelector';
-import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
 import {
     RaisedBedRemovedFieldsModal,
@@ -37,32 +37,10 @@ function getStatusMeta(status?: string | null) {
     return fieldStatusMetadata[status] ?? { label: status, icon: '' };
 }
 
-function resolveImageUrl(url?: string | null) {
-    if (!url) {
-        return null;
-    }
-
-    if (url.startsWith('http')) {
-        return url;
-    }
-
-    if (url.startsWith('//')) {
-        return `https:${url}`;
-    }
-
-    return `https://www.gredice.com${url.startsWith('/') ? '' : '/'}${url}`;
-}
-
-function getSortImage(sort?: EntityStandardized) {
-    const url = sort?.images?.cover?.url ?? sort?.image?.cover?.url;
-    return resolveImageUrl(url);
-}
-
-function getSortLabel(sort?: EntityStandardized, plantSortId?: number | null) {
+function getSortLabel(sort?: PlantSortData, plantSortId?: number | null) {
     return (
-        sort?.information?.label ||
         sort?.information?.name ||
-        (plantSortId ? `Biljka ${plantSortId}` : 'Nepoznata biljka')
+        (plantSortId ? `Sorta biljke ${plantSortId}` : 'Nepoznata biljka')
     );
 }
 
@@ -85,8 +63,7 @@ interface RaisedBedFieldsTableProps {
 export async function RaisedBedFieldsTable({
     raisedBedId,
 }: RaisedBedFieldsTableProps) {
-    const sortsData =
-        await getEntitiesFormatted<EntityStandardized>('plantSort');
+    const sortsData = await getEntitiesFormatted<PlantSortData>('plantSort');
     const raisedBed = await getRaisedBed(raisedBedId);
     const fields = raisedBed?.fields ?? [];
 
@@ -94,40 +71,14 @@ export async function RaisedBedFieldsTable({
         return <NoDataPlaceholder />;
     }
 
-    const removedFieldsDetails: RemovedFieldDetails[] = fields
-        .filter((field) => !field.active)
-        .sort((a, b) => b.positionIndex - a.positionIndex)
-        .map((field) => {
-            const sort = sortsData?.find(
-                (item) => item.id === field.plantSortId,
-            );
-            const statusMeta = getStatusMeta(field.plantStatus);
-            return {
-                id: field.id,
-                positionIndex: field.positionIndex,
-                plantLabel: getSortLabel(sort, field.plantSortId),
-                plantStatusLabel: statusMeta?.label ?? null,
-                plantStatusIcon: statusMeta?.icon ?? null,
-                imageUrl: getSortImage(sort),
-                createdAt: normalizeDate(field.createdAt),
-                plantScheduledDate: normalizeDate(field.plantScheduledDate),
-                plantSowDate: normalizeDate(field.plantSowDate),
-                plantGrowthDate: normalizeDate(field.plantGrowthDate),
-                plantReadyDate: normalizeDate(field.plantReadyDate),
-                plantHarvestedDate: normalizeDate(field.plantHarvestedDate),
-                plantDeadDate: normalizeDate(field.plantDeadDate),
-                plantRemovedDate: normalizeDate(field.plantRemovedDate),
-            } satisfies RemovedFieldDetails;
-        });
-
-    const highestPositionIndex = fields.reduce(
-        (max, field) => Math.max(max, field.positionIndex),
-        -1,
-    );
+    // Currently fixed to 9 positions (0-8)
+    const highestPositionIndex = 8;
     const orderedPositions = Array.from(
         { length: highestPositionIndex + 1 },
         (_, index) => index,
     ).sort((a, b) => b - a);
+
+    console.log('fields', fields);
 
     if (orderedPositions.length === 0) {
         return <NoDataPlaceholder />;
@@ -135,18 +86,57 @@ export async function RaisedBedFieldsTable({
 
     return (
         <Stack spacing={3}>
-            {removedFieldsDetails.length > 0 && (
-                <div className="flex justify-end">
-                    <RaisedBedRemovedFieldsModal
-                        fields={removedFieldsDetails}
-                    />
-                </div>
-            )}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-3">
                 {orderedPositions.map((positionIndex) => {
                     const field = fields.find(
-                        (item) => item.positionIndex === positionIndex,
+                        (item) =>
+                            item.positionIndex === positionIndex && item.active,
                     );
+                    const removedFieldsAtPosition = fields
+                        .filter(
+                            (f) =>
+                                !f.active && f.positionIndex === positionIndex,
+                        )
+                        .sort((a, b) => {
+                            const dateA = a.plantRemovedDate ?? a.createdAt;
+                            const dateB = b.plantRemovedDate ?? b.createdAt;
+                            if (!dateA || !dateB) return 0;
+                            return (
+                                new Date(dateB).getTime() -
+                                new Date(dateA).getTime()
+                            );
+                        })
+                        .map((f) => {
+                            const sort = sortsData?.find(
+                                (item) => item.id === f.plantSortId,
+                            );
+                            const statusMeta = getStatusMeta(f.plantStatus);
+                            return {
+                                id: f.id,
+                                positionIndex: f.positionIndex,
+                                plantLabel: getSortLabel(sort, f.plantSortId),
+                                plantStatusLabel: statusMeta?.label ?? null,
+                                plantStatusIcon: statusMeta?.icon ?? null,
+                                sortData: sort,
+                                createdAt: normalizeDate(f.createdAt),
+                                plantScheduledDate: normalizeDate(
+                                    f.plantScheduledDate,
+                                ),
+                                plantSowDate: normalizeDate(f.plantSowDate),
+                                plantGrowthDate: normalizeDate(
+                                    f.plantGrowthDate,
+                                ),
+                                plantReadyDate: normalizeDate(f.plantReadyDate),
+                                plantHarvestedDate: normalizeDate(
+                                    f.plantHarvestedDate,
+                                ),
+                                plantDeadDate: normalizeDate(f.plantDeadDate),
+                                plantRemovedDate: normalizeDate(
+                                    f.plantRemovedDate,
+                                ),
+                            } satisfies RemovedFieldDetails;
+                        });
+
                     return (
                         <RaisedBedFieldTile
                             key={positionIndex}
@@ -154,6 +144,7 @@ export async function RaisedBedFieldsTable({
                             positionIndex={positionIndex}
                             plantSorts={sortsData ?? []}
                             raisedBedId={raisedBedId}
+                            removedFields={removedFieldsAtPosition}
                         />
                     );
                 })}
@@ -165,8 +156,9 @@ export async function RaisedBedFieldsTable({
 type RaisedBedFieldTileProps = {
     field?: RaisedBedField;
     positionIndex: number;
-    plantSorts: EntityStandardized[];
+    plantSorts: PlantSortData[];
     raisedBedId: number;
+    removedFields: RemovedFieldDetails[];
 };
 
 function RaisedBedFieldTile({
@@ -174,6 +166,7 @@ function RaisedBedFieldTile({
     positionIndex,
     plantSorts,
     raisedBedId,
+    removedFields,
 }: RaisedBedFieldTileProps) {
     const sort = field?.plantSortId
         ? plantSorts.find((item) => item.id === field.plantSortId)
@@ -181,8 +174,6 @@ function RaisedBedFieldTile({
     const plantLabel = field?.active
         ? getSortLabel(sort, field?.plantSortId)
         : 'Prazno polje';
-    const imageUrl = field?.active ? getSortImage(sort) : null;
-    const statusMeta = getStatusMeta(field?.plantStatus);
     const dateItems: {
         label: string;
         value: Date | string | null | undefined;
@@ -199,13 +190,20 @@ function RaisedBedFieldTile({
 
     return (
         <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-background shadow-sm">
+            <RaisedBedFieldPlantSortSelector
+                raisedBedId={raisedBedId}
+                positionIndex={positionIndex}
+                status={field?.plantStatus ?? null}
+                plantSortId={field?.plantSortId}
+                plantSorts={plantSorts}
+            />
             <div className="relative aspect-square bg-muted/40">
-                {imageUrl ? (
-                    <Image
-                        src={imageUrl}
+                {field?.active && sort ? (
+                    <PlantOrSortImage
+                        plantSort={sort}
                         alt={plantLabel}
                         fill
-                        className="object-cover"
+                        className="object-cover p-4 md:p-6"
                         sizes="(min-width: 1280px) 18rem, (min-width: 768px) 16rem, 100vw"
                     />
                 ) : (
@@ -213,75 +211,33 @@ function RaisedBedFieldTile({
                         <Typography level="body2">Nema slike</Typography>
                     </div>
                 )}
+                {removedFields.length > 0 && (
+                    <div className="absolute bottom-2 left-2">
+                        <RaisedBedRemovedFieldsModal fields={removedFields} />
+                    </div>
+                )}
                 <div className="absolute bottom-2 right-2 rounded-full bg-background/90 px-2 py-1 text-xs font-semibold shadow">
                     #{positionIndex + 1}
                 </div>
             </div>
-            <div className="flex flex-1 flex-col gap-3 p-4">
-                <Stack spacing={0.5}>
-                    <Typography level="body2" uppercase semiBold>
-                        Polje {positionIndex + 1}
-                    </Typography>
-                    <Typography level="body1" semiBold>
-                        {plantLabel}
-                    </Typography>
-                    {field?.active && statusMeta && (
-                        <Typography
-                            level="body2"
-                            className="text-muted-foreground"
-                        >
-                            {statusMeta.icon ? `${statusMeta.icon} ` : ''}
-                            {statusMeta.label}
-                        </Typography>
-                    )}
-                </Stack>
-                {field?.active ? (
-                    <Stack spacing={2} className="flex-1">
-                        <Stack spacing={1}>
-                            <Typography
-                                level="body3"
-                                className="text-muted-foreground"
-                            >
-                                Biljka
-                            </Typography>
-                            <RaisedBedFieldPlantSortSelector
+            <div className="flex flex-1 flex-col gap-3 p-2">
+                {field?.active && (
+                    <Stack spacing={1} className="flex-1">
+                        {field.plantStatus && (
+                            <RaisedBedFieldPlantStatusSelector
                                 raisedBedId={raisedBedId}
                                 positionIndex={positionIndex}
-                                status={field.plantStatus ?? null}
-                                plantSortId={field.plantSortId}
-                                plantSorts={plantSorts}
+                                status={field.plantStatus}
                             />
-                        </Stack>
-                        <Stack spacing={1}>
-                            <Typography
-                                level="body3"
-                                className="text-muted-foreground"
-                            >
-                                Status
-                            </Typography>
-                            {field.plantStatus ? (
-                                <RaisedBedFieldPlantStatusSelector
-                                    raisedBedId={raisedBedId}
-                                    positionIndex={positionIndex}
-                                    status={field.plantStatus}
-                                />
-                            ) : (
-                                <Typography
-                                    level="body3"
-                                    className="text-muted-foreground"
-                                >
-                                    -
-                                </Typography>
-                            )}
-                        </Stack>
+                        )}
                         <Stack spacing={1} className="flex-1">
                             <Typography
-                                level="body3"
+                                level="body2"
                                 className="text-muted-foreground"
                             >
                                 Datumi
                             </Typography>
-                            <Stack spacing={0.5}>
+                            <Stack>
                                 {dateItems.map(({ label, value }) => (
                                     <Row
                                         key={label}
@@ -289,18 +245,20 @@ function RaisedBedFieldTile({
                                         alignItems="center"
                                     >
                                         <Typography
-                                            level="body4"
-                                            className="w-24 text-muted-foreground"
+                                            level="body3"
+                                            className="w-20 text-muted-foreground"
                                         >
                                             {label}
                                         </Typography>
                                         {value ? (
-                                            <LocalDateTime time={false}>
-                                                {value}
-                                            </LocalDateTime>
+                                            <Typography level="body3" noWrap>
+                                                <LocalDateTime time={false}>
+                                                    {value}
+                                                </LocalDateTime>
+                                            </Typography>
                                         ) : (
                                             <Typography
-                                                level="body4"
+                                                level="body3"
                                                 className="text-muted-foreground"
                                             >
                                                 -
@@ -311,11 +269,6 @@ function RaisedBedFieldTile({
                             </Stack>
                         </Stack>
                     </Stack>
-                ) : (
-                    <Typography level="body3" className="text-muted-foreground">
-                        Ovo polje trenutačno nema aktivnu biljku. Povijest je
-                        dostupna u odjeljku „Uklonjena polja”.
-                    </Typography>
                 )}
             </div>
         </div>

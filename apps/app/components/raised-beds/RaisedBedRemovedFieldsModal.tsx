@@ -1,12 +1,14 @@
 'use client';
 
+import type { PlantSortData } from '@gredice/client';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Button } from '@signalco/ui-primitives/Button';
+import { PlantOrSortImage } from '@gredice/ui/plants';
+import { Timer } from '@signalco/ui-icons';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import Image from 'next/image';
 
 export type RemovedFieldDetails = {
     id: number;
@@ -14,6 +16,7 @@ export type RemovedFieldDetails = {
     plantLabel: string;
     plantStatusLabel: string | null;
     plantStatusIcon: string | null;
+    sortData?: PlantSortData;
     imageUrl?: string | null;
     createdAt?: string | null;
     plantScheduledDate?: string | null;
@@ -52,11 +55,15 @@ export function RaisedBedRemovedFieldsModal({
 
     return (
         <Modal
-            title="Uklonjena polja"
+            title="Povijest polja"
             trigger={
-                <Button variant="outlined" size="sm">
-                    Uklonjena polja ({fields.length})
-                </Button>
+                <IconButton
+                    variant="plain"
+                    size="sm"
+                    title={`Povijest (${fields.length})`}
+                >
+                    <Timer className="size-4 shrink-0" />
+                </IconButton>
             }
             className="md:max-w-3xl"
         >
@@ -74,9 +81,9 @@ export function RaisedBedRemovedFieldsModal({
                                 className="flex-wrap"
                             >
                                 <div className="relative size-16 overflow-hidden rounded-md bg-muted flex items-center justify-center">
-                                    {field.imageUrl ? (
-                                        <Image
-                                            src={field.imageUrl}
+                                    {field.sortData ? (
+                                        <PlantOrSortImage
+                                            plantSort={field.sortData}
                                             alt={
                                                 field.plantLabel ||
                                                 'Nepoznata biljka'
@@ -95,13 +102,6 @@ export function RaisedBedRemovedFieldsModal({
                                     )}
                                 </div>
                                 <Stack spacing={0.5}>
-                                    <Typography
-                                        level="body2"
-                                        uppercase
-                                        semiBold
-                                    >
-                                        Polje {field.positionIndex + 1}
-                                    </Typography>
                                     <Typography level="body1" semiBold>
                                         {field.plantLabel || 'Nepoznata biljka'}
                                     </Typography>
@@ -121,6 +121,8 @@ export function RaisedBedRemovedFieldsModal({
                             <Stack spacing={1.5}>
                                 {dateEntries.map(({ key, label }) => {
                                     const value = field[key];
+                                    const isValidDate =
+                                        typeof value === 'string' && value;
                                     return (
                                         <Row
                                             key={key}
@@ -133,7 +135,7 @@ export function RaisedBedRemovedFieldsModal({
                                             >
                                                 {label}
                                             </Typography>
-                                            {value ? (
+                                            {isValidDate ? (
                                                 <LocalDateTime time={false}>
                                                     {value}
                                                 </LocalDateTime>
