@@ -328,35 +328,33 @@ export function ShoppingCartHud() {
                     title="Košarica"
                     className="border-tertiary border-b-4 md:max-w-2xl"
                     trigger={
-                        <div className="flex items-center gap-2">
-                            <Button
-                                title="Košarica"
-                                variant="plain"
-                                className="relative rounded-full p-2 gap-2"
+                        <Button
+                            title="Košarica"
+                            variant="plain"
+                            className="relative rounded-full p-2 gap-2"
+                        >
+                            <ShoppingCartIcon className="!stroke-[1.4px] shrink-0  size-6" />
+                            <Typography
+                                level="body2"
+                                semiBold
+                                className="text-foreground"
                             >
-                                <ShoppingCartIcon className="!stroke-[1.4px] shrink-0  size-6" />
-                                <Typography
-                                    level="body2"
-                                    semiBold
-                                    className="text-foreground"
-                                >
-                                    {cart.total.toFixed(2)} €
-                                </Typography>
-                                {Boolean(cart?.items.length) && (
-                                    <div className="absolute -right-2 -top-2">
-                                        <DotIndicator
-                                            size={24}
-                                            color={'success'}
-                                            content={
-                                                <Typography>
-                                                    {cart?.items.length}
-                                                </Typography>
-                                            }
-                                        />
-                                    </div>
-                                )}
-                            </Button>
-                        </div>
+                                {cart.total.toFixed(2)} €
+                            </Typography>
+                            {Boolean(cart?.items.length) && (
+                                <div className="absolute -right-2 -top-2">
+                                    <DotIndicator
+                                        size={24}
+                                        color={'success'}
+                                        content={
+                                            <Typography>
+                                                {cart?.items.length}
+                                            </Typography>
+                                        }
+                                    />
+                                </div>
+                            )}
+                        </Button>
                     }
                 >
                     <ShoppingCart />
