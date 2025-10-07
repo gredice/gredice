@@ -55,5 +55,7 @@ http://api.gredice.test {
 
 https://api.gredice.test {
     tls internal
-    reverse_proxy http://host.docker.internal:3005
+    reverse_proxy http://host.docker.internal:3005 {
+        header_up X-Forwarded-Proto {http.request.scheme}
+    }
 }
