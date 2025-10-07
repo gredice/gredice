@@ -264,8 +264,8 @@ export default function RaisedBedPage() {
                     <p>
                         Detaljan pregled kako funkcionira{' '}
                         <a href={KnownPages.Sowing}>sjetva biljaka</a>, koja je
-                        cijena i koje pogodnosti dobivaš tijekom ljeta pronađi
-                        na našoj stranici posvećenoj sjetvi.
+                        cijena i koje pogodnosti dobivaš pronađi na našoj
+                        stranici posvećenoj sjetvi.
                     </p>
                     <p>
                         Kada odabereš biljke koje želiš posaditi, aplikacija će
