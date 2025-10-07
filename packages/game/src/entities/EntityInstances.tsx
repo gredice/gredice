@@ -211,6 +211,30 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
             />
             <EntityInstancesBlock
                 stacks={stacks}
+                name="Tree"
+                yOffset={0.5}
+                scale={[0.125, 0.5, 0.125]}
+                geometry={nodes.Tree_1_1.geometry}
+                material={nodes.Tree_1_1.material}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Tree"
+                yOffset={0.5}
+                scale={[0.125, 0.5, 0.125]}
+                geometry={nodes.Tree_1_2.geometry}
+                material={nodes.Tree_1_2.material}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Tree"
+                yOffset={0.5}
+                scale={[0.125, 0.5, 0.125]}
+                geometry={nodes.Tree_1_3.geometry}
+                material={nodes.Tree_1_3.material}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
                 name="Pine"
                 yOffset={1}
                 scale={[0.09, 1, 0.09]}
@@ -219,25 +243,29 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
             />
             <EntityInstancesBlock
                 stacks={stacks}
-                name="Shovel_Small"
+                name="ShovelSmall"
+                yOffset={-0.1}
                 geometry={nodes.Shovel_Small.geometry}
                 material={materials['Material.ColorPaletteMain']}
             />
             <EntityInstancesBlock
                 stacks={stacks}
-                name="Mulch_Hey"
+                name="MulchHey"
+                scale={[3, 3, 3]}
                 geometry={nodes.Mulch_Hey.geometry}
                 material={materials['Material.ColorPaletteMain']}
             />
             <EntityInstancesBlock
                 stacks={stacks}
-                name="Mulch_Coconut"
+                name="MulchCoconut"
+                scale={[3, 3, 3]}
                 geometry={nodes.Mulch_Coconut.geometry}
                 material={materials['Material.ColorPaletteMain']}
             />
             <EntityInstancesBlock
                 stacks={stacks}
-                name="Mulch_Wood"
+                name="MulchWood"
+                scale={[3, 3, 3]}
                 geometry={nodes.Mulch_Wood.geometry}
                 material={materials['Material.ColorPaletteMain']}
             />
@@ -246,6 +274,20 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
                 name="Tulip"
                 geometry={nodes.Tulip.geometry}
                 material={materials['Material.ColorPaletteMain']}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Bush"
+                geometry={nodes.Bush_1_1.geometry}
+                material={materials['Material.ColorPaletteMain']}
+                scale={[0.5, 0.5, 0.5]}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Bush"
+                geometry={nodes.Bush_1_2.geometry}
+                material={materials['Material.Leaves']}
+                scale={[0.5, 0.5, 0.5]}
             />
             <EntityInstancesBlock
                 stacks={stacks}
