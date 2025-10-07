@@ -322,6 +322,8 @@ export function ShoppingCartHud() {
         return null;
     }
 
+    const hasEuroItems = cart.items.some((item) => item.currency === 'eur');
+
     return (
         <HudCard open position="floating" className="static p-0.5">
             <Row spacing={1}>
@@ -329,26 +331,37 @@ export function ShoppingCartHud() {
                     title="Košarica"
                     className="border-tertiary border-b-4 md:max-w-2xl"
                     trigger={
-                        <IconButton
-                            title="Košarica"
-                            variant="plain"
-                            className="relative rounded-full size-10"
-                        >
-                            <ShoppingCartIcon className="!stroke-[1.4px] shrink-0" />
-                            {Boolean(cart?.items.length) && (
-                                <div className="absolute -right-2 -top-2">
-                                    <DotIndicator
-                                        size={24}
-                                        color={'success'}
-                                        content={
-                                            <Typography>
-                                                {cart?.items.length}
-                                            </Typography>
-                                        }
-                                    />
-                                </div>
+                        <div className="flex items-center gap-2">
+                            <IconButton
+                                title="Košarica"
+                                variant="plain"
+                                className="relative rounded-full size-10"
+                            >
+                                <ShoppingCartIcon className="!stroke-[1.4px] shrink-0" />
+                                {Boolean(cart?.items.length) && (
+                                    <div className="absolute -right-2 -top-2">
+                                        <DotIndicator
+                                            size={24}
+                                            color={'success'}
+                                            content={
+                                                <Typography>
+                                                    {cart?.items.length}
+                                                </Typography>
+                                            }
+                                        />
+                                    </div>
+                                )}
+                            </IconButton>
+                            {hasEuroItems && (
+                                <Typography
+                                    level="body2"
+                                    bold
+                                    className="rounded-full bg-black/75 px-2 py-0.5 text-white shadow"
+                                >
+                                    {cart.total.toFixed(2)} €
+                                </Typography>
                             )}
-                        </IconButton>
+                        </div>
                     }
                 >
                     <ShoppingCart />
