@@ -9,12 +9,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function EditInvoicePage({
     params,
-}: {
-    params: { invoiceId: string };
-}) {
+}: PageProps<'/admin/invoices/[invoiceId]/edit'>) {
     await auth(['admin']);
-
-    const invoiceId = parseInt(params.invoiceId, 10);
+    const { invoiceId: invoiceIdParam } = await params;
+    const invoiceId = parseInt(invoiceIdParam, 10);
     if (Number.isNaN(invoiceId)) {
         notFound();
     }
