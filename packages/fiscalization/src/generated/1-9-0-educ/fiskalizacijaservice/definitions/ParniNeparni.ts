@@ -1,4 +1,3 @@
-
 /**
  * ParniNeparni
  * @targetNSAlias `tns`

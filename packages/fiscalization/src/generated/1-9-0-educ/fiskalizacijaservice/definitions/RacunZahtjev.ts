@@ -1,6 +1,6 @@
-import { Zaglavlje } from "./Zaglavlje";
-import { Racun } from "./Racun";
-import { Signature } from "./Signature";
+import type { Racun } from './Racun';
+import type { Signature } from './Signature';
+import type { Zaglavlje } from './Zaglavlje';
 
 /**
  * RacunZahtjev

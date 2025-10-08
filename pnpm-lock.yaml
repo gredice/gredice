@@ -732,7 +732,7 @@ importers:
     dependencies:
       axios:
         specifier: 1.12.2
-        version: 1.12.2(debug@4.4.3)
+        version: 1.12.2(debug@4.4.3(supports-color@8.1.1))
       node-forge:
         specifier: 1.3.1
         version: 1.3.1
@@ -740,8 +740,8 @@ importers:
         specifier: 1.5.4
         version: 1.5.4
       soap:
-        specifier: 1.4.2
-        version: 1.4.2
+        specifier: 1.5.0
+        version: 1.5.0
       undici:
         specifier: 7.16.0
         version: 7.16.0
@@ -752,6 +752,9 @@ importers:
         specifier: 0.6.2
         version: 0.6.2
     devDependencies:
+      '@biomejs/biome':
+        specifier: 2.2.5
+        version: 2.2.5
       '@microsoft/api-extractor':
         specifier: 7.53.1
         version: 7.53.1(@types/node@22.18.8)
@@ -4613,6 +4616,9 @@ packages:
   '@types/node@22.18.8':
     resolution: {integrity: sha512-pAZSHMiagDR7cARo/cch1f3rXy0AEXwsVsVH09FcyeJVAzCnGgmYis7P3JidtTUjyadhTeSo8TgRPswstghDaw==}
 
+  '@types/node@24.7.0':
+    resolution: {integrity: sha512-IbKooQVqUBrlzWTi79E8Fw78l8k1RNtlDDNWsFZs7XonuQSJ8oNYfEeclhprUldXISRMLzBpILuKgPlIxm+/Yw==}
+
   '@types/normalize-path@3.0.2':
     resolution: {integrity: sha512-DO++toKYPaFn0Z8hQ7Tx+3iT9t77IJo/nDiqTXilgEP+kPNIYdpS9kh3fXuc53ugqwp9pxC1PVjCpV1tQDyqMA==}
 
@@ -7869,6 +7875,11 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  semver@7.7.3:
+    resolution: {integrity: sha512-SdsKMrI9TdgjdweUSR9MweHA4EJ8YxHn8DFaDisvhVlUOe4BF1tLD7GAj0lIqWVl+dPb/rExr0Btby5loQm20Q==}
+    engines: {node: '>=10'}
+    hasBin: true
+
   send@1.2.0:
     resolution: {integrity: sha512-uaW0WwXKpL9blXE2o0bRhoL2EGXIrZxQ2ZQ4mgcfoBxdFmQold+qWsD2jLrfZ0trjKL6vOw0j//eAwcALFjKSw==}
     engines: {node: '>= 18'}
@@ -7942,8 +7953,8 @@ packages:
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
 
-  soap@1.4.2:
-    resolution: {integrity: sha512-4U5jfQTsny5te/syFvhvuZs+sQGeA781oAKcIVQso4nmGT0N4N/bs/j5moRcboWEfCMJxSNr+l5hD21oaKK9cg==}
+  soap@1.5.0:
+    resolution: {integrity: sha512-cT3+rKhABIkR7VkG0rtVlctQgBiKflq66jIRvpfiSxPph0Kx/pXhRWmGpvQ22crvswOhVypU/Idr88xjD15gWA==}
     engines: {node: '>=14.17.0'}
 
   socket.io-adapter@2.5.5:
@@ -8361,6 +8372,9 @@ packages:
 
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
+  undici-types@7.14.0:
+    resolution: {integrity: sha512-QQiYxHuyZ9gQUIrmPo3IA+hUl4KYk8uSA7cHrcKd/l3p1OTpZcM0Tbp9x7FAtXdAYhlasd60ncPpgu6ihG6TOA==}
 
   undici@5.29.0:
     resolution: {integrity: sha512-raqeBD6NQK4SkWhQzeYKd1KmIG6dllBOTt55Rmkt4HtI9mwdWtJljnrXjAFUBLTSN67HWrOIZ3EPF4kjUw80Bg==}
@@ -13334,13 +13348,18 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
+  '@types/node@24.7.0':
+    dependencies:
+      undici-types: 7.14.0
+    optional: true
+
   '@types/normalize-path@3.0.2': {}
 
   '@types/offscreencanvas@2019.7.3': {}
 
   '@types/pg@8.11.6':
     dependencies:
-      '@types/node': 22.18.8
+      '@types/node': 24.7.0
       pg-protocol: 1.10.3
       pg-types: 4.1.0
     optional: true
@@ -13903,7 +13922,7 @@ snapshots:
 
   axios@1.12.2:
     dependencies:
-      follow-redirects: 1.15.11(debug@4.4.3)
+      follow-redirects: 1.15.11(debug@4.4.3(supports-color@8.1.1))
       form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -14877,7 +14896,7 @@ snapshots:
       '@petamoriken/float16': 3.9.2
       debug: 4.4.3(supports-color@8.1.1)
       env-paths: 3.0.0
-      semver: 7.7.2
+      semver: 7.7.3
       shell-quote: 1.8.3
       which: 4.0.0
     transitivePeerDependencies:
@@ -15189,7 +15208,7 @@ snapshots:
   http-proxy@1.18.1:
     dependencies:
       eventemitter3: 4.0.7
-      follow-redirects: 1.15.11(debug@4.4.3)
+      follow-redirects: 1.15.11(debug@4.4.3(supports-color@8.1.1))
       requires-port: 1.0.0
     transitivePeerDependencies:
       - debug
@@ -17093,6 +17112,9 @@ snapshots:
 
   semver@7.7.2: {}
 
+  semver@7.7.3:
+    optional: true
+
   send@1.2.0:
     dependencies:
       debug: 4.4.3(supports-color@8.1.1)
@@ -17240,7 +17262,7 @@ snapshots:
 
   sisteransi@1.0.5: {}
 
-  soap@1.4.2:
+  soap@1.5.0:
     dependencies:
       axios: 1.12.2(debug@4.4.3)
       axios-ntlm: 1.4.6(debug@4.4.3)
@@ -17255,7 +17277,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  soap@1.4.2(supports-color@8.1.1):
+  soap@1.5.0(supports-color@8.1.1):
     dependencies:
       axios: 1.12.2(debug@4.4.3(supports-color@8.1.1))
       axios-ntlm: 1.4.6(debug@4.4.3(supports-color@8.1.1))
@@ -17711,6 +17733,9 @@ snapshots:
 
   undici-types@6.21.0: {}
 
+  undici-types@7.14.0:
+    optional: true
+
   undici@5.29.0:
     dependencies:
       '@fastify/busboy': 2.1.1
@@ -18033,7 +18058,7 @@ snapshots:
       camelcase: 6.3.0
       chalk: 4.1.2
       sanitize-filename: 1.6.3
-      soap: 1.4.2(supports-color@8.1.1)
+      soap: 1.5.0(supports-color@8.1.1)
       supports-color: 8.1.1
       ts-morph: 23.0.0
       yargs: 17.7.2

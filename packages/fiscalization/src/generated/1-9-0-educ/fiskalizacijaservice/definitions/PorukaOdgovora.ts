@@ -1,4 +1,3 @@
-
 /**
  * PorukaOdgovora
  * @targetNSAlias `tns`

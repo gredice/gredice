@@ -1,5 +1,5 @@
-import { Jednokratno1 } from "./Jednokratno1";
-import { Dvokratno1 } from "./Dvokratno1";
+import type { Dvokratno1 } from './Dvokratno1';
+import type { Jednokratno1 } from './Jednokratno1';
 
 /**
  * Iznimke

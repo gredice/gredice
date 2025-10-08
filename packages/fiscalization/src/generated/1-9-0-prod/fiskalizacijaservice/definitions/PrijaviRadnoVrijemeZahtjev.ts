@@ -1,6 +1,6 @@
-import { Zaglavlje } from "./Zaglavlje";
-import { PoslovniProstor } from "./PoslovniProstor";
-import { Signature } from "./Signature";
+import type { PoslovniProstor } from './PoslovniProstor';
+import type { Signature } from './Signature';
+import type { Zaglavlje } from './Zaglavlje';
 
 /**
  * PrijaviRadnoVrijemeZahtjev

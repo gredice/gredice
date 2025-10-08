@@ -1,4 +1,3 @@
-
 /**
  * Jednokratno
  * @targetNSAlias `tns`
