@@ -129,16 +129,24 @@ export function DeliveryStep({
     const formatSlotTime = (slot: TimeSlotData) => {
         const start = new Date(slot.startAt);
         const end = new Date(slot.endAt);
-        return `${start.toLocaleDateString('hr-HR')} ${start.toLocaleTimeString(
-            'hr-HR',
-            {
-                hour: '2-digit',
-                minute: '2-digit',
-            },
-        )} - ${end.toLocaleTimeString('hr-HR', {
+
+        const dayOfWeek = start.toLocaleDateString('hr-HR', {
+            weekday: 'long',
+        });
+        const capitalizedDayOfWeek =
+            dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1);
+
+        const datePart = start.toLocaleDateString('hr-HR');
+        const timePartStart = start.toLocaleTimeString('hr-HR', {
             hour: '2-digit',
             minute: '2-digit',
-        })}`;
+        });
+        const timePartEnd = end.toLocaleTimeString('hr-HR', {
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+
+        return `${capitalizedDayOfWeek}, ${datePart} ${timePartStart} - ${timePartEnd}`;
     };
 
     if (manageAddresses) {
