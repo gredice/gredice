@@ -30,7 +30,7 @@
         "prettier": "3.6.2",
         "react": "19.2.0",
         "react-dom": "19.2.0",
-        "react-email": "4.2.12",
+        "react-email": "4.3.0",
         "recharts": "3.2.1",
         "server-only": "0.0.1"
     },
