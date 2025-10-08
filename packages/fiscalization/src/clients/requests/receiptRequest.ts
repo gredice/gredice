@@ -106,19 +106,17 @@ export async function receiptRequest(
     const jir = resp?.[0]?.Jir;
     const raw = resp?.[1];
     if (!jir) {
+        const greska = resp?.[0]?.Greske?.Greska;
         return {
             success: false,
             zki,
-            errors: resp?.[0]?.Greske?.Greska
-                ? (Array.isArray(resp[0].Greske.Greska)
-                      ? resp[0].Greske.Greska
-                      : [resp[0].Greske.Greska]
-                  ).map((g) => ({
+            errors: greska
+                ? (Array.isArray(greska) ? greska : [greska]).map((g) => ({
                       errorMessage: g.PorukaGreske,
                       errorCode: g.SifraGreske,
                   }))
                 : undefined,
-            responseText: resp?.[1],
+            responseText: raw,
         };
     } else {
         return {
