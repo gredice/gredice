@@ -1,5 +1,5 @@
-import { Redovno } from "./Redovno";
-import { Iznimke } from "./Iznimke";
+import type { Iznimke } from './Iznimke';
+import type { Redovno } from './Redovno';
 
 /**
  * RadnoVrijeme

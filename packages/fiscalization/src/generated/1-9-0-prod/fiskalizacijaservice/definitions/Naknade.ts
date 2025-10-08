@@ -1,4 +1,4 @@
-import { Naknada } from "./Naknada";
+import type { Naknada } from './Naknada';
 
 /**
  * Naknade

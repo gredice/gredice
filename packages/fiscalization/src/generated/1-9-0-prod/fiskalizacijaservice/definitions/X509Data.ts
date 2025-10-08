@@ -1,4 +1,4 @@
-import { X509IssuerSerial } from "./X509IssuerSerial";
+import type { X509IssuerSerial } from './X509IssuerSerial';
 
 /**
  * X509Data

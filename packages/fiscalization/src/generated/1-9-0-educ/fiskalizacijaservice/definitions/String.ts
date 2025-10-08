@@ -1,4 +1,2 @@
-
 /** string */
-export interface String {
-}
+export type String = {};

@@ -1,6 +1,5 @@
 export type { PosSettings } from './@types/PosSettings';
 export type { PosUser } from './@types/PosUser';
 export type { UserSettings } from './@types/UserSettings';
-export type { Receipt } from './clients/receiptRequest';
-
-export { receiptRequest } from './clients/receiptRequest'; 
+export * from './clients/requests/echoRequest';
+export * from './clients/requests/receiptRequest';

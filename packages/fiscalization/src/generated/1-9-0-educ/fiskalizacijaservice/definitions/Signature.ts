@@ -1,6 +1,6 @@
-import { SignedInfo } from "./SignedInfo";
-import { KeyInfo } from "./KeyInfo";
-import { Object } from "./Object";
+import type { KeyInfo } from './KeyInfo';
+import type { Object } from './Object';
+import type { SignedInfo } from './SignedInfo';
 
 /**
  * Signature

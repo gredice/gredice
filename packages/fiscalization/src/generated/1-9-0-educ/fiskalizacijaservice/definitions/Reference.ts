@@ -1,5 +1,5 @@
-import { Transforms } from "./Transforms";
-import { DigestMethod } from "./DigestMethod";
+import type { DigestMethod } from './DigestMethod';
+import type { Transforms } from './Transforms';
 
 /**
  * Reference
