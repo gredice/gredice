@@ -10,12 +10,11 @@ export const dynamic = 'force-dynamic';
 
 export default async function EditEntityTypePage({
     params,
-}: {
-    params: { entityType: string };
-}) {
+}: PageProps<'/admin/directories/[entityType]/edit'>) {
     await auth(['admin']);
+    const { entityType: entityTypeName } = await params;
 
-    const entityType = await getEntityTypeByNameWithCategory(params.entityType);
+    const entityType = await getEntityTypeByNameWithCategory(entityTypeName);
     if (!entityType) {
         notFound();
     }
