@@ -1,4 +1,6 @@
+import { client } from '@gredice/client';
 import { GameScene } from '@gredice/game';
+import { CountingNumber } from '@gredice/ui/CountingNumber';
 import type { SectionData } from '@signalco/cms-core/SectionData';
 import { SectionsView } from '@signalco/cms-core/SectionsView';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
@@ -7,6 +9,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
+import { Suspense } from 'react';
 import DeliveryTruck from '../assets/DeliveryTruck.webp';
 import RaisedBedMaintenance from '../assets/RaisedBedMaintenance.webp';
 import SeedsAndTransplants from '../assets/SeedsAndTransplants.webp';
@@ -28,7 +31,7 @@ const sectionsData: SectionData[] = [
             <div className="min-h-96 relative rounded-xl overflow-hidden">
                 <GameScene
                     appBaseUrl="https://vrt.gredice.com"
-                    freezeTime={new Date(2024, 5, 21, 11, 30)}
+                    freezeTime={new Date(2025, 5, 21, 11, 30)}
                     noBackground
                     hideHud
                     noControls
@@ -230,6 +233,72 @@ const sectionsData: SectionData[] = [
     },
 ];
 
+function PlantsStatisticsCard({
+    header,
+    subheader,
+    value,
+}: {
+    header: string;
+    subheader: string;
+    value: string;
+}) {
+    return (
+        <div className="rounded-2xl border shadow-lg bg-white p-6 grid grid-rows-[auto_auto_1fr] h-full">
+            <CountingNumber
+                className="mb-4 text-5xl font-thin"
+                number={parseInt(value, 10)}
+                inView
+            >
+                {value}
+            </CountingNumber>
+            <Typography level="h5">{header}</Typography>
+            <Typography level="body2" secondary>
+                {subheader}
+            </Typography>
+        </div>
+    );
+}
+
+function PlantsStatisticsLoading() {
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="rounded-2xl border shadow-lg bg-white p-6 h-[182px] animate-pulse" />
+            <div className="rounded-2xl border shadow-lg bg-white p-6 h-[182px] animate-pulse" />
+            <div className="rounded-2xl border shadow-lg bg-white p-6 h-[182px] animate-pulse" />
+        </div>
+    );
+}
+
+async function PlantsStatistics() {
+    const response = await client().api.data.statistics.plants.$get();
+    if (!response || response.status !== 200) {
+        return null;
+    }
+
+    const { totalPlants, totalPlantSorts, totalPlantedPlants } =
+        await response.json();
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <PlantsStatisticsCard
+                header="Dostupnih biljaka"
+                subheader="Informacije o biljkama, sve na jednom mjestu"
+                value={totalPlants.toString()}
+            />
+            <PlantsStatisticsCard
+                header="Dostupnih sorti"
+                subheader="Sorte biljaka koje možeš posaditi u svoje gredice"
+                value={totalPlantSorts.toString()}
+            />
+            <PlantsStatisticsCard
+                header="Posađenih biljaka"
+                subheader="Do sada posađenih biljaka u svim vrtovima naših korisnika"
+                value={totalPlantedPlants.toString()}
+            />
+        </div>
+    );
+}
+
 export default function Home() {
     return (
         <Stack>
@@ -251,6 +320,9 @@ export default function Home() {
                     potrebama. Odaberi svoje omiljeno povrće, začine i cvijeće
                     te zasadi svoje gredice.
                 </Typography>
+                <Suspense fallback={<PlantsStatisticsLoading />}>
+                    <PlantsStatistics />
+                </Suspense>
                 <PlantsShowcase />
             </Stack>
             <Stack spacing={4} className="mt-20">

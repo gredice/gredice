@@ -27,6 +27,7 @@
         "@signalco/ui": "0.2.10",
         "@signalco/ui-icons": "0.2.2",
         "@signalco/ui-primitives": "0.6.5",
+        "motion": "12.23.22",
         "next": "canary",
         "react": "19.2.0",
         "react-dom": "19.2.0"
@@ -34,6 +35,7 @@
     "peerDependencies": {
         "@signalco/ui-primitives": "0.x",
         "@tailwindcss/typography": "0.x",
+        "motion": "12.x",
         "next": "15.x",
         "react": "19.x",
         "react-dom": "19.x",

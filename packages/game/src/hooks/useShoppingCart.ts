@@ -8,6 +8,9 @@ export function useShoppingCart() {
         queryKey: useShoppingCartQueryKey,
         queryFn: async () => {
             const response = await client().api['shopping-cart'].$get();
+            if (response.status === 401) {
+                return null;
+            }
             if (response.status !== 200) {
                 throw new Error('Failed to fetch shopping cart');
             }
