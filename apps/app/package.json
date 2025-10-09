@@ -21,7 +21,7 @@
         "@dnd-kit/sortable": "10.0.0",
         "@dnd-kit/utilities": "3.2.2",
         "@gredice/transactional": "workspace:*",
-        "@react-email/components": "0.5.5",
+        "@react-email/components": "0.5.6",
         "@vercel/blob": "2.0.0",
         "hypertune": "2.10.0",
         "next": "canary",
