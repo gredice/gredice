@@ -39,7 +39,7 @@
         "@signalco/ui-themes-minimal-app": "0.1.3",
         "@tailwindcss/typography": "0.5.19",
         "@tanstack/react-query": "5.90.2",
-        "@types/node": "22.18.8",
+        "@types/node": "22.18.9",
         "@types/react": "19.2.2",
         "@types/react-dom": "19.2.1",
         "@vercel/analytics": "1.5.0",
