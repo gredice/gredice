@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, lte } from 'drizzle-orm';
+import { and, asc, count, eq, gte, inArray, lte } from 'drizzle-orm';
 import { events } from '../schema';
 import { storage } from '../storage';
 
@@ -490,6 +490,14 @@ export async function getPlantUpdateEvents(filter?: {
             ?.status;
         return status === filter.status;
     });
+}
+
+export async function getPlantPlaceEventsCount() {
+    const result = await storage()
+        .select({ count: count() })
+        .from(events)
+        .where(eq(events.type, knownEventTypes.raisedBedFields.plantPlace));
+    return result[0]?.count ?? 0;
 }
 
 export type Event = {
