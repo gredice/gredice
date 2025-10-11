@@ -203,7 +203,7 @@ function CancelRequestModal({
                                 )}
                             </Row>
 
-                            {request.address && (
+                            {request.mode === 'delivery' && request.address && (
                                 <Stack spacing={0.5}>
                                     <Typography level="body3" secondary>
                                         Adresa:
@@ -219,7 +219,7 @@ function CancelRequestModal({
                                 </Stack>
                             )}
 
-                            {request.location && (
+                            {request.mode === 'pickup' && request.location && (
                                 <Stack spacing={0.5}>
                                     <Typography level="body3" secondary>
                                         Lokacija:
@@ -333,7 +333,7 @@ function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
                                 </Row>
                             )}
 
-                            {request.address && (
+                            {request.mode === 'delivery' && request.address && (
                                 <Row spacing={1} alignItems="start">
                                     <MapPin className="size-4 mt-0.5 text-muted-foreground" />
                                     <Stack spacing={0.5}>
@@ -352,7 +352,7 @@ function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
                                 </Row>
                             )}
 
-                            {request.location && (
+                            {request.mode === 'pickup' && request.location && (
                                 <Row spacing={1}>
                                     <MapPin className="size-4 text-muted-foreground" />
                                     <Typography level="body2">
