@@ -1,5 +1,6 @@
 import { cx } from '@signalco/ui-primitives/cx';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useCallback, useMemo } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
@@ -22,6 +23,15 @@ export function RaisedBedFieldSuggestions({
         useShoppingCart();
     const { data: allSorts, isLoading: isLoadingSorts } = useAllSorts();
     const setCartItem = useSetShoppingCartItem();
+    const quickPickLayouts = useMemo(
+        () => ({
+            summer: [222, 227, 279, 223, 294, 230, 223, 215, 230],
+            salad: [282, 229, 209, 299, 234, 221, 281, 215, 204],
+        }),
+        [],
+    );
+    const isQuickPickLoading =
+        setCartItem.isPending || isLoadingShoppingCart || isLoadingSorts;
     if (!currentGarden || !raisedBed || !shoppingCart) return null;
 
     // Only show suggestions if the raised bed is valid
@@ -37,38 +47,37 @@ export function RaisedBedFieldSuggestions({
     if (raisedBed.fields.length + (cartPlantItems?.length ?? 0) >= 9)
         return null;
 
-    async function handleQuickPick(type: 'summer' | 'salad') {
-        const layouts = {
-            summer: [222, 227, 279, 223, 294, 230, 223, 215, 230],
-            salad: [282, 229, 209, 299, 234, 221, 281, 215, 204],
-        };
+    const handleQuickPick = useCallback(
+        async (type: 'summer' | 'salad') => {
+            if (!allSorts || !raisedBed || !shoppingCart || isQuickPickLoading)
+                return;
 
-        if (!allSorts) return;
+            const layout = quickPickLayouts[type];
 
-        await Promise.all(
-            Array.from({ length: 9 }).map(async (_, index) => {
-                if (!raisedBed || !shoppingCart) return;
-                const sortId = layouts[type][index];
+            for (const [index, sortId] of layout.entries()) {
+                const isFieldOccupied = raisedBed.fields.some(
+                    (field) => field.positionIndex === index && field.active,
+                );
+                if (isFieldOccupied) continue;
+
+                const pendingCartItem = shoppingCart.items.find(
+                    (item) =>
+                        item.raisedBedId === raisedBedId &&
+                        item.positionIndex === index &&
+                        item.entityTypeName === 'plantSort' &&
+                        item.status === 'new',
+                );
+                if (pendingCartItem) continue;
+
                 const sort = allSorts.find((item) => item.id === sortId);
-                if (!sort?.store?.availableInStore) return;
-                if (
-                    raisedBed.fields.find(
-                        (field) =>
-                            field.positionIndex === index && field.active,
-                    )
-                )
-                    return;
-                if (
-                    shoppingCart.items.find(
-                        (item) =>
-                            item.raisedBedId === raisedBedId &&
-                            item.positionIndex === index &&
-                            item.entityTypeName === 'plantSort' &&
-                            item.status === 'new',
-                    )
-                )
-                    return;
-                return setCartItem.mutateAsync({
+                const isAvailableInStore =
+                    sort?.store?.availableInStore ??
+                    sort?.information.plant.store?.availableInStore ??
+                    false;
+
+                if (!isAvailableInStore) continue;
+
+                await setCartItem.mutateAsync({
                     entityTypeName: 'plantSort',
                     entityId: sortId.toString(),
                     amount: 1,
@@ -76,9 +85,19 @@ export function RaisedBedFieldSuggestions({
                     raisedBedId,
                     positionIndex: index,
                 });
-            }),
-        );
-    }
+            }
+        },
+        [
+            allSorts,
+            gardenId,
+            isQuickPickLoading,
+            quickPickLayouts,
+            raisedBed,
+            raisedBedId,
+            setCartItem,
+            shoppingCart,
+        ],
+    );
 
     return (
         <RaisedBedCard className="flex items-center flex-col gap-1 px-4 py-2 md:gap-2 md:px-4 md:pb-4 md:pt-3">
@@ -99,11 +118,7 @@ export function RaisedBedFieldSuggestions({
                     )}
                     startDecorator={<span className="text-xl">☀️</span>}
                     onClick={() => handleQuickPick('summer')}
-                    loading={
-                        setCartItem.isPending ||
-                        isLoadingShoppingCart ||
-                        isLoadingSorts
-                    }
+                    loading={isQuickPickLoading}
                 >
                     <span className="hidden md:block">Ljetni mix</span>
                 </ButtonGreen>
@@ -115,11 +130,7 @@ export function RaisedBedFieldSuggestions({
                     )}
                     startDecorator={<span className="text-xl">🥬</span>}
                     onClick={() => handleQuickPick('salad')}
-                    loading={
-                        setCartItem.isPending ||
-                        isLoadingShoppingCart ||
-                        isLoadingSorts
-                    }
+                    loading={isQuickPickLoading}
                 >
                     <span className="hidden md:block">Salatni mix</span>
                 </ButtonGreen>
