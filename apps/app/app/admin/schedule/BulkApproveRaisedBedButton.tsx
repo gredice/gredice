@@ -41,16 +41,17 @@ export function BulkApproveRaisedBedButton({
 
         setIsSubmitting(true);
         try {
-            for (const field of fields) {
-                await acceptRaisedBedFieldAction(
-                    field.raisedBedId,
-                    field.positionIndex,
-                );
-            }
-
-            for (const operation of operations) {
-                await acceptOperationAction(operation.id);
-            }
+            await Promise.all([
+                ...fields.map(field =>
+                    acceptRaisedBedFieldAction(
+                        field.raisedBedId,
+                        field.positionIndex,
+                    )
+                ),
+                ...operations.map(operation =>
+                    acceptOperationAction(operation.id)
+                ),
+            ]);
         } catch (error) {
             console.error('Failed to approve all raised bed items:', error);
             throw error;
