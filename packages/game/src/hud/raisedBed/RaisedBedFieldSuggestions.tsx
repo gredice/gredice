@@ -8,6 +8,11 @@ import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 import { RaisedBedCard } from './RaisedBedCard';
 
+const QUICK_PICK_LAYOUTS: Record<'summer' | 'salad', number[]> = {
+    summer: [222, 227, 279, 223, 294, 230, 223, 215, 230],
+    salad: [282, 229, 209, 299, 234, 221, 281, 215, 204],
+};
+
 export function RaisedBedFieldSuggestions({
     gardenId,
     raisedBedId,
@@ -23,13 +28,25 @@ export function RaisedBedFieldSuggestions({
         useShoppingCart();
     const { data: allSorts, isLoading: isLoadingSorts } = useAllSorts();
     const setCartItem = useSetShoppingCartItem();
-    const quickPickLayouts = useMemo(
-        () => ({
-            summer: [222, 227, 279, 223, 294, 230, 223, 215, 230],
-            salad: [282, 229, 209, 299, 234, 221, 281, 215, 204],
-        }),
-        [],
-    );
+    const availableSortIds = useMemo(() => {
+        if (!allSorts) return new Set<number>();
+
+        const ids = allSorts
+            .filter((sort) => {
+                const sortAvailable = sort.store?.availableInStore;
+                const parentAvailable =
+                    sort.information.plant.store?.availableInStore;
+
+                if (sortAvailable === false) return false;
+                if (sortAvailable === true) return parentAvailable !== false;
+
+                return parentAvailable ?? false;
+            })
+            .map((sort) => sort.id);
+
+        return new Set(ids);
+    }, [allSorts]);
+    const hasAvailableSorts = availableSortIds.size > 0;
     const isQuickPickLoading =
         setCartItem.isPending || isLoadingShoppingCart || isLoadingSorts;
     if (!currentGarden || !raisedBed || !shoppingCart) return null;
@@ -49,10 +66,16 @@ export function RaisedBedFieldSuggestions({
 
     const handleQuickPick = useCallback(
         async (type: 'summer' | 'salad') => {
-            if (!allSorts || !raisedBed || !shoppingCart || isQuickPickLoading)
+            if (
+                !allSorts ||
+                !raisedBed ||
+                !shoppingCart ||
+                isQuickPickLoading ||
+                !hasAvailableSorts
+            )
                 return;
 
-            const layout = quickPickLayouts[type];
+            const layout = QUICK_PICK_LAYOUTS[type];
 
             for (const [index, sortId] of layout.entries()) {
                 const isFieldOccupied = raisedBed.fields.some(
@@ -69,13 +92,7 @@ export function RaisedBedFieldSuggestions({
                 );
                 if (pendingCartItem) continue;
 
-                const sort = allSorts.find((item) => item.id === sortId);
-                const isAvailableInStore =
-                    sort?.store?.availableInStore ??
-                    sort?.information.plant.store?.availableInStore ??
-                    false;
-
-                if (!isAvailableInStore) continue;
+                if (!availableSortIds.has(sortId)) continue;
 
                 await setCartItem.mutateAsync({
                     entityTypeName: 'plantSort',
@@ -91,7 +108,8 @@ export function RaisedBedFieldSuggestions({
             allSorts,
             gardenId,
             isQuickPickLoading,
-            quickPickLayouts,
+            hasAvailableSorts,
+            availableSortIds,
             raisedBed,
             raisedBedId,
             setCartItem,
@@ -119,6 +137,7 @@ export function RaisedBedFieldSuggestions({
                     startDecorator={<span className="text-xl">☀️</span>}
                     onClick={() => handleQuickPick('summer')}
                     loading={isQuickPickLoading}
+                    disabled={!hasAvailableSorts}
                 >
                     <span className="hidden md:block">Ljetni mix</span>
                 </ButtonGreen>
@@ -131,6 +150,7 @@ export function RaisedBedFieldSuggestions({
                     startDecorator={<span className="text-xl">🥬</span>}
                     onClick={() => handleQuickPick('salad')}
                     loading={isQuickPickLoading}
+                    disabled={!hasAvailableSorts}
                 >
                     <span className="hidden md:block">Salatni mix</span>
                 </ButtonGreen>
