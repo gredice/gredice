@@ -1,3 +1,4 @@
+import { TimeRange } from '@gredice/ui/LocalDateTime';
 import { Alert } from '@signalco/ui/Alert';
 import {
     Approved,
@@ -23,7 +24,7 @@ import {
     TooltipTrigger,
 } from '@signalco/ui-primitives/Tooltip';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useCancelDeliveryRequest } from '../../hooks/useDeliveryRequestMutations';
 import {
     type DeliveryRequestData,
@@ -39,25 +40,11 @@ const CANCEL_REASON_OPTIONS = [
     { value: 'OTHER', label: 'Ostalo' },
 ];
 
-function formatSlotTime(slot: NonNullable<DeliveryRequestData['slot']>) {
-    const start = new Date(slot.startAt);
-    const end = new Date(slot.endAt);
-    return `${start.toLocaleDateString('hr-HR')} ${start.toLocaleTimeString(
-        'hr-HR',
-        {
-            hour: '2-digit',
-            minute: '2-digit',
-        },
-    )} - ${end.toLocaleTimeString('hr-HR', {
-        hour: '2-digit',
-        minute: '2-digit',
-    })}`;
-}
-
 function getStatusColor(state: string) {
     switch (state) {
         case 'pending':
             return 'warning';
+        case 'scheduled':
         case 'confirmed':
             return 'info';
         case 'preparing':
@@ -77,6 +64,8 @@ function getStatusLabel(state: string) {
     switch (state) {
         case 'pending':
             return 'Na čekanju';
+        case 'scheduled':
+            return 'Zakazano';
         case 'confirmed':
             return 'Zakazano';
         case 'preparing':
@@ -96,6 +85,7 @@ function getStatusDescription(state: string) {
     switch (state) {
         case 'pending':
             return 'Zahtjev je primljen i čeka potvrdu naše ekipe.';
+        case 'scheduled':
         case 'confirmed':
             return 'Termin je potvrđen i pripremamo vašu dostavu.';
         case 'preparing':
@@ -116,7 +106,11 @@ function getStatusIcon(state: string) {
         case 'pending':
             return <Timer className="size-4" />;
         case 'scheduled':
+        case 'confirmed':
             return <Approved className="size-4" />;
+        case 'preparing':
+            return <Info className="size-4" />;
+        case 'ready':
         case 'fulfilled':
             return <Approved className="size-4" />;
         case 'cancelled':
@@ -397,7 +391,10 @@ function DeliveryRequestRow({
                     <Row spacing={1}>
                         <Timer className="size-4 text-muted-foreground" />
                         <Typography level="body2">
-                            {formatSlotTime(request.slot)}
+                            <TimeRange
+                                startAt={request.slot.startAt}
+                                endAt={request.slot.endAt}
+                            />
                         </Typography>
                     </Row>
                 )}
@@ -492,12 +489,19 @@ function DeliveryRequestGroupCard({
             <CardContent noHeader>
                 <Stack spacing={3}>
                     <Stack spacing={0.5}>
-                        <Row spacing={1}>
+                        <Row spacing={1} alignItems="center">
                             {groupIcon}
                             <Typography>{groupLabel}</Typography>
+                            <Chip
+                                size="sm"
+                                color="info"
+                                className="font-semibold"
+                            >
+                                {formatDeliveryCount(requests.length)}
+                            </Chip>
                         </Row>
                         <Typography level="body3" secondary>
-                            Ukupno: {formatDeliveryCount(requests.length)}
+                            Ukupno zahtjeva: {requests.length}
                         </Typography>
                     </Stack>
 
@@ -505,7 +509,10 @@ function DeliveryRequestGroupCard({
                         <Row spacing={1}>
                             <Timer className="size-4 text-muted-foreground" />
                             <Typography level="body2">
-                                {formatSlotTime(firstRequest.slot)}
+                                <TimeRange
+                                    startAt={firstRequest.slot.startAt}
+                                    endAt={firstRequest.slot.endAt}
+                                />
                             </Typography>
                         </Row>
                     )}
@@ -536,6 +543,7 @@ function DeliveryRequestGroupCard({
 type DeliveryRequestGroup = {
     key: string;
     requests: DeliveryRequestData[];
+    slotStart?: string | null;
 };
 
 function groupRequestsBySlot(
@@ -544,29 +552,50 @@ function groupRequestsBySlot(
     const groups: DeliveryRequestGroup[] = [];
     const map = new Map<string, DeliveryRequestGroup>();
 
-    for (const request of requests) {
+    requests.forEach((request, index) => {
         const slotKey = request.slot?.id ?? request.slot?.startAt;
+
         if (!slotKey) {
-            groups.push({ key: request.id, requests: [request] });
-            continue;
+            groups.push({ key: `${request.id}-${index}`, requests: [request] });
+            return;
         }
 
         const key = String(slotKey);
         const existing = map.get(key);
+
         if (existing) {
             existing.requests.push(request);
         } else {
-            const group = { key, requests: [request] };
+            const group: DeliveryRequestGroup = {
+                key,
+                requests: [request],
+                slotStart: request.slot?.startAt ?? null,
+            };
             map.set(key, group);
             groups.push(group);
         }
-    }
+    });
 
-    return groups;
+    return groups.sort((a, b) => {
+        if (a.slotStart && b.slotStart) {
+            return (
+                new Date(a.slotStart).getTime() -
+                new Date(b.slotStart).getTime()
+            );
+        }
+
+        if (a.slotStart) return -1;
+        if (b.slotStart) return 1;
+        return 0;
+    });
 }
 
 export function DeliveryRequestsSection() {
     const { data: requests, isLoading } = useDeliveryRequests();
+    const groupedRequests = useMemo(
+        () => (requests ? groupRequestsBySlot(requests) : []),
+        [requests],
+    );
 
     return (
         <Stack spacing={2}>
@@ -582,9 +611,9 @@ export function DeliveryRequestsSection() {
             </Row>
             {isLoading ? (
                 <Typography>Učitavanje dostava...</Typography>
-            ) : requests && requests.length > 0 ? (
+            ) : groupedRequests.length > 0 ? (
                 <Stack spacing={1}>
-                    {groupRequestsBySlot(requests).map((group) =>
+                    {groupedRequests.map((group) =>
                         group.requests.length === 1 ? (
                             <DeliveryRequestCard
                                 key={group.requests[0].id}
