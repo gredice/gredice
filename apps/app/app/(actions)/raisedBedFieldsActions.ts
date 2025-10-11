@@ -175,10 +175,9 @@ export async function rescheduleRaisedBedFieldAction(formData: FormData) {
     }
 
     await createEvent(
-        knownEvents.raisedBedFields.plantPlaceV1(
+        knownEvents.raisedBedFields.plantScheduleV1(
             `${raisedBedId}|${positionIndex}`,
             {
-                plantSortId: field.plantSortId.toString(),
                 scheduledDate: new Date(scheduledDate).toISOString(),
             },
         ),

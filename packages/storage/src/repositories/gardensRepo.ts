@@ -380,6 +380,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             knownEventTypes.raisedBedFields.create,
             knownEventTypes.raisedBedFields.delete,
             knownEventTypes.raisedBedFields.plantPlace,
+            knownEventTypes.raisedBedFields.plantSchedule,
             knownEventTypes.raisedBedFields.plantUpdate,
             knownEventTypes.raisedBedFields.plantReplaceSort,
         ],
@@ -443,6 +444,25 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
 
                 // Set status to new when plant is placed
                 plantStatus = 'new';
+            }
+            // Handle plant schedule update event
+            else if (
+                event.type === knownEventTypes.raisedBedFields.plantSchedule
+            ) {
+                if (
+                    data?.scheduledDate &&
+                    typeof data.scheduledDate === 'string'
+                ) {
+                    plantScheduledDate = new Date(data.scheduledDate);
+                } else if (
+                    data?.scheduledDate &&
+                    typeof data.scheduledDate === 'object' &&
+                    data?.scheduledDate instanceof Date
+                ) {
+                    plantScheduledDate = data?.scheduledDate;
+                } else if (data?.scheduledDate == null) {
+                    plantScheduledDate = undefined;
+                }
             }
             // Handle plant status update event
             else if (
@@ -654,6 +674,7 @@ export async function getRaisedBedFieldDiaryEntries(
             [
                 knownEventTypes.raisedBedFields.create,
                 knownEventTypes.raisedBedFields.plantPlace,
+                knownEventTypes.raisedBedFields.plantSchedule,
                 knownEventTypes.raisedBedFields.plantUpdate,
                 knownEventTypes.raisedBedFields.plantReplaceSort,
                 knownEventTypes.raisedBedFields.delete,
@@ -689,6 +710,11 @@ export async function getRaisedBedFieldDiaryEntries(
                     name = 'Zatraženo sijanje biljke';
                     description =
                         'Sijanje biljke je zatraženo i čeka na odobrenje.';
+                    break;
+                }
+                case knownEventTypes.raisedBedFields.plantSchedule: {
+                    name = 'Ažuriran termin sijanja';
+                    description = 'Termin sijanja biljke je promijenjen.';
                     break;
                 }
                 case knownEventTypes.raisedBedFields.plantUpdate: {
