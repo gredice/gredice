@@ -1,6 +1,7 @@
 import { cx } from '@signalco/ui-primitives/cx';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
+import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
@@ -94,6 +95,7 @@ export function RaisedBedFieldSuggestions({
     );
     const { data: shoppingCart, isLoading: isLoadingShoppingCart } =
         useShoppingCart();
+    const { data: allSorts, isLoading: isLoadingSorts } = useAllSorts();
     const setCartItem = useSetShoppingCartItem();
     const currentTime = useGameState((state) => state.currentTime);
     if (!currentGarden || !raisedBed || !shoppingCart) return null;
@@ -123,10 +125,18 @@ export function RaisedBedFieldSuggestions({
 
     async function handleQuickPick(type: QuickSeedType) {
         const layout = quickSeedOptions[type]?.layout;
-        if (!layout) return;
+        if (!layout || !allSorts) return;
         await Promise.all(
             Array.from({ length: 9 }).map(async (_, index) => {
                 if (!raisedBed || !shoppingCart) return;
+
+                const sortId = layout[index];
+                if (!sortId) return;
+
+                // If not in store, ignore
+                const sort = allSorts.find((item) => item.id === sortId);
+                if (!sort?.store?.availableInStore) return;
+
                 if (
                     raisedBed.fields.find(
                         (field) =>
@@ -144,11 +154,11 @@ export function RaisedBedFieldSuggestions({
                     )
                 )
                     return;
-                const plantSortId = layout[index];
-                if (plantSortId == null) return;
+
+                if (sortId == null) return;
                 return setCartItem.mutateAsync({
                     entityTypeName: 'plantSort',
-                    entityId: plantSortId.toString(),
+                    entityId: sortId.toString(),
                     amount: 1,
                     gardenId,
                     raisedBedId,
@@ -183,7 +193,11 @@ export function RaisedBedFieldSuggestions({
                             </span>
                         }
                         onClick={() => handleQuickPick(season)}
-                        loading={setCartItem.isPending || isLoadingShoppingCart}
+                        loading={
+                            setCartItem.isPending ||
+                            isLoadingShoppingCart ||
+                            isLoadingSorts
+                        }
                     >
                         <span className="hidden md:block">
                             {seasonalOption.label}
@@ -204,7 +218,11 @@ export function RaisedBedFieldSuggestions({
                             <span className="text-xl">{option.emoji}</span>
                         }
                         onClick={() => handleQuickPick(type as QuickSeedType)}
-                        loading={setCartItem.isPending || isLoadingShoppingCart}
+                        loading={
+                            setCartItem.isPending ||
+                            isLoadingShoppingCart ||
+                            isLoadingSorts
+                        }
                     >
                         <span className="hidden md:block">{option.label}</span>
                     </ButtonGreen>
