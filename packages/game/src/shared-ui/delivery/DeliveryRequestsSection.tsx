@@ -254,7 +254,10 @@ function CancelRequestModal({
                                         Termin:
                                     </Typography>
                                     <Typography level="body2">
-                                        {formatSlotTime(request.slot)}
+                                        <TimeRange
+                                            startAt={request.slot.startAt}
+                                            endAt={request.slot.endAt}
+                                        />
                                     </Typography>
                                 </Stack>
                             )}
