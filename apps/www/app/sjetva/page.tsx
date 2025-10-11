@@ -70,10 +70,28 @@ export default function SowingPage() {
                         vremenu sjetve, pa slobodno eksperimentiraj i istražuj
                         nove biljke!
                     </p>
+                    <h2>🌱 Proljetne pogodnosti</h2>
+                    <p>
+                        Tijekom proljeća svaka naručena sjetva donosi besplatno
+                        3 zalijevanja* &quot;
+                        <strong>Površinsko zalijevanje (10&nbsp;L)</strong>
+                        &quot; za podignutu gredicu, pri čemu se zalijevanje
+                        obavlja svaki drugi dan.
+                    </p>
+                    <small>
+                        *{' '}
+                        <i>
+                            Ako posiješ novu biljku dok je prethodni besplatni
+                            period još aktivan, zalijevanje se produžuje. Na
+                            primjer, ako tijekom 6 uzastopnih dana siješ po
+                            jednu biljku, imat ćeš ukupno 12 besplatnih
+                            zalijevanja.
+                        </i>
+                    </small>
                     <h2>☀️ Ljetne pogodnosti</h2>
                     <p>
-                        Tijekom ljeta svaka naručena sjetva donosi besplatno pet
-                        dana usluge* &quot;
+                        Tijekom ljeta svaka naručena sjetva donosi besplatno 5
+                        zalijevanja* &quot;
                         <strong>Površinsko zalijevanje (10&nbsp;L)</strong>
                         &quot; za podignutu gredicu.
                     </p>
@@ -82,9 +100,27 @@ export default function SowingPage() {
                         <i>
                             Ako posiješ novu biljku dok je prethodni besplatni
                             period još aktivan, zalijevanje se produžuje. Na
-                            primjer, ako tijekom pet uzastopnih dana siješ po
-                            jednu biljku, dobit ćeš ukupno deset dana besplatnog
-                            zalijevanja, a ne dvadeset i pet dana.
+                            primjer, ako tijekom 5 uzastopnih dana siješ po
+                            jednu biljku, imat ćeš ukupno 10 dana besplatnog
+                            zalijevanja.
+                        </i>
+                    </small>
+                    <h2>🍂 Jesenske pogodnosti</h2>
+                    <p>
+                        Tijekom jeseni svaka naručena sjetva donosi besplatno 3
+                        zalijevanja* &quot;
+                        <strong>Površinsko zalijevanje (10&nbsp;L)</strong>
+                        &quot; za podignutu gredicu, pri čemu se zalijevanje
+                        obavlja svaki drugi dan.
+                    </p>
+                    <small>
+                        *{' '}
+                        <i>
+                            Ako posiješ novu biljku dok je prethodni besplatni
+                            period još aktivan, zalijevanje se produžuje. Na
+                            primjer, ako tijekom 6 uzastopnih dana siješ po
+                            jednu biljku, imat ćeš ukupno 12 besplatnih
+                            zalijevanja.
                         </i>
                     </small>
                     <h2>💭 Sljedeći koraci</h2>
