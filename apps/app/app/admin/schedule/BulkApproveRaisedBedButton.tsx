@@ -1,7 +1,6 @@
 'use client';
 
-import { Approved, Check } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
+import { Approved } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { useState } from 'react';
 import { acceptOperationAction } from '../../(actions)/operationActions';
@@ -43,14 +42,14 @@ export function BulkApproveRaisedBedButton({
         setIsSubmitting(true);
         try {
             await Promise.all([
-                ...fields.map(field =>
+                ...fields.map((field) =>
                     acceptRaisedBedFieldAction(
                         field.raisedBedId,
                         field.positionIndex,
-                    )
+                    ),
                 ),
-                ...operations.map(operation =>
-                    acceptOperationAction(operation.id)
+                ...operations.map((operation) =>
+                    acceptOperationAction(operation.id),
                 ),
             ]);
         } catch (error) {

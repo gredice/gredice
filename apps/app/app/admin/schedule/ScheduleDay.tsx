@@ -1,6 +1,6 @@
 'use client';
 
-import { calculatePlantsPerField } from '@gredice/js/plants';
+import { calculatePlantsPerField, FIELD_SIZE_CM } from '@gredice/js/plants';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
@@ -487,9 +487,9 @@ export function ScheduleDay({
                         );
                         const numberOfPlants =
                             Math.floor(
-                                30 /
+                                FIELD_SIZE_CM /
                                     (sortData?.information?.plant?.attributes
-                                        ?.seedingDistance || 30),
+                                        ?.seedingDistance || FIELD_SIZE_CM),
                             ) ** 2;
 
                         return {
@@ -607,10 +607,10 @@ export function ScheduleDay({
                                 );
                                 const numberOfPlants =
                                     Math.floor(
-                                        30 /
+                                        FIELD_SIZE_CM /
                                             (sortData?.information?.plant
                                                 ?.attributes?.seedingDistance ||
-                                                30),
+                                                FIELD_SIZE_CM),
                                     ) ** 2;
 
                                 const handlePlantConfirm = async () => {
