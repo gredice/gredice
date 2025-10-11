@@ -569,9 +569,14 @@ export function ScheduleDay({
                 return (
                     <Stack key={physicalId} spacing={1}>
                         <Row
-                            spacing={1}
+                            spacing={0.5}
                             className="items-center flex-wrap gap-y-1"
                         >
+                            <BulkApproveRaisedBedButton
+                                physicalId={physicalId.toString()}
+                                fields={fieldsToApprove}
+                                operations={operationsToApprove}
+                            />
                             <RaisedBedLabel physicalId={physicalId} />
                             <Typography
                                 level="body2"
@@ -588,11 +593,6 @@ export function ScheduleDay({
                             <CopyTasksButton
                                 physicalId={physicalId.toString()}
                                 tasks={copyTasks}
-                            />
-                            <BulkApproveRaisedBedButton
-                                physicalId={physicalId.toString()}
-                                fields={fieldsToApprove}
-                                operations={operationsToApprove}
                             />
                         </Row>
                         <Stack spacing={1}>

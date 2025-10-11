@@ -1,7 +1,8 @@
 'use client';
 
-import { Check } from '@signalco/ui-icons';
+import { Approved, Check } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { useState } from 'react';
 import { acceptOperationAction } from '../../(actions)/operationActions';
 import { acceptRaisedBedFieldAction } from '../../(actions)/raisedBedFieldsActions';
@@ -67,17 +68,15 @@ export function BulkApproveRaisedBedButton({
             label={`sve zadatke (${totalItems}) za gredicu ${physicalId}`}
             onConfirm={handleConfirm}
             trigger={
-                <Button
+                <IconButton
                     variant="plain"
                     title="Potvrdi sve zadatke gredice"
                     disabled={disabled}
-                    startDecorator={<Check className="size-4 shrink-0" />}
                     aria-disabled={disabled}
+                    loading={isSubmitting}
                 >
-                    {isSubmitting
-                        ? 'Potvrđivanje...'
-                        : `Potvrdi sve (${totalItems})`}
-                </Button>
+                    <Approved className="size-4 shrink-0" />
+                </IconButton>
             }
         />
     );
