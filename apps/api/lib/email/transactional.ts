@@ -11,6 +11,12 @@ import WelcomeEmailTemplate, {
 import BirthdayEmailTemplate, {
     type BirthdayEmailTemplateProps,
 } from '@gredice/transactional/emails/Notifications/birthday';
+import DeliveryReadyEmailTemplate, {
+    type DeliveryReadyEmailTemplateProps,
+} from '@gredice/transactional/emails/Notifications/delivery-ready';
+import DeliveryScheduledEmailTemplate, {
+    type DeliveryScheduledEmailTemplateProps,
+} from '@gredice/transactional/emails/Notifications/delivery-scheduled';
 import DeliverySurveyEmailTemplate, {
     type DeliverySurveyEmailTemplateProps,
 } from '@gredice/transactional/emails/Notifications/delivery-survey';
@@ -57,6 +63,40 @@ export async function sendWelcome(
         template: WelcomeEmailTemplate(config),
         templateName: 'account-welcome',
         messageType: 'account',
+    });
+}
+
+export async function sendDeliveryScheduled(
+    to: string,
+    config: DeliveryScheduledEmailTemplateProps,
+) {
+    const templateProps = {
+        ...config,
+        email: config.email ?? to,
+    } satisfies DeliveryScheduledEmailTemplateProps;
+
+    return await sendEmail({
+        from: 'suncokret@obavijesti.gredice.com',
+        to,
+        subject: 'Gredice - termin tvoje dostave',
+        template: DeliveryScheduledEmailTemplate(templateProps),
+    });
+}
+
+export async function sendDeliveryReady(
+    to: string,
+    config: DeliveryReadyEmailTemplateProps,
+) {
+    const templateProps = {
+        ...config,
+        email: config.email ?? to,
+    } satisfies DeliveryReadyEmailTemplateProps;
+
+    return await sendEmail({
+        from: 'suncokret@obavijesti.gredice.com',
+        to,
+        subject: 'Gredice - dostava je spremna',
+        template: DeliveryReadyEmailTemplate(templateProps),
     });
 }
 
