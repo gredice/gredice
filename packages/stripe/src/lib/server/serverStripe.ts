@@ -98,6 +98,7 @@ export async function getStripeCheckoutSession(sessionId: string) {
             paymentStatus: session.payment_status,
             lineItems: line_items,
             amountTotal: session.amount_total,
+            metadata: session.metadata,
         };
     } catch (error) {
         if (error instanceof Error) {
@@ -145,6 +146,7 @@ export async function stripeCheckout(
     account: UserAccount,
     data: {
         items: CheckoutItem[];
+        metadata?: Record<string, string>;
     },
 ) {
     try {
@@ -172,6 +174,7 @@ export async function stripeCheckout(
             locale: 'hr',
             cancel_url: getReturnUrl({ status: 'cancel' }),
             success_url: getReturnUrl({ status: 'success' }),
+            metadata: data.metadata,
         };
 
         // Create a checkout session in Stripe
