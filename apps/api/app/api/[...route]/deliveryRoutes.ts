@@ -16,6 +16,7 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { notifyDeliveryScheduled } from '../../../lib/delivery/emailNotifications';
 import {
     type AuthVariables,
     authValidator,
@@ -268,7 +269,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         zValidator('json', createRequestSchema),
         async (context) => {
-            const { accountId } = context.get('authContext');
+            const { accountId, userId } = context.get('authContext');
             const data = context.req.valid('json');
 
             try {
@@ -276,6 +277,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     ...data,
                     accountId: accountId,
                 });
+                await notifyDeliveryScheduled(requestId, { userId });
                 return context.json({ id: requestId }, 201);
             } catch (error) {
                 console.error('Failed to create delivery request:', error);
