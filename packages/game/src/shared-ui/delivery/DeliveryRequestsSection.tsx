@@ -17,6 +17,11 @@ import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@signalco/ui-primitives/Tooltip';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
 import { useCancelDeliveryRequest } from '../../hooks/useDeliveryRequestMutations';
@@ -33,6 +38,21 @@ const CANCEL_REASON_OPTIONS = [
     { value: 'NO_LONGER_NEEDED', label: 'Više ne trebam' },
     { value: 'OTHER', label: 'Ostalo' },
 ];
+
+function formatSlotTime(slot: NonNullable<DeliveryRequestData['slot']>) {
+    const start = new Date(slot.startAt);
+    const end = new Date(slot.endAt);
+    return `${start.toLocaleDateString('hr-HR')} ${start.toLocaleTimeString(
+        'hr-HR',
+        {
+            hour: '2-digit',
+            minute: '2-digit',
+        },
+    )} - ${end.toLocaleTimeString('hr-HR', {
+        hour: '2-digit',
+        minute: '2-digit',
+    })}`;
+}
 
 function getStatusColor(state: string) {
     switch (state) {
@@ -69,6 +89,25 @@ function getStatusLabel(state: string) {
             return 'Otkazano';
         default:
             return state;
+    }
+}
+
+function getStatusDescription(state: string) {
+    switch (state) {
+        case 'pending':
+            return 'Zahtjev je primljen i čeka potvrdu naše ekipe.';
+        case 'confirmed':
+            return 'Termin je potvrđen i pripremamo vašu dostavu.';
+        case 'preparing':
+            return 'Vaša narudžba je u pripremi.';
+        case 'ready':
+            return 'Narudžba je spremna za isporuku ili preuzimanje.';
+        case 'fulfilled':
+            return 'Dostava je uspješno završena.';
+        case 'cancelled':
+            return 'Dostava je otkazana.';
+        default:
+            return 'Status dostave trenutno nije poznat.';
     }
 }
 
@@ -147,21 +186,6 @@ function CancelRequestModal({
         } catch (error) {
             console.error('Failed to cancel delivery request:', error);
         }
-    };
-
-    const formatSlotTime = (slot: NonNullable<DeliveryRequestData['slot']>) => {
-        const start = new Date(slot.startAt);
-        const end = new Date(slot.endAt);
-        return `${start.toLocaleDateString('hr-HR')} ${start.toLocaleTimeString(
-            'hr-HR',
-            {
-                hour: '2-digit',
-                minute: '2-digit',
-            },
-        )} - ${end.toLocaleTimeString('hr-HR', {
-            hour: '2-digit',
-            minute: '2-digit',
-        })}`;
     };
 
     return (
@@ -297,135 +321,248 @@ function CancelRequestModal({
     );
 }
 
-function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
+function StatusChip({ state }: { state: string }) {
+    return (
+        <Tooltip delayDuration={250}>
+            <TooltipTrigger asChild>
+                <Chip
+                    color={getStatusColor(state)}
+                    startDecorator={getStatusIcon(state)}
+                >
+                    {getStatusLabel(state)}
+                </Chip>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+                <Typography level="body3">
+                    {getStatusDescription(state)}
+                </Typography>
+            </TooltipContent>
+        </Tooltip>
+    );
+}
+
+function DeliveryRequestRow({
+    request,
+    showSlot = true,
+}: {
+    request: DeliveryRequestData;
+    showSlot?: boolean;
+}) {
     const canCancel = canCancelRequest(request);
 
-    const formatSlotTime = (slot: NonNullable<DeliveryRequestData['slot']>) => {
-        const start = new Date(slot.startAt);
-        const end = new Date(slot.endAt);
-        return `${start.toLocaleDateString('hr-HR')} ${start.toLocaleTimeString(
-            'hr-HR',
-            {
-                hour: '2-digit',
-                minute: '2-digit',
-            },
-        )} - ${end.toLocaleTimeString('hr-HR', {
-            hour: '2-digit',
-            minute: '2-digit',
-        })}`;
-    };
+    return (
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <Stack spacing={1} className="w-full">
+                {request.mode === 'delivery' ? (
+                    <Row spacing={1}>
+                        <Truck className="size-5 shrink-0" />
+                        <Typography>Dostava</Typography>
+                    </Row>
+                ) : (
+                    <Row spacing={1}>
+                        <ShoppingCart className="size-5 shrink-0" />
+                        <Typography>Preuzimanje</Typography>
+                    </Row>
+                )}
+
+                {request.address && (
+                    <Row spacing={1} alignItems="start">
+                        <MapPin className="size-4 mt-0.5 text-muted-foreground" />
+                        <Stack spacing={0.5}>
+                            <Typography level="body2">
+                                {request.address.label}
+                            </Typography>
+                            <Typography level="body3" secondary>
+                                {request.address.street1}
+                                {request.address.street2 &&
+                                    `, ${request.address.street2}`}
+                                <br />
+                                {request.address.postalCode}{' '}
+                                {request.address.city}
+                            </Typography>
+                        </Stack>
+                    </Row>
+                )}
+
+                {request.location && (
+                    <Row spacing={1}>
+                        <MapPin className="size-4 text-muted-foreground" />
+                        <Typography level="body2">
+                            {request.location.name}
+                        </Typography>
+                    </Row>
+                )}
+
+                {request.slot && showSlot && (
+                    <Row spacing={1}>
+                        <Timer className="size-4 text-muted-foreground" />
+                        <Typography level="body2">
+                            {formatSlotTime(request.slot)}
+                        </Typography>
+                    </Row>
+                )}
+
+                {request.requestNotes && (
+                    <Stack spacing={0.5}>
+                        <Typography level="body3" secondary>
+                            Napomene:
+                        </Typography>
+                        <Typography level="body2">
+                            {request.requestNotes}
+                        </Typography>
+                    </Stack>
+                )}
+
+                {request.cancelReason && (
+                    <Stack spacing={0.5}>
+                        <Typography level="body3" secondary>
+                            Razlog otkazivanja:
+                        </Typography>
+                        <Typography level="body2">
+                            {CANCEL_REASON_OPTIONS.find(
+                                (opt) => opt.value === request.cancelReason,
+                            )?.label || request.cancelReason}
+                        </Typography>
+                    </Stack>
+                )}
+            </Stack>
+            <Row spacing={1} className="shrink-0">
+                <StatusChip state={request.state} />
+                {canCancel && (
+                    <CancelRequestModal
+                        request={request}
+                        trigger={
+                            <Button
+                                variant="outlined"
+                                color="danger"
+                                size="sm"
+                                startDecorator={<Close className="size-4" />}
+                            >
+                                Otkaži
+                            </Button>
+                        }
+                    />
+                )}
+            </Row>
+        </div>
+    );
+}
+
+function DeliveryRequestCard({ request }: { request: DeliveryRequestData }) {
+    return (
+        <Card>
+            <CardContent noHeader>
+                <Stack spacing={3}>
+                    <DeliveryRequestRow request={request} />
+                </Stack>
+            </CardContent>
+        </Card>
+    );
+}
+
+function formatDeliveryCount(count: number) {
+    if (count === 1) return '1 dostava';
+    if (count >= 2 && count <= 4) return `${count} dostave`;
+    return `${count} dostava`;
+}
+
+function DeliveryRequestGroupCard({
+    requests,
+}: {
+    requests: DeliveryRequestData[];
+}) {
+    const firstRequest = requests[0];
+    const uniqueModes = new Set(
+        requests.map((request) => request.mode ?? 'delivery'),
+    );
+    const isPickupOnly = uniqueModes.size === 1 && uniqueModes.has('pickup');
+    const groupIcon = isPickupOnly ? (
+        <ShoppingCart className="size-5 shrink-0" />
+    ) : (
+        <Truck className="size-5 shrink-0" />
+    );
+    const groupLabel = isPickupOnly
+        ? 'Preuzimanja'
+        : uniqueModes.size > 1
+          ? 'Dostave i preuzimanja'
+          : 'Dostave';
 
     return (
         <Card>
             <CardContent noHeader>
                 <Stack spacing={3}>
-                    <div className="flex flex-col md:flex-row gap-1 md:items-center">
-                        <Stack spacing={1} className="w-full">
-                            {request.mode === 'delivery' ? (
-                                <Row spacing={1}>
-                                    <Truck className="size-5 shrink-0" />
-                                    <Typography>Dostava</Typography>
-                                </Row>
-                            ) : (
-                                <Row spacing={1}>
-                                    <ShoppingCart className="size-5 shrink-0" />
-                                    <Typography>Preuzimanje</Typography>
-                                </Row>
-                            )}
-
-                            {request.mode === 'delivery' && request.address && (
-                                <Row spacing={1} alignItems="start">
-                                    <MapPin className="size-4 mt-0.5 text-muted-foreground" />
-                                    <Stack spacing={0.5}>
-                                        <Typography level="body2">
-                                            {request.address.label}
-                                        </Typography>
-                                        <Typography level="body3" secondary>
-                                            {request.address.street1}
-                                            {request.address.street2 &&
-                                                `, ${request.address.street2}`}
-                                            <br />
-                                            {request.address.postalCode}{' '}
-                                            {request.address.city}
-                                        </Typography>
-                                    </Stack>
-                                </Row>
-                            )}
-
-                            {request.mode === 'pickup' && request.location && (
-                                <Row spacing={1}>
-                                    <MapPin className="size-4 text-muted-foreground" />
-                                    <Typography level="body2">
-                                        {request.location.name}
-                                    </Typography>
-                                </Row>
-                            )}
-
-                            {request.slot && (
-                                <Row spacing={1}>
-                                    <Timer className="size-4 text-muted-foreground" />
-                                    <Typography level="body2">
-                                        {formatSlotTime(request.slot)}
-                                    </Typography>
-                                </Row>
-                            )}
-
-                            {request.requestNotes && (
-                                <Stack spacing={0.5}>
-                                    <Typography level="body3" secondary>
-                                        Napomene:
-                                    </Typography>
-                                    <Typography level="body2">
-                                        {request.requestNotes}
-                                    </Typography>
-                                </Stack>
-                            )}
-
-                            {request.cancelReason && (
-                                <Stack spacing={0.5}>
-                                    <Typography level="body3" secondary>
-                                        Razlog otkazivanja:
-                                    </Typography>
-                                    <Typography level="body2">
-                                        {CANCEL_REASON_OPTIONS.find(
-                                            (opt) =>
-                                                opt.value ===
-                                                request.cancelReason,
-                                        )?.label || request.cancelReason}
-                                    </Typography>
-                                </Stack>
-                            )}
-                        </Stack>
+                    <Stack spacing={0.5}>
                         <Row spacing={1}>
-                            <Chip
-                                color={getStatusColor(request.state)}
-                                startDecorator={getStatusIcon(request.state)}
-                            >
-                                {getStatusLabel(request.state)}
-                            </Chip>
-                            {canCancel && (
-                                <CancelRequestModal
-                                    request={request}
-                                    trigger={
-                                        <Button
-                                            variant="outlined"
-                                            color="danger"
-                                            size="sm"
-                                            startDecorator={
-                                                <Close className="size-4" />
-                                            }
-                                        >
-                                            Otkaži
-                                        </Button>
-                                    }
-                                />
-                            )}
+                            {groupIcon}
+                            <Typography>{groupLabel}</Typography>
                         </Row>
-                    </div>
+                        <Typography level="body3" secondary>
+                            Ukupno: {formatDeliveryCount(requests.length)}
+                        </Typography>
+                    </Stack>
+
+                    {firstRequest.slot && (
+                        <Row spacing={1}>
+                            <Timer className="size-4 text-muted-foreground" />
+                            <Typography level="body2">
+                                {formatSlotTime(firstRequest.slot)}
+                            </Typography>
+                        </Row>
+                    )}
+
+                    <Stack spacing={2}>
+                        {requests.map((request, index) => (
+                            <div
+                                key={request.id}
+                                className={
+                                    index === 0
+                                        ? undefined
+                                        : 'pt-2 border-t border-border/60'
+                                }
+                            >
+                                <DeliveryRequestRow
+                                    request={request}
+                                    showSlot={false}
+                                />
+                            </div>
+                        ))}
+                    </Stack>
                 </Stack>
             </CardContent>
         </Card>
     );
+}
+
+type DeliveryRequestGroup = {
+    key: string;
+    requests: DeliveryRequestData[];
+};
+
+function groupRequestsBySlot(
+    requests: DeliveryRequestData[],
+): DeliveryRequestGroup[] {
+    const groups: DeliveryRequestGroup[] = [];
+    const map = new Map<string, DeliveryRequestGroup>();
+
+    for (const request of requests) {
+        const slotKey = request.slot?.id ?? request.slot?.startAt;
+        if (!slotKey) {
+            groups.push({ key: request.id, requests: [request] });
+            continue;
+        }
+
+        const key = String(slotKey);
+        const existing = map.get(key);
+        if (existing) {
+            existing.requests.push(request);
+        } else {
+            const group = { key, requests: [request] };
+            map.set(key, group);
+            groups.push(group);
+        }
+    }
+
+    return groups;
 }
 
 export function DeliveryRequestsSection() {
@@ -447,12 +584,19 @@ export function DeliveryRequestsSection() {
                 <Typography>Učitavanje dostava...</Typography>
             ) : requests && requests.length > 0 ? (
                 <Stack spacing={1}>
-                    {requests.map((request) => (
-                        <DeliveryRequestCard
-                            key={request.id}
-                            request={request}
-                        />
-                    ))}
+                    {groupRequestsBySlot(requests).map((group) =>
+                        group.requests.length === 1 ? (
+                            <DeliveryRequestCard
+                                key={group.requests[0].id}
+                                request={group.requests[0]}
+                            />
+                        ) : (
+                            <DeliveryRequestGroupCard
+                                key={group.key}
+                                requests={group.requests}
+                            />
+                        ),
+                    )}
                 </Stack>
             ) : (
                 <Card>
