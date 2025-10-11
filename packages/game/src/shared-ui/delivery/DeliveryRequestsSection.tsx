@@ -552,15 +552,21 @@ type DeliveryRequestGroup = {
 function groupRequestsBySlot(
     requests: DeliveryRequestData[],
 ): DeliveryRequestGroup[] {
-    const groups: DeliveryRequestGroup[] = [];
     const map = new Map<string, DeliveryRequestGroup>();
 
-    requests.forEach((request, index) => {
+    for (const request of requests) {
+        // Use slot ID if available, otherwise fall back to startAt timestamp
         const slotKey = request.slot?.id ?? request.slot?.startAt;
 
         if (!slotKey) {
-            groups.push({ key: `${request.id}-${index}`, requests: [request] });
-            return;
+            // Requests without slots are treated as individual groups
+            const key = `no-slot-${request.id}`;
+            map.set(key, {
+                key,
+                requests: [request],
+                slotStart: null,
+            });
+            continue;
         }
 
         const key = String(slotKey);
@@ -569,28 +575,28 @@ function groupRequestsBySlot(
         if (existing) {
             existing.requests.push(request);
         } else {
-            const group: DeliveryRequestGroup = {
+            map.set(key, {
                 key,
                 requests: [request],
                 slotStart: request.slot?.startAt ?? null,
-            };
-            map.set(key, group);
-            groups.push(group);
+            });
         }
-    });
+    }
 
-    return groups.sort((a, b) => {
+    // Convert map to array and sort by slot start time
+    const groups = Array.from(map.values()).sort((a, b) => {
         if (a.slotStart && b.slotStart) {
             return (
                 new Date(a.slotStart).getTime() -
                 new Date(b.slotStart).getTime()
             );
         }
-
         if (a.slotStart) return -1;
         if (b.slotStart) return 1;
         return 0;
     });
+
+    return groups;
 }
 
 export function DeliveryRequestsSection() {
