@@ -1,6 +1,7 @@
 import { cx } from '@signalco/ui-primitives/cx';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
+import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
@@ -19,6 +20,7 @@ export function RaisedBedFieldSuggestions({
     );
     const { data: shoppingCart, isLoading: isLoadingShoppingCart } =
         useShoppingCart();
+    const { data: allSorts, isLoading: isLoadingSorts } = useAllSorts();
     const setCartItem = useSetShoppingCartItem();
     if (!currentGarden || !raisedBed || !shoppingCart) return null;
 
@@ -41,9 +43,14 @@ export function RaisedBedFieldSuggestions({
             salad: [282, 229, 209, 299, 234, 221, 281, 215, 204],
         };
 
+        if (!allSorts) return;
+
         await Promise.all(
             Array.from({ length: 9 }).map(async (_, index) => {
                 if (!raisedBed || !shoppingCart) return;
+                const sortId = layouts[type][index];
+                const sort = allSorts.find((item) => item.id === sortId);
+                if (!sort?.store?.availableInStore) return;
                 if (
                     raisedBed.fields.find(
                         (field) =>
@@ -63,7 +70,7 @@ export function RaisedBedFieldSuggestions({
                     return;
                 return setCartItem.mutateAsync({
                     entityTypeName: 'plantSort',
-                    entityId: layouts[type][index].toString(),
+                    entityId: sortId.toString(),
                     amount: 1,
                     gardenId,
                     raisedBedId,
@@ -92,7 +99,11 @@ export function RaisedBedFieldSuggestions({
                     )}
                     startDecorator={<span className="text-xl">☀️</span>}
                     onClick={() => handleQuickPick('summer')}
-                    loading={setCartItem.isPending || isLoadingShoppingCart}
+                    loading={
+                        setCartItem.isPending ||
+                        isLoadingShoppingCart ||
+                        isLoadingSorts
+                    }
                 >
                     <span className="hidden md:block">Ljetni mix</span>
                 </ButtonGreen>
@@ -104,7 +115,11 @@ export function RaisedBedFieldSuggestions({
                     )}
                     startDecorator={<span className="text-xl">🥬</span>}
                     onClick={() => handleQuickPick('salad')}
-                    loading={setCartItem.isPending || isLoadingShoppingCart}
+                    loading={
+                        setCartItem.isPending ||
+                        isLoadingShoppingCart ||
+                        isLoadingSorts
+                    }
                 >
                     <span className="hidden md:block">Salatni mix</span>
                 </ButtonGreen>
