@@ -11,7 +11,10 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { type ReactElement, useState } from 'react';
 import { SegmentedProgress } from '../../controls/components/SegmentedProgress';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
-import { useShoppingCart } from '../../hooks/useShoppingCart';
+import {
+    type ShoppingCartItemData,
+    useShoppingCart,
+} from '../../hooks/useShoppingCart';
 import { PlantsList } from './PlantsList';
 import { PlantsSortList } from './PlantsSortList';
 
@@ -86,21 +89,23 @@ export function PlantPicker({
         setSearch(undefined);
     }
 
-    async function removeFromCart() {
+    async function removeFromCart(existingItem?: ShoppingCartItemData) {
         // Remove existing item if it exists in cart already
-        const existingItem = cart?.items.find(
-            (item) =>
-                item.entityTypeName === 'plantSort' &&
-                item.gardenId === gardenId &&
-                item.raisedBedId === raisedBedId &&
-                item.positionIndex === positionIndex,
-        );
-        if (existingItem) {
+        const itemToRemove =
+            existingItem ??
+            cart?.items.find(
+                (item) =>
+                    item.entityTypeName === 'plantSort' &&
+                    item.gardenId === gardenId &&
+                    item.raisedBedId === raisedBedId &&
+                    item.positionIndex === positionIndex,
+            );
+        if (itemToRemove) {
             await setCartItem.mutateAsync({
-                ...existingItem,
-                gardenId: existingItem.gardenId ?? undefined,
-                raisedBedId: existingItem.raisedBedId ?? undefined,
-                positionIndex: existingItem.positionIndex ?? undefined,
+                ...itemToRemove,
+                gardenId: itemToRemove.gardenId ?? undefined,
+                raisedBedId: itemToRemove.raisedBedId ?? undefined,
+                positionIndex: itemToRemove.positionIndex ?? undefined,
                 amount: 0,
             });
         }
@@ -118,6 +123,21 @@ export function PlantPicker({
     async function handleConfirm() {
         if (!selectedSortId) {
             return;
+        }
+
+        const existingItem = cart?.items.find(
+            (item) =>
+                item.entityTypeName === 'plantSort' &&
+                item.gardenId === gardenId &&
+                item.raisedBedId === raisedBedId &&
+                item.positionIndex === positionIndex,
+        );
+
+        if (
+            existingItem &&
+            existingItem.entityId !== selectedSortId.toString()
+        ) {
+            await removeFromCart(existingItem);
         }
 
         // Add new item to cart
