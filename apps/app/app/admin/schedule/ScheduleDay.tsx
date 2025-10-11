@@ -1,6 +1,6 @@
 'use client';
 
-import { calculatePlantsPerField } from '@gredice/js/plants';
+import { calculatePlantsPerField, FIELD_SIZE_CM } from '@gredice/js/plants';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
@@ -15,6 +15,7 @@ import { KnownPages } from '../../../src/KnownPages';
 import { raisedBedPlanted } from '../../(actions)/raisedBedFieldsActions';
 import { AcceptOperationModal } from './AcceptOperationModal';
 import { AcceptRaisedBedFieldModal } from './AcceptRaisedBedFieldModal';
+import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CancelRaisedBedFieldModal } from './CancelRaisedBedFieldModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
@@ -474,6 +475,52 @@ export function ScheduleDay({
                     }),
                 ];
 
+                const fieldsToApprove = dayFields
+                    .filter(
+                        (field) =>
+                            !isFieldApproved(field.plantStatus) &&
+                            !isFieldCompleted(field.plantStatus),
+                    )
+                    .map((field) => {
+                        const sortData = plantSorts?.find(
+                            (ps) => ps.id === field.plantSortId,
+                        );
+                        const numberOfPlants =
+                            Math.floor(
+                                FIELD_SIZE_CM /
+                                    (sortData?.information?.plant?.attributes
+                                        ?.seedingDistance || FIELD_SIZE_CM),
+                            ) ** 2;
+
+                        return {
+                            raisedBedId: field.raisedBedId,
+                            positionIndex: field.positionIndex,
+                            label: `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`,
+                        };
+                    });
+
+                const operationsToApprove = dayOperations
+                    .filter(
+                        (op) =>
+                            !op.isAccepted &&
+                            !isOperationCompleted(op.status) &&
+                            !isOperationCancelled(op.status),
+                    )
+                    .map((op) => {
+                        const operationData = operationDataById.get(
+                            op.entityId,
+                        );
+                        const isFullRaisedBed =
+                            operationData?.attributes?.application ===
+                            'raisedBedFull';
+                        const label = `${isFullRaisedBed ? '' : `${op.physicalPositionIndex} - `}${operationData?.information?.label ?? op.entityId}${op.sort ? `: ${op.sort.information?.name ?? 'Nepoznato'}` : ''}`;
+
+                        return {
+                            id: op.id,
+                            label,
+                        };
+                    });
+
                 const raisedBedFieldDurations = dayFields.reduce(
                     (acc, field) => {
                         acc.total += PLANTING_TASK_DURATION_MINUTES;
@@ -522,9 +569,14 @@ export function ScheduleDay({
                 return (
                     <Stack key={physicalId} spacing={1}>
                         <Row
-                            spacing={1}
+                            spacing={0.5}
                             className="items-center flex-wrap gap-y-1"
                         >
+                            <BulkApproveRaisedBedButton
+                                physicalId={physicalId.toString()}
+                                fields={fieldsToApprove}
+                                operations={operationsToApprove}
+                            />
                             <RaisedBedLabel physicalId={physicalId} />
                             <Typography
                                 level="body2"
@@ -555,10 +607,10 @@ export function ScheduleDay({
                                 );
                                 const numberOfPlants =
                                     Math.floor(
-                                        30 /
+                                        FIELD_SIZE_CM /
                                             (sortData?.information?.plant
                                                 ?.attributes?.seedingDistance ||
-                                                30),
+                                                FIELD_SIZE_CM),
                                     ) ** 2;
 
                                 const handlePlantConfirm = async () => {
