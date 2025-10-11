@@ -130,8 +130,10 @@ export function RaisedBedFieldSuggestions({
             Array.from({ length: 9 }).map(async (_, index) => {
                 if (!raisedBed || !shoppingCart) return;
 
-                // If not in store, ignore
                 const sortId = layout[index];
+                if (!sortId) return;
+
+                // If not in store, ignore
                 const sort = allSorts.find((item) => item.id === sortId);
                 if (!sort?.store?.availableInStore) return;
 
@@ -152,11 +154,11 @@ export function RaisedBedFieldSuggestions({
                     )
                 )
                     return;
-                const plantSortId = layout[index];
-                if (plantSortId == null) return;
+
+                if (sortId == null) return;
                 return setCartItem.mutateAsync({
                     entityTypeName: 'plantSort',
-                    entityId: plantSortId.toString(),
+                    entityId: sortId.toString(),
                     amount: 1,
                     gardenId,
                     raisedBedId,
