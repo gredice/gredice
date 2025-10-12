@@ -31,7 +31,7 @@ export default function DeliverySurveyEmailTemplate({
     appName = 'Gredice',
     appDomain = 'gredice.com',
 }: DeliverySurveyEmailTemplateProps) {
-    const previewText = `${appName} - Podijeli dojam o dostavi`;
+    const previewText = `${appName} - Podijeli dojam o dostavama`;
 
     const periodSummary = deliveryPeriod
         ? `🚚 Tijekom ${deliveryPeriod} ${
@@ -50,7 +50,7 @@ export default function DeliverySurveyEmailTemplate({
                     <Section className="text-center">
                         <GrediceLogotype />
                     </Section>
-                    <Header>Kakva su bile dostave?</Header>
+                    <Header>Kakve su bile dostave?</Header>
                     <Paragraph>Pozdrav!</Paragraph>
                     <Paragraph>
                         Nadamo se da te povrće iz tvog vrta razveselilo.{' '}
@@ -60,7 +60,7 @@ export default function DeliverySurveyEmailTemplate({
                         <Paragraph>{periodSummary}</Paragraph>
                     ) : null}
                     <Paragraph>
-                        ⏱️ Anketa traje manje od minute, a svaki odgovor pomaže našem timu i vrtlarima.
+                        ⏱️ Anketa traje manje od minute, a svaki odgovor pomaže našem timu unaprijediti uslugu dostave.
                     </Paragraph>
                     <Section className="my-[32px] text-center">
                         <PrimaryButton href={surveyUrl}>Ispuni anketu</PrimaryButton>
