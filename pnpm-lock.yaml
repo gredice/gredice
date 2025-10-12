@@ -26,13 +26,13 @@ importers:
         version: 1.4.1
       '@hono/mcp':
         specifier: 0.1.4
-        version: 0.1.4(@modelcontextprotocol/sdk@1.19.1)(hono@4.9.11)
+        version: 0.1.4(@modelcontextprotocol/sdk@1.20.0)(hono@4.9.11)
       '@hono/standard-validator':
         specifier: 0.1.5
         version: 0.1.5(@standard-schema/spec@1.0.0)(hono@4.9.11)
       '@modelcontextprotocol/sdk':
-        specifier: 1.19.1
-        version: 1.19.1
+        specifier: 1.20.0
+        version: 1.20.0
       '@scalar/api-reference-react':
         specifier: 0.8.0
         version: 0.8.0(axios@1.12.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.2.0)(tailwindcss@3.4.18)(typescript@5.9.3)
@@ -2369,8 +2369,8 @@ packages:
   '@microsoft/tsdoc@0.15.1':
     resolution: {integrity: sha512-4aErSrCR/On/e5G2hDP0wjooqDdauzEbIq8hIkIe5pXV0rtWJZvdCEKL0ykZxex+IxIwBp0eGeV48hQN07dXtw==}
 
-  '@modelcontextprotocol/sdk@1.19.1':
-    resolution: {integrity: sha512-3Y2h3MZKjec1eAqSTBclATlX+AbC6n1LgfVzRMJLt3v6w0RCYgwLrjbxPDbhsYHt6Wdqc/aCceNJYgj448ELQQ==}
+  '@modelcontextprotocol/sdk@1.20.0':
+    resolution: {integrity: sha512-kOQ4+fHuT4KbR2iq2IjeV32HiihueuOf1vJkq18z08CLZ1UQrTc8BXJpVfxZkq45+inLLD+D4xx4nBjUelJa4Q==}
     engines: {node: '>=18'}
 
   '@monogrid/gainmap-js@3.1.0':
@@ -9698,9 +9698,9 @@ snapshots:
       '@tanstack/vue-virtual': 3.13.12(vue@3.5.22(typescript@5.9.3))
       vue: 3.5.22(typescript@5.9.3)
 
-  '@hono/mcp@0.1.4(@modelcontextprotocol/sdk@1.19.1)(hono@4.9.11)':
+  '@hono/mcp@0.1.4(@modelcontextprotocol/sdk@1.20.0)(hono@4.9.11)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.19.1
+      '@modelcontextprotocol/sdk': 1.20.0
       hono: 4.9.11
 
   '@hono/standard-validator@0.1.5(@standard-schema/spec@1.0.0)(hono@4.9.11)':
@@ -10231,7 +10231,7 @@ snapshots:
 
   '@microsoft/tsdoc@0.15.1': {}
 
-  '@modelcontextprotocol/sdk@1.19.1':
+  '@modelcontextprotocol/sdk@1.20.0':
     dependencies:
       ajv: 6.12.6
       content-type: 1.0.5
