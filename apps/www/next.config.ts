@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
     typedRoutes: true,
     reactCompiler: true,
     experimental: {
+        turbopackFileSystemCacheForDev: true,
         typedEnv: true,
     },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds

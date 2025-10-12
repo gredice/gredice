@@ -5,8 +5,8 @@
     "type": "module",
     "scripts": {
         "lint": "biome check",
-        "dev": "next dev --turbopack -p 3000",
-        "build": "next build --turbopack",
+        "dev": "next dev -p 3000",
+        "build": "next build",
         "postbuild": "next-sitemap --config next-sitemap.config.cjs",
         "start": "next start -p 3000",
         "test": "pnpm run /^test:.*/",

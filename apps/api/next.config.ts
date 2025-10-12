@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     reactStrictMode: true,
     experimental: {
         typedEnv: true,
+        turbopackFileSystemCacheForDev: true,
     },
     images: {
         remotePatterns: [
