@@ -70,7 +70,7 @@ export async function sendDeliverySurvey(
     return await sendEmail({
         from: 'suncokret@obavijesti.gredice.com',
         to,
-        subject: 'Gredice - podijeli dojam o dostavi',
+        subject: 'Gredice - podijeli dojam o dostavama',
         template: DeliverySurveyEmailTemplate(config),
     });
 }
