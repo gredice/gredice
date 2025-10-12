@@ -50,7 +50,7 @@
         "tailwindcss": "3.4.18",
         "tailwindcss-animate": "1.0.7",
         "three": "0.180.0",
-        "three-custom-shader-material": "6.3.7",
+        "three-custom-shader-material": "6.4.0",
         "three-stdlib": "2.36.0",
         "tsx": "4.20.6",
         "typescript": "5.9.3",
