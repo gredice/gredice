@@ -377,5 +377,4 @@ export async function cancelOperationAction(formData: FormData) {
         revalidatePath(KnownPages.Garden(operation.gardenId));
     if (operation.raisedBedId)
         revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
-    return { success: true };
 }

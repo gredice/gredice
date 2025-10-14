@@ -53,7 +53,7 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                 <PlantImage
                     plant={props}
                     fill
-                    priority
+                    preload
                     sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
                 />
             </AiWatermark>

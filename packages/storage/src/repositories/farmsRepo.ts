@@ -27,10 +27,7 @@ export async function getFarmUsers(farmId: number) {
     });
 }
 
-export async function assignUserToFarm(
-    farmId: number,
-    userId: string,
-) {
+export async function assignUserToFarm(farmId: number, userId: string) {
     const result = await storage()
         .insert(farmUsers)
         .values({ farmId, userId })

@@ -54,7 +54,7 @@ export function PlantPageHeader({
                                 cover: sort?.image?.cover ?? plant.image?.cover,
                             },
                         }}
-                        priority
+                        preload
                         width={142}
                         height={142}
                     />

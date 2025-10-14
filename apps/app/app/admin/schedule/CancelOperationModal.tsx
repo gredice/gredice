@@ -28,9 +28,9 @@ export function CancelOperationModal({
             hiddenFields={
                 <input type="hidden" name="operationId" value={operation.id} />
             }
-            description={`Operacija će biti otkazana. Koristi opcije ispod za refundiranje suncokreta i slanje obavijesti korisniku.${
+            description={`Operacija će biti otkazana. Koristi opcije ispod za povrat suncokreta i slanje obavijesti korisniku.${
                 operation.status === 'planned'
-                    ? ' Ako je operacija plaćena suncokretima, preporučujemo da ih refundiraš.'
+                    ? ' Ako je operacija plaćena suncokretima, preporučujemo da ih vratiš.'
                     : ''
             }`}
             additionalFields={
@@ -43,7 +43,7 @@ export function CancelOperationModal({
                         defaultChecked
                         label={
                             <Typography level="body2">
-                                Vrati suncokrete za ovu radnju
+                                Vrati suncokrete
                             </Typography>
                         }
                     />
@@ -55,7 +55,7 @@ export function CancelOperationModal({
                         defaultChecked
                         label={
                             <Typography level="body2">
-                                Pošalji obavijest korisniku o otkazivanju
+                                Pošalji obavijest korisniku
                             </Typography>
                         }
                     />
