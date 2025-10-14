@@ -15,6 +15,7 @@ interface CancelRequestModalProps {
     hiddenFields: React.ReactNode;
     description?: string;
     confirmLabel?: string;
+    additionalFields?: React.ReactNode;
 }
 
 export function CancelRequestModal({
@@ -24,6 +25,7 @@ export function CancelRequestModal({
     hiddenFields,
     description,
     confirmLabel = 'Otkaži zadatak',
+    additionalFields,
 }: CancelRequestModalProps) {
     const [open, setOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -60,6 +62,8 @@ export function CancelRequestModal({
                     </Typography>
 
                     {hiddenFields}
+
+                    {additionalFields}
 
                     <Stack spacing={1}>
                         <Typography level="body2">
