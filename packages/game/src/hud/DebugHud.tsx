@@ -5,8 +5,8 @@ import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Slider } from '@signalco/ui-primitives/Slider';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { useGameState } from '../useGameState';
 
@@ -63,32 +63,41 @@ export function DebugHud() {
 
     const panelWrapperRef = useRef<HTMLDivElement>(null);
     const panelSizeRef = useRef({ width: 0, height: 0 });
-    const panelDragStateRef = useRef({ pointerId: null as number | null, offsetX: 0, offsetY: 0 });
+    const panelDragStateRef = useRef({
+        pointerId: null as number | null,
+        offsetX: 0,
+        offsetY: 0,
+    });
     const panelPositionRef = useRef<PanelPosition | null>(null);
     const hasInitializedPanelPositionRef = useRef(false);
 
-    const [panelPosition, setPanelPosition] = useState<PanelPosition | null>(null);
+    const [panelPosition, setPanelPosition] = useState<PanelPosition | null>(
+        null,
+    );
     const [isDraggingPanel, setIsDraggingPanel] = useState(false);
 
-    const clampPanelPosition = useCallback(
-        (rawPosition: PanelPosition) => {
-            if (typeof window === 'undefined') {
-                return rawPosition;
-            }
+    const clampPanelPosition = useCallback((rawPosition: PanelPosition) => {
+        if (typeof window === 'undefined') {
+            return rawPosition;
+        }
 
-            const { width, height } = panelSizeRef.current;
-            const { innerWidth, innerHeight } = window;
+        const { width, height } = panelSizeRef.current;
+        const { innerWidth, innerHeight } = window;
 
-            const maxX = Math.max(PANEL_MARGIN_PX, innerWidth - width - PANEL_MARGIN_PX);
-            const maxY = Math.max(PANEL_MARGIN_PX, innerHeight - height - PANEL_MARGIN_PX);
+        const maxX = Math.max(
+            PANEL_MARGIN_PX,
+            innerWidth - width - PANEL_MARGIN_PX,
+        );
+        const maxY = Math.max(
+            PANEL_MARGIN_PX,
+            innerHeight - height - PANEL_MARGIN_PX,
+        );
 
-            return {
-                x: clampToRange(rawPosition.x, PANEL_MARGIN_PX, maxX),
-                y: clampToRange(rawPosition.y, PANEL_MARGIN_PX, maxY),
-            };
-        },
-        [],
-    );
+        return {
+            x: clampToRange(rawPosition.x, PANEL_MARGIN_PX, maxX),
+            y: clampToRange(rawPosition.y, PANEL_MARGIN_PX, maxY),
+        };
+    }, []);
 
     const setClampedPanelPosition = useCallback(
         (nextPosition: PanelPosition) => {
@@ -112,12 +121,15 @@ export function DebugHud() {
 
         const readStoredPosition = (): PanelPosition | null => {
             try {
-                const storedValue = window.localStorage.getItem(PANEL_STORAGE_KEY);
+                const storedValue =
+                    window.localStorage.getItem(PANEL_STORAGE_KEY);
                 if (!storedValue) {
                     return null;
                 }
 
-                const parsed = JSON.parse(storedValue) as Partial<PanelPosition> | null;
+                const parsed = JSON.parse(
+                    storedValue,
+                ) as Partial<PanelPosition> | null;
                 if (
                     parsed &&
                     typeof parsed.x === 'number' &&
@@ -146,8 +158,14 @@ export function DebugHud() {
             const { innerWidth, innerHeight } = window;
             const { width, height } = panelSizeRef.current;
 
-            const maxX = Math.max(PANEL_MARGIN_PX, innerWidth - width - PANEL_MARGIN_PX);
-            const maxY = Math.max(PANEL_MARGIN_PX, innerHeight - height - PANEL_MARGIN_PX);
+            const maxX = Math.max(
+                PANEL_MARGIN_PX,
+                innerWidth - width - PANEL_MARGIN_PX,
+            );
+            const maxY = Math.max(
+                PANEL_MARGIN_PX,
+                innerHeight - height - PANEL_MARGIN_PX,
+            );
 
             const storedWithinBounds =
                 storedPosition !== null &&
@@ -263,7 +281,10 @@ export function DebugHud() {
             const panelElement = panelWrapperRef.current;
             if (panelElement) {
                 const rect = panelElement.getBoundingClientRect();
-                panelSizeRef.current = { width: rect.width, height: rect.height };
+                panelSizeRef.current = {
+                    width: rect.width,
+                    height: rect.height,
+                };
             }
 
             event.preventDefault();
@@ -295,7 +316,9 @@ export function DebugHud() {
         };
     }, [handlePanelPointerMove, handlePanelPointerUp]);
 
-    const [timeOfDay, setTimeOfDay] = useState(() => getTimeOfDayFromDate(currentTime));
+    const [timeOfDay, setTimeOfDay] = useState(() =>
+        getTimeOfDayFromDate(currentTime),
+    );
     const [overrideWeather, setOverrideWeather] = useState(false);
     const [cloudy, setCloudy] = useState(weather?.cloudy ?? 0);
     const [rainy, setRainy] = useState(weather?.rainy ?? 0);
@@ -402,7 +425,9 @@ export function DebugHud() {
                                 onValueChange={(value) => {
                                     const [nextValue] = value;
                                     if (typeof nextValue === 'number') {
-                                        setTimeOfDay(clampToRange(nextValue, 0, 1));
+                                        setTimeOfDay(
+                                            clampToRange(nextValue, 0, 1),
+                                        );
                                     }
                                 }}
                             />
@@ -430,7 +455,9 @@ export function DebugHud() {
                                     onValueChange={(value) => {
                                         const [nextValue] = value;
                                         if (typeof nextValue === 'number') {
-                                            setCloudy(clampToRange(nextValue, 0, 1));
+                                            setCloudy(
+                                                clampToRange(nextValue, 0, 1),
+                                            );
                                         }
                                     }}
                                 />
@@ -444,7 +471,9 @@ export function DebugHud() {
                                     onValueChange={(value) => {
                                         const [nextValue] = value;
                                         if (typeof nextValue === 'number') {
-                                            setRainy(clampToRange(nextValue, 0, 1));
+                                            setRainy(
+                                                clampToRange(nextValue, 0, 1),
+                                            );
                                         }
                                     }}
                                 />
@@ -458,7 +487,9 @@ export function DebugHud() {
                                     onValueChange={(value) => {
                                         const [nextValue] = value;
                                         if (typeof nextValue === 'number') {
-                                            setSnowy(clampToRange(nextValue, 0, 1));
+                                            setSnowy(
+                                                clampToRange(nextValue, 0, 1),
+                                            );
                                         }
                                     }}
                                 />
@@ -472,7 +503,9 @@ export function DebugHud() {
                                     onValueChange={(value) => {
                                         const [nextValue] = value;
                                         if (typeof nextValue === 'number') {
-                                            setFoggy(clampToRange(nextValue, 0, 1));
+                                            setFoggy(
+                                                clampToRange(nextValue, 0, 1),
+                                            );
                                         }
                                     }}
                                 />

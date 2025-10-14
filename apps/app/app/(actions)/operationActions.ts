@@ -276,6 +276,13 @@ export async function cancelOperationAction(formData: FormData) {
         throw new Error('Cancellation reason is required');
     }
 
+    const refundEntries = formData.getAll('shouldRefund');
+    const notifyEntries = formData.getAll('shouldNotify');
+    const shouldRefund =
+        refundEntries.length === 0 || refundEntries.includes('true');
+    const shouldNotify =
+        notifyEntries.length === 0 || notifyEntries.includes('true');
+
     const operation = await getOperationById(operationId);
     if (!operation) {
         throw new Error(`Operation with ID ${operationId} not found.`);
@@ -330,7 +337,7 @@ export async function cancelOperationAction(formData: FormData) {
     }
 
     // Add refund information
-    if (refundAmount > 0) {
+    if (shouldRefund && refundAmount > 0) {
         content += `\nSredstva su ti vraćana u iznosu od ${refundAmount} 🌻.`;
     }
 
@@ -343,7 +350,7 @@ export async function cancelOperationAction(formData: FormData) {
             }),
         ),
         // Refund sunflowers if operation had a cost
-        refundAmount > 0 && operation.accountId
+        shouldRefund && refundAmount > 0 && operation.accountId
             ? earnSunflowers(
                   operation.accountId,
                   refundAmount,
@@ -351,7 +358,7 @@ export async function cancelOperationAction(formData: FormData) {
               )
             : Promise.resolve(),
         // Send notification to user
-        operation.accountId
+        shouldNotify && operation.accountId
             ? createNotification({
                   accountId: operation.accountId,
                   gardenId: operation.gardenId,
@@ -370,5 +377,4 @@ export async function cancelOperationAction(formData: FormData) {
         revalidatePath(KnownPages.Garden(operation.gardenId));
     if (operation.raisedBedId)
         revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
-    return { success: true };
 }

@@ -9,8 +9,8 @@ import {
     timestamp,
     uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { raisedBeds } from './gardenSchema';
 import { farms } from './farmsSchema';
+import { raisedBeds } from './gardenSchema';
 
 export const accounts = pgTable('accounts', {
     id: text('id').primaryKey(),

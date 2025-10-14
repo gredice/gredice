@@ -95,7 +95,7 @@ export function PlantOrSortImage(props: PlantOrSortImageProps) {
     const {
         baseUrl = 'https://www.gredice.com',
         fallbackUrl = '/assets/plants/placeholder.png',
-        ...imageProps
+        ...rest
     } = props;
 
     // Extract the specific props based on the discriminated union
@@ -125,6 +125,19 @@ export function PlantOrSortImage(props: PlantOrSortImageProps) {
     const resolvedUrl = isAbsoluteUrl(effectiveCoverUrl)
         ? effectiveCoverUrl
         : `${baseUrl}/${effectiveCoverUrl.replace(/^\//, '')}`;
+
+    // Prepare remaining image props
+    // Exclude plant, plantSort, coverUrl, alt, baseUrl, fallbackUrl from being passed to Image
+    const {
+        plant: _,
+        plantSort: __,
+        coverUrl: ___,
+        alt: ____,
+        baseUrl: _____,
+        fallbackUrl: ______,
+        ...imageProps
+        // biome-ignore lint/suspicious/noExplicitAny: Destructuring discriminated union requires type assertion
+    } = props as any;
 
     return <Image src={resolvedUrl} alt={resolvedAlt} {...imageProps} />;
 }
