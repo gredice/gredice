@@ -16,6 +16,7 @@ import {
     upsertRaisedBedField,
 } from '@gredice/storage';
 import { getStripeCheckoutSession } from '@gredice/stripe/server';
+import { notifyDeliveryScheduled } from '../delivery/emailNotifications';
 
 export async function processCheckoutSession(checkoutSessionId?: string) {
     if (!checkoutSessionId) {
@@ -364,6 +365,9 @@ export async function processItem(itemData: {
                             console.debug(
                                 `Created delivery request ${deliveryRequestId} for operation ${operationId}`,
                             );
+                            await notifyDeliveryScheduled(deliveryRequestId, {
+                                userId: itemData.userId,
+                            });
                         } catch (error) {
                             console.error(
                                 `Failed to create delivery request for operation ${operationId}:`,
