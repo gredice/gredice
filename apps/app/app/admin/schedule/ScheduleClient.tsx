@@ -6,48 +6,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { Fragment } from 'react';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { ScheduleDay } from './ScheduleDay';
-
-// Type definitions for the props (without importing server-side functions)
-type RaisedBed = {
-    id: number;
-    physicalId: string | null;
-    name?: string | null;
-    accountId?: string | null;
-    gardenId?: number | null;
-    blockId?: string | null;
-    fields: Array<{
-        id: number;
-        raisedBedId: number;
-        positionIndex: number;
-        plantStatus?: string;
-        plantScheduledDate?: Date;
-        plantSortId?: number;
-        plantSowDate?: Date;
-        plantGrowthDate?: Date;
-        plantReadyDate?: Date;
-        createdAt: Date;
-        updatedAt: Date;
-        isDeleted: boolean;
-    }>;
-};
-
-type Operation = {
-    id: number;
-    raisedBedId: number | null;
-    raisedBedFieldId?: number | null;
-    entityId: number;
-    entityTypeName: string;
-    accountId?: string | null;
-    gardenId?: number | null;
-    status: string;
-    scheduledDate?: Date;
-    completedAt?: Date;
-    completedBy?: string;
-    timestamp: Date;
-    createdAt: Date;
-    isAccepted: boolean;
-    isDeleted: boolean;
-};
+import type { DeliveryRequest, Operation, RaisedBed } from './types';
 
 interface ScheduleClientProps {
     allRaisedBeds: RaisedBed[];
@@ -55,6 +14,7 @@ interface ScheduleClientProps {
     plantSorts: EntityStandardized[] | null | undefined;
     operationsData: EntityStandardized[] | null | undefined;
     userId: string;
+    deliveryRequests: DeliveryRequest[];
 }
 
 export function ScheduleClient({
@@ -63,6 +23,7 @@ export function ScheduleClient({
     plantSorts,
     operationsData,
     userId,
+    deliveryRequests,
 }: ScheduleClientProps) {
     const dates = Array.from({ length: 7 }, (_, i) => {
         const date = new Date();
@@ -88,6 +49,7 @@ export function ScheduleClient({
                                 plantSorts={plantSorts}
                                 operationsData={operationsData}
                                 userId={userId}
+                                deliveryRequests={deliveryRequests}
                             />
                             <Divider />
                         </Fragment>
