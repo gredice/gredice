@@ -676,7 +676,7 @@ export function ScheduleDay({
                                                         <Typography>
                                                             Jeste li sigurni da
                                                             želite označiti da
-                                                            je posijavno:{' '}
+                                                            je posijano:{' '}
                                                             <strong>
                                                                 {fieldLabel}
                                                             </strong>
