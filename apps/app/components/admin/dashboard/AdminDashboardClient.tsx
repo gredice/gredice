@@ -1,6 +1,8 @@
 'use client';
 
 import type { getAnalyticsTotals } from '@gredice/storage';
+import { Calendar, Fence } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
 import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -87,6 +89,25 @@ export function AdminDashboardClient({
 
     return (
         <Stack spacing={2}>
+            <Stack spacing={1}>
+                <DashboardDivider>Brzi pristup</DashboardDivider>
+                <Row spacing={1}>
+                    <Button
+                        variant="outlined"
+                        startDecorator={<Calendar className="size-5" />}
+                        href={KnownPages.Schedule}
+                    >
+                        Raspored
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        startDecorator={<Fence className="size-5" />}
+                        href={KnownPages.Gardens}
+                    >
+                        Vrtovi
+                    </Button>
+                </Row>
+            </Stack>
             <Stack spacing={1}>
                 <Row justifyContent="space-between">
                     <DashboardDivider>Računi i korisnici</DashboardDivider>
