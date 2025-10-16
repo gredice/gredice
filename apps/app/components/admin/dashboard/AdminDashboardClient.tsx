@@ -1,7 +1,7 @@
 'use client';
 
 import type { getAnalyticsTotals } from '@gredice/storage';
-import { Calendar, Fence } from '@signalco/ui-icons';
+import { Calendar, Fence, Tally3 } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
@@ -89,25 +89,28 @@ export function AdminDashboardClient({
 
     return (
         <Stack spacing={2}>
-            <Stack spacing={1}>
-                <DashboardDivider>Brzi pristup</DashboardDivider>
-                <Row spacing={1}>
-                    <Button
-                        variant="outlined"
-                        startDecorator={<Calendar className="size-5" />}
-                        href={KnownPages.Schedule}
-                    >
-                        Raspored
-                    </Button>
-                    <Button
-                        variant="outlined"
-                        startDecorator={<Fence className="size-5" />}
-                        href={KnownPages.Gardens}
-                    >
-                        Vrtovi
-                    </Button>
-                </Row>
-            </Stack>
+            <Row spacing={1}>
+                <Button
+                    variant="outlined"
+                    className="rounded-full"
+                    size="sm"
+                    startDecorator={<Calendar className="size-4 shrink-0" />}
+                    href={KnownPages.Schedule}
+                >
+                    Raspored
+                </Button>
+                <Button
+                    variant="outlined"
+                    size="sm"
+                    className="rounded-full"
+                    startDecorator={
+                        <Tally3 className="size-4 shrink-0 -rotate-90 -mt-1" />
+                    }
+                    href={KnownPages.RaisedBeds}
+                >
+                    Gredice
+                </Button>
+            </Row>
             <Stack spacing={1}>
                 <Row justifyContent="space-between">
                     <DashboardDivider>Računi i korisnici</DashboardDivider>
