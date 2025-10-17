@@ -1,7 +1,7 @@
 'use client';
 
 import type { getAnalyticsTotals } from '@gredice/storage';
-import { Calendar, Fence, Tally3 } from '@signalco/ui-icons';
+import { Calendar, Tally3 } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
