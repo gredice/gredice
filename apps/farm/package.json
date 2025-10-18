@@ -23,7 +23,7 @@
         "server-only": "0.0.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.2.5",
+        "@biomejs/biome": "2.2.6",
         "@gredice/storage": "workspace:*",
         "@gredice/ui": "workspace:*",
         "@mdxeditor/editor": "3.47.0",
