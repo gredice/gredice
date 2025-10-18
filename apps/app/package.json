@@ -35,7 +35,7 @@
         "server-only": "0.0.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.2.5",
+        "@biomejs/biome": "2.2.6",
         "@gredice/email": "workspace:*",
         "@gredice/client": "workspace:*",
         "@gredice/fiscalization": "workspace:*",
