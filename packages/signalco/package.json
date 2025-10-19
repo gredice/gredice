@@ -14,7 +14,7 @@
         "regenerate:directories-api": "pnpm dlx openapi-typescript https://api.signalco.io/api/swagger.yaml -o ./src/lib/signalco-api/v1.d.ts"
     },
     "dependencies": {
-        "openapi-fetch": "0.14.1"
+        "openapi-fetch": "0.15.0"
     },
     "devDependencies": {
         "@biomejs/biome": "2.2.6",
