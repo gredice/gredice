@@ -21,7 +21,7 @@
         "@hono/mcp": "0.1.4",
         "@hono/standard-validator": "0.1.5",
         "@modelcontextprotocol/sdk": "1.20.0",
-        "@scalar/api-reference-react": "0.8.0",
+        "@scalar/api-reference-react": "0.8.1",
         "@standard-community/standard-json": "0.3.5",
         "@standard-community/standard-openapi": "0.2.8",
         "@upstash/redis": "1.35.6",
