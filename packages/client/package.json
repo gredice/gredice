@@ -21,7 +21,7 @@
         "@types/node": "22.18.10",
         "api": "workspace:*",
         "hono": "4.10.1",
-        "openapi-typescript": "7.10.0",
+        "openapi-typescript": "7.10.1",
         "typescript": "5.9.3"
     }
 }
