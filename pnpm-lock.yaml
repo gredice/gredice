@@ -26,13 +26,13 @@ importers:
         version: 1.4.1
       '@hono/mcp':
         specifier: 0.1.4
-        version: 0.1.4(@modelcontextprotocol/sdk@1.20.0)(hono@4.10.1)
+        version: 0.1.4(@modelcontextprotocol/sdk@1.20.1)(hono@4.10.1)
       '@hono/standard-validator':
         specifier: 0.1.5
         version: 0.1.5(@standard-schema/spec@1.0.0)(hono@4.10.1)
       '@modelcontextprotocol/sdk':
-        specifier: 1.20.0
-        version: 1.20.0
+        specifier: 1.20.1
+        version: 1.20.1
       '@scalar/api-reference-react':
         specifier: 0.8.1
         version: 0.8.1(axios@1.12.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.2.0)(tailwindcss@3.4.18)(typescript@5.9.3)
@@ -59,7 +59,7 @@ importers:
         version: 1.1.0(@hono/standard-validator@0.1.5(@standard-schema/spec@1.0.0)(hono@4.10.1))(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.9.3)))(effect@3.18.1)(quansync@0.2.11)(valibot@1.1.0(typescript@5.9.3))(zod-to-json-schema@3.24.6(zod@4.1.12))(zod@4.1.12))(@standard-community/standard-openapi@0.2.8(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.9.3)))(effect@3.18.1)(quansync@0.2.11)(valibot@1.1.0(typescript@5.9.3))(zod-to-json-schema@3.24.6(zod@4.1.12))(zod@4.1.12))(@standard-schema/spec@1.0.0)(effect@3.18.1)(openapi-types@12.1.3)(valibot@1.1.0(typescript@5.9.3))(zod-openapi@5.4.3(zod@4.1.12))(zod@4.1.12))(@types/json-schema@7.0.15)(hono@4.10.1)(openapi-types@12.1.3)
       next:
         specifier: canary
-        version: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+        version: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       pg:
         specifier: 8.16.3
         version: 8.16.3
@@ -117,22 +117,22 @@ importers:
         version: 1.56.0
       '@signalco/auth-server':
         specifier: 0.5.3
-        version: 0.5.3(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.5.3(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.2.1(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+        version: 0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-themes-minimal-app':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
@@ -153,13 +153,13 @@ importers:
         version: 0.4.14
       '@vercel/analytics':
         specifier: 1.5.0
-        version: 1.5.0(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
+        version: 1.5.0(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
       jsonwebtoken:
         specifier: 9.0.2
         version: 9.0.2
       next-axiom:
         specifier: 1.9.3
-        version: 1.9.3(@aws-sdk/credential-provider-web-identity@3.911.0)(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)
+        version: 1.9.3(@aws-sdk/credential-provider-web-identity@3.911.0)(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)
       openapi-types:
         specifier: 12.1.3
         version: 12.1.3
@@ -204,7 +204,7 @@ importers:
         version: 2.10.0
       next:
         specifier: canary
-        version: 16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+        version: 16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       next-themes:
         specifier: 0.4.6
         version: 0.4.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -268,25 +268,25 @@ importers:
         version: 1.56.0
       '@signalco/auth-client':
         specifier: 0.3.0
-        version: 0.3.0(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.5(react@19.2.0))(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.3.0(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.5(react@19.2.0))(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/auth-server':
         specifier: 0.5.3
-        version: 0.5.3(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.5.3(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.2.1(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+        version: 0.6.5(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-themes-minimal-app':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
@@ -307,7 +307,7 @@ importers:
         version: 19.2.2(@types/react@19.2.2)
       '@vercel/analytics':
         specifier: 1.5.0
-        version: 1.5.0(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
+        version: 1.5.0(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
       '@zxing/library':
         specifier: 0.21.3
         version: 0.21.3
@@ -316,7 +316,7 @@ importers:
         version: 19.1.0-rc.3
       next-axiom:
         specifier: 1.9.3
-        version: 1.9.3(@aws-sdk/credential-provider-web-identity@3.911.0)(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)
+        version: 1.9.3(@aws-sdk/credential-provider-web-identity@3.911.0)(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)
       postcss:
         specifier: 8.5.6
         version: 8.5.6
@@ -334,7 +334,7 @@ importers:
         version: 2.10.0
       next:
         specifier: canary
-        version: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+        version: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       pg:
         specifier: 8.16.3
         version: 8.16.3
@@ -368,25 +368,25 @@ importers:
         version: 1.56.0
       '@signalco/auth-client':
         specifier: 0.3.0
-        version: 0.3.0(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.5(react@19.2.0))(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.3.0(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.5(react@19.2.0))(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/auth-server':
         specifier: 0.5.3
-        version: 0.5.3(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.5.3(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.2.1(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+        version: 0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-themes-minimal-app':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
@@ -407,13 +407,13 @@ importers:
         version: 19.2.2(@types/react@19.2.2)
       '@vercel/analytics':
         specifier: 1.5.0
-        version: 1.5.0(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
+        version: 1.5.0(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
       babel-plugin-react-compiler:
         specifier: 19.1.0-rc.3
         version: 19.1.0-rc.3
       next-axiom:
         specifier: 1.9.3
-        version: 1.9.3(@aws-sdk/credential-provider-web-identity@3.911.0)(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)
+        version: 1.9.3(@aws-sdk/credential-provider-web-identity@3.911.0)(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)
       postcss:
         specifier: 8.5.6
         version: 8.5.6
@@ -431,16 +431,16 @@ importers:
         version: 0.3.0
       '@vercel/toolbar':
         specifier: 0.1.41
-        version: 0.1.41(@vercel/analytics@1.5.0(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3)))(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(vite@6.3.6(@types/node@22.18.10)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.0))
+        version: 0.1.41(@vercel/analytics@1.5.0(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3)))(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(vite@6.3.6(@types/node@22.18.10)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.0))
       flags:
         specifier: 4.0.1
-        version: 4.0.1(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 4.0.1(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       hypertune:
         specifier: 2.10.0
         version: 2.10.0
       next:
         specifier: canary
-        version: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+        version: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       next-themes:
         specifier: 0.4.6
         version: 0.4.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -474,28 +474,28 @@ importers:
         version: 1.56.0
       '@signalco/auth-client':
         specifier: 0.3.0
-        version: 0.3.0(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.5(react@19.2.0))(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.3.0(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.5(react@19.2.0))(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/auth-server':
         specifier: 0.5.3
-        version: 0.5.3(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.5.3(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.2.1(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-notifications':
         specifier: 0.2.0
-        version: 0.2.0(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.2.0(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+        version: 0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-themes-minimal':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
@@ -516,13 +516,13 @@ importers:
         version: 19.2.2(@types/react@19.2.2)
       '@vercel/analytics':
         specifier: 1.5.0
-        version: 1.5.0(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
+        version: 1.5.0(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
       babel-plugin-react-compiler:
         specifier: 19.1.0-rc.3
         version: 19.1.0-rc.3
       next-axiom:
         specifier: 1.9.3
-        version: 1.9.3(@aws-sdk/credential-provider-web-identity@3.911.0)(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)
+        version: 1.9.3(@aws-sdk/credential-provider-web-identity@3.911.0)(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)
       postcss:
         specifier: 8.5.6
         version: 8.5.6
@@ -549,16 +549,16 @@ importers:
         version: 3.0.0
       '@vercel/toolbar':
         specifier: 0.1.41
-        version: 0.1.41(@vercel/analytics@1.5.0(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3)))(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(vite@6.3.6(@types/node@22.18.10)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.0))
+        version: 0.1.41(@vercel/analytics@1.5.0(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3)))(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(vite@6.3.6(@types/node@22.18.10)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.0))
       flags:
         specifier: 4.0.1
-        version: 4.0.1(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 4.0.1(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       hypertune:
         specifier: 2.10.0
         version: 2.10.0
       next:
         specifier: canary
-        version: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+        version: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react:
         specifier: 19.2.0
         version: 19.2.0
@@ -592,25 +592,25 @@ importers:
         version: 1.56.0
       '@signalco/cms-components-marketing':
         specifier: 0.1.1
-        version: 0.1.1(@signalco/cms-core@0.1.1(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.1.1(@signalco/cms-core@0.1.1(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/cms-core':
         specifier: 0.1.1
-        version: 0.1.1(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.1.1(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.2.1(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+        version: 0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-themes-minimal':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
@@ -634,7 +634,7 @@ importers:
         version: 0.4.14
       '@vercel/analytics':
         specifier: 1.5.0
-        version: 1.5.0(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
+        version: 1.5.0(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
       babel-plugin-react-compiler:
         specifier: 19.1.0-rc.3
         version: 19.1.0-rc.3
@@ -646,10 +646,10 @@ importers:
         version: 12.23.24(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       next-axiom:
         specifier: 1.9.3
-        version: 1.9.3(@aws-sdk/credential-provider-web-identity@3.911.0)(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)
+        version: 1.9.3(@aws-sdk/credential-provider-web-identity@3.911.0)(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)
       next-sitemap:
         specifier: 4.2.3
-        version: 4.2.3(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))
+        version: 4.2.3(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))
       postcss:
         specifier: 8.5.6
         version: 8.5.6
@@ -817,19 +817,19 @@ importers:
         version: 9.4.0(@types/react@19.2.2)(immer@10.1.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(three@0.180.0)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.2.1(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+        version: 0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-themes-minimal':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
@@ -862,7 +862,7 @@ importers:
         version: 3.1.2
       next:
         specifier: canary
-        version: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+        version: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       next-themes:
         specifier: 0.4.6
         version: 0.4.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -1067,25 +1067,25 @@ importers:
         version: link:../js
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 0.2.1(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+        version: 0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       motion:
         specifier: 12.23.24
         version: 12.23.24(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       next:
         specifier: canary
-        version: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+        version: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react:
         specifier: 19.2.0
         version: 19.2.0
@@ -2369,8 +2369,8 @@ packages:
   '@microsoft/tsdoc@0.15.1':
     resolution: {integrity: sha512-4aErSrCR/On/e5G2hDP0wjooqDdauzEbIq8hIkIe5pXV0rtWJZvdCEKL0ykZxex+IxIwBp0eGeV48hQN07dXtw==}
 
-  '@modelcontextprotocol/sdk@1.20.0':
-    resolution: {integrity: sha512-kOQ4+fHuT4KbR2iq2IjeV32HiihueuOf1vJkq18z08CLZ1UQrTc8BXJpVfxZkq45+inLLD+D4xx4nBjUelJa4Q==}
+  '@modelcontextprotocol/sdk@1.20.1':
+    resolution: {integrity: sha512-j/P+yuxXfgxb+mW7OEoRCM3G47zCTDqUPivJo/VzpjbG8I9csTXtOprCf5FfOfHK4whOJny0aHuBEON+kS7CCA==}
     engines: {node: '>=18'}
 
   '@monogrid/gainmap-js@3.1.0':
@@ -2394,8 +2394,8 @@ packages:
   '@next/env@15.5.2':
     resolution: {integrity: sha512-Qe06ew4zt12LeO6N7j8/nULSOe3fMXE4dM6xgpBQNvdzyK1sv5y4oAP3bq4LamrvGCZtmRYnW8URFCeX5nFgGg==}
 
-  '@next/env@16.0.0-canary.16':
-    resolution: {integrity: sha512-yjd0RRAtL79zLmKtAvwGX3le5ui+c47gbzYRCITZdDdlLOMYGKftBJLfGFEjuolj1fiwyXZtmu4x5qttWEe5uA==}
+  '@next/env@16.0.0-canary.17':
+    resolution: {integrity: sha512-Yc5OzgY6t/2q2/K8hy6EIQDiJhzS3datftC2b3ik2lMhfG7CukyaBGWLGdgT+IQRuzJc27X1prnU6+5bmpZHcA==}
 
   '@next/swc-darwin-arm64@15.5.2':
     resolution: {integrity: sha512-8bGt577BXGSd4iqFygmzIfTYizHb0LGWqH+qgIF/2EDxS5JsSdERJKA8WgwDyNBZgTIIA4D8qUtoQHmxIIquoQ==}
@@ -2403,8 +2403,8 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
-  '@next/swc-darwin-arm64@16.0.0-canary.16':
-    resolution: {integrity: sha512-2bb/Gp8o2QkmTZYY7MsIO6pC5SQexOSM+hYf8yPZuJLZlbKo4YxOypMzHpMgLDSnYTHYe2oaHI1/497oI4q+dg==}
+  '@next/swc-darwin-arm64@16.0.0-canary.17':
+    resolution: {integrity: sha512-hUTH48puJ2ogyRixTXIae2nOzzsGWZL/zPNcGOnocRnpr/0H97b6KF/DX950mhBbiWmxRJR+Wemdd8ky8pL7KA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -2415,8 +2415,8 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@next/swc-darwin-x64@16.0.0-canary.16':
-    resolution: {integrity: sha512-gvPwtDL28lcSPy16MLO683+ra7UuV0uzSqmTRmxClsyOaQUckY7sE36JIZt0oMDNf9X6Nd+YyFscytyONaVNFA==}
+  '@next/swc-darwin-x64@16.0.0-canary.17':
+    resolution: {integrity: sha512-maxLu+coYb8PDuCbSYJh6HHXzSQ30LwnEwQ6Ibzmf9jRKvlNXzw0aBhrPfSvwu7BpuSlQN9qKRK6GeVf2onVzw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -2427,8 +2427,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@next/swc-linux-arm64-gnu@16.0.0-canary.16':
-    resolution: {integrity: sha512-m/c0JkPxDByl0D+uAHgsRGYK7jjMXneqLhW5Z70r4imbi+GQY9DkuyUSThgYMIXJpEMgVgOw18gz7V/6ZHKf3w==}
+  '@next/swc-linux-arm64-gnu@16.0.0-canary.17':
+    resolution: {integrity: sha512-Qsg7GmKm85fj+pomUgbKe23ILCF/mpQuR//cycYCE8p5ujWeJrbwte6hrBrq3JWt7xbcf4efdW2owlOcgmXTpQ==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
@@ -2439,8 +2439,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@next/swc-linux-arm64-musl@16.0.0-canary.16':
-    resolution: {integrity: sha512-HhGQ7yOrwRRKhawpZxwpbVekMizwoy6nXhqBqIMV/zOX9eLvAHzlrVy6jCb03gQOnrwZauiSwBNt03CmVKyYUw==}
+  '@next/swc-linux-arm64-musl@16.0.0-canary.17':
+    resolution: {integrity: sha512-fZoiYKqyEN22dizdbuGAzC77qB7qWtB9j/0moyxujhxsEssdU8VYQ8Vjao070+Y8s7x/OucJN2nalrs0BPhaeQ==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
@@ -2451,8 +2451,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@next/swc-linux-x64-gnu@16.0.0-canary.16':
-    resolution: {integrity: sha512-v0vNqBGcr2+tdWFsMepieH/Vas58NsOSnWlbmiEj0ny0ioMbYihKq1hT9uSVnv52J9A5xiP9PQdCPBcu0h+2Fw==}
+  '@next/swc-linux-x64-gnu@16.0.0-canary.17':
+    resolution: {integrity: sha512-ZKmPaet/BoHMrwvjzbDkaSFi4VC5olqV/etmJfsJ4jzMnG/jF0GZ+cZWFqM3UWksuDxaKDnld0d3MfBrcxjqeQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -2463,8 +2463,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@next/swc-linux-x64-musl@16.0.0-canary.16':
-    resolution: {integrity: sha512-giU9iNnWHYnkOqYf0xfNtvolFoKm7wINeC17BtD1z76pZ+KMwzjbeXuXfub+VPEUaLw3yijgtWJRrs68wFmy+Q==}
+  '@next/swc-linux-x64-musl@16.0.0-canary.17':
+    resolution: {integrity: sha512-nCVg0XnDPhnPofioedixGhOJHhieYsFthMzQa2dflp2cHsIB/ugZ50OIaieLbfUeeHYLGxVXgvzX8IbTHQfwUg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -2475,8 +2475,8 @@ packages:
     cpu: [arm64]
     os: [win32]
 
-  '@next/swc-win32-arm64-msvc@16.0.0-canary.16':
-    resolution: {integrity: sha512-UcZ7m2HbjANsmvgJd343+4BHEIGiBTY8yHisv8/rhjpr7cEM4fuqrxq1XIMSIcJqIO2QUCj1vBSLpKwBGRY+vg==}
+  '@next/swc-win32-arm64-msvc@16.0.0-canary.17':
+    resolution: {integrity: sha512-hgGV6GU9P5KS08p7oVlJoiwjsOB/SBa9aTRiOfQ8pkJ0v/IUjBbEbLHF96c7V38pxPRPvB+mg0vpmZ+nVxq0gA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [win32]
@@ -2487,8 +2487,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@next/swc-win32-x64-msvc@16.0.0-canary.16':
-    resolution: {integrity: sha512-+SplvxyMczG9mCX6CagGLdvalQC0rMPNFaezqoLndoDxNvVHm/5ntJIEgJYrboJJTPn0y3hAApbFEXEloUES0g==}
+  '@next/swc-win32-x64-msvc@16.0.0-canary.17':
+    resolution: {integrity: sha512-TuJ1E5IUfd15qo/8yqxawuwpl/dN+AJ2RVXmh3dtQaLEBP9jOzf3dE+kfIfVGX2dzg36bSck2RonHPaxk2c0zQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
@@ -6652,8 +6652,8 @@ packages:
       sass:
         optional: true
 
-  next@16.0.0-canary.16:
-    resolution: {integrity: sha512-4ZfDrZbUkiZfbL7XjwnYyH1kGm5ijVtv4AuQMKb+teNBX85lPeFQe6I+ap5uVH/OaEf2noJq/FJGSGnhJLJXAA==}
+  next@16.0.0-canary.17:
+    resolution: {integrity: sha512-BuYWU/IAIK7znfCnrGEMaktyELOAvtQwrfYb7QArpyQ9Ph0TAsKOe8fv7pA0aHMKsULOZhlbH4ZZw6okosM0bQ==}
     engines: {node: '>=20.9.0'}
     hasBin: true
     peerDependencies:
@@ -9706,9 +9706,9 @@ snapshots:
       '@tanstack/vue-virtual': 3.13.12(vue@3.5.22(typescript@5.9.3))
       vue: 3.5.22(typescript@5.9.3)
 
-  '@hono/mcp@0.1.4(@modelcontextprotocol/sdk@1.20.0)(hono@4.10.1)':
+  '@hono/mcp@0.1.4(@modelcontextprotocol/sdk@1.20.1)(hono@4.10.1)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.20.0
+      '@modelcontextprotocol/sdk': 1.20.1
       hono: 4.10.1
 
   '@hono/standard-validator@0.1.5(@standard-schema/spec@1.0.0)(hono@4.10.1)':
@@ -10239,7 +10239,7 @@ snapshots:
 
   '@microsoft/tsdoc@0.15.1': {}
 
-  '@modelcontextprotocol/sdk@1.20.0':
+  '@modelcontextprotocol/sdk@1.20.1':
     dependencies:
       ajv: 6.12.6
       content-type: 1.0.5
@@ -10277,54 +10277,54 @@ snapshots:
 
   '@next/env@15.5.2': {}
 
-  '@next/env@16.0.0-canary.16': {}
+  '@next/env@16.0.0-canary.17': {}
 
   '@next/swc-darwin-arm64@15.5.2':
     optional: true
 
-  '@next/swc-darwin-arm64@16.0.0-canary.16':
+  '@next/swc-darwin-arm64@16.0.0-canary.17':
     optional: true
 
   '@next/swc-darwin-x64@15.5.2':
     optional: true
 
-  '@next/swc-darwin-x64@16.0.0-canary.16':
+  '@next/swc-darwin-x64@16.0.0-canary.17':
     optional: true
 
   '@next/swc-linux-arm64-gnu@15.5.2':
     optional: true
 
-  '@next/swc-linux-arm64-gnu@16.0.0-canary.16':
+  '@next/swc-linux-arm64-gnu@16.0.0-canary.17':
     optional: true
 
   '@next/swc-linux-arm64-musl@15.5.2':
     optional: true
 
-  '@next/swc-linux-arm64-musl@16.0.0-canary.16':
+  '@next/swc-linux-arm64-musl@16.0.0-canary.17':
     optional: true
 
   '@next/swc-linux-x64-gnu@15.5.2':
     optional: true
 
-  '@next/swc-linux-x64-gnu@16.0.0-canary.16':
+  '@next/swc-linux-x64-gnu@16.0.0-canary.17':
     optional: true
 
   '@next/swc-linux-x64-musl@15.5.2':
     optional: true
 
-  '@next/swc-linux-x64-musl@16.0.0-canary.16':
+  '@next/swc-linux-x64-musl@16.0.0-canary.17':
     optional: true
 
   '@next/swc-win32-arm64-msvc@15.5.2':
     optional: true
 
-  '@next/swc-win32-arm64-msvc@16.0.0-canary.16':
+  '@next/swc-win32-arm64-msvc@16.0.0-canary.17':
     optional: true
 
   '@next/swc-win32-x64-msvc@15.5.2':
     optional: true
 
-  '@next/swc-win32-x64-msvc@16.0.0-canary.16':
+  '@next/swc-win32-x64-msvc@16.0.0-canary.17':
     optional: true
 
   '@noble/hashes@1.8.0': {}
@@ -12033,56 +12033,56 @@ snapshots:
       domhandler: 5.0.3
       selderee: 0.11.0
 
-  '@signalco/auth-client@0.3.0(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.5(react@19.2.0))(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@signalco/auth-client@0.3.0(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.5(react@19.2.0))(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+      '@signalco/ui-primitives': 0.6.5(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@tanstack/react-query': 5.90.5(react@19.2.0)
-      next: 16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@signalco/auth-client@0.3.0(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.5(react@19.2.0))(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@signalco/auth-client@0.3.0(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(@tanstack/react-query@5.90.5(react@19.2.0))(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+      '@signalco/ui-primitives': 0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       '@tanstack/react-query': 5.90.5(react@19.2.0)
-      next: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@signalco/auth-server@0.5.3(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@signalco/auth-server@0.5.3(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      next: 16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@signalco/auth-server@0.5.3(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@signalco/auth-server@0.5.3(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      next: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@signalco/cms-components-marketing@0.1.1(@signalco/cms-core@0.1.1(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@signalco/cms-components-marketing@0.1.1(@signalco/cms-core@0.1.1(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      '@signalco/cms-core': 0.1.1(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      '@signalco/ui': 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+      '@signalco/cms-core': 0.1.1(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@signalco/ui': 0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@signalco/cms-core@0.1.1(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@signalco/cms-core@0.1.1(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+      '@signalco/ui-primitives': 0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@signalco/hooks@0.2.1(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@signalco/hooks@0.2.1(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      next: 16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@signalco/hooks@0.2.1(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@signalco/hooks@0.2.1(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      next: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
@@ -12096,31 +12096,31 @@ snapshots:
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@signalco/ui-notifications@0.2.0(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@signalco/ui-notifications@0.2.0(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+      '@signalco/ui-primitives': 0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
-  '@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
+  '@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
     dependencies:
-      next: 16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
-      react: 19.2.0
-      react-dom: 19.2.0(react@19.2.0)
-      tailwindcss: 3.4.18
-      tailwindcss-animate: 1.0.7(tailwindcss@3.4.18)
-
-  '@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
-    dependencies:
-      next: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       tailwindcss: 3.4.18
       tailwindcss-animate: 1.0.7(tailwindcss@3.4.18)
 
-  '@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
+  '@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
     dependencies:
-      next: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      react: 19.2.0
+      react-dom: 19.2.0(react@19.2.0)
+      tailwindcss: 3.4.18
+      tailwindcss-animate: 1.0.7(tailwindcss@3.4.18)
+
+  '@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
+    dependencies:
+      next: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       tailwindcss: 3.4.18
@@ -12136,25 +12136,25 @@ snapshots:
       tailwindcss: 3.4.18
       tailwindcss-animate: 1.0.7(tailwindcss@3.4.18)
 
-  '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
+  '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+      '@signalco/ui-primitives': 0.6.5(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       tailwindcss: 3.4.18
       tailwindcss-animate: 1.0.7(tailwindcss@3.4.18)
 
-  '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
+  '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+      '@signalco/ui-primitives': 0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       tailwindcss: 3.4.18
       tailwindcss-animate: 1.0.7(tailwindcss@3.4.18)
 
-  '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
+  '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.0.0-canary.16(@playwright/test@1.56.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
+      '@signalco/ui-primitives': 0.6.5(next@16.0.0-canary.17(@playwright/test@1.56.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(tailwindcss-animate@1.0.7(tailwindcss@3.4.18))(tailwindcss@3.4.18)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       tailwindcss: 3.4.18
@@ -12870,16 +12870,16 @@ snapshots:
     dependencies:
       valibot: 1.1.0(typescript@5.9.3)
 
-  '@vercel/analytics@1.5.0(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))':
+  '@vercel/analytics@1.5.0(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))':
     optionalDependencies:
-      next: 16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       vue: 3.5.22(typescript@5.9.3)
       vue-router: 4.5.1(vue@3.5.22(typescript@5.9.3))
 
-  '@vercel/analytics@1.5.0(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))':
+  '@vercel/analytics@1.5.0(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))':
     optionalDependencies:
-      next: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       vue: 3.5.22(typescript@5.9.3)
       vue-router: 4.5.1(vue@3.5.22(typescript@5.9.3))
@@ -12906,7 +12906,7 @@ snapshots:
     dependencies:
       '@upstash/redis': 1.35.6
 
-  '@vercel/microfrontends@1.3.0(@vercel/analytics@1.5.0(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3)))(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(vite@6.3.6(@types/node@22.18.10)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.0))':
+  '@vercel/microfrontends@1.3.0(@vercel/analytics@1.5.0(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3)))(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(vite@6.3.6(@types/node@22.18.10)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.0))':
     dependencies:
       '@next/env': 15.1.6
       ajv: 8.17.1
@@ -12918,8 +12918,8 @@ snapshots:
       nanoid: 3.3.11
       path-to-regexp: 6.2.1
     optionalDependencies:
-      '@vercel/analytics': 1.5.0(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
-      next: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      '@vercel/analytics': 1.5.0(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3))
+      next: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       vite: 6.3.6(@types/node@22.18.10)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.0)
@@ -12935,10 +12935,10 @@ snapshots:
       - utf-8-validate
     optional: true
 
-  '@vercel/toolbar@0.1.41(@vercel/analytics@1.5.0(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3)))(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(vite@6.3.6(@types/node@22.18.10)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.0))':
+  '@vercel/toolbar@0.1.41(@vercel/analytics@1.5.0(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3)))(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(vite@6.3.6(@types/node@22.18.10)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.0))':
     dependencies:
       '@tinyhttp/app': 1.3.0
-      '@vercel/microfrontends': 1.3.0(@vercel/analytics@1.5.0(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3)))(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(vite@6.3.6(@types/node@22.18.10)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.0))
+      '@vercel/microfrontends': 1.3.0(@vercel/analytics@1.5.0(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0)(vue-router@4.5.1(vue@3.5.22(typescript@5.9.3)))(vue@3.5.22(typescript@5.9.3)))(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(vite@6.3.6(@types/node@22.18.10)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.0))
       chokidar: 3.6.0
       execa: 5.1.1
       fast-glob: 3.3.3
@@ -12947,7 +12947,7 @@ snapshots:
       jsonc-parser: 3.3.1
       strip-ansi: 6.0.1
     optionalDependencies:
-      next: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       vite: 6.3.6(@types/node@22.18.10)(jiti@2.4.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.0)
     transitivePeerDependencies:
@@ -14167,12 +14167,12 @@ snapshots:
       locate-path: 6.0.0
       path-exists: 4.0.0
 
-  flags@4.0.1(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
+  flags@4.0.1(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
       '@edge-runtime/cookies': 5.0.2
       jose: 5.10.0
     optionalDependencies:
-      next: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
@@ -15516,33 +15516,33 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  next-axiom@1.9.3(@aws-sdk/credential-provider-web-identity@3.911.0)(next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0):
+  next-axiom@1.9.3(@aws-sdk/credential-provider-web-identity@3.911.0)(next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0):
     dependencies:
       '@vercel/functions': 2.2.4(@aws-sdk/credential-provider-web-identity@3.911.0)
-      next: 16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       use-deep-compare: 1.3.0(react@19.2.0)
       whatwg-fetch: 3.6.20
     transitivePeerDependencies:
       - '@aws-sdk/credential-provider-web-identity'
 
-  next-axiom@1.9.3(@aws-sdk/credential-provider-web-identity@3.911.0)(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0):
+  next-axiom@1.9.3(@aws-sdk/credential-provider-web-identity@3.911.0)(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2))(react@19.2.0):
     dependencies:
       '@vercel/functions': 2.2.4(@aws-sdk/credential-provider-web-identity@3.911.0)
-      next: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
       react: 19.2.0
       use-deep-compare: 1.3.0(react@19.2.0)
       whatwg-fetch: 3.6.20
     transitivePeerDependencies:
       - '@aws-sdk/credential-provider-web-identity'
 
-  next-sitemap@4.2.3(next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)):
+  next-sitemap@4.2.3(next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)):
     dependencies:
       '@corex/deepmerge': 4.0.43
       '@next/env': 13.5.7
       fast-glob: 3.3.3
       minimist: 1.2.8
-      next: 16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
+      next: 16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2)
 
   next-themes@0.4.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
@@ -15576,9 +15576,9 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  next@16.0.0-canary.16(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2):
+  next@16.0.0-canary.17(@babel/core@7.28.0)(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2):
     dependencies:
-      '@next/env': 16.0.0-canary.16
+      '@next/env': 16.0.0-canary.17
       '@swc/helpers': 0.5.15
       caniuse-lite: 1.0.30001746
       postcss: 8.4.31
@@ -15586,14 +15586,14 @@ snapshots:
       react-dom: 19.2.0(react@19.2.0)
       styled-jsx: 5.1.6(@babel/core@7.28.0)(react@19.2.0)
     optionalDependencies:
-      '@next/swc-darwin-arm64': 16.0.0-canary.16
-      '@next/swc-darwin-x64': 16.0.0-canary.16
-      '@next/swc-linux-arm64-gnu': 16.0.0-canary.16
-      '@next/swc-linux-arm64-musl': 16.0.0-canary.16
-      '@next/swc-linux-x64-gnu': 16.0.0-canary.16
-      '@next/swc-linux-x64-musl': 16.0.0-canary.16
-      '@next/swc-win32-arm64-msvc': 16.0.0-canary.16
-      '@next/swc-win32-x64-msvc': 16.0.0-canary.16
+      '@next/swc-darwin-arm64': 16.0.0-canary.17
+      '@next/swc-darwin-x64': 16.0.0-canary.17
+      '@next/swc-linux-arm64-gnu': 16.0.0-canary.17
+      '@next/swc-linux-arm64-musl': 16.0.0-canary.17
+      '@next/swc-linux-x64-gnu': 16.0.0-canary.17
+      '@next/swc-linux-x64-musl': 16.0.0-canary.17
+      '@next/swc-win32-arm64-msvc': 16.0.0-canary.17
+      '@next/swc-win32-x64-msvc': 16.0.0-canary.17
       '@playwright/test': 1.56.0
       babel-plugin-react-compiler: 19.1.0-rc.3
       sass: 1.93.2
@@ -15602,9 +15602,9 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  next@16.0.0-canary.16(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2):
+  next@16.0.0-canary.17(@playwright/test@1.56.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.93.2):
     dependencies:
-      '@next/env': 16.0.0-canary.16
+      '@next/env': 16.0.0-canary.17
       '@swc/helpers': 0.5.15
       caniuse-lite: 1.0.30001746
       postcss: 8.4.31
@@ -15612,14 +15612,14 @@ snapshots:
       react-dom: 19.2.0(react@19.2.0)
       styled-jsx: 5.1.6(@babel/core@7.28.0)(react@19.2.0)
     optionalDependencies:
-      '@next/swc-darwin-arm64': 16.0.0-canary.16
-      '@next/swc-darwin-x64': 16.0.0-canary.16
-      '@next/swc-linux-arm64-gnu': 16.0.0-canary.16
-      '@next/swc-linux-arm64-musl': 16.0.0-canary.16
-      '@next/swc-linux-x64-gnu': 16.0.0-canary.16
-      '@next/swc-linux-x64-musl': 16.0.0-canary.16
-      '@next/swc-win32-arm64-msvc': 16.0.0-canary.16
-      '@next/swc-win32-x64-msvc': 16.0.0-canary.16
+      '@next/swc-darwin-arm64': 16.0.0-canary.17
+      '@next/swc-darwin-x64': 16.0.0-canary.17
+      '@next/swc-linux-arm64-gnu': 16.0.0-canary.17
+      '@next/swc-linux-arm64-musl': 16.0.0-canary.17
+      '@next/swc-linux-x64-gnu': 16.0.0-canary.17
+      '@next/swc-linux-x64-musl': 16.0.0-canary.17
+      '@next/swc-win32-arm64-msvc': 16.0.0-canary.17
+      '@next/swc-win32-x64-msvc': 16.0.0-canary.17
       '@playwright/test': 1.56.0
       babel-plugin-react-compiler: 19.1.0-rc.3
       sass: 1.93.2
