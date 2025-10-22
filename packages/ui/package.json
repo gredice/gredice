@@ -36,7 +36,7 @@
         "@signalco/ui-primitives": "0.x",
         "@tailwindcss/typography": "0.x",
         "motion": "12.x",
-        "next": "15.x",
+        "next": "15.x || 16.x",
         "react": "19.x",
         "react-dom": "19.x",
         "tailwindcss": "3.x",
