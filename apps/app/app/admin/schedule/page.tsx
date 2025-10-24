@@ -1,6 +1,7 @@
 import {
     getAllOperations,
     getAllRaisedBeds,
+    getDeliveryRequests,
     getEntitiesFormatted,
 } from '@gredice/storage';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
@@ -18,6 +19,7 @@ export default async function AdminSchedulePage() {
         completedOperationsFuture,
         plantSorts,
         operationsData,
+        deliveryRequests,
     ] = await Promise.all([
         getAllRaisedBeds(),
         getAllOperations({
@@ -33,6 +35,7 @@ export default async function AdminSchedulePage() {
         }),
         getEntitiesFormatted<EntityStandardized>('plantSort'),
         getEntitiesFormatted<EntityStandardized>('operation'),
+        getDeliveryRequests(),
     ]);
 
     // Make sure operations are sorted by timestamp desc
@@ -54,6 +57,7 @@ export default async function AdminSchedulePage() {
             plantSorts={plantSorts}
             operationsData={operationsData}
             userId={userId}
+            deliveryRequests={deliveryRequests}
         />
     );
 }
