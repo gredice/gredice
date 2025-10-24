@@ -20,7 +20,7 @@
         "@biomejs/biome": "2.2.6",
         "@types/node": "22.18.12",
         "api": "workspace:*",
-        "hono": "4.10.2",
+        "hono": "4.10.3",
         "openapi-typescript": "7.10.1",
         "typescript": "5.9.3"
     }
