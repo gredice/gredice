@@ -16,7 +16,7 @@
     },
     "dependencies": {
         "hypertune": "2.10.0",
-        "next": "canary",
+        "next": "16.0.0",
         "pg": "8.16.3",
         "react": "19.2.0",
         "react-dom": "19.2.0",
