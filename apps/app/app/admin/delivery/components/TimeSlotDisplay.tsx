@@ -10,11 +10,13 @@ export function TimeSlotDisplay({
     slot,
     fallback = 'Bez termina',
     isOverdue = false,
+    hideDate = false,
     className,
 }: {
     slot: TimeSlotData | null | undefined;
     fallback?: string;
     isOverdue?: boolean;
+    hideDate?: boolean;
     className?: string;
 }) {
     if (!slot) {
@@ -33,7 +35,11 @@ export function TimeSlotDisplay({
             level="body2"
             className={isOverdue ? 'text-red-600' : className}
         >
-            <TimeRange startAt={slot.startAt} endAt={slot.endAt} />
+            <TimeRange
+                startAt={slot.startAt}
+                endAt={slot.endAt}
+                timeOnly={hideDate}
+            />
         </Typography>
     );
 }
