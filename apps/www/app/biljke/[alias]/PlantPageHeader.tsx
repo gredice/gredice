@@ -16,7 +16,6 @@ import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal
 import { PageHeader } from '../../../components/shared/PageHeader';
 import { KnownPages } from '../../../src/KnownPages';
 import { getPlantInforationSections } from './getPlantInforationSections';
-import { PlantAttributeCards } from './PlantAttributeCards';
 import { PlantCalendarPicker } from './PlantCalendarPicker';
 import { VerifiedInformationBadge } from './VerifiedInformationBadge';
 
@@ -157,7 +156,7 @@ export function PlantPageHeader({
                             icon={<PlantGridIcon totalPlants={totalPlants} />}
                             header={`Broj biljaka na ${FIELD_SIZE_LABEL}`}
                             value={totalPlants.toString()}
-                            description={`Podignutim gredica podjeljena je na polja veličine ${FIELD_SIZE_LABEL}. Gredica dimenzija 2x1 metar ima 18 polja za sijanje tvojih biljaka. U svako polje može stati određeni broj biljaka, ovisno o vrsti odnosno o razmaku sijanja/sadnje biljke.`}
+                            description={`Podignuta gredica podjeljena je na polja veličine ${FIELD_SIZE_LABEL}. Gredica dimenzija 2x1 metar ima 18 polja za sijanje tvojih biljaka. U svako polje može stati određeni broj biljaka, ovisno o vrsti odnosno o razmaku sijanja/sadnje biljke.`}
                             navigateHref={KnownPages.RaisedBeds}
                             navigateLabel="Više o gredicama"
                         />
@@ -167,23 +166,6 @@ export function PlantPageHeader({
                             sort
                                 ? 'www/plants/sorts/information'
                                 : 'www/plants/information'
-                        }
-                        data={{
-                            plantId: plant.id,
-                            plantAlias: plant.information.name,
-                            sortId: sort?.id,
-                            sortAlias: sort?.information.name,
-                        }}
-                        className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
-                    />
-                </Stack>
-                <Stack spacing={1} className="group">
-                    <PlantAttributeCards attributes={plant.attributes} />
-                    <FeedbackModal
-                        topic={
-                            sort
-                                ? 'www/plants/sorts/attributes'
-                                : 'www/plants/attributes'
                         }
                         data={{
                             plantId: plant.id,
