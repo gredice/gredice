@@ -1,10 +1,11 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { AiWatermark } from '@gredice/ui/AiWatermark';
+import { PlantGridIcon } from '@gredice/ui/GridIcons';
 import { SeedTimeInformationBadge } from '@gredice/ui/plants';
 import { slug } from '@signalco/js';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Euro, LayoutGrid, MapPinHouse } from '@signalco/ui-icons';
+import { MapPinHouse, Sprout } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -142,21 +143,24 @@ export function PlantPageHeader({
                         Informacije
                     </Typography>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {plant.prices?.perPlant && (
+                            <AttributeCard
+                                icon={<Sprout />}
+                                header="Cijena sijanja"
+                                value={`${plant.prices.perPlant.toFixed(2)}€`}
+                                description="Cijena jedne biljke uključuje troškove sjemena, pripreme tla, sjetve i sezonske pogodnosti. Više o samoj sjetvi u gredicama možeš pročitati u nastavku."
+                                navigateHref={KnownPages.Sowing}
+                                navigateLabel="Više o sjetvi"
+                            />
+                        )}
                         <AttributeCard
-                            icon={<LayoutGrid />}
+                            icon={<PlantGridIcon totalPlants={totalPlants} />}
                             header={`Broj biljaka na ${FIELD_SIZE_LABEL}`}
                             value={totalPlants.toString()}
-                            description={`Podignutim gredica podjeljena je na polja veličine ${FIELD_SIZE_LABEL}. Tako podignuta gredica od 2x1m ima 18 polja za sadnju tvojih biljaka. U svako polje može stati određeni broj biljaka, ovisno o vrsti odnosno o razmaku sijanje/sadnje biljke.`}
+                            description={`Podignutim gredica podjeljena je na polja veličine ${FIELD_SIZE_LABEL}. Gredica dimenzija 2x1 metar ima 18 polja za sijanje tvojih biljaka. U svako polje može stati određeni broj biljaka, ovisno o vrsti odnosno o razmaku sijanja/sadnje biljke.`}
                             navigateHref={KnownPages.RaisedBeds}
                             navigateLabel="Više o gredicama"
                         />
-                        {plant.prices?.perPlant && (
-                            <AttributeCard
-                                icon={<Euro />}
-                                header="Cijena za sadnju"
-                                value={`${plant.prices.perPlant.toFixed(2)}€`}
-                            />
-                        )}
                     </div>
                     <FeedbackModal
                         topic={
