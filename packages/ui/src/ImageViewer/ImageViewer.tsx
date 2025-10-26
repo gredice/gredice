@@ -305,11 +305,10 @@ export function ImageViewer({
                                     transformOrigin: 'center center',
                                 }}
                             >
-                                <Image
+                                {/** biome-ignore lint/performance/noImgElement: <explanation> */}
+                                <img
                                     src={src}
                                     alt={alt}
-                                    fill
-                                    sizes="100vw"
                                     className="object-contain select-none"
                                     draggable={false}
                                 />
