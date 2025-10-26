@@ -10,14 +10,14 @@ export function OperationCard({ operation }: { operation: OperationData }) {
     return (
         <Card href={KnownPages.Operation(operation.information.label)}>
             <CardContent noHeader>
-                <Row justifyContent="space-between">
+                <Row justifyContent="space-between" spacing={1}>
                     <Row spacing={2}>
-                        <OperationImage operation={operation} />
+                        <OperationImage operation={operation} size={30} />
                         <Stack>
-                            <Typography level="h6" component="h3">
+                            <Typography semiBold>
                                 {operation.information.label}
                             </Typography>
-                            <Typography level="body2">
+                            <Typography level="body2" className="text-pretty">
                                 {operation.information.shortDescription}
                             </Typography>
                         </Stack>

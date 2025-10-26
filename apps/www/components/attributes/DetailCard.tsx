@@ -46,7 +46,7 @@ export function AttributeCard({
     return (
         <Card className="flex items-center gap-1 justify-between">
             <Row spacing={2}>
-                <div className="flex-shrink-0 ml-2 text-primary">{icon}</div>
+                <div className="shrink-0 ml-2">{icon}</div>
                 <Stack spacing={subheader ? 0.5 : 0}>
                     <Stack>
                         <Typography level="body2" component="h3">
@@ -73,7 +73,7 @@ export function AttributeCard({
                         </IconButton>
                     }
                 >
-                    <Stack spacing={4}>
+                    <Stack spacing={2}>
                         <Row spacing={2}>
                             {icon}
                             <Stack spacing={1}>
@@ -81,7 +81,7 @@ export function AttributeCard({
                             </Stack>
                         </Row>
                         <Card>
-                            <CardContent>
+                            <CardContent noHeader>
                                 <Markdown>{description}</Markdown>
                             </CardContent>
                         </Card>

@@ -1,12 +1,6 @@
 import type { PlantData } from '@gredice/client';
-import { OperationImage } from '@gredice/ui/OperationImage';
-import { Info } from '@signalco/ui-icons';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import Link from 'next/link';
-import { KnownPages } from '../../../src/KnownPages';
+import { OperationCard } from '../../radnje/OperationCard';
 
 export function operationFrequencyLabel(frequency: string | undefined) {
     switch (frequency) {
@@ -50,50 +44,9 @@ export function PlantOperations({
             {orderedOperations?.map((operation, operationIndex) => (
                 <div
                     key={operation.information?.name ?? operationIndex}
-                    className="flex flex-col md:flex-row md:items-center group gap-x-4"
+                    className="grid grid-cols-1 gap-2"
                 >
-                    {/* TODO: Extract insutrction card */}
-                    <Card className="flex-grow">
-                        <CardContent className="py-0 pl-3 pr-0 flex items-center justify-between">
-                            <Row spacing={2}>
-                                <OperationImage operation={operation} />
-                                <div>
-                                    <h3 className="font-semibold">
-                                        {operation.information?.label}
-                                    </h3>
-                                    {operation.attributes?.frequency && (
-                                        <p className="text-sm text-muted-foreground">
-                                            {operationFrequencyLabel(
-                                                operation.attributes.frequency,
-                                            )}
-                                        </p>
-                                    )}
-                                </div>
-                            </Row>
-                            <Row spacing={1}>
-                                <span>
-                                    {operation.prices?.perOperation.toFixed(2)}€
-                                </span>
-                                <Link
-                                    href={
-                                        operation.information?.label
-                                            ? KnownPages.Operation(
-                                                  operation.information?.label,
-                                              )
-                                            : KnownPages.Operations
-                                    }
-                                >
-                                    <IconButton
-                                        size="lg"
-                                        variant="plain"
-                                        aria-label={`Više informacija o ${operation.information?.label}`}
-                                    >
-                                        <Info />
-                                    </IconButton>
-                                </Link>
-                            </Row>
-                        </CardContent>
-                    </Card>
+                    <OperationCard operation={operation} />
                 </div>
             ))}
         </Stack>

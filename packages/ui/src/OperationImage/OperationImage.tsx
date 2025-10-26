@@ -21,7 +21,7 @@ export function OperationImage({ operation, size }: OperationImageProps) {
             <Hammer
                 style={
                     {
-                        '--imageSize': size ? `${size}px` : '32px',
+                        '--imageSize': size ? `${size}px` : '24px',
                     } as React.CSSProperties
                 }
                 className="size-[--imageSize] shrink-0"
@@ -32,12 +32,12 @@ export function OperationImage({ operation, size }: OperationImageProps) {
     return (
         <Image
             src={operation.image.cover.url}
-            width={size ?? 32}
-            height={size ?? 32}
+            width={size ?? 24}
+            height={size ?? 24}
             style={{
                 objectFit: 'contain',
-                width: `${size ?? 32}px`,
-                height: `${size ?? 32}px`,
+                width: `${size ?? 24}px`,
+                height: `${size ?? 24}px`,
             }}
             alt={operation.information?.label ?? 'Slika operacije'}
         />

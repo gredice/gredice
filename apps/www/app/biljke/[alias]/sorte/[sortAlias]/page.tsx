@@ -8,10 +8,14 @@ import { FeedbackModal } from '../../../../../components/shared/feedback/Feedbac
 import { getPlantSortsData } from '../../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../../lib/plants/getPlantsData';
 import { KnownPages } from '../../../../../src/KnownPages';
+import { GrowthAttributeCards } from '../../GrowthAttributeCards';
 import { getPlantInforationSections } from '../../getPlantInforationSections';
+import { HarvestAttributeCards } from '../../HarvestAttributeCards';
 import { InformationSection } from '../../InformationSection';
 import { PlantPageHeader } from '../../PlantPageHeader';
 import { PlantTips } from '../../PlantTips';
+import { SowingAttributeCards } from '../../SowingAttributeCards';
+import { WateringAttributeCards } from '../../WateringAttributeCards';
 
 export const revalidate = 3600; // 1 hour
 export async function generateMetadata(
@@ -94,6 +98,38 @@ export default async function PlantSortPage(
 
     const informationSections = getPlantInforationSections(basePlantData);
 
+    // Map section IDs to their corresponding attribute cards
+    const getAttributeCardsForSection = (sectionId: string) => {
+        switch (sectionId) {
+            case 'sowing':
+                return (
+                    <SowingAttributeCards
+                        attributes={basePlantData.attributes}
+                    />
+                );
+            case 'growth':
+                return (
+                    <GrowthAttributeCards
+                        attributes={basePlantData.attributes}
+                    />
+                );
+            case 'watering':
+                return (
+                    <WateringAttributeCards
+                        attributes={basePlantData.attributes}
+                    />
+                );
+            case 'harvest':
+                return (
+                    <HarvestAttributeCards
+                        attributes={basePlantData.attributes}
+                    />
+                );
+            default:
+                return undefined;
+        }
+    };
+
     return (
         <div className="py-8">
             <Stack spacing={4}>
@@ -123,6 +159,9 @@ export default async function PlantSortPage(
                             content={basePlantData.information[section.id]}
                             sortContent={sortData.information[section.id]}
                             operations={basePlantData.information.operations}
+                            attributeCards={getAttributeCardsForSection(
+                                section.id,
+                            )}
                         />
                     ))}
                 {(basePlantData.information.tip?.length ?? 0) > 0 && (
