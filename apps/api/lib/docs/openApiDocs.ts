@@ -189,6 +189,7 @@ async function openApiEntitiesDoc(
     let properties: OpenAPIV3_1.SchemaObject['properties'] = {
         id: {
             type: 'number',
+            required: ['id'],
         },
         entityType: {
             type: 'object',

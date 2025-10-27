@@ -11,7 +11,3 @@ export const getOperationsData = unstable_cache(
         tags: ['operationsData'],
     },
 );
-
-export type OperationData = NonNullable<
-    Awaited<ReturnType<typeof getOperationsData>>
->[number];

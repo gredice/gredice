@@ -17,6 +17,8 @@ import {
     directoriesCached,
 } from '../cache/directoriesCached';
 
+const entityCacheTtl = 60 * 60; // 1 hour
+
 function populateMissingAttributes(
     entity: SelectEntity & {
         attributes: (SelectAttributeValue & {
@@ -350,7 +352,7 @@ export async function getEntitiesFormatted<T>(entityTypeName: string) {
                 entities.map((e) => expandEntity(e, cache)),
             )) as T[];
         },
-        60 * 60,
+        entityCacheTtl,
     );
 }
 
@@ -364,7 +366,7 @@ export async function getEntityFormatted<T>(id: number) {
                 | undefined;
             return (await expandEntity(entity, cache)) as T;
         },
-        60 * 60,
+        entityCacheTtl,
     );
 }
 

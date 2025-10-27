@@ -6,9 +6,7 @@
         ".": "./src/index.ts"
     },
     "scripts": {
-        "regenerate": "pnpm run /^regenerate:/",
-        "regenerate:1-9-0-educ": "wsdl-tsclient ./external/1-9-0-educ/wsdl/FiskalizacijaService.wsdl -o ./src/generated/1-9-0-educ",
-        "regenerate:1-9-0-prod": "wsdl-tsclient ./external/1-9-0-prod/wsdl/FiskalizacijaService.wsdl -o ./src/generated/1-9-0-prod"
+        "lint": "biome check"
     },
     "devDependencies": {
         "@biomejs/biome": "2.2.6",
