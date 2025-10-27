@@ -3,9 +3,7 @@ import { PLANT_STAGES } from '@gredice/game';
 import { FilterInput } from '@gredice/ui/FilterInput';
 import { slug } from '@signalco/js';
 import {
-    Check,
     Droplet,
-    Home,
     Leaf,
     Sprout,
     Store,

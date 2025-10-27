@@ -13,7 +13,6 @@ import {
     TabsTrigger,
 } from '@signalco/ui-primitives/Tabs';
 import { useQueryClient } from '@tanstack/react-query';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { EmailPasswordForm } from './EmailPasswordForm';
