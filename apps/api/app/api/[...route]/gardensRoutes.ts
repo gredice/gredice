@@ -752,7 +752,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Retrieve block information (cost)
             const block = blockData.find(
-                (block) => block.information.name === blockName,
+                (block) => block.information?.name === blockName,
             );
             if (!block) {
                 return context.json(
@@ -760,7 +760,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     400,
                 );
             }
-            const cost = block.prices.sunflowers ?? 0;
+            const cost = block.prices?.sunflowers ?? 0;
             if (cost <= 0) {
                 return context.json(
                     { error: 'Requested block not for sale' },
@@ -770,12 +770,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Spend sunflowers and create block in parallel
             const [, blockId] = await Promise.all([
-                spendSunflowers(
-                    accountId,
-                    cost,
-                    `block:${block.information.name}`,
-                ),
-                createGardenBlock(gardenIdNumber, block.information.name),
+                spendSunflowers(accountId, cost, `block:${blockName}`),
+                createGardenBlock(gardenIdNumber, blockName),
             ]);
 
             return context.json({ id: blockId });

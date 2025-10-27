@@ -20,7 +20,7 @@ export function RaisedBedPlantField({
     const multiplierY = 0.27;
 
     const { plantsPerRow, totalPlants } = calculatePlantsPerField(
-        sortData?.information.plant.attributes?.seedingDistance,
+        sortData?.information?.plant.attributes?.seedingDistance,
     );
     const seedsCount = totalPlants;
 
