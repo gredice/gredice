@@ -30,9 +30,21 @@ function resolveJsonPropertyData(schema: string) {
                     case 'text':
                     case 'barcode':
                     case 'markdown':
-                    case 'string':
-                        properties[key] = { type: 'string' };
+                    case 'string': {
+                        let description: string | undefined;
+                        if (value === 'text') {
+                            description = 'Long text field';
+                        } else if (value === 'barcode') {
+                            description = 'Barcode string';
+                        } else if (value === 'markdown') {
+                            description = 'Markdown formatted text';
+                        }
+                        properties[key] = {
+                            type: 'string',
+                            description,
+                        };
                         break;
+                    }
                     default:
                         properties[key] = { type: 'string' }; // Default to string for unknown types
                 }
@@ -105,6 +117,9 @@ async function resolvePropertyData(
     if (attributeDefinition.dataType.startsWith('ref:')) {
         const refType = attributeDefinition.dataType.substring(4);
         const refAttributeDefinitions = await getAttributeDefinitions(refType);
+        const definitions = await populateAttributeDefinitionsProperties(
+            refAttributeDefinitions,
+        );
         if (attributeDefinition.multiple) {
             return {
                 type: 'array',
@@ -114,10 +129,14 @@ async function resolvePropertyData(
                         id: {
                             type: 'number',
                         },
-                        ...(await populateAttributeDefinitionsProperties(
-                            refAttributeDefinitions,
-                        )),
+                        ...definitions,
                     },
+                    required: [
+                        'id',
+                        ...Object.keys(definitions).filter(
+                            (key) => key !== 'id',
+                        ),
+                    ],
                     description: attributeDefinition.description || undefined,
                 },
             } satisfies OpenAPIV3_1.SchemaObject;
@@ -128,9 +147,7 @@ async function resolvePropertyData(
                 id: {
                     type: 'number',
                 },
-                ...(await populateAttributeDefinitionsProperties(
-                    refAttributeDefinitions,
-                )),
+                ...definitions,
             },
             description: attributeDefinition.description || undefined,
         } satisfies OpenAPIV3_1.SchemaObject;
@@ -189,7 +206,6 @@ async function openApiEntitiesDoc(
     let properties: OpenAPIV3_1.SchemaObject['properties'] = {
         id: {
             type: 'number',
-            required: ['id'],
         },
         entityType: {
             type: 'object',
@@ -268,8 +284,10 @@ async function openApiEntitiesDoc(
                         'entityType',
                         'createdAt',
                         'updatedAt',
-                        ...attributeDefinitions.map(
-                            (attribute) => `${attribute.category}`,
+                        ...new Set<string>(
+                            ...attributeDefinitions.map(
+                                (attribute) => `${attribute.category}`,
+                            ),
                         ),
                     ],
                 },
