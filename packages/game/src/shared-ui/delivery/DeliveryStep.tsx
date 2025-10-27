@@ -214,52 +214,42 @@ export function DeliveryStep({
                                     <Row spacing={1}>
                                         {isLoadingAddresses ? (
                                             <Skeleton className="h-10 w-full rounded-md" />
-                                        ) : (
-                                            <>
-                                                {addresses &&
-                                                addresses.length > 0 ? (
-                                                    <SelectItems
-                                                        label="Adresa za dostavu"
-                                                        placeholder="Odaberi adresu..."
-                                                        className="w-full"
-                                                        defaultValue={
-                                                            addresses
-                                                                .find(
-                                                                    (a) =>
-                                                                        a.isDefault,
-                                                                )
-                                                                ?.id.toString() ||
-                                                            ''
-                                                        }
-                                                        value={
-                                                            selection.addressId?.toString() ||
-                                                            ''
-                                                        }
-                                                        onValueChange={(
-                                                            value: string,
-                                                        ) =>
-                                                            handleAddressChange(
-                                                                parseInt(
-                                                                    value,
-                                                                    10,
-                                                                ),
-                                                            )
-                                                        }
-                                                        items={addresses.map(
-                                                            (address) => ({
-                                                                label: `${address.label} - ${address.street1}, ${address.city}`,
-                                                                value: address.id.toString(),
-                                                            }),
-                                                        )}
-                                                    />
-                                                ) : (
-                                                    <NoDataPlaceholder className="grow">
-                                                        Dodajte adresu za
-                                                        dostavu da biste
-                                                        nastavili s dostavom...
-                                                    </NoDataPlaceholder>
+                                        ) : addresses &&
+                                          addresses.length > 0 ? (
+                                            <SelectItems
+                                                label="Adresa za dostavu"
+                                                placeholder="Odaberi adresu..."
+                                                className="w-full"
+                                                defaultValue={
+                                                    addresses
+                                                        .find(
+                                                            (a) => a.isDefault,
+                                                        )
+                                                        ?.id.toString() || ''
+                                                }
+                                                value={
+                                                    selection.addressId?.toString() ||
+                                                    ''
+                                                }
+                                                onValueChange={(
+                                                    value: string,
+                                                ) =>
+                                                    handleAddressChange(
+                                                        parseInt(value, 10),
+                                                    )
+                                                }
+                                                items={addresses.map(
+                                                    (address) => ({
+                                                        label: `${address.label} - ${address.street1}, ${address.city}`,
+                                                        value: address.id.toString(),
+                                                    }),
                                                 )}
-                                            </>
+                                            />
+                                        ) : (
+                                            <NoDataPlaceholder className="grow">
+                                                Dodajte adresu za dostavu da
+                                                biste nastavili s dostavom...
+                                            </NoDataPlaceholder>
                                         )}
                                         <Button
                                             variant={

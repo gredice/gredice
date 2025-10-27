@@ -1,5 +1,4 @@
 import { client } from '@gredice/client';
-import { clientStripe } from '@gredice/stripe/client';
 import { useMutation } from '@tanstack/react-query';
 
 export interface CheckoutData {
