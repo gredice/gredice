@@ -122,16 +122,16 @@ export function GardenDisplay2D({
                             underStackHeight +=
                                 blockData?.find(
                                     (b) =>
-                                        b.information.name ===
+                                        b.information?.name ===
                                         currentBlock.name,
-                                )?.attributes.height ?? 0;
+                                )?.attributes?.height ?? 0;
                         }
 
                         // Large blocks do snaphots with zoomed view so we need to compensite with 1.5x size and -0.25x offset
                         const isLargeBlock =
                             (blockData?.find(
-                                (b) => b.information.name === block.name,
-                            )?.attributes.height ?? 0) > 1.5;
+                                (b) => b.information?.name === block.name,
+                            )?.attributes?.height ?? 0) > 1.5;
                         const realizedBlockSize = isLargeBlock
                             ? blockSize * 1.5
                             : blockSize;

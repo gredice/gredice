@@ -117,9 +117,10 @@ async function resolvePropertyData(
     if (attributeDefinition.dataType.startsWith('ref:')) {
         const refType = attributeDefinition.dataType.substring(4);
         const refAttributeDefinitions = await getAttributeDefinitions(refType);
-        const definitions = await populateAttributeDefinitionsProperties(
-            refAttributeDefinitions,
-        );
+        const refAttributeDefinitionsProperties =
+            await populateAttributeDefinitionsProperties(
+                refAttributeDefinitions,
+            );
         if (attributeDefinition.multiple) {
             return {
                 type: 'array',
@@ -129,13 +130,13 @@ async function resolvePropertyData(
                         id: {
                             type: 'number',
                         },
-                        ...definitions,
+                        ...refAttributeDefinitionsProperties,
                     },
                     required: [
                         'id',
-                        ...Object.keys(definitions).filter(
-                            (key) => key !== 'id',
-                        ),
+                        ...Object.keys(
+                            refAttributeDefinitionsProperties,
+                        ).filter((key) => key !== 'id'),
                     ],
                     description: attributeDefinition.description || undefined,
                 },
@@ -147,7 +148,7 @@ async function resolvePropertyData(
                 id: {
                     type: 'number',
                 },
-                ...definitions,
+                ...refAttributeDefinitionsProperties,
             },
             description: attributeDefinition.description || undefined,
         } satisfies OpenAPIV3_1.SchemaObject;
@@ -183,13 +184,14 @@ async function populateAttributeDefinitionsProperties(
         } else {
             const category = categoryObject as OpenAPIV3_1.SchemaObject;
             if (propertyData) {
+                // Append property to existing category
                 category.properties = {
                     ...category.properties,
                     [attributeDefinition.name]: propertyData,
                 };
                 // Add required attribute
                 if (attributeDefinition.required) {
-                    if (category.required === undefined) {
+                    if (!category.required) {
                         category.required = [];
                     }
                     category.required.push(attributeDefinition.name);
@@ -284,10 +286,9 @@ async function openApiEntitiesDoc(
                         'entityType',
                         'createdAt',
                         'updatedAt',
-                        ...new Set<string>(
-                            ...attributeDefinitions.map(
-                                (attribute) => `${attribute.category}`,
-                            ),
+                        // Make all categories that contain any required attributes required
+                        ...attributeDefinitions.map(
+                            (attribute) => `${attribute.category}`,
                         ),
                     ],
                 },
