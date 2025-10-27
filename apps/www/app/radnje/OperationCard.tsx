@@ -1,12 +1,16 @@
+import type { OperationData } from '@gredice/client';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import type { OperationData } from '../../lib/plants/getOperationsData';
 import { KnownPages } from '../../src/KnownPages';
 
-export function OperationCard({ operation }: { operation: OperationData }) {
+export function OperationCard({
+    operation,
+}: {
+    operation: Omit<OperationData, 'entityType' | 'createdAt' | 'updatedAt'>;
+}) {
     return (
         <Card href={KnownPages.Operation(operation.information.label)}>
             <CardContent noHeader>

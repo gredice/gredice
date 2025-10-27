@@ -724,6 +724,10 @@ export interface components {
             store: {
                 availableInStore: boolean;
             };
+            attributes: {
+                /** @description (vrsta reprodukcije sorte dostupne u Gredicama; "seed" ili "bulb") */
+                reproductionType: string;
+            };
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -1069,6 +1073,10 @@ export interface components {
                     };
                     store?: {
                         availableInStore: boolean;
+                    };
+                    attributes?: {
+                        /** @description (vrsta reprodukcije sorte dostupne u Gredicama; "seed" ili "bulb") */
+                        reproductionType: string;
                     };
                 };
                 countryOfOrigin?: string;
