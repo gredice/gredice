@@ -225,10 +225,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
     await notifyPurchase({
         accountId,
         amountTotal: session.amountTotal ?? null,
-        currency: session.currency ?? null,
         checkoutSessionId: session.id ?? null,
-        customerEmail:
-            session.customerDetails?.email || session.customerEmail || null,
         items: purchasedItems,
     });
 }
