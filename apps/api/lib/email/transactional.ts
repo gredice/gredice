@@ -8,6 +8,9 @@ import ResetPasswordEmailTemplate, {
 import WelcomeEmailTemplate, {
     type WelcomeEmailTemplateProps,
 } from '@gredice/transactional/emails/Account/welcome';
+import DeliveryCancelledEmailTemplate, {
+    type DeliveryCancelledEmailTemplateProps,
+} from '@gredice/transactional/emails/Notifications/delivery-cancelled';
 import DeliveryReadyEmailTemplate, {
     type DeliveryReadyEmailTemplateProps,
 } from '@gredice/transactional/emails/Notifications/delivery-ready';
@@ -88,6 +91,22 @@ export async function sendDeliveryReady(
         to,
         subject: 'Gredice - dostava je spremna',
         template: DeliveryReadyEmailTemplate(templateProps),
+    });
+}
+
+export async function sendDeliveryCancelled(
+    to: string,
+    config: DeliveryCancelledEmailTemplateProps,
+) {
+    const templateProps = {
+        ...config,
+        email: config.email ?? to,
+    } satisfies DeliveryCancelledEmailTemplateProps;
+    return await sendEmail({
+        from: 'suncokret@obavijesti.gredice.com',
+        to,
+        subject: 'Gredice - dostava je otkazana',
+        template: DeliveryCancelledEmailTemplate(templateProps),
     });
 }
 
