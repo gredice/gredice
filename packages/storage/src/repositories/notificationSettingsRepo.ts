@@ -4,6 +4,7 @@ import { eq, inArray } from 'drizzle-orm';
 import { storage } from '..';
 import {
     type InsertNotificationSetting,
+    type IntegrationType,
     notificationSettings,
     type SelectNotificationSetting,
 } from '../schema';
@@ -45,6 +46,14 @@ export async function getNotificationSettings(
     return storage().query.notificationSettings.findMany();
 }
 
+export async function getNotificationSettingsByIntegrationType(
+    integrationType: IntegrationType,
+): Promise<SelectNotificationSetting[]> {
+    return storage().query.notificationSettings.findMany({
+        where: eq(notificationSettings.integrationType, integrationType),
+    });
+}
+
 export async function upsertNotificationSetting(
     key: NotificationSettingKey,
     values: InsertNotificationSetting,
@@ -63,4 +72,12 @@ export async function upsertNotificationSetting(
         .returning();
 
     return result;
+}
+
+export async function deleteNotificationSetting(
+    key: NotificationSettingKey,
+): Promise<void> {
+    await storage()
+        .delete(notificationSettings)
+        .where(eq(notificationSettings.key, key));
 }

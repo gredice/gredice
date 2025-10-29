@@ -1,6 +1,9 @@
 import {
     getNotificationSetting,
+    IntegrationTypes,
     NotificationSettingKeys,
+    type SelectNotificationSetting,
+    type SlackConfig,
 } from '@gredice/storage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import {
@@ -12,8 +15,8 @@ import {
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
-import { auth } from '../../lib/auth/auth';
-import { KnownPages } from '../../src/KnownPages';
+import { auth } from '../../../lib/auth/auth';
+import { KnownPages } from '../../../src/KnownPages';
 import { SlackChannelSettingForm } from '../communication/slack/SlackChannelSettingForm';
 
 export const dynamic = 'force-dynamic';
@@ -24,6 +27,22 @@ const SETTINGS_SECTIONS = [
         title: 'Obavijesti',
     },
 ] as const;
+
+function getSlackChannelId(
+    setting: SelectNotificationSetting | undefined,
+): string | undefined {
+    if (
+        !setting ||
+        setting.integrationType !== IntegrationTypes.Slack ||
+        typeof setting.config !== 'object' ||
+        setting.config === null
+    ) {
+        return undefined;
+    }
+
+    const config = setting.config as SlackConfig;
+    return config.channelId;
+}
 
 export default async function SettingsPage() {
     await auth(['admin']);
@@ -36,47 +55,36 @@ export default async function SettingsPage() {
 
     return (
         <Stack spacing={4}>
-            <Stack spacing={2}>
-                <Breadcrumbs
-                    items={[
-                        {
-                            label: 'Početna',
-                            href: KnownPages.Dashboard,
-                        },
-                        { label: 'Postavke' },
-                    ]}
-                />
-                <Typography level="h1" semiBold>
-                    Administratorske postavke
-                </Typography>
-                <Typography level="body1">
-                    Centralizirano upravljanje ključnim konfiguracijama sustava.
-                    Odaberi sekciju u bočnoj navigaciji kako bi brzo pronašao
-                    postavke koje želiš urediti.
-                </Typography>
-            </Stack>
+            <Breadcrumbs
+                items={[
+                    {
+                        label: 'Početna',
+                        href: KnownPages.Dashboard,
+                    },
+                    { label: 'Postavke' },
+                ]}
+            />
 
             <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
-                <nav className="lg:sticky lg:top-28 self-start">
-                    <div className="rounded-lg border bg-card text-card-foreground">
-                        <Stack spacing={1} className="p-2">
-                            <Typography
-                                level="overline"
-                                className="px-2 text-muted-foreground"
-                            >
-                                Sekcije
-                            </Typography>
-                            {SETTINGS_SECTIONS.map((section) => (
-                                <Link
-                                    key={section.id}
-                                    href={`#${section.id}`}
-                                    className="rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                                >
-                                    {section.title}
-                                </Link>
-                            ))}
-                        </Stack>
-                    </div>
+                <nav className="lg:sticky self-start">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Postavke</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Stack spacing={1}>
+                                {SETTINGS_SECTIONS.map((section) => (
+                                    <Link
+                                        key={section.id}
+                                        href={`#${section.id}`}
+                                        className="rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
+                                    >
+                                        {section.title}
+                                    </Link>
+                                ))}
+                            </Stack>
+                        </CardContent>
+                    </Card>
                 </nav>
 
                 <div className="space-y-16">
@@ -110,9 +118,9 @@ export default async function SettingsPage() {
                                     <CardContent className="space-y-2">
                                         <SlackChannelSettingForm
                                             settingKey="slack.delivery.channel"
-                                            initialChannelId={
-                                                delivery?.slackChannelId
-                                            }
+                                            initialChannelId={getSlackChannelId(
+                                                delivery,
+                                            )}
                                             label="Slack kanal za dostavu"
                                             helperText="Obavijesti o novim i ažuriranim zahtjevima za dostavu."
                                         />
@@ -130,9 +138,9 @@ export default async function SettingsPage() {
                                     <CardContent className="space-y-2">
                                         <SlackChannelSettingForm
                                             settingKey="slack.new_users.channel"
-                                            initialChannelId={
-                                                newUsers?.slackChannelId
-                                            }
+                                            initialChannelId={getSlackChannelId(
+                                                newUsers,
+                                            )}
                                             label="Slack kanal za nove korisnike"
                                             helperText="Obavijesti kada se registrira novi korisnik."
                                         />
@@ -149,9 +157,9 @@ export default async function SettingsPage() {
                                     <CardContent className="space-y-2">
                                         <SlackChannelSettingForm
                                             settingKey="slack.shopping.channel"
-                                            initialChannelId={
-                                                shopping?.slackChannelId
-                                            }
+                                            initialChannelId={getSlackChannelId(
+                                                shopping,
+                                            )}
                                             label="Slack kanal za kupnju"
                                             helperText="Obavijesti o novim Stripe kupnjama."
                                         />

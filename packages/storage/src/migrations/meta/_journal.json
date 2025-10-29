@@ -36,6 +36,13 @@
       "when": 1759408677563,
       "tag": "0004_first_leopardon",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1761776492063,
+      "tag": "0005_overconfident_hellion",
+      "breakpoints": true
     }
   ]
 }

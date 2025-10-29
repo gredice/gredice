@@ -10,7 +10,7 @@ function resolveJsonPropertyData(schema: string) {
     const unwrapped = unwrapSchema(schema);
 
     function unwrapToOpenApiProperties(
-        schemaObj: Record<string, string | Record<string, unknown>>,
+        schemaObj: Record<string, string | Record<string, any>>,
     ): OpenAPIV3_1.SchemaObject {
         const properties: Record<
             string,

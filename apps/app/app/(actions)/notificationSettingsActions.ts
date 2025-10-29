@@ -1,8 +1,10 @@
 'use server';
 
 import {
+    IntegrationTypes,
     isNotificationSettingKey,
     type NotificationSettingKey,
+    type SlackConfig,
     upsertNotificationSetting,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
@@ -43,9 +45,22 @@ export async function updateSlackNotificationChannelAction(
     const slackChannelId =
         typeof slackChannelIdRaw === 'string' ? slackChannelIdRaw.trim() : '';
 
+    if (!slackChannelId) {
+        return {
+            success: false,
+            message: 'Slack kanal ID je obavezan.',
+        };
+    }
+
     try {
+        const config: SlackConfig = {
+            channelId: slackChannelId,
+        };
+
         await upsertNotificationSetting(settingKey, {
-            slackChannelId: slackChannelId.length > 0 ? slackChannelId : null,
+            integrationType: IntegrationTypes.Slack,
+            config,
+            enabled: 'true',
         });
 
         revalidatePath(KnownPages.Settings);

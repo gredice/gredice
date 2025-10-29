@@ -1,6 +1,6 @@
 import { postMessage } from '@gredice/slack';
 import {
-    type DeliveryRequestStates,
+    type DeliveryRequestState,
     getDeliveryRequest,
     getEntityFormatted,
     getGarden,
@@ -8,6 +8,7 @@ import {
     getOperationById,
     getRaisedBed,
     getUser,
+    IntegrationTypes,
     type NotificationSettingKey,
     NotificationSettingKeys,
 } from '@gredice/storage';
@@ -36,7 +37,7 @@ export type DeliveryRequestEventType = 'created' | 'updated' | 'cancelled';
 interface DeliveryRequestEventOptions {
     reason?: string | null;
     note?: string | null;
-    status?: DeliveryRequestStates | string | null;
+    status?: DeliveryRequestState | string | null;
 }
 
 interface PurchaseNotificationDetails {
@@ -205,7 +206,21 @@ async function getSlackChannelId(
 ): Promise<string | undefined> {
     try {
         const setting = await getNotificationSetting(key);
-        return setting?.slackChannelId ?? undefined;
+        if (!setting || setting.enabled !== 'true') {
+            return undefined;
+        }
+
+        // Type guard to check if config is SlackConfig
+        if (
+            setting.integrationType === IntegrationTypes.Slack &&
+            typeof setting.config === 'object' &&
+            setting.config !== null &&
+            'channelId' in setting.config
+        ) {
+            return setting.config.channelId;
+        }
+
+        return undefined;
     } catch (error) {
         console.error('Failed to load Slack notification setting', {
             key,
