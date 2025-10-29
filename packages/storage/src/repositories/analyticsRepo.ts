@@ -18,61 +18,20 @@ type ActiveUserRow = {
     lastLogin: Date | null;
 };
 
-type ActiveUsersSeriesPoint = { date: string; count: number };
-
 type ActiveUsersMetrics = {
-    daily: { value: number; series: ActiveUsersSeriesPoint[] };
-    weekly: { value: number; series: ActiveUsersSeriesPoint[] };
-    monthly: { value: number; series: ActiveUsersSeriesPoint[] };
+    daily: number;
+    weekly: number;
+    monthly: number;
 };
-
-function buildRollingSeries(
-    baseSeries: ActiveUsersSeriesPoint[],
-    windowSize: number,
-): ActiveUsersSeriesPoint[] {
-    const result: ActiveUsersSeriesPoint[] = [];
-    const queue: number[] = [];
-    let sum = 0;
-
-    baseSeries.forEach((point) => {
-        queue.push(point.count);
-        sum += point.count;
-
-        if (queue.length > windowSize) {
-            const removed = queue.shift();
-            if (typeof removed === 'number') {
-                sum -= removed;
-            }
-        }
-
-        result.push({ date: point.date, count: sum });
-    });
-
-    return result;
-}
 
 function calculateActiveUsersMetrics(
     rows: ActiveUserRow[],
     now: Date,
     lastMonthThreshold: Date,
-    seriesDays: number = 30,
 ): ActiveUsersMetrics {
-    const startOfToday = new Date(now);
-    startOfToday.setHours(0, 0, 0, 0);
     const lastDayThreshold = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const lastWeekThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const monthlyThreshold = new Date(lastMonthThreshold);
-
-    const seriesStartDate = new Date(startOfToday);
-    seriesStartDate.setDate(seriesStartDate.getDate() - (seriesDays - 1));
-
-    const dailyBuckets = new Map<string, Set<string>>();
-    for (let i = 0; i < seriesDays; i += 1) {
-        const current = new Date(seriesStartDate);
-        current.setDate(seriesStartDate.getDate() + i);
-        const key = current.toISOString().slice(0, 10);
-        dailyBuckets.set(key, new Set());
-    }
 
     const dailyActiveUsers = new Set<string>();
     const weeklyActiveUsers = new Set<string>();
@@ -94,39 +53,12 @@ function calculateActiveUsersMetrics(
         if (lastLoginDate >= monthlyThreshold) {
             monthlyActiveUsers.add(row.userId);
         }
-
-        const key = lastLoginDate.toISOString().slice(0, 10);
-        const bucket = dailyBuckets.get(key);
-        if (bucket) {
-            bucket.add(row.userId);
-        }
     }
-
-    const dailySeries: ActiveUsersSeriesPoint[] = [];
-    for (let i = 0; i < seriesDays; i += 1) {
-        const current = new Date(seriesStartDate);
-        current.setDate(seriesStartDate.getDate() + i);
-        const key = current.toISOString().slice(0, 10);
-        const bucket = dailyBuckets.get(key);
-        dailySeries.push({ date: key, count: bucket ? bucket.size : 0 });
-    }
-
-    const weeklySeries = buildRollingSeries(dailySeries, 7);
-    const monthlySeries = buildRollingSeries(dailySeries, 30);
 
     return {
-        daily: {
-            value: dailyActiveUsers.size,
-            series: dailySeries,
-        },
-        weekly: {
-            value: weeklyActiveUsers.size,
-            series: weeklySeries,
-        },
-        monthly: {
-            value: monthlyActiveUsers.size,
-            series: monthlySeries,
-        },
+        daily: dailyActiveUsers.size,
+        weekly: weeklyActiveUsers.size,
+        monthly: monthlyActiveUsers.size,
     };
 }
 
