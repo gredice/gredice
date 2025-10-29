@@ -1,4 +1,5 @@
 import { pbkdf2Sync, randomUUID } from 'node:crypto';
+import { notifyNewUserRegistered } from '@gredice/notifications';
 import {
     blockLogin,
     changePassword,
@@ -332,15 +333,20 @@ const app = new Hono()
                     'google',
                     tokenData.access_token,
                 );
-                const { userId, loginId } = await createOrUpdateUserWithOauth(
-                    {
-                        name: userInfo.name,
-                        email: userInfo.email,
-                        providerUserId: userInfo.id,
-                        provider: 'google',
-                    },
-                    currentUserId,
-                );
+                const { userId, loginId, isNewUser } =
+                    await createOrUpdateUserWithOauth(
+                        {
+                            name: userInfo.name,
+                            email: userInfo.email,
+                            providerUserId: userInfo.id,
+                            provider: 'google',
+                        },
+                        currentUserId,
+                    );
+
+                if (isNewUser) {
+                    await notifyNewUserRegistered(userId);
+                }
 
                 const token = await createJwt(userId);
                 await Promise.all([
@@ -438,15 +444,20 @@ const app = new Hono()
                     'facebook',
                     tokenData.access_token,
                 );
-                const { userId, loginId } = await createOrUpdateUserWithOauth(
-                    {
-                        name: userInfo.name,
-                        email: userInfo.email,
-                        providerUserId: userInfo.id,
-                        provider: 'facebook',
-                    },
-                    currentUserId,
-                );
+                const { userId, loginId, isNewUser } =
+                    await createOrUpdateUserWithOauth(
+                        {
+                            name: userInfo.name,
+                            email: userInfo.email,
+                            providerUserId: userInfo.id,
+                            provider: 'facebook',
+                        },
+                        currentUserId,
+                    );
+
+                if (isNewUser) {
+                    await notifyNewUserRegistered(userId);
+                }
 
                 const token = await createJwt(userId);
                 await Promise.all([
@@ -640,7 +651,9 @@ const app = new Hono()
             }
 
             // Create user with password
-            await createUserWithPassword(email, password);
+            const userId = await createUserWithPassword(email, password);
+
+            await notifyNewUserRegistered(userId);
 
             await sendEmailVerification(email);
 

@@ -252,6 +252,7 @@ export async function createOrUpdateUserWithOauth(
             usersLogins: true,
         },
     });
+    let isNewUser = false;
     if (!existingUser) {
         const createdUserId = await createUserAndAccount(data.email, data.name);
         existingUser = await storage().query.users.findFirst({
@@ -260,6 +261,7 @@ export async function createOrUpdateUserWithOauth(
                 usersLogins: true,
             },
         });
+        isNewUser = true;
     }
 
     if (
@@ -285,6 +287,7 @@ export async function createOrUpdateUserWithOauth(
     return {
         userId: existingUser.id,
         loginId,
+        isNewUser,
     };
 }
 

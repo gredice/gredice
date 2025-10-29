@@ -2,6 +2,7 @@ import type { Route } from 'next';
 
 export const KnownPages = {
     Dashboard: '/admin',
+    Settings: '/admin/settings',
     Directories: '/admin/directories',
     DirectoryEntityType: (entityTypeName: string) =>
         `/admin/directories/${entityTypeName}` as Route,
@@ -36,6 +37,7 @@ export const KnownPages = {
     Gardens: '/admin/gardens',
     Garden: (gardenId: number) => `/admin/gardens/${gardenId}` as Route,
     CommunicationInbox: '/admin/communication/inbox',
+    CommunicationSlack: '/admin/communication/slack',
     Feedback: '/admin/feedback',
     Logout: '/admin/logout',
     RaisedBeds: '/admin/raised-beds',

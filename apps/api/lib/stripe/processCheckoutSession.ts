@@ -1,4 +1,9 @@
 import {
+    notifyDeliveryRequestEvent,
+    notifyOperationUpdate,
+    notifyPurchase,
+} from '@gredice/notifications';
+import {
     createDeliveryRequest,
     createEvent,
     createOperation,
@@ -46,6 +51,11 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
     );
 
     const affectedCartIds: number[] = [];
+    const purchasedItems: {
+        name?: string | null;
+        quantity?: number | null;
+        amountSubtotal?: number | null;
+    }[] = [];
     let accountId: string | undefined;
     for (const item of session.lineItems?.data ?? []) {
         console.debug(`Item: ${item.id} Quantity: ${item.quantity}`);
@@ -64,6 +74,18 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
             );
             continue;
         }
+
+        purchasedItems.push({
+            name:
+                typeof product?.name === 'string'
+                    ? product.name
+                    : (product?.metadata?.name ?? null),
+            quantity: item.quantity ?? null,
+            amountSubtotal:
+                (item as { amount_subtotal?: number }).amount_subtotal ??
+                item.amount_total ??
+                null,
+        });
 
         // Extract metadata from the product
         const itemData = {
@@ -199,6 +221,13 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
               })
             : undefined,
     ]);
+
+    await notifyPurchase({
+        accountId,
+        amountTotal: session.amountTotal ?? null,
+        checkoutSessionId: session.id ?? null,
+        items: purchasedItems,
+    });
 }
 
 export async function processItem(itemData: {
@@ -327,6 +356,12 @@ export async function processItem(itemData: {
                 console.debug(
                     `Scheduled operation ${operationId} for date ${scheduledDate}.`,
                 );
+                const scheduledDateValue = new Date(scheduledDate);
+                await notifyOperationUpdate(operationId, 'scheduled', {
+                    scheduledDate: Number.isNaN(scheduledDateValue.getTime())
+                        ? undefined
+                        : scheduledDateValue,
+                });
             }
 
             // Check if this operation/entity is deliverable and create delivery request if needed
@@ -363,6 +398,10 @@ export async function processItem(itemData: {
                                 });
                             console.debug(
                                 `Created delivery request ${deliveryRequestId} for operation ${operationId}`,
+                            );
+                            await notifyDeliveryRequestEvent(
+                                deliveryRequestId,
+                                'created',
                             );
                         } catch (error) {
                             console.error(

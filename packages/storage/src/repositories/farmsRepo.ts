@@ -1,7 +1,13 @@
 import 'server-only';
 
 import { and, desc, eq } from 'drizzle-orm';
-import { farms, farmUsers, type InsertFarm, storage } from '..';
+import {
+    farms,
+    farmUsers,
+    type InsertFarm,
+    type UpdateFarm,
+    storage,
+} from '..';
 
 export async function getFarms() {
     return storage().query.farms.findMany({
@@ -50,4 +56,23 @@ export async function createFarm(data: InsertFarm) {
     }
 
     return farm[0].id;
+}
+
+export async function updateFarm(data: UpdateFarm) {
+    const { id, ...updates } = data;
+    const updateValues = Object.fromEntries(
+        Object.entries(updates).filter(([, value]) => value !== undefined),
+    );
+
+    if (Object.keys(updateValues).length === 0) {
+        return getFarm(id);
+    }
+
+    const result = await storage()
+        .update(farms)
+        .set(updateValues)
+        .where(eq(farms.id, id))
+        .returning();
+
+    return result[0] ?? null;
 }

@@ -15,6 +15,7 @@ export const farms = pgTable(
         name: text('name').notNull(),
         latitude: real('latitude').notNull(),
         longitude: real('longitude').notNull(),
+        slackChannelId: text('slack_channel_id'),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()

@@ -1,5 +1,6 @@
 'use server';
 
+import { notifyDeliveryRequestEvent } from '@gredice/notifications';
 import {
     cancelDeliveryRequest,
     changeDeliveryRequestSlot,
@@ -42,14 +43,43 @@ export async function updateDeliveryRequestStatusAction(
                 cancelReason,
                 notes,
             );
+            await notifyDeliveryRequestEvent(requestId, 'cancelled', {
+                reason: cancelReason,
+                note: notes,
+                status,
+            });
         } else if (status === DeliveryRequestStates.PREPARING) {
             await prepareDeliveryRequest(requestId);
+            await notifyDeliveryRequestEvent(requestId, 'updated', {
+                status,
+                note: notes,
+            });
         } else if (status === DeliveryRequestStates.READY) {
             await readyDeliveryRequest(requestId);
+            await notifyDeliveryRequestEvent(requestId, 'updated', {
+                status,
+                note: notes,
+            });
         } else if (status === DeliveryRequestStates.FULFILLED) {
             await fulfillDeliveryRequest(requestId, notes);
+            await notifyDeliveryRequestEvent(requestId, 'updated', {
+                status,
+                note: notes,
+            });
         } else {
             throw new Error('Nepoznat status zahtjeva');
+        }
+
+        if (
+            status !== DeliveryRequestStates.CANCELLED &&
+            status !== DeliveryRequestStates.PREPARING &&
+            status !== DeliveryRequestStates.READY &&
+            status !== DeliveryRequestStates.FULFILLED
+        ) {
+            await notifyDeliveryRequestEvent(requestId, 'updated', {
+                status,
+                note: notes,
+            });
         }
 
         revalidatePath('/admin/delivery/requests');
@@ -96,6 +126,10 @@ export async function changeDeliveryRequestSlotAction(
                 timestamp: new Date(),
             });
         }
+
+        await notifyDeliveryRequestEvent(requestId, 'updated', {
+            status: updatedRequest?.state,
+        });
 
         revalidatePath('/admin/delivery/requests');
 
