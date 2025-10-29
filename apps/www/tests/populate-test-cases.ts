@@ -44,7 +44,7 @@ async function getSitemapPages(sitemapUrl: string): Promise<string[]> {
     });
 
     relativeUrls.forEach((url) => {
-        console.log(`Found page: ${url}`);
+        console.info(`Found page: ${url}`);
     });
 
     return relativeUrls;

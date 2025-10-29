@@ -75,7 +75,7 @@ export function useAudioState(): UseAudioStateReturn {
 
     const resumeAudio = useCallback(async () => {
         // This will be implemented to work with the mixer system
-        console.log('Resume audio called');
+        console.debug('Resume audio called');
     }, []);
 
     const resetToDefaults = useCallback(() => {
