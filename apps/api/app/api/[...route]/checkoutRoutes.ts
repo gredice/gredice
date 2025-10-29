@@ -208,7 +208,7 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
         allowPurchase = false;
     }
 
-    // Minimum order (0.5 EUR)
+    // Minimum order (2.0 EUR)
     const totalCartValue = cartItemsWithShopInfo.reduce((sum, item) => {
         if (item.status !== 'paid' && item.currency === 'eur') {
             const price =
@@ -217,9 +217,16 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
         }
         return sum;
     }, 0);
-    if (totalCartValue > 0 && totalCartValue < 0.5) {
-        notes.push('Minimalna vrijednost narudžbe je 0,50 €.');
-        allowPurchase = false;
+
+    // Calculate sunflower bonus for orders below minimum
+    const minimumOrderAmount = 2.0;
+    let sunflowerBonus = 0;
+    if (totalCartValue > 0 && totalCartValue < minimumOrderAmount) {
+        const shortfallAmount = minimumOrderAmount - totalCartValue;
+        sunflowerBonus = Math.round(shortfallAmount * 1000); // 1000 sunflowers per 1 EUR
+        notes.push(
+            `Minimalna vrijednost narudžbe je ${minimumOrderAmount.toFixed(2)} €. Dobit ćeš ${sunflowerBonus} 🌻 kao bonus za razliku od ${shortfallAmount.toFixed(2)} €.`,
+        );
     }
     // --- End notes logic ---
 
@@ -227,6 +234,7 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
         notes,
         allowPurchase,
         items: cartItemsWithShopInfo,
+        sunflowerBonus,
     };
 }
 
@@ -420,6 +428,38 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 });
             }
 
+            // Add sunflower bonus as a Stripe item if there's a shortfall
+            if (cartInfo.sunflowerBonus > 0) {
+                const minimumOrderAmount = 2.0;
+                const currentTotal =
+                    stripeItems.reduce((sum, item) => {
+                        return sum + item.price.valueInCents * item.quantity;
+                    }, 0) / 100; // Convert from cents to euros
+
+                if (currentTotal < minimumOrderAmount) {
+                    const shortfallAmount = minimumOrderAmount - currentTotal;
+                    const shortfallInCents = Math.round(shortfallAmount * 100);
+
+                    stripeItems.push({
+                        product: {
+                            name: 'Sunflower Bonus',
+                            description: `Bonus za minimalnu narudžbu (${cartInfo.sunflowerBonus} 🌻)`,
+                            imageUrls: [],
+                            metadata: {
+                                isSunflowerBonus: 'true',
+                                sunflowerAmount:
+                                    cartInfo.sunflowerBonus.toString(),
+                            },
+                        },
+                        price: {
+                            valueInCents: shortfallInCents,
+                            currency: 'eur',
+                        },
+                        quantity: 1,
+                    });
+                }
+            }
+
             if (stripeCartItemsWithShopData.length) {
                 const { customerId, sessionId, url } = await stripeCheckout(
                     {
@@ -430,6 +470,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     },
                     {
                         items: stripeItems,
+                        metadata:
+                            cartInfo.sunflowerBonus > 0
+                                ? {
+                                      sunflowerBonus:
+                                          cartInfo.sunflowerBonus.toString(),
+                                      accountId: account.id,
+                                  }
+                                : undefined,
                     },
                 );
 

@@ -160,7 +160,9 @@ export function ShoppingCart() {
                             <Typography level="body1">Ukupno</Typography>
                             <Stack>
                                 <Typography level="body1" bold>
-                                    {cart?.total.toFixed(2)} €
+                                    {(cart?.sunflowerBonus ?? 0) > 0 
+                                        ? Math.max(cart?.total ?? 0, 2.0).toFixed(2)
+                                        : (cart?.total ?? 0).toFixed(2)} €
                                 </Typography>
                                 {(cart?.totalSunflowers ?? 0) > 0 && (
                                     <Typography level="body1" bold>
@@ -172,6 +174,20 @@ export function ShoppingCart() {
                                 )}
                             </Stack>
                         </Row>
+                        {/* Display sunflower bonus if applicable */}
+                        {(cart?.sunflowerBonus ?? 0) > 0 && (
+                            <Row
+                                justifyContent="space-between"
+                                alignItems="start"
+                                spacing={2}
+                                className="text-yellow-600 dark:text-yellow-400"
+                            >
+                                <Typography level="body2">Bonus 🌻</Typography>
+                                <Typography level="body2" bold>
+                                    +{cart?.sunflowerBonus} 🌻
+                                </Typography>
+                            </Row>
+                        )}
                         <Stack spacing={1}>
                             {/* Display notes if present */}
                             {cart && (cart?.notes?.length ?? 0) > 0 && (
