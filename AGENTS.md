@@ -1,6 +1,6 @@
 # Welcome, AI collaborator
 
-This repository is the **Gredice** monorepo. It hosts several Next.js applications, supporting packages, and shared assets that power the Gredice platform. The notes below will help you ramp up quickly and work safely.
+This repository is the **Gredice** monorepo. It hosts several Next.js applications, supporting packages, and shared assets that power the Gredice platform.
 
 ## Quick start checklist
 
@@ -16,7 +16,7 @@ This repository is the **Gredice** monorepo. It hosts several Next.js applicatio
   - `api/`: Next.js app exposing API routes and OpenAPI generation.
   - `app/`, `garden/`, `farm/`, `www/`: Product-facing Next.js front-ends (each with its own scripts, linting, and Playwright setup).
 - `packages/`: Shared libraries (client SDK, storage, UI kit, transactional email helpers, payment integration, etc.). Use pnpm workspaces to depend on these via `workspace:*` versions.
-- `assets/`: Source files for 3D game assets. Running `./export.sh` regenerates `game-assets.glb` in `apps/garden/public/assets/models`.
+- `assets/`: Source files for 3D game assets.
 - `turbo.json`, `pnpm-workspace.yaml`, and app-level `package.json` files coordinate Turborepo tasks, workspace scopes, and scripts.
 
 ## Core workflows
@@ -34,24 +34,26 @@ This repository is the **Gredice** monorepo. It hosts several Next.js applicatio
 
 ## Conventions and standards
 
-- Don't create new components or utilities without checking for existing ones in `@gredice/ui` or other shared packages.
-- If a component is not present in `@gredice/ui`, consider contributing it there if it has potential for reuse and general applicability.
+- Don't create new components or utilities without checking for existing ones in `@gredice/ui` and other shared packages.
+- If a reusable UI component is not present in `@gredice/ui`, consider contributing it there if it has potential for reuse and general applicability.
+
+## TypeScript types
+
+- Don't create types that duplicate existing ones. Reuse types from shared packages whenever possible.
+- Don't create types that can be inferred by TypeScript.
+- When types are unknown, use `unknown` instead of `any` to ensure type safety.
 
 ## Database & storage tooling
 
 - Schema changes live under `packages/storage`. Use `pnpm db-generate` after modifying the schema to create migrations.
-- NEVER apply migrations with `pnpm db-push`, the DB migrations will be applied automatically during deployment.
-
-## Assets workflow
-
-- Regenerate 3D assets by running `./export.sh` inside the `assets/` directory. Ensure no one else is working on the GLB at the same time to prevent merge conflicts.
-- The export script uses Blender to convert `GameAssets.blend` to `GameAssets.glb` in `apps/garden/public/assets/models/`.
+- Don't apply migrations. The DB migrations will be applied manually after reviewing changes.
 
 ## Package dependencies
 
 - Use `workspace:*` versions for internal package dependencies in `package.json` files.
 - Common shared packages:
   - `@gredice/storage`: Database schema and migrations using Drizzle ORM
+  - `@gredice/email`: Email sending utilities
   - `@gredice/ui`: Shared UI components with Tailwind CSS
   - `@gredice/client`: API client SDK
   - `@gredice/transactional`: Email templates and components
@@ -62,8 +64,7 @@ This repository is the **Gredice** monorepo. It hosts several Next.js applicatio
 
 - Prefer targeted Turborepo commands (`pnpm <COMMAND> --filter ...`) to speed up workflows during development and CI validation.
 - When introducing new scripts or workspace packages, update the relevant `package.json` and workspace manifests.
-- Document non-obvious behaviors (e.g., manual steps, feature flag dependencies) in `AILOGS.md`. This helps future collaborators understand the context. But don't duplicate information already covered in this file or nested `AGENTS.md` files. Maintain a single source of truth.
-- Follow the repo's existing TypeScript, React, and Biome conventions. Avoid adding alternative linting or formatting tools without prior alignment.
+- Follow the repo's existing TypeScript, React, and Biome conventions.
 
 ## Common commands reference
 
@@ -94,12 +95,4 @@ pnpm test --filter garden
 
 # Build all packages and apps
 pnpm build
-
-# Generate database migrations (after schema changes)
-pnpm db-generate
-
-# Regenerate assets and other generated files
-pnpm regenerate
 ```
-
-Happy shipping!
