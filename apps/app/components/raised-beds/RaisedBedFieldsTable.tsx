@@ -78,8 +78,6 @@ export async function RaisedBedFieldsTable({
         (_, index) => index,
     ).sort((a, b) => b - a);
 
-    console.log('fields', fields);
-
     if (orderedPositions.length === 0) {
         return <NoDataPlaceholder />;
     }

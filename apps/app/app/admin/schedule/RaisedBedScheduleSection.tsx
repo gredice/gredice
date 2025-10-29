@@ -301,31 +301,17 @@ export function RaisedBedScheduleSection({
                         <div key={field.id}>
                             <Row spacing={1} className="hover:bg-muted rounded">
                                 <Row spacing={1} className="grow">
-                                    {fieldApproved || fieldCompleted ? (
-                                        fieldCompleted ? (
-                                            <Checkbox
-                                                className="size-5 mx-2"
-                                                checked
-                                                disabled
-                                            />
-                                        ) : (
-                                            <Checkbox
-                                                className="size-5 mx-2"
-                                                checked
-                                                disabled
-                                            />
-                                        )
-                                    ) : field.plantSortId ? (
-                                        <AcceptRaisedBedFieldModal
-                                            raisedBedId={field.raisedBedId}
-                                            positionIndex={field.positionIndex}
-                                            label={fieldLabel}
-                                        />
-                                    ) : fieldCompleted ? (
+                                    {fieldCompleted ? (
                                         <Checkbox
                                             className="size-5 mx-2"
                                             checked
                                             disabled
+                                        />
+                                    ) : field.plantSortId && !fieldApproved ? (
+                                        <AcceptRaisedBedFieldModal
+                                            raisedBedId={field.raisedBedId}
+                                            positionIndex={field.positionIndex}
+                                            label={fieldLabel}
                                         />
                                     ) : (
                                         <ModalConfirm
