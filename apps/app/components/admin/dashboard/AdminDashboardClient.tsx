@@ -85,6 +85,7 @@ export function AdminDashboardClient({
         transactionsBefore: transactionsBeforeCount,
         deliveryRequests: deliveryRequestsCount,
         deliveryRequestsBefore: deliveryRequestsBeforeCount,
+        activeUsers,
     } = initialAnalyticsData;
 
     return (
@@ -138,6 +139,12 @@ export function AdminDashboardClient({
                         href={KnownPages.Users}
                         beforeValue={usersBeforeCount}
                     />
+                    <FactCard header="DAU" value={activeUsers.daily} />
+                    <FactCard header="WAU" value={activeUsers.weekly} />
+                    <FactCard header="MAU" value={activeUsers.monthly} />
+                </div>
+                <DashboardDivider>Vrtovi</DashboardDivider>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
                     <FactCard
                         header="Farme"
                         value={farmsCount}
@@ -156,15 +163,18 @@ export function AdminDashboardClient({
                         beforeValue={blocksBeforeCount}
                     />
                     <FactCard
-                        header="Događaji"
-                        value={eventsCount}
-                        beforeValue={eventsBeforeCount}
-                    />
-                    <FactCard
                         header="Gredice"
                         value={raisedBedsCount}
                         href={KnownPages.RaisedBeds}
                         beforeValue={raisedBedsBeforeCount}
+                    />
+                </div>
+                <DashboardDivider>Ostalo</DashboardDivider>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    <FactCard
+                        header="Događaji"
+                        value={eventsCount}
+                        beforeValue={eventsBeforeCount}
                     />
                     <FactCard
                         header="Transakcije"
