@@ -30,6 +30,7 @@ import {
     Home,
     Inbox,
     Map as MapIcon,
+    Settings,
     ShoppingCart,
     SmileHappy,
     Tally3,
@@ -333,6 +334,17 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         href={KnownPages.Feedback}
                         label="Povratne informacije"
                         icon={<SmileHappy className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                </List>
+            </Stack>
+            <Stack spacing={1}>
+                <ListHeader header="Postavke" />
+                <List>
+                    <NavItem
+                        href={KnownPages.Settings}
+                        label="Postavke"
+                        icon={<Settings className="size-5" />}
                         onClick={onItemClick}
                     />
                 </List>
