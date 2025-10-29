@@ -22,6 +22,8 @@ const statusLabels: Record<string, string> = {
     active: 'Aktivan',
 };
 
+type RaisedBed = Awaited<ReturnType<typeof getAllRaisedBeds>>[number];
+
 type ContactHistoryEntry = {
     timeStamp?: string;
     valueSerialized?: string;
@@ -33,7 +35,7 @@ type ContactHistoryResponse = {
     };
 };
 
-async function SensorCard({ sensor }: { sensor: SelectRaisedBedSensor }) {
+async function hydrateSensor(sensor: SelectRaisedBedSensor) {
     const data = sensor.sensorSignalcoId
         ? await signalcoClient().GET('/entity/{id}', {
               params: { path: { id: sensor.sensorSignalcoId } },
@@ -114,75 +116,119 @@ async function SensorCard({ sensor }: { sensor: SelectRaisedBedSensor }) {
         fetchHistory('temperature'),
     ]);
 
-    const moisture = {
-        value: moistureContact?.valueSerialized ?? null,
-        updatedAt: moistureContact?.timeStamp ?? null,
-        history: moistureHistory,
+    return {
+        sensor,
+        moisture: {
+            value: moistureContact?.valueSerialized ?? null,
+            updatedAt: moistureContact?.timeStamp ?? null,
+            history: moistureHistory,
+        },
+        temperature: {
+            value: temperatureContact?.valueSerialized ?? null,
+            updatedAt: temperatureContact?.timeStamp ?? null,
+            history: temperatureHistory,
+        },
     };
-    const temperature = {
-        value: temperatureContact?.valueSerialized ?? null,
-        updatedAt: temperatureContact?.timeStamp ?? null,
-        history: temperatureHistory,
-    };
+}
+
+async function RaisedBedSensorsCard({
+    raisedBed,
+    sensors,
+}: {
+    raisedBed: RaisedBed;
+    sensors: SelectRaisedBedSensor[];
+}) {
+    const hydratedSensors = sensors.length
+        ? await Promise.all(sensors.map((sensor) => hydrateSensor(sensor)))
+        : [];
 
     return (
         <Card>
             <CardContent>
-                <Stack spacing={2}>
-                    <Stack>
-                        <Row justifyContent="space-between">
-                            <Typography level="h2" className="text-lg">
-                                {sensor.id}
-                            </Typography>
-                            <Chip>
-                                {statusLabels[sensor.status] ?? sensor.status}
-                            </Chip>
-                        </Row>
-                        <Typography level="body3">
-                            {sensor.sensorSignalcoId}
-                        </Typography>
+                <Stack spacing={3}>
+                    <Stack spacing={0.5}>
+                        <RaisedBedLabel physicalId={raisedBed.physicalId} />
+                        <Typography level="body3">#{raisedBed.id}</Typography>
                     </Stack>
-                    <Stack spacing={2}>
-                        <Stack>
-                            <Typography level="body2">Vlažnost tla</Typography>
-                            <Typography semiBold>
-                                {moisture.value ?? 'N/A'}%
-                            </Typography>
-                            <SensorMiniChart
-                                data={moisture.history}
-                                color="#0ea5e9"
-                                unit="%"
-                            />
-                            <Typography level="body3">
-                                <LocalDateTime>
-                                    {moisture.updatedAt
-                                        ? new Date(moisture.updatedAt)
-                                        : null}
-                                </LocalDateTime>
-                            </Typography>
-                        </Stack>
-                        <Stack>
-                            <Typography level="body2">
-                                Temperatura tla
-                            </Typography>
-                            <Typography semiBold>
-                                {temperature.value ?? 'N/A'}°C
-                            </Typography>
-                            <SensorMiniChart
-                                data={temperature.history}
-                                color="#f97316"
-                                unit="°C"
-                            />
-                            <Typography level="body3">
-                                <LocalDateTime>
-                                    {temperature.updatedAt
-                                        ? new Date(temperature.updatedAt)
-                                        : null}
-                                </LocalDateTime>
-                            </Typography>
-                        </Stack>
-                    </Stack>
-                    <SensorServiceForm sensor={sensor} />
+                    {hydratedSensors.length === 0 ? (
+                        <Typography>Nema senzora za ovu gredicu.</Typography>
+                    ) : (
+                        hydratedSensors.map(
+                            ({ sensor, moisture, temperature }) => (
+                                <Stack
+                                    key={sensor.id}
+                                    spacing={2}
+                                    className="rounded-lg border border-slate-200 p-3"
+                                >
+                                    <Stack>
+                                        <Row justifyContent="space-between">
+                                            <Typography
+                                                level="h2"
+                                                className="text-lg"
+                                            >
+                                                Senzor #{sensor.id}
+                                            </Typography>
+                                            <Chip>
+                                                {statusLabels[sensor.status] ??
+                                                    sensor.status}
+                                            </Chip>
+                                        </Row>
+                                        <Typography level="body3">
+                                            {sensor.sensorSignalcoId ??
+                                                'Nema Signalco ID'}
+                                        </Typography>
+                                    </Stack>
+                                    <Stack spacing={2}>
+                                        <Stack>
+                                            <Typography level="body2">
+                                                Vlažnost tla
+                                            </Typography>
+                                            <Typography semiBold>
+                                                {moisture.value ?? 'N/A'}%
+                                            </Typography>
+                                            <SensorMiniChart
+                                                data={moisture.history}
+                                                color="#0ea5e9"
+                                                unit="%"
+                                            />
+                                            <Typography level="body3">
+                                                <LocalDateTime>
+                                                    {moisture.updatedAt
+                                                        ? new Date(
+                                                              moisture.updatedAt,
+                                                          )
+                                                        : null}
+                                                </LocalDateTime>
+                                            </Typography>
+                                        </Stack>
+                                        <Stack>
+                                            <Typography level="body2">
+                                                Temperatura tla
+                                            </Typography>
+                                            <Typography semiBold>
+                                                {temperature.value ?? 'N/A'}°C
+                                            </Typography>
+                                            <SensorMiniChart
+                                                data={temperature.history}
+                                                color="#f97316"
+                                                unit="°C"
+                                            />
+                                            <Typography level="body3">
+                                                <LocalDateTime>
+                                                    {temperature.updatedAt
+                                                        ? new Date(
+                                                              temperature.updatedAt,
+                                                          )
+                                                        : null}
+                                                </LocalDateTime>
+                                            </Typography>
+                                        </Stack>
+                                    </Stack>
+                                    <SensorServiceForm sensor={sensor} />
+                                </Stack>
+                            ),
+                        )
+                    )}
                 </Stack>
             </CardContent>
         </Card>
@@ -191,41 +237,35 @@ async function SensorCard({ sensor }: { sensor: SelectRaisedBedSensor }) {
 
 export default async function SensorsPage() {
     const raisedBeds = await getAllRaisedBeds();
-    // Group raised beds by physicalId
-    const bedsByPhysicalId = raisedBeds
-        .filter((bed) => bed.physicalId)
-        .reduce(
-            (acc, bed) => {
-                if (!bed.physicalId) return acc;
-                if (!acc[bed.physicalId]) acc[bed.physicalId] = [];
-                acc[bed.physicalId].push(bed);
-                return acc;
-            },
-            {} as Record<string, typeof raisedBeds>,
-        );
+    const uniqueRaisedBedsMap = new Map<string, RaisedBed>();
+    for (const raisedBed of raisedBeds) {
+        const key = raisedBed.physicalId ?? `id-${raisedBed.id}`;
+        if (!uniqueRaisedBedsMap.has(key)) {
+            uniqueRaisedBedsMap.set(key, raisedBed);
+        }
+    }
 
-    // For each physicalId, collect all sensors for all beds with that physicalId
-    const physicalIds = Object.keys(bedsByPhysicalId).sort((a, b) =>
-        a.localeCompare(b),
-    );
-    const sensorsByPhysicalId = await Promise.all(
-        physicalIds.map(async (physicalId) => {
-            const beds = bedsByPhysicalId[physicalId];
-            // Get all sensors for all beds with this physicalId
-            const sensorsArrays = await Promise.all(
-                beds.map((bed) => getRaisedBedSensors(bed.id)),
-            );
-            // Flatten sensors for this physicalId
-            return { physicalId, sensors: sensorsArrays.flat() };
-        }),
+    const uniqueRaisedBeds = Array.from(uniqueRaisedBedsMap.values()).sort(
+        (a, b) => {
+            const keyA = a.physicalId ?? a.id.toString();
+            const keyB = b.physicalId ?? b.id.toString();
+            return keyA.localeCompare(keyB, 'hr-HR', { numeric: true });
+        },
     );
 
-    const totalSensors = sensorsByPhysicalId.reduce(
+    const raisedBedSensors = await Promise.all(
+        uniqueRaisedBeds.map(async (raisedBed) => ({
+            raisedBed,
+            sensors: await getRaisedBedSensors(raisedBed.id),
+        })),
+    );
+
+    const totalSensors = raisedBedSensors.reduce(
         (sum, group) => sum + group.sensors.length,
         0,
     );
 
-    const createFormRaisedBeds = raisedBeds
+    const createFormRaisedBeds = uniqueRaisedBeds
         .filter((bed) => bed.status === 'active')
         .map((bed) => ({
             id: bed.id,
@@ -242,37 +282,26 @@ export default async function SensorsPage() {
                 <CreateSensorModal raisedBeds={createFormRaisedBeds} />
             </Row>
             <Stack spacing={2}>
-                {sensorsByPhysicalId.length === 0 ? (
+                {raisedBedSensors.length === 0 ? (
                     <Typography>Nema senzora.</Typography>
                 ) : (
-                    sensorsByPhysicalId.map(({ physicalId, sensors }) => (
-                        <Stack key={physicalId} spacing={1}>
-                            <RaisedBedLabel physicalId={physicalId} />
-                            <div className="grid grid-cols-4 gap-2">
-                                {sensors.length === 0 && (
-                                    <Typography className="col-span-4">
-                                        Nema senzora za ovu gredicu.
-                                    </Typography>
-                                )}
-                                {sensors.map((sensor) => (
-                                    <Suspense
-                                        key={sensor.id}
-                                        fallback={
-                                            <Card className="h-32 w-full">
-                                                <CardContent>
-                                                    Učitavanje...
-                                                </CardContent>
-                                            </Card>
-                                        }
-                                    >
-                                        <SensorCard
-                                            key={sensor.id}
-                                            sensor={sensor}
-                                        />
-                                    </Suspense>
-                                ))}
-                            </div>
-                        </Stack>
+                    raisedBedSensors.map(({ raisedBed, sensors }) => (
+                        <Suspense
+                            key={
+                                raisedBed.physicalId ??
+                                `raised-bed-${raisedBed.id}`
+                            }
+                            fallback={
+                                <Card className="w-full">
+                                    <CardContent>Učitavanje...</CardContent>
+                                </Card>
+                            }
+                        >
+                            <RaisedBedSensorsCard
+                                raisedBed={raisedBed}
+                                sensors={sensors}
+                            />
+                        </Suspense>
                     ))
                 )}
             </Stack>

@@ -1,6 +1,6 @@
 import 'server-only';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
-import { and, count, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { getEntitiesFormatted, getOperations, storage } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
@@ -853,13 +853,62 @@ export async function deleteRaisedBedField(
         );
 }
 
-export function getRaisedBedSensors(raisedBedId: number) {
-    return storage().query.raisedBedSensors.findMany({
+export async function getRaisedBedSensors(raisedBedId: number) {
+    const raisedBed = await storage().query.raisedBeds.findFirst({
+        columns: {
+            id: true,
+            physicalId: true,
+        },
         where: and(
-            eq(raisedBedSensors.raisedBedId, raisedBedId),
+            eq(raisedBeds.id, raisedBedId),
+            eq(raisedBeds.isDeleted, false),
+        ),
+    });
+
+    if (!raisedBed) {
+        return [];
+    }
+
+    let raisedBedIds: number[] = [raisedBed.id];
+
+    if (raisedBed.physicalId) {
+        const relatedBeds = await storage().query.raisedBeds.findMany({
+            columns: { id: true },
+            where: and(
+                eq(raisedBeds.physicalId, raisedBed.physicalId),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        });
+
+        raisedBedIds = Array.from(
+            new Set([raisedBed.id, ...relatedBeds.map((bed) => bed.id)]),
+        );
+    }
+
+    const sensors = await storage().query.raisedBedSensors.findMany({
+        where: and(
+            inArray(raisedBedSensors.raisedBedId, raisedBedIds),
             eq(raisedBedSensors.isDeleted, false),
         ),
     });
+
+    const uniqueSensors: typeof sensors = [];
+    const seen = new Set<string>();
+
+    for (const sensor of sensors) {
+        const key = sensor.sensorSignalcoId
+            ? `signalco:${sensor.sensorSignalcoId}`
+            : `id:${sensor.id}`;
+
+        if (seen.has(key)) {
+            continue;
+        }
+
+        seen.add(key);
+        uniqueSensors.push(sensor);
+    }
+
+    return uniqueSensors;
 }
 
 export function createRaisedBedSensor(data: InsertRaisedBedSensor) {
