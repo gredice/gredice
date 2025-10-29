@@ -8,6 +8,15 @@ import ResetPasswordEmailTemplate, {
 import WelcomeEmailTemplate, {
     type WelcomeEmailTemplateProps,
 } from '@gredice/transactional/emails/Account/welcome';
+import DeliveryCancelledEmailTemplate, {
+    type DeliveryCancelledEmailTemplateProps,
+} from '@gredice/transactional/emails/Notifications/delivery-cancelled';
+import DeliveryReadyEmailTemplate, {
+    type DeliveryReadyEmailTemplateProps,
+} from '@gredice/transactional/emails/Notifications/delivery-ready';
+import DeliveryScheduledEmailTemplate, {
+    type DeliveryScheduledEmailTemplateProps,
+} from '@gredice/transactional/emails/Notifications/delivery-scheduled';
 import DeliverySurveyEmailTemplate, {
     type DeliverySurveyEmailTemplateProps,
 } from '@gredice/transactional/emails/Notifications/delivery-survey';
@@ -48,6 +57,56 @@ export async function sendWelcome(
         to,
         subject: 'Dobrodošli u Gredice',
         template: WelcomeEmailTemplate(config),
+    });
+}
+
+export async function sendDeliveryScheduled(
+    to: string,
+    config: DeliveryScheduledEmailTemplateProps,
+) {
+    const templateProps = {
+        ...config,
+        email: config.email ?? to,
+    } satisfies DeliveryScheduledEmailTemplateProps;
+
+    return await sendEmail({
+        from: 'suncokret@obavijesti.gredice.com',
+        to,
+        subject: 'Gredice - termin tvoje dostave',
+        template: DeliveryScheduledEmailTemplate(templateProps),
+    });
+}
+
+export async function sendDeliveryReady(
+    to: string,
+    config: DeliveryReadyEmailTemplateProps,
+) {
+    const templateProps = {
+        ...config,
+        email: config.email ?? to,
+    } satisfies DeliveryReadyEmailTemplateProps;
+
+    return await sendEmail({
+        from: 'suncokret@obavijesti.gredice.com',
+        to,
+        subject: 'Gredice - dostava je spremna',
+        template: DeliveryReadyEmailTemplate(templateProps),
+    });
+}
+
+export async function sendDeliveryCancelled(
+    to: string,
+    config: DeliveryCancelledEmailTemplateProps,
+) {
+    const templateProps = {
+        ...config,
+        email: config.email ?? to,
+    } satisfies DeliveryCancelledEmailTemplateProps;
+    return await sendEmail({
+        from: 'suncokret@obavijesti.gredice.com',
+        to,
+        subject: 'Gredice - dostava je otkazana',
+        template: DeliveryCancelledEmailTemplate(templateProps),
     });
 }
 
