@@ -21,6 +21,13 @@ test('getAnalyticsTotals returns correct counts for empty db', async () => {
     assert.strictEqual(typeof totals.events, 'number');
     assert.strictEqual(typeof totals.raisedBeds, 'number');
     assert.strictEqual(typeof totals.transactions, 'number');
+    assert.ok(totals.activeUsers);
+    assert.strictEqual(typeof totals.activeUsers.daily.value, 'number');
+    assert.ok(Array.isArray(totals.activeUsers.daily.series));
+    assert.strictEqual(typeof totals.activeUsers.weekly.value, 'number');
+    assert.ok(Array.isArray(totals.activeUsers.weekly.series));
+    assert.strictEqual(typeof totals.activeUsers.monthly.value, 'number');
+    assert.ok(Array.isArray(totals.activeUsers.monthly.series));
 });
 
 test('getAnalyticsTotals increases after creating entities', async () => {

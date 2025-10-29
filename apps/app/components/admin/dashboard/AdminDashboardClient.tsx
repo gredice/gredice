@@ -10,6 +10,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { KnownPages } from '../../../src/KnownPages';
 import { FactCard } from '../cards/FactCard';
+import { ActiveUsersCard } from './ActiveUsersCard';
 import { DashboardDivider } from './DashboardDivider';
 import {
     OperationsDurationCard,
@@ -85,10 +86,34 @@ export function AdminDashboardClient({
         transactionsBefore: transactionsBeforeCount,
         deliveryRequests: deliveryRequestsCount,
         deliveryRequestsBefore: deliveryRequestsBeforeCount,
+        activeUsers,
     } = initialAnalyticsData;
 
     return (
         <Stack spacing={2}>
+            <Stack spacing={1}>
+                <DashboardDivider>Aktivni korisnici</DashboardDivider>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <ActiveUsersCard
+                        title="DAU"
+                        subtitle="Dnevno aktivni korisnici"
+                        value={activeUsers.daily.value}
+                        series={activeUsers.daily.series}
+                    />
+                    <ActiveUsersCard
+                        title="WAU"
+                        subtitle="Tjedno aktivni korisnici"
+                        value={activeUsers.weekly.value}
+                        series={activeUsers.weekly.series}
+                    />
+                    <ActiveUsersCard
+                        title="MAU"
+                        subtitle="Mjesečno aktivni korisnici"
+                        value={activeUsers.monthly.value}
+                        series={activeUsers.monthly.series}
+                    />
+                </div>
+            </Stack>
             <Row spacing={1}>
                 <Button
                     variant="outlined"
