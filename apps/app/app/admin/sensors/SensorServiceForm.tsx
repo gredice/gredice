@@ -2,15 +2,15 @@
 
 import type { SelectRaisedBedSensor } from '@gredice/storage';
 import { Input } from '@signalco/ui-primitives/Input';
+import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
 import { useState } from 'react';
 import { updateSensor } from '../../(actions)/sensorActions';
 
 const statusOptions = [
-    { value: 'new', label: 'Novi' },
-    { value: 'installed', label: 'Instaliran' },
-    { value: 'active', label: 'Aktivan' },
+    { value: 'new', label: '🆕 Novi' },
+    { value: 'installed', label: '🛠️ Instaliran' },
+    { value: 'active', label: '✅ Aktivan' },
 ];
 
 export function SensorServiceForm({
@@ -39,7 +39,8 @@ export function SensorServiceForm({
     };
 
     return (
-        <Stack spacing={1}>
+        <Row spacing={1}>
+            <Input label="ID" value={sensor.id} readOnly />
             <Input
                 label="Signalco ID"
                 value={signalcoId}
@@ -47,10 +48,11 @@ export function SensorServiceForm({
                 onBlur={handleBlur}
             />
             <SelectItems
+                label="Status"
                 value={status}
                 onValueChange={handleStatusChange}
                 items={statusOptions}
             />
-        </Stack>
+        </Row>
     );
 }
