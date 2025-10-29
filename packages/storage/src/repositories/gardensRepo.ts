@@ -858,6 +858,7 @@ export async function getRaisedBedSensors(raisedBedId: number) {
         columns: {
             id: true,
             physicalId: true,
+            gardenId: true,
         },
         where: and(
             eq(raisedBeds.id, raisedBedId),
@@ -872,12 +873,18 @@ export async function getRaisedBedSensors(raisedBedId: number) {
     let raisedBedIds: number[] = [raisedBed.id];
 
     if (raisedBed.physicalId) {
+        const whereConditions = [
+            eq(raisedBeds.physicalId, raisedBed.physicalId),
+            eq(raisedBeds.isDeleted, false),
+        ];
+
+        if (raisedBed.gardenId) {
+            whereConditions.push(eq(raisedBeds.gardenId, raisedBed.gardenId));
+        }
+
         const relatedBeds = await storage().query.raisedBeds.findMany({
             columns: { id: true },
-            where: and(
-                eq(raisedBeds.physicalId, raisedBed.physicalId),
-                eq(raisedBeds.isDeleted, false),
-            ),
+            where: and(...whereConditions),
         });
 
         raisedBedIds = Array.from(

@@ -621,21 +621,26 @@ export function RaisedBedSensorInfo({
 
     const sensorGroups: SensorGroup[] = Array.isArray(sensors)
         ? (() => {
-              const groups = sensors.reduce((acc, sensor: SensorReading) => {
-                  const existing = acc.get(sensor.id) ?? {
-                      id: sensor.id,
-                      status: sensor.status,
-                  };
-                  if (sensor.type === 'soil_moisture') {
-                      existing.soilMoisture = sensor;
-                  } else if (sensor.type === 'soil_temperature') {
-                      existing.soilTemperature = sensor;
-                  }
-                  existing.status = sensor.status;
-                  acc.set(sensor.id, existing);
-                  return acc;
-              }, new Map<number, SensorGroup>());
-              return Array.from(groups.values()).sort((a, b) => a.id - b.id);
+              const groups = (sensors as SensorReading[]).reduce(
+                  (acc: Map<number, SensorGroup>, sensor: SensorReading) => {
+                      const existing = acc.get(sensor.id) ?? {
+                          id: sensor.id,
+                          status: sensor.status,
+                      };
+                      if (sensor.type === 'soil_moisture') {
+                          existing.soilMoisture = sensor;
+                      } else if (sensor.type === 'soil_temperature') {
+                          existing.soilTemperature = sensor;
+                      }
+                      existing.status = sensor.status;
+                      acc.set(sensor.id, existing);
+                      return acc;
+                  },
+                  new Map<number, SensorGroup>(),
+              );
+              return Array.from(groups.values()).sort(
+                  (a: SensorGroup, b: SensorGroup) => a.id - b.id,
+              );
           })()
         : [];
 

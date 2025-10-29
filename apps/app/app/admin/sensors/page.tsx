@@ -144,87 +144,63 @@ async function RaisedBedSensorsCard({
 
     return (
         <Card>
-            <CardContent>
-                <Stack spacing={3}>
-                    <Stack spacing={0.5}>
-                        <RaisedBedLabel physicalId={raisedBed.physicalId} />
-                        <Typography level="body3">#{raisedBed.id}</Typography>
-                    </Stack>
+            <CardContent noHeader>
+                <Stack spacing={1}>
+                    <RaisedBedLabel physicalId={raisedBed.physicalId} />
                     {hydratedSensors.length === 0 ? (
                         <Typography>Nema senzora za ovu gredicu.</Typography>
                     ) : (
                         hydratedSensors.map(
                             ({ sensor, moisture, temperature }) => (
-                                <Stack
-                                    key={sensor.id}
-                                    spacing={2}
-                                    className="rounded-lg border border-slate-200 p-3"
-                                >
-                                    <Stack>
-                                        <Row justifyContent="space-between">
-                                            <Typography
-                                                level="h2"
-                                                className="text-lg"
-                                            >
-                                                Senzor #{sensor.id}
-                                            </Typography>
-                                            <Chip>
-                                                {statusLabels[sensor.status] ??
-                                                    sensor.status}
-                                            </Chip>
-                                        </Row>
-                                        <Typography level="body3">
-                                            {sensor.sensorSignalcoId ??
-                                                'Nema Signalco ID'}
-                                        </Typography>
-                                    </Stack>
-                                    <Stack spacing={2}>
+                                <Stack key={sensor.id} spacing={1}>
+                                    <SensorServiceForm sensor={sensor} />
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                                         <Stack>
-                                            <Typography level="body2">
-                                                Vlažnost tla
-                                            </Typography>
-                                            <Typography semiBold>
-                                                {moisture.value ?? 'N/A'}%
-                                            </Typography>
+                                            <Row spacing={2}>
+                                                <Typography semiBold>
+                                                    💧 {moisture.value ?? 'N/A'}
+                                                    %
+                                                </Typography>
+                                                <Typography level="body3">
+                                                    <LocalDateTime>
+                                                        {moisture.updatedAt
+                                                            ? new Date(
+                                                                  moisture.updatedAt,
+                                                              )
+                                                            : null}
+                                                    </LocalDateTime>
+                                                </Typography>
+                                            </Row>
                                             <SensorMiniChart
                                                 data={moisture.history}
                                                 color="#0ea5e9"
                                                 unit="%"
                                             />
-                                            <Typography level="body3">
-                                                <LocalDateTime>
-                                                    {moisture.updatedAt
-                                                        ? new Date(
-                                                              moisture.updatedAt,
-                                                          )
-                                                        : null}
-                                                </LocalDateTime>
-                                            </Typography>
                                         </Stack>
                                         <Stack>
-                                            <Typography level="body2">
-                                                Temperatura tla
-                                            </Typography>
-                                            <Typography semiBold>
-                                                {temperature.value ?? 'N/A'}°C
-                                            </Typography>
+                                            <Row spacing={2}>
+                                                <Typography semiBold>
+                                                    🔥{' '}
+                                                    {temperature.value ?? 'N/A'}
+                                                    °C
+                                                </Typography>
+                                                <Typography level="body3">
+                                                    <LocalDateTime>
+                                                        {temperature.updatedAt
+                                                            ? new Date(
+                                                                  temperature.updatedAt,
+                                                              )
+                                                            : null}
+                                                    </LocalDateTime>
+                                                </Typography>
+                                            </Row>
                                             <SensorMiniChart
                                                 data={temperature.history}
                                                 color="#f97316"
                                                 unit="°C"
                                             />
-                                            <Typography level="body3">
-                                                <LocalDateTime>
-                                                    {temperature.updatedAt
-                                                        ? new Date(
-                                                              temperature.updatedAt,
-                                                          )
-                                                        : null}
-                                                </LocalDateTime>
-                                            </Typography>
                                         </Stack>
-                                    </Stack>
-                                    <SensorServiceForm sensor={sensor} />
+                                    </div>
                                 </Stack>
                             ),
                         )
@@ -245,13 +221,13 @@ export default async function SensorsPage() {
         }
     }
 
-    const uniqueRaisedBeds = Array.from(uniqueRaisedBedsMap.values()).sort(
-        (a, b) => {
+    const uniqueRaisedBeds = Array.from(uniqueRaisedBedsMap.values())
+        .sort((a, b) => {
             const keyA = a.physicalId ?? a.id.toString();
             const keyB = b.physicalId ?? b.id.toString();
             return keyA.localeCompare(keyB, 'hr-HR', { numeric: true });
-        },
-    );
+        })
+        .filter((bed) => bed.status === 'active');
 
     const raisedBedSensors = await Promise.all(
         uniqueRaisedBeds.map(async (raisedBed) => ({
@@ -281,7 +257,7 @@ export default async function SensorsPage() {
                 <Chip color="primary">{totalSensors}</Chip>
                 <CreateSensorModal raisedBeds={createFormRaisedBeds} />
             </Row>
-            <Stack spacing={2}>
+            <div className="grid gap-2 grid-cols-1 lg:grid-cols-2">
                 {raisedBedSensors.length === 0 ? (
                     <Typography>Nema senzora.</Typography>
                 ) : (
@@ -293,7 +269,9 @@ export default async function SensorsPage() {
                             }
                             fallback={
                                 <Card className="w-full">
-                                    <CardContent>Učitavanje...</CardContent>
+                                    <CardContent noHeader>
+                                        Učitavanje...
+                                    </CardContent>
                                 </Card>
                             }
                         >
@@ -304,7 +282,7 @@ export default async function SensorsPage() {
                         </Suspense>
                     ))
                 )}
-            </Stack>
+            </div>
         </Stack>
     );
 }
