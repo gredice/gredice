@@ -27,6 +27,9 @@ importers:
       '@date-fns/tz':
         specifier: 1.4.1
         version: 1.4.1
+      '@gredice/google':
+        specifier: workspace:*
+        version: link:../../packages/google
       '@hono/mcp':
         specifier: 0.2.5
         version: 0.2.5(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(hono-rate-limiter@0.4.2(hono@4.12.18))(hono@4.12.18)(zod@4.4.3)
@@ -1196,6 +1199,15 @@ importers:
       zustand:
         specifier: 5.0.13
         version: 5.0.13(@types/react@19.2.14)(immer@11.1.4)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
+
+  packages/google:
+    devDependencies:
+      '@types/node':
+        specifier: '*'
+        version: 24.12.2
+      server-only:
+        specifier: '*'
+        version: 0.0.1
 
   packages/js:
     dependencies:
