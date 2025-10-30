@@ -125,9 +125,7 @@ async function fetchAccessToken(
     };
 }
 
-async function getAccessToken(
-    config: GoogleCalendarConfig,
-): Promise<string> {
+async function getAccessToken(config: GoogleCalendarConfig): Promise<string> {
     if (
         cachedToken &&
         cachedToken.configHash === getConfigHash(config) &&
