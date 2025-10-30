@@ -17,7 +17,7 @@ function clientAuth() {
 
 export function client(authRequired = false) {
     const auth = clientAuth();
-    if (authRequired && auth.headers) {
+    if (authRequired && !auth.headers) {
         throw new Error(
             'Authentication is required but no auth data available',
         );
