@@ -6,7 +6,10 @@ export const queryKey = {
 };
 
 async function getCurrentUser() {
-    const response = await client().api.users.current.$get();
+    const response = await client(true).api.users.current.$get();
+    if (response.status === 401) {
+        return null;
+    }
     if (response.status === 404) {
         console.error('User not found');
         return null;
