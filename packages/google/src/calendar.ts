@@ -4,6 +4,7 @@ import { createSign } from 'node:crypto';
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar';
 const CALENDAR_BASE_URL = 'https://www.googleapis.com/calendar/v3';
+const TOKEN_REFRESH_THRESHOLD_SECONDS = 30;
 
 type GoogleCalendarConfig = {
     clientEmail: string;
@@ -120,13 +121,12 @@ async function fetchAccessToken(
     };
 }
 
-async function getAccessToken(
-    config: GoogleCalendarConfig,
-): Promise<string> {
+async function getAccessToken(config: GoogleCalendarConfig): Promise<string> {
     if (
         cachedToken &&
         cachedToken.configHash === getConfigHash(config) &&
-        cachedToken.expiresAt > Date.now() + 30 * 1000
+        cachedToken.expiresAt >
+            Date.now() + TOKEN_REFRESH_THRESHOLD_SECONDS * 1000
     ) {
         return cachedToken.accessToken;
     }
