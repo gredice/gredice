@@ -91,6 +91,9 @@ importers:
       '@gredice/email':
         specifier: workspace:*
         version: link:../../packages/email
+      '@gredice/google':
+        specifier: workspace:*
+        version: link:../../packages/google
       '@gredice/signalco':
         specifier: workspace:*
         version: link:../../packages/signalco
@@ -899,6 +902,10 @@ importers:
       zustand:
         specifier: 5.0.8
         version: 5.0.8(@types/react@19.1.13)(immer@10.1.1)(react@19.1.1)(use-sync-external-store@1.5.0(react@19.1.1))
+
+  packages/google:
+    dependencies: {}
+    devDependencies: {}
 
   packages/js:
     dependencies:

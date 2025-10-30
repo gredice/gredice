@@ -17,6 +17,10 @@ import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import {
+    createDeliveryRequestCalendarEvent,
+    deleteDeliveryRequestCalendarEvent,
+} from '../../../lib/delivery/calendarSync';
+import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
@@ -276,6 +280,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     ...data,
                     accountId: accountId,
                 });
+
+                void createDeliveryRequestCalendarEvent(requestId);
+
                 return context.json({ id: requestId }, 201);
             } catch (error) {
                 console.error('Failed to create delivery request:', error);
@@ -315,6 +322,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     note,
                     accountId,
                 );
+
+                void deleteDeliveryRequestCalendarEvent(id);
+
                 return context.json({ success: true });
             } catch (error) {
                 console.error('Failed to cancel delivery request:', error);

@@ -42,6 +42,7 @@
         "@biomejs/biome": "2.2.4",
         "@gredice/apidocs": "workspace:*",
         "@gredice/email": "workspace:*",
+        "@gredice/google": "workspace:*",
         "@gredice/signalco": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/stripe": "workspace:*",
