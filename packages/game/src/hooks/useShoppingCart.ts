@@ -1,9 +1,11 @@
 import { client } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
+import { useCurrentUser } from './useCurrentUser';
 
 export const useShoppingCartQueryKey = ['shopping-cart'];
 
 export function useShoppingCart() {
+    const { data: currentUser } = useCurrentUser();
     return useQuery({
         queryKey: useShoppingCartQueryKey,
         queryFn: async () => {
@@ -16,6 +18,7 @@ export function useShoppingCart() {
             }
             return await response.json();
         },
+        enabled: !!currentUser,
     });
 }
 
