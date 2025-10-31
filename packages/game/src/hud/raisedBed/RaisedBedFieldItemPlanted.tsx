@@ -173,16 +173,21 @@ export function RaisedBedFieldItemPlanted({
             }
         >
             <Stack spacing={2}>
-                <Row spacing={2} className="flex-wrap gap-y-2">
+                <Row spacing={2}>
                     <PlantOrSortImage
                         plantSort={plantSort}
                         width={60}
                         height={60}
                     />
-                    <Row spacing={2} alignItems="end">
+                    <Row
+                        spacing={2}
+                        alignItems="center"
+                        justifyContent="space-between"
+                        className="w-full"
+                    >
                         <Typography
-                            level="h3"
-                            className="truncate"
+                            level="h4"
+                            className="truncate line-clamp-2"
                             title={plantSort.information.name}
                         >
                             {plantSort.information.name}
