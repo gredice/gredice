@@ -20,7 +20,7 @@
         "test:node": "pnpm run test:db:start && pnpm run test:db:migrate && node --import tsx --test --env-file=.env.test --conditions=react-server ./tests/**/*.node.spec.ts && pnpm run test:db:stop"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.3.1",
+        "@biomejs/biome": "2.3.2",
         "@gredice/js": "workspace:*",
         "@neondatabase/serverless": "1.0.2",
         "@signalco/js": "0.1.0",
