@@ -13,7 +13,7 @@
         "test-ui": "playwright test --ui",
         "regenerate": "pnpm run /^regenerate:.*/",
         "regenerate:feature-flags": "hypertune",
-        "generate:models-types": "pnpm dlx gltfjsx ./public/assets/models/GameAssets.glb --types --output ../../packages/game/src/models/GameAssets.tsx"
+        "generate:models-types": "pnpm dlx gltfjsx ./public/assets/models/GameAssets.glb --types --typeonly --output ../../packages/game/src/models/GameAssets.tsx && node ../../scripts/fix-gltfjsx-output.mjs"
     },
     "dependencies": {
         "@flags-sdk/hypertune": "0.3.1",
