@@ -70,7 +70,7 @@ Running `pnpm dev` automatically starts a Dockerized Caddy reverse proxy so that
 
 Add the following entry to your hosts file (e.g. `/etc/hosts` on macOS/Linux or `C:\Windows\System32\drivers\etc\hosts` on Windows) so the domains resolve to your machine:
 
-```config
+```text
 127.0.0.1 www.gredice.test vrt.gredice.test farma.gredice.test app.gredice.test api.gredice.test
 ```
 
