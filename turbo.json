@@ -41,6 +41,12 @@
             "outputs": [
                 "libs/flags/**"
             ]
+        },
+        "generate:models-types": {
+            "cache": false,
+            "outputs": [
+                "packages/game/src/models/GameAssets.tsx"
+            ]
         }
     }
 }

@@ -8,7 +8,9 @@
         "db-generate": "turbo db-generate",
         "db-push": "turbo db-push",
         "regenerate": "turbo regenerate",
-        "test": "turbo test"
+        "test": "turbo test",
+        "generate:models-types": "turbo generate:models-types",
+        "generate:game-assets": "node ./scripts/generate-game-assets.mjs"
     },
     "devDependencies": {
         "turbo": "2.5.8",

@@ -21,11 +21,8 @@ Gredice is a Turborepo monorepo that powers the entire Gredice platform. It incl
   - [API reference](#api-reference)
 - [Database migrations](#database-migrations)
 - [Assets workflow](#assets-workflow)
-  - [Regenerating the game assets GLB file](#regenerating-the-game-assets-glb-file)
-  - [Adding a new entity](#adding-a-new-entity)
-- [Specification Driven Development](#specification-driven-development)
-  - [Creating a new feature](#creating-a-new-feature)
-  - [What we changed from default Spec Kit behavior](#what-we-changed-from-default-spec-kit-behavior)
+  - [Regenerating game assets](#regenerating-game-assets)
+  - [Adding a new entity model](#adding-a-new-entity-model)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -73,7 +70,7 @@ Running `pnpm dev` automatically starts a Dockerized Caddy reverse proxy so that
 
 Add the following entry to your hosts file (e.g. `/etc/hosts` on macOS/Linux or `C:\Windows\System32\drivers\etc\hosts` on Windows) so the domains resolve to your machine:
 
-```
+```text
 127.0.0.1 www.gredice.test vrt.gredice.test farma.gredice.test app.gredice.test api.gredice.test
 ```
 
@@ -139,19 +136,57 @@ These commands leverage the monorepo's Turbo tasks to execute the appropriate mi
 
 Coordinate with teammates before editing the shared game asset files. Only one person should export changes at a time to avoid conflicting updates.
 
-### Regenerating the game assets GLB file
+### Regenerating game assets
 
-Run the following command in the project `assets/` directory:
+After updating the `GameAssets.blend` file in the `assets/` directory, regenerate both the GLB file and TypeScript types by running this command from the project root:
 
 ```bash
-./export.sh
+pnpm generate:game-assets
 ```
 
-This generates a new `game-assets.glb` file in `apps/garden/public/assets/models`.
+This command does the following:
 
-### Adding a new entity
+1. Exports `GameAssets.blend` to `apps/garden/public/assets/models/GameAssets.glb` using Blender
+2. Generates TypeScript types in `packages/game/src/models/GameAssets.tsx` using gltfjsx
+3. Applies linting and formatting fixes to ensure the generated code is error-free
 
-Use [https://gltf.pmnd.rs/](https://gltf.pmnd.rs/) to convert GLTF assets into Three.js compatible components before integrating them into the project.
+**Prerequisites**: This command requires [Blender](https://www.blender.org/download/) to be installed at the default location for your platform:
+
+- **macOS**: `/Applications/Blender.app`
+- **Windows**: `C:\Program Files\Blender Foundation\Blender 4.5\blender.exe`
+- **Linux/other**: Update the path in `assets/export.sh`
+
+The command automatically detects your platform and uses the appropriate export script (`export.ps1` on Windows, `export.sh` on Unix-like systems).
+
+### Manual steps (alternative)
+
+If you need to run the steps separately:
+
+1. **Export the GLB file** - Run from the `assets/` directory:
+
+   **Unix-like systems (macOS, Linux):**
+
+   ```bash
+   ./export.sh
+   ```
+
+   **Windows:**
+
+   ```powershell
+   .\export.ps1
+   ```
+
+2. **Generate TypeScript types** - Run from the project root:
+
+   ```bash
+   pnpm generate:models-types
+   ```
+
+### Adding a new entity model
+
+We use [https://gltf.pmnd.rs/](https://gltf.pmnd.rs/) to convert GLTF assets into Three.js compatible components before integrating them into the project.
+
+When adding new models to `GameAssets.blend`, run `pnpm generate:game-assets` to update the GLB export and TypeScript types.
 
 ## Contributing
 
