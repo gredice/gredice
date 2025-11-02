@@ -1,19 +1,21 @@
 #!/usr/bin/env node
 
 /**
- * Post-processes gltfjsx output to fix TypeScript and linting issues
+ * Post-processes gltfjsx output to fix TypeScript issues
  * This script:
- * - Converts regular imports to type imports where appropriate
- * - Removes unused React import
+ * - Runs biome formatting first to handle structural fixes
+ * - Converts regular imports to type imports
+ * - Exports GLTFResult type
  * - Fixes JSX namespace references
- * - Removes GLTFAction[] from animations (not used in our setup)
- * - Fixes type assertions to use 'as unknown as' pattern
- * - Adds semicolons for consistency
+ * - Removes unused GLTFAction[] animations
+ * - Fixes type assertions
+ * - Runs biome again for final cleanup
  */
 
+import { execSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -28,35 +30,55 @@ const targetFile = join(
     'GameAssets.tsx',
 );
 
+const gamePackageDir = join(__dirname, '..', 'packages', 'game');
+
+function runBiome(message) {
+    try {
+        execSync(
+            'pnpm biome check --write --unsafe ./src/models/GameAssets.tsx',
+            {
+                cwd: gamePackageDir,
+                stdio: 'inherit',
+            },
+        );
+        console.log(`✅ ${message}`);
+    } catch (error) {
+        console.warn(`⚠️  Biome had issues (non-fatal): ${message}`);
+    }
+}
+
 async function fixGltfjsxOutput() {
     try {
+        // Step 1: Run biome first to handle formatting, semicolons, etc.
+        console.log('🔧 Step 1: Running biome for initial formatting...');
+        runBiome('Initial biome formatting complete');
+
+        // Step 2: Apply TypeScript-specific fixes
+        console.log('\n🔧 Step 2: Applying TypeScript fixes...');
         let content = await readFile(targetFile, 'utf-8');
 
-        // Fix imports - convert to type imports
+        // Convert to type imports
         content = content.replace(
-            /^import \* as THREE from 'three'$/m,
+            /^import \* as THREE from 'three';$/m,
             "import type * as THREE from 'three';",
         );
         content = content.replace(
-            /^import { GLTF } from 'three-stdlib'$/m,
+            /^import { GLTF } from 'three-stdlib';$/m,
             "import type { GLTF } from 'three-stdlib';",
         );
 
-        // Add missing semicolons to imports
-        content = content.replace(
-            /^(import .+ from '.+')$/gm,
-            '$1;',
-        );
-
-        // Remove unused React import (if it exists)
+        // Remove unused React import if present
         content = content.replace(/^import React from 'react';\n/m, '');
         content = content.replace(/^import type React from 'react';\n/m, '');
 
         // Remove GLTFAction[] animations property (not used)
-        content = content.replace(/\s+animations: GLTFAction\[\]\n/m, '\n');
+        content = content.replace(/\s+animations: GLTFAction\[\];?\n/m, '\n');
 
         // Export GLTFResult type
-        content = content.replace(/^type GLTFResult = /m, 'export type GLTFResult = ');
+        content = content.replace(
+            /^type GLTFResult = /m,
+            'export type GLTFResult = ',
+        );
 
         // Fix JSX namespace reference
         content = content.replace(
@@ -66,7 +88,7 @@ async function fixGltfjsxOutput() {
 
         // Add React type import if we're using React.JSX namespace
         if (content.includes('React.JSX')) {
-            const importIndex = content.indexOf("import { useGLTF }");
+            const importIndex = content.indexOf('import { useGLTF }');
             if (importIndex !== -1) {
                 content = `${content.slice(0, importIndex)}import type React from 'react';\n${content.slice(importIndex)}`;
             }
@@ -74,28 +96,18 @@ async function fixGltfjsxOutput() {
 
         // Fix type assertion
         content = content.replace(
-            / as GLTFResult$/m,
+            / as GLTFResult/m,
             ' as unknown as GLTFResult',
         );
 
-        // Ensure semicolons
-        content = content.replace(/^(\}\n)$/m, '};\n');
-        content = content.replace(/useGLTF\.preload\('\/GameAssets\.glb'\)$/m, "useGLTF.preload('/GameAssets.glb');");
-
         await writeFile(targetFile, content, 'utf-8');
-        console.log('✅ Successfully fixed GameAssets.tsx');
+        console.log('✅ TypeScript fixes applied');
 
-        // Run biome to apply linting fixes
-        const { execSync } = await import('node:child_process');
-        try {
-            execSync('pnpm biome check --write --unsafe ./src/models/GameAssets.tsx', {
-                cwd: join(__dirname, '..', 'packages', 'game'),
-                stdio: 'inherit',
-            });
-            console.log('✅ Applied biome linting fixes');
-        } catch (biomeError) {
-            console.warn('⚠️  Biome linting had issues (non-fatal)');
-        }
+        // Step 3: Run biome again for final cleanup
+        console.log('\n🔧 Step 3: Running biome for final cleanup...');
+        runBiome('Final biome formatting complete');
+
+        console.log('\n✅ Successfully fixed GameAssets.tsx');
     } catch (error) {
         console.error('❌ Error fixing gltfjsx output:', error);
         process.exit(1);
