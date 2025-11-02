@@ -16,7 +16,7 @@
         "@gredice/storage": "workspace:*"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.3.1",
+        "@biomejs/biome": "2.3.2",
         "@types/node": "24.9.2",
         "typescript": "5.9.3"
     }
