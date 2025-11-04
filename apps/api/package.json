@@ -18,7 +18,7 @@
     },
     "dependencies": {
         "@date-fns/tz": "1.4.1",
-        "@hono/mcp": "0.1.4",
+        "@hono/mcp": "0.1.5",
         "@hono/standard-validator": "0.1.5",
         "@modelcontextprotocol/sdk": "1.20.2",
         "@scalar/api-reference-react": "0.8.1",

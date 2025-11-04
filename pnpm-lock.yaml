@@ -25,8 +25,8 @@ importers:
         specifier: 1.4.1
         version: 1.4.1
       '@hono/mcp':
-        specifier: 0.1.4
-        version: 0.1.4(@modelcontextprotocol/sdk@1.20.2)(hono@4.10.4)
+        specifier: 0.1.5
+        version: 0.1.5(@modelcontextprotocol/sdk@1.20.2)(hono@4.10.4)
       '@hono/standard-validator':
         specifier: 0.1.5
         version: 0.1.5(@standard-schema/spec@1.0.0)(hono@4.10.4)
@@ -2204,8 +2204,8 @@ packages:
     peerDependencies:
       vue: ^3.2.0
 
-  '@hono/mcp@0.1.4':
-    resolution: {integrity: sha512-OOMZCXaCcKw6MZoXJH1caO1FAPjJoTKRVstgzRVE8GJ/LMXvm/3OTynZYex0b5NYdMQRemd+FUjdCcYkH1pxMQ==}
+  '@hono/mcp@0.1.5':
+    resolution: {integrity: sha512-q6Yurx9VUwVEpqnwVXtzIYaq4kgQgWWq9lYLM7NFS2W0sg1RzL+RdKh6jO4/dGyvBLKrahPd2v+NC6rr0XWBvQ==}
     peerDependencies:
       '@modelcontextprotocol/sdk': ^1.12.0
       hono: '>=4.0.0'
@@ -9994,7 +9994,7 @@ snapshots:
       '@tanstack/vue-virtual': 3.13.12(vue@3.5.22(typescript@5.9.3))
       vue: 3.5.22(typescript@5.9.3)
 
-  '@hono/mcp@0.1.4(@modelcontextprotocol/sdk@1.20.2)(hono@4.10.4)':
+  '@hono/mcp@0.1.5(@modelcontextprotocol/sdk@1.20.2)(hono@4.10.4)':
     dependencies:
       '@modelcontextprotocol/sdk': 1.20.2
       hono: 4.10.4
