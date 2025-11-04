@@ -110,8 +110,16 @@ export function RaisedBedFieldSuggestions({
     const cartPlantItems = cartItems?.filter(
         (item) => item.entityTypeName === 'plantSort' && item.status === 'new',
     );
-    if (raisedBed.fields.length + (cartPlantItems?.length ?? 0) >= 9)
+    const plantedFieldsCount = raisedBed.fields.filter(
+        (field) => field.active,
+    ).length;
+    if (plantedFieldsCount + (cartPlantItems?.length ?? 0) >= 9) {
+        console.debug('Skipping planting suggestions: raised bed is full', {
+            plantedFieldsCount,
+            cartPlantItemsCount: cartPlantItems?.length ?? 0,
+        });
         return null;
+    }
 
     const season = getSeasonForDate(currentTime);
 
