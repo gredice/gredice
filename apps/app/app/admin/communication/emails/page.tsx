@@ -35,6 +35,20 @@ function buildStatusHref(status: StatusOption) {
     return `${KnownPages.CommunicationEmails}?${search}` as const;
 }
 
+function buildPageHref(page: number, status?: EmailStatus) {
+    const params = new URLSearchParams();
+    if (status) {
+        params.set('status', status);
+    }
+    if (page > 1) {
+        params.set('page', page.toString());
+    }
+    const search = params.toString();
+    return search
+        ? `${KnownPages.CommunicationEmails}?${search}`
+        : KnownPages.CommunicationEmails;
+}
+
 function formatRecipients(
     addresses: { address: string; displayName?: string | null }[],
 ) {
@@ -42,6 +56,8 @@ function formatRecipients(
         .map((recipient) => recipient.displayName ?? recipient.address)
         .join(', ');
 }
+
+const ITEMS_PER_PAGE = 50;
 
 export default async function EmailsPage({
     searchParams,
@@ -56,9 +72,16 @@ export default async function EmailsPage({
     const selectedStatus =
         statusParam && isEmailStatus(statusParam) ? statusParam : undefined;
 
+    const pageParam = typeof params.page === 'string' ? params.page : undefined;
+    const currentPage = pageParam
+        ? Math.max(1, Number.parseInt(pageParam, 10))
+        : 1;
+    const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
     const emails = await getEmailMessages({
         status: selectedStatus,
-        limit: 200,
+        limit: ITEMS_PER_PAGE,
+        offset,
     });
 
     return (
@@ -230,6 +253,28 @@ export default async function EmailsPage({
                     </Table>
                 </CardOverflow>
             </Card>
+
+            {/* Pagination Controls */}
+            {emails.length === ITEMS_PER_PAGE && (
+                <Row spacing={2} className="justify-center items-center">
+                    {currentPage > 1 && (
+                        <Link
+                            href={buildPageHref(
+                                currentPage - 1,
+                                selectedStatus,
+                            )}
+                        >
+                            <Chip className="cursor-pointer">← Prethodna</Chip>
+                        </Link>
+                    )}
+                    <Typography level="body2" className="text-muted-foreground">
+                        Stranica {currentPage}
+                    </Typography>
+                    <Link href={buildPageHref(currentPage + 1, selectedStatus)}>
+                        <Chip className="cursor-pointer">Sljedeća →</Chip>
+                    </Link>
+                </Row>
+            )}
         </Stack>
     );
 }

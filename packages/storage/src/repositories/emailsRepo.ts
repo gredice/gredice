@@ -3,10 +3,10 @@ import 'server-only';
 import { desc, eq } from 'drizzle-orm';
 import { storage } from '..';
 import {
-    emailMessages,
     type EmailLogAttachment,
     type EmailLogRecipients,
     type EmailStatus,
+    emailMessages,
     type InsertEmailMessage,
     type SelectEmailMessage,
 } from '../schema';
@@ -93,19 +93,24 @@ export async function updateEmailMessageLog(
 
 export function getEmailMessages({
     limit = 100,
+    offset = 0,
     status,
 }: {
     limit?: number;
+    offset?: number;
     status?: EmailStatus;
 } = {}): Promise<SelectEmailMessage[]> {
     return storage().query.emailMessages.findMany({
         where: status ? eq(emailMessages.status, status) : undefined,
         orderBy: desc(emailMessages.createdAt),
         limit,
+        offset,
     });
 }
 
-export function getEmailMessage(id: number): Promise<SelectEmailMessage | undefined> {
+export function getEmailMessage(
+    id: number,
+): Promise<SelectEmailMessage | undefined> {
     return storage().query.emailMessages.findFirst({
         where: eq(emailMessages.id, id),
     });
