@@ -78,11 +78,15 @@ export default async function EmailsPage({
         : 1;
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
-    const emails = await getEmailMessages({
+    // Fetch one extra item to check if there are more pages
+    const emailsResult = await getEmailMessages({
         status: selectedStatus,
-        limit: ITEMS_PER_PAGE,
+        limit: ITEMS_PER_PAGE + 1,
         offset,
     });
+
+    const hasMorePages = emailsResult.length > ITEMS_PER_PAGE;
+    const emails = emailsResult.slice(0, ITEMS_PER_PAGE);
 
     return (
         <Stack spacing={2}>
@@ -255,7 +259,7 @@ export default async function EmailsPage({
             </Card>
 
             {/* Pagination Controls */}
-            {emails.length === ITEMS_PER_PAGE && (
+            {(currentPage > 1 || hasMorePages) && (
                 <Row spacing={2} className="justify-center items-center">
                     {currentPage > 1 && (
                         <Link
@@ -270,9 +274,16 @@ export default async function EmailsPage({
                     <Typography level="body2" className="text-muted-foreground">
                         Stranica {currentPage}
                     </Typography>
-                    <Link href={buildPageHref(currentPage + 1, selectedStatus)}>
-                        <Chip className="cursor-pointer">Sljedeća →</Chip>
-                    </Link>
+                    {hasMorePages && (
+                        <Link
+                            href={buildPageHref(
+                                currentPage + 1,
+                                selectedStatus,
+                            )}
+                        >
+                            <Chip className="cursor-pointer">Sljedeća →</Chip>
+                        </Link>
+                    )}
                 </Row>
             )}
         </Stack>
