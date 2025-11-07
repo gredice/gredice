@@ -717,6 +717,9 @@ importers:
       '@azure/communication-email':
         specifier: 1.1.0
         version: 1.1.0
+      '@gredice/storage':
+        specifier: workspace:*
+        version: link:../storage
       '@react-email/components':
         specifier: 0.5.7
         version: 0.5.7(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
