@@ -4,7 +4,9 @@ import {
     EmailClient,
     type EmailMessage,
     KnownEmailSendStatus,
+    type EmailSendResponse,
 } from '@azure/communication-email';
+import type { OperationState } from '@azure/core-lro';
 import {
     createEmailMessageLog,
     updateEmailMessageLog,
@@ -139,6 +141,19 @@ function buildAttachmentMetadata(
     }));
 }
 
+function getOperationStateId(
+    state: OperationState<EmailSendResponse>,
+): string | null {
+    if ('id' in state) {
+        const id = state.id;
+        if (typeof id === 'string') {
+            return id;
+        }
+    }
+
+    return null;
+}
+
 export type EmailSendAttachment = {
     name: string;
     contentType: string;
@@ -233,10 +248,11 @@ export async function sendEmail({
     try {
         const poller = await client.beginSend(azureMessage);
         const operationState = poller.getOperationState();
+        const operationStateId = getOperationStateId(operationState);
 
         await updateEmailMessageLog(emailLog.id, {
             status: 'sending',
-            providerMessageId: operationState.id ?? null,
+            providerMessageId: operationStateId,
             providerStatus: operationState.status ?? null,
             lastAttemptAt: new Date(),
         });
@@ -247,7 +263,7 @@ export async function sendEmail({
         await updateEmailMessageLog(emailLog.id, {
             status: finalStatus,
             providerStatus: response.status,
-            providerMessageId: response.id ?? operationState.id ?? null,
+            providerMessageId: response.id ?? operationStateId ?? null,
             sentAt: finalStatus === 'sent' ? new Date() : null,
             completedAt: new Date(),
             errorCode: response.error?.code ?? null,
