@@ -29,6 +29,7 @@ import {
     Hammer,
     Home,
     Inbox,
+    Mail,
     Map as MapIcon,
     Settings,
     ShoppingCart,
@@ -328,6 +329,12 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         href={KnownPages.CommunicationInbox}
                         label="Sandučić"
                         icon={<Inbox className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                    <NavItem
+                        href={KnownPages.CommunicationEmails}
+                        label="Poslani emailovi"
+                        icon={<Mail className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem

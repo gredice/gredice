@@ -36,6 +36,11 @@ export async function submitEmailForm(
             previewText: subject,
         }),
         attachments: emailAttachments,
+        templateName: 'admin-markdown',
+        messageType: 'admin-manual',
+        metadata: {
+            form: 'communication-inbox',
+        },
     });
 
     return {
