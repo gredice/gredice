@@ -24,6 +24,8 @@ export async function sendEmailVerify(
         to,
         subject: 'Gredice - potvrda email adrese',
         template: EmailVerifyEmailTemplate(config),
+        templateName: 'account-email-verify',
+        messageType: 'account',
     });
 }
 
@@ -36,6 +38,8 @@ export async function sendResetPassword(
         to,
         subject: 'Gredice - promjena zaporke',
         template: ResetPasswordEmailTemplate(config),
+        templateName: 'account-reset-password',
+        messageType: 'account',
     });
 }
 
@@ -48,6 +52,8 @@ export async function sendWelcome(
         to,
         subject: 'Dobrodošli u Gredice',
         template: WelcomeEmailTemplate(config),
+        templateName: 'account-welcome',
+        messageType: 'account',
     });
 }
 
@@ -60,6 +66,8 @@ export async function sendNotificationsBulk(
         to,
         subject: 'Gredice - nove obavijesti',
         template: EmailNotificationsBulkTemplate(config),
+        templateName: 'notifications-bulk',
+        messageType: 'notifications',
     });
 }
 
@@ -72,5 +80,7 @@ export async function sendDeliverySurvey(
         to,
         subject: 'Gredice - podijeli dojam o dostavama',
         template: DeliverySurveyEmailTemplate(config),
+        templateName: 'delivery-survey',
+        messageType: 'survey',
     });
 }

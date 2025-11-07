@@ -1,5 +1,6 @@
 export * from './cmsSchema';
 export * from './deliverySchema';
+export * from './emailSchema';
 export * from './eventsSchema';
 export * from './farmsSchema';
 export * from './feedbackSchema';

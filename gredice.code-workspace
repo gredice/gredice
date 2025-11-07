@@ -85,6 +85,7 @@
 				}
 			},
 			"inputs": []
-		}
+		},
+		"chatgpt.runCodexInWindowsSubsystemForLinux": true
 	}
 }
