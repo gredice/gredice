@@ -189,7 +189,7 @@ export async function sendEmail({
 }: SendEmailParams) {
     const toRecipients = normalizeRecipients(to);
     if (toRecipients.length === 0) {
-        throw new Error('At least one recipient must be provided');
+        throw new Error('At least one recipient must be provided in the "to" field');
     }
 
     const ccRecipients = normalizeRecipients(cc);
