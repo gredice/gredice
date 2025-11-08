@@ -89,6 +89,10 @@ const sectionsData: SectionData[] = [
                         href: KnownPages.LegalCookies,
                     },
                     {
+                        label: 'Status sustava',
+                        href: 'https://status.gredice.com/',
+                    },
+                    {
                         label: 'Licenca izvornog koda',
                         href: KnownPages.LegalLicense,
                     },
