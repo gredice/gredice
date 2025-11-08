@@ -1,3 +1,4 @@
+import { withSentryConfig } from '@sentry/nextjs';
 import vercelToolbar from '@vercel/toolbar/plugins/next';
 import type { NextConfig } from 'next';
 import { withAxiom } from 'next-axiom';
@@ -39,4 +40,7 @@ const nextConfig: NextConfig = {
 
 const withVercelToolbar = vercelToolbar();
 
-export default withVercelToolbar(withAxiom(nextConfig));
+export default withSentryConfig(withVercelToolbar(withAxiom(nextConfig)), {
+    disableServerWebpackPlugin: true,
+    disableClientWebpackPlugin: true,
+});
