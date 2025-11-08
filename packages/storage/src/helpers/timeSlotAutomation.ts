@@ -25,7 +25,10 @@ export async function autoCloseUpcomingSlots(
         .set({ status: TimeSlotStatuses.CLOSED })
         .where(
             and(
-                inArray(timeSlots.type, [DeliveryModes.DELIVERY, DeliveryModes.PICKUP]),
+                inArray(timeSlots.type, [
+                    DeliveryModes.DELIVERY,
+                    DeliveryModes.PICKUP,
+                ]),
                 eq(timeSlots.status, TimeSlotStatuses.SCHEDULED),
                 gte(timeSlots.startAt, now),
                 lt(timeSlots.startAt, cutoffTime),

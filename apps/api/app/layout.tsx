@@ -1,6 +1,5 @@
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
-import { AxiomWebVitals } from 'next-axiom';
 import './globals.css';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import Head from 'next/head';
@@ -41,7 +40,6 @@ export default function RootLayout({
                     {children}
                 </Stack>
                 <Analytics />
-                <AxiomWebVitals />
             </body>
         </html>
     );

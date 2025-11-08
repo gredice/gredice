@@ -1,6 +1,5 @@
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
-import { AxiomWebVitals } from 'next-axiom';
 import './globals.css';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import Head from 'next/head';
@@ -35,7 +34,6 @@ export default function RootLayout({
             <body className="antialiased bg-muted">
                 <ClientAppProvider>{children}</ClientAppProvider>
                 <Analytics />
-                <AxiomWebVitals />
                 {shouldInjectToolbar && <VercelToolbar />}
             </body>
         </html>

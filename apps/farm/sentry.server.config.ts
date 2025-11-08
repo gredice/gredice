@@ -1,0 +1,11 @@
+import { initServerObservability } from '@gredice/observability';
+
+const BETTERSTACK_DSN =
+    process.env.BETTERSTACK_DSN ??
+    process.env.NEXT_PUBLIC_BETTERSTACK_DSN ??
+    'https://nfQYZvefATRo5ArUMQoTsmtk@eu-nbg-2.betterstackdata.com/1582932';
+
+initServerObservability({
+    dsn: BETTERSTACK_DSN,
+    tracesSampleRate: 1.0,
+});

@@ -24,11 +24,13 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.3.3",
+        "@gredice/observability": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/ui": "workspace:*",
         "@mdxeditor/editor": "3.48.0",
         "@playwright/experimental-ct-react": "1.56.1",
         "@playwright/test": "1.56.1",
+        "@sentry/nextjs": "10.23.0",
         "@signalco/auth-client": "0.3.0",
         "@signalco/auth-server": "0.5.3",
         "@signalco/hooks": "0.2.1",
@@ -44,7 +46,6 @@
         "@types/react-dom": "19.2.2",
         "@vercel/analytics": "1.5.0",
         "babel-plugin-react-compiler": "19.1.0-rc.3",
-        "next-axiom": "1.9.3",
         "postcss": "8.5.6",
         "tailwindcss": "3.4.18",
         "typescript": "5.9.3"

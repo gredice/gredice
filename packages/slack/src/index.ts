@@ -10,9 +10,7 @@ export interface SlackPostMessageInput {
     unfurlMedia?: boolean;
 }
 
-export type SlackPostMessageSkippedReason =
-    | 'missing_token'
-    | 'missing_channel';
+export type SlackPostMessageSkippedReason = 'missing_token' | 'missing_channel';
 
 export interface SlackPostMessageResult {
     ok: boolean;

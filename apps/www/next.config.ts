@@ -1,7 +1,6 @@
 import { type SentryBuildOptions, withSentryConfig } from '@sentry/nextjs';
 import vercelToolbar from '@vercel/toolbar/plugins/next';
 import type { NextConfig } from 'next';
-import { withAxiom } from 'next-axiom';
 
 const nextConfig: NextConfig = {
     reactStrictMode: true,
@@ -42,7 +41,4 @@ const sentryConfig: SentryBuildOptions = {};
 
 const withVercelToolbar = vercelToolbar();
 
-export default withSentryConfig(
-    withVercelToolbar(withAxiom(nextConfig)),
-    sentryConfig,
-);
+export default withSentryConfig(withVercelToolbar(nextConfig), sentryConfig);
