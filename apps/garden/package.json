@@ -17,6 +17,7 @@
     },
     "dependencies": {
         "@flags-sdk/hypertune": "0.3.1",
+        "@sentry/nextjs": "10.23.0",
         "@vercel/toolbar": "0.1.41",
         "flags": "4.0.1",
         "hypertune": "2.10.0",
@@ -30,6 +31,7 @@
         "@biomejs/biome": "2.3.3",
         "@gredice/client": "workspace:*",
         "@gredice/game": "workspace:*",
+        "@gredice/observability": "workspace:*",
         "@gredice/ui": "workspace:*",
         "@playwright/experimental-ct-react": "1.56.1",
         "@playwright/test": "1.56.1",
@@ -49,7 +51,6 @@
         "@types/react-dom": "19.2.2",
         "@vercel/analytics": "1.5.0",
         "babel-plugin-react-compiler": "19.1.0-rc.3",
-        "next-axiom": "1.9.3",
         "postcss": "8.5.6",
         "sass": "1.93.3",
         "tailwindcss": "3.4.18",

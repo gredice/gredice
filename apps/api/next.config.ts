@@ -1,5 +1,5 @@
+import { type SentryBuildOptions, withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
-import { withAxiom } from 'next-axiom';
 
 const nextConfig: NextConfig = {
     reactStrictMode: true,
@@ -24,4 +24,6 @@ const nextConfig: NextConfig = {
     allowedDevOrigins: ['api.gredice.test'],
 };
 
-export default withAxiom(nextConfig);
+const sentryConfig: SentryBuildOptions = {};
+
+export default withSentryConfig(nextConfig, sentryConfig);

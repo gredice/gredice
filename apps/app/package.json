@@ -22,6 +22,7 @@
         "@dnd-kit/utilities": "3.2.2",
         "@gredice/transactional": "workspace:*",
         "@react-email/components": "0.5.7",
+        "@sentry/nextjs": "10.23.0",
         "@vercel/blob": "2.0.0",
         "hypertune": "2.10.0",
         "next": "16.0.1",
@@ -41,6 +42,7 @@
         "@gredice/fiscalization": "workspace:*",
         "@gredice/js": "workspace:*",
         "@gredice/notifications": "workspace:*",
+        "@gredice/observability": "workspace:*",
         "@gredice/signalco": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/stripe": "workspace:*",
@@ -64,7 +66,6 @@
         "@vercel/analytics": "1.5.0",
         "@zxing/library": "0.21.3",
         "babel-plugin-react-compiler": "19.1.0-rc.3",
-        "next-axiom": "1.9.3",
         "postcss": "8.5.6",
         "tailwindcss": "3.4.18",
         "typescript": "5.9.3"
