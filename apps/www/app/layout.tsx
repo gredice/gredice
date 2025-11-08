@@ -1,6 +1,5 @@
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
-import { AxiomWebVitals } from 'next-axiom';
 import './globals.css';
 import { PageNav } from '@signalco/ui/Nav';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
@@ -103,7 +102,6 @@ export default async function RootLayout({
                         <Footer />
                     </Stack>
                     <Analytics />
-                    <AxiomWebVitals />
                     {shouldInjectToolbar && <VercelToolbar />}
                 </body>
             </ClientAppProvider>
