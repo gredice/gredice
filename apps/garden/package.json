@@ -17,7 +17,6 @@
     },
     "dependencies": {
         "@flags-sdk/hypertune": "0.3.1",
-        "@sentry/nextjs": "10.23.0",
         "@vercel/toolbar": "0.1.41",
         "flags": "4.0.1",
         "hypertune": "2.10.0",
@@ -35,6 +34,7 @@
         "@gredice/ui": "workspace:*",
         "@playwright/experimental-ct-react": "1.56.1",
         "@playwright/test": "1.56.1",
+        "@sentry/nextjs": "10.23.0",
         "@signalco/auth-client": "0.3.0",
         "@signalco/auth-server": "0.5.3",
         "@signalco/hooks": "0.2.1",
