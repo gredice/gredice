@@ -1,5 +1,7 @@
 'use client';
 
+import '../../sentry.client.config';
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
 
