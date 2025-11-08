@@ -1,4 +1,4 @@
-import { withSentryConfig } from '@sentry/nextjs';
+import { type SentryBuildOptions, withSentryConfig } from '@sentry/nextjs';
 import vercelToolbar from '@vercel/toolbar/plugins/next';
 import type { NextConfig } from 'next';
 import { withAxiom } from 'next-axiom';
@@ -38,9 +38,11 @@ const nextConfig: NextConfig = {
     allowedDevOrigins: ['www.gredice.test'],
 };
 
+const sentryConfig: SentryBuildOptions = {};
+
 const withVercelToolbar = vercelToolbar();
 
-export default withSentryConfig(withVercelToolbar(withAxiom(nextConfig)), {
-    disableServerWebpackPlugin: true,
-    disableClientWebpackPlugin: true,
-});
+export default withSentryConfig(
+    withVercelToolbar(withAxiom(nextConfig)),
+    sentryConfig,
+);
