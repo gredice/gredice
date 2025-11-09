@@ -19,7 +19,11 @@ export function PlantTips({
             </Typography>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {plant.information?.tip?.map((tip) => (
-                    <Accordion defaultOpen key={tip.header} className="h-fit">
+                    <Accordion
+                        defaultOpen
+                        key={tip.header}
+                        className="h-fit border-tertiary border-b-4"
+                    >
                         <Typography
                             level="h3"
                             className="text-lg"

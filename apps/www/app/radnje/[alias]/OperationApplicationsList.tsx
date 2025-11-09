@@ -27,7 +27,7 @@ export async function OperationApplicationsList({
     if (operation.attributes.application === 'garden') {
         return (
             <div className="py-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                <Card>
+                <Card className="border-tertiary border-b-4">
                     <CardContent noHeader>
                         <Row justifyContent="space-between">
                             <Typography>Dostupno u tvom vrtu</Typography>
@@ -50,7 +50,7 @@ export async function OperationApplicationsList({
     ) {
         return (
             <div className="py-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                <Card>
+                <Card className="border-tertiary border-b-4">
                     <CardContent noHeader>
                         <Row spacing={2}>
                             <BlockImage
@@ -82,6 +82,7 @@ export async function OperationApplicationsList({
                         <Card
                             key={plant.id}
                             href={KnownPages.Plant(plant.information.name)}
+                            className="border-tertiary border-b-4"
                         >
                             <CardContent noHeader>
                                 <Row spacing={2}>

@@ -39,7 +39,7 @@ export async function PlantsShowcase() {
                 ))}
                 <Link
                     href={KnownPages.Plants}
-                    className="flex flex-col justify-center items-center hover:border-muted-foreground/50 hover:bg-white/30 bg-white/70 rounded-lg border border-dashed p-4 transition-all"
+                    className="flex flex-col justify-center items-center hover:border-muted-foreground/50 hover:bg-white/30 bg-white/70 rounded-lg border border-tertiary border-dashed p-4 transition-all"
                 >
                     <Row spacing={1}>
                         <span>Sve biljke</span>

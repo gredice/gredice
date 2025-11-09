@@ -9,7 +9,7 @@ export function ItemCard({
 }: PropsWithChildren<{ label: string | ReactElement; href: Route | URL }>) {
     return (
         <Card
-            className="overflow-hidden shadow-lg hover:shadow-xl transition-all group"
+            className="overflow-hidden hover:shadow-xl transition-all group border-tertiary border-b-4"
             href={href as string}
         >
             <CardOverflow className="p-2 sm:p-4 md:p-6 aspect-square">

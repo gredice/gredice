@@ -1,5 +1,6 @@
 import { client } from '@gredice/client';
 import { LocalDateTime, TimeRange } from '@gredice/ui/LocalDateTime';
+import { Timer } from '@signalco/ui-icons';
 import {
     Card,
     CardContent,
@@ -108,23 +109,32 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
 
     if (Object.keys(groupedSlots).length === 0) {
         return (
-            <Card className="p-6">
-                <Stack spacing={2} className="text-center">
-                    <Typography level="h6">Nema dostupnih termina</Typography>
-                    <Typography level="body2" className="text-muted-foreground">
-                        Trenutno nema dostupnih termina za{' '}
-                        {type === 'delivery' ? 'dostavu' : 'osobno preuzimanje'}{' '}
-                        u sljedećih 14 dana.
-                    </Typography>
-                </Stack>
+            <Card className="p-6 border-tertiary border-b-4">
+                <CardContent noHeader>
+                    <Stack spacing={2} className="text-center">
+                        <Typography level="h6">
+                            Nema dostupnih termina
+                        </Typography>
+                        <Typography
+                            level="body2"
+                            className="text-muted-foreground"
+                        >
+                            Trenutno nema dostupnih termina za{' '}
+                            {type === 'delivery'
+                                ? 'dostavu'
+                                : 'osobno preuzimanje'}{' '}
+                            u sljedećih 14 dana.
+                        </Typography>
+                    </Stack>
+                </CardContent>
             </Card>
         );
     }
 
     return (
-        <Stack spacing={1}>
+        <Stack spacing={2}>
             {Object.entries(groupedSlots).map(([date, dateSlots]) => (
-                <Card key={date}>
+                <Card key={date} className="border-tertiary border-b-4">
                     <CardHeader>
                         <CardTitle>
                             <Typography
@@ -154,10 +164,8 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
                                         className="border rounded-lg p-3 bg-background"
                                     >
                                         <Stack spacing={2}>
-                                            <Row
-                                                spacing={2}
-                                                className="items-center"
-                                            >
+                                            <Row spacing={1}>
+                                                <Timer className="size-5 shrink-0 text-tertiary-foreground" />
                                                 <Typography
                                                     level="body2"
                                                     semiBold
@@ -168,9 +176,6 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
                                                         timeOnly
                                                     />
                                                 </Typography>
-                                                <Chip color="success" size="sm">
-                                                    Dostupno
-                                                </Chip>
                                             </Row>
                                             {slot.location &&
                                                 slot.type === 'pickup' && (
@@ -219,7 +224,7 @@ export default async function DeliverySlotsPage() {
                     dva dana mogu biti ograničeni.
                 </Typography>
 
-                <Card className="w-fit p-4 pt-6 pr-6">
+                <Card className="w-fit p-4 pr-12 border-tertiary border-b-4">
                     <CardHeader>
                         <CardTitle>💡 Kako rezervirati termin?</CardTitle>
                     </CardHeader>

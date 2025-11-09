@@ -12,7 +12,10 @@ export function OperationCard({
     operation: Omit<OperationData, 'entityType' | 'createdAt' | 'updatedAt'>;
 }) {
     return (
-        <Card href={KnownPages.Operation(operation.information.label)}>
+        <Card
+            href={KnownPages.Operation(operation.information.label)}
+            className="border-tertiary border-b-4"
+        >
             <CardContent noHeader>
                 <Row justifyContent="space-between" spacing={1}>
                     <Row spacing={2}>

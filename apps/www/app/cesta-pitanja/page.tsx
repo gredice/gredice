@@ -58,7 +58,7 @@ export default async function FaqPage() {
                                 .map((item) => (
                                     <Accordion
                                         key={item.information.name}
-                                        className="h-min"
+                                        className="h-min border-tertiary border-b-4"
                                     >
                                         <Typography className="px-3" semiBold>
                                             {item.information.header}
