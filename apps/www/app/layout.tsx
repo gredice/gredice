@@ -91,9 +91,9 @@ export default async function RootLayout({
                         >
                             <NavigatingButton
                                 href={KnownPages.GardenApp}
-                                className="bg-green-800 hover:bg-green-700"
+                                className="bg-green-800 hover:bg-green-700 rounded-full"
                             >
-                                Vrt
+                                Moj vrt
                             </NavigatingButton>
                         </PageNav>
                         <main className="mt-16 relative">

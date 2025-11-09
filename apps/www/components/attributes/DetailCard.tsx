@@ -44,7 +44,7 @@ export function AttributeCard({
     }
 
     return (
-        <Card className="flex items-center gap-1 justify-between">
+        <Card className="flex items-center gap-1 justify-between border-tertiary border-b-4">
             <Row spacing={2}>
                 <div className="shrink-0 ml-2">{icon}</div>
                 <Stack spacing={subheader ? 0.5 : 0}>

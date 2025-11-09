@@ -53,6 +53,7 @@ async function PlantSortsListContent({
                                 basePlantName,
                                 sort.information.name,
                             )}
+                            className="border-tertiary border-b-4"
                         >
                             <Row spacing={2}>
                                 <AiWatermark
