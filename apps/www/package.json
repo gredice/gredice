@@ -20,7 +20,7 @@
         "@flags-sdk/hypertune": "0.3.1",
         "@vercel/kv": "3.0.0",
         "@vercel/toolbar": "0.1.41",
-        "flags": "4.0.1",
+        "flags": "4.0.2",
         "hypertune": "2.10.0",
         "next": "16.0.1",
         "react": "19.2.0",
