@@ -9,7 +9,7 @@
         "dev": "email dev -p 4001"
     },
     "devDependencies": {
-        "@react-email/preview-server": "4.3.2",
+        "@react-email/preview-server": "5.0.0",
         "@types/node": "24.10.0",
         "@types/react": "19.2.2",
         "typescript": "5.9.3"
