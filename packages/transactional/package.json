@@ -18,6 +18,6 @@
         "@gredice/js": "workspace:*",
         "@react-email/components": "1.0.0",
         "react": "19.2.0",
-        "react-email": "4.3.2"
+        "react-email": "5.0.0"
     }
 }
