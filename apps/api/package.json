@@ -20,7 +20,7 @@
         "@date-fns/tz": "1.4.1",
         "@hono/mcp": "0.1.5",
         "@hono/standard-validator": "0.1.5",
-        "@modelcontextprotocol/sdk": "1.21.0",
+        "@modelcontextprotocol/sdk": "1.21.1",
         "@scalar/api-reference-react": "0.8.4",
         "@standard-community/standard-json": "0.3.5",
         "@standard-community/standard-openapi": "0.2.8",
