@@ -1,4 +1,27 @@
-import type { SelectGardenStack, SelectRaisedBed } from '@gredice/storage';
+import {
+    type RaisedBedOrientation,
+    type SelectGardenStack,
+    type SelectRaisedBed,
+    updateRaisedBed,
+} from '@gredice/storage';
+
+type BlockPosition = { x: number; y: number; index: number };
+
+function buildBlockPositionMap(
+    stacks: Pick<SelectGardenStack, 'positionX' | 'positionY' | 'blocks'>[],
+) {
+    const blockPositions = new Map<string, BlockPosition>();
+    for (const stack of stacks) {
+        (stack.blocks ?? []).forEach((blockId, index) => {
+            blockPositions.set(blockId, {
+                x: stack.positionX,
+                y: stack.positionY,
+                index,
+            });
+        });
+    }
+    return blockPositions;
+}
 
 /**
  * Calculates validity of raised beds based on their configuration.
@@ -12,19 +35,7 @@ export function calculateRaisedBedsValidity(
     stacks: Pick<SelectGardenStack, 'positionX' | 'positionY' | 'blocks'>[],
 ): Map<number, boolean> {
     // Map blockId -> position and index
-    const blockPositions = new Map<
-        string,
-        { x: number; y: number; index: number }
-    >();
-    for (const stack of stacks) {
-        stack.blocks.forEach((blockId, index) => {
-            blockPositions.set(blockId, {
-                x: stack.positionX,
-                y: stack.positionY,
-                index,
-            });
-        });
-    }
+    const blockPositions = buildBlockPositionMap(stacks);
 
     // Build adjacency list of raised beds
     const adjacency = new Map<number, number[]>();
@@ -81,4 +92,69 @@ export function calculateRaisedBedsValidity(
     }
 
     return validity;
+}
+
+export function calculateRaisedBedsOrientation(
+    raisedBeds: Pick<SelectRaisedBed, 'id' | 'blockId'>[],
+    stacks: Pick<SelectGardenStack, 'positionX' | 'positionY' | 'blocks'>[],
+): Map<number, RaisedBedOrientation> {
+    const blockPositions = buildBlockPositionMap(stacks);
+    const orientations = new Map<number, RaisedBedOrientation>();
+
+    for (const bed of raisedBeds) {
+        let orientation: RaisedBedOrientation = 'vertical';
+        if (bed.blockId) {
+            const position = blockPositions.get(bed.blockId);
+            if (position) {
+                const hasHorizontalNeighbor = raisedBeds.some((other) => {
+                    if (other.id === bed.id || !other.blockId) {
+                        return false;
+                    }
+                    const neighborPosition = blockPositions.get(other.blockId);
+                    if (!neighborPosition) {
+                        return false;
+                    }
+                    return (
+                        neighborPosition.index === position.index &&
+                        neighborPosition.y === position.y &&
+                        Math.abs(neighborPosition.x - position.x) === 1
+                    );
+                });
+                orientation = hasHorizontalNeighbor ? 'horizontal' : 'vertical';
+            }
+        }
+        orientations.set(bed.id, orientation);
+    }
+
+    return orientations;
+}
+
+export async function updateRaisedBedsOrientation(garden: {
+    id: number;
+    raisedBeds: Pick<SelectRaisedBed, 'id' | 'blockId' | 'orientation'>[];
+    stacks: Pick<SelectGardenStack, 'positionX' | 'positionY' | 'blocks'>[];
+}) {
+    const orientations = calculateRaisedBedsOrientation(
+        garden.raisedBeds,
+        garden.stacks,
+    );
+
+    const updates = garden.raisedBeds
+        .map((raisedBed) => {
+            const orientation = orientations.get(raisedBed.id) ?? 'vertical';
+            if (raisedBed.orientation === orientation) {
+                return null;
+            }
+            return updateRaisedBed({
+                id: raisedBed.id,
+                orientation,
+            });
+        })
+        .filter((promise): promise is Promise<void> => Boolean(promise));
+
+    if (updates.length > 0) {
+        await Promise.all(updates);
+    }
+
+    return orientations;
 }

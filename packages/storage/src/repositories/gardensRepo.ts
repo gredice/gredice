@@ -11,6 +11,7 @@ import {
     gardens,
     type InsertGarden,
     type InsertRaisedBed,
+    type RaisedBedOrientation,
     raisedBeds,
     type UpdateGarden,
     type UpdateGardenBlock,
@@ -299,13 +300,16 @@ export async function deleteGardenStacks(gardenId: number) {
 }
 
 export async function createRaisedBed(
-    raisedBed: Omit<InsertRaisedBed, 'name'>,
+    raisedBed: Omit<InsertRaisedBed, 'name'> & {
+        orientation?: RaisedBedOrientation;
+    },
 ) {
     return (
         await storage()
             .insert(raisedBeds)
             .values({
                 ...raisedBed,
+                orientation: raisedBed.orientation ?? 'vertical',
                 name: generateRaisedBedName(),
             })
             .returning({ id: raisedBeds.id })
