@@ -1,4 +1,3 @@
-import { AiWatermark } from '@gredice/ui/AiWatermark';
 import { slug } from '@signalco/js';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -56,28 +55,21 @@ async function PlantSortsListContent({
                             className="border-tertiary border-b-4"
                         >
                             <Row spacing={2}>
-                                <AiWatermark
-                                    className="size-20 aspect-square"
-                                    reason="Primjer ploda biljke visoke rezolucije bez nedostataka."
-                                    aiPrompt={`Realistic and not perfect image of requested plant on white background. No Text Or Banners. Square image. ${sort.information.plant.information?.name}`}
-                                    aiModel="ChatGPT-4o"
-                                >
-                                    <PlantImage
-                                        plant={{
-                                            image: {
-                                                cover:
-                                                    sort.image?.cover ??
-                                                    sort.information.plant.image
-                                                        ?.cover,
-                                            },
-                                            information: {
-                                                name: sort.information.name,
-                                            },
-                                        }}
-                                        width={72}
-                                        height={72}
-                                    />
-                                </AiWatermark>
+                                <PlantImage
+                                    plant={{
+                                        image: {
+                                            cover:
+                                                sort.image?.cover ??
+                                                sort.information.plant.image
+                                                    ?.cover,
+                                        },
+                                        information: {
+                                            name: sort.information.name,
+                                        },
+                                    }}
+                                    width={72}
+                                    height={72}
+                                />
                                 <Stack className="grow">
                                     <Typography level="h5">
                                         {sort.information.name}

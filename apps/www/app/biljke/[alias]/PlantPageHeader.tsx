@@ -1,6 +1,5 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
-import { AiWatermark } from '@gredice/ui/AiWatermark';
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
 import { SeedTimeInformationBadge } from '@gredice/ui/plants';
 import { slug } from '@signalco/js';
@@ -38,27 +37,21 @@ export function PlantPageHeader({
     return (
         <PageHeader
             visual={
-                <AiWatermark
-                    reason="Primjer ploda biljke visoke rezolucije bez nedostataka."
-                    aiPrompt={`Realistic and not perfect image of requested plant on white background. No Text Or Banners. Square image. ${plant.information.name}`}
-                    aiModel="ChatGPT-4o"
-                >
-                    <PlantImage
-                        plant={{
-                            information: {
-                                name:
-                                    sort?.information?.name ??
-                                    plant.information.name,
-                            },
-                            image: {
-                                cover: sort?.image?.cover ?? plant.image?.cover,
-                            },
-                        }}
-                        preload
-                        width={142}
-                        height={142}
-                    />
-                </AiWatermark>
+                <PlantImage
+                    plant={{
+                        information: {
+                            name:
+                                sort?.information?.name ??
+                                plant.information.name,
+                        },
+                        image: {
+                            cover: sort?.image?.cover ?? plant.image?.cover,
+                        },
+                    }}
+                    preload
+                    width={192}
+                    height={192}
+                />
             }
             header={sort?.information?.name ?? plant.information.name}
             alternativeName={

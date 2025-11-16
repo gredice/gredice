@@ -93,8 +93,8 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
                         visual={
                             <BlockImage
                                 blockName={entity.information.name}
-                                width={142}
-                                height={142}
+                                width={172}
+                                height={172}
                             />
                         }
                         header={entity.information.label}

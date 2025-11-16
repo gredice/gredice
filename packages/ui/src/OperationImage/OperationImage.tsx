@@ -18,14 +18,22 @@ export type OperationImageProps = {
 export function OperationImage({ operation, size }: OperationImageProps) {
     if (!operation.image?.cover?.url) {
         return (
-            <Hammer
-                style={
-                    {
-                        '--imageSize': size ? `${size}px` : '24px',
-                    } as React.CSSProperties
-                }
-                className="size-[--imageSize] shrink-0"
-            />
+            <div
+                style={{
+                    width: size ? `${size}px` : '48px',
+                    height: size ? `${size}px` : '48px',
+                }}
+                className="aspect-square flex items-center justify-center"
+            >
+                <Hammer
+                    style={
+                        {
+                            '--imageSize': size ? `${size / 2}px` : '24px',
+                        } as React.CSSProperties
+                    }
+                    className="size-[--imageSize] shrink-0"
+                />
+            </div>
         );
     }
 

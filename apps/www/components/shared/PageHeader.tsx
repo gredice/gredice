@@ -39,8 +39,8 @@ export function PageHeader({
                 )}
             >
                 {visual && (
-                    <Card className="min-w-48 min-h-48 border-tertiary border-b-4 rounded-none md:rounded-lg -mx-4 md:mx-0 md:size-48">
-                        <CardOverflow className="p-6 flex justify-center">
+                    <Card className="min-w-48 min-h-48 border-tertiary border-b-4 rounded-none md:rounded-lg -mx-4 md:mx-0 md:size-48 overflow-hidden">
+                        <CardOverflow className="flex justify-center">
                             {visual}
                         </CardOverflow>
                     </Card>

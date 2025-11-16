@@ -19,7 +19,7 @@ export function OperationCard({
             <CardContent noHeader>
                 <Row justifyContent="space-between" spacing={1}>
                     <Row spacing={2}>
-                        <OperationImage operation={operation} size={30} />
+                        <OperationImage operation={operation} size={72} />
                         <Stack>
                             <Typography semiBold>
                                 {operation.information.label}
