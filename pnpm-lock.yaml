@@ -227,8 +227,8 @@ importers:
         specifier: 19.2.0
         version: 19.2.0(react@19.2.0)
       react-email:
-        specifier: 5.0.1
-        version: 5.0.1
+        specifier: 5.0.2
+        version: 5.0.2
       recharts:
         specifier: 3.4.1
         version: 3.4.1(@types/react@19.2.3)(react-dom@19.2.0(react@19.2.0))(react-is@17.0.2)(react@19.2.0)(redux@5.0.1)
@@ -745,8 +745,8 @@ importers:
         specifier: 19.2.0
         version: 19.2.0
       react-email:
-        specifier: 5.0.1
-        version: 5.0.1
+        specifier: 5.0.2
+        version: 5.0.2
     devDependencies:
       '@types/node':
         specifier: 24.10.0
@@ -1115,8 +1115,8 @@ importers:
         specifier: 19.2.0
         version: 19.2.0
       react-email:
-        specifier: 5.0.1
-        version: 5.0.1
+        specifier: 5.0.2
+        version: 5.0.2
     devDependencies:
       '@react-email/preview-server':
         specifier: 5.0.2
@@ -7963,8 +7963,8 @@ packages:
     peerDependencies:
       react: ^19.2.0
 
-  react-email@5.0.1:
-    resolution: {integrity: sha512-eSQTfA7CqpiWosOImyMLD9zIhomgr1QOPL2ZCGv4+epGDeJo1v7Do0Yw96Ma7BFgMSsGSO4LGe0gTUYjDujLhw==}
+  react-email@5.0.2:
+    resolution: {integrity: sha512-f4E0ulWy8D5HORl7x/ZSRVW8U0dUxIQ9Yv3sDGV4W/G7y8j6kKNS4lohYtPCLOhA+2i0bfp8O6tIMEhLwuSC3Q==}
     engines: {node: '>=22.0.0'}
     hasBin: true
 
@@ -17854,7 +17854,7 @@ snapshots:
       react: 19.2.0
       scheduler: 0.27.0
 
-  react-email@5.0.1:
+  react-email@5.0.2:
     dependencies:
       '@babel/parser': 7.28.5
       '@babel/traverse': 7.28.5
