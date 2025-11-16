@@ -6,16 +6,16 @@
     "./*": "./src/*/index.ts"
   },
   "devDependencies": {
-    "@types/node": "24.10.0",
-    "@types/react": "19.2.3",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.5",
     "typescript": "5.9.3"
   },
   "dependencies": {
     "@azure/communication-email": "1.1.0",
     "@azure/core-lro": "3.3.1",
     "@gredice/storage": "workspace:*",
-    "@react-email/components": "1.0.0",
+    "@react-email/components": "1.0.1",
     "react": "19.2.0",
-    "react-email": "5.0.2"
+    "react-email": "5.0.4"
   }
 }
