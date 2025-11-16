@@ -182,8 +182,8 @@ importers:
   apps/app:
     dependencies:
       '@aws-sdk/client-s3':
-        specifier: 3.928.0
-        version: 3.928.0
+        specifier: 3.929.0
+        version: 3.929.0
       '@azure/communication-email':
         specifier: 1.1.0
         version: 1.1.0
@@ -693,8 +693,8 @@ importers:
   packages/cdn:
     devDependencies:
       '@aws-sdk/client-s3':
-        specifier: 3.928.0
-        version: 3.928.0
+        specifier: 3.929.0
+        version: 3.929.0
       '@ffmpeg-installer/ffmpeg':
         specifier: 1.1.0
         version: 1.1.0
@@ -981,7 +981,7 @@ importers:
     dependencies:
       '@sentry/nextjs':
         specifier: 10.25.0
-        version: 10.25.0(@opentelemetry/context-async-hooks@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/core@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(next@16.0.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.94.0))(react@19.2.0)(webpack@5.102.1)
+        version: 10.25.0(@opentelemetry/context-async-hooks@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/core@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(next@16.0.1(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.94.0))(react@19.2.0)(webpack@5.102.1)
     devDependencies:
       '@biomejs/biome':
         specifier: 2.3.5
@@ -1234,12 +1234,12 @@ packages:
   '@aws-crypto/util@5.2.0':
     resolution: {integrity: sha512-4RkU9EsI6ZpBve5fseQlGNUWKMa1RLPQ1dnjnQoe07ldfIzcsGb5hC5W0Dm7u423KWzawlrpbjXBrXCEv9zazQ==}
 
-  '@aws-sdk/client-s3@3.928.0':
-    resolution: {integrity: sha512-lXhhmcBjYa+ea0kRs00aq3WUwiXggwJkLwcMzOOsbW3CVYQaNpT7hztkfn2S6Qna7ETzd8M5+XZP+BmQRVE0Sg==}
+  '@aws-sdk/client-s3@3.929.0':
+    resolution: {integrity: sha512-M6G+1CBTowN+m0Jrww5/AXMqlk4nIJqwaa/vOw+EbvLD7ROpBs6bStSai9esP9PkIVW6KMu4zCIgHzKhGa3R2A==}
     engines: {node: '>=18.0.0'}
 
-  '@aws-sdk/client-sso@3.928.0':
-    resolution: {integrity: sha512-Efenb8zV2fJJDXmp2NE4xj8Ymhp4gVJCkQ6ixhdrpfQXgd2PODO7a20C2+BhFM6aGmN3m6XWYJ64ZyhXF4pAyQ==}
+  '@aws-sdk/client-sso@3.929.0':
+    resolution: {integrity: sha512-CE1T7PvN2MDRCw96BTUz2Zcnb6Lae3Dl4w3TPB5auBv2sAiIPbQegFUwT2C8teMDGCNXyndzoTvAd4wmO9AcpA==}
     engines: {node: '>=18.0.0'}
 
   '@aws-sdk/core@3.928.0':
@@ -1254,24 +1254,24 @@ packages:
     resolution: {integrity: sha512-67ynC/8UW9Y8Gn1ZZtC3OgcQDGWrJelHmkbgpmmxYUrzVhp+NINtz3wiTzrrBFhPH/8Uy6BxvhMfXhn0ptcMEQ==}
     engines: {node: '>=18.0.0'}
 
-  '@aws-sdk/credential-provider-ini@3.928.0':
-    resolution: {integrity: sha512-WVWYyj+jox6mhKYp11mu8x1B6Xa2sLbXFHAv5K3Jg8CHvXYpePgTcYlCljq3d4XHC4Jl4nCcsdMtBahSpU9bAA==}
+  '@aws-sdk/credential-provider-ini@3.929.0':
+    resolution: {integrity: sha512-XIzWsJUYeS/DjggHFB53sGGjXdlN/BA6x+Y/JvLbpdkGD2yLISU34/cDPbK/O8BAQCRTCQ69VPa/1AdNgZZRQw==}
     engines: {node: '>=18.0.0'}
 
-  '@aws-sdk/credential-provider-node@3.928.0':
-    resolution: {integrity: sha512-SdXVjxZOIXefIR/NJx+lyXOrn4m0ScTAU2JXpLsFCkW2Cafo6vTqHUghyO8vak/XQ8PpPqpLXVpGbAYFuIPW6Q==}
+  '@aws-sdk/credential-provider-node@3.929.0':
+    resolution: {integrity: sha512-GhNZEacpa7fh8GNggshm5S93UK25bCV5aDK8c2vfe7Y3OxBiL89Ox5GUKCu0xIOqiBdfYkI9wvWCFsQRRn7Bjw==}
     engines: {node: '>=18.0.0'}
 
   '@aws-sdk/credential-provider-process@3.928.0':
     resolution: {integrity: sha512-XL0juran8yhqwn0mreV+NJeHJOkcRBaExsvVn9fXWW37A4gLh4esSJxM2KbSNh0t+/Bk3ehBI5sL9xad+yRDuw==}
     engines: {node: '>=18.0.0'}
 
-  '@aws-sdk/credential-provider-sso@3.928.0':
-    resolution: {integrity: sha512-md/y+ePDsO1zqPJrsOyPs4ciKmdpqLL7B0dln1NhqZPnKIS5IBfTqZJ5tJ9eTezqc7Tn4Dbg6HiuemcGvZTeFA==}
+  '@aws-sdk/credential-provider-sso@3.929.0':
+    resolution: {integrity: sha512-aADe6cLo4+9MUOe0GnC5kUn8IduEKnTxqBlsciZOplU0/0+Rdp9rRh/e9ZBskeIXZ33eO2HG+KDAf1lvtPT7dA==}
     engines: {node: '>=18.0.0'}
 
-  '@aws-sdk/credential-provider-web-identity@3.928.0':
-    resolution: {integrity: sha512-rd97nLY5e/nGOr73ZfsXD+H44iZ9wyGZTKt/2QkiBN3hot/idhgT9+XHsWhRi+o/dThQbpL8RkpAnpF+0ZGthw==}
+  '@aws-sdk/credential-provider-web-identity@3.929.0':
+    resolution: {integrity: sha512-L18JtW28xUZVTRHblgqZ8QTVGQfxpMLIuVYgQXrVWiY9Iz9EF4XrfZo3ywCAgqfgLi5pgg3fCxx/pe7uiMOs2w==}
     engines: {node: '>=18.0.0'}
 
   '@aws-sdk/middleware-bucket-endpoint@3.922.0':
@@ -1314,8 +1314,8 @@ packages:
     resolution: {integrity: sha512-ESvcfLx5PtpdUM3ptCwb80toBTd3y5I4w5jaeOPHihiZr7jkRLE/nsaCKzlqscPs6UQ8xI0maav04JUiTskcHw==}
     engines: {node: '>=18.0.0'}
 
-  '@aws-sdk/nested-clients@3.928.0':
-    resolution: {integrity: sha512-kXzfJkq2cD65KAHDe4hZCsnxcGGEWD5pjHqcZplwG4VFMa/iVn/mWrUY9QdadD2GBpXFNQbgOiKG3U2NkKu+4Q==}
+  '@aws-sdk/nested-clients@3.929.0':
+    resolution: {integrity: sha512-emR4LTSupxPed1ni0zVxz5msezz/gA1YYXooiW567+NyhvLgSzDvNjK7GPU1waLCj1LrRFe7NkXX1pwa5sPrpw==}
     engines: {node: '>=18.0.0'}
 
   '@aws-sdk/region-config-resolver@3.925.0':
@@ -1326,8 +1326,8 @@ packages:
     resolution: {integrity: sha512-1+Ic8+MyqQy+OE6QDoQKVCIcSZO+ETmLLLpVS5yu0fihBU85B5HHU7iaKX1qX7lEaGPMpSN/mbHW0VpyQ0Xqaw==}
     engines: {node: '>=18.0.0'}
 
-  '@aws-sdk/token-providers@3.928.0':
-    resolution: {integrity: sha512-533NpTdUJNDi98zBwRp4ZpZoqULrAVfc0YgIy+8AZHzk0v7N+v59O0d2Du3YO6zN4VU8HU8766DgKiyEag6Dzg==}
+  '@aws-sdk/token-providers@3.929.0':
+    resolution: {integrity: sha512-78kph1R6TVJ53VXDKUmt64HMqWjTECLymJ7kLguz2QJiWh2ZdLvpyYGvaueEwwhisHYBh2qef1tGIf/PpEb8SQ==}
     engines: {node: '>=18.0.0'}
 
   '@aws-sdk/types@3.922.0':
@@ -9279,13 +9279,13 @@ snapshots:
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
 
-  '@aws-sdk/client-s3@3.928.0':
+  '@aws-sdk/client-s3@3.929.0':
     dependencies:
       '@aws-crypto/sha1-browser': 5.2.0
       '@aws-crypto/sha256-browser': 5.2.0
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/core': 3.928.0
-      '@aws-sdk/credential-provider-node': 3.928.0
+      '@aws-sdk/credential-provider-node': 3.929.0
       '@aws-sdk/middleware-bucket-endpoint': 3.922.0
       '@aws-sdk/middleware-expect-continue': 3.922.0
       '@aws-sdk/middleware-flexible-checksums': 3.928.0
@@ -9341,7 +9341,7 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@aws-sdk/client-sso@3.928.0':
+  '@aws-sdk/client-sso@3.929.0':
     dependencies:
       '@aws-crypto/sha256-browser': 5.2.0
       '@aws-crypto/sha256-js': 5.2.0
@@ -9421,15 +9421,15 @@ snapshots:
       '@smithy/util-stream': 4.5.6
       tslib: 2.8.1
 
-  '@aws-sdk/credential-provider-ini@3.928.0':
+  '@aws-sdk/credential-provider-ini@3.929.0':
     dependencies:
       '@aws-sdk/core': 3.928.0
       '@aws-sdk/credential-provider-env': 3.928.0
       '@aws-sdk/credential-provider-http': 3.928.0
       '@aws-sdk/credential-provider-process': 3.928.0
-      '@aws-sdk/credential-provider-sso': 3.928.0
-      '@aws-sdk/credential-provider-web-identity': 3.928.0
-      '@aws-sdk/nested-clients': 3.928.0
+      '@aws-sdk/credential-provider-sso': 3.929.0
+      '@aws-sdk/credential-provider-web-identity': 3.929.0
+      '@aws-sdk/nested-clients': 3.929.0
       '@aws-sdk/types': 3.922.0
       '@smithy/credential-provider-imds': 4.2.5
       '@smithy/property-provider': 4.2.5
@@ -9439,14 +9439,14 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@aws-sdk/credential-provider-node@3.928.0':
+  '@aws-sdk/credential-provider-node@3.929.0':
     dependencies:
       '@aws-sdk/credential-provider-env': 3.928.0
       '@aws-sdk/credential-provider-http': 3.928.0
-      '@aws-sdk/credential-provider-ini': 3.928.0
+      '@aws-sdk/credential-provider-ini': 3.929.0
       '@aws-sdk/credential-provider-process': 3.928.0
-      '@aws-sdk/credential-provider-sso': 3.928.0
-      '@aws-sdk/credential-provider-web-identity': 3.928.0
+      '@aws-sdk/credential-provider-sso': 3.929.0
+      '@aws-sdk/credential-provider-web-identity': 3.929.0
       '@aws-sdk/types': 3.922.0
       '@smithy/credential-provider-imds': 4.2.5
       '@smithy/property-provider': 4.2.5
@@ -9465,11 +9465,11 @@ snapshots:
       '@smithy/types': 4.9.0
       tslib: 2.8.1
 
-  '@aws-sdk/credential-provider-sso@3.928.0':
+  '@aws-sdk/credential-provider-sso@3.929.0':
     dependencies:
-      '@aws-sdk/client-sso': 3.928.0
+      '@aws-sdk/client-sso': 3.929.0
       '@aws-sdk/core': 3.928.0
-      '@aws-sdk/token-providers': 3.928.0
+      '@aws-sdk/token-providers': 3.929.0
       '@aws-sdk/types': 3.922.0
       '@smithy/property-provider': 4.2.5
       '@smithy/shared-ini-file-loader': 4.4.0
@@ -9478,10 +9478,10 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@aws-sdk/credential-provider-web-identity@3.928.0':
+  '@aws-sdk/credential-provider-web-identity@3.929.0':
     dependencies:
       '@aws-sdk/core': 3.928.0
-      '@aws-sdk/nested-clients': 3.928.0
+      '@aws-sdk/nested-clients': 3.929.0
       '@aws-sdk/types': 3.922.0
       '@smithy/property-provider': 4.2.5
       '@smithy/shared-ini-file-loader': 4.4.0
@@ -9583,7 +9583,7 @@ snapshots:
       '@smithy/types': 4.9.0
       tslib: 2.8.1
 
-  '@aws-sdk/nested-clients@3.928.0':
+  '@aws-sdk/nested-clients@3.929.0':
     dependencies:
       '@aws-crypto/sha256-browser': 5.2.0
       '@aws-crypto/sha256-js': 5.2.0
@@ -9643,10 +9643,10 @@ snapshots:
       '@smithy/types': 4.9.0
       tslib: 2.8.1
 
-  '@aws-sdk/token-providers@3.928.0':
+  '@aws-sdk/token-providers@3.929.0':
     dependencies:
       '@aws-sdk/core': 3.928.0
-      '@aws-sdk/nested-clients': 3.928.0
+      '@aws-sdk/nested-clients': 3.929.0
       '@aws-sdk/types': 3.922.0
       '@smithy/property-provider': 4.2.5
       '@smithy/shared-ini-file-loader': 4.4.0
@@ -13559,6 +13559,32 @@ snapshots:
       '@sentry/vercel-edge': 10.25.0
       '@sentry/webpack-plugin': 4.6.0(webpack@5.102.1)
       next: 16.0.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.94.0)
+      resolve: 1.22.8
+      rollup: 4.53.2
+      stacktrace-parser: 0.1.11
+    transitivePeerDependencies:
+      - '@opentelemetry/context-async-hooks'
+      - '@opentelemetry/core'
+      - '@opentelemetry/sdk-trace-base'
+      - encoding
+      - react
+      - supports-color
+      - webpack
+
+  '@sentry/nextjs@10.25.0(@opentelemetry/context-async-hooks@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/core@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(next@16.0.1(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.94.0))(react@19.2.0)(webpack@5.102.1)':
+    dependencies:
+      '@opentelemetry/api': 1.9.0
+      '@opentelemetry/semantic-conventions': 1.38.0
+      '@rollup/plugin-commonjs': 28.0.1(rollup@4.53.2)
+      '@sentry-internal/browser-utils': 10.25.0
+      '@sentry/bundler-plugin-core': 4.6.0
+      '@sentry/core': 10.25.0
+      '@sentry/node': 10.25.0
+      '@sentry/opentelemetry': 10.25.0(@opentelemetry/api@1.9.0)(@opentelemetry/context-async-hooks@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/core@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.38.0)
+      '@sentry/react': 10.25.0(react@19.2.0)
+      '@sentry/vercel-edge': 10.25.0
+      '@sentry/webpack-plugin': 4.6.0(webpack@5.102.1)
+      next: 16.0.1(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.94.0)
       resolve: 1.22.8
       rollup: 4.53.2
       stacktrace-parser: 0.1.11
