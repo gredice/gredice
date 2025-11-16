@@ -9,15 +9,15 @@
         "dev": "email dev -p 4001"
     },
     "devDependencies": {
-        "@react-email/preview-server": "5.0.2",
-        "@types/node": "24.10.0",
-        "@types/react": "19.2.3",
+        "@react-email/preview-server": "5.0.4",
+        "@types/node": "24.10.1",
+        "@types/react": "19.2.5",
         "typescript": "5.9.3"
     },
     "dependencies": {
         "@gredice/js": "workspace:*",
-        "@react-email/components": "1.0.0",
+        "@react-email/components": "1.0.1",
         "react": "19.2.0",
-        "react-email": "5.0.2"
+        "react-email": "5.0.4"
     }
 }
