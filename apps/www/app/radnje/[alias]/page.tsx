@@ -71,7 +71,7 @@ export default async function OperationPage(
                     ]}
                 />
                 <PageHeader
-                    visual={<OperationImage operation={operation} size={128} />}
+                    visual={<OperationImage operation={operation} size={192} />}
                     header={operation.information.label}
                     subHeader={operation.information.shortDescription}
                 >
