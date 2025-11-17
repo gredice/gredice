@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Markdown } from '../../components/shared/Markdown';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
+import { SunflowerCalculator } from './SunflowerCalculator';
 
 export const metadata: Metadata = {
     title: 'Suncokreti',
@@ -40,7 +41,7 @@ const sectionsData: SectionData[] = [
 
 export default function SunflowersPage() {
     return (
-        <Stack>
+        <Stack spacing={4}>
             <PageHeader
                 header="Suncokreti"
                 subHeader={`Sakupljaj i koristi suncokrete za uređenje i dekoraciju vrta ili kupnju i brigu o svojim biljkama 🌱`}
@@ -59,6 +60,7 @@ export default function SunflowersPage() {
                 sectionsData={sectionsData}
                 componentsRegistry={sectionsComponentRegistry}
             />
+            <SunflowerCalculator />
         </Stack>
     );
 }
