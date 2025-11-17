@@ -17,6 +17,7 @@ import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import { Scene } from './scene/Scene';
+import { StackEntrance } from './scene/StackEntrance';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string;
@@ -40,6 +41,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
         enableRaisedBedFieldOperationsFlag?: boolean;
         enableRaisedBedFieldWateringFlag?: boolean;
         enableRaisedBedFieldDiaryFlag?: boolean;
+        enableBlockEntranceAnimationFlag?: boolean;
     };
 };
 
@@ -108,20 +110,33 @@ export function GameScene({
                         noSound={noSound}
                     />
                     <group>
-                        {garden?.stacks.map((stack) =>
-                            stack.blocks?.map((block, i) => (
-                                <EntityFactory
-                                    key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
-                                    name={block.name}
-                                    stack={stack}
-                                    block={block}
-                                    rotation={block.rotation}
-                                    variant={block.variant}
-                                    noRenderInView={noRenderInViewDefault}
-                                />
-                            )),
-                        )}
-                        <EntityInstances stacks={garden?.stacks} />
+                        {garden?.stacks.map((stack) => (
+                            <StackEntrance
+                                key={`${stack.position.x}|${stack.position.z}`}
+                                position={stack.position}
+                                enabled={
+                                    flags?.enableBlockEntranceAnimationFlag
+                                }
+                            >
+                                {stack.blocks?.map((block, i) => (
+                                    <EntityFactory
+                                        key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
+                                        name={block.name}
+                                        stack={stack}
+                                        block={block}
+                                        rotation={block.rotation}
+                                        variant={block.variant}
+                                        noRenderInView={noRenderInViewDefault}
+                                    />
+                                ))}
+                            </StackEntrance>
+                        ))}
+                        <EntityInstances
+                            stacks={garden?.stacks}
+                            enableEntranceAnimation={
+                                flags?.enableBlockEntranceAnimationFlag
+                            }
+                        />
                     </group>
                     {!noControls && <Controls />}
                     {/* {!hideHud && <Perf position="bottom-right" />} */}
