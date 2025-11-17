@@ -34,11 +34,11 @@ export function StackEntrance({
 
     const ringDistance = useMemo(
         () => getStackRingDistance(position),
-        [position],
+        [position.x, position.z],
     );
     const entranceDelay = useMemo(
         () => (enabled ? getStackEntranceDelay(position) : 0),
-        [enabled, position],
+        [enabled, position.x, position.z],
     );
     const entranceHeight = useMemo(
         () => (enabled ? getStackEntranceHeight(ringDistance) : 0),
