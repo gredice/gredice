@@ -1,4 +1,5 @@
 import { Hammer } from '@signalco/ui-icons';
+import { cx } from '@signalco/ui-primitives/cx';
 import Image from 'next/image';
 
 export type OperationImageProps = {
@@ -13,9 +14,14 @@ export type OperationImageProps = {
         };
     };
     size?: number;
+    className?: string;
 };
 
-export function OperationImage({ operation, size }: OperationImageProps) {
+export function OperationImage({
+    operation,
+    size,
+    className,
+}: OperationImageProps) {
     if (!operation.image?.cover?.url) {
         return (
             <div
@@ -23,7 +29,10 @@ export function OperationImage({ operation, size }: OperationImageProps) {
                     width: size ? `${size}px` : '48px',
                     height: size ? `${size}px` : '48px',
                 }}
-                className="aspect-square flex items-center justify-center"
+                className={cx(
+                    'aspect-square flex items-center justify-center',
+                    className,
+                )}
             >
                 <Hammer
                     style={
@@ -48,6 +57,7 @@ export function OperationImage({ operation, size }: OperationImageProps) {
                 height: `${size ?? 24}px`,
             }}
             alt={operation.information?.label ?? 'Slika operacije'}
+            className={className}
         />
     );
 }

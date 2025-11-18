@@ -10,6 +10,7 @@ import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import { useGameState } from '../useGameState';
 import { RaisedBedField } from './raisedBed/RaisedBedField';
 import { RaisedBedFieldSuggestions } from './raisedBed/RaisedBedFieldSuggestions';
+import { RaisedBedGreenhouseSuggestion } from './raisedBed/RaisedBedGreenhouseSuggestion';
 import { RaisedBedInfo } from './raisedBed/RaisedBedInfo';
 import { RaisedBedSensorInfo } from './raisedBed/RaisedBedSensorInfo';
 import { RaisedBedWatering } from './raisedBed/RaisedBedWatering';
@@ -84,6 +85,10 @@ export function RaisedBedFieldHud(_props: {
                 <>
                     <div className="absolute top-[calc(50%+160px)] left-[calc(50%-156.5px)] md:left-[calc(50%+210px)] md:top-[calc(50%+74px)]">
                         <Stack spacing={0.5}>
+                            <RaisedBedGreenhouseSuggestion
+                                gardenId={currentGarden.id}
+                                raisedBedId={raisedBed.id}
+                            />
                             <RaisedBedWatering
                                 gardenId={currentGarden.id}
                                 raisedBedId={raisedBed.id}
