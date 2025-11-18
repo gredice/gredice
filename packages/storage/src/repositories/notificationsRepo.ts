@@ -69,6 +69,14 @@ export function getNotificationsByAccount(
     });
 }
 
+export function getNotifications(page: number, limit: number) {
+    return storage().query.notifications.findMany({
+        orderBy: desc(notifications.timestamp),
+        limit,
+        offset: page * limit,
+    });
+}
+
 export function setNotificationRead(
     id: string,
     read: boolean,

@@ -1,3 +1,4 @@
+import { Markdown } from '@gredice/ui/Markdown';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
 import { Info } from '@signalco/ui-icons';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
@@ -7,7 +8,6 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { ReactNode } from 'react';
-import Markdown from 'react-markdown';
 
 export type AttributeCardProps = {
     icon: ReactNode;

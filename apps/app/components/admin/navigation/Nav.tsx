@@ -31,6 +31,7 @@ import {
     Inbox,
     Mail,
     Map as MapIcon,
+    Megaphone,
     Settings,
     ShoppingCart,
     SmileHappy,
@@ -335,6 +336,12 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         href={KnownPages.CommunicationEmails}
                         label="Poslani emailovi"
                         icon={<Mail className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                    <NavItem
+                        href={KnownPages.Notifications}
+                        label="Obavijesti"
+                        icon={<Megaphone className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem

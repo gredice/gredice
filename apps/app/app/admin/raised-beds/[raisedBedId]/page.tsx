@@ -104,6 +104,7 @@ export default async function RaisedBedPage({
                             accountId={raisedBed.accountId}
                             gardenId={raisedBed.gardenId}
                             raisedBedId={raisedBed.id}
+                            scroll
                         />
                     </>
                 )}

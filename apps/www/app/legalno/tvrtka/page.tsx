@@ -1,9 +1,9 @@
+import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Container } from '@signalco/ui-primitives/Container';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { PageHeader } from '../../../components/shared/PageHeader';
-import { StyledHtml } from '../../../components/shared/StyledHtml';
 
 export const metadata: Metadata = {
     title: 'Tvrtka',

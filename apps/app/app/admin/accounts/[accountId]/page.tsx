@@ -73,7 +73,7 @@ export default async function AccountPage({
                 <AccountSunflowersCard accountId={accountId} />
                 <AccountTransactionsCard accountId={accountId} />
                 <RaisedBedsTableCard accountId={accountId} />
-                <NotificationsTableCard accountId={accountId} />
+                <NotificationsTableCard accountId={accountId} scroll />
                 <AccountShoppingCartsCard accountId={accountId} />
             </div>
         </Stack>

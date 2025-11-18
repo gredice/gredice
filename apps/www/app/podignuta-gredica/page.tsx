@@ -1,5 +1,6 @@
 import { FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Container } from '@signalco/ui-primitives/Container';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -8,7 +9,6 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../components/shared/PageHeader';
-import { StyledHtml } from '../../components/shared/StyledHtml';
 import { KnownPages } from '../../src/KnownPages';
 
 export const metadata: Metadata = {

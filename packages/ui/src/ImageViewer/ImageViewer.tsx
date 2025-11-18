@@ -196,7 +196,7 @@ export function ImageViewer({
             <button
                 type="button"
                 title="Otvori u punoj veličini"
-                className="group relative flex items-center justify-center overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
+                className="group relative flex items-center justify-center overflow-hidden rounded-lg shadow-md bg-muted hover:shadow-lg transition-shadow duration-200"
                 style={{ width: previewWidth, height: previewHeight }}
                 onClick={() => setIsExpanded(true)}
             >
