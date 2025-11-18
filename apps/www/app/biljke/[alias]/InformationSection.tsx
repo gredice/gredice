@@ -4,9 +4,9 @@ import { cx } from '@signalco/ui-primitives/cx';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { ReactNode } from 'react';
+import Markdown from 'react-markdown';
 import { ExpandableText } from '../../../components/shared/ExpandableText';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
-import { Markdown } from '../../../components/shared/Markdown';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import {
     shouldMakeExpandable,

@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { StyledHtml } from './StyledHtml';
+import { StyledHtml } from '../StyledHtml';
 
 export function Markdown({
     children,

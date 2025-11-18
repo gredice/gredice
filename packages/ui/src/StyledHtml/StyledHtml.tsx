@@ -1,5 +1,6 @@
 import { cx } from '@signalco/ui-primitives/cx';
 import type { HTMLAttributes } from 'react';
+import './StyledHtml.css';
 
 export function StyledHtml({
     children,
@@ -9,7 +10,9 @@ export function StyledHtml({
     return (
         <div
             className={cx(
-                'prose prose-p:my-2 prose-sm max-w-none prose-headings:font-normal prose-headings:text-primary prose-hr:my-6 text-primary',
+                'max-w-none',
+                'prose prose-p:my-2 prose-sm prose-headings:font-normal prose-hr:my-6',
+                'text-primary prose-headings:text-primary',
                 className,
             )}
             {...rest}

@@ -42,7 +42,7 @@ export const KnownPages = {
         `/admin/communication/emails/${emailId}` as Route,
     CommunicationSlack: '/admin/communication/slack',
     Feedback: '/admin/feedback',
-    Notifications: '/admin/notifications',
+    Notifications: '/admin/communication/notifications',
     Logout: '/admin/logout',
     RaisedBeds: '/admin/raised-beds',
     RaisedBed: (raisedBedId: number) =>

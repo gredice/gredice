@@ -3,7 +3,6 @@ import { SectionsView } from '@signalco/cms-core/SectionsView';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import { Markdown } from '../../components/shared/Markdown';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
 

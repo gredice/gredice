@@ -1,5 +1,6 @@
 import { client } from '@gredice/client';
 import { LocalDateTime, TimeRange } from '@gredice/ui/LocalDateTime';
+import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Timer } from '@signalco/ui-icons';
 import {
     Card,
@@ -15,7 +16,6 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../../components/shared/PageHeader';
-import { StyledHtml } from '../../../components/shared/StyledHtml';
 import { WhatsAppCard } from '../../../components/social/WhatsAppCard';
 
 export const dynamic = 'force-dynamic';
