@@ -120,7 +120,27 @@ export function calculateRaisedBedsOrientation(
                         Math.abs(neighborPosition.x - position.x) === 1
                     );
                 });
-                orientation = hasHorizontalNeighbor ? 'horizontal' : 'vertical';
+                const hasVerticalNeighbor = raisedBeds.some((other) => {
+                    if (other.id === bed.id || !other.blockId) {
+                        return false;
+                    }
+                    const neighborPosition = blockPositions.get(other.blockId);
+                    if (!neighborPosition) {
+                        return false;
+                    }
+                    return (
+                        neighborPosition.index === position.index &&
+                        neighborPosition.x === position.x &&
+                        Math.abs(neighborPosition.y - position.y) === 1
+                    );
+                });
+                if (hasHorizontalNeighbor) {
+                    orientation = 'horizontal';
+                } else if (hasVerticalNeighbor) {
+                    orientation = 'vertical';
+                } else {
+                    orientation = 'vertical';
+                }
             }
         }
         orientations.set(bed.id, orientation);
