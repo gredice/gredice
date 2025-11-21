@@ -1,0 +1,1 @@
+ALTER TABLE "raised_beds" ADD COLUMN "orientation" text DEFAULT 'vertical' NOT NULL;

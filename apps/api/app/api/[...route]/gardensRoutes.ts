@@ -181,6 +181,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 freshGarden = refreshed;
             }
 
+            // Update raised bed orientations
             const orientationMap =
                 await updateRaisedBedsOrientation(freshGarden);
             const raisedBedsWithOrientation = freshGarden.raisedBeds.map(
