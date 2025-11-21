@@ -170,7 +170,7 @@ export async function updateRaisedBedsOrientation(garden: {
                 orientation,
             });
         })
-        .filter((promise): promise is Promise<void> => Boolean(promise));
+        .filter(Boolean);
 
     if (updates.length > 0) {
         await Promise.all(updates);
