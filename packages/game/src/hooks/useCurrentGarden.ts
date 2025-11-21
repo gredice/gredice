@@ -175,7 +175,7 @@ function mockGarden() {
                 orientation: 'vertical',
             },
         ],
-    };
+    } as useCurrentGardenResponse;
 }
 
 type useCurrentGardenResponse = Omit<
