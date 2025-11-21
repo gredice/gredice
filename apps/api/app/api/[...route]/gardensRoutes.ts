@@ -997,8 +997,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     raisedBed.orientation ??
                     'vertical',
             };
+            const raisedBedsWithOrientation = garden.raisedBeds.map((rb) => ({
+                ...rb,
+                orientation:
+                    orientationMap.get(rb.id) ??
+                    rb.orientation ??
+                    'vertical',
+            }));
             const validityMap = calculateRaisedBedsValidity(
-                garden.raisedBeds,
+                raisedBedsWithOrientation,
                 garden.stacks,
             );
 
