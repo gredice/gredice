@@ -343,7 +343,7 @@ export function Environment({
     // Handle snow
     const snow = weather?.snowy ?? 0;
 
-    // TODO: Handle wind
+    // TODO: Handle wind direction
     const windSpeed = weather?.windSpeed ?? 0;
     // const windDirection = weather?.windDirection;
 
