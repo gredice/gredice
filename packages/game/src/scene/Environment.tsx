@@ -241,7 +241,7 @@ export function Environment({
         weather.snowy = overrideWeather?.snowy ?? weather.snowy;
         weather.windSpeed = overrideWeather?.windSpeed ?? weather.windSpeed;
         if (typeof overrideWeather?.windDirection === 'number') {
-            // Convert numeric wind direction (0-315 degrees) to compass direction string
+            // Convert numeric wind direction (0-360 degrees) to compass direction string
             const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
             const index = Math.round(overrideWeather.windDirection / 45) % 8;
             weather.windDirection = directions[index];
