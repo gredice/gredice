@@ -239,6 +239,8 @@ export function Environment({
         weather.foggy = overrideWeather?.foggy ?? weather.foggy;
         weather.cloudy = overrideWeather?.cloudy ?? weather.cloudy;
         weather.snowy = overrideWeather?.snowy ?? weather.snowy;
+        weather.windSpeed = overrideWeather?.windSpeed ?? weather.windSpeed;
+        // weather.windDirection = overrideWeather?.windDirection ?? weather.windDirection;
     }
 
     // Sound management
@@ -390,7 +392,7 @@ export function Environment({
                 <Drops count={rain < 0.4 ? 200 : rain > 0.9 ? 2000 : 600} />
             )}
             {!noWeather && snow > 0 && (
-                <Snow count={snow * 2000} windSpeed={windSpeed} />
+                <Snow count={snow * 5000} windSpeed={windSpeed} />
             )}
         </>
     );

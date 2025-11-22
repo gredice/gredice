@@ -46,6 +46,18 @@ function formatPercent(value: number) {
     return `${Math.round(clampToRange(value, 0, 1) * 100)}%`;
 }
 
+function formatWindSpeed(value: number) {
+    const intensity = Math.round(value);
+    const labels = ['None', 'Light', 'Moderate', 'Strong'];
+    return `${intensity} - ${labels[intensity] || 'Unknown'}`;
+}
+
+function formatWindDirection(value: number) {
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    const index = Math.round((value / 45) % 8);
+    return directions[index];
+}
+
 const PANEL_MARGIN_PX = 16;
 const PANEL_STORAGE_KEY = 'gredice.debugPanel.position';
 
@@ -324,6 +336,12 @@ export function DebugHud() {
     const [rainy, setRainy] = useState(weather?.rainy ?? 0);
     const [snowy, setSnowy] = useState(weather?.snowy ?? 0);
     const [foggy, setFoggy] = useState(weather?.foggy ?? 0);
+    const [windSpeed, setWindSpeed] = useState(
+        typeof weather?.windSpeed === 'number' ? weather.windSpeed : 0,
+    );
+    const [windDirection, setWindDirection] = useState(
+        typeof weather?.windDirection === 'number' ? weather.windDirection : 0,
+    );
 
     useEffect(() => {
         const nextTimeOfDay = getTimeOfDayFromDate(currentTime);
@@ -345,7 +363,14 @@ export function DebugHud() {
 
     useEffect(() => {
         if (overrideWeather) {
-            setWeather({ cloudy, rainy, snowy, foggy });
+            setWeather({
+                cloudy,
+                rainy,
+                snowy,
+                foggy,
+                windSpeed,
+                windDirection,
+            });
             return;
         }
 
@@ -355,9 +380,27 @@ export function DebugHud() {
                 rainy: weather.rainy ?? 0,
                 snowy: weather.snowy ?? 0,
                 foggy: weather.foggy ?? 0,
+                windSpeed:
+                    typeof weather.windSpeed === 'number'
+                        ? weather.windSpeed
+                        : undefined,
+                windDirection:
+                    typeof weather.windDirection === 'number'
+                        ? weather.windDirection
+                        : undefined,
             });
         }
-    }, [overrideWeather, cloudy, rainy, snowy, foggy, weather, setWeather]);
+    }, [
+        overrideWeather,
+        cloudy,
+        rainy,
+        snowy,
+        foggy,
+        windSpeed,
+        windDirection,
+        weather,
+        setWeather,
+    ]);
 
     useEffect(() => {
         if (!weather || overrideWeather) {
@@ -368,6 +411,14 @@ export function DebugHud() {
         setRainy(weather.rainy ?? 0);
         setSnowy(weather.snowy ?? 0);
         setFoggy(weather.foggy ?? 0);
+        setWindSpeed(
+            typeof weather.windSpeed === 'number' ? weather.windSpeed : 0,
+        );
+        setWindDirection(
+            typeof weather.windDirection === 'number'
+                ? weather.windDirection
+                : 0,
+        );
     }, [weather, overrideWeather]);
 
     const handleOverrideChange = (checked: boolean | 'indeterminate') => {
@@ -505,6 +556,38 @@ export function DebugHud() {
                                         if (typeof nextValue === 'number') {
                                             setFoggy(
                                                 clampToRange(nextValue, 0, 1),
+                                            );
+                                        }
+                                    }}
+                                />
+                                <Slider
+                                    label={`Wind Speed: ${formatWindSpeed(windSpeed)}`}
+                                    min={0}
+                                    max={3}
+                                    step={1}
+                                    value={[windSpeed]}
+                                    disabled={weatherControlsDisabled}
+                                    onValueChange={(value) => {
+                                        const [nextValue] = value;
+                                        if (typeof nextValue === 'number') {
+                                            setWindSpeed(
+                                                clampToRange(nextValue, 0, 3),
+                                            );
+                                        }
+                                    }}
+                                />
+                                <Slider
+                                    label={`Wind Direction: ${formatWindDirection(windDirection)}`}
+                                    min={0}
+                                    max={315}
+                                    step={45}
+                                    value={[windDirection]}
+                                    disabled={weatherControlsDisabled}
+                                    onValueChange={(value) => {
+                                        const [nextValue] = value;
+                                        if (typeof nextValue === 'number') {
+                                            setWindDirection(
+                                                clampToRange(nextValue, 0, 315),
                                             );
                                         }
                                     }}

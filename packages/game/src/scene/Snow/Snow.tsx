@@ -3,10 +3,13 @@ import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 
 const FLAKE_SIZE = 0.03;
-const SIZE = 25;
+const SIZE = 30;
+const HEIGHT = 5;
 const HEIGHT_OFFSET = 10;
 const GRAVITY = 0.002;
 const GROUND_LEVEL = 0;
+
+// Note: Source - https://tympanus.net/codrops/2025/09/18/creating-an-immersive-3d-weather-visualization-with-react-three-fiber/
 
 const Snow = ({ count = 500, windSpeed = 0.5 }) => {
     const meshRef = useRef<THREE.InstancedMesh>(null);
@@ -17,10 +20,10 @@ const Snow = ({ count = 500, windSpeed = 0.5 }) => {
         for (let i = 0; i < count; i++) {
             temp.push({
                 x: (Math.random() - 0.5) * SIZE,
-                y: Math.random() * SIZE + HEIGHT_OFFSET,
+                y: Math.random() * HEIGHT + HEIGHT_OFFSET,
                 z: (Math.random() - 0.5) * SIZE,
-                speed: Math.random() * 0.02 + GRAVITY * windSpeed,
-                drift: Math.random() * 0.02 - GRAVITY * windSpeed,
+                speed: Math.random() * 0.02 + GRAVITY * windSpeed * 10,
+                drift: Math.random() * 0.02 - GRAVITY * windSpeed * 10,
             });
         }
         return temp;
@@ -37,7 +40,7 @@ const Snow = ({ count = 500, windSpeed = 0.5 }) => {
 
             // Reset particle when it goes below the ground
             if (particle.y < GROUND_LEVEL) {
-                particle.y = SIZE;
+                particle.y = Math.random() * HEIGHT + HEIGHT_OFFSET;
                 particle.x = (Math.random() - 0.5) * SIZE;
             }
 
