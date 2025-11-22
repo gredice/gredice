@@ -181,19 +181,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 freshGarden = refreshed;
             }
 
-            // Update raised bed orientations
-            const orientationMap =
-                await updateRaisedBedsOrientation(freshGarden);
-            const raisedBedsWithOrientation = freshGarden.raisedBeds.map(
-                (raisedBed) => ({
-                    ...raisedBed,
-                    orientation:
-                        orientationMap.get(raisedBed.id) ??
-                        raisedBed.orientation ??
-                        'vertical',
-                }),
-            );
-
             return context.json({
                 id: freshGarden.id,
                 name: freshGarden.name,
@@ -202,10 +189,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 stacks,
                 raisedBeds: (() => {
                     const validityMap = calculateRaisedBedsValidity(
-                        raisedBedsWithOrientation,
+                        freshGarden.raisedBeds,
                         freshGarden.stacks,
                     );
-                    return raisedBedsWithOrientation.map((raisedBed) => ({
+                    return freshGarden.raisedBeds.map((raisedBed) => ({
                         id: raisedBed.id,
                         name: raisedBed.name,
                         physicalId: raisedBed.physicalId,
@@ -720,6 +707,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
             }
 
+            // Update raised beds orientation after stack changes
             const updatedGarden = await getGarden(gardenIdNumber);
             if (updatedGarden) {
                 await updateRaisedBedsOrientation(updatedGarden);
@@ -891,10 +879,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     result.errorStatus as ContentfulStatusCode,
                 );
             }
+
+            // Update raised beds orientation after stack changes
             const updatedGarden = await getGarden(gardenIdNumber);
             if (updatedGarden) {
                 await updateRaisedBedsOrientation(updatedGarden);
             }
+
             return context.json(null, 200);
         },
     )
@@ -929,22 +920,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const orientationMap = await updateRaisedBedsOrientation(garden);
-            const raisedBedsWithOrientation = garden.raisedBeds.map(
-                (raisedBed) => ({
-                    ...raisedBed,
-                    orientation:
-                        orientationMap.get(raisedBed.id) ??
-                        raisedBed.orientation ??
-                        'vertical',
-                }),
-            );
             const validityMap = calculateRaisedBedsValidity(
-                raisedBedsWithOrientation,
+                garden.raisedBeds,
                 garden.stacks,
             );
             return context.json(
-                raisedBedsWithOrientation.map((raisedBed) => ({
+                garden.raisedBeds.map((raisedBed) => ({
                     id: raisedBed.id,
                     blockId: raisedBed.blockId,
                     orientation: raisedBed.orientation,
@@ -990,33 +971,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!raisedBed) {
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
-            const orientationMap = await updateRaisedBedsOrientation(garden);
-            const raisedBedWithOrientation = {
-                ...raisedBed,
-                orientation:
-                    orientationMap.get(raisedBed.id) ??
-                    raisedBed.orientation ??
-                    'vertical',
-            };
-            const raisedBedsWithOrientation = garden.raisedBeds.map((rb) => ({
-                ...rb,
-                orientation:
-                    orientationMap.get(rb.id) ??
-                    rb.orientation ??
-                    'vertical',
-            }));
             const validityMap = calculateRaisedBedsValidity(
-                raisedBedsWithOrientation,
+                garden.raisedBeds,
                 garden.stacks,
             );
 
             return context.json({
-                id: raisedBedWithOrientation.id,
-                blockId: raisedBedWithOrientation.blockId,
-                orientation: raisedBedWithOrientation.orientation,
-                createdAt: raisedBedWithOrientation.createdAt,
-                updatedAt: raisedBedWithOrientation.updatedAt,
-                isValid: validityMap.get(raisedBedWithOrientation.id) ?? false,
+                id: raisedBed.id,
+                blockId: raisedBed.blockId,
+                orientation: raisedBed.orientation,
+                createdAt: raisedBed.createdAt,
+                updatedAt: raisedBed.updatedAt,
+                isValid: validityMap.get(raisedBed.id) ?? false,
             });
         },
     )

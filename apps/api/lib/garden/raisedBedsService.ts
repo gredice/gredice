@@ -106,7 +106,7 @@ export function calculateRaisedBedsOrientation(
         if (bed.blockId) {
             const position = blockPositions.get(bed.blockId);
             if (position) {
-                const hasHorizontalNeighbor = raisedBeds.some((other) => {
+                const hasVerticalNeighbor = raisedBeds.some((other) => {
                     if (other.id === bed.id || !other.blockId) {
                         return false;
                     }
@@ -120,7 +120,7 @@ export function calculateRaisedBedsOrientation(
                         Math.abs(neighborPosition.x - position.x) === 1
                     );
                 });
-                const hasVerticalNeighbor = raisedBeds.some((other) => {
+                const hasHorizontalNeighbor = raisedBeds.some((other) => {
                     if (other.id === bed.id || !other.blockId) {
                         return false;
                     }
