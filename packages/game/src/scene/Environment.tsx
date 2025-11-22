@@ -240,7 +240,12 @@ export function Environment({
         weather.cloudy = overrideWeather?.cloudy ?? weather.cloudy;
         weather.snowy = overrideWeather?.snowy ?? weather.snowy;
         weather.windSpeed = overrideWeather?.windSpeed ?? weather.windSpeed;
-        // weather.windDirection = overrideWeather?.windDirection ?? weather.windDirection;
+        if (typeof overrideWeather?.windDirection === 'number') {
+            // Convert numeric wind direction (0-315 degrees) to compass direction string
+            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+            const index = Math.round(overrideWeather.windDirection / 45) % 8;
+            weather.windDirection = directions[index];
+        }
     }
 
     // Sound management
@@ -345,9 +350,23 @@ export function Environment({
     // Handle snow
     const snow = weather?.snowy ?? 0;
 
-    // TODO: Handle wind direction
+    // Handle wind
     const windSpeed = weather?.windSpeed ?? 0;
-    // const windDirection = weather?.windDirection;
+    // Convert compass direction string to degrees
+    const compassToDirection: Record<string, number> = {
+        N: 0,
+        NE: 45,
+        E: 90,
+        SE: 135,
+        S: 180,
+        SW: 225,
+        W: 270,
+        NW: 315,
+    };
+    const windDirection =
+        typeof weather?.windDirection === 'string'
+            ? (compassToDirection[weather.windDirection] ?? 0)
+            : 0;
 
     return (
         <>
@@ -392,7 +411,11 @@ export function Environment({
                 <Drops count={rain < 0.4 ? 200 : rain > 0.9 ? 2000 : 600} />
             )}
             {!noWeather && snow > 0 && (
-                <Snow count={snow * 5000} windSpeed={windSpeed} />
+                <Snow
+                    count={snow * 5000}
+                    windSpeed={windSpeed}
+                    windDirection={windDirection}
+                />
             )}
         </>
     );
