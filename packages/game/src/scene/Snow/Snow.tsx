@@ -23,7 +23,7 @@ const Snow = ({
     const meshRef = useRef<THREE.InstancedMesh>(null);
     const dummy = useMemo(() => new THREE.Object3D(), []);
 
-    // Convert wind direction (0-315 degrees) to directional components
+    // Convert wind direction (0-360 degrees) to directional components
     // 0° = North (negative z), 90° = East (positive x), 180° = South (positive z), 270° = West (negative x)
     const windDirectionRadians = (windDirection * Math.PI) / 180;
     const windDriftX = Math.sin(windDirectionRadians) * windSpeed;
