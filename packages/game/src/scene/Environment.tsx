@@ -8,6 +8,7 @@ import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { useGameState } from '../useGameState';
 import { Drops } from './Rain/Drops';
+import Snow from './Snow/Snow';
 
 const backgroundColorScale = chroma
     .scale([
@@ -339,11 +340,11 @@ export function Environment({
     // Handle rain
     const rain = weather?.rainy ?? 0;
 
-    // // TODO: Handle snow
-    // const snow = weather?.snowy ?? 0;
+    // Handle snow
+    const snow = weather?.snowy ?? 0;
 
-    // // TODO: Handle wind
-    // const windSpeed = weather?.windSpeed ?? 0;
+    // TODO: Handle wind
+    const windSpeed = weather?.windSpeed ?? 0;
     // const windDirection = weather?.windDirection;
 
     return (
@@ -387,6 +388,9 @@ export function Environment({
             )}
             {!noWeather && rain > 0 && (
                 <Drops count={rain < 0.4 ? 200 : rain > 0.9 ? 2000 : 600} />
+            )}
+            {!noWeather && snow > 0 && (
+                <Snow count={snow * 2000} windSpeed={windSpeed} />
             )}
         </>
     );
