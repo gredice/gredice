@@ -98,12 +98,21 @@ type GameState = {
     ) => void;
 
     // Debug (overrides)
-    weather?: { cloudy: number; rainy: number; snowy: number; foggy: number };
+    weather?: {
+        cloudy: number;
+        rainy: number;
+        snowy: number;
+        foggy: number;
+        windSpeed?: number;
+        windDirection?: number;
+    };
     setWeather: (weather: {
         cloudy: number;
         rainy: number;
         snowy: number;
         foggy: number;
+        windSpeed?: number;
+        windDirection?: number;
     }) => void;
 
     // World
