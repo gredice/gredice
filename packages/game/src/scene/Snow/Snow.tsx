@@ -26,11 +26,14 @@ const Snow = ({ count = 500, windSpeed = 0.5 }) => {
         return temp;
     }, [count, windSpeed]);
 
-    useFrame((state) => {
+    useFrame((state, dt) => {
         particles.forEach((particle, i) => {
-            particle.y -= particle.speed;
+            particle.y -= particle.speed * dt * 60;
             particle.x +=
-                Math.sin(state.clock.elapsedTime + i) * particle.drift;
+                Math.sin(state.clock.elapsedTime + i) *
+                particle.drift *
+                dt *
+                60;
 
             // Reset particle when it goes below the ground
             if (particle.y < GROUND_LEVEL) {
