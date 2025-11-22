@@ -38,8 +38,7 @@ const Snow = ({
                 z: (Math.random() - 0.5) * SIZE,
                 speed: Math.random() * 0.02 + GRAVITY * windSpeed * 10,
                 driftX:
-                    Math.random() * 0.02 -
-                    GRAVITY * windSpeed * 10 +
+                    (Math.random() - 0.5) * 0.02 +
                     windDriftX * GRAVITY * 10,
                 driftZ:
                     (Math.random() - 0.5) * 0.01 + windDriftZ * GRAVITY * 10,
