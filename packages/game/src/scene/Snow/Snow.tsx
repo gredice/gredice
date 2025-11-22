@@ -40,7 +40,7 @@ const Snow = ({ count = 500, windSpeed = 0.5 }) => {
 
             // Reset particle when it goes below the ground
             if (particle.y < GROUND_LEVEL) {
-                particle.y = HEIGHT;
+                particle.y = Math.random() * HEIGHT + HEIGHT_OFFSET;
                 particle.x = (Math.random() - 0.5) * SIZE;
             }
 
