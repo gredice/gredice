@@ -270,8 +270,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@mdxeditor/editor':
-        specifier: 3.49.0
-        version: 3.49.0(@codemirror/language@6.11.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.5))(@types/react@19.2.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(yjs@13.6.27)
+        specifier: 3.49.1
+        version: 3.49.1(@codemirror/language@6.11.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.5))(@types/react@19.2.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(yjs@13.6.27)
       '@playwright/experimental-ct-react':
         specifier: 1.56.1
         version: 1.56.1(@types/node@24.10.1)(jiti@2.4.2)(sass@1.94.0)(terser@5.44.1)(tsx@4.20.6)(vite@6.4.1(@types/node@24.10.1)(jiti@2.4.2)(sass@1.94.0)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))(yaml@2.8.1)
@@ -373,8 +373,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@mdxeditor/editor':
-        specifier: 3.49.0
-        version: 3.49.0(@codemirror/language@6.11.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.5))(@types/react@19.2.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(yjs@13.6.27)
+        specifier: 3.49.1
+        version: 3.49.1(@codemirror/language@6.11.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.5))(@types/react@19.2.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(yjs@13.6.27)
       '@playwright/experimental-ct-react':
         specifier: 1.56.1
         version: 1.56.1(@types/node@24.10.1)(jiti@2.4.2)(sass@1.94.0)(terser@5.44.1)(tsx@4.20.6)(vite@6.4.1(@types/node@24.10.1)(jiti@2.4.2)(sass@1.94.0)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))(yaml@2.8.1)
@@ -2413,8 +2413,8 @@ packages:
   '@marijn/find-cluster-break@1.0.2':
     resolution: {integrity: sha512-l0h88YhZFyKdXIFNfSWpyjStDjGHwZ/U7iobcK1cQQD8sejsONdQtTVU+1wVN1PBw40PiiHB1vA5S7VTfQiP9g==}
 
-  '@mdxeditor/editor@3.49.0':
-    resolution: {integrity: sha512-RCG54YwlmyLf16uTspKqch4NjZwIDRp+MyisDZED16NBEKfX+6z0tG/4Q2o/bKsDe5RmDPdcAGZCUX3LDi91IQ==}
+  '@mdxeditor/editor@3.49.1':
+    resolution: {integrity: sha512-EZ2eejkJoxjWtqn2t9pai9m+iIEyef+kJxqHXw8y4dWorlJ2TdE+hsuHnBygeMdCUBgtuzUzxxcjwDAIJvbBEg==}
     engines: {node: '>=16'}
     peerDependencies:
       react: '>= 18 || >= 19'
@@ -10450,7 +10450,7 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.2': {}
 
-  '@mdxeditor/editor@3.49.0(@codemirror/language@6.11.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.5))(@types/react@19.2.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(yjs@13.6.27)':
+  '@mdxeditor/editor@3.49.1(@codemirror/language@6.11.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.5))(@types/react@19.2.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(yjs@13.6.27)':
     dependencies:
       '@codemirror/commands': 6.10.0
       '@codemirror/lang-markdown': 6.5.0
