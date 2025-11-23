@@ -1,4 +1,5 @@
 import { animated } from '@react-spring/three';
+import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -75,7 +76,14 @@ export function Fence({ stack, block, rotation }: EntityInstanceProps) {
                 receiveShadow
                 geometry={nodes[variant].geometry}
                 material={materials['Material.Planks']}
-            />
+            >
+                <SnowOverlay
+                    geometry={nodes[variant].geometry}
+                    maxThickness={0.09}
+                    slopeExponent={2.9}
+                    noiseScale={3.3}
+                />
+            </mesh>
         </animated.group>
     );
 }

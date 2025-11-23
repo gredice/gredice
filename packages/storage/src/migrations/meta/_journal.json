@@ -57,6 +57,13 @@
       "when": 1763769263275,
       "tag": "0007_parched_bucky",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1763861859176,
+      "tag": "0008_wakeful_vindicator",
+      "breakpoints": true
     }
   ]
 }

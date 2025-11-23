@@ -1,4 +1,6 @@
 import { animated } from '@react-spring/three';
+import { SnowOverlay } from '../snow/SnowOverlay';
+import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -22,6 +24,10 @@ export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
                 receiveShadow
                 geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}
                 material={materials[`Material.Grass`]}
+            />
+            <SnowOverlay
+                geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}
+                {...snowPresets.grassFlat}
             />
         </animated.group>
     );

@@ -115,6 +115,10 @@ type GameState = {
         windDirection?: number;
     }) => void;
 
+    // Environment derived state
+    snowCoverage: number;
+    setSnowCoverage: (snowCoverage: number) => void;
+
     // World
     orbitControls: OrbitControls | null;
     setOrbitControls: (ref: OrbitControls | null) => void;
@@ -219,6 +223,8 @@ export function createGameState({
             });
         },
         setWeather: (weather) => set({ weather }),
+        snowCoverage: 0,
+        setSnowCoverage: (snowCoverage) => set({ snowCoverage }),
     }));
 }
 

@@ -114,3 +114,68 @@ export async function updateFarmSlackChannelAction(
         };
     }
 }
+
+type UpdateFarmSnowAccumulationState =
+    | { success: true; message: string }
+    | { success: false; message: string }
+    | null;
+
+export async function updateFarmSnowAccumulationAction(
+    _prevState: UpdateFarmSnowAccumulationState,
+    formData: FormData,
+): Promise<UpdateFarmSnowAccumulationState> {
+    await auth(['admin']);
+
+    const farmIdRaw = formData.get('farmId');
+    if (typeof farmIdRaw !== 'string') {
+        return {
+            success: false,
+            message: 'Nevažeći identifikator farme.',
+        };
+    }
+
+    const farmId = Number.parseInt(farmIdRaw, 10);
+    if (!Number.isFinite(farmId)) {
+        return {
+            success: false,
+            message: 'Nevažeći identifikator farme.',
+        };
+    }
+
+    const snowAccumulationRaw = formData.get('snowAccumulation');
+    if (typeof snowAccumulationRaw !== 'string') {
+        return {
+            success: false,
+            message: 'Nevažeća vrijednost snijega.',
+        };
+    }
+
+    const snowAccumulation = Number.parseFloat(snowAccumulationRaw);
+    if (!Number.isFinite(snowAccumulation) || snowAccumulation < 0) {
+        return {
+            success: false,
+            message: 'Snijeg mora biti pozitivan broj.',
+        };
+    }
+
+    try {
+        await updateFarm({
+            id: farmId,
+            snowAccumulation,
+        });
+        revalidatePath(KnownPages.Farm(farmId));
+        return {
+            success: true,
+            message: 'Količina snijega je uspješno spremljena.',
+        };
+    } catch (error) {
+        console.error('Failed to update farm snow accumulation', {
+            farmId,
+            error,
+        });
+        return {
+            success: false,
+            message: 'Greška pri spremanju količine snijega.',
+        };
+    }
+}
