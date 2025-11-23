@@ -421,8 +421,6 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
                 name="Seed"
                 geometry={nodes.Seed.geometry}
                 material={nodes.Seed.material}
-                snow={snowPresets.seed}
-                snowLift={0.002}
             />
         </>
     );
