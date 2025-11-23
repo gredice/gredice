@@ -35,7 +35,7 @@
             "vue-demi"
         ],
         "overrides": {
-            "@types/react": "19.2.5",
+            "@types/react": "19.2.6",
             "@types/react-dom": "19.2.3"
         }
     }

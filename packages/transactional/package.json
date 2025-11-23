@@ -11,7 +11,7 @@
     "devDependencies": {
         "@react-email/preview-server": "5.0.4",
         "@types/node": "24.10.1",
-        "@types/react": "19.2.5",
+        "@types/react": "19.2.6",
         "typescript": "5.9.3"
     },
     "dependencies": {
