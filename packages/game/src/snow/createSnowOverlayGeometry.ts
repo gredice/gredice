@@ -1,5 +1,5 @@
 import {
-    BufferAttribute,
+    type BufferAttribute,
     BufferGeometry,
     Float32BufferAttribute,
     Uint16BufferAttribute,
@@ -23,7 +23,10 @@ const scratchMid = new Vector3();
 const scratchCenter = new Vector3();
 const scratchDir = new Vector3();
 
-function getAttributeClone<T extends BufferAttribute>(geometry: BufferGeometry, name: string) {
+function getAttributeClone<T extends BufferAttribute>(
+    geometry: BufferGeometry,
+    name: string,
+) {
     const attr = geometry.getAttribute(name) as T | undefined;
     if (!attr) {
         throw new Error(`Geometry is missing required attribute "${name}"`);
@@ -31,7 +34,9 @@ function getAttributeClone<T extends BufferAttribute>(geometry: BufferGeometry, 
     return attr;
 }
 
-export function createSnowOverlayGeometry(source: BufferGeometry): BufferGeometry {
+export function createSnowOverlayGeometry(
+    source: BufferGeometry,
+): BufferGeometry {
     const cached = cache.get(source);
     if (cached) {
         return cached;
@@ -44,18 +49,30 @@ export function createSnowOverlayGeometry(source: BufferGeometry): BufferGeometr
     workingGeometry.computeBoundingBox();
     const boundingBox = workingGeometry.boundingBox;
     if (!boundingBox) {
-        throw new Error('Unable to resolve geometry bounding box for snow overlay.');
+        throw new Error(
+            'Unable to resolve geometry bounding box for snow overlay.',
+        );
     }
 
-    const positionAttr = getAttributeClone<BufferAttribute>(workingGeometry, 'position');
-    const normalAttr = getAttributeClone<BufferAttribute>(workingGeometry, 'normal');
-    const uvAttr = workingGeometry.getAttribute('uv') as BufferAttribute | undefined;
+    const positionAttr = getAttributeClone<BufferAttribute>(
+        workingGeometry,
+        'position',
+    );
+    const normalAttr = getAttributeClone<BufferAttribute>(
+        workingGeometry,
+        'normal',
+    );
+    const uvAttr = workingGeometry.getAttribute('uv') as
+        | BufferAttribute
+        | undefined;
 
     const vertexCount = positionAttr.count;
     const positions: number[] = Array.from(positionAttr.array);
     const normals: number[] = Array.from(normalAttr.array);
     const snowLayers: number[] = new Array(vertexCount).fill(1);
-    const uvs: number[] | undefined = uvAttr ? Array.from(uvAttr.array) : undefined;
+    const uvs: number[] | undefined = uvAttr
+        ? Array.from(uvAttr.array)
+        : undefined;
 
     const indexAttr = workingGeometry.getIndex();
     const indices: number[] = indexAttr
@@ -132,13 +149,18 @@ export function createSnowOverlayGeometry(source: BufferGeometry): BufferGeometr
     const result = new BufferGeometry();
     result.setAttribute('position', new Float32BufferAttribute(positions, 3));
     result.setAttribute('normal', new Float32BufferAttribute(normals, 3));
-    result.setAttribute('aSnowLayer', new Float32BufferAttribute(snowLayers, 1));
+    result.setAttribute(
+        'aSnowLayer',
+        new Float32BufferAttribute(snowLayers, 1),
+    );
     if (uvs) {
         result.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
     }
 
     const IndexAttributeCtor =
-        positions.length / 3 > 65535 ? Uint32BufferAttribute : Uint16BufferAttribute;
+        positions.length / 3 > 65535
+            ? Uint32BufferAttribute
+            : Uint16BufferAttribute;
     result.setIndex(new IndexAttributeCtor(indices, 1));
     result.computeBoundingBox();
     result.computeBoundingSphere();
