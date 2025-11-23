@@ -5,7 +5,6 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
 import { useOperations } from '../../hooks/useOperations';
-import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 import { OperationsList } from './shared/OperationsList';
 
