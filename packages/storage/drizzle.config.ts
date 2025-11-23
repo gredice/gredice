@@ -5,6 +5,6 @@ export default defineConfig({
     schema: './src/schema/index.ts',
     out: './src/migrations',
     dbCredentials: {
-        url: process.env.POSTGRES_URL!,
+        url: process.env.POSTGRES_URL ?? '',
     },
 });

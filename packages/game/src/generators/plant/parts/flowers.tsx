@@ -23,18 +23,20 @@ const flowerGeometry = (() => {
 })();
 
 export function Flowers({ matrices, color }: FlowersProps) {
-    const ref = useRef<THREE.InstancedMesh>(null!);
+    const ref = useRef<THREE.InstancedMesh | null>(null);
     const material = useMemo(
         () => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }),
         [color],
     );
 
     useLayoutEffect(() => {
+        if (!ref.current) return;
+        const mesh = ref.current;
         matrices.forEach((matrix, i) => {
-            ref.current.setMatrixAt(i, matrix);
+            mesh.setMatrixAt(i, matrix);
         });
-        ref.current.instanceMatrix.needsUpdate = true;
-        ref.current.count = matrices.length;
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.count = matrices.length;
     }, [matrices]);
 
     return (

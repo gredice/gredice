@@ -1,11 +1,11 @@
 import type { PlantData } from '@gredice/client';
 import { calculatePlantsPerField } from '@gredice/js/plants';
 import {
+    PlantOrSortImage,
     PlantYieldTooltip,
     SeedTimeInformationBadge,
 } from '@gredice/ui/plants';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
-import { isAbsoluteUrl } from '@signalco/js';
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -14,7 +14,6 @@ import { List } from '@signalco/ui-primitives/List';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import Image from 'next/image';
 import { usePlants } from '../../hooks/usePlants';
 import { KnownPages } from '../../knownPages';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
@@ -69,12 +68,6 @@ export function PlantsList({
                     const price = plant.prices?.perPlant
                         ? plant.prices.perPlant.toFixed(2)
                         : 'Nepoznato';
-                    const coverUrl =
-                        plant.image.cover.url ??
-                        '/assets/plants/placeholder.png';
-                    const plantImageUrl = isAbsoluteUrl(coverUrl)
-                        ? coverUrl
-                        : `https://www.gredice.com${coverUrl}`;
                     return (
                         <Stack key={plant.id}>
                             <Button
@@ -82,9 +75,8 @@ export function PlantsList({
                                 className="justify-start text-start p-0 h-auto py-2 gap-3 px-4 rounded-none font-normal"
                                 onClick={() => onChange(plant)}
                             >
-                                <Image
-                                    src={plantImageUrl}
-                                    alt={plant.information.name}
+                                <PlantOrSortImage
+                                    plant={plant}
                                     width={48}
                                     height={48}
                                     className="size-12"

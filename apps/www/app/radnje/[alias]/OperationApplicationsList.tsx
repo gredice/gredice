@@ -1,9 +1,9 @@
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { PlantImage } from '../../../components/plants/PlantImage';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
@@ -86,7 +86,7 @@ export async function OperationApplicationsList({
                         >
                             <CardContent noHeader>
                                 <Row spacing={2}>
-                                    <PlantImage
+                                    <PlantOrSortImage
                                         plant={plant}
                                         width={42}
                                         height={42}

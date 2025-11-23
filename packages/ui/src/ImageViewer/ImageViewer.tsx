@@ -305,7 +305,7 @@ export function ImageViewer({
                                     transformOrigin: 'center center',
                                 }}
                             >
-                                {/** biome-ignore lint/performance/noImgElement: <explanation> */}
+                                {/** biome-ignore lint/performance/noImgElement: Using raw <img> intentionally for fallback display */}
                                 <img
                                     src={src}
                                     alt={alt}

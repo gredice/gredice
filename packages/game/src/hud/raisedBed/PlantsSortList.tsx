@@ -1,6 +1,6 @@
 import type { PlantSortData } from '@gredice/client';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
-import { isAbsoluteUrl } from '@signalco/js';
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
 import { Check } from '@signalco/ui-icons';
@@ -10,7 +10,6 @@ import { List } from '@signalco/ui-primitives/List';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import Image from 'next/image';
 import { useEffect } from 'react';
 import { usePlantSorts } from '../../hooks/usePlantSorts';
 import {
@@ -52,14 +51,6 @@ function PlantSortListItem({
         animateFlyToShoppingCart.run,
     ]);
 
-    const coverUrl =
-        sort.image?.cover?.url ??
-        sort.information.plant.image?.cover?.url ??
-        '/assets/plants/placeholder.png';
-    const plantImageUrl = isAbsoluteUrl(coverUrl)
-        ? coverUrl
-        : `https://www.gredice.com${coverUrl}`;
-
     return (
         <Stack className={cx(selectedSortId === sort.id && 'bg-muted')}>
             <Button
@@ -72,9 +63,8 @@ function PlantSortListItem({
             >
                 <Row spacing={1.5}>
                     <AnimateFlyToItem {...animateFlyToShoppingCart.props}>
-                        <Image
-                            src={plantImageUrl}
-                            alt={sort.information.name}
+                        <PlantOrSortImage
+                            plantSort={sort}
                             width={48}
                             height={48}
                             className="size-12 shrink-0 min-w-12"

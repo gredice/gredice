@@ -45,24 +45,40 @@ async function reconstructDeliveryRequestFromEvents(
     let accountId: string | undefined;
     let surveySent = false;
 
+    // helpers to safely read typed values from event data
+    const asNumber = (v: unknown): number | undefined => {
+        if (typeof v === 'number') return v;
+        if (typeof v === 'string' && v !== '' && /^-?\d+$/.test(v))
+            return Number(v);
+        return undefined;
+    };
+
+    const asString = (v: unknown): string | undefined =>
+        typeof v === 'string' ? v : undefined;
+
+    const asMode = (v: unknown): 'delivery' | 'pickup' | undefined =>
+        v === 'delivery' || v === 'pickup'
+            ? (v as 'delivery' | 'pickup')
+            : undefined;
+
     for (const event of events) {
-        const data = event.data as Record<string, any> | undefined;
+        const data = event.data as Record<string, unknown> | undefined;
 
         if (event.type === knownEventTypes.delivery.requestCreated) {
-            slotId = data?.slotId;
-            addressId = data?.addressId;
-            locationId = data?.locationId;
-            mode = data?.mode;
-            requestNotes = data?.requestNotes;
+            slotId = asNumber(data?.slotId);
+            addressId = asNumber(data?.addressId);
+            locationId = asNumber(data?.locationId);
+            mode = asMode(data?.mode);
+            requestNotes = asString(data?.requestNotes);
             state = DeliveryRequestStates.PENDING;
-            accountId = data?.accountId;
+            accountId = asString(data?.accountId);
         } else if (
             event.type === knownEventTypes.delivery.requestAddressChanged
         ) {
-            addressId = data?.addressId;
-            locationId = data?.locationId;
-            mode = data?.mode;
-            requestNotes = data?.requestNotes;
+            addressId = asNumber(data?.addressId);
+            locationId = asNumber(data?.locationId);
+            mode = asMode(data?.mode);
+            requestNotes = asString(data?.requestNotes);
         } else if (event.type === knownEventTypes.delivery.requestConfirmed) {
             state = DeliveryRequestStates.CONFIRMED;
         } else if (event.type === knownEventTypes.delivery.requestPreparing) {
@@ -72,12 +88,12 @@ async function reconstructDeliveryRequestFromEvents(
         } else if (event.type === knownEventTypes.delivery.requestFulfilled) {
             state = DeliveryRequestStates.FULFILLED;
         } else if (event.type === knownEventTypes.delivery.requestSlotChanged) {
-            slotId = data?.newSlotId;
+            slotId = asNumber(data?.newSlotId);
         } else if (event.type === knownEventTypes.delivery.userCancelled) {
             state = DeliveryRequestStates.CANCELLED;
         } else if (event.type === knownEventTypes.delivery.requestCancelled) {
             state = DeliveryRequestStates.CANCELLED;
-            cancelReason = data?.cancelReason;
+            cancelReason = asString(data?.cancelReason);
         } else if (event.type === knownEventTypes.delivery.requestSurveySent) {
             surveySent = true;
         }

@@ -9,7 +9,7 @@ interface DropsProps {
 
 export const Drops = ({ count = 2000 }: DropsProps) => {
     const fref = useRef<THREE.Group>(null);
-    const dropsRef = useRef<THREE.InstancedMesh>(null!);
+    const dropsRef = useRef<THREE.InstancedMesh | null>(null);
     const _dummy = useMemo(() => new THREE.Object3D(), []);
     const initialY = useMemo(() => new Float32Array(count).fill(0), [count]);
     const angles = useMemo(() => new Float32Array(count).fill(0), [count]);
@@ -19,6 +19,7 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
 
     useEffect(() => {
         const dropsMesh = dropsRef.current;
+        if (!dropsMesh) return;
         for (let i = 0; i < count; i++) {
             _dummy.position.set(
                 THREE.MathUtils.randFloatSpread(size),
@@ -40,6 +41,7 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
 
     useFrame(({ camera }, dt) => {
         const dropsMesh = dropsRef.current;
+        if (!dropsMesh) return;
 
         // Calculate what is camera target on the ground in front of the camera
         if (fref?.current) {

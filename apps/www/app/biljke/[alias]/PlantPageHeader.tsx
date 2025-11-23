@@ -1,7 +1,7 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
-import { SeedTimeInformationBadge } from '@gredice/ui/plants';
+import { PlantOrSortImage, SeedTimeInformationBadge } from '@gredice/ui/plants';
 import { slug } from '@signalco/js';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
 import { MapPinHouse, Sprout } from '@signalco/ui-icons';
@@ -10,7 +10,6 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
-import { PlantImage } from '../../../components/plants/PlantImage';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../../components/shared/PageHeader';
 import { KnownPages } from '../../../src/KnownPages';
@@ -37,17 +36,11 @@ export function PlantPageHeader({
     return (
         <PageHeader
             visual={
-                <PlantImage
-                    plant={{
-                        information: {
-                            name:
-                                sort?.information?.name ??
-                                plant.information.name,
-                        },
-                        image: {
-                            cover: sort?.image?.cover ?? plant.image?.cover,
-                        },
-                    }}
+                <PlantOrSortImage
+                    coverUrl={
+                        sort?.image?.cover?.url ?? plant.image?.cover?.url
+                    }
+                    alt={sort?.information?.name ?? plant.information.name}
                     preload
                     width={192}
                     height={192}

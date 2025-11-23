@@ -43,24 +43,33 @@ function CustomTooltip({
     textColor,
     label,
     unit,
-}: any) {
+}: {
+    active?: boolean;
+    payload?: Array<Record<string, unknown>>;
+    header?: string;
+    textColor?: string;
+    label?: string | number;
+    unit?: string;
+}) {
     if (active && payload && payload.length) {
         const payloadFormatted =
-            new Date(label).toLocaleDateString('hr-HR', {
+            new Date(String(label)).toLocaleDateString('hr-HR', {
                 month: 'short',
                 day: 'numeric',
             }) +
             ' ' +
-            new Date(label).toLocaleTimeString('hr-HR', {
+            new Date(String(label)).toLocaleTimeString('hr-HR', {
                 hour: '2-digit',
                 minute: '2-digit',
             });
         return (
             <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
                 <p className="text-sm font-medium text-gray-900">{`${payloadFormatted}`}</p>
-                <p
-                    className={cx('text-sm', textColor)}
-                >{`${header}: ${payload[0].value}${unit}`}</p>
+                <p className={cx('text-sm', textColor)}>
+                    {`${header}: ${String(
+                        (payload[0].value as number | string) ?? '',
+                    )}${unit}`}
+                </p>
             </div>
         );
     }
@@ -145,10 +154,13 @@ function SensorInfoModal({
 
     // Process and sort the data with smart date/time formatting
     const processedData = sensorDetails?.values
-        .map((item) => ({
-            timestamp: item.timeStamp,
-            value: Number.parseFloat(item.valueSerialized),
-        }))
+        .map((item) => {
+            const it = item as Record<string, unknown>;
+            return {
+                timestamp: it.timeStamp as Date,
+                value: Number.parseFloat(String(it.valueSerialized ?? '0')),
+            };
+        })
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
     // Add smart labeling logic with mobile-friendly labels

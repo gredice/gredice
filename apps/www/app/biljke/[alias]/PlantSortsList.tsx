@@ -1,10 +1,10 @@
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { slug } from '@signalco/js';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { Suspense } from 'react';
-import { PlantImage } from '../../../components/plants/PlantImage';
 import { getPlantSortsData } from '../../../lib/plants/getPlantSortsData';
 import { KnownPages } from '../../../src/KnownPages';
 
@@ -55,18 +55,12 @@ async function PlantSortsListContent({
                             className="border-tertiary border-b-4"
                         >
                             <Row spacing={2}>
-                                <PlantImage
-                                    plant={{
-                                        image: {
-                                            cover:
-                                                sort.image?.cover ??
-                                                sort.information.plant.image
-                                                    ?.cover,
-                                        },
-                                        information: {
-                                            name: sort.information.name,
-                                        },
-                                    }}
+                                <PlantOrSortImage
+                                    coverUrl={
+                                        sort.image?.cover?.url ??
+                                        sort.information.plant.image?.cover?.url
+                                    }
+                                    alt={sort.information.name}
                                     width={72}
                                     height={72}
                                 />

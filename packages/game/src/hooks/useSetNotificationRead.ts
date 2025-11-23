@@ -29,7 +29,7 @@ export function useSetNotificationRead() {
             };
         },
         onMutate: async (variables) => {
-            const previousQueries = new Map<readonly unknown[], any>();
+            const previousQueries = new Map<readonly unknown[], unknown>();
             const queries = queryClient.getQueriesData({});
             queries.forEach(([queryKey, data]) => {
                 if (
@@ -39,18 +39,18 @@ export function useSetNotificationRead() {
                     queryClient.cancelQueries({ queryKey });
                     queryClient.setQueryData(
                         queryKey,
-                        (data as any[]).map((n) =>
-                            n.id === variables.id
-                                ? {
-                                      ...n,
-                                      readAt: variables.read
-                                          ? new Date()
-                                          : null,
-                                  }
-                                : n,
-                        ),
+                        (data as Array<Record<string, unknown>>).map((n) => {
+                            const entry = n as Record<string, unknown>;
+                            if (String(entry.id) === variables.id) {
+                                return {
+                                    ...entry,
+                                    readAt: variables.read ? new Date() : null,
+                                } as Record<string, unknown>;
+                            }
+                            return entry;
+                        }),
                     );
-                    previousQueries.set(queryKey, data);
+                    previousQueries.set(queryKey, data as unknown);
                 }
             });
 
