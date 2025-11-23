@@ -16,6 +16,10 @@
         {
             "path": "/api/internal/cron/delivery-survey",
             "schedule": "0 9 * * *"
+        },
+        {
+            "path": "/api/internal/cron/update-farm-weather",
+            "schedule": "0 * * * *"
         }
     ]
 }

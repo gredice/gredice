@@ -348,12 +348,16 @@ export function Environment({
     // Handle rain
     const rain = weather?.rainy ?? 0;
 
-    // Handle snow
-    const snow = weather?.snowy ?? 0;
+    // Handle snow particles - based on current weather (snowy intensity 0-1)
+    const snowParticles = weather?.snowy ?? 0;
+
+    // Handle ground snow coverage - based on accumulated snow in cm
+    const snowAccumulationCm = weather?.snowAccumulation ?? 0;
+    const snowCoverage = Math.min(1, snowAccumulationCm / 30); // Scale: 0cm=0, 30cm=1
 
     useEffect(() => {
-        setSnowCoverage(Math.min(1, Math.max(0, snow)));
-    }, [setSnowCoverage, snow]);
+        setSnowCoverage(snowCoverage);
+    }, [setSnowCoverage, snowCoverage]);
 
     // Handle wind
     const windSpeed = weather?.windSpeed ?? 0;
@@ -415,9 +419,9 @@ export function Environment({
             {!noWeather && rain > 0 && (
                 <Drops count={rain < 0.4 ? 200 : rain > 0.9 ? 2000 : 600} />
             )}
-            {!noWeather && snow > 0 && (
+            {!noWeather && snowParticles > 0 && (
                 <Snow
-                    count={snow * 5000}
+                    count={snowParticles * 5000}
                     windSpeed={windSpeed}
                     windDirection={windDirection}
                 />

@@ -16,6 +16,7 @@ export const farms = pgTable(
         latitude: real('latitude').notNull(),
         longitude: real('longitude').notNull(),
         slackChannelId: text('slack_channel_id'),
+        snowAccumulation: real('snow_accumulation').notNull().default(0), // Snow accumulation in cm
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()

@@ -14,6 +14,7 @@ import { FormFields } from '../../../../components/shared/fields/FormFields';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { FarmSlackChannelForm } from './FarmSlackChannelForm';
+import { FarmSnowAccumulationForm } from './FarmSnowAccumulationForm';
 import { FarmUsersCard } from './FarmUsersCard';
 
 export const dynamic = 'force-dynamic';
@@ -54,6 +55,10 @@ export default async function FarmPage({
                             name: 'Slack kanal',
                             value: farm.slackChannelId ?? '—',
                         },
+                        {
+                            name: 'Snijeg',
+                            value: `${farm.snowAccumulation} cm`,
+                        },
                         { name: 'Datum kreiranja', value: farm.createdAt },
                         { name: 'Datum ažuriranja', value: farm.updatedAt },
                         { name: 'Obrisana', value: farm.isDeleted },
@@ -83,6 +88,21 @@ export default async function FarmPage({
                         <p className="text-sm text-muted-foreground">
                             Koristimo ovaj kanal za administrativne obavijesti o
                             promjenama radnji na farmi.
+                        </p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Snijeg</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        <FarmSnowAccumulationForm
+                            farmId={farmId}
+                            snowAccumulation={farm.snowAccumulation}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                            Trenutna količina snijega na farmi. Automatski se
+                            ažurira svakih sat vremena.
                         </p>
                     </CardContent>
                 </Card>
