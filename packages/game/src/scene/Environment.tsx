@@ -219,6 +219,7 @@ export function Environment({
     const currentTime = useGameState((state) => state.currentTime);
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
+    const setSnowCoverage = useGameState((state) => state.setSnowCoverage);
 
     const { data: garden } = useCurrentGarden();
     const location = garden
@@ -349,6 +350,10 @@ export function Environment({
 
     // Handle snow
     const snow = weather?.snowy ?? 0;
+
+    useEffect(() => {
+        setSnowCoverage(Math.min(1, Math.max(0, snow)));
+    }, [setSnowCoverage, snow]);
 
     // Handle wind
     const windSpeed = weather?.windSpeed ?? 0;

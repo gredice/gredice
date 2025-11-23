@@ -1,4 +1,6 @@
 import { animated } from '@react-spring/three';
+import { SnowOverlay } from '../snow/SnowOverlay';
+import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -19,7 +21,12 @@ export function Tulip({ stack, block, rotation }: EntityInstanceProps) {
                 receiveShadow
                 geometry={nodes.Tulip.geometry}
                 material={materials['Material.ColorPaletteMain']}
-            />
+            >
+                <SnowOverlay
+                    geometry={nodes.Tulip.geometry}
+                    {...snowPresets.tulip}
+                />
+            </mesh>
         </animated.group>
     );
 }

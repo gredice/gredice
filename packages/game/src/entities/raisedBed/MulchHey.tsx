@@ -1,4 +1,6 @@
 import { animated } from '@react-spring/three';
+import { SnowOverlay } from '../../snow/SnowOverlay';
+import { snowPresets } from '../../snow/snowPresets';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
@@ -20,7 +22,12 @@ export function MulchHey({ stack, block, rotation }: EntityInstanceProps) {
                 scale={3}
                 geometry={nodes.Mulch_Hey.geometry}
                 material={materials['Material.ColorPaletteMain']}
-            />
+            >
+                <SnowOverlay
+                    geometry={nodes.Mulch_Hey.geometry}
+                    {...snowPresets.mulch}
+                />
+            </mesh>
         </animated.group>
     );
 }

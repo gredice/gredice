@@ -1,5 +1,7 @@
 import { animated } from '@react-spring/three';
 import { MeshDistortMaterial, MeshWobbleMaterial } from '@react-three/drei';
+import { SnowOverlay } from '../snow/SnowOverlay';
+import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -22,12 +24,20 @@ export function Bush({ stack, block, rotation }: EntityInstanceProps) {
                     distort={0.1}
                     speed={2}
                 />
+                <SnowOverlay
+                    geometry={nodes.Bush_1_1.geometry}
+                    {...snowPresets.bushCore}
+                />
             </mesh>
             <mesh castShadow receiveShadow geometry={nodes.Bush_1_2.geometry}>
                 <MeshWobbleMaterial
                     {...materials['Material.Leaves']}
                     factor={0.02}
                     speed={3}
+                />
+                <SnowOverlay
+                    geometry={nodes.Bush_1_2.geometry}
+                    {...snowPresets.bushFoliage}
                 />
             </mesh>
         </animated.group>

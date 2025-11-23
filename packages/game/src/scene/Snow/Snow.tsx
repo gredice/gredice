@@ -38,8 +38,7 @@ const Snow = ({
                 z: (Math.random() - 0.5) * SIZE,
                 speed: Math.random() * 0.02 + GRAVITY * windSpeed * 10,
                 driftX:
-                    (Math.random() - 0.5) * 0.02 +
-                    windDriftX * GRAVITY * 10,
+                    (Math.random() - 0.5) * 0.02 + windDriftX * GRAVITY * 10,
                 driftZ:
                     (Math.random() - 0.5) * 0.01 + windDriftZ * GRAVITY * 10,
             });
@@ -86,7 +85,7 @@ const Snow = ({
     return (
         <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
             <octahedronGeometry args={[FLAKE_SIZE, 0]} />
-            <meshBasicMaterial color="#FFFFFF" />
+            <meshLambertMaterial color="#FFFFFF" />
         </instancedMesh>
     );
 };
