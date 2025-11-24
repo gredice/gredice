@@ -280,24 +280,32 @@ function isWateringOperation(entity: EntityStandardized | null | undefined) {
 
     // Check the main information for watering-related terms
     const name = entity.information?.name?.toLowerCase();
-    const label = entity.information?.label?.toLowerCase();
 
     if (name?.includes('watter') || name?.includes('water')) {
         return true;
     }
 
-    if (label?.includes('zalije') || label?.includes('water')) {
+    return false;
+}
+
+// TODO: Add an attribute to the operation entity that determines whether the operation is a harvest operation
+// instead of relying on name/label/stage matching
+function isHarvestOperation(entity: EntityStandardized | null | undefined) {
+    if (!entity) return false;
+
+    // Check the main information for harvest-related terms
+    const name = entity.information?.name?.toLowerCase();
+
+    // Check for specific harvest operation names
+    if (
+        name === 'harvestplant' ||
+        name === 'harvestall' ||
+        name === 'harvestmature' ||
+        name === 'harvest50mature' ||
+        name === 'harvest25mature'
+    ) {
         return true;
     }
-
-    // Check the stage information for watering stage
-    const stageName =
-        entity.attributes?.stage?.information?.name?.toLowerCase();
-    const stageLabel =
-        entity.attributes?.stage?.information?.label?.toLowerCase();
-
-    if (stageName === 'watering') return true;
-    if (stageLabel?.includes('zalije')) return true;
 
     return false;
 }
@@ -375,7 +383,7 @@ export async function evaluateAchievements() {
     for (const event of plantEvents) {
         const data = event.data as PlantUpdateEventData | undefined;
         const status = data?.status?.toLowerCase();
-        if (status !== 'sowed' && status !== 'harvested') {
+        if (status !== 'sowed') {
             continue;
         }
         const raisedBedId = parseRaisedBedId(event.aggregateId);
@@ -383,47 +391,24 @@ export async function evaluateAchievements() {
         const accountId = raisedBedAccountMap.get(raisedBedId);
         if (!accountId) continue;
 
-        if (status === 'sowed') {
-            const nextCount = (plantingCounters.get(accountId) ?? 0) + 1;
-            plantingCounters.set(accountId, nextCount);
-            const existing = existingByAccount.get(accountId) ?? new Set();
-            const planned = ensureAccountSet(plannedByAccount, accountId);
-            for (const definition of plantingDefinitions) {
-                const threshold = definition.threshold ?? 0;
-                if (
-                    nextCount >= threshold &&
-                    !existing.has(definition.key) &&
-                    !planned.has(definition.key)
-                ) {
-                    plans.push({
-                        accountId,
-                        definition,
-                        earnedAt: event.createdAt,
-                        progressValue: nextCount,
-                    });
-                    planned.add(definition.key);
-                }
-            }
-        } else if (status === 'harvested') {
-            const nextCount = (harvestCounters.get(accountId) ?? 0) + 1;
-            harvestCounters.set(accountId, nextCount);
-            const existing = existingByAccount.get(accountId) ?? new Set();
-            const planned = ensureAccountSet(plannedByAccount, accountId);
-            for (const definition of harvestDefinitions) {
-                const threshold = definition.threshold ?? 0;
-                if (
-                    nextCount >= threshold &&
-                    !existing.has(definition.key) &&
-                    !planned.has(definition.key)
-                ) {
-                    plans.push({
-                        accountId,
-                        definition,
-                        earnedAt: event.createdAt,
-                        progressValue: nextCount,
-                    });
-                    planned.add(definition.key);
-                }
+        const nextCount = (plantingCounters.get(accountId) ?? 0) + 1;
+        plantingCounters.set(accountId, nextCount);
+        const existing = existingByAccount.get(accountId) ?? new Set();
+        const planned = ensureAccountSet(plannedByAccount, accountId);
+        for (const definition of plantingDefinitions) {
+            const threshold = definition.threshold ?? 0;
+            if (
+                nextCount >= threshold &&
+                !existing.has(definition.key) &&
+                !planned.has(definition.key)
+            ) {
+                plans.push({
+                    accountId,
+                    definition,
+                    earnedAt: event.createdAt,
+                    progressValue: nextCount,
+                });
+                planned.add(definition.key);
             }
         }
     }
@@ -431,13 +416,16 @@ export async function evaluateAchievements() {
     const operationEntities =
         (await getEntitiesFormatted<EntityStandardized>('operation')) ?? [];
     const wateringEntityIds = new Set<number>();
+    const harvestEntityIds = new Set<number>();
     for (const entity of operationEntities) {
-        if (!isWateringOperation(entity)) {
-            continue;
-        }
         const idValue = entity.id;
-        if (typeof idValue === 'number') {
+        if (typeof idValue !== 'number') continue;
+
+        if (isWateringOperation(entity)) {
             wateringEntityIds.add(idValue);
+        }
+        if (isHarvestOperation(entity)) {
+            harvestEntityIds.add(idValue);
         }
     }
 
@@ -451,26 +439,52 @@ export async function evaluateAchievements() {
         if (Number.isNaN(operationId)) continue;
         const info = operationAccountMap.get(operationId);
         if (!info || !info.accountId) continue;
-        if (!wateringEntityIds.has(info.entityId)) continue;
 
-        const nextCount = (wateringCounters.get(info.accountId) ?? 0) + 1;
-        wateringCounters.set(info.accountId, nextCount);
-        const existing = existingByAccount.get(info.accountId) ?? new Set();
-        const planned = ensureAccountSet(plannedByAccount, info.accountId);
-        for (const definition of wateringDefinitions) {
-            const threshold = definition.threshold ?? 0;
-            if (
-                nextCount >= threshold &&
-                !existing.has(definition.key) &&
-                !planned.has(definition.key)
-            ) {
-                plans.push({
-                    accountId: info.accountId,
-                    definition,
-                    earnedAt: event.createdAt,
-                    progressValue: nextCount,
-                });
-                planned.add(definition.key);
+        // Track watering operations
+        if (wateringEntityIds.has(info.entityId)) {
+            const nextCount = (wateringCounters.get(info.accountId) ?? 0) + 1;
+            wateringCounters.set(info.accountId, nextCount);
+            const existing = existingByAccount.get(info.accountId) ?? new Set();
+            const planned = ensureAccountSet(plannedByAccount, info.accountId);
+            for (const definition of wateringDefinitions) {
+                const threshold = definition.threshold ?? 0;
+                if (
+                    nextCount >= threshold &&
+                    !existing.has(definition.key) &&
+                    !planned.has(definition.key)
+                ) {
+                    plans.push({
+                        accountId: info.accountId,
+                        definition,
+                        earnedAt: event.createdAt,
+                        progressValue: nextCount,
+                    });
+                    planned.add(definition.key);
+                }
+            }
+        }
+
+        // Track harvest operations
+        if (harvestEntityIds.has(info.entityId)) {
+            const nextCount = (harvestCounters.get(info.accountId) ?? 0) + 1;
+            harvestCounters.set(info.accountId, nextCount);
+            const existing = existingByAccount.get(info.accountId) ?? new Set();
+            const planned = ensureAccountSet(plannedByAccount, info.accountId);
+            for (const definition of harvestDefinitions) {
+                const threshold = definition.threshold ?? 0;
+                if (
+                    nextCount >= threshold &&
+                    !existing.has(definition.key) &&
+                    !planned.has(definition.key)
+                ) {
+                    plans.push({
+                        accountId: info.accountId,
+                        definition,
+                        earnedAt: event.createdAt,
+                        progressValue: nextCount,
+                    });
+                    planned.add(definition.key);
+                }
             }
         }
     }

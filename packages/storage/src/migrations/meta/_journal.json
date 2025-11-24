@@ -64,6 +64,13 @@
       "when": 1763861859176,
       "tag": "0008_wakeful_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1764003496932,
+      "tag": "0009_friendly_blackheart",
+      "breakpoints": true
     }
   ]
 }

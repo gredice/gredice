@@ -58,14 +58,14 @@ function wateringTitle(threshold: number) {
     if (threshold === 1) {
         return 'Prvo zalijevanje';
     }
-    return `Zalijevanje ${threshold} puta`;
+    return `${threshold} zalijevanja`;
 }
 
 function harvestTitle(threshold: number) {
     if (threshold === 1) {
         return 'Prva berba';
     }
-    return `Ubrane ${threshold} berbe`;
+    return `${threshold} berbi`;
 }
 
 export const achievementDefinitions: AchievementDefinition[] = [

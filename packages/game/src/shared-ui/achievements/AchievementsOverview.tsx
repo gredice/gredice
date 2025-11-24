@@ -17,7 +17,9 @@ type AccountAchievement = NonNullable<
 
 const categoryLabels: Record<string, string> = {
     registration: 'Dobrodošlica',
-    plants: 'Biljke',
+    planting: 'Sadnja',
+    watering: 'Zalijevanje',
+    harvest: 'Branje',
 };
 
 const statusStyles: Record<
@@ -238,7 +240,7 @@ export function AchievementsOverview() {
                             >
                                 {selectedAchievement.achievement
                                     ? selectedAchievement.definition.description
-                                    : 'Ispuni uvjete kako bi otključao ovo postignuće i vidio detalje.'}
+                                    : 'Nastavi raditi na svom vrtu da dođeš do novog postignuća.'}
                             </Typography>
 
                             {/* Status and Reward */}
