@@ -45,15 +45,19 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         let cancelReason: string | undefined;
         let imageUrls: string[] | undefined;
 
+        // helpers to safely extract typed values from unknown event.data
+        const asString = (v: unknown): string | undefined =>
+            typeof v === 'string' ? v : undefined;
+
         for (const event of events) {
-            const data = event.data as Record<string, any> | undefined;
+            const data = event.data as Record<string, unknown> | undefined;
             if (event.type === knownEventTypes.operations.complete) {
                 status = 'completed';
-                completedBy = data?.completedBy;
+                completedBy = asString(data?.completedBy);
                 completedAt = event.createdAt;
                 if (Array.isArray(data?.images)) {
-                    imageUrls = data.images.filter(
-                        (url: unknown) => typeof url === 'string',
+                    imageUrls = (data.images as unknown[]).filter(
+                        (url): url is string => typeof url === 'string',
                     );
                 }
                 if (typeof data?.imageUrl === 'string') {
@@ -63,17 +67,17 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                 }
             } else if (event.type === knownEventTypes.operations.fail) {
                 status = 'failed';
-                error = data?.error;
-                errorCode = data?.errorCode;
+                error = asString(data?.error);
+                errorCode = asString(data?.errorCode);
             } else if (event.type === knownEventTypes.operations.cancel) {
                 status = 'canceled';
-                canceledBy = data?.canceledBy;
-                cancelReason = data?.reason;
+                canceledBy = asString(data?.canceledBy);
+                cancelReason = asString(data?.reason);
                 canceledAt = event.createdAt;
             } else if (event.type === knownEventTypes.operations.schedule) {
                 status = 'planned';
                 scheduledDate = data?.scheduledDate
-                    ? new Date(data.scheduledDate)
+                    ? new Date(String(data.scheduledDate))
                     : undefined;
             }
         }

@@ -29,7 +29,9 @@ async function getDailyRewardState(accountId: string) {
     const history = await getSunflowersHistory(accountId, 0, 10000);
     const toLocalTime = tz(DAILY_REWARD_TIME_ZONE);
     const dailyEvents = history
-        .filter((e) => e.reason.startsWith('daily'))
+        .filter(
+            (e) => typeof e.reason === 'string' && e.reason.startsWith('daily'),
+        )
         .sort(
             (a, b) =>
                 new Date(b.createdAt).getTime() -
@@ -44,7 +46,11 @@ async function getDailyRewardState(accountId: string) {
     if (dailyEvents.length > 0) {
         const toLocalDay = (date: Date) => startOfDay(toLocalTime(date));
         const latest = dailyEvents[0];
-        lastDay = Number(latest.reason.split(':')[1] ?? '1');
+        const latestReasonPart =
+            typeof latest.reason === 'string'
+                ? latest.reason.split(':')[1]
+                : undefined;
+        lastDay = Number(latestReasonPart ?? '1');
         lastDate = new Date(latest.createdAt);
         const latestLocalDay = toLocalDay(lastDate);
         const seenLocalDays = new Set<number>([latestLocalDay.getTime()]);
@@ -58,7 +64,11 @@ async function getDailyRewardState(accountId: string) {
         let expectedLocalDay = addDays(latestLocalDay, -1);
         for (let i = 1; i < dailyEvents.length && expectedDay > 0; i++) {
             const ev = dailyEvents[i];
-            const day = Number(ev.reason.split(':')[1] ?? '1');
+            const day = Number(
+                (typeof ev.reason === 'string'
+                    ? ev.reason.split(':')[1]
+                    : undefined) ?? '1',
+            );
             const date = new Date(ev.createdAt);
             const eventLocalDay = toLocalDay(date);
 

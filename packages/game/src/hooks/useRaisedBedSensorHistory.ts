@@ -53,10 +53,12 @@ export function useRaisedBedSensorHistory(
             const data = await response.json();
             return {
                 ...data,
-                values: data.values.map((item: any) => ({
-                    ...item,
-                    timeStamp: new Date(item.timeStamp),
-                })),
+                values: (data.values as Array<Record<string, unknown>>).map(
+                    (item) => ({
+                        ...item,
+                        timeStamp: new Date(String(item.timeStamp)),
+                    }),
+                ),
             };
         },
         staleTime: 5 * 60 * 1000, // 5 minutes

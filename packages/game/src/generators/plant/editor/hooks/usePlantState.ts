@@ -151,7 +151,7 @@ export function usePlantState() {
      * Save definition changes to localStorage (debounced via parent component)
      */
     const saveDefinitionToStorage = useCallback(
-        (definition: any, plantType: string) => {
+        (definition: unknown, plantType: string) => {
             if (typeof window !== 'undefined') {
                 try {
                     const existingDefs = JSON.parse(
@@ -177,7 +177,7 @@ export function usePlantState() {
      * Save custom plants to localStorage
      */
     const saveCustomPlantsToStorage = useCallback(
-        (customPlants: Record<string, any>) => {
+        (customPlants: Record<string, unknown>) => {
             if (typeof window !== 'undefined') {
                 try {
                     localStorage.setItem(
@@ -273,14 +273,18 @@ export function usePlantState() {
     /**
      * Update nested definition properties using dot notation path
      */
-    const updateDefinition = useCallback((path: string, value: any) => {
+    const updateDefinition = useCallback((path: string, value: unknown) => {
         setState((prev) => {
             const newDef = JSON.parse(JSON.stringify(prev.definition));
             const keys = path.split('.');
-            let current: any = newDef;
+            let current: Record<string, unknown> = newDef as Record<
+                string,
+                unknown
+            >;
             for (let i = 0; i < keys.length - 1; i++) {
-                current = current[keys[i]];
+                current = current[keys[i]] as Record<string, unknown>;
             }
+            // assign the new value
             current[keys[keys.length - 1]] = value;
             return { ...prev, definition: newDef };
         });

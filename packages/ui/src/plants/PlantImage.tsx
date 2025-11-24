@@ -95,7 +95,6 @@ export function PlantOrSortImage(props: PlantOrSortImageProps) {
     const {
         baseUrl = 'https://www.gredice.com',
         fallbackUrl = '/assets/plants/placeholder.png',
-        ...rest
     } = props;
 
     // Extract the specific props based on the discriminated union

@@ -85,10 +85,13 @@ export async function getSunflowers(accountId: string) {
         [accountId],
     );
     for (const event of events) {
+        const evtData = event.data as unknown as
+            | Record<string, unknown>
+            | undefined;
         currentSunflowers +=
             event.type === knownEventTypes.accounts.spendSunflowers
-                ? -Number((event.data as any).amount ?? 0)
-                : Number((event.data as any).amount ?? 0);
+                ? -Number(evtData?.amount ?? 0)
+                : Number(evtData?.amount ?? 0);
     }
     return currentSunflowers;
 }
@@ -107,11 +110,16 @@ export async function getSunflowersHistory(
         offset,
         limit,
     );
-    return earnEvents.reverse().map((event) => ({
-        ...event,
-        amount: Number((event.data as any).amount),
-        reason: (event.data as any).reason,
-    }));
+    return earnEvents.reverse().map((event) => {
+        const evtData = event.data as unknown as
+            | Record<string, unknown>
+            | undefined;
+        return {
+            ...event,
+            amount: Number(evtData?.amount ?? 0),
+            reason: evtData?.reason as string | undefined,
+        };
+    });
 }
 
 export async function earnSunflowers(

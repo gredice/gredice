@@ -16,12 +16,6 @@ import { SensorMiniChart } from '../../../components/admin/sensors/SensorMiniCha
 import { CreateSensorModal } from './CreateSensorModal';
 import { SensorServiceForm } from './SensorServiceForm';
 
-const statusLabels: Record<string, string> = {
-    new: 'Novi',
-    installed: 'Instaliran',
-    active: 'Aktivan',
-};
-
 type RaisedBed = Awaited<ReturnType<typeof getAllRaisedBeds>>[number];
 
 type ContactHistoryEntry = {

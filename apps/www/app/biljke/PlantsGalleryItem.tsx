@@ -1,12 +1,12 @@
 import type { PlantData } from '@gredice/client';
 import {
+    PlantOrSortImage,
     PlantYieldTooltip,
     SeedTimeInformationBadge,
 } from '@gredice/ui/plants';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { PlantImage } from '../../components/plants/PlantImage';
 import { ItemCard } from '../../components/shared/ItemCard';
 import { KnownPages } from '../../src/KnownPages';
 
@@ -44,7 +44,7 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
             }
             href={KnownPages.Plant(information.name)}
         >
-            <PlantImage
+            <PlantOrSortImage
                 plant={props}
                 fill
                 preload

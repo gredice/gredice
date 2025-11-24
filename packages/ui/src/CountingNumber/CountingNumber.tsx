@@ -83,9 +83,8 @@ function CountingNumber({
     }, [springVal, decimals, padStart, number, decimalSeparator]);
     const finalIntLength = Math.floor(Math.abs(number)).toString().length;
     const initialText = padStart
-        ? '0'.padStart(finalIntLength, '0') +
-          (decimals > 0 ? decimalSeparator + '0'.repeat(decimals) : '')
-        : '0' + (decimals > 0 ? decimalSeparator + '0'.repeat(decimals) : '');
+        ? `${'0'.padStart(finalIntLength, '0')}${decimals > 0 ? `${decimalSeparator}${'0'.repeat(decimals)}` : ''}`
+        : `0${decimals > 0 ? `${decimalSeparator}${'0'.repeat(decimals)}` : ''}`;
     return (
         <span
             ref={localRef}

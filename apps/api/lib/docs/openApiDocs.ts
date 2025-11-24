@@ -10,7 +10,7 @@ function resolveJsonPropertyData(schema: string) {
     const unwrapped = unwrapSchema(schema);
 
     function unwrapToOpenApiProperties(
-        schemaObj: Record<string, string | Record<string, any>>,
+        schemaObj: Record<string, unknown>,
     ): OpenAPIV3_1.SchemaObject {
         const properties: Record<
             string,
@@ -48,9 +48,11 @@ function resolveJsonPropertyData(schema: string) {
                     default:
                         properties[key] = { type: 'string' }; // Default to string for unknown types
                 }
-            } else if (typeof value === 'object') {
+            } else if (value && typeof value === 'object') {
                 // Recursively process nested schemas
-                const nestedSchema = unwrapToOpenApiProperties(value);
+                const nestedSchema = unwrapToOpenApiProperties(
+                    value as Record<string, unknown>,
+                );
                 properties[key] = {
                     type: 'object',
                     properties: nestedSchema.properties,

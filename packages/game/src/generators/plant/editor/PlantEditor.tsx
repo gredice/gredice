@@ -65,7 +65,7 @@ export function PlantEditor() {
     /**
      * Handle L-system rules changes
      */
-    const handleRulesChange = (newRules: Record<string, any>) => {
+    const handleRulesChange = (newRules: Record<string, unknown>) => {
         updateDefinition('rules', newRules);
     };
 
