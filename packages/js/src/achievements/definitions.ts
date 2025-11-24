@@ -1,4 +1,8 @@
-export type AchievementCategory = 'registration' | 'plants';
+export type AchievementCategory =
+    | 'registration'
+    | 'planting'
+    | 'watering'
+    | 'harvest';
 
 export type AchievementStatus = 'pending' | 'approved' | 'denied';
 
@@ -13,6 +17,7 @@ export interface AchievementDefinition {
     sortOrder: number;
 }
 
+// TODO: Balance the rewards
 const plantingThresholds: Array<[threshold: number, reward: number]> = [
     [1, 100],
     [10, 250],
@@ -22,6 +27,7 @@ const plantingThresholds: Array<[threshold: number, reward: number]> = [
     [200, 2_000],
 ];
 
+// TODO: Balance the rewards
 const wateringThresholds: Array<[threshold: number, reward: number]> = [
     [1, 50],
     [10, 150],
@@ -31,6 +37,7 @@ const wateringThresholds: Array<[threshold: number, reward: number]> = [
     [200, 1_500],
 ];
 
+// TODO: Balance the rewards
 const harvestThresholds: Array<[threshold: number, reward: number]> = [
     [1, 150],
     [10, 300],
@@ -74,7 +81,7 @@ export const achievementDefinitions: AchievementDefinition[] = [
     },
     ...plantingThresholds.map(([threshold, reward], index) => ({
         key: `planting_${threshold}`,
-        category: 'plants' as const,
+        category: 'planting' as const,
         threshold,
         rewardSunflowers: reward,
         title: plantingTitle(threshold),
@@ -83,7 +90,7 @@ export const achievementDefinitions: AchievementDefinition[] = [
     })),
     ...wateringThresholds.map(([threshold, reward], index) => ({
         key: `watering_${threshold}`,
-        category: 'plants' as const,
+        category: 'watering' as const,
         threshold,
         rewardSunflowers: reward,
         title: wateringTitle(threshold),
@@ -92,7 +99,7 @@ export const achievementDefinitions: AchievementDefinition[] = [
     })),
     ...harvestThresholds.map(([threshold, reward], index) => ({
         key: `harvest_${threshold}`,
-        category: 'plants' as const,
+        category: 'harvest' as const,
         threshold,
         rewardSunflowers: reward,
         title: harvestTitle(threshold),
