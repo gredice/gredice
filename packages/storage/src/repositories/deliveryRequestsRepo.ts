@@ -223,7 +223,7 @@ export async function getDeliveryRequestsWithEvents(
                 (event) =>
                     event.aggregateId === request.id &&
                     request.createdAt <=
-                    new Date(event.createdAt.getTime() + 5000), // 5s offset
+                        new Date(event.createdAt.getTime() + 5000), // 5s offset
             );
 
             return reconstructDeliveryRequestFromEvents(request, events);
@@ -721,14 +721,14 @@ export async function getDeliverySurveyCandidates({
 
     const accountUserRows = accountIds.length
         ? await storage()
-            .select({
-                accountId: accountUsers.accountId,
-                userId: accountUsers.userId,
-                email: users.userName,
-            })
-            .from(accountUsers)
-            .innerJoin(users, eq(accountUsers.userId, users.id))
-            .where(inArray(accountUsers.accountId, accountIds))
+              .select({
+                  accountId: accountUsers.accountId,
+                  userId: accountUsers.userId,
+                  email: users.userName,
+              })
+              .from(accountUsers)
+              .innerJoin(users, eq(accountUsers.userId, users.id))
+              .where(inArray(accountUsers.accountId, accountIds))
         : [];
 
     return pendingEvents

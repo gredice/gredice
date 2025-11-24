@@ -201,9 +201,9 @@ function SensorInfoModal({
     const trend = currentMoisture - previousMoisture;
     const avgMoisture = dataWithSmartLabels
         ? Math.round(
-            dataWithSmartLabels.reduce((sum, item) => sum + item.value, 0) /
-            (dataWithSmartLabels.length || 1),
-        )
+              dataWithSmartLabels.reduce((sum, item) => sum + item.value, 0) /
+                  (dataWithSmartLabels.length || 1),
+          )
         : 0;
 
     // Determine moisture status
@@ -418,11 +418,11 @@ function SensorInfoModal({
                                             domain={[
                                                 new Date(
                                                     Date.now() -
-                                                    duration *
-                                                    24 *
-                                                    60 *
-                                                    60 *
-                                                    1000,
+                                                        duration *
+                                                            24 *
+                                                            60 *
+                                                            60 *
+                                                            1000,
                                                 ).getTime(),
                                                 Date.now(),
                                             ]}
@@ -634,27 +634,27 @@ export function RaisedBedSensorInfo({
 
     const sensorGroups: SensorGroup[] = Array.isArray(sensors)
         ? (() => {
-            const groups = (sensors as SensorReading[]).reduce(
-                (acc: Map<number, SensorGroup>, sensor: SensorReading) => {
-                    const existing = acc.get(sensor.id) ?? {
-                        id: sensor.id,
-                        status: sensor.status,
-                    };
-                    if (sensor.type === 'soil_moisture') {
-                        existing.soilMoisture = sensor;
-                    } else if (sensor.type === 'soil_temperature') {
-                        existing.soilTemperature = sensor;
-                    }
-                    existing.status = sensor.status;
-                    acc.set(sensor.id, existing);
-                    return acc;
-                },
-                new Map<number, SensorGroup>(),
-            );
-            return Array.from(groups.values()).sort(
-                (a: SensorGroup, b: SensorGroup) => a.id - b.id,
-            );
-        })()
+              const groups = (sensors as SensorReading[]).reduce(
+                  (acc: Map<number, SensorGroup>, sensor: SensorReading) => {
+                      const existing = acc.get(sensor.id) ?? {
+                          id: sensor.id,
+                          status: sensor.status,
+                      };
+                      if (sensor.type === 'soil_moisture') {
+                          existing.soilMoisture = sensor;
+                      } else if (sensor.type === 'soil_temperature') {
+                          existing.soilTemperature = sensor;
+                      }
+                      existing.status = sensor.status;
+                      acc.set(sensor.id, existing);
+                      return acc;
+                  },
+                  new Map<number, SensorGroup>(),
+              );
+              return Array.from(groups.values()).sort(
+                  (a: SensorGroup, b: SensorGroup) => a.id - b.id,
+              );
+          })()
         : [];
 
     if (sensorGroups.length === 0) {
@@ -836,7 +836,7 @@ export function RaisedBedSensorInfo({
                                                 'size-5 shrink-0 stroke-blue-400',
                                                 Number(
                                                     group.soilMoisture?.value ??
-                                                    '0',
+                                                        '0',
                                                 ) >= 20 && 'fill-blue-300',
                                             )}
                                         />

@@ -559,10 +559,10 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
         // TODO: Maybe retrieve operations from other accounts as well, but anonimized
         raisedBed.accountId && raisedBed.gardenId
             ? await getOperations(
-                raisedBed.accountId,
-                raisedBed.gardenId,
-                raisedBedId,
-            )
+                  raisedBed.accountId,
+                  raisedBed.gardenId,
+                  raisedBedId,
+              )
             : Promise.resolve([]),
     ]);
 
@@ -580,11 +580,11 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                 timestamp: event.createdAt,
                 imageUrls: Array.isArray(data?.imageUrls)
                     ? data.imageUrls.filter(
-                        (url: unknown) => typeof url === 'string',
-                    )
+                          (url: unknown) => typeof url === 'string',
+                      )
                     : typeof data?.imageUrl === 'string'
-                        ? [data.imageUrl]
-                        : undefined,
+                      ? [data.imageUrl]
+                      : undefined,
             };
         })
         .filter((op) => op.name);
@@ -691,11 +691,11 @@ export async function getRaisedBedFieldDiaryEntries(
         // TODO: Maybe retrieve operations from other accounts as well, but anonimized
         raisedBed.accountId && raisedBed.gardenId && fields.length > 0
             ? await getOperations(
-                raisedBed.accountId,
-                raisedBed.gardenId,
-                raisedBedId,
-                fields.map((f) => f.id),
-            )
+                  raisedBed.accountId,
+                  raisedBed.gardenId,
+                  raisedBedId,
+                  fields.map((f) => f.id),
+              )
             : Promise.resolve([]),
     ]);
 
@@ -724,9 +724,9 @@ export async function getRaisedBedFieldDiaryEntries(
                 case knownEventTypes.raisedBedFields.plantUpdate: {
                     const newStatus =
                         typeof event.data === 'object' &&
-                            event.data !== null &&
-                            'status' in event.data &&
-                            typeof event.data.status === 'string'
+                        event.data !== null &&
+                        'status' in event.data &&
+                        typeof event.data.status === 'string'
                             ? event.data.status
                             : 'unknown';
                     const statusLabels = plantFieldStatusLabel(newStatus);
@@ -757,11 +757,11 @@ export async function getRaisedBedFieldDiaryEntries(
                 timestamp: event.createdAt,
                 imageUrls: Array.isArray(data?.imageUrls)
                     ? data.imageUrls.filter(
-                        (url: unknown) => typeof url === 'string',
-                    )
+                          (url: unknown) => typeof url === 'string',
+                      )
                     : typeof data?.imageUrl === 'string'
-                        ? [data.imageUrl]
-                        : undefined,
+                      ? [data.imageUrl]
+                      : undefined,
             };
         })
         .filter((event) => event.name);

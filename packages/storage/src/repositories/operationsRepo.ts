@@ -156,21 +156,21 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                     ? new Date(String(data.scheduledDate))
                     : undefined;
             }
-
-            return {
-                ...op,
-                status,
-                completedAt,
-                completedBy,
-                error,
-                errorCode,
-                scheduledDate,
-                canceledBy,
-                canceledAt,
-                cancelReason,
-                imageUrls,
-            };
         }
+
+        return {
+            ...op,
+            status,
+            completedAt,
+            completedBy,
+            error,
+            errorCode,
+            scheduledDate,
+            canceledBy,
+            canceledAt,
+            cancelReason,
+            imageUrls,
+        };
     });
 }
 
@@ -236,8 +236,8 @@ export async function getAllOperations(filter?: {
         const statusArray = Array.isArray(filter.status)
             ? filter.status
             : [filter.status];
-        operationsWithAggregates = operationsWithAggregates.filter((op) =>
-            statusArray.includes(op.status as OperationStatus),
+        operationsWithAggregates = operationsWithAggregates.filter(
+            (op) => op && statusArray.includes(op.status as OperationStatus),
         );
     }
 
