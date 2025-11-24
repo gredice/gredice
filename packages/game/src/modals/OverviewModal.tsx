@@ -21,6 +21,7 @@ import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRea
 import { useRenameGarden } from '../hooks/useRenameGarden';
 import { useUserLogins } from '../hooks/useUserLogins';
 import { NotificationList } from '../hud/NotificationList';
+import { AchievementsOverview } from '../shared-ui/achievements/AchievementsOverview';
 import { DeliveryAddressesSection } from '../shared-ui/delivery/DeliveryAddressesSection';
 import { DeliveryRequestsSection } from '../shared-ui/delivery/DeliveryRequestsSection';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
@@ -165,6 +166,7 @@ export function OverviewModal() {
                         items={[
                             { label: 'Generalno', value: 'generalno' },
                             { label: 'Vrt', value: 'vrt' },
+                            { label: 'Postignuća', value: 'postignuca' },
                             { label: 'Suncokreti', value: 'suncokreti' },
                             { label: 'Dostava', value: 'dostava' },
                             { label: 'Obavijesti', value: 'obavijesti' },
@@ -192,6 +194,12 @@ export function OverviewModal() {
                             label="Vrt"
                             selected={settingsMode === 'vrt'}
                             onSelected={() => setProfileModalOpen('vrt')}
+                        />
+                        <ListItem
+                            nodeId="profile-achievements"
+                            label="Postignuća"
+                            selected={settingsMode === 'postignuca'}
+                            onSelected={() => setProfileModalOpen('postignuca')}
                         />
                         <ListItem
                             nodeId="profile-sunflowers"
@@ -597,6 +605,14 @@ export function OverviewModal() {
                                     <SunflowersList />
                                 </div>
                             </Stack>
+                        </Stack>
+                    )}
+                    {settingsMode === 'postignuca' && (
+                        <Stack spacing={4}>
+                            <Typography level="h4" className="hidden md:block">
+                                Postignuća
+                            </Typography>
+                            <AchievementsOverview />
                         </Stack>
                     )}
                 </div>

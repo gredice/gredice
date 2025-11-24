@@ -1,12 +1,24 @@
 import { Redis } from '@upstash/redis';
 
 let redis: Redis | null = null;
+let cacheDisabled = false;
 
 function cacheClient() {
+    if (cacheDisabled) {
+        return null;
+    }
+
+    const url = process.env.PLANTS_SILO_KV_REST_API_URL;
+    const token = process.env.PLANTS_SILO_KV_REST_API_TOKEN;
+    if (!url || !token) {
+        cacheDisabled = true;
+        return null;
+    }
+
     if (!redis) {
         redis = new Redis({
-            url: process.env.PLANTS_SILO_KV_REST_API_URL,
-            token: process.env.PLANTS_SILO_KV_REST_API_TOKEN,
+            url,
+            token,
         });
     }
     return redis;
@@ -24,6 +36,10 @@ export async function directoriesCached<T>(
     ttl: number = 60,
 ) {
     const client = cacheClient();
+    if (!client) {
+        return fn();
+    }
+
     const cachedValue = await client.get<T>(key);
     if (cachedValue) {
         try {
@@ -33,21 +49,21 @@ export async function directoriesCached<T>(
                 `Error parsing cached value for key "${key}":`,
                 error,
             );
-            // Optionally, you could delete the corrupted cache entry
             await client.del(key);
         }
     }
 
-    if (!cachedValue) {
-        const value = await fn();
-        await client.set(key, value, { ex: ttl });
-        return value;
-    }
+    const value = await fn();
+    await client.set(key, value, { ex: ttl });
+    return value;
 }
 
 export async function directoriesCachedInfo() {
     try {
         const client = cacheClient();
+        if (!client) {
+            return null;
+        }
         const keys: string[] = [];
         let cursor = '0';
 
@@ -69,5 +85,8 @@ export async function directoriesCachedInfo() {
 export async function bustCached(key: string) {
     console.debug(`Bust cache for key: ${key}`);
     const client = cacheClient();
+    if (!client) {
+        return;
+    }
     await client.del(key);
 }

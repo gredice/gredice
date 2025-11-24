@@ -19,7 +19,9 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
 
     useEffect(() => {
         const dropsMesh = dropsRef.current;
-        if (!dropsMesh) return;
+        if (!dropsMesh) {
+            return;
+        }
         for (let i = 0; i < count; i++) {
             _dummy.position.set(
                 THREE.MathUtils.randFloatSpread(size),
@@ -41,7 +43,9 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
 
     useFrame(({ camera }, dt) => {
         const dropsMesh = dropsRef.current;
-        if (!dropsMesh) return;
+        if (!dropsMesh) {
+            return;
+        }
 
         // Calculate what is camera target on the ground in front of the camera
         if (fref?.current) {

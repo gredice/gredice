@@ -3,6 +3,7 @@ import {
     deleteAccountWithDependencies,
     earnSunflowers,
     getAccount,
+    getAccountAchievements,
     getAccountUsers,
     getSunflowers,
     getSunflowersHistory,
@@ -198,6 +199,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             ? -event.amount
                             : event.amount,
                     reason: event.reason,
+                })),
+            });
+        },
+    )
+    .get(
+        '/current/achievements',
+        describeRoute({
+            description: 'Get the current account achievements',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const achievements = await getAccountAchievements(accountId);
+            return context.json({
+                achievements: achievements.map((achievement) => ({
+                    id: achievement.id,
+                    key: achievement.achievementKey,
+                    status: achievement.status,
+                    rewardSunflowers: achievement.rewardSunflowers,
+                    progressValue: achievement.progressValue,
+                    threshold: achievement.threshold,
+                    rewardGrantedAt:
+                        achievement.rewardGrantedAt?.toISOString() ?? null,
                 })),
             });
         },

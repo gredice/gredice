@@ -1,3 +1,4 @@
+export * from './achievementsSchema';
 export * from './cmsSchema';
 export * from './deliverySchema';
 export * from './emailSchema';

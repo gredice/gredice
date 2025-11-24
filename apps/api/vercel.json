@@ -20,6 +20,10 @@
         {
             "path": "/api/internal/cron/update-farm-weather",
             "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/achievements",
+            "schedule": "0 * * * *"
         }
     ]
 }

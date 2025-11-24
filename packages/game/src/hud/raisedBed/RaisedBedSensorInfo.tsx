@@ -36,6 +36,19 @@ import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 import { useNeighboringRaisedBeds } from './RaisedBedField';
 
+interface TooltipPayload {
+    value?: number | string;
+}
+
+interface CustomTooltipProps {
+    active?: boolean;
+    payload?: TooltipPayload[];
+    header: string;
+    textColor?: string;
+    label?: string;
+    unit?: string;
+}
+
 function CustomTooltip({
     active,
     payload,
@@ -43,33 +56,27 @@ function CustomTooltip({
     textColor,
     label,
     unit,
-}: {
-    active?: boolean;
-    payload?: Array<Record<string, unknown>>;
-    header?: string;
-    textColor?: string;
-    label?: string | number;
-    unit?: string;
-}) {
+}: CustomTooltipProps) {
     if (active && payload && payload.length) {
-        const payloadFormatted =
-            new Date(String(label)).toLocaleDateString('hr-HR', {
-                month: 'short',
-                day: 'numeric',
-            }) +
-            ' ' +
-            new Date(String(label)).toLocaleTimeString('hr-HR', {
-                hour: '2-digit',
-                minute: '2-digit',
-            });
+        const payloadFormatted = label
+            ? new Date(String(label)).toLocaleDateString('hr-HR', {
+                  month: 'short',
+                  day: 'numeric',
+              }) +
+              ' ' +
+              new Date(String(label)).toLocaleTimeString('hr-HR', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+              })
+            : undefined;
         return (
             <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-                <p className="text-sm font-medium text-gray-900">{`${payloadFormatted}`}</p>
-                <p className={cx('text-sm', textColor)}>
-                    {`${header}: ${String(
-                        (payload[0].value as number | string) ?? '',
-                    )}${unit}`}
-                </p>
+                {payloadFormatted && (
+                    <p className="text-sm font-medium text-gray-900">{`${payloadFormatted}`}</p>
+                )}
+                <p
+                    className={cx('text-sm', textColor)}
+                >{`${header}: ${payload[0]?.value ?? ''}${unit}`}</p>
             </div>
         );
     }
@@ -154,13 +161,10 @@ function SensorInfoModal({
 
     // Process and sort the data with smart date/time formatting
     const processedData = sensorDetails?.values
-        .map((item) => {
-            const it = item as Record<string, unknown>;
-            return {
-                timestamp: it.timeStamp as Date,
-                value: Number.parseFloat(String(it.valueSerialized ?? '0')),
-            };
-        })
+        .map((item) => ({
+            timestamp: item.timeStamp,
+            value: Number.parseFloat(item.valueSerialized ?? '0'),
+        }))
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
     // Add smart labeling logic with mobile-friendly labels

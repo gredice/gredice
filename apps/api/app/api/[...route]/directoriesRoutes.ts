@@ -1,8 +1,11 @@
-import { getEntitiesFormatted, getEntityFormatted } from '@gredice/storage';
+import {
+    type EntityStandardized,
+    getEntitiesFormatted,
+    getEntityFormatted,
+} from '@gredice/storage';
 import { Hono } from 'hono';
 import { validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
-import type { EntityStandardized } from './checkoutRoutes';
 
 const app = new Hono()
     .get(
@@ -39,7 +42,7 @@ const app = new Hono()
             }
             const entity =
                 await getEntityFormatted<EntityStandardized>(entityIdNumber);
-            if (!entity || entity.entityType.name !== entityType) {
+            if (!entity || entity.entityType?.name !== entityType) {
                 return context.json(
                     { error: 'Entity not found' },
                     { status: 404 },

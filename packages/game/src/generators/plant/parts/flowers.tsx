@@ -30,8 +30,10 @@ export function Flowers({ matrices, color }: FlowersProps) {
     );
 
     useLayoutEffect(() => {
-        if (!ref.current) return;
         const mesh = ref.current;
+        if (!mesh) {
+            return;
+        }
         matrices.forEach((matrix, i) => {
             mesh.setMatrixAt(i, matrix);
         });
