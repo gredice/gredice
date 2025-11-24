@@ -1,8 +1,10 @@
 'use client';
 
+import { Markdown } from '@gredice/ui/Markdown';
 import { Down } from '@signalco/ui-icons';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Collapse } from '@signalco/ui-primitives/Collapse';
+import { cx } from '@signalco/ui-primitives/cx';
 import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { ListItem } from '@signalco/ui-primitives/ListItem';
@@ -10,13 +12,14 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
-import { Markdown } from '../../../components/shared/Markdown';
 import type { Recipe, RecipeStep } from '../../../lib/recipes/getRecipesData';
-import { getIngredientDisplayName, getIngredientUnit } from '../../../lib/recipes/nutritionCalculator';
+import {
+    getIngredientDisplayName,
+    getIngredientUnit,
+} from '../../../lib/recipes/nutritionCalculator';
 import { StepTimer } from './StepTimer';
 import { unitDisplayMap } from './unitDisplayMap';
 import { useTimer } from './useTimer';
-import { cx } from '@signalco/ui-primitives/cx';
 
 export function StepItem({
     index,
@@ -57,7 +60,11 @@ export function StepItem({
     return (
         <Stack spacing={1} className="grow">
             <Row>
-                <Row spacing={2} justifyContent="space-between" className='grow'>
+                <Row
+                    spacing={2}
+                    justifyContent="space-between"
+                    className="grow"
+                >
                     <Row spacing={1}>
                         <div className="shrink-0 size-7">
                             <DotIndicator
@@ -68,7 +75,10 @@ export function StepItem({
                         </div>
                         <Checkbox
                             label={
-                                <Typography level="body1" className={cx(checked && 'line-through')}>
+                                <Typography
+                                    level="body1"
+                                    className={cx(checked && 'line-through')}
+                                >
                                     {step.shortDescription}
                                 </Typography>
                             }
@@ -117,10 +127,14 @@ export function StepItem({
                                                     ing.id === ingredient.id,
                                             );
                                         if (!ingredientData) return null;
-                                        
-                                        const ingredientInfo = getIngredientUnit(ingredientData);
-                                        const ingredientName = getIngredientDisplayName(ingredientData);
-                                        
+
+                                        const ingredientInfo =
+                                            getIngredientUnit(ingredientData);
+                                        const ingredientName =
+                                            getIngredientDisplayName(
+                                                ingredientData,
+                                            );
+
                                         const quantity =
                                             (ingredientData?.quantity ?? 0) *
                                             (ingredient.quantityMultiplier ??
