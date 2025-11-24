@@ -10,7 +10,7 @@
         "regenerate-cdn:sounds": "node --env-file=.env --experimental-strip-types ./scripts/regenerate-sounds.ts"
     },
     "devDependencies": {
-        "@aws-sdk/client-s3": "3.934.0",
+        "@aws-sdk/client-s3": "3.935.0",
         "@ffmpeg-installer/ffmpeg": "1.1.0",
         "@types/node": "24.10.1"
     }
