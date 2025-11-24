@@ -285,7 +285,7 @@ export function usePlantState() {
                 current = current[keys[i]] as Record<string, unknown>;
             }
             // assign the new value
-            (current as Record<string, unknown>)[keys[keys.length - 1]] = value;
+            current[keys[keys.length - 1]] = value;
             return { ...prev, definition: newDef };
         });
     }, []);

@@ -62,8 +62,8 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                 }
                 if (typeof data?.imageUrl === 'string') {
                     imageUrls = imageUrls
-                        ? [...imageUrls, data.imageUrl as string]
-                        : [data.imageUrl as string];
+                        ? [...imageUrls, data.imageUrl]
+                        : [data.imageUrl];
                 }
             } else if (event.type === knownEventTypes.operations.fail) {
                 status = 'failed';
