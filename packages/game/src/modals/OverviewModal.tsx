@@ -160,18 +160,18 @@ export function OverviewModal() {
                 <Stack spacing={2} className="md:border-r md:pl-2">
                     <ProfileInfo />
                     <SelectItems
-                        className="md:hidden"
+                        className="md:hidden bg-card rounded-lg"
                         value={settingsMode}
                         onValueChange={setProfileModalOpen}
                         items={[
-                            { label: 'Generalno', value: 'generalno' },
-                            { label: 'Vrt', value: 'vrt' },
-                            { label: 'Postignuća', value: 'postignuca' },
-                            { label: 'Suncokreti', value: 'suncokreti' },
-                            { label: 'Dostava', value: 'dostava' },
-                            { label: 'Obavijesti', value: 'obavijesti' },
-                            { label: 'Sigurnost', value: 'sigurnost' },
-                            { label: 'Zvuk', value: 'zvuk' },
+                            { label: '⚙️ Generalno', value: 'generalno' },
+                            { label: '🏡 Vrt', value: 'vrt' },
+                            { label: '🏆 Postignuća', value: 'postignuca' },
+                            { label: '🌻 Suncokreti', value: 'suncokreti' },
+                            { label: '🚚 Dostava', value: 'dostava' },
+                            { label: '🔔 Obavijesti', value: 'obavijesti' },
+                            { label: '🔒 Sigurnost', value: 'sigurnost' },
+                            { label: '🔊 Zvuk', value: 'zvuk' },
                         ]}
                     />
                     <List className="md:pr-6 hidden md:flex">
@@ -186,36 +186,42 @@ export function OverviewModal() {
                         <ListItem
                             nodeId="profile-general"
                             label="Generalno"
+                            startDecorator={<>⚙️</>}
                             selected={settingsMode === 'generalno'}
                             onSelected={() => setProfileModalOpen('generalno')}
                         />
                         <ListItem
                             nodeId="profile-garden"
                             label="Vrt"
+                            startDecorator={<>🏡</>}
                             selected={settingsMode === 'vrt'}
                             onSelected={() => setProfileModalOpen('vrt')}
                         />
                         <ListItem
                             nodeId="profile-achievements"
                             label="Postignuća"
+                            startDecorator={<>🏆</>}
                             selected={settingsMode === 'postignuca'}
                             onSelected={() => setProfileModalOpen('postignuca')}
                         />
                         <ListItem
                             nodeId="profile-sunflowers"
                             label="Suncokreti"
+                            startDecorator={<>🌻</>}
                             selected={settingsMode === 'suncokreti'}
                             onSelected={() => setProfileModalOpen('suncokreti')}
                         />
                         <ListItem
                             nodeId="profile-delivery"
                             label="Dostava"
+                            startDecorator={<>🚚</>}
                             selected={settingsMode === 'dostava'}
                             onSelected={() => setProfileModalOpen('dostava')}
                         />
                         <ListItem
                             nodeId="profile-notifications"
                             label="Obavijesti"
+                            startDecorator={<>🔔</>}
                             selected={settingsMode === 'obavijesti'}
                             onSelected={() => setProfileModalOpen('obavijesti')}
                         />
@@ -230,12 +236,14 @@ export function OverviewModal() {
                         <ListItem
                             nodeId="profile-security"
                             label="Sigurnost"
+                            startDecorator={<>🔒</>}
                             selected={settingsMode === 'sigurnost'}
                             onSelected={() => setProfileModalOpen('sigurnost')}
                         />
                         <ListItem
                             nodeId="profile-sound"
                             label="Zvuk"
+                            startDecorator={<>🔊</>}
                             selected={settingsMode === 'zvuk'}
                             onSelected={() => setProfileModalOpen('zvuk')}
                         />
@@ -245,7 +253,7 @@ export function OverviewModal() {
                     {settingsMode === 'generalno' && (
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">
-                                Profil
+                                ⚙️ Profil
                             </Typography>
                             <UserProfileCard />
                         </Stack>
@@ -253,7 +261,7 @@ export function OverviewModal() {
                     {settingsMode === 'vrt' && (
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">
-                                Vrt
+                                🏡 Vrt
                             </Typography>
                             {!currentGarden ? (
                                 <Card>
@@ -322,7 +330,7 @@ export function OverviewModal() {
                     {settingsMode === 'sigurnost' && (
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">
-                                Sigurnost
+                                🔒 Sigurnost
                             </Typography>
                             <Stack spacing={2}>
                                 <Card>
@@ -481,7 +489,7 @@ export function OverviewModal() {
                     {settingsMode === 'dostava' && (
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">
-                                Dostava
+                                🚚 Dostava
                             </Typography>
                             <Stack
                                 spacing={2}
@@ -499,7 +507,7 @@ export function OverviewModal() {
                     {settingsMode === 'zvuk' && (
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">
-                                Zvuk
+                                🔊 Zvuk
                             </Typography>
                             <SoundSettingsCard />
                         </Stack>
@@ -511,7 +519,7 @@ export function OverviewModal() {
                                     level="h4"
                                     className="hidden md:block"
                                 >
-                                    Obavijesti
+                                    🔔 Obavijesti
                                 </Typography>
                             </Row>
                             <Stack spacing={1}>
@@ -564,7 +572,7 @@ export function OverviewModal() {
                     {settingsMode === 'suncokreti' && (
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">
-                                Suncokreti
+                                🌻 Suncokreti
                             </Typography>
                             <Stack
                                 spacing={1}
@@ -610,7 +618,7 @@ export function OverviewModal() {
                     {settingsMode === 'postignuca' && (
                         <Stack spacing={4}>
                             <Typography level="h4" className="hidden md:block">
-                                Postignuća
+                                🏆 Postignuća
                             </Typography>
                             <AchievementsOverview />
                         </Stack>
