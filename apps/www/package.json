@@ -36,7 +36,7 @@
         "@gredice/ui": "workspace:*",
         "@playwright/experimental-ct-react": "1.56.1",
         "@playwright/test": "1.56.1",
-        "@sentry/nextjs": "10.25.0",
+        "@sentry/nextjs": "10.26.0",
         "@signalco/cms-components-marketing": "0.1.1",
         "@signalco/cms-core": "0.1.1",
         "@signalco/hooks": "0.2.1",
