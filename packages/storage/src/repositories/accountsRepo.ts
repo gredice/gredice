@@ -90,8 +90,8 @@ export async function getSunflowers(accountId: string) {
             | undefined;
         currentSunflowers +=
             event.type === knownEventTypes.accounts.spendSunflowers
-                ? -Number((evtData?.amount ?? 0) as number)
-                : Number((evtData?.amount ?? 0) as number);
+                ? -Number(evtData?.amount ?? 0)
+                : Number(evtData?.amount ?? 0);
     }
     return currentSunflowers;
 }
@@ -116,7 +116,7 @@ export async function getSunflowersHistory(
             | undefined;
         return {
             ...event,
-            amount: Number((evtData?.amount ?? 0) as number),
+            amount: Number(evtData?.amount ?? 0),
             reason: evtData?.reason as string | undefined,
         };
     });
