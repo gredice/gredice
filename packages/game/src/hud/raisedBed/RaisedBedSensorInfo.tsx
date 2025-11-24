@@ -45,8 +45,8 @@ interface CustomTooltipProps {
     payload?: TooltipPayload[];
     header: string;
     textColor?: string;
-    label: string;
-    unit: string;
+    label?: string;
+    unit?: string;
 }
 
 function CustomTooltip({
@@ -58,19 +58,22 @@ function CustomTooltip({
     unit,
 }: CustomTooltipProps) {
     if (active && payload && payload.length) {
-        const payloadFormatted =
-            new Date(String(label)).toLocaleDateString('hr-HR', {
-                month: 'short',
-                day: 'numeric',
-            }) +
-            ' ' +
-            new Date(String(label)).toLocaleTimeString('hr-HR', {
-                hour: '2-digit',
-                minute: '2-digit',
-            });
+        const payloadFormatted = label
+            ? new Date(String(label)).toLocaleDateString('hr-HR', {
+                  month: 'short',
+                  day: 'numeric',
+              }) +
+              ' ' +
+              new Date(String(label)).toLocaleTimeString('hr-HR', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+              })
+            : undefined;
         return (
             <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-                <p className="text-sm font-medium text-gray-900">{`${payloadFormatted}`}</p>
+                {payloadFormatted && (
+                    <p className="text-sm font-medium text-gray-900">{`${payloadFormatted}`}</p>
+                )}
                 <p
                     className={cx('text-sm', textColor)}
                 >{`${header}: ${payload[0]?.value ?? ''}${unit}`}</p>

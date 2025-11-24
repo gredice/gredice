@@ -291,7 +291,7 @@ export function usePlantState() {
                 JSON.stringify(prev.definition),
             ) as PlantDefinition;
             const keys = path.split('.');
-            let current: Record<string, unknown> = newDef as Record<
+            let current: Record<string, unknown> = newDef as unknown as Record<
                 string,
                 unknown
             >;

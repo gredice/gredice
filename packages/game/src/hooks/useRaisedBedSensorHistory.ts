@@ -10,8 +10,9 @@ interface SensorHistoryApiResponse extends Record<string, unknown> {
     values: SensorHistoryApiValue[];
 }
 
-interface SensorHistoryValue extends SensorHistoryApiValue {
+interface SensorHistoryValue {
     timeStamp: Date;
+    valueSerialized?: string;
 }
 
 export function useRaisedBedSensorHistory(
