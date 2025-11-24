@@ -19,6 +19,7 @@
     },
     "formatter": {
         "enabled": true,
+        "lineEnding": "auto",
         "indentStyle": "space",
         "indentWidth": 4
     },
