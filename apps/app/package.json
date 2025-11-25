@@ -46,7 +46,7 @@
         "@gredice/storage": "workspace:*",
         "@gredice/stripe": "workspace:*",
         "@gredice/ui": "workspace:*",
-        "@mdxeditor/editor": "3.49.2",
+        "@mdxeditor/editor": "3.49.3",
         "@playwright/experimental-ct-react": "1.56.1",
         "@playwright/test": "1.56.1",
         "@sentry/nextjs": "10.27.0",
