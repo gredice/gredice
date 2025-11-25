@@ -692,6 +692,9 @@ importers:
 
   packages/cdn:
     devDependencies:
+      '@biomejs/biome':
+        specifier: 2.3.3
+        version: 2.3.3
       '@aws-sdk/client-s3':
         specifier: 3.937.0
         version: 3.937.0
@@ -748,6 +751,9 @@ importers:
         specifier: 5.0.4
         version: 5.0.4
     devDependencies:
+      '@biomejs/biome':
+        specifier: 2.3.3
+        version: 2.3.3
       '@types/node':
         specifier: 24.10.1
         version: 24.10.1
@@ -1118,6 +1124,9 @@ importers:
         specifier: 5.0.4
         version: 5.0.4
     devDependencies:
+      '@biomejs/biome':
+        specifier: 2.3.3
+        version: 2.3.3
       '@react-email/preview-server':
         specifier: 5.0.4
         version: 5.0.4(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.94.2)

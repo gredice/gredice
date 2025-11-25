@@ -1,9 +1,4 @@
-import {
-    Head,
-    Html,
-    Markdown,
-    Preview,
-} from '@react-email/components';
+import { Head, Html, Markdown, Preview } from '@react-email/components';
 
 export interface MarkdownEmailTemplateProps {
     content: string;
@@ -11,16 +6,14 @@ export interface MarkdownEmailTemplateProps {
 }
 
 export default function MarkdownEmailTemplate({
-    content = "Markdown **email** content",
+    content = 'Markdown **email** content',
     previewText,
 }: MarkdownEmailTemplateProps) {
     return (
         <Html>
             <Head />
             <Preview>{previewText}</Preview>
-            <Markdown>
-                {content}
-            </Markdown>
+            <Markdown>{content}</Markdown>
         </Html>
     );
 }

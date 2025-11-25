@@ -1,6 +1,5 @@
-import * as React from 'react';
-import { PropsWithChildren } from 'react';
 import { Heading } from '@react-email/components';
+import type { PropsWithChildren } from 'react';
 
 export function Header({ children }: PropsWithChildren) {
     return (

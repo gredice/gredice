@@ -2,14 +2,15 @@ import {
     Head,
     Html,
     Preview,
-    Section, Tailwind,
+    Section,
+    Tailwind,
 } from '@react-email/components';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { Paragraph } from '../../components/Paragraph';
-import { Header } from '../../components/Header';
-import { Divider } from '../../components/Divider';
 import { ContentCard } from '../../components/ContentCard';
+import { Divider } from '../../components/Divider';
 import { GrediceLogotype } from '../../components/GrediceLogotype';
+import { Header } from '../../components/Header';
+import { Paragraph } from '../../components/Paragraph';
+import { PrimaryButton } from '../../components/PrimaryButton';
 import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 
 export interface ResetPasswordEmailTemplateProps {
@@ -24,7 +25,7 @@ export default function ResetPasswordEmailTemplate({
     confirmLink = 'https://vrt.gredice.com/prijava/potvrda-emaila',
 
     appName = 'Gredice',
-    appDomain = 'gredice.com'
+    appDomain = 'gredice.com',
 }: ResetPasswordEmailTemplateProps) {
     const previewText = `Promjena zaporke za ${appName}`;
 
@@ -34,15 +35,22 @@ export default function ResetPasswordEmailTemplate({
             <Preview>{previewText}</Preview>
             <Tailwind>
                 <ContentCard>
-                    <Section className='text-center'>
+                    <Section className="text-center">
                         <GrediceLogotype />
                     </Section>
                     <Header>Promjena zaporke</Header>
-                    <Paragraph>Primili smo zahtjev za promjenu zaporke za: <strong>{email}</strong></Paragraph>
-                    <Paragraph>Ako navedeni email odgovara traženom, klikni na gumb ispod za nastavak promjene zaporke.
+                    <Paragraph>
+                        Primili smo zahtjev za promjenu zaporke za:{' '}
+                        <strong>{email}</strong>
+                    </Paragraph>
+                    <Paragraph>
+                        Ako navedeni email odgovara traženom, klikni na gumb
+                        ispod za nastavak promjene zaporke.
                     </Paragraph>
                     <Section className="my-[32px] text-center">
-                        <PrimaryButton href={confirmLink}>Promjeni zaporku</PrimaryButton>
+                        <PrimaryButton href={confirmLink}>
+                            Promjeni zaporku
+                        </PrimaryButton>
                     </Section>
                     <Divider className="my-[26px]" />
                     <GrediceDisclaimer email={email} appDomain={appDomain} />
