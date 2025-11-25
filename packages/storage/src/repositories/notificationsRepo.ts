@@ -157,6 +157,7 @@ export async function notificationsDigest({
         userId: string;
         email: string;
         newNotificationsCount: number;
+        notificationImageUrls: string[];
     }[] = [];
     const emailLogEntries: { userId: string; notificationId: string }[] = [];
 
@@ -169,6 +170,7 @@ export async function notificationsDigest({
         const notificationsToEmail = await storage()
             .select({
                 id: notifications.id,
+                imageUrl: notifications.imageUrl,
             })
             .from(notifications)
             .where(
@@ -196,14 +198,24 @@ export async function notificationsDigest({
                             ),
                     ),
                 ),
-            );
+            )
+            .orderBy(desc(notifications.createdAt));
 
         if (notificationsToEmail.length > 0) {
             // Add to bulk email send
+            const notificationImageUrls = Array.from(
+                new Set(
+                    notificationsToEmail
+                        .map((notification) => notification.imageUrl)
+                        .filter((imageUrl): imageUrl is string => Boolean(imageUrl)),
+                ),
+            );
+
             bulkEmailData.push({
                 userId: user.id,
                 email: user.email,
                 newNotificationsCount: notificationsToEmail.length,
+                notificationImageUrls,
             });
 
             // Track these for logging

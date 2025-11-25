@@ -1,6 +1,7 @@
 import {
     Head,
     Html,
+    Img,
     Preview,
     Section,
     Tailwind,
@@ -15,13 +16,23 @@ import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 
 export interface EmailNotificationsBulkTemplateProps {
     email: string;
-    notificationsCount?: number;
+    notificationsCount: number;
+    notificationImageUrls?: string[];
+
+    appName?: string;
     appDomain?: string;
 }
 
 export default function EmailNotificationsBulkTemplate({
     email = 'login@example.com',
     notificationsCount = 5,
+    notificationImageUrls = [
+        'https://7ql7fvz1vzzo6adz.public.blob.vercel-storage.com/operations/1026/9424f829-299a-416a-bd78-691782c69c5c.jpg',
+        'https://7ql7fvz1vzzo6adz.public.blob.vercel-storage.com/operations/1363/6a9bdd6c-242c-43d8-9a83-89f1be27230d.jpg',
+        'https://7ql7fvz1vzzo6adz.public.blob.vercel-storage.com/operations/1396/c20269d5-5ab2-41c8-9699-3d0420d1a8e5.jpg',
+    ],
+
+    appName = 'Gredice',
     appDomain = 'gredice.com',
 }: EmailNotificationsBulkTemplateProps) {
     const newNotificationsPlural =
@@ -37,6 +48,9 @@ export default function EmailNotificationsBulkTemplate({
             : notificationsCount < 5
               ? 'te čekaju'
               : 'čeka te';
+    const distinctNotificationImageUrls = Array.from(
+        new Set(notificationImageUrls),
+    );
 
     return (
         <Html>
@@ -61,6 +75,30 @@ export default function EmailNotificationsBulkTemplate({
                             {waitingPlural} u tvom vrtu!
                         </Paragraph>
                     </Section>
+
+                    {distinctNotificationImageUrls.length > 0 ? (
+                        <Section className="my-4 rounded-2xl bg-[#f7f7f7] p-4">
+                            <Paragraph className="text-[16px] font-semibold text-center">
+                                📸 Novo u tvom vrtu
+                            </Paragraph>
+                            <Section className="flex flex-col">
+                                {distinctNotificationImageUrls.map(
+                                    (imageUrl) => (
+                                        <Section
+                                            key={`img-${imageUrl}`}
+                                            className="overflow-hidden rounded-xl bg-white mb-2"
+                                        >
+                                            <Img
+                                                src={imageUrl}
+                                                alt="Slika obavijesti"
+                                                className="h-auto w-full object-cover"
+                                            />
+                                        </Section>
+                                    ),
+                                )}
+                            </Section>
+                        </Section>
+                    ) : null}
 
                     <Paragraph>
                         Klikni na gumb ispod i provjeri sve obavijesti koje su
