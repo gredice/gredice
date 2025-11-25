@@ -21,14 +21,14 @@
         "@vercel/kv": "3.0.0",
         "@vercel/toolbar": "0.1.41",
         "flags": "4.0.2",
-        "hypertune": "2.10.1",
+        "hypertune": "2.10.0",
         "next": "16.0.3",
         "react": "19.2.0",
         "react-dom": "19.2.0",
         "server-only": "0.0.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.3.6",
+        "@biomejs/biome": "2.3.7",
         "@gredice/client": "workspace:*",
         "@gredice/game": "workspace:*",
         "@gredice/js": "workspace:*",
