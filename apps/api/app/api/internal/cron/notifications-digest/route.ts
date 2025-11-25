@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
         await sendNotificationsBulk(email.email, {
             email: email.email,
             notificationsCount: email.newNotificationsCount,
+            notificationImageUrls: email.notificationImageUrls,
         });
     }
 

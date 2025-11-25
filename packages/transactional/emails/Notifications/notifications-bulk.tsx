@@ -4,6 +4,7 @@ import {
     Preview,
     Section,
     Tailwind,
+    Img,
 } from '@react-email/components';
 import { ContentCard } from '../../components/ContentCard';
 import { Divider } from '../../components/Divider';
@@ -16,27 +17,33 @@ import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 export interface EmailNotificationsBulkTemplateProps {
     email: string;
     notificationsCount?: number;
+    notificationImageUrls?: string[];
+
+    appName?: string;
     appDomain?: string;
 }
 
 export default function EmailNotificationsBulkTemplate({
     email = 'login@example.com',
     notificationsCount = 5,
-    appDomain = 'gredice.com',
+    notificationImageUrls = [],
+
+    appName = 'Gredice',
+    appDomain = 'gredice.com'
 }: EmailNotificationsBulkTemplateProps) {
     const newNotificationsPlural =
         notificationsCount === 1
             ? 'nova obavijest'
             : notificationsCount < 5
-              ? 'nove obavijesti'
-              : 'novih obavijesti';
+                ? 'nove obavijesti'
+                : 'novih obavijesti';
     const previewText = `🔔 ${notificationsCount} ${newNotificationsPlural} u tvom vrtu!`;
     const waitingPlural =
         notificationsCount === 1
             ? 'te čeka'
             : notificationsCount < 5
-              ? 'te čekaju'
-              : 'čeka te';
+                ? 'te čekaju'
+                : 'čeka te';
 
     return (
         <Html>
@@ -61,6 +68,28 @@ export default function EmailNotificationsBulkTemplate({
                             {waitingPlural} u tvom vrtu!
                         </Paragraph>
                     </Section>
+
+                    {notificationImageUrls.length > 0 ? (
+                        <Section className="my-6 rounded-2xl bg-[#f7f7f7] p-4">
+                            <Paragraph className="text-[16px] font-semibold text-center">
+                                Novo iz tvojeg vrta
+                            </Paragraph>
+                            <Section className="flex flex-col gap-4">
+                                {notificationImageUrls.map((imageUrl, index) => (
+                                    <Section
+                                        key={`${imageUrl}-${index}`}
+                                        className="overflow-hidden rounded-xl bg-white"
+                                    >
+                                        <Img
+                                            src={imageUrl}
+                                            alt="Slika obavijesti"
+                                            className="h-auto w-full object-cover"
+                                        />
+                                    </Section>
+                                ))}
+                            </Section>
+                        </Section>
+                    ) : null}
 
                     <Paragraph>
                         Klikni na gumb ispod i provjeri sve obavijesti koje su
