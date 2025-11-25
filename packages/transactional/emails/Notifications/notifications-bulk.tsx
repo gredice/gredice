@@ -1,10 +1,10 @@
 import {
     Head,
     Html,
+    Img,
     Preview,
     Section,
     Tailwind,
-    Img,
 } from '@react-email/components';
 import { ContentCard } from '../../components/ContentCard';
 import { Divider } from '../../components/Divider';
@@ -16,7 +16,7 @@ import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 
 export interface EmailNotificationsBulkTemplateProps {
     email: string;
-    notificationsCount?: number;
+    notificationsCount: number;
     notificationImageUrls?: string[];
 
     appName?: string;
@@ -26,24 +26,31 @@ export interface EmailNotificationsBulkTemplateProps {
 export default function EmailNotificationsBulkTemplate({
     email = 'login@example.com',
     notificationsCount = 5,
-    notificationImageUrls = [],
+    notificationImageUrls = [
+        'https://7ql7fvz1vzzo6adz.public.blob.vercel-storage.com/operations/1026/9424f829-299a-416a-bd78-691782c69c5c.jpg',
+        'https://7ql7fvz1vzzo6adz.public.blob.vercel-storage.com/operations/1363/6a9bdd6c-242c-43d8-9a83-89f1be27230d.jpg',
+        'https://7ql7fvz1vzzo6adz.public.blob.vercel-storage.com/operations/1396/c20269d5-5ab2-41c8-9699-3d0420d1a8e5.jpg',
+    ],
 
     appName = 'Gredice',
-    appDomain = 'gredice.com'
+    appDomain = 'gredice.com',
 }: EmailNotificationsBulkTemplateProps) {
     const newNotificationsPlural =
         notificationsCount === 1
             ? 'nova obavijest'
             : notificationsCount < 5
-                ? 'nove obavijesti'
-                : 'novih obavijesti';
+              ? 'nove obavijesti'
+              : 'novih obavijesti';
     const previewText = `🔔 ${notificationsCount} ${newNotificationsPlural} u tvom vrtu!`;
     const waitingPlural =
         notificationsCount === 1
             ? 'te čeka'
             : notificationsCount < 5
-                ? 'te čekaju'
-                : 'čeka te';
+              ? 'te čekaju'
+              : 'čeka te';
+    const distinctNotificationImageUrls = Array.from(
+        new Set(notificationImageUrls),
+    );
 
     return (
         <Html>
@@ -69,24 +76,26 @@ export default function EmailNotificationsBulkTemplate({
                         </Paragraph>
                     </Section>
 
-                    {notificationImageUrls.length > 0 ? (
-                        <Section className="my-6 rounded-2xl bg-[#f7f7f7] p-4">
+                    {distinctNotificationImageUrls.length > 0 ? (
+                        <Section className="my-4 rounded-2xl bg-[#f7f7f7] p-4">
                             <Paragraph className="text-[16px] font-semibold text-center">
-                                Novo iz tvojeg vrta
+                                📸 Novo u tvom vrtu
                             </Paragraph>
-                            <Section className="flex flex-col gap-4">
-                                {notificationImageUrls.map((imageUrl, index) => (
-                                    <Section
-                                        key={`${imageUrl}-${index}`}
-                                        className="overflow-hidden rounded-xl bg-white"
-                                    >
-                                        <Img
-                                            src={imageUrl}
-                                            alt="Slika obavijesti"
-                                            className="h-auto w-full object-cover"
-                                        />
-                                    </Section>
-                                ))}
+                            <Section className="flex flex-col">
+                                {distinctNotificationImageUrls.map(
+                                    (imageUrl) => (
+                                        <Section
+                                            key={`img-${imageUrl}`}
+                                            className="overflow-hidden rounded-xl bg-white mb-2"
+                                        >
+                                            <Img
+                                                src={imageUrl}
+                                                alt="Slika obavijesti"
+                                                className="h-auto w-full object-cover"
+                                            />
+                                        </Section>
+                                    ),
+                                )}
                             </Section>
                         </Section>
                     ) : null}
