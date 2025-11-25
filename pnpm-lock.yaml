@@ -206,8 +206,8 @@ importers:
         specifier: 2.0.0
         version: 2.0.0
       hypertune:
-        specifier: 2.10.0
-        version: 2.10.0
+        specifier: 2.10.1
+        version: 2.10.1
       next:
         specifier: 16.0.3
         version: 16.0.3(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.94.2)
@@ -342,8 +342,8 @@ importers:
   apps/farm:
     dependencies:
       hypertune:
-        specifier: 2.10.0
-        version: 2.10.0
+        specifier: 2.10.1
+        version: 2.10.1
       next:
         specifier: 16.0.3
         version: 16.0.3(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.94.2)
@@ -451,8 +451,8 @@ importers:
         specifier: 4.0.2
         version: 4.0.2(@opentelemetry/api@1.9.0)(next@16.0.3(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.94.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       hypertune:
-        specifier: 2.10.0
-        version: 2.10.0
+        specifier: 2.10.1
+        version: 2.10.1
       next:
         specifier: 16.0.3
         version: 16.0.3(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.94.2)
@@ -572,8 +572,8 @@ importers:
         specifier: 4.0.2
         version: 4.0.2(@opentelemetry/api@1.9.0)(next@16.0.3(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.94.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       hypertune:
-        specifier: 2.10.0
-        version: 2.10.0
+        specifier: 2.10.1
+        version: 2.10.1
       next:
         specifier: 16.0.3
         version: 16.0.3(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(sass@1.94.2)
@@ -6280,8 +6280,8 @@ packages:
     resolution: {integrity: sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==}
     engines: {node: '>=10.17.0'}
 
-  hypertune@2.10.0:
-    resolution: {integrity: sha512-/WcCeCvicb1fKX+ZrcC7Iaa80Uu8oL9Q3FHaAg5mFdoGIh7usva4Sx/KxTzYWsHbAnwAt0jQi87SUoqC7xSugQ==}
+  hypertune@2.10.1:
+    resolution: {integrity: sha512-3rvQKd1fedO4ufggTTT5rdNWdnuaLWzaUJow25IYP8e1c+VcssifuaZxCXSfnoaXEZZSqEM0bkjE0YzG4nTv7w==}
     hasBin: true
 
   hypertune@2.8.3:
@@ -14917,7 +14917,7 @@ snapshots:
 
   human-signals@2.1.0: {}
 
-  hypertune@2.10.0:
+  hypertune@2.10.1:
     dependencies:
       cac: 6.7.14
       core-js: 3.46.0
