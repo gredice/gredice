@@ -6,11 +6,7 @@
         "esModuleInterop": true,
         "incremental": false,
         "isolatedModules": true,
-        "lib": [
-            "es2022",
-            "DOM",
-            "DOM.Iterable"
-        ],
+        "lib": ["es2022", "DOM", "DOM.Iterable"],
         "module": "esnext",
         "moduleDetection": "force",
         "moduleResolution": "bundler",
@@ -21,13 +17,6 @@
         "target": "ES2022",
         "jsx": "react-jsx"
     },
-    "include": [
-        "./emails/**/*",
-        "./components/**/*"
-    ],
-    "exclude": [
-        "dist",
-        "build",
-        "node_modules"
-    ]
+    "include": ["./emails/**/*", "./components/**/*"],
+    "exclude": ["dist", "build", "node_modules"]
 }

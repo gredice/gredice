@@ -1,20 +1,20 @@
-import { ReactElement } from 'react';
-import { render } from '@react-email/components';
 import {
     EmailClient,
     type EmailMessage,
-    KnownEmailSendStatus,
     type EmailSendResponse,
+    KnownEmailSendStatus,
 } from '@azure/communication-email';
 import type { OperationState } from '@azure/core-lro';
 import {
     createEmailMessageLog,
-    updateEmailMessageLog,
     type EmailLogAttachment,
     type EmailLogRecipient,
     type EmailLogRecipients,
     type EmailStatus,
+    updateEmailMessageLog,
 } from '@gredice/storage';
+import { render } from '@react-email/components';
+import type { ReactElement } from 'react';
 
 function emailClient() {
     const connectionString = process.env.ACS_CONNECTION_STRING;
@@ -50,14 +50,10 @@ function normalizeRecipient(
 
     const displayName = recipient.displayName?.trim();
 
-    return displayName
-        ? { address, displayName }
-        : { address };
+    return displayName ? { address, displayName } : { address };
 }
 
-function normalizeRecipients(
-    input?: EmailRecipientInput,
-): EmailLogRecipient[] {
+function normalizeRecipients(input?: EmailRecipientInput): EmailLogRecipient[] {
     if (!input) {
         return [];
     }
@@ -66,7 +62,9 @@ function normalizeRecipients(
 
     return recipients
         .map(normalizeRecipient)
-        .filter((recipient): recipient is EmailLogRecipient => Boolean(recipient));
+        .filter((recipient): recipient is EmailLogRecipient =>
+            Boolean(recipient),
+        );
 }
 
 function toAzureRecipients(recipients: EmailLogRecipient[]) {
@@ -189,7 +187,9 @@ export async function sendEmail({
 }: SendEmailParams) {
     const toRecipients = normalizeRecipients(to);
     if (toRecipients.length === 0) {
-        throw new Error('At least one recipient must be provided in the "to" field');
+        throw new Error(
+            'At least one recipient must be provided in the "to" field',
+        );
     }
 
     const ccRecipients = normalizeRecipients(cc);
@@ -223,8 +223,14 @@ export async function sendEmail({
         senderAddress: from,
         recipients: {
             to: toAzureRecipients(toRecipients),
-            cc: ccRecipients.length > 0 ? toAzureRecipients(ccRecipients) : undefined,
-            bcc: bccRecipients.length > 0 ? toAzureRecipients(bccRecipients) : undefined,
+            cc:
+                ccRecipients.length > 0
+                    ? toAzureRecipients(ccRecipients)
+                    : undefined,
+            bcc:
+                bccRecipients.length > 0
+                    ? toAzureRecipients(bccRecipients)
+                    : undefined,
         },
         content: {
             subject,

@@ -2,14 +2,15 @@ import {
     Head,
     Html,
     Preview,
-    Section, Tailwind,
+    Section,
+    Tailwind,
 } from '@react-email/components';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { Paragraph } from '../../components/Paragraph';
-import { Header } from '../../components/Header';
-import { Divider } from '../../components/Divider';
 import { ContentCard } from '../../components/ContentCard';
+import { Divider } from '../../components/Divider';
 import { GrediceLogotype } from '../../components/GrediceLogotype';
+import { Header } from '../../components/Header';
+import { Paragraph } from '../../components/Paragraph';
+import { PrimaryButton } from '../../components/PrimaryButton';
 import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 
 export interface EmailVerifyEmailTemplateProps {
@@ -24,7 +25,7 @@ export default function EmailVerifyEmailTemplate({
     confirmLink = 'https://vrt.gredice.com/prijava/potvrda-emaila',
 
     appName = 'Gredice',
-    appDomain = 'gredice.com'
+    appDomain = 'gredice.com',
 }: EmailVerifyEmailTemplateProps) {
     const previewText = `Potvrda email adrese za ${appName}`;
 
@@ -34,18 +35,26 @@ export default function EmailVerifyEmailTemplate({
             <Preview>{previewText}</Preview>
             <Tailwind>
                 <ContentCard>
-                    <Section className='text-center'>
+                    <Section className="text-center">
                         <GrediceLogotype />
                     </Section>
                     <Header>Potvrda email adrese</Header>
-                    <Paragraph>Primili smo zahtjev za potvrdu email adrese: <strong>{email}</strong></Paragraph>
-                    <Paragraph>Ako navedeni email odgovara traženom, klikni na gumb ispod za potvrdu.
+                    <Paragraph>
+                        Primili smo zahtjev za potvrdu email adrese:{' '}
+                        <strong>{email}</strong>
+                    </Paragraph>
+                    <Paragraph>
+                        Ako navedeni email odgovara traženom, klikni na gumb
+                        ispod za potvrdu.
                     </Paragraph>
                     <Section className="my-[32px] text-center">
-                        <PrimaryButton href={confirmLink}>Potvrdi email</PrimaryButton>
+                        <PrimaryButton href={confirmLink}>
+                            Potvrdi email
+                        </PrimaryButton>
                     </Section>
                     <Paragraph>
-                        Ukoliko ne očekuješ ovu potvrdu, možeš zanemariti ovaj email.
+                        Ukoliko ne očekuješ ovu potvrdu, možeš zanemariti ovaj
+                        email.
                     </Paragraph>
                     <Divider className="my-[26px]" />
                     <GrediceDisclaimer email={email} appDomain={appDomain} />

@@ -2,34 +2,41 @@ import {
     Head,
     Html,
     Preview,
-    Section, Tailwind,
+    Section,
+    Tailwind,
 } from '@react-email/components';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { Paragraph } from '../../components/Paragraph';
-import { Header } from '../../components/Header';
-import { Divider } from '../../components/Divider';
 import { ContentCard } from '../../components/ContentCard';
+import { Divider } from '../../components/Divider';
 import { GrediceLogotype } from '../../components/GrediceLogotype';
+import { Header } from '../../components/Header';
+import { Paragraph } from '../../components/Paragraph';
+import { PrimaryButton } from '../../components/PrimaryButton';
 import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 
 export interface EmailNotificationsBulkTemplateProps {
     email: string;
     notificationsCount?: number;
-
-    appName?: string;
     appDomain?: string;
 }
 
 export default function EmailNotificationsBulkTemplate({
     email = 'login@example.com',
     notificationsCount = 5,
-
-    appName = 'Gredice',
-    appDomain = 'gredice.com'
+    appDomain = 'gredice.com',
 }: EmailNotificationsBulkTemplateProps) {
-    const newNotificationsPlural = notificationsCount === 1 ? 'nova obavijest' : (notificationsCount < 5 ? 'nove obavijesti' : 'novih obavijesti');
+    const newNotificationsPlural =
+        notificationsCount === 1
+            ? 'nova obavijest'
+            : notificationsCount < 5
+              ? 'nove obavijesti'
+              : 'novih obavijesti';
     const previewText = `🔔 ${notificationsCount} ${newNotificationsPlural} u tvom vrtu!`;
-    const waitingPlural = notificationsCount === 1 ? 'te čeka' : (notificationsCount < 5 ? 'te čekaju' : 'čeka te');
+    const waitingPlural =
+        notificationsCount === 1
+            ? 'te čeka'
+            : notificationsCount < 5
+              ? 'te čekaju'
+              : 'čeka te';
 
     return (
         <Html>
@@ -37,13 +44,11 @@ export default function EmailNotificationsBulkTemplate({
             <Preview>{previewText}</Preview>
             <Tailwind>
                 <ContentCard>
-                    <Section className='text-center'>
+                    <Section className="text-center">
                         <GrediceLogotype />
                     </Section>
                     <Header>Tvoj dnevni pregled obavijesti</Header>
-                    <Paragraph>
-                        Hej,
-                    </Paragraph>
+                    <Paragraph>Hej,</Paragraph>
                     <Paragraph>
                         Svrati u svoj vrt i pogledaj što je novo.
                     </Paragraph>
@@ -58,10 +63,13 @@ export default function EmailNotificationsBulkTemplate({
                     </Section>
 
                     <Paragraph>
-                        Klikni na gumb ispod i provjeri sve obavijesti koje su stigle.
+                        Klikni na gumb ispod i provjeri sve obavijesti koje su
+                        stigle.
                     </Paragraph>
                     <Section className="my-[32px] text-center">
-                        <PrimaryButton href="https://vrt.gredice.com">Posjeti svoj vrt</PrimaryButton>
+                        <PrimaryButton href="https://vrt.gredice.com">
+                            Posjeti svoj vrt
+                        </PrimaryButton>
                     </Section>
                     <Divider className="my-[26px]" />
                     <GrediceDisclaimer email={email} appDomain={appDomain} />

@@ -1,5 +1,4 @@
-import * as React from "react";
-import { Img } from "@react-email/components";
+import { Img } from '@react-email/components';
 
 export function GrediceLogotype() {
     return (
@@ -10,5 +9,5 @@ export function GrediceLogotype() {
             alt="Gredice Logo"
             className="block m-auto"
         />
-    )
+    );
 }
