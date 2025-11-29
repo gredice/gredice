@@ -6,7 +6,14 @@ import {
     type SelectOperation,
 } from '../schema';
 import { storage } from '../storage';
-import { getEvents, knownEventTypes } from './eventsRepo';
+import {
+    getEvents,
+    knownEventTypes,
+    type OperationCancelPayload,
+    type OperationCompletePayload,
+    type OperationFailPayload,
+    type OperationSchedulePayload,
+} from './events';
 
 export type OperationStatus =
     | 'new'
@@ -15,18 +22,13 @@ export type OperationStatus =
     | 'failed'
     | 'canceled';
 
-// TODO: Use event payloads to determine these fields
-//       (combine all possible data fields from event type payloads)
-interface OperationEventData {
-    completedBy?: string;
-    images?: string[];
-    imageUrl?: string;
-    error?: string;
-    errorCode?: string;
-    canceledBy?: string;
-    reason?: string;
-    scheduledDate?: string;
-}
+/** Combined type of all possible fields from operation event payloads */
+type OperationEventData = Partial<
+    OperationSchedulePayload &
+        OperationCompletePayload &
+        OperationFailPayload &
+        OperationCancelPayload
+>;
 
 function parseOperationEventData(value: unknown): OperationEventData {
     if (!value || typeof value !== 'object') {
@@ -43,9 +45,6 @@ function parseOperationEventData(value: unknown): OperationEventData {
         data.images = record.images.filter(
             (value): value is string => typeof value === 'string',
         );
-    }
-    if (typeof record.imageUrl === 'string') {
-        data.imageUrl = record.imageUrl;
     }
     if (typeof record.error === 'string') {
         data.error = record.error;
@@ -110,32 +109,6 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                     imageUrls = (data.images as unknown[]).filter(
                         (url): url is string => typeof url === 'string',
                     );
-                    if (data.imageUrl) {
-                        imageUrls = imageUrls
-                            ? [...imageUrls, data.imageUrl]
-                            : [data.imageUrl];
-                    }
-                } else if (event.type === knownEventTypes.operations.fail) {
-                    status = 'failed';
-                    error = data.error ?? error;
-                    errorCode = data.errorCode ?? errorCode;
-                } else if (event.type === knownEventTypes.operations.cancel) {
-                    status = 'canceled';
-                    canceledBy = data.canceledBy ?? canceledBy;
-                    cancelReason = data.reason ?? cancelReason;
-                    canceledAt = event.createdAt
-                        ? new Date(event.createdAt)
-                        : undefined;
-                } else if (event.type === knownEventTypes.operations.schedule) {
-                    status = 'planned';
-                    scheduledDate = data.scheduledDate
-                        ? new Date(data.scheduledDate)
-                        : scheduledDate;
-                }
-                if (typeof data?.imageUrl === 'string') {
-                    imageUrls = imageUrls
-                        ? [...imageUrls, data.imageUrl]
-                        : [data.imageUrl];
                 }
             } else if (event.type === knownEventTypes.operations.fail) {
                 status = 'failed';
