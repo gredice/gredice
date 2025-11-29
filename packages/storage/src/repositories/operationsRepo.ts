@@ -15,9 +15,10 @@ export type OperationStatus =
     | 'failed'
     | 'canceled';
 
+// TODO: Use event payloads to determine these fields
+//       (combine all possible data fields from event type payloads)
 interface OperationEventData {
     completedBy?: string;
-    completedAt?: string;
     images?: string[];
     imageUrl?: string;
     error?: string;
@@ -37,9 +38,6 @@ function parseOperationEventData(value: unknown): OperationEventData {
 
     if (typeof record.completedBy === 'string') {
         data.completedBy = record.completedBy;
-    }
-    if (typeof record.completedAt === 'string') {
-        data.completedAt = record.completedAt;
     }
     if (Array.isArray(record.images)) {
         data.images = record.images.filter(
@@ -107,9 +105,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             if (event.type === knownEventTypes.operations.complete) {
                 status = 'completed';
                 completedBy = asString(data?.completedBy) ?? completedBy;
-                completedAt = data.completedAt
-                    ? new Date(data.completedAt)
-                    : completedAt;
+                completedAt = event.createdAt;
                 if (Array.isArray(data?.images)) {
                     imageUrls = (data.images as unknown[]).filter(
                         (url): url is string => typeof url === 'string',
