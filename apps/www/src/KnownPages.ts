@@ -17,6 +17,8 @@ export const KnownPages = {
     Operations: '/radnje',
     Operation: (alias: string) =>
         `/radnje/${encodeURIComponent(alias)}` as Route,
+    Recipes: '/recepti',
+    Recipe: (slug: string) => `/recepti/${encodeURIComponent(slug)}` as Route,
     AboutUs: '/o-nama',
     FAQ: '/cesta-pitanja',
     Contact: '/kontakt',
