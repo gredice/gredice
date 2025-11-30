@@ -94,6 +94,9 @@ importers:
       '@biomejs/biome':
         specifier: 2.3.7
         version: 2.3.7
+      '@gredice/directory-types':
+        specifier: workspace:*
+        version: link:../../packages/directory-types
       '@gredice/email':
         specifier: workspace:*
         version: link:../../packages/email
@@ -707,6 +710,9 @@ importers:
 
   packages/client:
     dependencies:
+      '@gredice/directory-types':
+        specifier: workspace:*
+        version: link:../directory-types
       openapi-fetch:
         specifier: 0.15.0
         version: 0.15.0
@@ -723,6 +729,15 @@ importers:
       hono:
         specifier: 4.10.6
         version: 4.10.6
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
+  packages/directory-types:
+    devDependencies:
+      '@biomejs/biome':
+        specifier: 2.3.7
+        version: 2.3.7
       openapi-typescript:
         specifier: 7.10.1
         version: 7.10.1(typescript@5.9.3)
@@ -966,6 +981,9 @@ importers:
 
   packages/notifications:
     dependencies:
+      '@gredice/directory-types':
+        specifier: workspace:*
+        version: link:../directory-types
       '@gredice/slack':
         specifier: workspace:*
         version: link:../slack
@@ -1038,6 +1056,9 @@ importers:
       '@biomejs/biome':
         specifier: 2.3.7
         version: 2.3.7
+      '@gredice/directory-types':
+        specifier: workspace:*
+        version: link:../directory-types
       '@gredice/js':
         specifier: workspace:*
         version: link:../js

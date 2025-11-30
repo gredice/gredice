@@ -41,13 +41,12 @@ export function DeliveryRequestRow({
     const plantSort = request.plantSort;
 
     // Prefer plantSort info over operation entity info when there's a field position
-    const hasPlantSort =
-        plantSort?.information?.name || plantSort?.information?.label;
+    const hasPlantSort = Boolean(plantSort?.information?.name);
     const displayName = hasPlantSort
-        ? plantSort?.information?.label || plantSort?.information?.name
+        ? plantSort?.information?.name
         : operationData?.information?.label || operationData?.information?.name;
     const displayImageUrl = hasPlantSort
-        ? (plantSort?.information?.cover ??
+        ? (plantSort?.image.cover?.url ??
           plantSort?.information?.plant?.image?.cover?.url)
         : operationData?.image?.cover?.url;
     const hasOperationDetails = displayName;

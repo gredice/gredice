@@ -1,5 +1,7 @@
-import { directoriesClient } from '@gredice/client';
+import { directoriesClient, type PlantSortData } from '@gredice/client';
 import { unstable_cache } from 'next/cache';
+
+export type { PlantSortData };
 
 export const getPlantSortsData = unstable_cache(
     async () => {
@@ -11,7 +13,3 @@ export const getPlantSortsData = unstable_cache(
         tags: ['plantSortsData'],
     },
 );
-
-export type PlantSortData = NonNullable<
-    Awaited<ReturnType<typeof getPlantSortsData>>
->[number];

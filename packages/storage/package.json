@@ -21,6 +21,7 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.3.7",
+        "@gredice/directory-types": "workspace:*",
         "@gredice/js": "workspace:*",
         "@neondatabase/serverless": "1.0.2",
         "@signalco/js": "0.1.0",

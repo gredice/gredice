@@ -358,9 +358,7 @@ export async function processItem(itemData: {
                 );
                 const scheduledDateValue = new Date(scheduledDate);
                 await notifyOperationUpdate(operationId, 'scheduled', {
-                    scheduledDate: Number.isNaN(scheduledDateValue.getTime())
-                        ? undefined
-                        : scheduledDateValue,
+                    scheduledDate: scheduledDateValue.toISOString(),
                 });
             }
 

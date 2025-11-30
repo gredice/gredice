@@ -6,14 +6,8 @@ import {
     type SelectOperation,
 } from '../schema';
 import { storage } from '../storage';
-import {
-    getEvents,
-    knownEventTypes,
-    type OperationCancelPayload,
-    type OperationCompletePayload,
-    type OperationFailPayload,
-    type OperationSchedulePayload,
-} from './events';
+import { getEvents, knownEventTypes } from './events';
+import type { OperationEventsAnyPayload } from './events/types';
 
 export type OperationStatus =
     | 'new'
@@ -22,21 +16,13 @@ export type OperationStatus =
     | 'failed'
     | 'canceled';
 
-/** Combined type of all possible fields from operation event payloads */
-type OperationEventData = Partial<
-    OperationSchedulePayload &
-        OperationCompletePayload &
-        OperationFailPayload &
-        OperationCancelPayload
->;
-
-function parseOperationEventData(value: unknown): OperationEventData {
+function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
     if (!value || typeof value !== 'object') {
         return {};
     }
 
     const record = value as Record<string, unknown>;
-    const data: OperationEventData = {};
+    const data: OperationEventsAnyPayload = {};
 
     if (typeof record.completedBy === 'string') {
         data.completedBy = record.completedBy;

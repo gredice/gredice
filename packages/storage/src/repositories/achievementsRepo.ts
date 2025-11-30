@@ -6,20 +6,20 @@ import {
 } from '@gredice/js/achievements';
 import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import {
+    type AccountSunflowersPayload,
     accountAchievements,
     accounts,
-    type EarnSunflowersEventData,
     type EntityStandardized,
     earnSunflowers,
     events,
     knownEventTypes,
     operations,
-    type PlantUpdateEventData,
     raisedBeds,
     type SelectAccountAchievement,
     storage,
 } from '..';
 import { getEntitiesFormatted } from './entitiesRepo';
+import type { RaisedBedFieldPlantEventsPayload } from './events/types';
 
 interface CreateAchievementOptions {
     earnedAt?: Date;
@@ -381,8 +381,9 @@ export async function evaluateAchievements() {
     });
 
     for (const event of plantEvents) {
-        const data = event.data as PlantUpdateEventData | undefined;
-        const status = data?.status?.toLowerCase();
+        const data = event.data as RaisedBedFieldPlantEventsPayload | undefined;
+        const status =
+            data && 'status' in data ? data?.status?.toLowerCase() : undefined;
         if (status !== 'sowed') {
             continue;
         }
@@ -499,7 +500,7 @@ export async function evaluateAchievements() {
     });
     const registrationMap = new Map<string, Date>();
     for (const event of registrationEvents) {
-        const data = event.data as EarnSunflowersEventData | undefined;
+        const data = event.data as AccountSunflowersPayload | undefined;
         const reason = data?.reason;
         const accountId = event.aggregateId;
         if (!accountId) continue;
