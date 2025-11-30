@@ -6,9 +6,8 @@ import {
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import type { ReactNode } from 'react';
+import { EventsTable } from '../shared/events/EventsTable';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
 import { RaisedBedEventDeleteButton } from './RaisedBedEventDeleteButton';
 
@@ -170,61 +169,20 @@ export async function RaisedBedEventsTable({
     );
 
     return (
-        <Table>
-            <Table.Header>
-                <Table.Row>
-                    <Table.Head>ID</Table.Head>
-                    <Table.Head>Tip</Table.Head>
-                    <Table.Head>Lokacija</Table.Head>
-                    <Table.Head>Detalji</Table.Head>
-                    <Table.Head>Vrijeme</Table.Head>
-                    <Table.Head className="w-32 text-right">Akcije</Table.Head>
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {sortedEvents.length === 0 && (
-                    <Table.Row>
-                        <Table.Cell colSpan={6}>
-                            <NoDataPlaceholder />
-                        </Table.Cell>
-                    </Table.Row>
-                )}
-                {sortedEvents.map((event) => {
-                    const location = getEventLocationLabel(
-                        event.aggregateId,
-                        raisedBedId,
-                    );
-                    const typeLabel =
-                        EVENT_TYPE_LABELS[event.type] ?? event.type;
-                    const details = renderEventDetails(event);
-
-                    return (
-                        <Table.Row key={event.id}>
-                            <Table.Cell>{event.id}</Table.Cell>
-                            <Table.Cell>{typeLabel}</Table.Cell>
-                            <Table.Cell>{location}</Table.Cell>
-                            <Table.Cell>
-                                {details ? (
-                                    details
-                                ) : (
-                                    <Typography level="body3" color="neutral">
-                                        -
-                                    </Typography>
-                                )}
-                            </Table.Cell>
-                            <Table.Cell>
-                                <LocalDateTime>{event.createdAt}</LocalDateTime>
-                            </Table.Cell>
-                            <Table.Cell className="text-right">
-                                <RaisedBedEventDeleteButton
-                                    eventId={event.id}
-                                    raisedBedId={raisedBedId}
-                                />
-                            </Table.Cell>
-                        </Table.Row>
-                    );
-                })}
-            </Table.Body>
-        </Table>
+        <EventsTable
+            events={sortedEvents}
+            renderType={(event) => EVENT_TYPE_LABELS[event.type] ?? event.type}
+            renderDetails={(event) => renderEventDetails(event)}
+            renderLocation={(event) =>
+                getEventLocationLabel(event.aggregateId, raisedBedId)
+            }
+            renderActions={(event) => (
+                <RaisedBedEventDeleteButton
+                    eventId={event.id}
+                    raisedBedId={raisedBedId}
+                />
+            )}
+            actionsColumnClassName="w-32 text-right"
+        />
     );
 }

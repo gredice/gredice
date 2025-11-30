@@ -12,6 +12,7 @@ import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { sendDeleteAccountEmail } from '../../../(actions)/accountsActions';
 import { AccountAchievementsCard } from './AccountAchievementsCard';
+import { AccountEventsCard } from './AccountEventsCard';
 import { AccountGardensCard } from './AccountGardensCard';
 import { AccountShoppingCartsCard } from './AccountShoppingCartsCard';
 import { AccountSunflowersCard } from './AccountSunflowersCard';
@@ -75,6 +76,7 @@ export default async function AccountPage({
                 <AccountAchievementsCard accountId={accountId} />
                 <AccountTransactionsCard accountId={accountId} />
                 <RaisedBedsTableCard accountId={accountId} />
+                <AccountEventsCard accountId={accountId} />
                 <NotificationsTableCard accountId={accountId} scroll />
                 <AccountShoppingCartsCard accountId={accountId} />
             </div>
