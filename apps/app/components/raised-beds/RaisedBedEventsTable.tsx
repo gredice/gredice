@@ -2,7 +2,7 @@ import {
     getEvents,
     getRaisedBed,
     knownEventTypes,
-    type PlantUpdateEventData,
+    type RaisedBedFieldPlantEventPayload,
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -58,22 +58,27 @@ function parseDateValue(value: unknown): Date | null {
 }
 
 function renderEventDetails(event: StorageEvent) {
-    const data = event.data as PlantUpdateEventData | null | undefined;
+    const data = event.data as
+        | RaisedBedFieldPlantEventPayload
+        | null
+        | undefined;
     if (!data || Object.keys(data).length === 0) {
         return null;
     }
 
     const details: ReactNode[] = [];
 
-    if (data.status) {
+    if ('status' in data && data.status) {
         details.push(<span key="status">Status: {data.status}</span>);
     }
 
-    if (typeof data.plantSortId === 'string' && data.plantSortId.length) {
+    if ('plantSortId' in data && data.plantSortId.length) {
         details.push(<span key="plant">Biljka ID: {data.plantSortId}</span>);
     }
 
-    const scheduledDate = parseDateValue(data.scheduledDate);
+    const scheduledDate = parseDateValue(
+        'scheduledDate' in data ? data.scheduledDate : undefined,
+    );
     if (scheduledDate) {
         details.push(
             <span key="scheduled">
@@ -83,7 +88,9 @@ function renderEventDetails(event: StorageEvent) {
         );
     }
 
-    const stoppedDate = parseDateValue(data.stoppedDate);
+    const stoppedDate = parseDateValue(
+        'stoppedDate' in data ? data.stoppedDate : undefined,
+    );
     if (stoppedDate) {
         details.push(
             <span key="stopped">
@@ -94,7 +101,11 @@ function renderEventDetails(event: StorageEvent) {
     }
 
     const harvestedDate = parseDateValue(
-        data.harvestedDate ?? data.harvestedAt,
+        'harvestedDate' in data
+            ? data.harvestedDate
+            : 'harvestedAt' in data
+              ? data.harvestedAt
+              : undefined,
     );
     if (harvestedDate) {
         details.push(

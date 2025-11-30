@@ -1,5 +1,4 @@
 export * from './@types/EntityStandardized';
-export * from './@types/EventData';
 export * from './cache/directoriesCached';
 export * from './cache/grediceCached';
 export * from './helpers/timeSlotAutomation';

@@ -1,6 +1,23 @@
+import type { paths } from '@gredice/directory-types';
 import createClient from 'openapi-fetch';
-import type { paths } from './lib/directories-api/v1';
 import { createDevSafeFetch, getAppUrl } from './shared';
+
+// Re-export all directory types from @gredice/directory-types
+export type {
+    BlockData,
+    BrandData,
+    components,
+    FaqCategoryData,
+    FaqData,
+    ImageData,
+    OperationData,
+    OperationFrequencyData,
+    PlantData,
+    PlantSortData,
+    PlantStageData,
+    paths,
+    SeedData,
+} from '@gredice/directory-types';
 
 export function directoriesClient() {
     const baseUrl = `${getAppUrl()}/api/directories`;
@@ -10,14 +27,3 @@ export function directoriesClient() {
         fetch: createDevSafeFetch(),
     });
 }
-
-export type PlantData =
-    paths['/entities/plant']['get']['responses']['200']['content']['application/json'][0];
-export type BlockData =
-    paths['/entities/block']['get']['responses']['200']['content']['application/json'][0];
-export type OperationData =
-    paths['/entities/operation']['get']['responses']['200']['content']['application/json'][0];
-export type FaqData =
-    paths['/entities/faq']['get']['responses']['200']['content']['application/json'][0];
-export type PlantSortData =
-    paths['/entities/plantSort']['get']['responses']['200']['content']['application/json'][0];

@@ -1,3 +1,4 @@
+import { OperationData } from '@gredice/directory-types';
 import { postMessage } from '@gredice/slack';
 import {
     type DeliveryRequestState,
@@ -11,13 +12,10 @@ import {
     IntegrationTypes,
     type NotificationSettingKey,
     NotificationSettingKeys,
+    OperationCancelPayload,
+    OperationCompletePayload,
+    OperationSchedulePayload,
 } from '@gredice/storage';
-
-type UnknownEntity = {
-    information?: {
-        label?: string;
-    };
-};
 
 type OperationEventType =
     | 'scheduled'
@@ -25,12 +23,6 @@ type OperationEventType =
     | 'approved'
     | 'completed'
     | 'canceled';
-
-interface OperationEventOptions {
-    scheduledDate?: Date | string | null;
-    reason?: string | null;
-    completedBy?: string | null;
-}
 
 export type DeliveryRequestEventType = 'created' | 'updated' | 'cancelled';
 
@@ -90,7 +82,7 @@ async function buildOperationContext(
 ): Promise<OperationContext | null> {
     try {
         const operation = await getOperationById(operationId);
-        const entity = await getEntityFormatted<UnknownEntity>(
+        const entity = await getEntityFormatted<OperationData>(
             operation.entityId,
         );
         const operationName =
@@ -233,7 +225,7 @@ async function getSlackChannelId(
 export async function notifyOperationUpdate(
     operationId: number,
     type: OperationEventType,
-    options: OperationEventOptions = {},
+    options?: OperationCompletePayload | OperationSchedulePayload | OperationCancelPayload,
 ) {
     const context = await buildOperationContext(operationId);
     if (!context) {
@@ -253,7 +245,10 @@ export async function notifyOperationUpdate(
     }
 
     const formattedScheduledDate = formatDateTime(
-        options.scheduledDate ?? context.scheduledDate,
+        (options && 'scheduledDate' in options 
+            ? options.scheduledDate 
+            : undefined) 
+        ?? context.scheduledDate,
     );
 
     const lines: (string | undefined)[] = [];
@@ -277,14 +272,14 @@ export async function notifyOperationUpdate(
         case 'completed':
             lines.push(`:seedling: *${context.operationName}*`);
             lines.push('• Status: dovršeno');
-            if (options.completedBy) {
+            if (options && 'completedBy' in options && options.completedBy) {
                 lines.push(`• Izvršio: ${options.completedBy}`);
             }
             break;
         case 'canceled':
             lines.push(`:x: *${context.operationName}*`);
             lines.push('• Status: otkazano');
-            if (options.reason) {
+            if (options && 'reason' in options && options.reason) {
                 lines.push(`• Razlog: ${options.reason}`);
             }
             break;

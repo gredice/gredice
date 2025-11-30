@@ -16,10 +16,12 @@ export type {
     // Account
     AccountAssignUserPayload,
     AccountSunflowersPayload,
+    // Delivery
     DeliveryRequestAddressChangedPayload,
     DeliveryRequestCancelledPayload,
-    // Delivery
     DeliveryRequestCreatePayload,
+    DeliveryRequestEventsAnyPayload,
+    DeliveryRequestEventsPayload,
     DeliveryRequestFulfilledPayload,
     DeliveryRequestSlotChangedPayload,
     DeliveryRequestStatusPayload,
@@ -37,7 +39,8 @@ export type {
     InvoiceUpdatePayload,
     OperationCancelPayload,
     OperationCompletePayload,
-    OperationEventPayload,
+    OperationEventsAnyPayload,
+    OperationEventsPayload,
     OperationFailPayload,
     // Operation
     OperationSchedulePayload,
@@ -46,6 +49,8 @@ export type {
     RaisedBedCreatePayload,
     // Raised bed field
     RaisedBedFieldCreatePayload,
+    RaisedBedFieldPlantEventsAnyPayload,
+    RaisedBedFieldPlantEventsPayload,
     RaisedBedFieldPlantPlacePayload,
     RaisedBedFieldPlantReplaceSortPayload,
     RaisedBedFieldPlantSchedulePayload,

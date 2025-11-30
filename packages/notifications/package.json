@@ -12,6 +12,7 @@
         "lint": "biome check"
     },
     "dependencies": {
+        "@gredice/directory-types": "workspace:*",
         "@gredice/slack": "workspace:*",
         "@gredice/storage": "workspace:*"
     },

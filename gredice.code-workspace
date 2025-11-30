@@ -33,6 +33,10 @@
 			"path": "packages/cdn"
 		},
 		{
+			"name": "📦 @gredice/directory-types",
+			"path": "packages/directory-types"
+		},
+		{
 			"name": "📦 @gredice/email",
 			"path": "packages/email"
 		},

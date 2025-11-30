@@ -62,7 +62,7 @@ export async function createOperationAction(formData: FormData) {
             }),
         );
         await notifyOperationUpdate(operationId, 'scheduled', {
-            scheduledDate,
+            scheduledDate: scheduledDate.toISOString(),
         });
     }
     revalidatePath(KnownPages.Schedule);
@@ -110,7 +110,7 @@ export async function bulkCreateOperationsAction(formData: FormData) {
                 }),
             );
             await notifyOperationUpdate(operationId, 'scheduled', {
-                scheduledDate,
+                scheduledDate: scheduledDate.toISOString(),
             });
         }
     }
@@ -145,7 +145,7 @@ export async function rescheduleOperationAction(formData: FormData) {
     );
 
     await notifyOperationUpdate(operationId, 'rescheduled', {
-        scheduledDate: newDate,
+        scheduledDate: newDate.toISOString(),
     });
 
     revalidatePath(KnownPages.Schedule);
@@ -363,7 +363,10 @@ export async function cancelOperationAction(formData: FormData) {
     );
 
     await Promise.all([
-        notifyOperationUpdate(operationId, 'canceled', { reason }),
+        notifyOperationUpdate(operationId, 'canceled', {
+            reason,
+            canceledBy: userId,
+        }),
         shouldRefund && refundAmount > 0 && operation.accountId
             ? earnSunflowers(
                   operation.accountId,

@@ -117,6 +117,17 @@ export type RaisedBedFieldPlantUpdatePayload = {
 export type RaisedBedFieldPlantReplaceSortPayload = {
     plantSortId: string;
 };
+export type RaisedBedFieldPlantEventsPayload =
+    | RaisedBedFieldPlantPlacePayload
+    | RaisedBedFieldPlantSchedulePayload
+    | RaisedBedFieldPlantUpdatePayload
+    | RaisedBedFieldPlantReplaceSortPayload;
+export type RaisedBedFieldPlantEventsAnyPayload = Partial<
+    RaisedBedFieldPlantPlacePayload &
+        RaisedBedFieldPlantSchedulePayload &
+        RaisedBedFieldPlantUpdatePayload &
+        RaisedBedFieldPlantReplaceSortPayload
+>;
 
 // ============================================================================
 // Operation event payload types
@@ -141,11 +152,18 @@ export type OperationCancelPayload = {
 };
 
 /** Union of all operation event payloads */
-export type OperationEventPayload =
+export type OperationEventsPayload =
     | OperationSchedulePayload
     | OperationCompletePayload
     | OperationFailPayload
     | OperationCancelPayload;
+
+export type OperationEventsAnyPayload = Partial<
+    OperationSchedulePayload &
+        OperationCompletePayload &
+        OperationFailPayload &
+        OperationCancelPayload
+>;
 
 // ============================================================================
 // Delivery event payload types
@@ -191,6 +209,24 @@ export type DeliveryRequestFulfilledPayload = {
 export type DeliveryRequestSurveySentPayload = {
     sentTo: string[];
 };
+export type DeliveryRequestEventsPayload =
+    | DeliveryRequestCreatePayload
+    | DeliveryRequestSlotChangedPayload
+    | DeliveryRequestAddressChangedPayload
+    | DeliveryRequestCancelledPayload
+    | DeliveryRequestStatusPayload
+    | DeliveryRequestFulfilledPayload
+    | DeliveryRequestSurveySentPayload;
+
+export type DeliveryRequestEventsAnyPayload = Partial<
+    DeliveryRequestCreatePayload &
+        DeliveryRequestSlotChangedPayload &
+        DeliveryRequestAddressChangedPayload &
+        DeliveryRequestCancelledPayload &
+        DeliveryRequestStatusPayload &
+        DeliveryRequestFulfilledPayload &
+        DeliveryRequestSurveySentPayload
+>;
 
 // ============================================================================
 // Generic event type

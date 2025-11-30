@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { OperationData, PlantSortData } from '@gredice/directory-types';
 import { and, asc, desc, eq, gte, inArray } from 'drizzle-orm';
 import 'server-only';
 import { AUTO_CLOSE_WINDOW_MS } from '../helpers/timeSlotAutomation';
@@ -78,46 +79,6 @@ function parseDeliveryEventData(value: unknown): DeliveryEventData {
 
     return data;
 }
-
-// Type for operation entity from getEntityFormatted
-// TODO: Should use types from directories types package
-type OperationEntity = {
-    id: number;
-    entityType: {
-        id: number;
-        name: string;
-        label: string;
-    };
-    information?: {
-        name?: string;
-        label?: string;
-        shortDescription?: string;
-    };
-    image?: {
-        cover?: {
-            url?: string;
-        };
-    };
-};
-
-// Type for plant sort entity from getEntityFormatted
-// TODO: Should use types from directories types package
-type PlantSortEntity = {
-    id: number;
-    information?: {
-        name?: string;
-        label?: string;
-        // TODO: Fix this, this is incorrect data
-        cover?: string;
-        plant?: {
-            image?: {
-                cover?: {
-                    url?: string;
-                };
-            };
-        };
-    };
-};
 
 // Business state projection interface
 export type DeliveryRequestWithEvents = Awaited<
@@ -208,7 +169,7 @@ async function reconstructDeliveryRequestFromEvents(
     // Fetch operation entity, raised bed, and plantSort fields in parallel
     const [operationEntity, raisedBed, fields] = await Promise.all([
         operation?.entityId
-            ? getEntityFormatted<OperationEntity>(operation.entityId).catch(
+            ? getEntityFormatted<OperationData>(operation.entityId).catch(
                   (error) => {
                       console.error('Failed to fetch operation entity:', error);
                       return null;
@@ -235,15 +196,14 @@ async function reconstructDeliveryRequestFromEvents(
     ]);
 
     // Get plantSort info if we have fields
-    let plantSort: PlantSortEntity | null = null;
+    let plantSort: PlantSortData | null = null;
     if (fields.length > 0 && operation?.raisedBedFieldId) {
         const field = fields.find((f) => f.id === operation.raisedBedFieldId);
         if (field?.plantSortId) {
             try {
-                const plantSortEntity =
-                    await getEntityFormatted<PlantSortEntity>(
-                        field.plantSortId,
-                    );
+                const plantSortEntity = await getEntityFormatted<PlantSortData>(
+                    field.plantSortId,
+                );
                 if (plantSortEntity) {
                     plantSort = plantSortEntity;
                 }
