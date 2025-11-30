@@ -14,6 +14,7 @@ import {
 } from '../schema';
 import { storage } from '../storage';
 import { getDeliveryAddress } from './deliveryAddressesRepo';
+import { getEntityFormatted } from './entitiesRepo';
 import {
     createEvent,
     type Event as DbEvent,
@@ -21,6 +22,7 @@ import {
     knownEvents,
     knownEventTypes,
 } from './eventsRepo';
+import { getRaisedBedFieldsWithEvents } from './gardensRepo';
 import { getPickupLocation } from './pickupLocationsRepo';
 import { closeTimeSlot, getTimeSlot } from './timeSlotsRepo';
 
@@ -75,14 +77,77 @@ function parseDeliveryEventData(value: unknown): DeliveryEventData {
     return data;
 }
 
+// Type for delivery request with operation details from query
+type DeliveryRequestWithOperationDetails = SelectDeliveryRequest & {
+    operation: {
+        id: number;
+        entityId: number;
+        entityTypeName: string;
+        raisedBedId: number | null;
+        raisedBedFieldId: number | null;
+        raisedBed: {
+            id: number;
+            name: string;
+            physicalId: string | null;
+        } | null;
+        raisedBedField: {
+            id: number;
+            positionIndex: number;
+        } | null;
+        entity: {
+            id: number;
+            attributes: Array<{
+                id: number;
+                value: string | null;
+                attributeDefinition: {
+                    name: string;
+                };
+            }>;
+        } | null;
+    };
+};
+
+// Type for plant sort entity from getEntityFormatted
+type PlantSortEntity = {
+    information?: {
+        name?: string;
+        label?: string;
+        cover?: string;
+        plant?: {
+            image?: {
+                cover?: {
+                    url?: string;
+                };
+            };
+        };
+    };
+};
+
 // Business state projection interface
-export type DeliveryRequestWithEvents = ReturnType<
-    typeof reconstructDeliveryRequestFromEvents
+export type DeliveryRequestWithEvents = Awaited<
+    ReturnType<typeof reconstructDeliveryRequestFromEvents>
 >;
+
+// Helper to extract name from entity attributes
+function getEntityAttribute(
+    attributes:
+        | Array<{
+              value: string | null;
+              attributeDefinition: { name: string };
+          }>
+        | undefined,
+    attributeName: string,
+): string | null {
+    if (!attributes) return null;
+    const attr = attributes.find(
+        (a) => a.attributeDefinition.name === attributeName,
+    );
+    return attr?.value ?? null;
+}
 
 // Helper function to reconstruct business state from events
 async function reconstructDeliveryRequestFromEvents(
-    request: SelectDeliveryRequest,
+    request: DeliveryRequestWithOperationDetails,
     events: DbEvent[],
 ) {
     let state: string = DeliveryRequestStates.PENDING;
@@ -160,9 +225,79 @@ async function reconstructDeliveryRequestFromEvents(
         ? await getPickupLocation(locationId)
         : undefined;
 
+    // Get plantSort info if operation has a raisedBedFieldId
+    let plantSortId: number | undefined;
+    let plantSortName: string | null = null;
+    let plantSortLabel: string | null = null;
+    let plantSortImageUrl: string | null = null;
+
+    if (
+        request.operation?.raisedBedId &&
+        request.operation?.raisedBedField?.positionIndex != null
+    ) {
+        try {
+            const fields = await getRaisedBedFieldsWithEvents(
+                request.operation.raisedBedId,
+            );
+            const field = fields.find(
+                (f) =>
+                    f.positionIndex ===
+                    request.operation?.raisedBedField?.positionIndex,
+            );
+            if (field?.plantSortId) {
+                plantSortId = field.plantSortId;
+                // Fetch plantSort entity details
+                const plantSort =
+                    await getEntityFormatted<PlantSortEntity>(plantSortId);
+                if (plantSort) {
+                    plantSortName = plantSort.information?.name ?? null;
+                    plantSortLabel = plantSort.information?.label ?? null;
+                    // Use plantSort cover, fallback to plant image
+                    plantSortImageUrl =
+                        plantSort.information?.cover ??
+                        plantSort.information?.plant?.image?.cover?.url ??
+                        null;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch plantSort info:', error);
+        }
+    }
+
+    // Extract operation details for display
+    const operationDetails = request.operation
+        ? {
+              entityId: request.operation.entityId,
+              entityTypeName: request.operation.entityTypeName,
+              entityName: getEntityAttribute(
+                  request.operation.entity?.attributes,
+                  'name',
+              ),
+              entityLabel: getEntityAttribute(
+                  request.operation.entity?.attributes,
+                  'label',
+              ),
+              entityImageUrl: getEntityAttribute(
+                  request.operation.entity?.attributes,
+                  'cover',
+              ),
+              raisedBedName: request.operation.raisedBed?.name ?? null,
+              raisedBedPhysicalId:
+                  request.operation.raisedBed?.physicalId ?? null,
+              fieldPositionIndex:
+                  request.operation.raisedBedField?.positionIndex ?? null,
+              // PlantSort info for the field
+              plantSortId: plantSortId ?? null,
+              plantSortName,
+              plantSortLabel,
+              plantSortImageUrl,
+          }
+        : undefined;
+
     return {
         id: request.id,
         operationId: request.operationId,
+        operation: operationDetails,
         state,
         slot,
         address,
@@ -186,11 +321,25 @@ export async function getDeliveryRequestsWithEvents(
     fromDate?: Date,
     toDate?: Date,
 ) {
-    // First get the projection records
+    // First get the projection records with operation details
     const requests = await storage().query.deliveryRequests.findMany({
         orderBy: [desc(deliveryRequests.createdAt)],
         with: {
-            operation: true,
+            operation: {
+                with: {
+                    raisedBed: true,
+                    raisedBedField: true,
+                    entity: {
+                        with: {
+                            attributes: {
+                                with: {
+                                    attributeDefinition: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         },
     });
 
@@ -291,7 +440,21 @@ export async function getDeliveryRequest(
     const request = await storage().query.deliveryRequests.findFirst({
         where: and(eq(deliveryRequests.id, requestId)),
         with: {
-            operation: true,
+            operation: {
+                with: {
+                    raisedBed: true,
+                    raisedBedField: true,
+                    entity: {
+                        with: {
+                            attributes: {
+                                with: {
+                                    attributeDefinition: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         },
     });
 
@@ -326,7 +489,21 @@ export async function getDeliveryRequestByOperation(
     const request = await storage().query.deliveryRequests.findFirst({
         where: and(eq(deliveryRequests.operationId, operationId)),
         with: {
-            operation: true,
+            operation: {
+                with: {
+                    raisedBed: true,
+                    raisedBedField: true,
+                    entity: {
+                        with: {
+                            attributes: {
+                                with: {
+                                    attributeDefinition: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         },
     });
 
