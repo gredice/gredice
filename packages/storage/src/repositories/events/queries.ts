@@ -4,6 +4,8 @@ import { storage } from '../../storage';
 import { knownEventTypes } from './knownEventTypes';
 import type { Event } from './types';
 
+type DatabaseClient = ReturnType<typeof storage>;
+
 export function getEvents(
     type: string | string[],
     aggregateIds: string[],
@@ -56,8 +58,11 @@ export async function getPlantPlaceEventsCount() {
     return result[0]?.count ?? 0;
 }
 
-export function createEvent({ type, version, aggregateId, data }: Event) {
-    return storage().insert(events).values({
+export function createEvent(
+    { type, version, aggregateId, data }: Event,
+    db: DatabaseClient = storage(),
+) {
+    return db.insert(events).values({
         type,
         version,
         aggregateId,

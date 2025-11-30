@@ -11,6 +11,30 @@ export type AccountSunflowersPayload = {
 };
 
 // ============================================================================
+// Advent event payload types
+// ============================================================================
+export type AdventGiftAward =
+    | {
+          kind: 'gift';
+          gift: 'advent-box';
+          delivery: 'digital' | 'digital+physical';
+      }
+    | { kind: 'gift'; gift: 'christmas-tree'; delivery: 'digital' };
+
+export type AdventAward =
+    | { kind: 'sunflowers'; amount: number }
+    | { kind: 'plant'; plantSortId: number; title?: string }
+    | { kind: 'decoration'; blockId: string; title?: string }
+    | AdventGiftAward;
+
+export type AdventCalendarOpenPayload = {
+    year: number;
+    day: number;
+    openedBy: string;
+    award: AdventAward;
+};
+
+// ============================================================================
 // Garden event payload types
 // ============================================================================
 export type GardenCreatePayload = {

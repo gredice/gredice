@@ -2,6 +2,7 @@ import { knownEventTypes } from './knownEventTypes';
 import type {
     AccountAssignUserPayload,
     AccountSunflowersPayload,
+    AdventCalendarOpenPayload,
     DeliveryRequestAddressChangedPayload,
     DeliveryRequestCancelledPayload,
     DeliveryRequestCreatePayload,
@@ -358,6 +359,17 @@ export const knownEvents = {
             type: knownEventTypes.delivery.userCancelled,
             version: 1,
             aggregateId,
+        }),
+    },
+    occasions: {
+        adventCalendarOpenedV1: (
+            aggregateId: string,
+            data: AdventCalendarOpenPayload,
+        ) => ({
+            type: knownEventTypes.occasions.adventCalendarOpen,
+            version: 1,
+            aggregateId,
+            data,
         }),
     },
 };
