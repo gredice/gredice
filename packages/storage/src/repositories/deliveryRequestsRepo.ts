@@ -1,6 +1,6 @@
-import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { and, asc, desc, eq, gte, inArray } from 'drizzle-orm';
+import 'server-only';
 import { AUTO_CLOSE_WINDOW_MS } from '../helpers/timeSlotAutomation';
 import {
     accountUsers,
@@ -14,6 +14,7 @@ import {
 } from '../schema';
 import { storage } from '../storage';
 import { getDeliveryAddress } from './deliveryAddressesRepo';
+import { getEntityFormatted } from './entitiesRepo';
 import {
     createEvent,
     type Event as DbEvent,
@@ -21,9 +22,12 @@ import {
     knownEvents,
     knownEventTypes,
 } from './eventsRepo';
+import { getRaisedBed, getRaisedBedFieldsWithEvents } from './gardensRepo';
+import { getOperationById } from './operationsRepo';
 import { getPickupLocation } from './pickupLocationsRepo';
 import { closeTimeSlot, getTimeSlot } from './timeSlotsRepo';
 
+// TODO: Should use types from union of payloads for delivery events
 interface DeliveryEventData {
     slotId?: number;
     newSlotId?: number;
@@ -75,9 +79,49 @@ function parseDeliveryEventData(value: unknown): DeliveryEventData {
     return data;
 }
 
+// Type for operation entity from getEntityFormatted
+// TODO: Should use types from directories types package
+type OperationEntity = {
+    id: number;
+    entityType: {
+        id: number;
+        name: string;
+        label: string;
+    };
+    information?: {
+        name?: string;
+        label?: string;
+        shortDescription?: string;
+    };
+    image?: {
+        cover?: {
+            url?: string;
+        };
+    };
+};
+
+// Type for plant sort entity from getEntityFormatted
+// TODO: Should use types from directories types package
+type PlantSortEntity = {
+    id: number;
+    information?: {
+        name?: string;
+        label?: string;
+        // TODO: Fix this, this is incorrect data
+        cover?: string;
+        plant?: {
+            image?: {
+                cover?: {
+                    url?: string;
+                };
+            };
+        };
+    };
+};
+
 // Business state projection interface
-export type DeliveryRequestWithEvents = ReturnType<
-    typeof reconstructDeliveryRequestFromEvents
+export type DeliveryRequestWithEvents = Awaited<
+    ReturnType<typeof reconstructDeliveryRequestFromEvents>
 >;
 
 // Helper function to reconstruct business state from events
@@ -151,18 +195,78 @@ async function reconstructDeliveryRequestFromEvents(
         }
     }
 
-    const slot = slotId ? await getTimeSlot(slotId) : undefined;
-    const address =
+    // Fetch slot, address, location, and operation in parallel
+    const [slot, address, location, operation] = await Promise.all([
+        slotId ? getTimeSlot(slotId) : undefined,
         addressId && accountId
-            ? await getDeliveryAddress(addressId, accountId)
-            : undefined;
-    const location = locationId
-        ? await getPickupLocation(locationId)
-        : undefined;
+            ? getDeliveryAddress(addressId, accountId)
+            : undefined,
+        locationId ? getPickupLocation(locationId) : undefined,
+        getOperationById(request.operationId),
+    ]);
+
+    // Fetch operation entity, raised bed, and plantSort fields in parallel
+    const [operationEntity, raisedBed, fields] = await Promise.all([
+        operation?.entityId
+            ? getEntityFormatted<OperationEntity>(operation.entityId).catch(
+                  (error) => {
+                      console.error('Failed to fetch operation entity:', error);
+                      return null;
+                  },
+              )
+            : null,
+        operation?.raisedBedId
+            ? getRaisedBed(operation.raisedBedId).catch((error) => {
+                  console.error('Failed to fetch raised bed:', error);
+                  return null;
+              })
+            : null,
+        operation?.raisedBedId && operation?.raisedBedFieldId
+            ? getRaisedBedFieldsWithEvents(operation.raisedBedId).catch(
+                  (error) => {
+                      console.error(
+                          'Failed to fetch raised bed fields:',
+                          error,
+                      );
+                      return [];
+                  },
+              )
+            : [],
+    ]);
+
+    // Get plantSort info if we have fields
+    let plantSort: PlantSortEntity | null = null;
+    if (fields.length > 0 && operation?.raisedBedFieldId) {
+        const field = fields.find((f) => f.id === operation.raisedBedFieldId);
+        if (field?.plantSortId) {
+            try {
+                const plantSortEntity =
+                    await getEntityFormatted<PlantSortEntity>(
+                        field.plantSortId,
+                    );
+                if (plantSortEntity) {
+                    plantSort = plantSortEntity;
+                }
+            } catch (error) {
+                console.error('Failed to fetch plantSort info:', error);
+            }
+        }
+    }
+
+    // Get the field for position index info
+    const raisedBedField =
+        fields.length > 0 && operation?.raisedBedFieldId
+            ? fields.find((f) => f.id === operation.raisedBedFieldId)
+            : null;
 
     return {
         id: request.id,
         operationId: request.operationId,
+        operation,
+        operationData: operationEntity,
+        raisedBed,
+        raisedBedField,
+        plantSort,
         state,
         slot,
         address,
@@ -186,11 +290,25 @@ export async function getDeliveryRequestsWithEvents(
     fromDate?: Date,
     toDate?: Date,
 ) {
-    // First get the projection records
+    // First get the projection records with operation details
     const requests = await storage().query.deliveryRequests.findMany({
         orderBy: [desc(deliveryRequests.createdAt)],
         with: {
-            operation: true,
+            operation: {
+                with: {
+                    raisedBed: true,
+                    raisedBedField: true,
+                    entity: {
+                        with: {
+                            attributes: {
+                                with: {
+                                    attributeDefinition: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         },
     });
 
@@ -290,9 +408,6 @@ export async function getDeliveryRequest(
 ): Promise<DeliveryRequestWithEvents | undefined> {
     const request = await storage().query.deliveryRequests.findFirst({
         where: and(eq(deliveryRequests.id, requestId)),
-        with: {
-            operation: true,
-        },
     });
 
     if (!request) return undefined;
@@ -326,7 +441,21 @@ export async function getDeliveryRequestByOperation(
     const request = await storage().query.deliveryRequests.findFirst({
         where: and(eq(deliveryRequests.operationId, operationId)),
         with: {
-            operation: true,
+            operation: {
+                with: {
+                    raisedBed: true,
+                    raisedBedField: true,
+                    entity: {
+                        with: {
+                            attributes: {
+                                with: {
+                                    attributeDefinition: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         },
     });
 

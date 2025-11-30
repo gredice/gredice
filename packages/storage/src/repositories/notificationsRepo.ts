@@ -207,7 +207,9 @@ export async function notificationsDigest({
                 new Set(
                     notificationsToEmail
                         .map((notification) => notification.imageUrl)
-                        .filter((imageUrl): imageUrl is string => Boolean(imageUrl)),
+                        .filter((imageUrl): imageUrl is string =>
+                            Boolean(imageUrl),
+                        ),
                 ),
             );
 
