@@ -1,6 +1,6 @@
-import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { and, asc, desc, eq, gte, inArray } from 'drizzle-orm';
+import 'server-only';
 import { AUTO_CLOSE_WINDOW_MS } from '../helpers/timeSlotAutomation';
 import {
     accountUsers,
@@ -22,10 +22,12 @@ import {
     knownEvents,
     knownEventTypes,
 } from './eventsRepo';
-import { getRaisedBedFieldsWithEvents } from './gardensRepo';
+import { getRaisedBed, getRaisedBedFieldsWithEvents } from './gardensRepo';
+import { getOperationById } from './operationsRepo';
 import { getPickupLocation } from './pickupLocationsRepo';
 import { closeTimeSlot, getTimeSlot } from './timeSlotsRepo';
 
+// TODO: Should use types from union of payloads for delivery events
 interface DeliveryEventData {
     slotId?: number;
     newSlotId?: number;
@@ -77,41 +79,35 @@ function parseDeliveryEventData(value: unknown): DeliveryEventData {
     return data;
 }
 
-// Type for delivery request with operation details from query
-type DeliveryRequestWithOperationDetails = SelectDeliveryRequest & {
-    operation: {
+// Type for operation entity from getEntityFormatted
+// TODO: Should use types from directories types package
+type OperationEntity = {
+    id: number;
+    entityType: {
         id: number;
-        entityId: number;
-        entityTypeName: string;
-        raisedBedId: number | null;
-        raisedBedFieldId: number | null;
-        raisedBed: {
-            id: number;
-            name: string;
-            physicalId: string | null;
-        } | null;
-        raisedBedField: {
-            id: number;
-            positionIndex: number;
-        } | null;
-        entity: {
-            id: number;
-            attributes: Array<{
-                id: number;
-                value: string | null;
-                attributeDefinition: {
-                    name: string;
-                };
-            }>;
-        } | null;
+        name: string;
+        label: string;
+    };
+    information?: {
+        name?: string;
+        label?: string;
+        shortDescription?: string;
+    };
+    image?: {
+        cover?: {
+            url?: string;
+        };
     };
 };
 
 // Type for plant sort entity from getEntityFormatted
+// TODO: Should use types from directories types package
 type PlantSortEntity = {
+    id: number;
     information?: {
         name?: string;
         label?: string;
+        // TODO: Fix this, this is incorrect data
         cover?: string;
         plant?: {
             image?: {
@@ -128,26 +124,9 @@ export type DeliveryRequestWithEvents = Awaited<
     ReturnType<typeof reconstructDeliveryRequestFromEvents>
 >;
 
-// Helper to extract name from entity attributes
-function getEntityAttribute(
-    attributes:
-        | Array<{
-              value: string | null;
-              attributeDefinition: { name: string };
-          }>
-        | undefined,
-    attributeName: string,
-): string | null {
-    if (!attributes) return null;
-    const attr = attributes.find(
-        (a) => a.attributeDefinition.name === attributeName,
-    );
-    return attr?.value ?? null;
-}
-
 // Helper function to reconstruct business state from events
 async function reconstructDeliveryRequestFromEvents(
-    request: DeliveryRequestWithOperationDetails,
+    request: SelectDeliveryRequest,
     events: DbEvent[],
 ) {
     let state: string = DeliveryRequestStates.PENDING;
@@ -216,88 +195,78 @@ async function reconstructDeliveryRequestFromEvents(
         }
     }
 
-    const slot = slotId ? await getTimeSlot(slotId) : undefined;
-    const address =
+    // Fetch slot, address, location, and operation in parallel
+    const [slot, address, location, operation] = await Promise.all([
+        slotId ? getTimeSlot(slotId) : undefined,
         addressId && accountId
-            ? await getDeliveryAddress(addressId, accountId)
-            : undefined;
-    const location = locationId
-        ? await getPickupLocation(locationId)
-        : undefined;
+            ? getDeliveryAddress(addressId, accountId)
+            : undefined,
+        locationId ? getPickupLocation(locationId) : undefined,
+        getOperationById(request.operationId),
+    ]);
 
-    // Get plantSort info if operation has a raisedBedFieldId
-    let plantSortId: number | undefined;
-    let plantSortName: string | null = null;
-    let plantSortLabel: string | null = null;
-    let plantSortImageUrl: string | null = null;
+    // Fetch operation entity, raised bed, and plantSort fields in parallel
+    const [operationEntity, raisedBed, fields] = await Promise.all([
+        operation?.entityId
+            ? getEntityFormatted<OperationEntity>(operation.entityId).catch(
+                  (error) => {
+                      console.error('Failed to fetch operation entity:', error);
+                      return null;
+                  },
+              )
+            : null,
+        operation?.raisedBedId
+            ? getRaisedBed(operation.raisedBedId).catch((error) => {
+                  console.error('Failed to fetch raised bed:', error);
+                  return null;
+              })
+            : null,
+        operation?.raisedBedId && operation?.raisedBedFieldId
+            ? getRaisedBedFieldsWithEvents(operation.raisedBedId).catch(
+                  (error) => {
+                      console.error(
+                          'Failed to fetch raised bed fields:',
+                          error,
+                      );
+                      return [];
+                  },
+              )
+            : [],
+    ]);
 
-    if (
-        request.operation?.raisedBedId &&
-        request.operation?.raisedBedField?.positionIndex != null
-    ) {
-        try {
-            const fields = await getRaisedBedFieldsWithEvents(
-                request.operation.raisedBedId,
-            );
-            const field = fields.find(
-                (f) =>
-                    f.positionIndex ===
-                    request.operation?.raisedBedField?.positionIndex,
-            );
-            if (field?.plantSortId) {
-                plantSortId = field.plantSortId;
-                // Fetch plantSort entity details
-                const plantSort =
-                    await getEntityFormatted<PlantSortEntity>(plantSortId);
-                if (plantSort) {
-                    plantSortName = plantSort.information?.name ?? null;
-                    plantSortLabel = plantSort.information?.label ?? null;
-                    // Use plantSort cover, fallback to plant image
-                    plantSortImageUrl =
-                        plantSort.information?.cover ??
-                        plantSort.information?.plant?.image?.cover?.url ??
-                        null;
+    // Get plantSort info if we have fields
+    let plantSort: PlantSortEntity | null = null;
+    if (fields.length > 0 && operation?.raisedBedFieldId) {
+        const field = fields.find((f) => f.id === operation.raisedBedFieldId);
+        if (field?.plantSortId) {
+            try {
+                const plantSortEntity =
+                    await getEntityFormatted<PlantSortEntity>(
+                        field.plantSortId,
+                    );
+                if (plantSortEntity) {
+                    plantSort = plantSortEntity;
                 }
+            } catch (error) {
+                console.error('Failed to fetch plantSort info:', error);
             }
-        } catch (error) {
-            console.error('Failed to fetch plantSort info:', error);
         }
     }
 
-    // Extract operation details for display
-    const operationDetails = request.operation
-        ? {
-              entityId: request.operation.entityId,
-              entityTypeName: request.operation.entityTypeName,
-              entityName: getEntityAttribute(
-                  request.operation.entity?.attributes,
-                  'name',
-              ),
-              entityLabel: getEntityAttribute(
-                  request.operation.entity?.attributes,
-                  'label',
-              ),
-              entityImageUrl: getEntityAttribute(
-                  request.operation.entity?.attributes,
-                  'cover',
-              ),
-              raisedBedName: request.operation.raisedBed?.name ?? null,
-              raisedBedPhysicalId:
-                  request.operation.raisedBed?.physicalId ?? null,
-              fieldPositionIndex:
-                  request.operation.raisedBedField?.positionIndex ?? null,
-              // PlantSort info for the field
-              plantSortId: plantSortId ?? null,
-              plantSortName,
-              plantSortLabel,
-              plantSortImageUrl,
-          }
-        : undefined;
+    // Get the field for position index info
+    const raisedBedField =
+        fields.length > 0 && operation?.raisedBedFieldId
+            ? fields.find((f) => f.id === operation.raisedBedFieldId)
+            : null;
 
     return {
         id: request.id,
         operationId: request.operationId,
-        operation: operationDetails,
+        operation,
+        operationData: operationEntity,
+        raisedBed,
+        raisedBedField,
+        plantSort,
         state,
         slot,
         address,
@@ -439,23 +408,6 @@ export async function getDeliveryRequest(
 ): Promise<DeliveryRequestWithEvents | undefined> {
     const request = await storage().query.deliveryRequests.findFirst({
         where: and(eq(deliveryRequests.id, requestId)),
-        with: {
-            operation: {
-                with: {
-                    raisedBed: true,
-                    raisedBedField: true,
-                    entity: {
-                        with: {
-                            attributes: {
-                                with: {
-                                    attributeDefinition: true,
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-        },
     });
 
     if (!request) return undefined;

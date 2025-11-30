@@ -37,16 +37,19 @@ export function DeliveryRequestRow({
     showDestination?: boolean;
 }) {
     const canCancel = canCancelRequest(request);
-    const operation = request.operation;
+    const operationData = request.operationData;
+    const plantSort = request.plantSort;
 
     // Prefer plantSort info over operation entity info when there's a field position
-    const hasPlantSort = operation?.plantSortName || operation?.plantSortLabel;
+    const hasPlantSort =
+        plantSort?.information?.name || plantSort?.information?.label;
     const displayName = hasPlantSort
-        ? operation?.plantSortLabel || operation?.plantSortName
-        : operation?.entityLabel || operation?.entityName;
+        ? plantSort?.information?.label || plantSort?.information?.name
+        : operationData?.information?.label || operationData?.information?.name;
     const displayImageUrl = hasPlantSort
-        ? operation?.plantSortImageUrl
-        : operation?.entityImageUrl;
+        ? (plantSort?.information?.cover ??
+          plantSort?.information?.plant?.image?.cover?.url)
+        : operationData?.image?.cover?.url;
     const hasOperationDetails = displayName;
 
     return (
@@ -70,21 +73,27 @@ export function DeliveryRequestRow({
                                 <Row spacing={1}>
                                     <OperationImage
                                         size={32}
-                                        operation={operation}
+                                        operation={{
+                                            image: operationData?.image,
+                                            information:
+                                                operationData?.information,
+                                        }}
                                     />
                                     <Typography level="body1">
-                                        {operation?.entityLabel ||
-                                            operation?.entityName}
+                                        {operationData?.information?.label ||
+                                            operationData?.information?.name}
                                     </Typography>
                                 </Row>
                             )}
-                            {(operation?.raisedBedName ||
-                                operation?.fieldPositionIndex != null) && (
+                            {(request.raisedBed?.name ||
+                                request.raisedBedField?.positionIndex !=
+                                    null) && (
                                 <Typography level="body3">
                                     {[
-                                        operation?.raisedBedName,
+                                        request.raisedBed?.name,
                                         formatFieldPosition(
-                                            operation?.fieldPositionIndex,
+                                            request.raisedBedField
+                                                ?.positionIndex,
                                         ),
                                     ]
                                         .filter(Boolean)

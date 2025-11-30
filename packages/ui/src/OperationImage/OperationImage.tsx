@@ -6,12 +6,12 @@ export type OperationImageProps = {
     operation: {
         image?: {
             cover?: {
-                url?: string;
-            };
-        };
+                url?: string | null;
+            } | null;
+        } | null;
         information?: {
-            label?: string;
-        };
+            label?: string | null;
+        } | null;
     };
     size?: number;
     className?: string;
