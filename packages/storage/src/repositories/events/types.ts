@@ -25,13 +25,16 @@ export type AdventAward =
     | { kind: 'sunflowers'; amount: number }
     | { kind: 'plant'; plantSortId: number; title?: string }
     | { kind: 'decoration'; blockId: string; title?: string }
+    | { kind: 'tree-decoration'; day: number; title?: string }
     | AdventGiftAward;
 
 export type AdventCalendarOpenPayload = {
     year: number;
     day: number;
     openedBy: string;
-    award: AdventAward;
+    awards: AdventAward[];
+    /** @deprecated Use awards instead */
+    award?: AdventAward;
 };
 
 // ============================================================================

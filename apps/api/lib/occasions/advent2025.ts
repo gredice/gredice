@@ -12,6 +12,7 @@ import {
 const ADVENT_YEAR = 2025;
 const ADVENT_TOTAL_DAYS = 24;
 export const ADVENT_CALENDAR_2025_ID = 'calendar-2025';
+
 const CHRISTMAS_TREE_BLOCK_ID = 'ukras-bozicno-drvce';
 const DECORATION_BLOCK_IDS = [
     'ukras-advent-vijenac',
@@ -24,8 +25,8 @@ export type AdventDayStatus = {
     otvoren: boolean;
     otvorenoAt?: string;
     otvorio?: string;
-    nagrada?: AdventAward;
-    opisNagrade?: AdventAwardDescription;
+    nagrade?: AdventAward[];
+    opisNagrada?: AdventAwardDescription[];
 };
 
 export type AdventAwardDescription = {
@@ -41,31 +42,36 @@ function describeAward(award: AdventAward): AdventAwardDescription {
         case 'sunflowers':
             return {
                 naslov: `${award.amount} suncokreta`,
-                opis: 'Suncokreti su dodani na tvoj račun kao adventska nagrada.',
+                opis: 'Suncokreta na tvom računu.',
             };
         case 'plant':
             return {
                 naslov: award.title ?? 'Nova biljka',
-                opis: 'Nasumično odabrana sorta iz baze biljaka.',
+                opis: 'Biljka samo za tebe.',
             };
         case 'decoration':
             return {
                 naslov: award.title ?? 'Blagdanska dekoracija',
                 opis: 'Ukras koji će uljepšati tvoj vrt u blagdansko vrijeme.',
             };
+        case 'tree-decoration':
+            return {
+                naslov: award.title ?? `Ukras za drvce (dan ${award.day})`,
+                opis: 'Ukras koji će uljepšati tvoje božićno drvce.',
+            };
         case 'gift':
             if (award.gift === 'christmas-tree') {
                 return {
                     naslov: 'Božićno drvce',
-                    opis: 'Posebno drvce za prvi dan adventskog kalendara.',
+                    opis: 'Posebno drvce za tvoj prvi dan adventskog kalendara.',
                 };
             }
             return {
                 naslov: 'Adventski box',
                 opis:
                     award.delivery === 'digital+physical'
-                        ? 'Digitalni i fizički poklon box jer su otvoreni svi dani kalendara.'
-                        : 'Digitalni poklon box za posljednji dan adventa.',
+                        ? 'Fizički poklon box jer su otvoreni svi dani kalendara.'
+                        : 'Nagrade za posljednji dan adventa.',
             };
     }
 }
@@ -77,20 +83,26 @@ function rollSunflowerAward(): AdventAward | null {
     }
 
     const premiumChance = Math.random();
-    const amount = premiumChance < 0.01 ? 5000 : 500;
+    const amount = premiumChance < 0.1 ? 5000 : 500;
     return { kind: 'sunflowers', amount };
 }
 
-async function pickPlantAward(): Promise<AdventAward | null> {
+async function pickPlantAward(): Promise<AdventAward> {
     const plantSorts = await getEntitiesFormatted<PlantSortData>('plantSort');
     if (!plantSorts?.length) {
-        return null;
+        throw new Error('No plant sorts available to pick from.');
     }
+
+    // Pick a random plant sort
     const randomIndex = Math.floor(Math.random() * plantSorts.length);
     const plantSort = plantSorts[randomIndex];
-    const title = (plantSort as { name?: string }).name ?? 'Nova biljka';
+    const title = (plantSort as { name?: string }).name;
+    if (!title) {
+        throw new Error('Selected plant sort has no name.');
+    }
+
     return {
-        kind: 'plant',
+        kind: 'plant' as const,
         plantSortId: Number(
             (plantSort as { id?: number | string }).id ?? randomIndex + 1,
         ),
@@ -111,30 +123,57 @@ function pickDecorationAward(title?: string, blockId?: string): AdventAward {
     };
 }
 
-async function pickAwardForDay(day: number, hasFullAttendance: boolean) {
+function pickTreeDecorationAward(day: number): AdventAward {
+    return {
+        kind: 'tree-decoration',
+        day,
+        title: `Ukras za drvce #${day}`,
+    };
+}
+
+async function pickAwardsForDay(
+    day: number,
+    hasFullAttendance: boolean,
+): Promise<AdventAward[]> {
+    const awards: AdventAward[] = [];
+
+    // Every day gets a tree decoration
+    awards.push(pickTreeDecorationAward(day));
+
+    // Day 1: Christmas tree
     if (day === 1) {
-        return pickDecorationAward('Božićno drvce', CHRISTMAS_TREE_BLOCK_ID);
+        awards.push(
+            pickDecorationAward('Božićno drvce', CHRISTMAS_TREE_BLOCK_ID),
+        );
+        return awards;
     }
 
+    // Last day: Advent box
     if (day === ADVENT_TOTAL_DAYS) {
-        return {
+        awards.push({
             kind: 'gift',
             gift: 'advent-box',
             delivery: hasFullAttendance ? 'digital+physical' : 'digital',
-        } as const satisfies AdventAward;
+        } as const satisfies AdventAward);
+        return awards;
     }
 
+    // Every 5th day: Plant award
     if (day % 5 === 0) {
-        const plantAward = await pickPlantAward();
-        if (plantAward) return plantAward;
+        awards.push(await pickPlantAward());
+        return awards;
     }
 
+    // Try to roll sunflower award
     const sunflowerAward = rollSunflowerAward();
     if (sunflowerAward) {
-        return sunflowerAward;
+        awards.push(sunflowerAward);
+        return awards;
     }
 
-    return pickDecorationAward();
+    // Default: Random decoration
+    awards.push(pickDecorationAward());
+    return awards;
 }
 
 export function getAdventOccasionOverview() {
@@ -169,15 +208,16 @@ export async function getAdventCalendar2025Status(accountId: string) {
     const dani: AdventDayStatus[] = [];
     for (let day = 1; day <= ADVENT_TOTAL_DAYS; day++) {
         const existing = opened.get(day);
+        const awards =
+            existing?.awards ??
+            (existing?.award ? [existing.award] : undefined);
         dani.push({
             dan: day,
             otvoren: Boolean(existing),
             otvorenoAt: existing?.createdAt,
             otvorio: existing?.openedBy,
-            nagrada: existing?.award,
-            opisNagrade: existing?.award
-                ? describeAward(existing.award)
-                : undefined,
+            nagrade: awards,
+            opisNagrada: awards?.map(describeAward),
         });
     }
 
@@ -210,27 +250,30 @@ export async function openAdventCalendar2025Day({
     const completesCalendar =
         day === ADVENT_TOTAL_DAYS && openedDays.size === ADVENT_TOTAL_DAYS - 1;
 
-    const award = await pickAwardForDay(day, completesCalendar);
+    const awards = await pickAwardsForDay(day, completesCalendar);
     const payload: AdventCalendarOpenPayload = {
         year: ADVENT_YEAR,
         day,
         openedBy: userId,
-        award,
+        awards,
     };
 
     await createAdventCalendarOpenEvent(accountId, payload);
 
-    if (award.kind === 'sunflowers') {
-        await earnSunflowers(
-            accountId,
-            award.amount,
-            `advent-${ADVENT_YEAR}-dan-${day}`,
-        );
+    // Process all sunflower awards
+    for (const award of awards) {
+        if (award.kind === 'sunflowers') {
+            await earnSunflowers(
+                accountId,
+                award.amount,
+                `advent-${ADVENT_YEAR}-dan-${day}`,
+            );
+        }
     }
 
     return {
         payload,
-        opisNagrade: describeAward(award),
+        opisNagrada: awards.map(describeAward),
     };
 }
 

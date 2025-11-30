@@ -66,8 +66,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 });
                 return context.json({
                     poruka: `Dan ${day} je otvoren!`,
-                    nagrada: result.payload.award,
-                    opisNagrade: result.opisNagrade,
+                    nagrade: result.payload.awards,
+                    opisNagrada: result.opisNagrada,
                 });
             } catch (error) {
                 if (error instanceof AdventCalendarDayAlreadyOpenedError) {
