@@ -4,10 +4,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type HTMLAttributes, useRef } from 'react';
 import { Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
-import { EntityFactory } from '../entities/EntityFactory';
+import { EntityFactory, EntityFactoryProps } from '../entities/EntityFactory';
 import { EntityInstances } from '../entities/EntityInstances';
 import { Environment } from '../scene/Environment';
 import { Scene } from '../scene/Scene';
+import type { Block } from '../types/Block';
+import { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import {
     createGameState,
     GameStateContext,
@@ -47,6 +49,7 @@ export function EntityViewer({
             appBaseUrl: appBaseUrl || '',
             freezeTime: new Date(2024, 5, 21, 12, 0, 0),
             isMock: true,
+            isWinterMode: false,
         });
     }
 
@@ -58,11 +61,15 @@ export function EntityViewer({
         blocks: [],
     };
     const normalizedRotation = ((rotation % 4) + 4) % 4;
-    const block = {
+    let variant: number | undefined;
+    if (entityName === 'PineAdvent') {
+        variant = 100;
+    }
+    const block: Block = {
         id: uuidv4(),
         name: entityName,
         rotation: normalizedRotation,
-        variant: undefined,
+        variant: variant,
     };
 
     return (
@@ -75,6 +82,7 @@ export function EntityViewer({
                         stack={stack}
                         block={block}
                         rotation={normalizedRotation}
+                        variant={variant}
                     />
                     <EntityInstances stacks={[stack]} />
                 </Scene>

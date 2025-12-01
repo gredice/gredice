@@ -64,9 +64,11 @@ function getTimeOfDay(
 
 type GameMode = 'normal' | 'edit';
 
-type GameState = {
+export type GameState = {
     // General
     isMock: boolean;
+    isWinterMode: boolean;
+    setIsWinterMode: (isWinterMode: boolean) => void;
     appBaseUrl: string;
     audio: {
         ambient: ReturnType<typeof audioMixer>;
@@ -137,15 +139,19 @@ export function createGameState({
     appBaseUrl,
     freezeTime,
     isMock,
+    isWinterMode,
 }: {
     appBaseUrl: string;
     freezeTime: Date | null;
     isMock: boolean;
+    isWinterMode: boolean;
 }) {
     const now = freezeTime ?? new Date();
     const timeOfDay = getTimeOfDay(defaultLocation, now);
     return createStore<GameState>((set, get) => ({
         isMock: isMock,
+        isWinterMode: isWinterMode,
+        setIsWinterMode: (isWinterMode) => set({ isWinterMode }),
         appBaseUrl: appBaseUrl,
         audio: {
             ambient: audioMixer(

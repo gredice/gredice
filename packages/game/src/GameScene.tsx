@@ -17,6 +17,7 @@ import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import { Scene } from './scene/Scene';
+import type { GameState } from './useGameState';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string;
@@ -30,6 +31,8 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     noWeather?: boolean;
     noSound?: boolean;
     mockGarden?: boolean;
+    isWinterMode?: boolean;
+    weather?: Partial<GameState['weather']>;
 
     // Development purposes
     flags?: {
@@ -78,6 +81,7 @@ export function GameScene({
     hideHud,
     className,
     flags,
+    weather,
     ...rest
 }: GameSceneProps) {
     useGameTimeManager();
@@ -108,6 +112,7 @@ export function GameScene({
                         noBackground={noBackground}
                         noWeather={noWeather}
                         noSound={noSound}
+                        weather={weather}
                     />
                     <group>
                         {garden?.stacks.map((stack) =>
