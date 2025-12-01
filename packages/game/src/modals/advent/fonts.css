@@ -1,0 +1,12 @@
+@import "@fontsource/noto-serif-display/700.css";
+@import "@fontsource/spicy-rice/400.css";
+
+.font-advent-title {
+    font-family: "Noto Serif Display", serif;
+    font-weight: 700;
+}
+
+.font-advent-day {
+    font-family: "Spicy Rice", cursive;
+    font-weight: 400;
+}

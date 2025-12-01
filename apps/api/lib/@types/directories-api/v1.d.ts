@@ -412,24 +412,6 @@ export interface components {
                 /** @default Biljka */
                 label: string;
             };
-            calendar: {
-                planting?: {
-                    start?: number;
-                    end?: number;
-                }[];
-                sowing?: {
-                    start?: number;
-                    end?: number;
-                }[];
-                propagating?: {
-                    start?: number;
-                    end?: number;
-                }[];
-                harvest: {
-                    start?: number;
-                    end?: number;
-                }[];
-            };
             attributes: {
                 /** @description (u gramima) */
                 yieldMax: number;
@@ -464,6 +446,26 @@ export interface components {
                 yieldMin: number;
                 /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
                 yieldType: string;
+                /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
+                cleanHarvest: boolean;
+            };
+            calendar: {
+                planting?: {
+                    start?: number;
+                    end?: number;
+                }[];
+                sowing?: {
+                    start?: number;
+                    end?: number;
+                }[];
+                propagating?: {
+                    start?: number;
+                    end?: number;
+                }[];
+                harvest: {
+                    start?: number;
+                    end?: number;
+                }[];
             };
             information: {
                 storage: string;
@@ -473,7 +475,11 @@ export interface components {
                 verified?: boolean;
                 origin: string;
                 planting?: string;
-                watering: string;
+                tip?: {
+                    header?: string;
+                    /** @description Markdown formatted text */
+                    content?: string;
+                }[];
                 sowing?: string;
                 name: string;
                 latinName: string;
@@ -531,11 +537,7 @@ export interface components {
                     };
                 }[];
                 flowering?: string;
-                tip?: {
-                    header?: string;
-                    /** @description Markdown formatted text */
-                    content?: string;
-                }[];
+                watering: string;
                 soilPreparation: string;
                 growth: string;
             };
@@ -569,24 +571,6 @@ export interface components {
                 flowering?: string;
                 plant: {
                     id?: number;
-                    calendar?: {
-                        planting?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        sowing?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        propagating?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        harvest: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                    };
                     attributes?: {
                         /** @description (u gramima) */
                         yieldMax: number;
@@ -621,6 +605,26 @@ export interface components {
                         yieldMin: number;
                         /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
                         yieldType: string;
+                        /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
+                        cleanHarvest: boolean;
+                    };
+                    calendar?: {
+                        planting?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        sowing?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        propagating?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        harvest: {
+                            start?: number;
+                            end?: number;
+                        }[];
                     };
                     information?: {
                         storage: string;
@@ -630,7 +634,11 @@ export interface components {
                         verified?: boolean;
                         origin: string;
                         planting?: string;
-                        watering: string;
+                        tip?: {
+                            header?: string;
+                            /** @description Markdown formatted text */
+                            content?: string;
+                        }[];
                         sowing?: string;
                         name: string;
                         latinName: string;
@@ -688,11 +696,7 @@ export interface components {
                             };
                         }[];
                         flowering?: string;
-                        tip?: {
-                            header?: string;
-                            /** @description Markdown formatted text */
-                            content?: string;
-                        }[];
+                        watering: string;
                         soilPreparation: string;
                         growth: string;
                     };
@@ -776,24 +780,6 @@ export interface components {
                 };
                 plant: {
                     id?: number;
-                    calendar?: {
-                        planting?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        sowing?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        propagating?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        harvest: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                    };
                     attributes?: {
                         /** @description (u gramima) */
                         yieldMax: number;
@@ -828,6 +814,26 @@ export interface components {
                         yieldMin: number;
                         /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
                         yieldType: string;
+                        /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
+                        cleanHarvest: boolean;
+                    };
+                    calendar?: {
+                        planting?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        sowing?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        propagating?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        harvest: {
+                            start?: number;
+                            end?: number;
+                        }[];
                     };
                     information?: {
                         storage: string;
@@ -837,7 +843,11 @@ export interface components {
                         verified?: boolean;
                         origin: string;
                         planting?: string;
-                        watering: string;
+                        tip?: {
+                            header?: string;
+                            /** @description Markdown formatted text */
+                            content?: string;
+                        }[];
                         sowing?: string;
                         name: string;
                         latinName: string;
@@ -895,11 +905,7 @@ export interface components {
                             };
                         }[];
                         flowering?: string;
-                        tip?: {
-                            header?: string;
-                            /** @description Markdown formatted text */
-                            content?: string;
-                        }[];
+                        watering: string;
                         soilPreparation: string;
                         growth: string;
                     };
@@ -921,24 +927,6 @@ export interface components {
                         flowering?: string;
                         plant: {
                             id?: number;
-                            calendar?: {
-                                planting?: {
-                                    start?: number;
-                                    end?: number;
-                                }[];
-                                sowing?: {
-                                    start?: number;
-                                    end?: number;
-                                }[];
-                                propagating?: {
-                                    start?: number;
-                                    end?: number;
-                                }[];
-                                harvest: {
-                                    start?: number;
-                                    end?: number;
-                                }[];
-                            };
                             attributes?: {
                                 /** @description (u gramima) */
                                 yieldMax: number;
@@ -973,6 +961,26 @@ export interface components {
                                 yieldMin: number;
                                 /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
                                 yieldType: string;
+                                /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
+                                cleanHarvest: boolean;
+                            };
+                            calendar?: {
+                                planting?: {
+                                    start?: number;
+                                    end?: number;
+                                }[];
+                                sowing?: {
+                                    start?: number;
+                                    end?: number;
+                                }[];
+                                propagating?: {
+                                    start?: number;
+                                    end?: number;
+                                }[];
+                                harvest: {
+                                    start?: number;
+                                    end?: number;
+                                }[];
                             };
                             information?: {
                                 storage: string;
@@ -982,7 +990,11 @@ export interface components {
                                 verified?: boolean;
                                 origin: string;
                                 planting?: string;
-                                watering: string;
+                                tip?: {
+                                    header?: string;
+                                    /** @description Markdown formatted text */
+                                    content?: string;
+                                }[];
                                 sowing?: string;
                                 name: string;
                                 latinName: string;
@@ -1040,11 +1052,7 @@ export interface components {
                                     };
                                 }[];
                                 flowering?: string;
-                                tip?: {
-                                    header?: string;
-                                    /** @description Markdown formatted text */
-                                    content?: string;
-                                }[];
+                                watering: string;
                                 soilPreparation: string;
                                 growth: string;
                             };

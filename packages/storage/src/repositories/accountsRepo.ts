@@ -154,10 +154,12 @@ export async function earnSunflowers(
     accountId: string,
     amount: number,
     reason: string,
+    db: ReturnType<typeof storage> = storage(),
 ) {
     if (amount === 0) return;
     await createEvent(
         knownEvents.accounts.sunflowersEarnedV1(accountId, { amount, reason }),
+        db,
     );
 }
 
@@ -177,6 +179,7 @@ export async function spendSunflowers(
     accountId: string,
     amount: number,
     reason: string,
+    db: ReturnType<typeof storage> = storage(),
 ) {
     const currentSunflowers = await getSunflowers(accountId);
     if (currentSunflowers < amount) {
@@ -185,5 +188,6 @@ export async function spendSunflowers(
 
     await createEvent(
         knownEvents.accounts.sunflowersSpentV1(accountId, { amount, reason }),
+        db,
     );
 }

@@ -16,6 +16,9 @@ export type {
     // Account
     AccountAssignUserPayload,
     AccountSunflowersPayload,
+    AdventAward,
+    AdventCalendarOpenPayload,
+    AdventGiftAward,
     // Delivery
     DeliveryRequestAddressChangedPayload,
     DeliveryRequestCancelledPayload,

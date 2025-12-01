@@ -62,4 +62,7 @@ export const knownEventTypes = {
         requestSurveySent: 'delivery.request.survey_sent',
         userCancelled: 'delivery.request.user_cancelled',
     },
+    occasions: {
+        adventCalendarOpen: 'occasion.advent.calendar.open',
+    },
 } as const;
