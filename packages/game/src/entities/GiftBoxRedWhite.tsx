@@ -30,7 +30,7 @@ export function GiftBoxRedWhite({
             >
                 <meshStandardMaterial
                     color={boxColor}
-                    metalness={0}
+                    metalness={0.5}
                     roughness={1}
                 />
             </mesh>
