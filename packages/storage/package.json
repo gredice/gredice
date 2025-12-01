@@ -25,7 +25,7 @@
         "@gredice/js": "workspace:*",
         "@neondatabase/serverless": "1.0.2",
         "@signalco/js": "0.1.0",
-        "@upstash/redis": "1.35.6",
+        "@upstash/redis": "1.35.7",
         "dotenv": "17.2.3",
         "drizzle-kit": "0.31.7",
         "drizzle-orm": "0.44.7",
