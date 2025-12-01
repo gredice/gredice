@@ -105,6 +105,7 @@ type GameState = {
         foggy: number;
         windSpeed?: number;
         windDirection?: number;
+        snowAccumulation?: number;
     };
     setWeather: (weather: {
         cloudy: number;
@@ -113,6 +114,7 @@ type GameState = {
         foggy: number;
         windSpeed?: number;
         windDirection?: number;
+        snowAccumulation?: number;
     }) => void;
 
     // Environment derived state
