@@ -21,9 +21,12 @@ export const ADVENT_CALENDAR_2025_ID = 'calendar-2025';
 
 const CHRISTMAS_TREE_BLOCK_NAME = 'PineAdvent';
 const DECORATION_BLOCK_IDS = [
-    'ukras-advent-vijenac',
-    'ukras-snijeg-lampice',
-    'ukras-advent-zvijezda',
+    'GiftBox_RedWhite',
+    'GiftBox_GreenGold',
+    'GiftBox_BlueWhite',
+    'GiftBox_PurpleSilver',
+    'GiftBox_GoldRed',
+    'GiftBox_WhiteGreen',
 ];
 
 export type AdventDayStatus = {

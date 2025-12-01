@@ -18,6 +18,12 @@ import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Composter } from './Composter';
 import { Fence } from './Fence';
+import { GiftBoxBlueWhite } from './GiftBoxBlueWhite';
+import { GiftBoxGoldRed } from './GiftBoxGoldRed';
+import { GiftBoxGreenGold } from './GiftBoxGreenGold';
+import { GiftBoxPurpleSilver } from './GiftBoxPurpleSilver';
+import { GiftBoxRedWhite } from './GiftBoxRedWhite';
+import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
 import { Pine } from './Pine';
 import { PineAdvent } from './PineAdvent';
 import { RaisedBed } from './RaisedBed';
@@ -53,6 +59,12 @@ export const entityNameMap: Record<
     Fence: Fence,
     Stool: Stool,
     Bucket: Bucket,
+    GiftBox_RedWhite: GiftBoxRedWhite,
+    GiftBox_GreenGold: GiftBoxGreenGold,
+    GiftBox_BlueWhite: GiftBoxBlueWhite,
+    GiftBox_PurpleSilver: GiftBoxPurpleSilver,
+    GiftBox_GoldRed: GiftBoxGoldRed,
+    GiftBox_WhiteGreen: GiftBoxWhiteGreen,
     Bush: Bush,
     Tree: Tree,
     Pine: Pine,

@@ -79,6 +79,9 @@ export type GLTFResult = GLTF & {
         Greenhouse_X_Stick_A: THREE.Mesh;
         Greenhouse_X_Stick_B: THREE.Mesh;
         X_Half: THREE.Mesh;
+        GiftBox_Bow: THREE.Mesh;
+        GiftBox_Strip: THREE.Mesh;
+        GiftBox_Box: THREE.Mesh;
     };
     materials: {
         'Material.Dirt': THREE.MeshStandardMaterial;
@@ -440,6 +443,22 @@ export function Model(props: React.JSX.IntrinsicElements['group']) {
                 material={materials['Material.GreenhouseGreen']}
                 position={[0.02, 0.605, 0]}
                 scale={[0.48, 0.305, 0.46]}
+            />
+            <mesh
+                geometry={nodes.GiftBox_Bow.geometry}
+                material={nodes.GiftBox_Bow.material}
+                position={[0, 0.5, 0]}
+                rotation={[0, -Math.PI / 4, 0]}
+            />
+            <mesh
+                geometry={nodes.GiftBox_Strip.geometry}
+                material={nodes.GiftBox_Strip.material}
+                position={[0, 0.25, 0]}
+            />
+            <mesh
+                geometry={nodes.GiftBox_Box.geometry}
+                material={nodes.GiftBox_Box.material}
+                position={[0, 0.25, 0]}
             />
             <mesh
                 geometry={nodes.Raised_Bed_I_Construction_1.geometry}
