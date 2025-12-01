@@ -51,6 +51,8 @@ const noRenderInViewDefault = [
     'Block_Grass_Angle',
     'Block_Sand',
     'Block_Sand_Angle',
+    'Block_Snow',
+    'Block_Snow_Angle',
     'Bush',
     'Pine',
     'Tree',

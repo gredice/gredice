@@ -12,6 +12,8 @@ import { BlockGround } from './BlockGround';
 import { BlockGroundAngle } from './BlockGroundAngle';
 import { BlockSand } from './BlockSand';
 import { BlockSandAngle } from './BlockSandAngle';
+import { BlockSnow } from './BlockSnow';
+import { BlockSnowAngle } from './BlockSnowAngle';
 import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Composter } from './Composter';
@@ -43,6 +45,8 @@ export const entityNameMap: Record<
     Block_Ground_Angle: BlockGroundAngle,
     Block_Grass_Angle: BlockGrassAngle,
     Block_Sand_Angle: BlockSandAngle,
+    Block_Snow: BlockSnow,
+    Block_Snow_Angle: BlockSnowAngle,
     Composter: Composter,
     Raised_Bed: RaisedBed,
     Shade: Shade,
