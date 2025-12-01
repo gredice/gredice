@@ -29,7 +29,7 @@ export function BlockSnow({ stack, block, rotation }: EntityInstanceProps) {
             </mesh>
             <SnowOverlay
                 geometry={nodes.Block_Sand_1.geometry}
-                {...snowPresets.sand}
+                {...snowPresets.snow}
             />
         </animated.group>
     );
