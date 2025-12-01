@@ -1,14 +1,18 @@
-import type { PlantSortData } from '@gredice/directory-types';
+import type { BlockData, PlantSortData } from '@gredice/directory-types';
 import {
     type AdventAward,
     AdventCalendarDayAlreadyOpenedError,
     type AdventCalendarOpenPayload,
     createAdventCalendarOpenEvent,
     createGardenBlock,
+    createGardenStack,
     earnSunflowers,
     getAccountGardens,
     getAdventCalendarOpenEvents,
     getEntitiesFormatted,
+    getGardenStacks,
+    type SelectGardenStack,
+    updateGardenStack,
 } from '@gredice/storage';
 
 const ADVENT_YEAR = 2025;
@@ -240,6 +244,100 @@ export async function getAdventCalendar2025Status(accountId: string) {
     };
 }
 
+/**
+ * Get the position in a spiral pattern starting from origin (0, 0)
+ * @see https://stackoverflow.com/a/19287714/563228
+ */
+function spiral(step: number): { x: number; y: number } {
+    if (step === 0) return { x: 0, y: 0 };
+
+    const r = Math.floor((Math.sqrt(step + 1) - 1) / 2) + 1;
+    const p = (8 * r * (r - 1)) / 2;
+    const en = r * 2;
+    const a = (1 + step - p) % (r * 8);
+
+    let x = 0;
+    let y = 0;
+    switch (Math.floor(a / (r * 2))) {
+        case 0:
+            x = a - r;
+            y = -r;
+            break;
+        case 1:
+            x = r;
+            y = (a % en) - r;
+            break;
+        case 2:
+            x = r - (a % en);
+            y = r;
+            break;
+        case 3:
+            x = -r;
+            y = r - (a % en);
+            break;
+    }
+
+    return { x, y };
+}
+
+/**
+ * Check if a position is valid for placing a block
+ * A position is valid if:
+ * - No stack exists at position (empty spot)
+ * - Stack exists but has no blocks (empty stack)
+ * - Stack exists and the top block is stackable
+ */
+function isValidPosition(
+    blockData: BlockData[],
+    stacks: SelectGardenStack[],
+    position: { x: number; y: number },
+): boolean {
+    const stack = stacks.find(
+        (s) => s.positionX === position.x && s.positionY === position.y,
+    );
+
+    // No stack at position - valid
+    if (!stack) return true;
+
+    // Stack has no blocks - valid
+    if (!stack.blocks || stack.blocks.length === 0) return true;
+
+    // Check if the top block is stackable
+    const topBlockName = stack.blocks.at(-1);
+    if (!topBlockName) return true;
+
+    const topBlockData = blockData.find(
+        (data) => data.information?.name === topBlockName,
+    );
+
+    // If we can't find block data, assume not stackable for safety
+    if (!topBlockData) return false;
+
+    return topBlockData.attributes?.stackable ?? false;
+}
+
+/**
+ * Find the first available position for placing a block using spiral search
+ */
+function findAvailablePosition(
+    blockData: BlockData[],
+    stacks: SelectGardenStack[],
+): { x: number; y: number } {
+    let step = 0;
+    const maxSteps = 1000; // Safety limit
+
+    while (step < maxSteps) {
+        const position = spiral(step);
+        if (isValidPosition(blockData, stacks, position)) {
+            return position;
+        }
+        step++;
+    }
+
+    // Fallback to origin if no position found (shouldn't happen)
+    return { x: 0, y: 0 };
+}
+
 export async function openAdventCalendar2025Day({
     accountId,
     userId,
@@ -293,20 +391,68 @@ export async function openAdventCalendar2025Day({
 
             // Place block decorations in the user's garden
             if (primaryGarden) {
+                // Get block data for checking stackable property
+                const blockData =
+                    (await getEntitiesFormatted<BlockData>('block')) ?? [];
+
+                // Helper to place a block at the first available position
+                const placeBlockAtAvailablePosition = async (
+                    blockId: string,
+                ) => {
+                    // Refresh stacks to get current state
+                    const stacks = await getGardenStacks(primaryGarden.id);
+                    const position = findAvailablePosition(blockData, stacks);
+
+                    const existingStack = stacks.find(
+                        (s) =>
+                            s.positionX === position.x &&
+                            s.positionY === position.y,
+                    );
+
+                    if (!existingStack) {
+                        // Create stack at position if it doesn't exist
+                        await createGardenStack(
+                            primaryGarden.id,
+                            { x: position.x, y: position.y },
+                            tx,
+                        );
+                        await updateGardenStack(
+                            primaryGarden.id,
+                            { x: position.x, y: position.y, blocks: [blockId] },
+                            tx,
+                        );
+                    } else {
+                        // Add block to existing stack
+                        await updateGardenStack(
+                            primaryGarden.id,
+                            {
+                                x: position.x,
+                                y: position.y,
+                                blocks: [...existingStack.blocks, blockId],
+                            },
+                            tx,
+                        );
+                    }
+                };
+
                 // Place Christmas tree (advent pine) on first day opened
                 if (isFirstDayOpened) {
-                    await createGardenBlock(
+                    const blockId = await createGardenBlock(
                         primaryGarden.id,
                         CHRISTMAS_TREE_BLOCK_ID,
+                        tx,
                     );
+                    await placeBlockAtAvailablePosition(blockId);
                 }
 
                 for (const award of awards) {
                     if (award.kind === 'decoration') {
-                        await createGardenBlock(
+                        const blockId = await createGardenBlock(
                             primaryGarden.id,
                             award.blockId,
+                            tx,
                         );
+                        await placeBlockAtAvailablePosition(blockId);
                     }
                 }
             }

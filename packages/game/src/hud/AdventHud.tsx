@@ -20,14 +20,10 @@ export function AdventHud() {
     }
 
     return (
-        <HudCard
-            open
-            position="floating"
-            className="static p-0.5 dark:bg-red-700 bg-red-600"
-        >
+        <HudCard open position="floating" className="static p-0.5">
             <IconButton
                 variant="plain"
-                className="rounded-full size-10 border-[1.5px] border-white dark:border-green-950 bg-green-600 hover:bg-green-500"
+                className="rounded-full size-10 border-[1.5px] border-white dark:border-green-950 bg-green-500 hover:bg-green-600"
                 title="Adventski kalendar"
                 onClick={() => setAdventParam('open')}
             >

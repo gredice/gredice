@@ -148,20 +148,25 @@ export async function getGardenBlock(gardenId: number, blockId: string) {
     );
 }
 
-export async function createGardenBlock(gardenId: number, blockName: string) {
+export async function createGardenBlock(
+    gardenId: number,
+    blockName: string,
+    db: ReturnType<typeof storage> = storage(),
+) {
     const blockId = uuidV4();
 
     await Promise.all([
-        storage().insert(gardenBlocks).values({
+        db.insert(gardenBlocks).values({
             id: blockId,
             gardenId,
             name: blockName,
         }),
-        await createEvent(
+        createEvent(
             knownEvents.gardens.blockPlacedV1(gardenId.toString(), {
                 id: blockId,
                 name: blockName,
             }),
+            db,
         ),
     ]);
 
@@ -222,9 +227,10 @@ export async function getGardenStack(
 export async function createGardenStack(
     gardenId: number,
     { x, y }: { x: number; y: number },
+    db: ReturnType<typeof storage> = storage(),
 ) {
     // Check if stack at location already exists
-    const [{ count: existingStacksCount }] = await storage()
+    const [{ count: existingStacksCount }] = await db
         .select({ count: count() })
         .from(gardenStacks)
         .where(
@@ -239,7 +245,7 @@ export async function createGardenStack(
         return false;
     }
 
-    await storage()
+    await db
         .insert(gardenStacks)
         .values({ gardenId, positionX: x, positionY: y });
     return true;
@@ -248,9 +254,10 @@ export async function createGardenStack(
 export async function updateGardenStack(
     gardenId: number,
     stacks: Omit<UpdateGardenStack, 'id'> & { x: number; y: number },
+    db: ReturnType<typeof storage> = storage(),
 ) {
     const stackId = (
-        await storage().query.gardenStacks.findFirst({
+        await db.query.gardenStacks.findFirst({
             where: and(
                 eq(gardenStacks.gardenId, gardenId),
                 eq(gardenStacks.positionX, stacks.x),
@@ -263,7 +270,7 @@ export async function updateGardenStack(
         throw new Error('Stack not found');
     }
 
-    await storage()
+    await db
         .update(gardenStacks)
         .set({
             blocks: stacks.blocks,
