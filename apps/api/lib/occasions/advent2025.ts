@@ -13,7 +13,7 @@ const ADVENT_YEAR = 2025;
 const ADVENT_TOTAL_DAYS = 24;
 export const ADVENT_CALENDAR_2025_ID = 'calendar-2025';
 
-const CHRISTMAS_TREE_BLOCK_ID = 'ukras-bozicno-drvce';
+const CHRISTMAS_TREE_BLOCK_ID = '386';
 const DECORATION_BLOCK_IDS = [
     'ukras-advent-vijenac',
     'ukras-snijeg-lampice',

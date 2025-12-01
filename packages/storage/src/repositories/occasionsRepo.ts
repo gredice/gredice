@@ -49,7 +49,7 @@ export async function createAdventCalendarOpenEvent(
     const db = storage();
     return db.transaction(async (tx) => {
         await tx.execute(
-            sql`select pg_advisory_xact_lock(hashtextextended(${accountId} || '-' || ${payload.year}::text || '-' || ${payload.day}::text));`,
+            sql`select pg_advisory_xact_lock(hashtext(${accountId} || '-' || ${payload.year}::text || '-' || ${payload.day}::text));`,
         );
 
         const existingEvents = await tx.query.events.findMany({

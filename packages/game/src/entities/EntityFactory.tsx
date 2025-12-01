@@ -17,6 +17,7 @@ import { Bush } from './Bush';
 import { Composter } from './Composter';
 import { Fence } from './Fence';
 import { Pine } from './Pine';
+import { PineAdvent } from './PineAdvent';
 import { RaisedBed } from './RaisedBed';
 import { MulchCoconut } from './raisedBed/MulchCoconut';
 import { MulchHey } from './raisedBed/MulchHey';
@@ -51,6 +52,7 @@ export const entityNameMap: Record<
     Bush: Bush,
     Tree: Tree,
     Pine: Pine,
+    PineAdvent: PineAdvent,
     StoneSmall: StoneSmall,
     StoneMedium: StoneMedium,
     StoneLarge: StoneLarge,

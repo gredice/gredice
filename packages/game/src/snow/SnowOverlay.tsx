@@ -34,11 +34,13 @@ export type SnowMaterialOptions = {
         min: Vector3Tuple;
         max: Vector3Tuple;
     };
+    overrideSnow?: number;
 };
 
 export type SnowOverlayProps = SnowMaterialOptions & {
     geometry: BufferGeometry;
     renderOrder?: number;
+    overrideSnow?: number;
 };
 
 function resolveColorKey(
@@ -59,8 +61,10 @@ export function useSnowMaterial({
     noiseInfluence = 0.15,
     color,
     bounds,
+    overrideSnow,
 }: SnowMaterialOptions = {}) {
-    const snowCoverage = useGameState((state) => state.snowCoverage);
+    const gameSnowCoverage = useGameState((state) => state.snowCoverage);
+    const snowCoverage = overrideSnow ?? gameSnowCoverage;
     const colorKey = resolveColorKey(color);
     const snowColor = useMemo(() => new Color(colorKey), [colorKey]);
     const resolvedBounds = bounds ?? fallbackBounds;
@@ -145,6 +149,7 @@ export function SnowMaterial({
 export function SnowOverlay({
     geometry,
     renderOrder,
+    overrideSnow,
     ...options
 }: SnowOverlayProps) {
     const overlayGeometry = useMemo(
@@ -167,6 +172,7 @@ export function SnowOverlay({
     const material = useSnowMaterial({
         ...options,
         bounds: options.bounds ?? bounds,
+        overrideSnow: overrideSnow,
     });
     return (
         <mesh
