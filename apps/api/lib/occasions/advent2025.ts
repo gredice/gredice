@@ -19,7 +19,7 @@ const ADVENT_YEAR = 2025;
 const ADVENT_TOTAL_DAYS = 24;
 export const ADVENT_CALENDAR_2025_ID = 'calendar-2025';
 
-const CHRISTMAS_TREE_BLOCK_ID = '386';
+const CHRISTMAS_TREE_BLOCK_NAME = 'PineAdvent';
 const DECORATION_BLOCK_IDS = [
     'ukras-advent-vijenac',
     'ukras-snijeg-lampice',
@@ -439,7 +439,7 @@ export async function openAdventCalendar2025Day({
                 if (isFirstDayOpened) {
                     const blockId = await createGardenBlock(
                         primaryGarden.id,
-                        CHRISTMAS_TREE_BLOCK_ID,
+                        CHRISTMAS_TREE_BLOCK_NAME,
                         tx,
                     );
                     await placeBlockAtAvailablePosition(blockId);
