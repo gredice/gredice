@@ -24,6 +24,17 @@ export const snowPresets = {
         noiseScale: 0.2,
         coverageMultiplier: 0.85,
     },
+    snow: {
+        maxThickness: 0.15,
+        slopeExponent: 3,
+        noiseScale: 0.2,
+    },
+    snowAngle: {
+        maxThickness: 0.15,
+        slopeExponent: 1.2,
+        noiseScale: 0.2,
+        coverageMultiplier: 0.8,
+    },
     treeCanopyInner: {
         maxThickness: 0.5,
         slopeExponent: 0.1,

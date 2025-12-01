@@ -1,5 +1,10 @@
 import { Instance, Instances, MeshWobbleMaterial } from '@react-three/drei';
-import type { BufferGeometry, Material } from 'three';
+import { useMemo } from 'react';
+import {
+    type BufferGeometry,
+    type Material,
+    MeshStandardMaterial,
+} from 'three';
 import { useBlockData } from '../hooks/useBlockData';
 import { type SnowMaterialOptions, SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
@@ -254,6 +259,15 @@ function EntityInstancesBlock({
 
 export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
     const { nodes, materials } = useGameGLTF();
+    const snowMaterial = useMemo(
+        () =>
+            new MeshStandardMaterial({
+                color: '#FFFFFF',
+                roughness: 1,
+                metalness: 0,
+            }),
+        [],
+    );
     return (
         <>
             <EntityGrassInstances stacks={stacks} />
@@ -273,6 +287,24 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
                 geometry={nodes.Block_Sand_Angle_1.geometry}
                 material={nodes.Block_Sand_Angle_1.material}
                 snow={snowPresets.sandAngle}
+                snowLift={0.003}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Block_Snow"
+                yOffset={0.2}
+                geometry={nodes.Block_Sand_1.geometry}
+                material={snowMaterial}
+                snow={snowPresets.snow}
+                snowLift={0.003}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Block_Snow_Angle"
+                yOffset={0.2}
+                geometry={nodes.Block_Sand_Angle_1.geometry}
+                material={snowMaterial}
+                snow={snowPresets.snowAngle}
                 snowLift={0.003}
             />
             <EntityInstancesBlock

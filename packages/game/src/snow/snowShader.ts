@@ -136,7 +136,7 @@ void main() {
     vec3 normal = normalize(vNormal);
     
     // Basic lighting: ambient + simple directional
-    vec3 totalLight = vec3(0.4); // Base ambient
+    vec3 totalLight = vec3(0.8); // Base ambient
     
     #if NUM_DIR_LIGHTS > 0
         for (int i = 0; i < NUM_DIR_LIGHTS; i++) {
