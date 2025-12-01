@@ -31,7 +31,7 @@ function BlockGalleryItem(
                                 className="flex flex-row gap-2"
                             >
                                 <span>🌻</span>
-                                <span>{entity.prices.sunflowers ?? '-'}</span>
+                                <span>{entity.prices.sunflowers}</span>
                             </Typography>
                         )}
                 </Row>
