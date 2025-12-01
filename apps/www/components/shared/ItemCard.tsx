@@ -15,7 +15,7 @@ export function ItemCard({
             <CardOverflow className="p-0 aspect-square overflow-hidden mb-2">
                 <div className="relative size-full">{children}</div>
             </CardOverflow>
-            <CardHeader className="bg-muted/60 border-t -m-2 py-2 px-3 text-center group-hover:bg-muted transition-all">
+            <CardHeader className="bg-muted/60 border-t -m-2 py-2 px-3 group-hover:bg-muted transition-all h-full">
                 {label}
             </CardHeader>
         </Card>

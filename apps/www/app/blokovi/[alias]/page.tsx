@@ -59,7 +59,11 @@ function BlockAttributes({ prices, attributes }: BlockData) {
             <AttributeCard
                 icon={<span className="text-xl">🌻</span>}
                 header="Cijena"
-                value={prices.sunflowers?.toString() ?? '-'}
+                value={
+                    prices.sunflowers <= 0
+                        ? 'Nije za kupnju'
+                        : (prices.sunflowers?.toString() ?? '-')
+                }
             />
         </div>
     );
