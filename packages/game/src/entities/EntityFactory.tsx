@@ -72,7 +72,7 @@ export const entityNameMap: Record<
     Seed: Seed,
 };
 
-type EntityFactoryProps = {
+export type EntityFactoryProps = {
     name: string;
     noControl?: boolean;
     noRenderInView?: string[];

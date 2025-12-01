@@ -1,5 +1,4 @@
 import { client } from '@gredice/client';
-import { GameScene } from '@gredice/game';
 import { CountingNumber } from '@gredice/ui/CountingNumber';
 import type { SectionData } from '@signalco/cms-core/SectionData';
 import { SectionsView } from '@signalco/cms-core/SectionsView';
@@ -17,6 +16,7 @@ import { FacebookCard } from '../components/social/FacebookCard';
 import { InstagramCard } from '../components/social/InstagramCard';
 import { WhatsAppCard } from '../components/social/WhatsAppCard';
 import { KnownPages } from '../src/KnownPages';
+import { LandingGameScene } from './LandingGameScene';
 import { NewsletterSignUp } from './NewsletterSignUp';
 import { PlantsShowcase } from './PlantsShowcase';
 
@@ -244,17 +244,8 @@ export default function Home() {
                         </Stack>
                     </CardContent>
                 </Card>
-                <div className="h-[400px] -mx-4 relative overflow-hidden">
-                    <GameScene
-                        appBaseUrl="https://vrt.gredice.com"
-                        freezeTime={new Date(2025, 5, 21, 11, 30)}
-                        noBackground
-                        hideHud
-                        noControls
-                        noWeather
-                        noSound
-                        mockGarden
-                    />
+                <div className="h-[600px] -mx-4 relative overflow-hidden">
+                    <LandingGameScene />
                 </div>
             </Stack>
             <SectionsView

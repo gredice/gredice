@@ -121,6 +121,7 @@ export function PlantEditor() {
             appBaseUrl: appBaseUrl || '',
             freezeTime: freezeTime || null,
             isMock: mockGarden || false,
+            isWinterMode: false,
         });
     }
 

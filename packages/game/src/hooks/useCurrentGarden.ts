@@ -7,7 +7,7 @@ import { useGardens, useGardensKeys } from './useGardens';
 
 export const currentGardenKeys = [...useGardensKeys, 'current'];
 
-function mockGarden() {
+function mockGarden(isWinterMode: boolean) {
     return {
         id: 99999,
         name: 'Moj vrt',
@@ -34,6 +34,12 @@ function mockGarden() {
                         id: '2',
                         name: 'Block_Grass',
                         rotation: 0,
+                    },
+                    {
+                        id: '12',
+                        name: isWinterMode ? 'PineAdvent' : 'Tree',
+                        rotation: 0,
+                        variant: isWinterMode ? 100 : undefined,
                     },
                 ],
             },
@@ -108,11 +114,6 @@ function mockGarden() {
                     {
                         id: '11',
                         name: 'Block_Grass',
-                        rotation: 0,
-                    },
-                    {
-                        id: '12',
-                        name: 'Bush',
                         rotation: 0,
                     },
                 ],
@@ -191,13 +192,14 @@ type useCurrentGardenResponse = Omit<
 
 export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | null> {
     const isMock = useGameState((state) => state.isMock);
+    const isWinterMode = useGameState((state) => state.isWinterMode);
     const { data: gardens } = useGardens(isMock);
     return useQuery({
-        queryKey: currentGardenKeys,
+        queryKey: [...currentGardenKeys, isWinterMode],
         queryFn: async () => {
             if (isMock) {
                 console.debug('Using mock garden data');
-                return mockGarden();
+                return mockGarden(isWinterMode);
             }
 
             if (!gardens) {
