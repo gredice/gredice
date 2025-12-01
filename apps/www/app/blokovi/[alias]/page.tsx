@@ -60,7 +60,7 @@ function BlockAttributes({ prices, attributes }: BlockData) {
                 icon={<span className="text-xl">🌻</span>}
                 header="Cijena"
                 value={
-                    prices.sunflowers <= 0
+                    (prices.sunflowers ?? 0) <= 0
                         ? 'Nije za kupnju'
                         : (prices.sunflowers?.toString() ?? '-')
                 }
