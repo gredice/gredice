@@ -342,6 +342,11 @@ export function DebugHud() {
     const [windDirection, setWindDirection] = useState(
         typeof weather?.windDirection === 'number' ? weather.windDirection : 0,
     );
+    const [snowAccumulation, setSnowAccumulation] = useState(
+        typeof weather?.snowAccumulation === 'number'
+            ? weather.snowAccumulation
+            : 0,
+    );
 
     useEffect(() => {
         const nextTimeOfDay = getTimeOfDayFromDate(currentTime);
@@ -370,6 +375,7 @@ export function DebugHud() {
                 foggy,
                 windSpeed,
                 windDirection,
+                snowAccumulation,
             });
             return;
         }
@@ -388,6 +394,10 @@ export function DebugHud() {
                     typeof weather.windDirection === 'number'
                         ? weather.windDirection
                         : undefined,
+                snowAccumulation:
+                    typeof weather.snowAccumulation === 'number'
+                        ? weather.snowAccumulation
+                        : undefined,
             });
         }
     }, [
@@ -398,6 +408,7 @@ export function DebugHud() {
         foggy,
         windSpeed,
         windDirection,
+        snowAccumulation,
         weather,
         setWeather,
     ]);
@@ -417,6 +428,11 @@ export function DebugHud() {
         setWindDirection(
             typeof weather.windDirection === 'number'
                 ? weather.windDirection
+                : 0,
+        );
+        setSnowAccumulation(
+            typeof weather.snowAccumulation === 'number'
+                ? weather.snowAccumulation
                 : 0,
         );
     }, [weather, overrideWeather]);
@@ -588,6 +604,22 @@ export function DebugHud() {
                                         if (typeof nextValue === 'number') {
                                             setWindDirection(
                                                 clampToRange(nextValue, 0, 315),
+                                            );
+                                        }
+                                    }}
+                                />
+                                <Slider
+                                    label={`Snow Accumulation: ${snowAccumulation} cm`}
+                                    min={0}
+                                    max={50}
+                                    step={1}
+                                    value={[snowAccumulation]}
+                                    disabled={weatherControlsDisabled}
+                                    onValueChange={(value) => {
+                                        const [nextValue] = value;
+                                        if (typeof nextValue === 'number') {
+                                            setSnowAccumulation(
+                                                clampToRange(nextValue, 0, 50),
                                             );
                                         }
                                     }}

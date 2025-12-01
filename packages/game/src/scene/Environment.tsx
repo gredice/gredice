@@ -247,6 +247,9 @@ export function Environment({
             const index = Math.round(overrideWeather.windDirection / 45) % 8;
             weather.windDirection = directions[index];
         }
+        if (typeof overrideWeather?.snowAccumulation === 'number') {
+            weather.snowAccumulation = overrideWeather.snowAccumulation;
+        }
     }
 
     // Sound management
