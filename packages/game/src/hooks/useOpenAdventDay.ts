@@ -2,6 +2,7 @@ import { client } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { adventCalendarKeys } from './useAdventCalendar';
 import { currentAccountKeys } from './useCurrentAccount';
+import { currentGardenKeys } from './useCurrentGarden';
 
 export function useOpenAdventDay() {
     const queryClient = useQueryClient();
@@ -17,6 +18,7 @@ export function useOpenAdventDay() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: adventCalendarKeys });
             queryClient.invalidateQueries({ queryKey: currentAccountKeys });
+            queryClient.invalidateQueries({ queryKey: currentGardenKeys });
         },
     });
 }
