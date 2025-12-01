@@ -2,6 +2,7 @@
 
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Stack } from '@signalco/ui-primitives/Stack';
 import { SantaCapIcon } from '../icons/SantaCap';
 import { HudCard } from './components/HudCard';
 
@@ -22,11 +23,11 @@ export function AdventHud() {
         <HudCard
             open
             position="floating"
-            className="static p-0.5 dark:bg-green-700 dark:border-green-950 bg-green-600 border-green-800"
+            className="static p-0.5 dark:bg-red-700 bg-red-600"
         >
             <IconButton
                 variant="plain"
-                className="rounded-full size-10 border-[1.5px] border-green-800 dark:border-green-950 hover:bg-green-500"
+                className="rounded-full size-10 border-[1.5px] border-white dark:border-green-950 bg-green-600 hover:bg-green-500"
                 title="Adventski kalendar"
                 onClick={() => setAdventParam('open')}
             >

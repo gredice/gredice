@@ -2,13 +2,7 @@
 
 import { Check } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
-import { Spicy_Rice } from 'next/font/google';
-
-const spicyRice = Spicy_Rice({
-    weight: '400',
-    subsets: ['latin'],
-    display: 'swap',
-});
+import { adventDayFont } from './fonts';
 
 type DayCellVariant = 'red' | 'green' | 'brown' | 'striped';
 
@@ -208,7 +202,7 @@ export function AdventDayCell({
                     <span
                         className={cx(
                             'text-white drop-shadow-md',
-                            spicyRice.className,
+                            adventDayFont.className,
                         )}
                     >
                         {day}

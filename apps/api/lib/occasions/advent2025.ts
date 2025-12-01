@@ -4,7 +4,9 @@ import {
     AdventCalendarDayAlreadyOpenedError,
     type AdventCalendarOpenPayload,
     createAdventCalendarOpenEvent,
+    createGardenBlock,
     earnSunflowers,
+    getAccountGardens,
     getAdventCalendarOpenEvents,
     getEntitiesFormatted,
 } from '@gredice/storage';
@@ -140,11 +142,13 @@ async function pickAwardsForDay(
     // Every day gets a tree decoration
     awards.push(pickTreeDecorationAward(day));
 
-    // Day 1: Christmas tree
+    // Day 1: Christmas tree as a gift
     if (day === 1) {
-        awards.push(
-            pickDecorationAward('Božićno drvce', CHRISTMAS_TREE_BLOCK_ID),
-        );
+        awards.push({
+            kind: 'gift',
+            gift: 'christmas-tree',
+            delivery: 'digital',
+        } as const satisfies AdventAward);
         return awards;
     }
 
@@ -245,35 +249,73 @@ export async function openAdventCalendar2025Day({
     userId: string;
     day: number;
 }) {
-    const events = await getAdventCalendarOpenEvents(accountId, ADVENT_YEAR);
-    const openedDays = new Set(events.map((event) => event.data.day));
-    const completesCalendar =
-        day === ADVENT_TOTAL_DAYS && openedDays.size === ADVENT_TOTAL_DAYS - 1;
+    // Get the user's garden for block placement
+    const gardens = await getAccountGardens(accountId);
+    const primaryGarden = gardens[0];
 
-    const awards = await pickAwardsForDay(day, completesCalendar);
-    const payload: AdventCalendarOpenPayload = {
-        year: ADVENT_YEAR,
-        day,
-        openedBy: userId,
-        awards,
-    };
+    // Track the awards for the response
+    let resolvedAwards: AdventAward[] = [];
+    // Track if this is the user's first advent day this year
+    let isFirstDayOpened = false;
 
-    await createAdventCalendarOpenEvent(accountId, payload);
+    const result = await createAdventCalendarOpenEvent({
+        accountId,
+        // Use a factory function to determine awards based on opened count
+        payload: async (openedDaysCount) => {
+            isFirstDayOpened = openedDaysCount === 0;
+            const hasFullAttendance =
+                day === ADVENT_TOTAL_DAYS &&
+                openedDaysCount === ADVENT_TOTAL_DAYS - 1;
 
-    // Process all sunflower awards
-    for (const award of awards) {
-        if (award.kind === 'sunflowers') {
-            await earnSunflowers(
-                accountId,
-                award.amount,
-                `advent-${ADVENT_YEAR}-dan-${day}`,
-            );
-        }
-    }
+            resolvedAwards = await pickAwardsForDay(day, hasFullAttendance);
+
+            return {
+                year: ADVENT_YEAR,
+                day,
+                openedBy: userId,
+                awards: resolvedAwards,
+            };
+        },
+        onSuccess: async (tx, payload) => {
+            const awards = payload.awards;
+
+            // Process all sunflower awards within the transaction
+            for (const award of awards) {
+                if (award.kind === 'sunflowers') {
+                    await earnSunflowers(
+                        accountId,
+                        award.amount,
+                        `advent-${ADVENT_YEAR}-dan-${day}`,
+                        tx,
+                    );
+                }
+            }
+
+            // Place block decorations in the user's garden
+            if (primaryGarden) {
+                // Place Christmas tree (advent pine) on first day opened
+                if (isFirstDayOpened) {
+                    await createGardenBlock(
+                        primaryGarden.id,
+                        CHRISTMAS_TREE_BLOCK_ID,
+                    );
+                }
+
+                for (const award of awards) {
+                    if (award.kind === 'decoration') {
+                        await createGardenBlock(
+                            primaryGarden.id,
+                            award.blockId,
+                        );
+                    }
+                }
+            }
+        },
+    });
 
     return {
-        payload,
-        opisNagrada: awards.map(describeAward),
+        payload: result.payload,
+        opisNagrada: resolvedAwards.map(describeAward),
     };
 }
 

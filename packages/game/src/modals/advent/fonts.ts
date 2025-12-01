@@ -1,7 +1,6 @@
-import { Noto_Serif_Display } from 'next/font/google';
+import './fonts.css';
 
-export const adventTitleFont = Noto_Serif_Display({
-    weight: '700',
-    subsets: ['latin', 'latin-ext'],
-    display: 'swap',
-});
+const fontClass = (className: string) => ({ className });
+
+export const adventTitleFont = fontClass('font-advent-title');
+export const adventDayFont = fontClass('font-advent-day');

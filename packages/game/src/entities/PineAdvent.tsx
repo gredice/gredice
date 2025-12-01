@@ -25,7 +25,7 @@ export function PineAdvent({ stack, block, rotation }: EntityInstanceProps) {
             >
                 <SnowOverlay
                     geometry={nodes.Tree_2.geometry}
-                    overrideSnow={1}
+                    overrideSnow={0.5}
                     {...snowPresets.pine}
                 />
             </mesh>

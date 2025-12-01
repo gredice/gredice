@@ -833,6 +833,12 @@ importers:
       '@biomejs/biome':
         specifier: 2.3.7
         version: 2.3.7
+      '@fontsource/noto-serif-display':
+        specifier: 5.1.1
+        version: 5.1.1
+      '@fontsource/spicy-rice':
+        specifier: 5.1.1
+        version: 5.1.1
       '@gredice/client':
         specifier: workspace:*
         version: link:../client
@@ -2146,6 +2152,12 @@ packages:
 
   '@floating-ui/vue@1.1.9':
     resolution: {integrity: sha512-BfNqNW6KA83Nexspgb9DZuz578R7HT8MZw1CfK9I6Ah4QReNWEJsXWHN+SdmOVLNGmTPDi+fDT535Df5PzMLbQ==}
+
+  '@fontsource/noto-serif-display@5.1.1':
+    resolution: {integrity: sha512-MnUwSBET9e6y36MWBKF785IoUSIAXb1GBnT3O5qDRDW0JPAY5OAksiHrnfnVGfITx4kaMPicZwAaKIpuS/t8jg==}
+
+  '@fontsource/spicy-rice@5.1.1':
+    resolution: {integrity: sha512-7zH2iFtddbfkppcNdavA1ly/EsWHcEIdRXpcAWaIOt5k7YMD0XVo3o8arfhBEtMp6V0juGy78yWESYuzxdPMvw==}
 
   '@headlessui/tailwindcss@0.2.2':
     resolution: {integrity: sha512-xNe42KjdyA4kfUKLLPGzME9zkH7Q3rOZ5huFihWNWOQFxnItxPB3/67yBI8/qBfY8nwBRx5GHn4VprsoluVMGw==}
@@ -10256,6 +10268,10 @@ snapshots:
     transitivePeerDependencies:
       - '@vue/composition-api'
       - vue
+
+  '@fontsource/noto-serif-display@5.1.1': {}
+
+  '@fontsource/spicy-rice@5.1.1': {}
 
   '@headlessui/tailwindcss@0.2.2(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))':
     dependencies:
