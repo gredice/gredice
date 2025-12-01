@@ -33,7 +33,7 @@ export function BlockSnowAngle({
             </mesh>
             <SnowOverlay
                 geometry={nodes.Block_Sand_Angle_1.geometry}
-                {...snowPresets.sandAngle}
+                {...snowPresets.snowAngle}
             />
         </animated.group>
     );
