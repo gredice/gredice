@@ -834,11 +834,11 @@ importers:
         specifier: 2.3.7
         version: 2.3.7
       '@fontsource/noto-serif-display':
-        specifier: 5.1.1
-        version: 5.1.1
+        specifier: 5.2.9
+        version: 5.2.9
       '@fontsource/spicy-rice':
-        specifier: 5.1.1
-        version: 5.1.1
+        specifier: 5.2.8
+        version: 5.2.8
       '@gredice/client':
         specifier: workspace:*
         version: link:../client
@@ -2153,11 +2153,11 @@ packages:
   '@floating-ui/vue@1.1.9':
     resolution: {integrity: sha512-BfNqNW6KA83Nexspgb9DZuz578R7HT8MZw1CfK9I6Ah4QReNWEJsXWHN+SdmOVLNGmTPDi+fDT535Df5PzMLbQ==}
 
-  '@fontsource/noto-serif-display@5.1.1':
-    resolution: {integrity: sha512-MnUwSBET9e6y36MWBKF785IoUSIAXb1GBnT3O5qDRDW0JPAY5OAksiHrnfnVGfITx4kaMPicZwAaKIpuS/t8jg==}
+  '@fontsource/noto-serif-display@5.2.9':
+    resolution: {integrity: sha512-4fv1funwSCBuYInBUrnjoW5FLcx9zr+yg3tKgHL+9o7wdwizT3dD7gbm1EnBROdXSnQlIJwITlNI44syfJay9w==}
 
-  '@fontsource/spicy-rice@5.1.1':
-    resolution: {integrity: sha512-7zH2iFtddbfkppcNdavA1ly/EsWHcEIdRXpcAWaIOt5k7YMD0XVo3o8arfhBEtMp6V0juGy78yWESYuzxdPMvw==}
+  '@fontsource/spicy-rice@5.2.8':
+    resolution: {integrity: sha512-nVBsLFNhm3rRN/d4HjavzJP/cGoKA3pyZ+EVTnrEqZHWtvxKUdBxaD8imYWTTVEm4FJklVz8tvADPH8Fii2TYw==}
 
   '@headlessui/tailwindcss@0.2.2':
     resolution: {integrity: sha512-xNe42KjdyA4kfUKLLPGzME9zkH7Q3rOZ5huFihWNWOQFxnItxPB3/67yBI8/qBfY8nwBRx5GHn4VprsoluVMGw==}
@@ -10269,9 +10269,9 @@ snapshots:
       - '@vue/composition-api'
       - vue
 
-  '@fontsource/noto-serif-display@5.1.1': {}
+  '@fontsource/noto-serif-display@5.2.9': {}
 
-  '@fontsource/spicy-rice@5.1.1': {}
+  '@fontsource/spicy-rice@5.2.8': {}
 
   '@headlessui/tailwindcss@0.2.2(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))':
     dependencies:

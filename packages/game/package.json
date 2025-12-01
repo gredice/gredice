@@ -15,8 +15,8 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.3.7",
-        "@fontsource/noto-serif-display": "5.1.1",
-        "@fontsource/spicy-rice": "5.1.1",
+        "@fontsource/noto-serif-display": "5.2.9",
+        "@fontsource/spicy-rice": "5.2.8",
         "@gredice/client": "workspace:*",
         "@gredice/js": "workspace:*",
         "@gredice/stripe": "workspace:*",
