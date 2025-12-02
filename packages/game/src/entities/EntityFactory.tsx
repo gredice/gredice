@@ -35,6 +35,7 @@ import { Seed } from './raisedBed/Seed';
 import { Stick } from './raisedBed/Stick';
 import { Shade } from './Shade';
 import { ShovelSmall } from './ShovelSmall';
+import { Snowman } from './Snowman';
 import { StoneLarge } from './StoneLarge';
 import { StoneMedium } from './StoneMedium';
 import { StoneSmall } from './StoneSmall';
@@ -75,6 +76,7 @@ export const entityNameMap: Record<
     StoneMedium: StoneMedium,
     StoneLarge: StoneLarge,
     ShovelSmall: ShovelSmall,
+    Snowman: Snowman,
     Tulip: Tulip,
     BaleHey: BaleHey,
 

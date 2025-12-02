@@ -51,6 +51,7 @@ export type GLTFResult = GLTF & {
         Tree_1_3: THREE.Mesh;
         Tree_2: THREE.Mesh;
         BaleHey: THREE.Mesh;
+        Snowman: THREE.Mesh;
         Fence_Corner: THREE.Mesh;
         Fence_Cross: THREE.Mesh;
         Fence_Middle: THREE.Mesh;
@@ -70,6 +71,9 @@ export type GLTFResult = GLTF & {
         Mulch_Coconut: THREE.Mesh;
         Mulch_Wood: THREE.Mesh;
         Tulip: THREE.Mesh;
+        GiftBox_Bow: THREE.Mesh;
+        GiftBox_Strip: THREE.Mesh;
+        GiftBox_Box: THREE.Mesh;
         Stick: THREE.Mesh;
         Seed: THREE.Mesh;
         Tunnel_Half: THREE.Mesh;
@@ -79,9 +83,6 @@ export type GLTFResult = GLTF & {
         Greenhouse_X_Stick_A: THREE.Mesh;
         Greenhouse_X_Stick_B: THREE.Mesh;
         X_Half: THREE.Mesh;
-        GiftBox_Bow: THREE.Mesh;
-        GiftBox_Strip: THREE.Mesh;
-        GiftBox_Box: THREE.Mesh;
     };
     materials: {
         'Material.Dirt': THREE.MeshStandardMaterial;
@@ -300,6 +301,12 @@ export function Model(props: React.JSX.IntrinsicElements['group']) {
                 material={materials['Material.ColorPaletteMain']}
             />
             <mesh
+                geometry={nodes.Snowman.geometry}
+                material={nodes.Snowman.material}
+                position={[0, 1.139, 0]}
+                scale={0.36}
+            />
+            <mesh
                 geometry={nodes.Fence_Corner.geometry}
                 material={materials['Material.Planks']}
                 position={[0, 1, 0]}
@@ -391,6 +398,22 @@ export function Model(props: React.JSX.IntrinsicElements['group']) {
                 scale={0.818}
             />
             <mesh
+                geometry={nodes.GiftBox_Bow.geometry}
+                material={nodes.GiftBox_Bow.material}
+                position={[0, 0.5, 0]}
+                rotation={[0, -Math.PI / 4, 0]}
+            />
+            <mesh
+                geometry={nodes.GiftBox_Strip.geometry}
+                material={nodes.GiftBox_Strip.material}
+                position={[0, 0.25, 0]}
+            />
+            <mesh
+                geometry={nodes.GiftBox_Box.geometry}
+                material={nodes.GiftBox_Box.material}
+                position={[0, 0.25, 0]}
+            />
+            <mesh
                 geometry={nodes.Stick.geometry}
                 material={nodes.Stick.material}
             />
@@ -443,22 +466,6 @@ export function Model(props: React.JSX.IntrinsicElements['group']) {
                 material={materials['Material.GreenhouseGreen']}
                 position={[0.02, 0.605, 0]}
                 scale={[0.48, 0.305, 0.46]}
-            />
-            <mesh
-                geometry={nodes.GiftBox_Bow.geometry}
-                material={nodes.GiftBox_Bow.material}
-                position={[0, 0.5, 0]}
-                rotation={[0, -Math.PI / 4, 0]}
-            />
-            <mesh
-                geometry={nodes.GiftBox_Strip.geometry}
-                material={nodes.GiftBox_Strip.material}
-                position={[0, 0.25, 0]}
-            />
-            <mesh
-                geometry={nodes.GiftBox_Box.geometry}
-                material={nodes.GiftBox_Box.material}
-                position={[0, 0.25, 0]}
             />
             <mesh
                 geometry={nodes.Raised_Bed_I_Construction_1.geometry}
