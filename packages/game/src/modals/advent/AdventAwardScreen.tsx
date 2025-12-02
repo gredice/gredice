@@ -21,8 +21,8 @@ type AdventAward = {
 };
 
 type AdventAwardDescription = {
-    naslov: string;
-    opis: string;
+    title: string;
+    description: string;
 };
 
 type AdventAwardScreenProps = {
@@ -100,11 +100,11 @@ export function AdventAwardScreen({
             <Stack spacing={1}>
                 {award.kind !== 'sunflowers' && (
                     <Typography level="h4" className="font-bold">
-                        {description.naslov}
+                        {description.title}
                     </Typography>
                 )}
                 <Typography level="body1" className="text-muted-foreground">
-                    {description.opis}
+                    {description.description}
                 </Typography>
             </Stack>
 

@@ -66,15 +66,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     day,
                 });
                 return context.json({
-                    poruka: `Dan ${day} je otvoren!`,
-                    nagrade: result.payload.awards,
-                    opisNagrada: result.opisNagrada,
+                    message: `Dan ${day} je otvoren!`,
+                    awards: result.payload.awards,
+                    awardDescriptions: result.awardDescriptions,
                 });
             } catch (error) {
                 if (error instanceof AdventCalendarDayAlreadyOpenedError) {
                     return context.json(
                         {
-                            poruka: 'Taj dan adventskog kalendara je već otvoren.',
+                            message:
+                                'Taj dan adventskog kalendara je već otvoren.',
                         },
                         409,
                     );
@@ -82,8 +83,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 if (error instanceof AdventCalendarDayNotYetAvailableError) {
                     return context.json(
                         {
-                            poruka: `Dan ${day} još nije dostupan. Dostupan od ${error.availableAt.toISOString()}.`,
-                            dostupnoOd: error.availableAt.toISOString(),
+                            message: `Dan ${day} još nije dostupan. Dostupan od ${error.availableAt.toISOString()}.`,
+                            availableAt: error.availableAt.toISOString(),
                         },
                         400,
                     );
@@ -91,7 +92,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 console.error('Pogreška pri otvaranju adventskog dana:', error);
                 return context.json(
                     {
-                        poruka: 'Došlo je do pogreške pri otvaranju prozorčića.',
+                        message:
+                            'Došlo je do pogreške pri otvaranju prozorčića.',
                     },
                     500,
                 );
