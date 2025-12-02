@@ -11,7 +11,6 @@ type AdventDayCellProps = {
     day: number;
     variant: DayCellVariant;
     isOpen: boolean;
-    isToday: boolean;
     isFuture: boolean;
     onClick?: () => void;
     disabled?: boolean;
@@ -102,7 +101,6 @@ export function AdventDayCell({
     day,
     variant,
     isOpen,
-    isToday,
     isFuture,
     onClick,
     disabled,

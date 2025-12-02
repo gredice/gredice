@@ -59,12 +59,11 @@ export function AdventCalendarScreen({
             </div>
 
             {/* Calendar grid */}
-            <div className="bg-[#C1977C] p-3 border-4 border-[#E6CAB5] aspect-[0.625] relative">
-                <div className="grid grid-cols-5 gap-0 grid-rows-[repeat(5,1fr)] h-full">
+            <div className="bg-[#C1977C] p-3 border-4 border-[#E6CAB5] relative">
+                <div className="grid grid-cols-5 gap-0 grid-rows-[repeat(5,1fr)] h-full aspect-[0.625] w-full">
                     {calendarLayout.map((dayNum) => {
                         const dayData = dayMap.get(dayNum);
                         const isOpen = dayData?.opened ?? false;
-                        const isToday = dayNum === currentDay;
                         const isFuture = dayNum > currentDay;
                         const isPast = dayNum < currentDay;
                         const canOpen = dayNum <= currentDay && !isOpen;
@@ -89,7 +88,6 @@ export function AdventCalendarScreen({
                                 day={dayNum}
                                 variant={getDayVariant(dayNum)}
                                 isOpen={isOpen}
-                                isToday={isToday}
                                 isFuture={isFuture}
                                 disabled={isLoading}
                                 onClick={handleDayClick}
