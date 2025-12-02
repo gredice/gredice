@@ -19,6 +19,42 @@ const ADVENT_YEAR = 2025;
 const ADVENT_TOTAL_DAYS = 24;
 export const ADVENT_CALENDAR_2025_ID = 'calendar-2025';
 
+export class AdventCalendarDayNotYetAvailableError extends Error {
+    constructor(
+        public readonly day: number,
+        public readonly availableAt: Date,
+    ) {
+        super(
+            `Day ${day} is not yet available. Available at ${availableAt.toISOString()}`,
+        );
+        this.name = 'AdventCalendarDayNotYetAvailableError';
+    }
+}
+
+/**
+ * Calculate when a specific advent day becomes available.
+ * We use UTC+14 (the first timezone to reach midnight, e.g., Kiribati)
+ * so that a day becomes openable as soon as it's that date somewhere in the world.
+ * This is the most generous approach when we don't know the user's timezone.
+ */
+function getAdventDayAvailableAt(day: number): Date {
+    // Advent day 1 = December 1st, day 2 = December 2nd, etc.
+    // Create date at midnight UTC for the given day
+    const utcMidnight = new Date(Date.UTC(ADVENT_YEAR, 11, day, 0, 0, 0, 0));
+    // Subtract 14 hours to account for UTC+14 timezone
+    // When it's midnight in UTC+14, it's 10:00 the previous day in UTC
+    utcMidnight.setUTCHours(utcMidnight.getUTCHours() - 14);
+    return utcMidnight;
+}
+
+/**
+ * Check if a specific advent day is currently available to open.
+ */
+function isAdventDayAvailable(day: number): boolean {
+    const availableAt = getAdventDayAvailableAt(day);
+    return new Date() >= availableAt;
+}
+
 const CHRISTMAS_TREE_BLOCK_NAME = 'PineAdvent';
 const DECORATION_BLOCK_IDS = [
     'GiftBox_RedWhite',
@@ -350,6 +386,14 @@ export async function openAdventCalendar2025Day({
     userId: string;
     day: number;
 }) {
+    // Check if the day is available yet
+    if (!isAdventDayAvailable(day)) {
+        throw new AdventCalendarDayNotYetAvailableError(
+            day,
+            getAdventDayAvailableAt(day),
+        );
+    }
+
     // Get the user's garden for block placement
     const gardens = await getAccountGardens(accountId);
     const primaryGarden = gardens[0];
