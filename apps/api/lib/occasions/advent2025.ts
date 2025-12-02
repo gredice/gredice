@@ -48,17 +48,16 @@ function getAdventDayAvailableAt(day: number): Date {
 }
 
 /**
- * Get the current advent day based on UTC-12 (the last timezone to leave a day).
- * This ensures we only allow opening "today's" door, using the most conservative
- * timezone so that if it's still "today" anywhere in the world, users can open it.
+ * Get the current advent day based on UTC+14 (the first timezone to reach midnight).
+ * This determines which day is "today" using the same timezone logic as availability.
+ * @param now - Optional date to use instead of current time (for testing)
  */
-function getCurrentAdventDay(): number {
-    const now = new Date();
-    // UTC-12 is the last timezone to leave a day (e.g., Baker Island)
-    // Add 12 hours to UTC to get UTC-12 time
-    const utcMinus12 = new Date(now.getTime() - 12 * 60 * 60 * 1000);
-    const dayOfMonth = utcMinus12.getUTCDate();
-    const month = utcMinus12.getUTCMonth(); // 0-indexed, so December = 11
+function getCurrentAdventDay(now: Date = new Date()): number {
+    // UTC+14 is the first timezone to reach a new day (e.g., Kiribati)
+    // Add 14 hours to UTC to get UTC+14 time
+    const utcPlus14 = new Date(now.getTime() + 14 * 60 * 60 * 1000);
+    const dayOfMonth = utcPlus14.getUTCDate();
+    const month = utcPlus14.getUTCMonth(); // 0-indexed, so December = 11
 
     // Only return valid advent days (1-24 in December)
     if (month === 11 && dayOfMonth >= 1 && dayOfMonth <= ADVENT_TOTAL_DAYS) {
@@ -70,21 +69,20 @@ function getCurrentAdventDay(): number {
 
 /**
  * Check if a specific advent day is currently available to open.
- * A day is only available if:
- * 1. It has started (midnight in UTC+14)
- * 2. It hasn't ended yet (still "today" somewhere in the world, using UTC-12)
+ * A day is only available if it's the current day (using UTC+14 timezone).
+ * @param day - The advent day to check (1-24)
+ * @param now - Optional date to use instead of current time (for testing)
  */
-function isAdventDayAvailable(day: number): boolean {
+function isAdventDayAvailable(day: number, now: Date = new Date()): boolean {
     const availableAt = getAdventDayAvailableAt(day);
-    const now = new Date();
 
     // Check if the day has started (in UTC+14)
     if (now < availableAt) {
         return false;
     }
 
-    // Check if it's still "today" somewhere (using UTC-12)
-    const currentDay = getCurrentAdventDay();
+    // Check if it's still the current day (using UTC+14)
+    const currentDay = getCurrentAdventDay(now);
     return day === currentDay;
 }
 
@@ -557,4 +555,8 @@ export {
     ADVENT_TOTAL_DAYS,
     ADVENT_YEAR,
     AdventCalendarDayAlreadyOpenedError,
+    // Exported for testing
+    getAdventDayAvailableAt,
+    getCurrentAdventDay,
+    isAdventDayAvailable,
 };
