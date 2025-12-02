@@ -99,17 +99,17 @@ const DECORATION_BLOCK_IDS = [
 ];
 
 export type AdventDayStatus = {
-    dan: number;
-    otvoren: boolean;
-    otvorenoAt?: string;
-    otvorio?: string;
-    nagrade?: AdventAward[];
-    opisNagrada?: AdventAwardDescription[];
+    day: number;
+    opened: boolean;
+    openedAt?: string;
+    openedBy?: string;
+    awards?: AdventAward[];
+    awardDescriptions?: AdventAwardDescription[];
 };
 
 export type AdventAwardDescription = {
-    naslov: string;
-    opis: string;
+    title: string;
+    description: string;
 };
 
 const ADVENT_DESCRIPTION =
@@ -119,34 +119,36 @@ function describeAward(award: AdventAward): AdventAwardDescription {
     switch (award.kind) {
         case 'sunflowers':
             return {
-                naslov: `${award.amount} suncokreta`,
-                opis: 'Suncokreta na tvom računu.',
+                title: `${award.amount} suncokreta`,
+                description: 'Suncokreta na tvom računu.',
             };
         case 'plant':
             return {
-                naslov: award.title ?? 'Nova biljka',
-                opis: 'Biljka samo za tebe.',
+                title: award.title ?? 'Nova biljka',
+                description: 'Biljka samo za tebe.',
             };
         case 'decoration':
             return {
-                naslov: award.title ?? 'Blagdanska dekoracija',
-                opis: 'Ukras koji će uljepšati tvoj vrt u blagdansko vrijeme.',
+                title: award.title ?? 'Blagdanska dekoracija',
+                description:
+                    'Ukras koji će uljepšati tvoj vrt u blagdansko vrijeme.',
             };
         case 'tree-decoration':
             return {
-                naslov: award.title ?? `Ukras za drvce (dan ${award.day})`,
-                opis: 'Ukras koji će uljepšati tvoje božićno drvce.',
+                title: award.title ?? `Ukras za drvce (dan ${award.day})`,
+                description: 'Ukras koji će uljepšati tvoje božićno drvce.',
             };
         case 'gift':
             if (award.gift === 'christmas-tree') {
                 return {
-                    naslov: 'Božićno drvce',
-                    opis: 'Posebno drvce za tvoj prvi dan adventskog kalendara.',
+                    title: 'Božićno drvce',
+                    description:
+                        'Posebno drvce za tvoj prvi dan adventskog kalendara.',
                 };
             }
             return {
-                naslov: 'Adventski box',
-                opis:
+                title: 'Adventski box',
+                description:
                     award.delivery === 'digital+physical'
                         ? 'Fizički poklon box jer su otvoreni svi dani kalendara.'
                         : 'Nagrade za posljednji dan adventa.',
@@ -285,34 +287,34 @@ export async function getAdventCalendar2025Status(accountId: string) {
         });
     }
 
-    const dani: AdventDayStatus[] = [];
+    const days: AdventDayStatus[] = [];
     for (let day = 1; day <= ADVENT_TOTAL_DAYS; day++) {
         const existing = opened.get(day);
         const awards =
             existing?.awards ??
             (existing?.award ? [existing.award] : undefined);
-        dani.push({
-            dan: day,
-            otvoren: Boolean(existing),
-            otvorenoAt: existing?.createdAt,
-            otvorio: existing?.openedBy,
-            nagrade: awards,
-            opisNagrada: awards?.map(describeAward),
+        days.push({
+            day,
+            opened: Boolean(existing),
+            openedAt: existing?.createdAt,
+            openedBy: existing?.openedBy,
+            awards,
+            awardDescriptions: awards?.map(describeAward),
         });
     }
 
-    const brojOtvorenih = opened.size;
-    const sljedeciDan = dani.find((day) => !day.otvoren)?.dan ?? null;
+    const openedCount = opened.size;
+    const nextDay = days.find((d) => !d.opened)?.day ?? null;
 
     return {
-        kalendarId: ADVENT_CALENDAR_2025_ID,
-        godina: ADVENT_YEAR,
-        brojDana: ADVENT_TOTAL_DAYS,
-        brojOtvorenih,
-        preostalo: ADVENT_TOTAL_DAYS - brojOtvorenih,
-        sljedeciDan,
-        opis: ADVENT_DESCRIPTION,
-        dani,
+        calendarId: ADVENT_CALENDAR_2025_ID,
+        year: ADVENT_YEAR,
+        totalDays: ADVENT_TOTAL_DAYS,
+        openedCount,
+        remaining: ADVENT_TOTAL_DAYS - openedCount,
+        nextDay,
+        description: ADVENT_DESCRIPTION,
+        days,
     };
 }
 
@@ -541,7 +543,7 @@ export async function openAdventCalendar2025Day({
 
     return {
         payload: result.payload,
-        opisNagrada: resolvedAwards.map(describeAward),
+        awardDescriptions: resolvedAwards.map(describeAward),
     };
 }
 

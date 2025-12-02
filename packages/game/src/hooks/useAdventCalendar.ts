@@ -4,7 +4,7 @@ import { useCurrentUser } from './useCurrentUser';
 
 export const adventCalendarKeys = ['occasions', 'advent', 'calendar-2025'];
 
-export function useAdventCalendar() {
+export function useAdventCalendar(enabled?: boolean) {
     const { data: currentUser } = useCurrentUser();
     return useQuery({
         queryKey: adventCalendarKeys,
@@ -14,6 +14,6 @@ export function useAdventCalendar() {
             return res.json();
         },
         staleTime: 1000 * 60 * 5,
-        enabled: Boolean(currentUser),
+        enabled: Boolean(currentUser) && enabled !== false,
     });
 }

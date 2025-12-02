@@ -328,7 +328,7 @@ export function PineAdvent({
     const currentStackHeight = useStackHeight(stack, block);
     const { data: calendar } = useAdventCalendar();
     const openCalendarDays =
-        (variant ?? 0) > 99 ? 24 : (calendar?.brojOtvorenih ?? 0);
+        (variant ?? 0) > 99 ? 24 : (calendar?.openedCount ?? 0);
 
     // Ball decorations count
     const ballDecorationCount = Math.min(

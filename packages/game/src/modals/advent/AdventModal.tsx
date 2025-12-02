@@ -6,9 +6,11 @@ import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { useCallback, useEffect, useState } from 'react';
 import { useAdventCalendar } from '../../hooks/useAdventCalendar';
 import { useOpenAdventDay } from '../../hooks/useOpenAdventDay';
+import { AdventAlreadyOpenedScreen } from './AdventAlreadyOpenedScreen';
 import { AdventAwardScreen } from './AdventAwardScreen';
 import { AdventCalendarScreen } from './AdventCalendarScreen';
 import { AdventDescriptionScreen } from './AdventDescriptionScreen';
+import { AdventMissedDayScreen } from './AdventMissedDayScreen';
 import { AdventWelcomeScreen } from './AdventWelcomeScreen';
 
 type AdventAward = {
@@ -23,11 +25,17 @@ type AdventAward = {
 };
 
 type AdventAwardDescription = {
-    naslov: string;
-    opis: string;
+    title: string;
+    description: string;
 };
 
-type Screen = 'welcome' | 'description' | 'calendar' | 'award';
+type Screen =
+    | 'welcome'
+    | 'description'
+    | 'calendar'
+    | 'award'
+    | 'missed'
+    | 'alreadyOpened';
 
 export function AdventModal() {
     const [adventParam, setAdventParam] = useSearchParam('advent');
@@ -42,6 +50,8 @@ export function AdventModal() {
         AdventAwardDescription[]
     >([]);
     const [currentAwardIndex, setCurrentAwardIndex] = useState(0);
+    const [selectedDay, setSelectedDay] = useState<number | null>(null);
+    const [openedDayAwards, setOpenedDayAwards] = useState<AdventAward[]>([]);
 
     // Determine the current day of December (1-24)
     const getCurrentAdventDay = () => {
@@ -64,8 +74,8 @@ export function AdventModal() {
     const currentDay = getCurrentAdventDay();
 
     // Check if user has opened at least one day
-    const hasOpenedAnyDay = calendarData?.brojOtvorenih
-        ? calendarData.brojOtvorenih > 0
+    const hasOpenedAnyDay = calendarData?.openedCount
+        ? calendarData.openedCount > 0
         : false;
 
     // Reset screen when modal opens
@@ -91,21 +101,45 @@ export function AdventModal() {
         setAdventParam(undefined);
     }, [setAdventParam]);
 
-    const handleDayClick = async (day: number) => {
+    const handleDayClick = async (
+        day: number,
+        type: 'canOpen' | 'opened' | 'missed' | 'future',
+    ) => {
+        setSelectedDay(day);
+
+        if (type === 'missed') {
+            setScreen('missed');
+            return;
+        }
+
+        if (type === 'opened') {
+            // Pull awards from the calendar data for the opened day
+            const dayData = calendarData?.days?.find((d) => d.day === day);
+            setOpenedDayAwards(dayData?.awards ?? []);
+            setScreen('alreadyOpened');
+            return;
+        }
+
+        if (type === 'future') {
+            // Future days - wobble animation is handled in the cell component
+            return;
+        }
+
+        // canOpen - proceed with opening the day
         try {
             const result = (await openDay.mutateAsync(day)) as {
-                poruka: string;
-                nagrade?: AdventAward[];
-                opisNagrada?: AdventAwardDescription[];
+                message: string;
+                awards?: AdventAward[];
+                awardDescriptions?: AdventAwardDescription[];
             };
             console.log('Advent day open result:', result);
             if (
-                result.nagrade &&
-                result.opisNagrada &&
-                result.nagrade.length > 0
+                result.awards &&
+                result.awardDescriptions &&
+                result.awards.length > 0
             ) {
-                setAwards(result.nagrade);
-                setAwardDescriptions(result.opisNagrada);
+                setAwards(result.awards);
+                setAwardDescriptions(result.awardDescriptions);
                 setCurrentAwardIndex(0);
                 setScreen('award');
             }
@@ -151,11 +185,11 @@ export function AdventModal() {
             case 'calendar': {
                 // Check if today's day has been opened
                 const todayOpened =
-                    calendarData?.dani?.find((d) => d.dan === currentDay)
-                        ?.otvoren ?? false;
+                    calendarData?.days?.find((d) => d.day === currentDay)
+                        ?.opened ?? false;
                 return (
                     <AdventCalendarScreen
-                        days={calendarData?.dani ?? []}
+                        days={calendarData?.days ?? []}
                         currentDay={currentDay}
                         onDayClick={handleDayClick}
                         isLoading={openDay.isPending}
@@ -172,6 +206,21 @@ export function AdventModal() {
                         hasMoreAwards={currentAwardIndex < awards.length - 1}
                     />
                 );
+            case 'missed':
+                return (
+                    <AdventMissedDayScreen
+                        day={selectedDay ?? 0}
+                        onClose={() => setScreen('calendar')}
+                    />
+                );
+            case 'alreadyOpened':
+                return (
+                    <AdventAlreadyOpenedScreen
+                        day={selectedDay ?? 0}
+                        awards={openedDayAwards}
+                        onClose={() => setScreen('calendar')}
+                    />
+                );
         }
     };
 
@@ -180,7 +229,7 @@ export function AdventModal() {
             title="Adventski kalendar"
             open={isOpen}
             onOpenChange={(open) => !open && handleClose()}
-            className="max-w-sm border-tertiary border-b-4 p-0 overflow-hidden"
+            className="md:max-w-sm border-tertiary border-b-4 p-0 overflow-hidden"
             hideClose
         >
             <div className="bg-background">{renderContent()}</div>

@@ -2,6 +2,7 @@
 
 import { Check } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
+import { useState } from 'react';
 import { adventDayFont } from './fonts';
 
 type DayCellVariant = 'red' | 'green' | 'brown' | 'striped';
@@ -11,6 +12,7 @@ type AdventDayCellProps = {
     variant: DayCellVariant;
     isOpen: boolean;
     isToday: boolean;
+    isFuture: boolean;
     onClick?: () => void;
     disabled?: boolean;
     colSpan?: number;
@@ -25,7 +27,7 @@ export function getDayVariant(day: number): DayCellVariant {
 function StripedPattern() {
     return (
         <svg
-            className="absolute inset-0 w-full h-full rounded-sm"
+            className="absolute inset-0.5 w-full h-full rounded-sm"
             preserveAspectRatio="none"
             aria-hidden="true"
         >
@@ -37,7 +39,7 @@ function StripedPattern() {
                     height="10"
                     patternTransform="rotate(45)"
                 >
-                    <rect x="0" y="0" width="5" height="10" fill="#F5DEB3" />
+                    <rect x="0" y="0" width="5" height="10" fill="#F5DEB300" />
                     <rect x="5" y="0" width="5" height="10" fill="#DAA520" />
                 </pattern>
             </defs>
@@ -49,7 +51,7 @@ function StripedPattern() {
 function DotsPattern() {
     return (
         <svg
-            className="absolute inset-0 w-full h-full rounded-sm"
+            className="absolute inset-0.5 w-full h-full rounded-sm"
             preserveAspectRatio="none"
             aria-hidden="true"
         >
@@ -72,7 +74,7 @@ function DotsPattern() {
 function WavePattern() {
     return (
         <svg
-            className="absolute inset-0 w-full h-full rounded-sm"
+            className="absolute inset-0.5 w-full h-full rounded-sm"
             preserveAspectRatio="none"
             aria-hidden="true"
         >
@@ -101,10 +103,22 @@ export function AdventDayCell({
     variant,
     isOpen,
     isToday,
+    isFuture,
     onClick,
     disabled,
     colSpan = 1,
 }: AdventDayCellProps) {
+    const [isWobbling, setIsWobbling] = useState(false);
+
+    const handleClick = () => {
+        if (isFuture && !isOpen) {
+            // Trigger wobble animation for future days
+            setIsWobbling(true);
+            setTimeout(() => setIsWobbling(false), 500);
+            return;
+        }
+        onClick?.();
+    };
     const variantClasses: Record<DayCellVariant, string> = {
         red: 'bg-[#8B0000]',
         green: 'bg-[#1B5E20]',
@@ -122,13 +136,14 @@ export function AdventDayCell({
 
     const variantOpenBgClasses: Record<DayCellVariant, string> = {
         red: 'bg-[#6B0000]',
-        green: 'bg-[#3E2723]',
+        green: 'bg-[#0D3D10]',
         brown: 'bg-[#3E2723]',
-        striped: 'bg-[#5D3A1A]',
+        striped: 'bg-[#DAA520]',
     };
 
     const baseClasses = cx(
-        'relative w-full rounded-sm h-full flex items-center justify-center font-bold text-2xl transition-all duration-200',
+        'overflow-hidden relative w-full rounded-sm h-full flex items-center justify-center font-bold text-2xl transition-all duration-200',
+        'cursor-pointer hover:bg-white/30 hover:scale-105 active:scale-95',
         colSpan === 1 && 'aspect-square',
         colSpan === 2 && 'aspect-[2/1]',
     );
@@ -139,29 +154,16 @@ export function AdventDayCell({
         colSpan === 2 && 'col-span-2',
     );
 
-    // When opened, use border color as background but keep the variant styling
-    const openBgClass = 'bg-[#5D3A1A]';
-
-    const interactiveClasses =
-        !disabled && !isOpen
-            ? 'cursor-pointer hover:scale-105 hover:shadow-lg active:scale-95'
-            : '';
-
-    const todayRingClasses =
-        isToday && !isOpen ? 'ring-4 ring-yellow-400 z-20' : '';
-
     return (
         <div className={wrapperClasses}>
             <button
                 type="button"
-                onClick={onClick}
-                disabled={disabled || isOpen}
+                onClick={handleClick}
+                disabled={disabled}
                 className={cx(
                     baseClasses,
-                    isOpen ? openBgClass : variantClasses[variant],
-                    interactiveClasses,
-                    todayRingClasses,
-                    'overflow-hidden',
+                    !isOpen && variantClasses[variant],
+                    isWobbling && 'animate-wobble',
                 )}
             >
                 {/* Pattern backgrounds with inset - show for closed cells only */}
@@ -184,7 +186,7 @@ export function AdventDayCell({
                 {isOpen && (
                     <div
                         className={cx(
-                            'inset-0 absolute',
+                            'inset-0.5 rounded-sm absolute',
                             variantOpenBgClasses[variant],
                         )}
                     ></div>
@@ -212,7 +214,7 @@ export function AdventDayCell({
                 {/* Border for cell separation */}
                 <div
                     className={cx(
-                        'absolute rounded-sm inset-0 border border-dashed pointer-events-none',
+                        'absolute rounded-sm inset-0.5 border border-dashed pointer-events-none',
                         variantBorderClasses[variant],
                     )}
                 />

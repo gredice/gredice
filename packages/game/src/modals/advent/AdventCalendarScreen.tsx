@@ -7,14 +7,16 @@ import { AdventDayCell, getDayVariant } from './AdventDayCell';
 import { adventTitleFont } from './fonts';
 
 type AdventDay = {
-    dan: number;
-    otvoren: boolean;
+    day: number;
+    opened: boolean;
 };
+
+type DayClickType = 'canOpen' | 'opened' | 'missed' | 'future';
 
 type AdventCalendarScreenProps = {
     days: AdventDay[];
     currentDay: number;
-    onDayClick: (day: number) => void;
+    onDayClick: (day: number, type: DayClickType) => void;
     isLoading?: boolean;
     todayOpened?: boolean;
 };
@@ -33,7 +35,7 @@ export function AdventCalendarScreen({
     isLoading,
     todayOpened,
 }: AdventCalendarScreenProps) {
-    const dayMap = new Map(days.map((d) => [d.dan, d]));
+    const dayMap = new Map(days.map((d) => [d.day, d]));
 
     const subtitleMessage = todayOpened
         ? 'Već sutra te čekaju novi pokloni! Do tad uživaj u svom vrtu.'
@@ -61,9 +63,25 @@ export function AdventCalendarScreen({
                 <div className="grid grid-cols-5 gap-0 grid-rows-[repeat(5,1fr)] h-full">
                     {calendarLayout.map((dayNum) => {
                         const dayData = dayMap.get(dayNum);
-                        const isOpen = dayData?.otvoren ?? false;
+                        const isOpen = dayData?.opened ?? false;
                         const isToday = dayNum === currentDay;
+                        const isFuture = dayNum > currentDay;
+                        const isPast = dayNum < currentDay;
                         const canOpen = dayNum <= currentDay && !isOpen;
+
+                        const handleDayClick = () => {
+                            if (isFuture) {
+                                // Future days - wobble is handled in AdventDayCell
+                                return;
+                            }
+                            if (isOpen) {
+                                onDayClick(dayNum, 'opened');
+                            } else if (isPast) {
+                                onDayClick(dayNum, 'missed');
+                            } else if (canOpen) {
+                                onDayClick(dayNum, 'canOpen');
+                            }
+                        };
 
                         return (
                             <AdventDayCell
@@ -72,8 +90,9 @@ export function AdventCalendarScreen({
                                 variant={getDayVariant(dayNum)}
                                 isOpen={isOpen}
                                 isToday={isToday}
-                                disabled={isLoading || !canOpen}
-                                onClick={() => canOpen && onDayClick(dayNum)}
+                                isFuture={isFuture}
+                                disabled={isLoading}
+                                onClick={handleDayClick}
                                 colSpan={dayNum === 24 ? 2 : 1}
                             />
                         );
