@@ -144,13 +144,11 @@ export function AdventDayCell({
     const baseClasses = cx(
         'overflow-hidden relative w-full rounded-sm h-full flex items-center justify-center font-bold text-2xl transition-all duration-200',
         'cursor-pointer hover:bg-white/30 hover:scale-105 active:scale-95',
-        colSpan === 1 && 'aspect-square',
-        colSpan === 2 && 'aspect-[2/1]',
     );
 
     const wrapperClasses = cx(
         variantClasses[variant],
-        'p-0.5',
+        'p-0.5 min-h-0 min-w-0',
         colSpan === 2 && 'col-span-2',
     );
 

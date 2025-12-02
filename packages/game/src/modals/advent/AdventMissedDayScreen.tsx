@@ -24,7 +24,7 @@ export function AdventMissedDayScreen({
                     Dan {day}
                 </Typography>
                 <Typography level="body2">
-                    Nažalost, nisi pokupio nagradu za ovaj dan.
+                    Nažalost, nagrade za ovaj dan su istekle.
                 </Typography>
                 <Typography level="body2">
                     Ne brini, ima još vremena za pokupiti ostale nagrade! 🎁

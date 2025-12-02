@@ -203,7 +203,6 @@ export function AdventModal() {
                         award={awards[currentAwardIndex]}
                         description={awardDescriptions[currentAwardIndex]}
                         onContinue={handleAwardContinue}
-                        hasMoreAwards={currentAwardIndex < awards.length - 1}
                     />
                 );
             case 'missed':
