@@ -29,7 +29,6 @@ type AdventAwardScreenProps = {
     award: AdventAward;
     description: AdventAwardDescription;
     onContinue: () => void;
-    hasMoreAwards: boolean;
 };
 
 function AwardImage({ award }: { award: AdventAward }) {
@@ -75,7 +74,6 @@ export function AdventAwardScreen({
     award,
     description,
     onContinue,
-    hasMoreAwards,
 }: AdventAwardScreenProps) {
     return (
         <Stack spacing={4} className="items-center text-center p-8 relative">

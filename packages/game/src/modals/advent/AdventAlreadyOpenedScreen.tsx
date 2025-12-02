@@ -80,7 +80,7 @@ export function AdventAlreadyOpenedScreen({
                     Dan {day}
                 </Typography>
                 <Typography level="body2">
-                    Već si pokupio nagrade za ovaj dan!
+                    Nagrade za ovaj dan su već skupljene!
                 </Typography>
             </Stack>
 
