@@ -26,13 +26,13 @@ importers:
         version: 1.4.1
       '@hono/mcp':
         specifier: 0.2.0
-        version: 0.2.0(@modelcontextprotocol/sdk@1.23.0(zod@4.1.13))(hono-rate-limiter@0.4.2(hono@4.10.7))(hono@4.10.7)
+        version: 0.2.0(@modelcontextprotocol/sdk@1.24.0(zod@4.1.13))(hono-rate-limiter@0.4.2(hono@4.10.7))(hono@4.10.7)
       '@hono/standard-validator':
         specifier: 0.2.0
         version: 0.2.0(@standard-schema/spec@1.0.0)(hono@4.10.7)
       '@modelcontextprotocol/sdk':
-        specifier: 1.23.0
-        version: 1.23.0(zod@4.1.13)
+        specifier: 1.24.0
+        version: 1.24.0(zod@4.1.13)
       '@scalar/api-reference-react':
         specifier: 0.8.6
         version: 0.8.6(axios@1.13.2)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.2.0)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))(typescript@5.9.3)
@@ -2529,8 +2529,8 @@ packages:
   '@microsoft/tsdoc@0.16.0':
     resolution: {integrity: sha512-xgAyonlVVS+q7Vc7qLW0UrJU7rSFcETRWsqdXZtjzRU8dF+6CkozTK4V4y1LwOX7j8r/vHphjDeMeGI4tNGeGA==}
 
-  '@modelcontextprotocol/sdk@1.23.0':
-    resolution: {integrity: sha512-MCGd4K9aZKvuSqdoBkdMvZNcYXCkZRYVs/Gh92mdV5IHbctX9H9uIvd4X93+9g8tBbXv08sxc/QHXTzf8y65bA==}
+  '@modelcontextprotocol/sdk@1.24.0':
+    resolution: {integrity: sha512-D8h5KXY2vHFW8zTuxn2vuZGN0HGrQ5No6LkHwlEA9trVgNdPL3TF1dSqKA7Dny6BbBYKSW/rOBDXdC8KJAjUCg==}
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
@@ -6659,6 +6659,9 @@ packages:
   jose@5.10.0:
     resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
 
+  jose@6.1.3:
+    resolution: {integrity: sha512-0TpaTfihd4QMNwrz/ob2Bp7X04yuxJkjRGi4aKmOqwhov54i6u79oCv7T+C7lo70MKH6BesI3vscD1yb/yzKXQ==}
+
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
     engines: {node: '>=10'}
@@ -10282,9 +10285,9 @@ snapshots:
       '@tanstack/vue-virtual': 3.13.12(vue@3.5.24(typescript@5.9.3))
       vue: 3.5.24(typescript@5.9.3)
 
-  '@hono/mcp@0.2.0(@modelcontextprotocol/sdk@1.23.0(zod@4.1.13))(hono-rate-limiter@0.4.2(hono@4.10.7))(hono@4.10.7)':
+  '@hono/mcp@0.2.0(@modelcontextprotocol/sdk@1.24.0(zod@4.1.13))(hono-rate-limiter@0.4.2(hono@4.10.7))(hono@4.10.7)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.23.0(zod@4.1.13)
+      '@modelcontextprotocol/sdk': 1.24.0(zod@4.1.13)
       hono: 4.10.7
       hono-rate-limiter: 0.4.2(hono@4.10.7)
       pkce-challenge: 5.0.0
@@ -10801,7 +10804,7 @@ snapshots:
 
   '@microsoft/tsdoc@0.16.0': {}
 
-  '@modelcontextprotocol/sdk@1.23.0(zod@4.1.13)':
+  '@modelcontextprotocol/sdk@1.24.0(zod@4.1.13)':
     dependencies:
       ajv: 8.17.1
       ajv-formats: 3.0.1(ajv@8.17.1)
@@ -10812,6 +10815,7 @@ snapshots:
       eventsource-parser: 3.0.6
       express: 5.1.0
       express-rate-limit: 7.5.1(express@5.1.0)
+      jose: 6.1.3
       pkce-challenge: 5.0.0
       raw-body: 3.0.1
       zod: 4.1.13
@@ -15488,6 +15492,8 @@ snapshots:
   jju@1.4.0: {}
 
   jose@5.10.0: {}
+
+  jose@6.1.3: {}
 
   joycon@3.1.1: {}
 
