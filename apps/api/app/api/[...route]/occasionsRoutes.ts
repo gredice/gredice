@@ -9,6 +9,7 @@ import {
     ADVENT_CALENDAR_2025_ID,
     ADVENT_TOTAL_DAYS,
     AdventCalendarDayAlreadyOpenedError,
+    AdventCalendarDayNotYetAvailableError,
     getAdventCalendar2025Status,
     getAdventOccasionOverview,
     openAdventCalendar2025Day,
@@ -76,6 +77,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             poruka: 'Taj dan adventskog kalendara je već otvoren.',
                         },
                         409,
+                    );
+                }
+                if (error instanceof AdventCalendarDayNotYetAvailableError) {
+                    return context.json(
+                        {
+                            poruka: `Dan ${day} još nije dostupan. Dostupan od ${error.availableAt.toISOString()}.`,
+                            dostupnoOd: error.availableAt.toISOString(),
+                        },
+                        400,
                     );
                 }
                 console.error('Pogreška pri otvaranju adventskog dana:', error);
