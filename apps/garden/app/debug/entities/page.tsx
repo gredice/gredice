@@ -1,7 +1,4 @@
-import { entityNameMap } from '@gredice/game';
 import { EntityGridViewerDynamic } from './EntityGridViewerDynamic';
-
-const entityNames = Object.keys(entityNameMap);
 
 export default function DebugEntitiesPage() {
     return (
@@ -11,7 +8,7 @@ export default function DebugEntitiesPage() {
                     Entity Debug View
                 </h1>
                 <p className="text-neutral-400 text-sm">
-                    Displaying all {entityNames.length} entities/blocks
+                    Displaying all entities/blocks
                 </p>
             </div>
             <div className="flex-1">
