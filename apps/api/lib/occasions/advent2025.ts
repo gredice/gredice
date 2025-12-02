@@ -96,6 +96,9 @@ const DECORATION_BLOCK_IDS = [
     'GiftBox_PurpleSilver',
     'GiftBox_GoldRed',
     'GiftBox_WhiteGreen',
+    'Block_Snow_Falling', // Increase chance of snowy blocks by
+    'Block_Snow_Falling', // including multiple times
+    'Block_Snow_Falling', // (3 to counteract 6 GiftBox chance)
 ];
 
 export type AdventDayStatus = {
