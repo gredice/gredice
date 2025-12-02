@@ -14,6 +14,7 @@ import { BlockSand } from './BlockSand';
 import { BlockSandAngle } from './BlockSandAngle';
 import { BlockSnow } from './BlockSnow';
 import { BlockSnowAngle } from './BlockSnowAngle';
+import { BlockSnowFalling } from './BlockSnowFalling';
 import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Composter } from './Composter';
@@ -34,6 +35,7 @@ import { Seed } from './raisedBed/Seed';
 import { Stick } from './raisedBed/Stick';
 import { Shade } from './Shade';
 import { ShovelSmall } from './ShovelSmall';
+import { Snowman } from './Snowman';
 import { StoneLarge } from './StoneLarge';
 import { StoneMedium } from './StoneMedium';
 import { StoneSmall } from './StoneSmall';
@@ -53,6 +55,7 @@ export const entityNameMap: Record<
     Block_Sand_Angle: BlockSandAngle,
     Block_Snow: BlockSnow,
     Block_Snow_Angle: BlockSnowAngle,
+    Block_Snow_Falling: BlockSnowFalling,
     Composter: Composter,
     Raised_Bed: RaisedBed,
     Shade: Shade,
@@ -73,6 +76,7 @@ export const entityNameMap: Record<
     StoneMedium: StoneMedium,
     StoneLarge: StoneLarge,
     ShovelSmall: ShovelSmall,
+    Snowman: Snowman,
     Tulip: Tulip,
     BaleHey: BaleHey,
 
