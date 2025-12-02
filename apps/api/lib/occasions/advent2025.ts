@@ -48,11 +48,44 @@ function getAdventDayAvailableAt(day: number): Date {
 }
 
 /**
+ * Get the current advent day based on UTC-12 (the last timezone to leave a day).
+ * This ensures we only allow opening "today's" door, using the most conservative
+ * timezone so that if it's still "today" anywhere in the world, users can open it.
+ */
+function getCurrentAdventDay(): number {
+    const now = new Date();
+    // UTC-12 is the last timezone to leave a day (e.g., Baker Island)
+    // Add 12 hours to UTC to get UTC-12 time
+    const utcMinus12 = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+    const dayOfMonth = utcMinus12.getUTCDate();
+    const month = utcMinus12.getUTCMonth(); // 0-indexed, so December = 11
+
+    // Only return valid advent days (1-24 in December)
+    if (month === 11 && dayOfMonth >= 1 && dayOfMonth <= ADVENT_TOTAL_DAYS) {
+        return dayOfMonth;
+    }
+    // Before December 1st or after December 24th
+    return 0;
+}
+
+/**
  * Check if a specific advent day is currently available to open.
+ * A day is only available if:
+ * 1. It has started (midnight in UTC+14)
+ * 2. It hasn't ended yet (still "today" somewhere in the world, using UTC-12)
  */
 function isAdventDayAvailable(day: number): boolean {
     const availableAt = getAdventDayAvailableAt(day);
-    return new Date() >= availableAt;
+    const now = new Date();
+
+    // Check if the day has started (in UTC+14)
+    if (now < availableAt) {
+        return false;
+    }
+
+    // Check if it's still "today" somewhere (using UTC-12)
+    const currentDay = getCurrentAdventDay();
+    return day === currentDay;
 }
 
 const CHRISTMAS_TREE_BLOCK_NAME = 'PineAdvent';
