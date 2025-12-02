@@ -1,6 +1,5 @@
-'use client';
-
-import { EntityGridViewer, entityNameMap } from '@gredice/game';
+import { entityNameMap } from '@gredice/game';
+import { EntityGridViewerDynamic } from './EntityGridViewerDynamic';
 
 const entityNames = Object.keys(entityNameMap);
 
@@ -16,10 +15,7 @@ export default function DebugEntitiesPage() {
                 </p>
             </div>
             <div className="flex-1">
-                <EntityGridViewer
-                    entityNames={entityNames}
-                    className="w-full h-full"
-                />
+                <EntityGridViewerDynamic />
             </div>
         </div>
     );
