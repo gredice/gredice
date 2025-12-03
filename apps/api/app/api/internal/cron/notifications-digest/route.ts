@@ -4,6 +4,8 @@ import { sendNotificationsBulk } from '../../../../../lib/email/transactional';
 
 export const dynamic = 'force-dynamic';
 
+const TARGET_HOUR = 8; // Send notifications at 8 AM user local time
+
 export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('authorization');
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -12,7 +14,9 @@ export async function GET(request: NextRequest) {
         });
     }
 
-    const notificationEmails = await notificationsDigest();
+    const notificationEmails = await notificationsDigest({
+        targetHour: TARGET_HOUR,
+    });
     for (const email of notificationEmails) {
         if (email.newNotificationsCount === 0 || !email.email) {
             console.debug(

@@ -10,6 +10,7 @@ import { sendDeliverySurvey } from '../../../../../lib/email/transactional';
 
 const SURVEY_URL = 'https://form.typeform.com/to/X727vyBk';
 const LOOKBACK_DAYS = 45;
+const TARGET_HOUR = 8; // Send survey at 8 AM user local time
 
 export const dynamic = 'force-dynamic';
 
@@ -26,8 +27,37 @@ function formatMonth(date: Date) {
     }).format(date);
 }
 
+/**
+ * Check if the current hour in a timezone matches the target hour.
+ */
+function isTargetHourInTimeZone(
+    timeZone: string,
+    targetHour: number,
+    now: Date = new Date(),
+): boolean {
+    try {
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone,
+            hour: 'numeric',
+            hour12: false,
+        });
+        const currentHour = Number.parseInt(formatter.format(now), 10);
+        return currentHour === targetHour;
+    } catch {
+        // If timezone is invalid, default to Europe/Paris
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Europe/Paris',
+            hour: 'numeric',
+            hour12: false,
+        });
+        const currentHour = Number.parseInt(formatter.format(now), 10);
+        return currentHour === targetHour;
+    }
+}
+
 interface DeliverySurveyGroup {
     accountId: string;
+    accountTimeZone: string;
     fulfilledAt: Date;
     candidates: Map<string, DeliverySurveyCandidate>;
     monthKey: string;
@@ -63,6 +93,7 @@ export async function GET(request: NextRequest) {
         if (!group) {
             group = {
                 accountId: candidate.accountId,
+                accountTimeZone: candidate.accountTimeZone,
                 fulfilledAt: candidate.fulfilledAt,
                 candidates: new Map<string, DeliverySurveyCandidate>(),
                 monthKey: candidate.monthKey,
@@ -83,7 +114,13 @@ export async function GET(request: NextRequest) {
         }
     }
 
-    for (const group of orderedGroups) {
+    // Filter groups to only process accounts where it's currently the target hour
+    const now = new Date();
+    const groupsToProcess = orderedGroups.filter((group) =>
+        isTargetHourInTimeZone(group.accountTimeZone, TARGET_HOUR, now),
+    );
+
+    for (const group of groupsToProcess) {
         const candidatesInGroup = Array.from(group.candidates.values());
         if (candidatesInGroup.length === 0) {
             continue;

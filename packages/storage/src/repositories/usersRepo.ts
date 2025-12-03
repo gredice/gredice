@@ -164,7 +164,11 @@ async function createDefaultGarden(accountId: string) {
     }
 }
 
-async function createUserAndAccount(userName: string, displayName?: string, timeZone?: string) {
+async function createUserAndAccount(
+    userName: string,
+    displayName?: string,
+    timeZone?: string,
+) {
     const userId = await createUser(userName, displayName);
     const accountId = await createAccount(timeZone);
     await createDefaultGarden(accountId);
@@ -255,7 +259,11 @@ export async function createOrUpdateUserWithOauth(
     });
     let isNewUser = false;
     if (!existingUser) {
-        const createdUserId = await createUserAndAccount(data.email, data.name, timeZone);
+        const createdUserId = await createUserAndAccount(
+            data.email,
+            data.name,
+            timeZone,
+        );
         existingUser = await storage().query.users.findFirst({
             where: eq(users.id, createdUserId),
             with: {

@@ -7,7 +7,7 @@
         },
         {
             "path": "/api/internal/cron/notifications-digest",
-            "schedule": "0 9 * * *"
+            "schedule": "0 * * * *"
         },
         {
             "path": "/api/internal/cron/auto-close-slots",
@@ -15,7 +15,7 @@
         },
         {
             "path": "/api/internal/cron/delivery-survey",
-            "schedule": "0 9 * * *"
+            "schedule": "0 * 1,2 * *"
         },
         {
             "path": "/api/internal/cron/update-farm-weather",

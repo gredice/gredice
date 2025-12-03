@@ -4,6 +4,7 @@ import { and, asc, desc, eq, gte, inArray } from 'drizzle-orm';
 import 'server-only';
 import { AUTO_CLOSE_WINDOW_MS } from '../helpers/timeSlotAutomation';
 import {
+    accounts,
     accountUsers,
     DeliveryRequestStates,
     deliveryRequests,
@@ -718,6 +719,7 @@ export async function fulfillDeliveryRequest(
 export interface DeliverySurveyCandidate {
     requestId: string;
     accountId: string;
+    accountTimeZone: string;
     operationId: number;
     fulfilledAt: Date;
     userEmails: { userId: string; email: string }[];
@@ -820,6 +822,21 @@ export async function getDeliverySurveyCandidates({
               .where(inArray(accountUsers.accountId, accountIds))
         : [];
 
+    // Fetch account timezones
+    const accountTimeZones = accountIds.length
+        ? await storage()
+              .select({
+                  id: accounts.id,
+                  timeZone: accounts.timeZone,
+              })
+              .from(accounts)
+              .where(inArray(accounts.id, accountIds))
+        : [];
+
+    const accountTimeZoneMap = new Map(
+        accountTimeZones.map((a) => [a.id, a.timeZone] as const),
+    );
+
     return pendingEvents
         .map((event) => {
             const request = requestsById.get(event.aggregateId);
@@ -844,9 +861,13 @@ export async function getDeliverySurveyCandidates({
                 }))
                 .filter((row) => row.email.length > 0);
 
+            const accountTimeZone =
+                accountTimeZoneMap.get(accountId) ?? 'Europe/Paris';
+
             return {
                 requestId: event.aggregateId,
                 accountId,
+                accountTimeZone,
                 operationId,
                 fulfilledAt: event.createdAt,
                 userEmails,
