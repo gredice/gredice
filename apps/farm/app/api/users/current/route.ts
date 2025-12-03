@@ -13,9 +13,7 @@ export async function GET() {
 
         const lastRewardEvent = await getLastBirthdayRewardEvent(userId);
         const birthdayLastRewardAt = lastRewardEvent
-            ? new Date(
-                  (lastRewardEvent.data as { rewardDate: string }).rewardDate,
-              )
+            ? new Date(lastRewardEvent.data.rewardDate)
             : null;
 
         return Response.json({

@@ -479,6 +479,13 @@ export type Event = {
     data?: unknown | null | undefined;
 };
 
+export interface BirthdayRewardEventData {
+    rewardDate: string;
+    accountId: string;
+    amount: number;
+    late: boolean;
+}
+
 export function createEvent({ type, version, aggregateId, data }: Event) {
     return storage().insert(events).values({
         type,
@@ -493,11 +500,18 @@ export function deleteEventById(eventId: number) {
 }
 
 export async function getLastBirthdayRewardEvent(userId: string) {
-    return storage().query.events.findFirst({
+    const event = await storage().query.events.findFirst({
         where: and(
             eq(events.aggregateId, userId),
             eq(events.type, knownEventTypes.users.birthdayReward),
         ),
         orderBy: [desc(events.createdAt)],
     });
+    if (!event) {
+        return null;
+    }
+    return {
+        ...event,
+        data: event.data as BirthdayRewardEventData,
+    };
 }

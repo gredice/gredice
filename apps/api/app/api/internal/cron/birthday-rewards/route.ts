@@ -60,12 +60,7 @@ export async function GET(request: NextRequest) {
         );
         const lastRewardEvent = await getLastBirthdayRewardEvent(user.id);
         const lastReward = lastRewardEvent
-            ? startOfUtcDay(
-                  new Date(
-                      (lastRewardEvent.data as { rewardDate: string })
-                          .rewardDate,
-                  ),
-              )
+            ? startOfUtcDay(new Date(lastRewardEvent.data.rewardDate))
             : null;
         if (lastReward && lastReward >= rewardDate) {
             skipped.push({ userId: user.id, reason: 'already_rewarded' });

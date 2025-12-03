@@ -51,10 +51,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             const lastRewardEvent = await getLastBirthdayRewardEvent(userId);
             const birthdayLastRewardAt = lastRewardEvent
-                ? new Date(
-                      (lastRewardEvent.data as { rewardDate: string })
-                          .rewardDate,
-                  )
+                ? new Date(lastRewardEvent.data.rewardDate)
                 : null;
 
             return context.json({
@@ -239,13 +236,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         const lastRewardEvent =
                             await getLastBirthdayRewardEvent(userId);
                         const lastRewardAt = lastRewardEvent
-                            ? new Date(
-                                  (
-                                      lastRewardEvent.data as {
-                                          rewardDate: string;
-                                      }
-                                  ).rewardDate,
-                              )
+                            ? new Date(lastRewardEvent.data.rewardDate)
                             : null;
                         const alreadyRewarded =
                             lastRewardAt && lastRewardAt >= lastOccurrence;
