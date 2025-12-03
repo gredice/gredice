@@ -11,6 +11,17 @@ export type AccountSunflowersPayload = {
 };
 
 // ============================================================================
+// User event payload types
+// ============================================================================
+
+export type UserBirthdayRewardData = {
+    rewardDate: string;
+    accountId: string;
+    amount: number;
+    late: boolean;
+};
+
+// ============================================================================
 // Advent event payload types
 // ============================================================================
 export type AdventGiftAward =
