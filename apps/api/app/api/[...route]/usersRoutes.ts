@@ -1,4 +1,9 @@
-import { getUser, getUserWithLogins, updateUser } from '@gredice/storage';
+import {
+    getLastBirthdayRewardEvent,
+    getUser,
+    getUserWithLogins,
+    updateUser,
+} from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
@@ -14,6 +19,7 @@ import {
     differenceInCalendarDays,
     getLastBirthdayOccurrence,
     isValidBirthday,
+    MIN_BIRTH_YEAR,
     startOfUtcDay,
 } from '../../../lib/users/birthdayUtils';
 
@@ -22,7 +28,7 @@ const birthdaySchema = z
     .object({
         day: z.number().int().min(1).max(31),
         month: z.number().int().min(1).max(12),
-        year: z.number().int().min(1900).max(currentYear).optional(),
+        year: z.number().int().min(MIN_BIRTH_YEAR).max(currentYear).optional(),
     })
     .strict();
 
@@ -43,6 +49,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            const lastRewardEvent = await getLastBirthdayRewardEvent(userId);
+            const birthdayLastRewardAt = lastRewardEvent
+                ? new Date(lastRewardEvent.data.rewardDate)
+                : null;
+
             return context.json({
                 id: dbUser.id,
                 userName: dbUser.userName,
@@ -57,7 +68,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                           }
                         : null,
                 birthdayLastUpdatedAt: dbUser.birthdayLastUpdatedAt,
-                birthdayLastRewardAt: dbUser.birthdayLastRewardAt,
+                birthdayLastRewardAt,
                 createdAt: dbUser.createdAt,
             });
         },
@@ -222,9 +233,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             now,
                             lastOccurrence,
                         );
+                        const lastRewardEvent =
+                            await getLastBirthdayRewardEvent(userId);
+                        const lastRewardAt = lastRewardEvent
+                            ? new Date(lastRewardEvent.data.rewardDate)
+                            : null;
                         const alreadyRewarded =
-                            dbUser.birthdayLastRewardAt &&
-                            dbUser.birthdayLastRewardAt >= lastOccurrence;
+                            lastRewardAt && lastRewardAt >= lastOccurrence;
 
                         if (
                             daysSinceBirthday >= 0 &&

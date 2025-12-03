@@ -1,4 +1,7 @@
-import { getUsersWithBirthdayOn } from '@gredice/storage';
+import {
+    getLastBirthdayRewardEvent,
+    getUsersWithBirthdayOn,
+} from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 import {
     type BirthdayRewardUser,
@@ -55,8 +58,9 @@ export async function GET(request: NextRequest) {
                 currentYear,
             ),
         );
-        const lastReward = user.birthdayLastRewardAt
-            ? startOfUtcDay(user.birthdayLastRewardAt)
+        const lastRewardEvent = await getLastBirthdayRewardEvent(user.id);
+        const lastReward = lastRewardEvent
+            ? startOfUtcDay(new Date(lastRewardEvent.data.rewardDate))
             : null;
         if (lastReward && lastReward >= rewardDate) {
             skipped.push({ userId: user.id, reason: 'already_rewarded' });

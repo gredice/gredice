@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { events } from '../schema';
 import { storage } from '../storage';
 
@@ -11,6 +11,7 @@ export const knownEventTypes = {
     },
     users: {
         create: 'user.create',
+        birthdayReward: 'user.birthdayReward',
     },
     gardens: {
         create: 'garden.create',
@@ -103,6 +104,20 @@ export const knownEvents = {
             type: knownEventTypes.users.create,
             version: 1,
             aggregateId,
+        }),
+        birthdayRewardV1: (
+            aggregateId: string,
+            data: {
+                rewardDate: string;
+                accountId: string;
+                amount: number;
+                late: boolean;
+            },
+        ) => ({
+            type: knownEventTypes.users.birthdayReward,
+            version: 1,
+            aggregateId,
+            data,
         }),
     },
     gardens: {
@@ -464,6 +479,13 @@ export type Event = {
     data?: unknown | null | undefined;
 };
 
+export interface BirthdayRewardEventData {
+    rewardDate: string;
+    accountId: string;
+    amount: number;
+    late: boolean;
+}
+
 export function createEvent({ type, version, aggregateId, data }: Event) {
     return storage().insert(events).values({
         type,
@@ -475,4 +497,21 @@ export function createEvent({ type, version, aggregateId, data }: Event) {
 
 export function deleteEventById(eventId: number) {
     return storage().delete(events).where(eq(events.id, eventId));
+}
+
+export async function getLastBirthdayRewardEvent(userId: string) {
+    const event = await storage().query.events.findFirst({
+        where: and(
+            eq(events.aggregateId, userId),
+            eq(events.type, knownEventTypes.users.birthdayReward),
+        ),
+        orderBy: [desc(events.createdAt)],
+    });
+    if (!event) {
+        return null;
+    }
+    return {
+        ...event,
+        data: event.data as BirthdayRewardEventData,
+    };
 }
