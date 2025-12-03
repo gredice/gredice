@@ -28,7 +28,7 @@
         "@signalco/ui-icons": "0.2.2",
         "@signalco/ui-primitives": "0.6.5",
         "motion": "12.23.24",
-        "next": "16.0.5",
+        "next": "16.0.7",
         "react": "19.2.0",
         "react-dom": "19.2.0",
         "react-markdown": "10.1.0"
