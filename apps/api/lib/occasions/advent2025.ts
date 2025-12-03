@@ -1,4 +1,4 @@
-import { tz } from '@date-fns/tz';
+import { TZDate, tz } from '@date-fns/tz';
 import type { BlockData, PlantSortData } from '@gredice/directory-types';
 import {
     type AdventAward,
@@ -15,7 +15,6 @@ import {
     type SelectGardenStack,
     updateGardenStack,
 } from '@gredice/storage';
-import { startOfDay } from 'date-fns';
 
 const ADVENT_YEAR = 2025;
 const ADVENT_TOTAL_DAYS = 24;
@@ -41,12 +40,8 @@ export class AdventCalendarDayNotYetAvailableError extends Error {
  */
 function getAdventDayAvailableAt(day: number, timeZone: string): Date {
     // Advent day 1 = December 1st, day 2 = December 2nd, etc.
-    // Create date at midnight in the user's timezone for the given day
-    const userTz = tz(timeZone);
-    // Create a date representing midnight on December `day` in the user's timezone
-    const targetDate = new Date(ADVENT_YEAR, 11, day, 0, 0, 0, 0);
-    // Get the start of day in user's timezone (this handles DST properly)
-    return startOfDay(userTz(targetDate));
+    // Create date at midnight on December `day` directly in the user's timezone
+    return new TZDate(ADVENT_YEAR, 11, day, 0, 0, 0, 0, timeZone);
 }
 
 /**
