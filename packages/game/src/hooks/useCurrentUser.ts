@@ -15,10 +15,25 @@ async function getCurrentUser() {
         return null;
     }
 
-    const currentUser = await response.json();
+    if (!response.ok) {
+        throw new Error('Failed to fetch current user');
+    }
+
+    const {
+        createdAt,
+        birthdayLastUpdatedAt,
+        birthdayLastRewardAt,
+        ...currentUser
+    } = await response.json();
     return {
         ...currentUser,
-        createdAt: new Date(currentUser.createdAt),
+        createdAt: new Date(createdAt),
+        birthdayLastUpdatedAt: birthdayLastUpdatedAt
+            ? new Date(birthdayLastUpdatedAt)
+            : null,
+        birthdayLastRewardAt: birthdayLastRewardAt
+            ? new Date(birthdayLastRewardAt)
+            : null,
     };
 }
 

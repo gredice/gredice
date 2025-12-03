@@ -32,6 +32,7 @@ import type {
     ReceiptFiscalizePayload,
     TransactionCreatePayload,
     TransactionUpdatePayload,
+    UserBirthdayRewardPayload,
 } from './types';
 
 export const knownEvents = {
@@ -74,6 +75,15 @@ export const knownEvents = {
             type: knownEventTypes.users.create,
             version: 1,
             aggregateId,
+        }),
+        birthdayRewardV1: (
+            aggregateId: string,
+            data: UserBirthdayRewardPayload,
+        ) => ({
+            type: knownEventTypes.users.birthdayReward,
+            version: 1,
+            aggregateId,
+            data,
         }),
     },
     gardens: {

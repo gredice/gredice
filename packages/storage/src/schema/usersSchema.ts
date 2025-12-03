@@ -113,6 +113,10 @@ export const users = pgTable(
         avatarUrl: text('avatar_url'),
         displayName: text('display_name'),
         role: text('role').notNull(),
+        birthdayDay: smallint('birthday_day'),
+        birthdayMonth: smallint('birthday_month'),
+        birthdayYear: smallint('birthday_year'),
+        birthdayLastUpdatedAt: timestamp('birthday_last_updated_at'),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()

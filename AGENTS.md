@@ -34,8 +34,9 @@ This repository is the **Gredice** monorepo. It hosts several Next.js applicatio
 
 ## Database & storage tooling
 
-- Schema changes live under `packages/storage`.
-- Don't apply migrations. The DB migrations will be applied manually after reviewing changes.
+- Schema changes live under `packages/storage`. Use `pnpm db-generate` after modifying the schema to create migrations.
+- NEVER apply migrations with `pnpm db-push`, the DB migrations will be applied manually during deployment.
+- For shared PRs, leave new migration files out of version control unless explicitly requested. Coordinate with maintainers before merging so the migrations can be added manually without ordering conflicts.
 
 ## Package dependencies
 

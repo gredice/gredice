@@ -7,6 +7,7 @@ export const knownEventTypes = {
     },
     users: {
         create: 'user.create',
+        birthdayReward: 'user.birthdayReward',
     },
     gardens: {
         create: 'garden.create',

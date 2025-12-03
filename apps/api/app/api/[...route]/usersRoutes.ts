@@ -1,4 +1,9 @@
-import { getUser, getUserWithLogins, updateUser } from '@gredice/storage';
+import {
+    getLastBirthdayRewardEvent,
+    getUser,
+    getUserWithLogins,
+    updateUser,
+} from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
@@ -6,6 +11,32 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import {
+    type BirthdayRewardUser,
+    grantBirthdayReward,
+} from '../../../lib/users/birthdayRewards';
+import {
+    differenceInCalendarDays,
+    getLastBirthdayOccurrence,
+    isValidBirthday,
+    MIN_BIRTH_YEAR,
+    startOfUtcDay,
+} from '../../../lib/users/birthdayUtils';
+
+const currentYear = new Date().getUTCFullYear();
+const birthdaySchema = z
+    .object({
+        day: z.number().int().min(1).max(31),
+        month: z.number().int().min(1).max(12),
+        year: z
+            .number()
+            .int()
+            .min(MIN_BIRTH_YEAR)
+            .max(currentYear)
+            .optional()
+            .nullable(),
+    })
+    .strict();
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -24,11 +55,26 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            const lastRewardEvent = await getLastBirthdayRewardEvent(userId);
+            const birthdayLastRewardAt = lastRewardEvent
+                ? new Date(lastRewardEvent.data.rewardDate)
+                : null;
+
             return context.json({
                 id: dbUser.id,
                 userName: dbUser.userName,
                 displayName: dbUser.displayName ?? dbUser.userName,
                 avatarUrl: dbUser.avatarUrl,
+                birthday:
+                    dbUser.birthdayMonth && dbUser.birthdayDay
+                        ? {
+                              day: dbUser.birthdayDay,
+                              month: dbUser.birthdayMonth,
+                              year: dbUser.birthdayYear ?? undefined,
+                          }
+                        : null,
+                birthdayLastUpdatedAt: dbUser.birthdayLastUpdatedAt,
+                birthdayLastRewardAt,
                 createdAt: dbUser.createdAt,
             });
         },
@@ -93,11 +139,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
         ),
         zValidator(
             'json',
-            z.object({
-                userName: z.string().optional(),
-                displayName: z.string().optional(),
-                avatarUrl: z.string().optional().nullable(),
-            }),
+            z
+                .object({
+                    userName: z.string().optional(),
+                    displayName: z.string().optional(),
+                    avatarUrl: z.string().optional().nullable(),
+                    birthday: z.union([birthdaySchema, z.null()]).optional(),
+                })
+                .strict(),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
@@ -114,12 +163,138 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            await updateUser({
-                id: userId,
-                ...userInfo,
-            });
+            const dbUser = await getUser(userId);
+            if (!dbUser) {
+                return context.json(
+                    { error: 'User not found' },
+                    { status: 404 },
+                );
+            }
 
-            return context.json({ success: true });
+            const updatePayload: Record<string, unknown> = {};
+            if (userInfo.displayName !== undefined) {
+                updatePayload.displayName = userInfo.displayName;
+            }
+            if (userInfo.avatarUrl !== undefined) {
+                updatePayload.avatarUrl = userInfo.avatarUrl;
+            }
+            if (userInfo.userName !== undefined) {
+                updatePayload.userName = userInfo.userName;
+            }
+
+            let rewardDate: Date | undefined;
+            let rewardIsLate = false;
+
+            if (Object.hasOwn(userInfo, 'birthday')) {
+                if (userInfo.birthday === null) {
+                    updatePayload.birthdayDay = null;
+                    updatePayload.birthdayMonth = null;
+                    updatePayload.birthdayYear = null;
+                    updatePayload.birthdayLastUpdatedAt = new Date();
+                } else if (userInfo.birthday) {
+                    const birthday = userInfo.birthday;
+                    if (!isValidBirthday(birthday)) {
+                        return context.json(
+                            { error: 'Neispravan datum rođendana.' },
+                            { status: 400 },
+                        );
+                    }
+
+                    const birthdayChanged =
+                        birthday.day !== dbUser.birthdayDay ||
+                        birthday.month !== dbUser.birthdayMonth ||
+                        (birthday.year ?? null) !==
+                            (dbUser.birthdayYear ?? null);
+
+                    if (birthdayChanged) {
+                        const now = new Date();
+                        if (dbUser.birthdayLastUpdatedAt) {
+                            const nextAllowedChange = new Date(
+                                dbUser.birthdayLastUpdatedAt,
+                            );
+                            nextAllowedChange.setUTCFullYear(
+                                nextAllowedChange.getUTCFullYear() + 1,
+                            );
+                            if (now < nextAllowedChange) {
+                                return context.json(
+                                    {
+                                        error: 'Rođendan je moguće mijenjati jednom godišnje. Kontaktiraj podršku ako trebaš dodatnu pomoć.',
+                                    },
+                                    { status: 400 },
+                                );
+                            }
+                        }
+
+                        updatePayload.birthdayDay = birthday.day;
+                        updatePayload.birthdayMonth = birthday.month;
+                        updatePayload.birthdayYear = birthday.year ?? null;
+                        updatePayload.birthdayLastUpdatedAt = now;
+
+                        const lastOccurrence = getLastBirthdayOccurrence(
+                            birthday.month,
+                            birthday.day,
+                            now,
+                        );
+                        const daysSinceBirthday = differenceInCalendarDays(
+                            now,
+                            lastOccurrence,
+                        );
+                        const lastRewardEvent =
+                            await getLastBirthdayRewardEvent(userId);
+                        const lastRewardAt = lastRewardEvent
+                            ? new Date(lastRewardEvent.data.rewardDate)
+                            : null;
+                        const alreadyRewarded =
+                            lastRewardAt && lastRewardAt >= lastOccurrence;
+
+                        if (
+                            daysSinceBirthday >= 0 &&
+                            daysSinceBirthday <= 30 &&
+                            !alreadyRewarded
+                        ) {
+                            rewardDate = startOfUtcDay(lastOccurrence);
+                            rewardIsLate = daysSinceBirthday > 0;
+                        }
+                    }
+                }
+            }
+
+            if (Object.keys(updatePayload).length > 0) {
+                await updateUser({
+                    id: userId,
+                    ...updatePayload,
+                });
+            }
+
+            // Grant reward if applicable (30 days window after birthday)
+            let rewardResult: Awaited<
+                ReturnType<typeof grantBirthdayReward>
+            > | null = null;
+            if (rewardDate) {
+                const updatedUser: BirthdayRewardUser = {
+                    ...dbUser,
+                    birthdayDay: userInfo.birthday?.day ?? null,
+                    birthdayMonth: userInfo.birthday?.month ?? null,
+                    birthdayYear: userInfo.birthday?.year ?? null,
+                };
+                rewardResult = await grantBirthdayReward({
+                    user: updatedUser,
+                    rewardDate,
+                    isLate: rewardIsLate,
+                });
+            }
+
+            return context.json({
+                success: true,
+                birthdayReward:
+                    rewardResult?.rewarded && rewardDate
+                        ? {
+                              rewardedAt: rewardDate,
+                              accountId: rewardResult.accountId,
+                              late: rewardIsLate,
+                          }
+                        : null,
+            });
         },
     );
 

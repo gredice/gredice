@@ -1,8 +1,8 @@
-import { and, asc, count, eq, gte, inArray, lte } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { events } from '../../schema';
 import { storage } from '../../storage';
 import { knownEventTypes } from './knownEventTypes';
-import type { Event } from './types';
+import type { Event, UserBirthdayRewardPayload } from './types';
 
 type DatabaseClient = ReturnType<typeof storage>;
 
@@ -72,4 +72,21 @@ export function createEvent(
 
 export function deleteEventById(eventId: number) {
     return storage().delete(events).where(eq(events.id, eventId));
+}
+
+export async function getLastBirthdayRewardEvent(userId: string) {
+    const event = await storage().query.events.findFirst({
+        where: and(
+            eq(events.aggregateId, userId),
+            eq(events.type, knownEventTypes.users.birthdayReward),
+        ),
+        orderBy: [desc(events.createdAt)],
+    });
+    if (!event) {
+        return null;
+    }
+    return {
+        ...event,
+        data: event.data as UserBirthdayRewardPayload,
+    };
 }

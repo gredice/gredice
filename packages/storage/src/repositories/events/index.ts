@@ -9,6 +9,7 @@ export {
     createEvent,
     deleteEventById,
     getEvents,
+    getLastBirthdayRewardEvent,
     getPlantPlaceEventsCount,
     getPlantUpdateEvents,
 } from './queries';
@@ -64,4 +65,6 @@ export type {
     // Transaction
     TransactionCreatePayload,
     TransactionUpdatePayload,
+    // User
+    UserBirthdayRewardPayload,
 } from './types';

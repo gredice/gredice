@@ -8,6 +8,9 @@ import ResetPasswordEmailTemplate, {
 import WelcomeEmailTemplate, {
     type WelcomeEmailTemplateProps,
 } from '@gredice/transactional/emails/Account/welcome';
+import BirthdayEmailTemplate, {
+    type BirthdayEmailTemplateProps,
+} from '@gredice/transactional/emails/Notifications/birthday';
 import DeliverySurveyEmailTemplate, {
     type DeliverySurveyEmailTemplateProps,
 } from '@gredice/transactional/emails/Notifications/delivery-survey';
@@ -82,5 +85,23 @@ export async function sendDeliverySurvey(
         template: DeliverySurveyEmailTemplate(config),
         templateName: 'delivery-survey',
         messageType: 'survey',
+    });
+}
+
+export async function sendBirthdayGreeting(
+    to: string,
+    config: Omit<BirthdayEmailTemplateProps, 'email'>,
+) {
+    const subject = config.late
+        ? 'Gredice - rođendanski poklon stiže!'
+        : 'Gredice - sretan rođendan!';
+    return await sendEmail({
+        from: 'suncokret@obavijesti.gredice.com',
+        to,
+        subject,
+        template: BirthdayEmailTemplate({
+            ...config,
+            email: to,
+        }),
     });
 }
