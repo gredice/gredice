@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { events } from '../../schema';
 import { storage } from '../../storage';
 import { knownEventTypes } from './knownEventTypes';
-import type { Event, UserBirthdayRewardData } from './types';
+import type { Event, UserBirthdayRewardPayload } from './types';
 
 type DatabaseClient = ReturnType<typeof storage>;
 
@@ -87,6 +87,6 @@ export async function getLastBirthdayRewardEvent(userId: string) {
     }
     return {
         ...event,
-        data: event.data as UserBirthdayRewardData,
+        data: event.data as UserBirthdayRewardPayload,
     };
 }

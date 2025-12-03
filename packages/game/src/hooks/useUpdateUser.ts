@@ -1,11 +1,6 @@
 import { client } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { InferResponseType } from 'hono/client';
 import { queryKey, useCurrentUser } from './useCurrentUser';
-
-type ApiRoutes = ReturnType<typeof client>;
-type UpdateUserRoute = ApiRoutes['api']['users'][':userId']['$patch'];
-export type UpdateUserResponse = InferResponseType<UpdateUserRoute, 200>;
 
 export type UpdateUserVariables = {
     displayName?: string;
@@ -21,7 +16,7 @@ export type UpdateUserVariables = {
 export function useUpdateUser() {
     const queryClient = useQueryClient();
     const currentUser = useCurrentUser();
-    return useMutation<UpdateUserResponse, Error, UpdateUserVariables>({
+    return useMutation({
         mutationFn: async ({
             displayName,
             avatarUrl,
@@ -53,13 +48,15 @@ export function useUpdateUser() {
                         (body as { message?: string }).message ??
                         message;
                 } catch (error) {
-                    console.error('Failed to parse updateUser error response', error);
+                    console.error(
+                        'Failed to parse updateUser error response',
+                        error,
+                    );
                 }
                 throw new Error(message);
             }
 
-            const body: UpdateUserResponse = await response.json();
-            return body;
+            return await response.json();
         },
         onError: (error) => {
             console.error('Failed to update user:', error);

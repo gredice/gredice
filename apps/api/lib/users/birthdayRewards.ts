@@ -8,7 +8,7 @@ import {
 import { sendBirthdayGreeting } from '../email/transactional';
 import { differenceInCalendarDays, startOfUtcDay } from './birthdayUtils';
 
-export const BIRTHDAY_REWARD_AMOUNT = 6000;
+export const BIRTHDAY_REWARD_AMOUNT = 9999;
 
 export type BirthdayRewardUser = SelectUser & {
     accounts: {
@@ -55,7 +55,7 @@ export async function grantBirthdayReward({
         '🎉 Sretan rođendan! 🎉',
         `Poklanjamo ti **${BIRTHDAY_REWARD_AMOUNT}** 🌻 za proslavu u vrtu.`,
         celebrationLine,
-        'Hvala ti što si dio Gredica – uživaj u slavlju! 🌼',
+        'Hvala ti što si dio Gredica - uživaj u slavlju! 🌼',
     ].join('\n\n');
 
     await createNotification({

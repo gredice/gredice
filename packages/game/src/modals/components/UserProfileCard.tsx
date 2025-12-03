@@ -18,7 +18,6 @@ import type { FormEvent } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { useUpdateUser } from '../../hooks/useUpdateUser';
 import { ProfileAvatar } from '../../shared-ui/ProfileAvatar';
-import { UserBirthdaySection } from './UserBirthdaySection';
 
 export function UserProfileCard() {
     const currentUser = useCurrentUser();
@@ -33,9 +32,7 @@ export function UserProfileCard() {
         ? memberFormatter.format(currentUser.data.createdAt)
         : undefined;
 
-    const handleProfileUpdate = async (
-        event: FormEvent<HTMLFormElement>,
-    ) => {
+    const handleProfileUpdate = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         const displayName = formData.get('displayName') as string;
@@ -67,7 +64,9 @@ export function UserProfileCard() {
                                         </DropdownMenuLabel>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem
-                                            onClick={() => handleAvatarChange(null)}
+                                            onClick={() =>
+                                                handleAvatarChange(null)
+                                            }
                                             startDecorator={
                                                 <Avatar size="lg">
                                                     {initials(
@@ -123,14 +122,16 @@ export function UserProfileCard() {
                                     <Input
                                         name="displayName"
                                         label="Prikazano ime"
-                                        defaultValue={currentUser.data?.displayName}
+                                        defaultValue={
+                                            currentUser.data?.displayName
+                                        }
                                         type="text"
                                         placeholder="Unesite ime..."
                                         required
                                     />
                                     <Typography level="body3">
-                                        Ovo ime će biti prikazano u vašem profilu i
-                                        na svim vašim objavama.
+                                        Ovo ime će biti prikazano u vašem
+                                        profilu i na svim vašim objavama.
                                     </Typography>
                                 </Stack>
                             </Row>
@@ -150,10 +151,6 @@ export function UserProfileCard() {
                             </CardActions>
                         </Stack>
                     </form>
-                    <UserBirthdaySection
-                        user={currentUser.data ?? null}
-                        updateUser={updateUser}
-                    />
                 </Stack>
             </CardContent>
         </Card>

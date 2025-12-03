@@ -29,6 +29,7 @@ import { DailyRewardOverview } from '../shared-ui/sunflowers/DailyRewardOverview
 import { SunflowersList } from '../shared-ui/sunflowers/SunflowersList';
 import { SoundSettingsCard } from './components/SoundSettingsCard';
 import { TimeZoneSettingsCard } from './components/TimeZoneSettingsCard';
+import { UserBirthdayCard } from './components/UserBirthdayCard';
 import { UserProfileCard } from './components/UserProfileCard';
 
 export function FacebookLoginButton({ ...props }: ButtonProps) {
@@ -256,8 +257,11 @@ export function OverviewModal() {
                             <Typography level="h4" className="hidden md:block">
                                 ⚙️ Profil
                             </Typography>
-                            <UserProfileCard />
-                            <TimeZoneSettingsCard />
+                            <Stack spacing={1}>
+                                <UserProfileCard />
+                                <UserBirthdayCard />
+                                <TimeZoneSettingsCard />
+                            </Stack>
                         </Stack>
                     )}
                     {settingsMode === 'vrt' && (

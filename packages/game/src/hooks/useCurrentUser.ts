@@ -5,21 +5,6 @@ export const queryKey = {
     currentUser: ['currentUser'],
 };
 
-type ApiRoutes = ReturnType<typeof client>;
-type ApiCurrentUser = InferResponseType<
-    ApiRoutes['api']['users']['current']['$get'],
-    200
->;
-
-export type CurrentUser = Omit<
-    ApiCurrentUser,
-    'createdAt' | 'birthdayLastUpdatedAt' | 'birthdayLastRewardAt'
-> & {
-    createdAt: Date;
-    birthdayLastUpdatedAt: Date | null;
-    birthdayLastRewardAt: Date | null;
-};
-
 async function getCurrentUser() {
     const response = await client(true).api.users.current.$get();
     if (response.status === 401) {
@@ -34,15 +19,20 @@ async function getCurrentUser() {
         throw new Error('Failed to fetch current user');
     }
 
-    const currentUser: ApiCurrentUser = await response.json();
+    const {
+        createdAt,
+        birthdayLastUpdatedAt,
+        birthdayLastRewardAt,
+        ...currentUser
+    } = await response.json();
     return {
         ...currentUser,
-        createdAt: new Date(currentUser.createdAt),
-        birthdayLastUpdatedAt: currentUser.birthdayLastUpdatedAt
-            ? new Date(currentUser.birthdayLastUpdatedAt)
+        createdAt: new Date(createdAt),
+        birthdayLastUpdatedAt: birthdayLastUpdatedAt
+            ? new Date(birthdayLastUpdatedAt)
             : null,
-        birthdayLastRewardAt: currentUser.birthdayLastRewardAt
-            ? new Date(currentUser.birthdayLastRewardAt)
+        birthdayLastRewardAt: birthdayLastRewardAt
+            ? new Date(birthdayLastRewardAt)
             : null,
     };
 }

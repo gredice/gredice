@@ -28,7 +28,7 @@ export default function BirthdayEmailTemplate({
 }: BirthdayEmailTemplateProps) {
     const previewText = late
         ? `🎉 Sretan rođendan! ${sunflowerAmount} suncokreta stiže s malim zakašnjenjem.`
-        : `🎉 Sretan rođendan! ${sunflowerAmount} suncokreta čeka na tebe.`;
+        : `🎉 Sretan rođendan! ${sunflowerAmount} suncokreta te čeka.`;
 
     return (
         <Html>
@@ -43,22 +43,26 @@ export default function BirthdayEmailTemplate({
                     <Paragraph>Dragi {name},</Paragraph>
                     {late ? (
                         <Paragraph>
-                            Sunce nas je mrvicu preteklo, ali poklon je sada tu! Na tvoj račun
-                            smo upravo dodali {sunflowerAmount} 🌻 kako bi proslava bila još
-                            veselija.
+                            Sunce nas je mrvicu preteklo, ali poklon je sada tu!
+                            Na tvoj račun smo upravo dodali {sunflowerAmount} 🌻
+                            kako bi proslava bila još veselija.
                         </Paragraph>
                     ) : (
                         <Paragraph>
-                            Za tvoj poseban dan darujemo ti {sunflowerAmount} 🌻 kako bi vrt
-                            zablistao još sjajnije.
+                            Za tvoj poseban dan darujemo ti {sunflowerAmount} 🌻
+                            kako bi vrt zablistao još sjajnije.
                         </Paragraph>
                     )}
                     <Paragraph>
-                        Uživaj u slavlju i hvala ti što s nama gradiš najveseliji vrt.
+                        Uživaj u slavlju i hvala ti što s nama gradiš
+                        najveseliji vrt.
                     </Paragraph>
-                    <Paragraph>Želimo ti puno radosti i uspješnu sezonu! 🌼</Paragraph>
+                    <Paragraph>
+                        Želimo ti puno radosti i uspješnu sezonu! 🌼
+                    </Paragraph>
                     <Paragraph className="mt-8 text-sm text-muted-foreground">
-                        Ako želiš vidjeti kako napreduju tvoje gredice, posjeti svoj vrt na
+                        Ako želiš vidjeti kako napreduju tvoje gredice, posjeti
+                        svoj vrt na
                         <br />
                         <a href={`https://vrt.${appDomain}`}>vrt.{appDomain}</a>
                     </Paragraph>

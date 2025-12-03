@@ -28,7 +28,13 @@ const birthdaySchema = z
     .object({
         day: z.number().int().min(1).max(31),
         month: z.number().int().min(1).max(12),
-        year: z.number().int().min(MIN_BIRTH_YEAR).max(currentYear).optional(),
+        year: z
+            .number()
+            .int()
+            .min(MIN_BIRTH_YEAR)
+            .max(currentYear)
+            .optional()
+            .nullable(),
     })
     .strict();
 
@@ -260,6 +266,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 });
             }
 
+            // Grant reward if applicable (30 days window after birthday)
             let rewardResult: Awaited<
                 ReturnType<typeof grantBirthdayReward>
             > | null = null;

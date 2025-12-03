@@ -14,7 +14,7 @@ export type AccountSunflowersPayload = {
 // User event payload types
 // ============================================================================
 
-export type UserBirthdayRewardData = {
+export type UserBirthdayRewardPayload = {
     rewardDate: string;
     accountId: string;
     amount: number;
