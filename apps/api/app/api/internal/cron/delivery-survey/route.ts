@@ -3,6 +3,7 @@ import {
     createNotification,
     type DeliverySurveyCandidate,
     getDeliverySurveyCandidates,
+    isTargetHourInTimeZone,
     markDeliverySurveySent,
 } from '@gredice/storage';
 import type { NextRequest } from 'next/server';
@@ -25,34 +26,6 @@ function formatMonth(date: Date) {
         month: 'long',
         year: 'numeric',
     }).format(date);
-}
-
-/**
- * Check if the current hour in a timezone matches the target hour.
- */
-function isTargetHourInTimeZone(
-    timeZone: string,
-    targetHour: number,
-    now: Date = new Date(),
-): boolean {
-    try {
-        const formatter = new Intl.DateTimeFormat('en-US', {
-            timeZone,
-            hour: 'numeric',
-            hour12: false,
-        });
-        const currentHour = Number.parseInt(formatter.format(now), 10);
-        return currentHour === targetHour;
-    } catch {
-        // If timezone is invalid, default to Europe/Paris
-        const formatter = new Intl.DateTimeFormat('en-US', {
-            timeZone: 'Europe/Paris',
-            hour: 'numeric',
-            hour12: false,
-        });
-        const currentHour = Number.parseInt(formatter.format(now), 10);
-        return currentHour === targetHour;
-    }
 }
 
 interface DeliverySurveyGroup {
