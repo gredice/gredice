@@ -1,3 +1,4 @@
+import { TZDate, tz } from '@date-fns/tz';
 import type { BlockData, PlantSortData } from '@gredice/directory-types';
 import {
     type AdventAward,
@@ -32,32 +33,31 @@ export class AdventCalendarDayNotYetAvailableError extends Error {
 }
 
 /**
- * Calculate when a specific advent day becomes available.
- * We use UTC+14 (the first timezone to reach midnight, e.g., Kiribati)
- * so that a day becomes openable as soon as it's that date somewhere in the world.
- * This is the most generous approach when we don't know the user's timezone.
+ * Calculate when a specific advent day becomes available for a user.
+ * Uses the user's timezone to determine when midnight of that day occurs.
+ * @param day - The advent day (1-24)
+ * @param timeZone - The user's IANA timezone (e.g., 'Europe/Paris')
  */
-function getAdventDayAvailableAt(day: number): Date {
+function getAdventDayAvailableAt(day: number, timeZone: string): Date {
     // Advent day 1 = December 1st, day 2 = December 2nd, etc.
-    // Create date at midnight UTC for the given day
-    const utcMidnight = new Date(Date.UTC(ADVENT_YEAR, 11, day, 0, 0, 0, 0));
-    // Subtract 14 hours to account for UTC+14 timezone
-    // When it's midnight in UTC+14, it's 10:00 the previous day in UTC
-    utcMidnight.setUTCHours(utcMidnight.getUTCHours() - 14);
-    return utcMidnight;
+    // Create date at midnight on December `day` directly in the user's timezone
+    return new TZDate(ADVENT_YEAR, 11, day, 0, 0, 0, 0, timeZone);
 }
 
 /**
- * Get the current advent day based on UTC+14 (the first timezone to reach midnight).
- * This determines which day is "today" using the same timezone logic as availability.
+ * Get the current advent day based on the user's timezone.
+ * This determines which day is "today" in the user's local time.
+ * @param timeZone - The user's IANA timezone (e.g., 'Europe/Paris')
  * @param now - Optional date to use instead of current time (for testing)
  */
-function getCurrentAdventDay(now: Date = new Date()): number {
-    // UTC+14 is the first timezone to reach a new day (e.g., Kiribati)
-    // Add 14 hours to UTC to get UTC+14 time
-    const utcPlus14 = new Date(now.getTime() + 14 * 60 * 60 * 1000);
-    const dayOfMonth = utcPlus14.getUTCDate();
-    const month = utcPlus14.getUTCMonth(); // 0-indexed, so December = 11
+function getCurrentAdventDay(timeZone: string, now: Date = new Date()): number {
+    // Convert current time to user's timezone
+    const userTz = tz(timeZone);
+    const userLocalTime = userTz(now);
+
+    // Get day of month and month in user's timezone
+    const dayOfMonth = userLocalTime.getDate();
+    const month = userLocalTime.getMonth(); // 0-indexed, so December = 11
 
     // Only return valid advent days (1-24 in December)
     if (month === 11 && dayOfMonth >= 1 && dayOfMonth <= ADVENT_TOTAL_DAYS) {
@@ -69,20 +69,25 @@ function getCurrentAdventDay(now: Date = new Date()): number {
 
 /**
  * Check if a specific advent day is currently available to open.
- * A day is only available if it's the current day (using UTC+14 timezone).
+ * A day is only available if it's the current day in the user's timezone.
  * @param day - The advent day to check (1-24)
+ * @param timeZone - The user's IANA timezone (e.g., 'Europe/Paris')
  * @param now - Optional date to use instead of current time (for testing)
  */
-function isAdventDayAvailable(day: number, now: Date = new Date()): boolean {
-    const availableAt = getAdventDayAvailableAt(day);
+function isAdventDayAvailable(
+    day: number,
+    timeZone: string,
+    now: Date = new Date(),
+): boolean {
+    const availableAt = getAdventDayAvailableAt(day, timeZone);
 
-    // Check if the day has started (in UTC+14)
+    // Check if the day has started (in user's timezone)
     if (now < availableAt) {
         return false;
     }
 
-    // Check if it's still the current day (using UTC+14)
-    const currentDay = getCurrentAdventDay(now);
+    // Check if it's still the current day (in user's timezone)
+    const currentDay = getCurrentAdventDay(timeZone, now);
     return day === currentDay;
 }
 
@@ -419,16 +424,18 @@ export async function openAdventCalendar2025Day({
     accountId,
     userId,
     day,
+    timeZone,
 }: {
     accountId: string;
     userId: string;
     day: number;
+    timeZone: string;
 }) {
-    // Check if the day is available yet
-    if (!isAdventDayAvailable(day)) {
+    // Check if the day is available yet (using user's timezone)
+    if (!isAdventDayAvailable(day, timeZone)) {
         throw new AdventCalendarDayNotYetAvailableError(
             day,
-            getAdventDayAvailableAt(day),
+            getAdventDayAvailableAt(day, timeZone),
         );
     }
 

@@ -73,11 +73,12 @@ export function getAccountUsers(accountId: string) {
     });
 }
 
-export async function createAccount() {
+export async function createAccount(timeZone?: string) {
     const account = storage()
         .insert(accounts)
         .values({
             id: randomUUID(),
+            ...(timeZone && { timeZone }),
         })
         .returning({ id: accounts.id });
     const accountId = (await account)[0].id;
@@ -101,6 +102,18 @@ export async function assignStripeCustomerId(
     const result = await storage()
         .update(accounts)
         .set({ stripeCustomerId })
+        .where(eq(accounts.id, accountId))
+        .returning();
+    return result[0];
+}
+
+export async function updateAccountTimeZone(
+    accountId: string,
+    timeZone: string,
+) {
+    const result = await storage()
+        .update(accounts)
+        .set({ timeZone })
         .where(eq(accounts.id, accountId))
         .returning();
     return result[0];

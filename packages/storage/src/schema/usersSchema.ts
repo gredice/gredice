@@ -19,6 +19,7 @@ export const accounts = pgTable('accounts', {
     addressStreet2: text('address_street2'),
     addressCity: text('address_city'),
     addressZip: text('address_zip'),
+    timeZone: text('time_zone').notNull().default('Europe/Paris'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at')
         .notNull()

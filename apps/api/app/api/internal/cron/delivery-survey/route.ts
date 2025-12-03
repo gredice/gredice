@@ -3,6 +3,7 @@ import {
     createNotification,
     type DeliverySurveyCandidate,
     getDeliverySurveyCandidates,
+    isTargetHourInTimeZone,
     markDeliverySurveySent,
 } from '@gredice/storage';
 import type { NextRequest } from 'next/server';
@@ -10,6 +11,7 @@ import { sendDeliverySurvey } from '../../../../../lib/email/transactional';
 
 const SURVEY_URL = 'https://form.typeform.com/to/X727vyBk';
 const LOOKBACK_DAYS = 45;
+const TARGET_HOUR = 8; // Send survey at 8 AM user local time
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +30,7 @@ function formatMonth(date: Date) {
 
 interface DeliverySurveyGroup {
     accountId: string;
+    accountTimeZone: string;
     fulfilledAt: Date;
     candidates: Map<string, DeliverySurveyCandidate>;
     monthKey: string;
@@ -63,6 +66,7 @@ export async function GET(request: NextRequest) {
         if (!group) {
             group = {
                 accountId: candidate.accountId,
+                accountTimeZone: candidate.accountTimeZone,
                 fulfilledAt: candidate.fulfilledAt,
                 candidates: new Map<string, DeliverySurveyCandidate>(),
                 monthKey: candidate.monthKey,
@@ -83,7 +87,13 @@ export async function GET(request: NextRequest) {
         }
     }
 
-    for (const group of orderedGroups) {
+    // Filter groups to only process accounts where it's currently the target hour
+    const now = new Date();
+    const groupsToProcess = orderedGroups.filter((group) =>
+        isTargetHourInTimeZone(group.accountTimeZone, TARGET_HOUR, now),
+    );
+
+    for (const group of groupsToProcess) {
         const candidatesInGroup = Array.from(group.candidates.values());
         if (candidatesInGroup.length === 0) {
             continue;

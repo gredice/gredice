@@ -71,6 +71,13 @@
       "when": 1764003496932,
       "tag": "0009_friendly_blackheart",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1764717841265,
+      "tag": "0010_tiresome_exodus",
+      "breakpoints": true
     }
   ]
 }

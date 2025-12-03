@@ -45,6 +45,7 @@ const failedAttemptsBlockTime = 1000 * 60 * 60; // 1 hour
 
 const defaultWebAppOrigin = 'https://vrt.gredice.com';
 const oauthRedirectCookieName = 'oauth_redirect';
+const oauthTimeZoneCookieName = 'oauth_timezone';
 const allowedLocalRedirectHosts = new Set([
     'localhost',
     '127.0.0.1',
@@ -96,6 +97,30 @@ function storeRedirectCookie(context: Context, redirectUrl?: string) {
         sameSite: 'Lax',
         maxAge: 600,
     });
+}
+
+function storeTimeZoneCookie(context: Context, timeZone?: string) {
+    if (!timeZone) {
+        deleteContextCookie(context, oauthTimeZoneCookieName);
+        return;
+    }
+    // Basic validation: timezone should be a reasonable IANA timezone string
+    if (!/^[A-Za-z_]+\/[A-Za-z_]+/.test(timeZone)) {
+        deleteContextCookie(context, oauthTimeZoneCookieName);
+        return;
+    }
+    setContextCookie(context, oauthTimeZoneCookieName, timeZone, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Lax',
+        maxAge: 600,
+    });
+}
+
+function getTimeZoneCookie(context: Context): string | undefined {
+    const timeZone = getCookie(context, oauthTimeZoneCookieName);
+    deleteContextCookie(context, oauthTimeZoneCookieName);
+    return timeZone;
 }
 
 function resolveRedirectUrl(context: Context, fallbackPath: string) {
@@ -272,6 +297,7 @@ const app = new Hono()
             z.object({
                 state: z.string().optional(),
                 redirect: z.string().optional(),
+                timeZone: z.string().optional(),
             }),
         ),
         async (context) => {
@@ -279,6 +305,7 @@ const app = new Hono()
             const state =
                 query?.state ?? randomUUID().toString().replace('-', '');
             storeRedirectCookie(context, query?.redirect);
+            storeTimeZoneCookie(context, query?.timeZone);
             const authUrl = generateAuthUrl('google', state);
 
             // Store state in cookie for verification
@@ -333,6 +360,7 @@ const app = new Hono()
                     'google',
                     tokenData.access_token,
                 );
+                const timeZone = getTimeZoneCookie(context);
                 const { userId, loginId, isNewUser } =
                     await createOrUpdateUserWithOauth(
                         {
@@ -342,6 +370,7 @@ const app = new Hono()
                             provider: 'google',
                         },
                         currentUserId,
+                        timeZone,
                     );
 
                 if (isNewUser) {
@@ -383,6 +412,7 @@ const app = new Hono()
             z.object({
                 state: z.string().optional(),
                 redirect: z.string().optional(),
+                timeZone: z.string().optional(),
             }),
         ),
         async (context) => {
@@ -393,6 +423,7 @@ const app = new Hono()
 
             // Store state in cookie for verification
             storeRedirectCookie(context, query?.redirect);
+            storeTimeZoneCookie(context, query?.timeZone);
             setContextCookie(context, 'oauth_state', state, {
                 httpOnly: true,
                 secure: true,
@@ -444,6 +475,7 @@ const app = new Hono()
                     'facebook',
                     tokenData.access_token,
                 );
+                const timeZone = getTimeZoneCookie(context);
                 const { userId, loginId, isNewUser } =
                     await createOrUpdateUserWithOauth(
                         {
@@ -453,6 +485,7 @@ const app = new Hono()
                             provider: 'facebook',
                         },
                         currentUserId,
+                        timeZone,
                     );
 
                 if (isNewUser) {
