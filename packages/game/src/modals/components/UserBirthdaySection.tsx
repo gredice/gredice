@@ -1,4 +1,3 @@
-import { useState, type FormEvent } from 'react';
 import { Button } from '@signalco/ui-primitives/Button';
 import { CardActions } from '@signalco/ui-primitives/Card';
 import { Input } from '@signalco/ui-primitives/Input';
@@ -6,11 +5,15 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { UseMutationResult } from '@tanstack/react-query';
+import { type FormEvent, useState } from 'react';
 import type { CurrentUser } from '../../hooks/useCurrentUser';
 import type {
     UpdateUserResponse,
     UpdateUserVariables,
 } from '../../hooks/useUpdateUser';
+
+const BIRTHDAY_REWARD_AMOUNT = 6000;
+const MIN_BIRTH_YEAR = 1900;
 
 const fullDateFormatter = new Intl.DateTimeFormat('hr-HR', {
     day: 'numeric',
@@ -86,7 +89,10 @@ export function UserBirthdaySection({
             return;
         }
 
-        if (yearValue && (Number.isNaN(year) || year < 1900 || year > currentYear)) {
+        if (
+            yearValue &&
+            (Number.isNaN(year) || year < MIN_BIRTH_YEAR || year > currentYear)
+        ) {
             setBirthdayError('Godina rođendana nije valjana.');
             return;
         }
@@ -103,8 +109,8 @@ export function UserBirthdaySection({
             if (result?.birthdayReward) {
                 setBirthdayMessage(
                     result.birthdayReward.late
-                        ? 'Dodali smo ti 6000 🌻 s malim zakašnjenjem. Sretan rođendan!'
-                        : 'Dodali smo ti 6000 🌻! Sretan rođendan!'
+                        ? `Dodali smo ti ${BIRTHDAY_REWARD_AMOUNT} 🌻 s malim zakašnjenjem. Sretan rođendan!`
+                        : `Dodali smo ti ${BIRTHDAY_REWARD_AMOUNT} 🌻! Sretan rođendan!`,
                 );
             } else {
                 setBirthdayMessage('Rođendan je spremljen.');
@@ -113,7 +119,7 @@ export function UserBirthdaySection({
             setBirthdayError(
                 error instanceof Error
                     ? error.message
-                    : 'Spremanje rođendana nije uspjelo.'
+                    : 'Spremanje rođendana nije uspjelo.',
             );
         }
     };
@@ -149,11 +155,13 @@ export function UserBirthdaySection({
                         name="birthdayYear"
                         label="Godina (nije obavezna)"
                         type="number"
-                        min={1900}
+                        min={MIN_BIRTH_YEAR}
                         max={currentYear}
                         placeholder="npr. 1992"
                         defaultValue={
-                            birthday?.year != null ? birthday.year.toString() : ''
+                            birthday?.year != null
+                                ? birthday.year.toString()
+                                : ''
                         }
                         disabled={birthdayLocked || updateUser.isPending}
                     />
@@ -162,7 +170,7 @@ export function UserBirthdaySection({
                     <Typography level="body3">
                         {birthdayLocked && nextChangeDisplay
                             ? `Rođendan možeš ponovno promijeniti ${nextChangeDisplay}.`
-                            : 'Na tvoj rođendan darujemo ti 6000 🌻.'}
+                            : `Na tvoj rođendan darujemo ti ${BIRTHDAY_REWARD_AMOUNT} 🌻.`}
                     </Typography>
                     {lastRewardDisplay && (
                         <Typography level="body3">

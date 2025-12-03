@@ -1,3 +1,5 @@
+export const MIN_BIRTH_YEAR = 1900;
+
 export interface BirthdayInput {
     day: number;
     month: number;
@@ -24,7 +26,7 @@ export function isValidBirthday({ day, month, year }: BirthdayInput) {
     }
     if (typeof year === 'number') {
         const currentYear = new Date().getUTCFullYear();
-        if (year < 1900 || year > currentYear) {
+        if (year < MIN_BIRTH_YEAR || year > currentYear) {
             return false;
         }
     }

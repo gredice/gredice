@@ -77,7 +77,6 @@ export const users = pgTable(
         birthdayMonth: smallint('birthday_month'),
         birthdayYear: smallint('birthday_year'),
         birthdayLastUpdatedAt: timestamp('birthday_last_updated_at'),
-        birthdayLastRewardAt: timestamp('birthday_last_reward_at'),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()

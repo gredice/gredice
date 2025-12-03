@@ -1,4 +1,4 @@
-import { getUser } from '@gredice/storage';
+import { getLastBirthdayRewardEvent, getUser } from '@gredice/storage';
 
 import { withAuth } from '../../../../lib/auth/auth';
 
@@ -10,6 +10,13 @@ export async function GET() {
                 status: 404,
             });
         }
+
+        const lastRewardEvent = await getLastBirthdayRewardEvent(userId);
+        const birthdayLastRewardAt = lastRewardEvent
+            ? new Date(
+                  (lastRewardEvent.data as { rewardDate: string }).rewardDate,
+              )
+            : null;
 
         return Response.json({
             id: dbUser.id,
@@ -26,7 +33,7 @@ export async function GET() {
                       }
                     : null,
             birthdayLastUpdatedAt: dbUser.birthdayLastUpdatedAt,
-            birthdayLastRewardAt: dbUser.birthdayLastRewardAt,
+            birthdayLastRewardAt,
             createdAt: dbUser.createdAt,
         });
     });

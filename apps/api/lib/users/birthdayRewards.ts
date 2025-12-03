@@ -1,8 +1,9 @@
 import {
+    createEvent,
     createNotification,
     earnSunflowers,
+    knownEvents,
     type SelectUser,
-    updateUser,
 } from '@gredice/storage';
 import { sendBirthdayGreeting } from '../email/transactional';
 import { differenceInCalendarDays, startOfUtcDay } from './birthdayUtils';
@@ -83,10 +84,14 @@ export async function grantBirthdayReward({
     }
 
     const normalizedRewardDate = startOfUtcDay(rewardDate);
-    await updateUser({
-        id: user.id,
-        birthdayLastRewardAt: normalizedRewardDate,
-    });
+    await createEvent(
+        knownEvents.users.birthdayRewardV1(user.id, {
+            rewardDate: normalizedRewardDate.toISOString(),
+            accountId: primaryAccount.accountId,
+            amount: BIRTHDAY_REWARD_AMOUNT,
+            late: isLate,
+        }),
+    );
 
     const daysDifference = differenceInCalendarDays(new Date(), rewardDate);
     return {
