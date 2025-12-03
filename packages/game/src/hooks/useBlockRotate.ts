@@ -1,6 +1,7 @@
 import { client } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
+import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'blockRotate'];
@@ -8,6 +9,9 @@ const mutationKey = ['gardens', 'current', 'blockRotate'];
 export function useBlockRotate() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
+    const isWinterMode = useGameState((state) => state.isWinterMode);
+    const gardenQueryKey = currentGardenKeys(isWinterMode);
+    
     return useMutation({
         mutationFn: async ({
             blockId,
@@ -31,11 +35,13 @@ export function useBlockRotate() {
             });
         },
         onMutate: async ({ blockId, rotation }) => {
-            if (!garden) {
+            // Get fresh garden data from query cache, not from closure
+            const currentGarden = queryClient.getQueryData<typeof garden>(gardenQueryKey);
+            if (!currentGarden) {
                 return;
             }
 
-            const updatedStacks = garden.stacks.map((stack) => {
+            const updatedStacks = currentGarden.stacks.map((stack) => {
                 const updatedBlocks = stack.blocks.map((block) => {
                     if (block.id === blockId) {
                         return {
@@ -53,7 +59,7 @@ export function useBlockRotate() {
 
             const previousItem = await handleOptimisticUpdate(
                 queryClient,
-                currentGardenKeys,
+                gardenQueryKey,
                 {
                     stacks: [...updatedStacks],
                 },
@@ -64,10 +70,10 @@ export function useBlockRotate() {
             };
         },
         onError: (error, _variables, context) => {
-            console.error('Error creating block', error);
+            console.error('Error rotating block', error);
             if (context?.previousItem) {
                 queryClient.setQueryData(
-                    currentGardenKeys,
+                    gardenQueryKey,
                     context.previousItem,
                 );
             }
@@ -76,7 +82,7 @@ export function useBlockRotate() {
             // Invalidate queries
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
-                    queryKey: currentGardenKeys,
+                    queryKey: gardenQueryKey,
                 });
             }
         },

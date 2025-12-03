@@ -2,6 +2,7 @@ import { client } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Vector3 } from 'three';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
+import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'blockMove'];
@@ -9,6 +10,9 @@ const mutationKey = ['gardens', 'current', 'blockMove'];
 export function useBlockMove() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
+    const isWinterMode = useGameState((state) => state.isWinterMode);
+    const gardenQueryKey = currentGardenKeys(isWinterMode);
+
     return useMutation({
         mutationKey,
         mutationFn: async ({
@@ -128,7 +132,7 @@ export function useBlockMove() {
 
             const previousItem = await handleOptimisticUpdate(
                 queryClient,
-                currentGardenKeys,
+                gardenQueryKey,
                 {
                     stacks: [...updatedStacks],
                 },
@@ -142,7 +146,7 @@ export function useBlockMove() {
             console.error('Error moving block', error);
             if (context?.previousItem) {
                 queryClient.setQueryData(
-                    currentGardenKeys,
+                    gardenQueryKey,
                     context.previousItem,
                 );
             }
@@ -151,7 +155,7 @@ export function useBlockMove() {
             // Invalidate queries
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
-                    queryKey: currentGardenKeys,
+                    queryKey: gardenQueryKey,
                 });
             }
         },

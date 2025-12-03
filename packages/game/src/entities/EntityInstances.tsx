@@ -259,6 +259,7 @@ function EntityInstancesBlock({
 
 export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
     const { nodes, materials } = useGameGLTF();
+    const isEditMode = useGameState((state) => state.mode) === 'edit';
     const snowMaterial = useMemo(
         () =>
             new MeshStandardMaterial({
@@ -268,6 +269,12 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
             }),
         [],
     );
+
+    // In edit mode, blocks are rendered by EntityFactory with proper controls
+    if (isEditMode) {
+        return null;
+    }
+
     return (
         <>
             <EntityGrassInstances stacks={stacks} />
