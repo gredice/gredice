@@ -1,3 +1,4 @@
+import { getAccount } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
@@ -14,6 +15,8 @@ import {
     getAdventOccasionOverview,
     openAdventCalendar2025Day,
 } from '../../../lib/occasions/advent2025';
+
+const DEFAULT_TIMEZONE = 'Europe/Paris';
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -59,11 +62,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { day } = context.req.valid('json');
             const { accountId, userId } = context.get('authContext');
 
+            // Get user's timezone from their account settings
+            const account = await getAccount(accountId);
+            const timeZone = account?.timeZone ?? DEFAULT_TIMEZONE;
+
             try {
                 const result = await openAdventCalendar2025Day({
                     accountId,
                     userId,
                     day,
+                    timeZone,
                 });
                 return context.json({
                     message: `Dan ${day} je otvoren!`,

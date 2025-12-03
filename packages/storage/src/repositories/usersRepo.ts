@@ -164,9 +164,9 @@ async function createDefaultGarden(accountId: string) {
     }
 }
 
-async function createUserAndAccount(userName: string, displayName?: string) {
+async function createUserAndAccount(userName: string, displayName?: string, timeZone?: string) {
     const userId = await createUser(userName, displayName);
-    const accountId = await createAccount();
+    const accountId = await createAccount(timeZone);
     await createDefaultGarden(accountId);
 
     // Link user to account
@@ -227,6 +227,7 @@ export async function createUserWithPassword(
 export async function createOrUpdateUserWithOauth(
     data: OAuthUserData,
     loggedInUserId?: string,
+    timeZone?: string,
 ) {
     // Fast return if user has login provider with given loginId
     const existingLogin = await storage().query.userLogins.findFirst({
@@ -254,7 +255,7 @@ export async function createOrUpdateUserWithOauth(
     });
     let isNewUser = false;
     if (!existingUser) {
-        const createdUserId = await createUserAndAccount(data.email, data.name);
+        const createdUserId = await createUserAndAccount(data.email, data.name, timeZone);
         existingUser = await storage().query.users.findFirst({
             where: eq(users.id, createdUserId),
             with: {

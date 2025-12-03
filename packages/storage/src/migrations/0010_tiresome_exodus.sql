@@ -1,0 +1,1 @@
+ALTER TABLE "accounts" ADD COLUMN "time_zone" text DEFAULT 'Europe/Paris' NOT NULL;

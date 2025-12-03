@@ -16,7 +16,9 @@ export default function GoogleLoginPage() {
     useEffect(() => {
         const handleGoogleCallback = async () => {
             setTimeout(() => {
-                window.location.href = `https://api.gredice.com/api/auth/google`;
+                const timeZone =
+                    Intl.DateTimeFormat().resolvedOptions().timeZone;
+                window.location.href = `https://api.gredice.com/api/auth/google?timeZone=${encodeURIComponent(timeZone)}`;
             }, 3000);
         };
 

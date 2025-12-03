@@ -11,11 +11,13 @@ import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { sendDeleteAccountEmail } from '../../../(actions)/accountsActions';
+import { getAccountTimeZone } from '../../../(actions)/accountTimeZoneActions';
 import { AccountAchievementsCard } from './AccountAchievementsCard';
 import { AccountEventsCard } from './AccountEventsCard';
 import { AccountGardensCard } from './AccountGardensCard';
 import { AccountShoppingCartsCard } from './AccountShoppingCartsCard';
 import { AccountSunflowersCard } from './AccountSunflowersCard';
+import { AccountTimeZonePicker } from './AccountTimeZonePicker';
 import { AccountTransactionsCard } from './AccountTransactionsCard';
 import { AccountUsersCard } from './AccountUsersCard';
 import { RaisedBedsTableCard } from './RaisedBedsTableCard';
@@ -31,6 +33,7 @@ export default async function AccountPage({
     await auth(['admin']);
 
     const actionBound = sendDeleteAccountEmail.bind(null, accountId);
+    const currentTimeZone = await getAccountTimeZone(accountId);
 
     return (
         <Stack spacing={4}>
@@ -67,6 +70,10 @@ export default async function AccountPage({
                     <FieldSet>
                         <Field name="ID računa" value={accountId} />
                     </FieldSet>
+                    <AccountTimeZonePicker
+                        accountId={accountId}
+                        currentTimeZone={currentTimeZone}
+                    />
                 </Stack>
             </Stack>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

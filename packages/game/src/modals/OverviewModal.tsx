@@ -28,6 +28,7 @@ import { ProfileInfo } from '../shared-ui/ProfileInfo';
 import { DailyRewardOverview } from '../shared-ui/sunflowers/DailyRewardOverview';
 import { SunflowersList } from '../shared-ui/sunflowers/SunflowersList';
 import { SoundSettingsCard } from './components/SoundSettingsCard';
+import { TimeZoneSettingsCard } from './components/TimeZoneSettingsCard';
 import { UserProfileCard } from './components/UserProfileCard';
 
 export function FacebookLoginButton({ ...props }: ButtonProps) {
@@ -256,6 +257,7 @@ export function OverviewModal() {
                                 ⚙️ Profil
                             </Typography>
                             <UserProfileCard />
+                            <TimeZoneSettingsCard />
                         </Stack>
                     )}
                     {settingsMode === 'vrt' && (
@@ -431,12 +433,12 @@ export function OverviewModal() {
                                                 <Stack spacing={1}>
                                                     {!facebookConnected && (
                                                         <FacebookLoginButton
-                                                            href={`https://api.gredice.com/api/auth/facebook?state=${token}`}
+                                                            href={`https://api.gredice.com/api/auth/facebook?state=${token}&timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`}
                                                         />
                                                     )}
                                                     {!googleConnected && (
                                                         <GoogleLoginButton
-                                                            href={`https://api.gredice.com/api/auth/google?state=${token}`}
+                                                            href={`https://api.gredice.com/api/auth/google?state=${token}&timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`}
                                                         />
                                                     )}
                                                 </Stack>

@@ -9,6 +9,7 @@ import {
     getSunflowersHistory,
     getUser,
     knownEventTypes,
+    updateAccountTimeZone,
 } from '@gredice/storage';
 import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { Hono } from 'hono';
@@ -171,6 +172,38 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
             return context.json({
                 id: dbAccount?.id,
+                timeZone: dbAccount?.timeZone,
+                createdAt: dbAccount?.createdAt.toISOString(),
+                updatedAt: dbAccount?.updatedAt.toISOString(),
+            });
+        },
+    )
+    .patch(
+        '/current',
+        describeRoute({
+            description: 'Update the current account settings',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const body = await context.req.json<{ timeZone?: string }>();
+
+            if (body.timeZone !== undefined) {
+                await updateAccountTimeZone(accountId, body.timeZone);
+            }
+
+            const dbAccount = await getAccount(accountId);
+            if (!dbAccount) {
+                return context.json(
+                    {
+                        error: 'Account not found',
+                    },
+                    404,
+                );
+            }
+            return context.json({
+                id: dbAccount?.id,
+                timeZone: dbAccount?.timeZone,
                 createdAt: dbAccount?.createdAt.toISOString(),
                 updatedAt: dbAccount?.updatedAt.toISOString(),
             });
