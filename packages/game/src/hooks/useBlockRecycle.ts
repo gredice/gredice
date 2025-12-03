@@ -1,6 +1,7 @@
 import { client } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
+import { useGameState } from '../useGameState';
 import { currentAccountKeys } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 import {
@@ -38,6 +39,9 @@ export function useBlockRecycle() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
     const { data: shoppingCart } = useShoppingCart();
+    const isWinterMode = useGameState((state) => state.isWinterMode);
+    const gardenQueryKey = currentGardenKeys(isWinterMode);
+
     return useMutation({
         mutationKey,
         mutationFn: async ({
@@ -103,7 +107,7 @@ export function useBlockRecycle() {
 
             const previousItem = await handleOptimisticUpdate(
                 queryClient,
-                currentGardenKeys,
+                gardenQueryKey,
                 {
                     stacks: [...updatedStacks],
                 },
@@ -135,7 +139,7 @@ export function useBlockRecycle() {
             console.error('Error removing block', error);
             if (context?.previousItem) {
                 queryClient.setQueryData(
-                    currentGardenKeys,
+                    gardenQueryKey,
                     context.previousItem,
                 );
             }
@@ -150,7 +154,7 @@ export function useBlockRecycle() {
             // Invalidate queries only on last mutation
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
-                    queryKey: currentGardenKeys,
+                    queryKey: gardenQueryKey,
                 });
                 queryClient.invalidateQueries({ queryKey: currentAccountKeys });
                 if (variables.raisedBedId) {

@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
+import { useGameState } from '../useGameState';
 import { currentAccountKeys } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
@@ -11,6 +12,9 @@ const mutationKey = ['gardens', 'current', 'blockPlace'];
 export function useBlockPlace() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
+    const isWinterMode = useGameState((state) => state.isWinterMode);
+    const gardenQueryKey = currentGardenKeys(isWinterMode);
+
     return useMutation({
         mutationKey,
         mutationFn: async ({
@@ -92,7 +96,7 @@ export function useBlockPlace() {
 
             const previousItem = await handleOptimisticUpdate(
                 queryClient,
-                currentGardenKeys,
+                gardenQueryKey,
                 {
                     stacks: [...updatedStacks],
                 },
@@ -106,7 +110,7 @@ export function useBlockPlace() {
             console.error('Error creating block', error);
             if (context?.previousItem) {
                 queryClient.setQueryData(
-                    currentGardenKeys,
+                    gardenQueryKey,
                     context.previousItem,
                 );
             }
@@ -118,7 +122,7 @@ export function useBlockPlace() {
             });
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
-                    queryKey: currentGardenKeys,
+                    queryKey: gardenQueryKey,
                 });
             }
         },

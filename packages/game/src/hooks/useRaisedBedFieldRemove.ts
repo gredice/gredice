@@ -1,6 +1,7 @@
 import { client } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
+import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'raisedBedFieldRemove'];
@@ -8,6 +9,8 @@ const mutationKey = ['gardens', 'current', 'raisedBedFieldRemove'];
 export function useRaisedBedFieldRemove() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
+    const isWinterMode = useGameState((state) => state.isWinterMode);
+    const gardenQueryKey = currentGardenKeys(isWinterMode);
 
     return useMutation({
         mutationKey,
@@ -95,7 +98,7 @@ export function useRaisedBedFieldRemove() {
 
             const previousItem = await handleOptimisticUpdate(
                 queryClient,
-                currentGardenKeys,
+                gardenQueryKey,
                 {
                     ...garden,
                     raisedBeds: updatedRaisedBeds,
@@ -110,7 +113,7 @@ export function useRaisedBedFieldRemove() {
             console.error('Error removing plant from field:', error);
             if (context?.previousItem) {
                 queryClient.setQueryData(
-                    currentGardenKeys,
+                    gardenQueryKey,
                     context.previousItem,
                 );
             }
@@ -119,7 +122,7 @@ export function useRaisedBedFieldRemove() {
             // Invalidate queries to refetch fresh data
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
-                    queryKey: currentGardenKeys,
+                    queryKey: gardenQueryKey,
                 });
             }
         },

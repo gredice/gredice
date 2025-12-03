@@ -5,7 +5,7 @@ import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { useGardens, useGardensKeys } from './useGardens';
 
-export const currentGardenKeys = [...useGardensKeys, 'current'];
+export const currentGardenKeys = (isWinterMode: boolean) => [...useGardensKeys, 'current', isWinterMode];
 
 function mockGarden(isWinterMode: boolean) {
     return {
@@ -195,7 +195,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
     const isWinterMode = useGameState((state) => state.isWinterMode);
     const { data: gardens } = useGardens(isMock);
     return useQuery({
-        queryKey: [...currentGardenKeys, isWinterMode],
+        queryKey: currentGardenKeys(isWinterMode),
         queryFn: async () => {
             if (isMock) {
                 console.debug('Using mock garden data');
