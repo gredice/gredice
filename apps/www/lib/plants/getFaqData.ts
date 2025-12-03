@@ -11,7 +11,3 @@ export const getFaqData = unstable_cache(
         tags: ['faqData'],
     },
 );
-
-export type FaqData = NonNullable<
-    Awaited<ReturnType<typeof getFaqData>>
->[number];

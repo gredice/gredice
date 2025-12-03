@@ -16,7 +16,9 @@ export default function FacebookLoginPage() {
     useEffect(() => {
         const handleFacebookCallback = async () => {
             setTimeout(() => {
-                window.location.href = `https://api.gredice.com/api/auth/facebook`;
+                const timeZone =
+                    Intl.DateTimeFormat().resolvedOptions().timeZone;
+                window.location.href = `https://api.gredice.com/api/auth/facebook?timeZone=${encodeURIComponent(timeZone)}`;
             }, 3000);
         };
 

@@ -1,13 +1,42 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { desc, eq } from 'drizzle-orm';
-import { accounts, accountUsers, storage } from '..';
+import { accounts, accountUsers, ensureAccountAchievement, storage } from '..';
 import {
     createEvent,
     getEvents,
     knownEvents,
     knownEventTypes,
 } from './eventsRepo';
+
+interface SunflowerEventData {
+    amount: number;
+    reason?: string;
+}
+
+function parseSunflowerEventData(data: unknown): SunflowerEventData {
+    if (!data || typeof data !== 'object') {
+        return { amount: 0 };
+    }
+
+    const record = data as Record<string, unknown>;
+    const amountValue = record.amount;
+    let amount = 0;
+    if (typeof amountValue === 'number') {
+        amount = amountValue;
+    } else if (typeof amountValue === 'string') {
+        const parsed = Number.parseFloat(amountValue);
+        if (!Number.isNaN(parsed)) {
+            amount = parsed;
+        }
+    }
+
+    const reasonValue = record.reason;
+    return {
+        amount,
+        reason: typeof reasonValue === 'string' ? reasonValue : undefined,
+    };
+}
 
 export function getAccounts() {
     return storage().query.accounts.findMany({
@@ -44,11 +73,12 @@ export function getAccountUsers(accountId: string) {
     });
 }
 
-export async function createAccount() {
+export async function createAccount(timeZone?: string) {
     const account = storage()
         .insert(accounts)
         .values({
             id: randomUUID(),
+            ...(timeZone && { timeZone }),
         })
         .returning({ id: accounts.id });
     const accountId = (await account)[0].id;
@@ -57,7 +87,10 @@ export async function createAccount() {
     }
 
     await createEvent(knownEvents.accounts.createdV1(accountId));
-    await earnSunflowers(accountId, 1000, 'registration');
+    await ensureAccountAchievement(accountId, 'registration', {
+        earnedAt: new Date(),
+        autoApprove: true,
+    });
 
     return accountId;
 }
@@ -74,6 +107,18 @@ export async function assignStripeCustomerId(
     return result[0];
 }
 
+export async function updateAccountTimeZone(
+    accountId: string,
+    timeZone: string,
+) {
+    const result = await storage()
+        .update(accounts)
+        .set({ timeZone })
+        .where(eq(accounts.id, accountId))
+        .returning();
+    return result[0];
+}
+
 export async function getSunflowers(accountId: string) {
     // Calculate sunflowers based on events
     let currentSunflowers = 0;
@@ -85,10 +130,11 @@ export async function getSunflowers(accountId: string) {
         [accountId],
     );
     for (const event of events) {
+        const { amount } = parseSunflowerEventData(event.data);
         currentSunflowers +=
             event.type === knownEventTypes.accounts.spendSunflowers
-                ? -Number((event.data as any).amount ?? 0)
-                : Number((event.data as any).amount ?? 0);
+                ? -amount
+                : amount;
     }
     return currentSunflowers;
 }
@@ -107,21 +153,26 @@ export async function getSunflowersHistory(
         offset,
         limit,
     );
-    return earnEvents.reverse().map((event) => ({
-        ...event,
-        amount: Number((event.data as any).amount),
-        reason: (event.data as any).reason,
-    }));
+    return earnEvents.reverse().map((event) => {
+        const { amount, reason } = parseSunflowerEventData(event.data);
+        return {
+            ...event,
+            amount,
+            reason,
+        };
+    });
 }
 
 export async function earnSunflowers(
     accountId: string,
     amount: number,
     reason: string,
+    db: ReturnType<typeof storage> = storage(),
 ) {
     if (amount === 0) return;
     await createEvent(
         knownEvents.accounts.sunflowersEarnedV1(accountId, { amount, reason }),
+        db,
     );
 }
 
@@ -141,6 +192,7 @@ export async function spendSunflowers(
     accountId: string,
     amount: number,
     reason: string,
+    db: ReturnType<typeof storage> = storage(),
 ) {
     const currentSunflowers = await getSunflowers(accountId);
     if (currentSunflowers < amount) {
@@ -149,5 +201,6 @@ export async function spendSunflowers(
 
     await createEvent(
         knownEvents.accounts.sunflowersSpentV1(accountId, { amount, reason }),
+        db,
     );
 }

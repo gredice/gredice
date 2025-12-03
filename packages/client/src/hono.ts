@@ -1,6 +1,6 @@
-import type { AppType } from '@gredice/api/routes';
+import type { AppType } from 'api/routes';
 import { hc, type InferResponseType } from 'hono/client';
-import { getAppUrl, getAuthHeaders } from './shared';
+import { createDevSafeFetch, getAppUrl, getAuthHeaders } from './shared';
 
 function clientAuth() {
     const authorization = getAuthHeaders();
@@ -15,10 +15,18 @@ function clientAuth() {
     };
 }
 
-export const client = () =>
-    hc<AppType>(getAppUrl(), {
-        ...clientAuth(),
+export function client(authRequired = false) {
+    const auth = clientAuth();
+    if (authRequired && !auth.headers) {
+        throw new Error(
+            'Authentication is required but no auth data available',
+        );
+    }
+    return hc<AppType>(getAppUrl(), {
+        ...auth,
+        fetch: createDevSafeFetch(),
     });
+}
 
 export type GardenResponse = InferResponseType<
     ReturnType<typeof client>['api']['gardens'][':gardenId']['$get'],

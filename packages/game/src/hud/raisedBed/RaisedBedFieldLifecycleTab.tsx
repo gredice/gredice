@@ -231,42 +231,43 @@ export function RaisedBedFieldLifecycleTab({
     const growingDaysDayPlural = growingDays === 1 ? 'dan' : 'dana';
     const readyDaysDayPlural = readyDays === 1 ? 'dan' : 'dana';
 
-    const segments = field.toBeRemoved
-        ? [
-              {
-                  value: 100,
-                  percentage: 100,
-                  color: 'stroke-red-500',
-                  trackColor: 'stroke-red-50 dark:stroke-red-50/80',
-                  borderColor: 'stroke-red-500',
-              },
-          ]
-        : [
-              {
-                  value: germinationValue,
-                  percentage: germinationPercentage,
-                  color: 'stroke-yellow-500',
-                  trackColor: 'stroke-yellow-200 dark:stroke-yellow-50',
-                  pulse: !field.plantGrowthDate,
-                  borderColor: 'stroke-yellow-500',
-              },
-              {
-                  value: growthValue,
-                  percentage: growthPercentage,
-                  color: 'stroke-green-500',
-                  trackColor: 'stroke-green-200 dark:stroke-green-50',
-                  pulse: !field.plantReadyDate,
-                  borderColor: 'stroke-green-500',
-              },
-              {
-                  value: harvestValue,
-                  percentage: harvestPercentage,
-                  color: 'stroke-blue-500',
-                  trackColor: 'stroke-blue-200 dark:stroke-blue-50',
-                  pulse: Boolean(harvestValue),
-                  borderColor: 'stroke-blue-500',
-              },
-          ];
+    const segments =
+        field.toBeRemoved || field.plantDeadDate
+            ? [
+                  {
+                      value: 100,
+                      percentage: 100,
+                      color: 'stroke-red-500',
+                      trackColor: 'stroke-red-50 dark:stroke-red-50/80',
+                      borderColor: 'stroke-red-500',
+                  },
+              ]
+            : [
+                  {
+                      value: germinationValue,
+                      percentage: germinationPercentage,
+                      color: 'stroke-yellow-500',
+                      trackColor: 'stroke-yellow-200 dark:stroke-yellow-50',
+                      pulse: !field.plantGrowthDate,
+                      borderColor: 'stroke-yellow-500',
+                  },
+                  {
+                      value: growthValue,
+                      percentage: growthPercentage,
+                      color: 'stroke-green-500',
+                      trackColor: 'stroke-green-200 dark:stroke-green-50',
+                      pulse: !field.plantReadyDate,
+                      borderColor: 'stroke-green-500',
+                  },
+                  {
+                      value: harvestValue,
+                      percentage: harvestPercentage,
+                      color: 'stroke-blue-500',
+                      trackColor: 'stroke-blue-200 dark:stroke-blue-50',
+                      pulse: Boolean(harvestValue),
+                      borderColor: 'stroke-blue-500',
+                  },
+              ];
 
     const plantAttributes = plantSort.information.plant.attributes;
 

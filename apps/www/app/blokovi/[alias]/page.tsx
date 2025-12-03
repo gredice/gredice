@@ -8,9 +8,9 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import Markdown from 'react-markdown';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
-import { Markdown } from '../../../components/shared/Markdown';
 import { PageHeader } from '../../../components/shared/PageHeader';
 import { BlocksList } from './BlocksList';
 
@@ -59,7 +59,11 @@ function BlockAttributes({ prices, attributes }: BlockData) {
             <AttributeCard
                 icon={<span className="text-xl">🌻</span>}
                 header="Cijena"
-                value={prices.sunflowers?.toString() ?? '-'}
+                value={
+                    (prices.sunflowers ?? 0) <= 0
+                        ? 'Nije za kupnju'
+                        : (prices.sunflowers?.toString() ?? '-')
+                }
             />
         </div>
     );
@@ -93,8 +97,8 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
                         visual={
                             <BlockImage
                                 blockName={entity.information.name}
-                                width={142}
-                                height={142}
+                                width={172}
+                                height={172}
                             />
                         }
                         header={entity.information.label}

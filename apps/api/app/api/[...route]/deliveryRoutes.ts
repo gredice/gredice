@@ -1,3 +1,4 @@
+import { notifyDeliveryRequestEvent } from '@gredice/notifications';
 import {
     cancelDeliveryRequest,
     createDeliveryAddress,
@@ -276,6 +277,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     ...data,
                     accountId: accountId,
                 });
+                await notifyDeliveryRequestEvent(requestId, 'created');
                 return context.json({ id: requestId }, 201);
             } catch (error) {
                 console.error('Failed to create delivery request:', error);
@@ -315,6 +317,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     note,
                     accountId,
                 );
+                await notifyDeliveryRequestEvent(id, 'cancelled', {
+                    reason: cancelReason,
+                    note,
+                });
                 return context.json({ success: true });
             } catch (error) {
                 console.error('Failed to cancel delivery request:', error);

@@ -12,7 +12,7 @@
         "resolveJsonModule": true,
         "moduleDetection": "force",
         "isolatedModules": true,
-        "jsx": "preserve",
+        "jsx": "react-jsx",
         "plugins": [
             {
                 "name": "next"
@@ -20,6 +20,13 @@
         ],
         "target": "ESNext"
     },
-    "include": ["next-env.d.ts", ".next/types/**/*.ts", "**/*.ts", "**/*.tsx"],
+    "include": [
+        "next-env.d.ts",
+        ".next/types/**/*.ts",
+        "**/*.ts",
+        "**/*.tsx",
+        ".next\\dev/types/**/*.ts",
+        ".next/dev/types/**/*.ts"
+    ],
     "exclude": ["node_modules"]
 }

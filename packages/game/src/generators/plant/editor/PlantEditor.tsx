@@ -13,6 +13,7 @@ import {
     type GameStateStore,
 } from '../../../useGameState';
 import { generateLSystemStringWithGenerations } from '../lib/l-system';
+import type { Rule } from '../lib/plant-definitions';
 import { SeededRNG } from '../lib/rng';
 import { PlantGenerator } from '../PlantGenerator';
 import { DesktopControls } from './components/DesktopControls';
@@ -65,7 +66,7 @@ export function PlantEditor() {
     /**
      * Handle L-system rules changes
      */
-    const handleRulesChange = (newRules: Record<string, any>) => {
+    const handleRulesChange = (newRules: Record<string, Rule>) => {
         updateDefinition('rules', newRules);
     };
 
@@ -120,6 +121,7 @@ export function PlantEditor() {
             appBaseUrl: appBaseUrl || '',
             freezeTime: freezeTime || null,
             isMock: mockGarden || false,
+            isWinterMode: false,
         });
     }
 

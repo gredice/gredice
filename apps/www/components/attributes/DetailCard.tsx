@@ -1,3 +1,4 @@
+import { Markdown } from '@gredice/ui/Markdown';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
 import { Info } from '@signalco/ui-icons';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
@@ -7,13 +8,12 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { ReactNode } from 'react';
-import Markdown from 'react-markdown';
 
 export type AttributeCardProps = {
     icon: ReactNode;
     header: string;
     subheader?: string;
-    value: string | null | undefined;
+    value?: ReactNode;
     description?: string;
     navigateLabel?: string;
     navigateHref?: string;
@@ -28,10 +28,25 @@ export function AttributeCard({
     navigateLabel,
     navigateHref,
 }: AttributeCardProps) {
+    let valueContent: ReactNode;
+    if (value == null) {
+        valueContent = <Typography semiBold>-</Typography>;
+    } else if (typeof value === 'string') {
+        valueContent = value.trim().length ? (
+            <Typography semiBold>{value}</Typography>
+        ) : (
+            <Typography semiBold>-</Typography>
+        );
+    } else if (typeof value === 'number') {
+        valueContent = <Typography semiBold>{value}</Typography>;
+    } else {
+        valueContent = value;
+    }
+
     return (
-        <Card className="flex items-center gap-1 justify-between">
+        <Card className="flex items-center gap-1 justify-between border-tertiary border-b-4">
             <Row spacing={2}>
-                <div className="flex-shrink-0 ml-2 text-primary">{icon}</div>
+                <div className="shrink-0 ml-2">{icon}</div>
                 <Stack spacing={subheader ? 0.5 : 0}>
                     <Stack>
                         <Typography level="body2" component="h3">
@@ -41,7 +56,7 @@ export function AttributeCard({
                             <Typography level="body3">{subheader}</Typography>
                         )}
                     </Stack>
-                    <Typography semiBold>{value ?? '-'}</Typography>
+                    {valueContent}
                 </Stack>
             </Row>
             {description && (
@@ -58,7 +73,7 @@ export function AttributeCard({
                         </IconButton>
                     }
                 >
-                    <Stack spacing={4}>
+                    <Stack spacing={2}>
                         <Row spacing={2}>
                             {icon}
                             <Stack spacing={1}>
@@ -66,7 +81,7 @@ export function AttributeCard({
                             </Stack>
                         </Row>
                         <Card>
-                            <CardContent>
+                            <CardContent noHeader>
                                 <Markdown>{description}</Markdown>
                             </CardContent>
                         </Card>

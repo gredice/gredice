@@ -1,16 +1,17 @@
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
-import { AxiomWebVitals } from 'next-axiom';
 import './globals.css';
 import { PageNav } from '@signalco/ui/Nav';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
 import { Container } from '@signalco/ui-primitives/Container';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { Logotype } from '../components/Logotype';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
+import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
 import { Footer } from './Footer';
 
@@ -90,12 +91,15 @@ export default async function RootLayout({
                                 { href: KnownPages.FAQ, text: 'Česta pitanja' },
                             ]}
                         >
-                            <NavigatingButton
-                                href={KnownPages.GardenApp}
-                                className="bg-green-800 hover:bg-green-700"
-                            >
-                                Vrt
-                            </NavigatingButton>
+                            <Row spacing={1}>
+                                <WinterModeToggle />
+                                <NavigatingButton
+                                    href={KnownPages.GardenApp}
+                                    className="bg-green-800 hover:bg-green-700 rounded-full"
+                                >
+                                    Moj vrt
+                                </NavigatingButton>
+                            </Row>
                         </PageNav>
                         <main className="mt-16 relative">
                             <Container>{children}</Container>
@@ -103,7 +107,6 @@ export default async function RootLayout({
                         <Footer />
                     </Stack>
                     <Analytics />
-                    <AxiomWebVitals />
                     {shouldInjectToolbar && <VercelToolbar />}
                 </body>
             </ClientAppProvider>

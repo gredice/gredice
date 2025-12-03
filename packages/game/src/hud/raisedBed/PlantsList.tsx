@@ -1,5 +1,7 @@
 import type { PlantData } from '@gredice/client';
+import { calculatePlantsPerField } from '@gredice/js/plants';
 import {
+    PlantOrSortImage,
     PlantYieldTooltip,
     SeedTimeInformationBadge,
 } from '@gredice/ui/plants';
@@ -12,7 +14,6 @@ import { List } from '@signalco/ui-primitives/List';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import Image from 'next/image';
 import { usePlants } from '../../hooks/usePlants';
 import { KnownPages } from '../../knownPages';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
@@ -61,16 +62,9 @@ export function PlantsList({
                         <PlantListItemSkeleton key={index} />
                     ))}
                 {sortedPlants?.map((plant) => {
-                    let plantsPerRow = Math.floor(
-                        30 / (plant.attributes?.seedingDistance ?? 30),
+                    const { totalPlants } = calculatePlantsPerField(
+                        plant.attributes?.seedingDistance,
                     );
-                    if (plantsPerRow < 1) {
-                        console.warn(
-                            `Plants per row is less than 1 (${plantsPerRow}) for ${plant.information.name}. Setting to 1.`,
-                        );
-                        plantsPerRow = 1;
-                    }
-                    const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
                     const price = plant.prices?.perPlant
                         ? plant.prices.perPlant.toFixed(2)
                         : 'Nepoznato';
@@ -81,12 +75,8 @@ export function PlantsList({
                                 className="justify-start text-start p-0 h-auto py-2 gap-3 px-4 rounded-none font-normal"
                                 onClick={() => onChange(plant)}
                             >
-                                <Image
-                                    src={
-                                        'https://www.gredice.com/' +
-                                        plant.image.cover.url
-                                    }
-                                    alt={plant.information.name}
+                                <PlantOrSortImage
+                                    plant={plant}
                                     width={48}
                                     height={48}
                                     className="size-12"

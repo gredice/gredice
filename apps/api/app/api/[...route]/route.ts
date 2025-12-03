@@ -1,8 +1,8 @@
-import { openApiDocs } from '@gredice/apidocs/openApiDocs';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { handle } from 'hono/vercel';
 import { openAPIRouteHandler } from 'hono-openapi';
+import { openApiDocs } from '../../../lib/docs/openApiDocs';
 import accountsRoutes from './accountsRoutes';
 import authRoutes from './authRoutes';
 import checkoutRoutes from './checkoutRoutes';
@@ -12,6 +12,7 @@ import directoriesRoutes from './directoriesRoutes';
 import feedbackRoutes from './feedbackRoutes';
 import gardensRoutes from './gardensRoutes';
 import notificationsRoutes from './notificationsRoutes';
+import occasionsRoutes from './occasionsRoutes';
 import shoppingCartRoutes from './shoppingCartRoutes';
 import usersRoutes from './usersRoutes';
 
@@ -34,6 +35,7 @@ const app = new Hono()
     .route('/users', usersRoutes)
     .route('/gardens', gardensRoutes)
     .route('/feedback', feedbackRoutes)
+    .route('/occasions', occasionsRoutes)
     .route('/shopping-cart', shoppingCartRoutes)
     .route('/checkout', checkoutRoutes)
     .route('/delivery', deliveryRoutes)
@@ -54,7 +56,7 @@ app.get(
                     description: 'Production server',
                 },
                 {
-                    url: 'https://api.gredice.local/api/auth',
+                    url: 'https://api.gredice.test/api/auth',
                     description: 'Local development server',
                 },
             ],
@@ -75,7 +77,7 @@ app.get(
                         description: 'Production server',
                     },
                     {
-                        url: 'https://api.gredice.local/api/accounts',
+                        url: 'https://api.gredice.test/api/accounts',
                         description: 'Local development server',
                     },
                 ],
@@ -96,7 +98,7 @@ app.get(
                         description: 'Production server',
                     },
                     {
-                        url: 'https://api.gredice.local/api/users',
+                        url: 'https://api.gredice.test/api/users',
                         description: 'Local development server',
                     },
                 ],
@@ -117,7 +119,7 @@ app.get(
                         description: 'Production server',
                     },
                     {
-                        url: 'https://api.gredice.local/api/gardens',
+                        url: 'https://api.gredice.test/api/gardens',
                         description: 'Local development server',
                     },
                 ],
@@ -141,7 +143,7 @@ app.get(
                         description: 'Production server',
                     },
                     {
-                        url: 'https://api.gredice.local/api/data',
+                        url: 'https://api.gredice.test/api/data',
                         description: 'Local development server',
                     },
                 ],

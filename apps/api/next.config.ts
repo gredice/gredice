@@ -1,10 +1,11 @@
+import { type SentryBuildOptions, withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
-import { withAxiom } from 'next-axiom';
 
 const nextConfig: NextConfig = {
     reactStrictMode: true,
     experimental: {
         typedEnv: true,
+        turbopackFileSystemCacheForDev: true,
     },
     images: {
         remotePatterns: [
@@ -20,7 +21,9 @@ const nextConfig: NextConfig = {
         qualities: [80, 100],
     },
     productionBrowserSourceMaps: true,
-    allowedDevOrigins: ['api.gredice.local'],
+    allowedDevOrigins: ['api.gredice.test'],
 };
 
-export default withAxiom(nextConfig);
+const sentryConfig: SentryBuildOptions = {};
+
+export default withSentryConfig(nextConfig, sentryConfig);

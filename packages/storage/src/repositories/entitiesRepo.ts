@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq } from 'drizzle-orm';
 import {
     attributeDefinitions,
     attributeValues,
@@ -16,6 +16,8 @@ import {
     cacheKeys,
     directoriesCached,
 } from '../cache/directoriesCached';
+
+const entityCacheTtl = 60 * 60; // 1 hour
 
 function populateMissingAttributes(
     entity: SelectEntity & {
@@ -94,6 +96,25 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
     });
 
     return rawEntities.map(populateMissingAttributes);
+}
+
+export async function getEntitiesCount(entityTypeName: string, state?: string) {
+    const result = await storage()
+        .select({ count: count() })
+        .from(entities)
+        .where(
+            state
+                ? and(
+                      eq(entities.entityTypeName, entityTypeName),
+                      eq(entities.state, state),
+                      eq(entities.isDeleted, false),
+                  )
+                : and(
+                      eq(entities.entityTypeName, entityTypeName),
+                      eq(entities.isDeleted, false),
+                  ),
+        );
+    return result[0]?.count ?? 0;
 }
 
 // Add a type for the cache, ensuring attributes and entityType are included
@@ -331,7 +352,7 @@ export async function getEntitiesFormatted<T>(entityTypeName: string) {
                 entities.map((e) => expandEntity(e, cache)),
             )) as T[];
         },
-        60 * 60,
+        entityCacheTtl,
     );
 }
 
@@ -345,7 +366,7 @@ export async function getEntityFormatted<T>(id: number) {
                 | undefined;
             return (await expandEntity(entity, cache)) as T;
         },
-        60 * 60,
+        entityCacheTtl,
     );
 }
 

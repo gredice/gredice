@@ -1,0 +1,19 @@
+{
+    "name": "@gredice/slack",
+    "version": "0.0.0",
+    "private": true,
+    "sideEffects": false,
+    "type": "module",
+    "license": "MIT",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "lint": "biome check"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.3.8",
+        "@types/node": "24.10.1",
+        "typescript": "5.9.3"
+    }
+}

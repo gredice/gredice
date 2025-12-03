@@ -21,11 +21,8 @@ Gredice is a Turborepo monorepo that powers the entire Gredice platform. It incl
   - [API reference](#api-reference)
 - [Database migrations](#database-migrations)
 - [Assets workflow](#assets-workflow)
-  - [Regenerating the game assets GLB file](#regenerating-the-game-assets-glb-file)
-  - [Adding a new entity](#adding-a-new-entity)
-- [Specification Driven Development](#specification-driven-development)
-  - [Creating a new feature](#creating-a-new-feature)
-  - [What we changed from default Spec Kit behavior](#what-we-changed-from-default-spec-kit-behavior)
+  - [Regenerating game assets](#regenerating-game-assets)
+  - [Adding a new entity model](#adding-a-new-entity-model)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -65,16 +62,16 @@ Gredice is a Turborepo monorepo that powers the entire Gredice platform. It incl
 
 Running `pnpm dev` automatically starts a Dockerized Caddy reverse proxy so that each app is available on the same subdomains we use in production:
 
-- <https://www.gredice.local> → marketing site (`apps/www`)
-- <https://vrt.gredice.local> → customer garden (`apps/garden`)
-- <https://farma.gredice.local> → farm back office (`apps/farm`)
-- <https://app.gredice.local> → internal operations (`apps/app`)
-- <https://api.gredice.local> → API routes (`apps/api`)
+- <https://www.gredice.test> → marketing site (`apps/www`)
+- <https://vrt.gredice.test> → customer garden (`apps/garden`)
+- <https://farma.gredice.test> → farm back office (`apps/farm`)
+- <https://app.gredice.test> → internal operations (`apps/app`)
+- <https://api.gredice.test> → API routes (`apps/api`)
 
 Add the following entry to your hosts file (e.g. `/etc/hosts` on macOS/Linux or `C:\Windows\System32\drivers\etc\hosts` on Windows) so the domains resolve to your machine:
 
-```
-127.0.0.1 www.gredice.local vrt.gredice.local farma.gredice.local app.gredice.local api.gredice.local
+```text
+127.0.0.1 www.gredice.test vrt.gredice.test farma.gredice.test app.gredice.test api.gredice.test
 ```
 
 Make sure Docker Desktop (or the Docker daemon) is running before you start the dev server. To bypass the proxy—for example, if Docker is unavailable—run `SKIP_DEV_PROXY=1 pnpm dev`. If the proxy ever lingers after an interrupted session, you can stop it manually with `docker stop gredice-dev-caddy`.
@@ -89,7 +86,7 @@ If the automatic step fails, you can trust the authority manually from the path 
 - **Windows**: run `certmgr.msc`, open the *Trusted Root Certification Authorities* store (either user or local machine), and import `root.crt`.
 - **Linux**: install it into your user trust store with `trust anchor ~/.gredice/dev-caddy/caddy/pki/authorities/local/root.crt`, or use your distribution's certificate tooling.
 
-After the certificate is trusted, browsers will stop warning about the `*.gredice.local` HTTPS domains.
+After the certificate is trusted, browsers will stop warning about the `*.gredice.test` HTTPS domains.
 
 ### Environment variables
 
@@ -139,37 +136,57 @@ These commands leverage the monorepo's Turbo tasks to execute the appropriate mi
 
 Coordinate with teammates before editing the shared game asset files. Only one person should export changes at a time to avoid conflicting updates.
 
-### Regenerating the game assets GLB file
+### Regenerating game assets
 
-Run the following command in the project `assets/` directory:
-
-```bash
-./export.sh
-```
-
-This generates a new `game-assets.glb` file in `apps/garden/public/assets/models`.
-
-### Adding a new entity
-
-Use [https://gltf.pmnd.rs/](https://gltf.pmnd.rs/) to convert GLTF assets into Three.js compatible components before integrating them into the project.
-
-## Specification Driven Development
-
-We use Specification Driven Development (SDD) to plan and ship new features. The process is automated using Spec Kit, which generates specifications, technical plans, and executable tasks from feature descriptions. Specifications describe the desired behavior, implementation notes capture how we will build it, and executable tasks track the actual work.
-
-### Creating a new feature
-
-Run these commands in Copilot Chat to generate the specification, technical plan, and task list:
+After updating the `GameAssets.blend` file in the `assets/` directory, regenerate both the GLB file and TypeScript types by running this command from the project root:
 
 ```bash
-/specify <FEATURE_DESCRIPTION>
-/plan <TECHNICAL_IMPLEMENTATION_DETAILS>
-/task
+pnpm generate:game-assets
 ```
 
-### What we changed from default Spec Kit behavior
+This command does the following:
 
-- We use GitButler for branch management, so the `create-new-feature.sh` script does not create branches.
+1. Exports `GameAssets.blend` to `apps/garden/public/assets/models/GameAssets.glb` using Blender
+2. Generates TypeScript types in `packages/game/src/models/GameAssets.tsx` using gltfjsx
+3. Applies linting and formatting fixes to ensure the generated code is error-free
+
+**Prerequisites**: This command requires [Blender](https://www.blender.org/download/) to be installed at the default location for your platform:
+
+- **macOS**: `/Applications/Blender.app`
+- **Windows**: `C:\Program Files\Blender Foundation\Blender 4.5\blender.exe`
+- **Linux/other**: Update the path in `assets/export.sh`
+
+The command automatically detects your platform and uses the appropriate export script (`export.ps1` on Windows, `export.sh` on Unix-like systems).
+
+### Manual steps (alternative)
+
+If you need to run the steps separately:
+
+1. **Export the GLB file** - Run from the `assets/` directory:
+
+   **Unix-like systems (macOS, Linux):**
+
+   ```bash
+   ./export.sh
+   ```
+
+   **Windows:**
+
+   ```powershell
+   .\export.ps1
+   ```
+
+2. **Generate TypeScript types** - Run from the project root:
+
+   ```bash
+   pnpm generate:models-types
+   ```
+
+### Adding a new entity model
+
+We use [https://gltf.pmnd.rs/](https://gltf.pmnd.rs/) to convert GLTF assets into Three.js compatible components before integrating them into the project.
+
+When adding new models to `GameAssets.blend`, run `pnpm generate:game-assets` to update the GLB export and TypeScript types.
 
 ## Contributing
 

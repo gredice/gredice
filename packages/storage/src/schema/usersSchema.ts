@@ -1,12 +1,15 @@
 import { relations } from 'drizzle-orm';
 import {
     index,
+    integer,
     pgTable,
     serial,
     smallint,
     text,
     timestamp,
+    uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { farms } from './farmsSchema';
 import { raisedBeds } from './gardenSchema';
 
 export const accounts = pgTable('accounts', {
@@ -16,6 +19,7 @@ export const accounts = pgTable('accounts', {
     addressStreet2: text('address_street2'),
     addressCity: text('address_city'),
     addressZip: text('address_zip'),
+    timeZone: text('time_zone').notNull().default('Europe/Paris'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at')
         .notNull()
@@ -62,6 +66,42 @@ export const accountUsersRelations = relations(accountUsers, ({ one }) => ({
         fields: [accountUsers.userId],
         references: [users.id],
         relationName: 'userAccountUsers',
+    }),
+}));
+
+export const farmUsers = pgTable(
+    'farm_users',
+    {
+        id: serial('id').primaryKey(),
+        farmId: integer('farm_id')
+            .notNull()
+            .references(() => farms.id),
+        userId: text('user_id')
+            .notNull()
+            .references(() => users.id),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .$onUpdate(() => new Date()),
+    },
+    (table) => [
+        index('farm_users_farm_id_idx').on(table.farmId),
+        index('farm_users_user_id_idx').on(table.userId),
+        uniqueIndex('farm_users_farm_user_unique').on(
+            table.farmId,
+            table.userId,
+        ),
+    ],
+);
+
+export const farmUsersRelations = relations(farmUsers, ({ one }) => ({
+    farm: one(farms, {
+        fields: [farmUsers.farmId],
+        references: [farms.id],
+    }),
+    user: one(users, {
+        fields: [farmUsers.userId],
+        references: [users.id],
     }),
 }));
 

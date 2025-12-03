@@ -1,6 +1,6 @@
+import type { BlockData } from '@gredice/directory-types';
 import { getEntitiesFormatted } from '@gredice/storage';
-import type { BlockData } from '../@types/directories-api/types';
 
-export async function getBlockData() {
-    return (await getEntitiesFormatted('block')) as unknown as BlockData[];
+export async function getBlockData(): Promise<BlockData[]> {
+    return (await getEntitiesFormatted<BlockData>('block')) ?? [];
 }

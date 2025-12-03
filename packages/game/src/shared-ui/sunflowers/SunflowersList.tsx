@@ -1,3 +1,4 @@
+import { getAchievementDefinition } from '@gredice/js/achievements';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Empty } from '@signalco/ui-icons';
 import { List } from '@signalco/ui-primitives/List';
@@ -14,6 +15,17 @@ function sunflowerReasonToDescription(reason: string) {
         return {
             icon: <span className="text-4xl text-center size-10">🎉</span>,
             label: 'Nagrada za registraciju',
+        };
+    }
+
+    if (reason.startsWith('achievement')) {
+        const key = reason.split(':')[1];
+        const definition = key ? getAchievementDefinition(key) : undefined;
+        return {
+            icon: <span className="text-4xl text-center size-10">🏆</span>,
+            label: definition
+                ? `Postignuće: ${definition.title}`
+                : 'Nagrada za postignuće',
         };
     }
 
@@ -103,7 +115,10 @@ export function SunflowersList({ limit }: { limit?: number }) {
     // Group similar items on a daily basis
     const historyGrouped = history.reduce((acc, event) => {
         const eventDate = new Date(event.createdAt).toLocaleDateString('hr-HR');
-        const eventReasonGroup = event.reason.split(':')[0];
+        const eventReasonGroup =
+            typeof event.reason === 'string'
+                ? event.reason.split(':')[0]
+                : 'unknown';
         const key = `${eventDate}-${eventReasonGroup}-${event.amount}`;
 
         if (!acc.has(key)) {
@@ -132,7 +147,9 @@ export function SunflowersList({ limit }: { limit?: number }) {
     return (
         <List>
             {historyGroupedArray.slice(0, actualLimit).map((event) => {
-                const description = sunflowerReasonToDescription(event.reason);
+                const description = sunflowerReasonToDescription(
+                    typeof event.reason === 'string' ? event.reason : '',
+                );
                 return (
                     <ListItem
                         key={event.id}

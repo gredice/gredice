@@ -1,6 +1,6 @@
 import 'server-only';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
-import { and, count, desc, eq, gte } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { getEntitiesFormatted, getOperations, storage } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
@@ -11,6 +11,7 @@ import {
     gardens,
     type InsertGarden,
     type InsertRaisedBed,
+    type RaisedBedOrientation,
     raisedBeds,
     type UpdateGarden,
     type UpdateGardenBlock,
@@ -59,7 +60,12 @@ export async function getGardens() {
     });
 }
 
-export async function getAccountGardens(accountId: string) {
+export async function getAccountGardens(
+    accountId: string,
+    filter?: {
+        status?: string;
+    },
+) {
     const accountGardens = await storage().query.gardens.findMany({
         where: and(
             eq(gardens.accountId, accountId),
@@ -71,31 +77,7 @@ export async function getAccountGardens(accountId: string) {
         accountGardens.map(async (garden) => {
             return {
                 ...garden,
-                raisedBeds: await getRaisedBeds(garden.id),
-            };
-        }),
-    );
-}
-
-export async function getAccountGardensFiltered(
-    accountId: string,
-    filters?: {
-        status?: string;
-        fromDate?: Date;
-    },
-) {
-    const accountGardens = await storage().query.gardens.findMany({
-        where: and(
-            eq(gardens.accountId, accountId),
-            eq(gardens.isDeleted, false),
-        ),
-    });
-    // For each garden, fetch and attach filtered raised beds
-    return Promise.all(
-        accountGardens.map(async (garden) => {
-            return {
-                ...garden,
-                raisedBeds: await getRaisedBedsFiltered(garden.id, filters),
+                raisedBeds: await getRaisedBeds(garden.id, filter),
             };
         }),
     );
@@ -166,20 +148,25 @@ export async function getGardenBlock(gardenId: number, blockId: string) {
     );
 }
 
-export async function createGardenBlock(gardenId: number, blockName: string) {
+export async function createGardenBlock(
+    gardenId: number,
+    blockName: string,
+    db: ReturnType<typeof storage> = storage(),
+) {
     const blockId = uuidV4();
 
     await Promise.all([
-        storage().insert(gardenBlocks).values({
+        db.insert(gardenBlocks).values({
             id: blockId,
             gardenId,
             name: blockName,
         }),
-        await createEvent(
+        createEvent(
             knownEvents.gardens.blockPlacedV1(gardenId.toString(), {
                 id: blockId,
                 name: blockName,
             }),
+            db,
         ),
     ]);
 
@@ -240,9 +227,10 @@ export async function getGardenStack(
 export async function createGardenStack(
     gardenId: number,
     { x, y }: { x: number; y: number },
+    db: ReturnType<typeof storage> = storage(),
 ) {
     // Check if stack at location already exists
-    const [{ count: existingStacksCount }] = await storage()
+    const [{ count: existingStacksCount }] = await db
         .select({ count: count() })
         .from(gardenStacks)
         .where(
@@ -257,7 +245,7 @@ export async function createGardenStack(
         return false;
     }
 
-    await storage()
+    await db
         .insert(gardenStacks)
         .values({ gardenId, positionX: x, positionY: y });
     return true;
@@ -266,9 +254,10 @@ export async function createGardenStack(
 export async function updateGardenStack(
     gardenId: number,
     stacks: Omit<UpdateGardenStack, 'id'> & { x: number; y: number },
+    db: ReturnType<typeof storage> = storage(),
 ) {
     const stackId = (
-        await storage().query.gardenStacks.findFirst({
+        await db.query.gardenStacks.findFirst({
             where: and(
                 eq(gardenStacks.gardenId, gardenId),
                 eq(gardenStacks.positionX, stacks.x),
@@ -281,7 +270,7 @@ export async function updateGardenStack(
         throw new Error('Stack not found');
     }
 
-    await storage()
+    await db
         .update(gardenStacks)
         .set({
             blocks: stacks.blocks,
@@ -318,39 +307,23 @@ export async function deleteGardenStacks(gardenId: number) {
 }
 
 export async function createRaisedBed(
-    raisedBed: Omit<InsertRaisedBed, 'name'>,
+    raisedBed: Omit<InsertRaisedBed, 'name'> & {
+        orientation?: RaisedBedOrientation;
+    },
 ) {
     return (
         await storage()
             .insert(raisedBeds)
             .values({
                 ...raisedBed,
+                orientation: raisedBed.orientation ?? 'vertical',
                 name: generateRaisedBedName(),
             })
             .returning({ id: raisedBeds.id })
     )[0].id;
 }
 
-export async function getRaisedBeds(gardenId: number) {
-    const beds = await storage().query.raisedBeds.findMany({
-        where: and(
-            eq(raisedBeds.gardenId, gardenId),
-            eq(raisedBeds.isDeleted, false),
-        ),
-    });
-    // For each raised bed, fetch and attach fields with event-sourced info
-    return Promise.all(
-        beds.map(async (bed) => {
-            const fields = await getRaisedBedFieldsWithEvents(bed.id);
-            return {
-                ...bed,
-                fields,
-            };
-        }),
-    );
-}
-
-export async function getRaisedBedsFiltered(
+export async function getRaisedBeds(
     gardenId: number,
     filters?: {
         status?: string;
@@ -418,6 +391,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             knownEventTypes.raisedBedFields.create,
             knownEventTypes.raisedBedFields.delete,
             knownEventTypes.raisedBedFields.plantPlace,
+            knownEventTypes.raisedBedFields.plantSchedule,
             knownEventTypes.raisedBedFields.plantUpdate,
             knownEventTypes.raisedBedFields.plantReplaceSort,
         ],
@@ -450,16 +424,22 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         let toBeRemoved = false;
         let stoppedDate: Date | undefined;
 
-        // TODO: Implement multiple handling
-        // let operationId = undefined;
-        // let operationStatus = undefined;
-
         for (const event of events) {
             const data = event.data as Record<string, unknown> | undefined;
+            // Handle plant placement event
             if (event.type === knownEventTypes.raisedBedFields.plantPlace) {
-                if (data?.plantSortId && typeof data.plantSortId === 'string') {
+                // Parse plant sort ID if provided
+                if (typeof data?.plantSortId === 'number') {
+                    plantSortId = data.plantSortId;
+                } else if (typeof data?.plantSortId === 'string') {
                     plantSortId = parseInt(data.plantSortId, 10);
+                } else {
+                    console.error(
+                        `Invalid plantSortId in event ${event.id} for field ${field.id}`,
+                    );
                 }
+
+                // Parse scheduled date if provided
                 if (
                     data?.scheduledDate &&
                     typeof data.scheduledDate === 'string'
@@ -472,8 +452,31 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 ) {
                     plantScheduledDate = data?.scheduledDate;
                 }
+
+                // Set status to new when plant is placed
                 plantStatus = 'new';
-            } else if (
+            }
+            // Handle plant schedule update event
+            else if (
+                event.type === knownEventTypes.raisedBedFields.plantSchedule
+            ) {
+                if (
+                    data?.scheduledDate &&
+                    typeof data.scheduledDate === 'string'
+                ) {
+                    plantScheduledDate = new Date(data.scheduledDate);
+                } else if (
+                    data?.scheduledDate &&
+                    typeof data.scheduledDate === 'object' &&
+                    data?.scheduledDate instanceof Date
+                ) {
+                    plantScheduledDate = data?.scheduledDate;
+                } else if (data?.scheduledDate == null) {
+                    plantScheduledDate = undefined;
+                }
+            }
+            // Handle plant status update event
+            else if (
                 event.type === knownEventTypes.raisedBedFields.plantUpdate
             ) {
                 plantStatus =
@@ -503,17 +506,16 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     // Don't process any newer events for this field
                     break;
                 }
-            } else if (
+            }
+            // Handle plant sort replace event
+            else if (
                 event.type === knownEventTypes.raisedBedFields.plantReplaceSort
             ) {
                 if (data?.plantSortId && typeof data.plantSortId === 'string') {
                     plantSortId = parseInt(data.plantSortId, 10);
                 }
             }
-            // else if (event.type === knownEventTypes.raisedBedFields.operationOrder) {
-            //     operationId = data?.orderId;
-            //     operationStatus = data?.status || operationStatus;
-            // }
+            // Handle field deletion event
             else if (event.type === knownEventTypes.raisedBedFields.delete) {
                 plantStatus = 'deleted';
                 plantSowDate = undefined;
@@ -683,6 +685,7 @@ export async function getRaisedBedFieldDiaryEntries(
             [
                 knownEventTypes.raisedBedFields.create,
                 knownEventTypes.raisedBedFields.plantPlace,
+                knownEventTypes.raisedBedFields.plantSchedule,
                 knownEventTypes.raisedBedFields.plantUpdate,
                 knownEventTypes.raisedBedFields.plantReplaceSort,
                 knownEventTypes.raisedBedFields.delete,
@@ -718,6 +721,11 @@ export async function getRaisedBedFieldDiaryEntries(
                     name = 'Zatraženo sijanje biljke';
                     description =
                         'Sijanje biljke je zatraženo i čeka na odobrenje.';
+                    break;
+                }
+                case knownEventTypes.raisedBedFields.plantSchedule: {
+                    name = 'Ažuriran termin sijanja';
+                    description = 'Termin sijanja biljke je promijenjen.';
                     break;
                 }
                 case knownEventTypes.raisedBedFields.plantUpdate: {
@@ -856,13 +864,69 @@ export async function deleteRaisedBedField(
         );
 }
 
-export function getRaisedBedSensors(raisedBedId: number) {
-    return storage().query.raisedBedSensors.findMany({
+export async function getRaisedBedSensors(raisedBedId: number) {
+    const raisedBed = await storage().query.raisedBeds.findFirst({
+        columns: {
+            id: true,
+            physicalId: true,
+            gardenId: true,
+        },
         where: and(
-            eq(raisedBedSensors.raisedBedId, raisedBedId),
+            eq(raisedBeds.id, raisedBedId),
+            eq(raisedBeds.isDeleted, false),
+        ),
+    });
+
+    if (!raisedBed) {
+        return [];
+    }
+
+    let raisedBedIds: number[] = [raisedBed.id];
+
+    if (raisedBed.physicalId) {
+        const whereConditions = [
+            eq(raisedBeds.physicalId, raisedBed.physicalId),
+            eq(raisedBeds.isDeleted, false),
+        ];
+
+        if (raisedBed.gardenId) {
+            whereConditions.push(eq(raisedBeds.gardenId, raisedBed.gardenId));
+        }
+
+        const relatedBeds = await storage().query.raisedBeds.findMany({
+            columns: { id: true },
+            where: and(...whereConditions),
+        });
+
+        raisedBedIds = Array.from(
+            new Set([raisedBed.id, ...relatedBeds.map((bed) => bed.id)]),
+        );
+    }
+
+    const sensors = await storage().query.raisedBedSensors.findMany({
+        where: and(
+            inArray(raisedBedSensors.raisedBedId, raisedBedIds),
             eq(raisedBedSensors.isDeleted, false),
         ),
     });
+
+    const uniqueSensors: typeof sensors = [];
+    const seen = new Set<string>();
+
+    for (const sensor of sensors) {
+        const key = sensor.sensorSignalcoId
+            ? `signalco:${sensor.sensorSignalcoId}`
+            : `id:${sensor.id}`;
+
+        if (seen.has(key)) {
+            continue;
+        }
+
+        seen.add(key);
+        uniqueSensors.push(sensor);
+    }
+
+    return uniqueSensors;
 }
 
 export function createRaisedBedSensor(data: InsertRaisedBedSensor) {

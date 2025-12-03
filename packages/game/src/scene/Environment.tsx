@@ -6,8 +6,9 @@ import { getPosition } from 'suncalc';
 import { Color, Quaternion, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useWeatherNow } from '../hooks/useWeatherNow';
-import { useGameState } from '../useGameState';
+import { type GameState, useGameState } from '../useGameState';
 import { Drops } from './Rain/Drops';
+import Snow from './Snow/Snow';
 
 const backgroundColorScale = chroma
     .scale([
@@ -108,6 +109,7 @@ export type EnvironmentProps = {
     noBackground?: boolean;
     noSound?: boolean;
     noWeather?: boolean;
+    weather?: Partial<GameState['weather']>;
 };
 
 function useEnvironmentElements({
@@ -211,6 +213,7 @@ export function Environment({
     noBackground,
     noSound,
     noWeather,
+    weather,
 }: EnvironmentProps) {
     const cameraShadowSize = 20;
     const shadowMapSize = 8;
@@ -218,6 +221,7 @@ export function Environment({
     const currentTime = useGameState((state) => state.currentTime);
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
+    const setSnowCoverage = useGameState((state) => state.setSnowCoverage);
 
     const { data: garden } = useCurrentGarden();
     const location = garden
@@ -230,14 +234,26 @@ export function Environment({
               lon: 16.572,
           };
 
-    const overrideWeather = useGameState((state) => state.weather);
-    const { data: weather } = useWeatherNow(!noWeather);
-    if (overrideWeather && weather) {
+    const gameWeather = useGameState((state) => state.weather);
+    const { data: weatherNow } = useWeatherNow(!noWeather);
+    const overrideWeather = weather ?? gameWeather;
+    const actualWeather: typeof weatherNow = weatherNow;
+    if ((weather || gameWeather) && actualWeather) {
         console.debug('Overriding weather', overrideWeather);
-        weather.rainy = overrideWeather?.rainy ?? weather.rainy;
-        weather.foggy = overrideWeather?.foggy ?? weather.foggy;
-        weather.cloudy = overrideWeather?.cloudy ?? weather.cloudy;
-        weather.snowy = overrideWeather?.snowy ?? weather.snowy;
+        actualWeather.rainy = overrideWeather?.rainy ?? actualWeather.rainy;
+        actualWeather.foggy = overrideWeather?.foggy ?? actualWeather.foggy;
+        actualWeather.cloudy = overrideWeather?.cloudy ?? actualWeather.cloudy;
+        actualWeather.snowy = overrideWeather?.snowy ?? actualWeather.snowy;
+        actualWeather.windSpeed =
+            overrideWeather?.windSpeed ?? actualWeather.windSpeed;
+        if (typeof overrideWeather?.windDirection === 'number') {
+            // Convert numeric wind direction (0-360 degrees) to compass direction string
+            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+            const index = Math.round(overrideWeather.windDirection / 45) % 8;
+            actualWeather.windDirection = directions[index];
+        }
+        actualWeather.snowAccumulation =
+            overrideWeather?.snowAccumulation ?? actualWeather.snowAccumulation;
     }
 
     // Sound management
@@ -267,13 +283,13 @@ export function Environment({
             return;
         }
 
-        if (weather && (weather.rainy ?? 0) > 0.9) {
+        if (actualWeather && (actualWeather.rainy ?? 0) > 0.9) {
             rainHeavyAmbient.play();
         } else {
             if (timeOfDay > 0.15 && timeOfDay < 0.3) {
                 morningAmbient.play();
             } else if (timeOfDay > 0.3 && timeOfDay < 0.8) {
-                if (weather && (weather.rainy ?? 0) > 0) {
+                if (actualWeather && (actualWeather.rainy ?? 0) > 0) {
                     dayRainAmbient.play();
                 } else {
                     dayAmbient.play();
@@ -282,10 +298,10 @@ export function Environment({
                 nightAmbient.play();
             }
 
-            if (weather) {
-                if ((weather.rainy ?? 0) > 0.9) {
+            if (actualWeather) {
+                if ((actualWeather.rainy ?? 0) > 0.9) {
                     rainMediumModAmbient.play();
-                } else if ((weather.rainy ?? 0) > 0.4) {
+                } else if ((actualWeather.rainy ?? 0) > 0.4) {
                     rainLightModAmbient.play();
                 }
             }
@@ -302,7 +318,7 @@ export function Environment({
         };
     }, [
         timeOfDay,
-        weather,
+        actualWeather,
         noSound,
         dayAmbient.play,
         dayAmbient.stop,
@@ -325,11 +341,11 @@ export function Environment({
             location,
             currentTime,
             timeOfDay,
-            weather,
+            weather: actualWeather,
         });
 
     // Handle fog
-    const fog = weather?.foggy ?? 0;
+    const fog = actualWeather?.foggy ?? 0;
     const fogNear = 170 - fog * 30;
     const fogColor =
         timeOfDay > 0.2 && timeOfDay < 0.8
@@ -337,14 +353,36 @@ export function Environment({
             : new Color(0x55556a);
 
     // Handle rain
-    const rain = weather?.rainy ?? 0;
+    const rain = actualWeather?.rainy ?? 0;
 
-    // // TODO: Handle snow
-    // const snow = weather?.snowy ?? 0;
+    // Handle snow particles - based on current weather (snowy intensity 0-1)
+    const snowParticles = actualWeather?.snowy ?? 0;
 
-    // // TODO: Handle wind
-    // const windSpeed = weather?.windSpeed ?? 0;
-    // const windDirection = weather?.windDirection;
+    // Handle ground snow coverage - based on accumulated snow in cm
+    const snowAccumulationCm = actualWeather?.snowAccumulation ?? 0;
+    const snowCoverage = Math.min(1, snowAccumulationCm / 30); // Scale: 0cm=0, 30cm=1
+
+    useEffect(() => {
+        setSnowCoverage(snowCoverage);
+    }, [setSnowCoverage, snowCoverage]);
+
+    // Handle wind
+    const windSpeed = actualWeather?.windSpeed ?? 0;
+    // Convert compass direction string to degrees
+    const compassToDirection: Record<string, number> = {
+        N: 0,
+        NE: 45,
+        E: 90,
+        SE: 135,
+        S: 180,
+        SW: 225,
+        W: 270,
+        NW: 315,
+    };
+    const windDirection =
+        typeof actualWeather?.windDirection === 'string'
+            ? (compassToDirection[actualWeather.windDirection] ?? 0)
+            : 0;
 
     return (
         <>
@@ -387,6 +425,13 @@ export function Environment({
             )}
             {!noWeather && rain > 0 && (
                 <Drops count={rain < 0.4 ? 200 : rain > 0.9 ? 2000 : 600} />
+            )}
+            {!noWeather && snowParticles > 0 && (
+                <Snow
+                    count={snowParticles * 5000}
+                    windSpeed={windSpeed}
+                    windDirection={windDirection}
+                />
             )}
         </>
     );

@@ -5,55 +5,55 @@
     }
 }
 
-http://www.gredice.local {
-    redir https://www.gredice.local{uri}
+http://www.gredice.test {
+    redir https://www.gredice.test{uri}
 }
 
-https://www.gredice.local {
+https://www.gredice.test {
     tls internal
     reverse_proxy http://host.docker.internal:3000 {
         header_up X-Forwarded-Proto {http.request.scheme}
     }
 }
 
-http://vrt.gredice.local {
-    redir https://vrt.gredice.local{uri}
+http://vrt.gredice.test {
+    redir https://vrt.gredice.test{uri}
 }
 
-https://vrt.gredice.local {
+https://vrt.gredice.test {
     tls internal
     reverse_proxy http://host.docker.internal:3001 {
         header_up X-Forwarded-Proto {http.request.scheme}
     }
 }
 
-http://farma.gredice.local {
-    redir https://farma.gredice.local{uri}
+http://farma.gredice.test {
+    redir https://farma.gredice.test{uri}
 }
 
-https://farma.gredice.local {
+https://farma.gredice.test {
     tls internal
     reverse_proxy http://host.docker.internal:3002 {
         header_up X-Forwarded-Proto {http.request.scheme}
     }
 }
 
-http://app.gredice.local {
-    redir https://app.gredice.local{uri}
+http://app.gredice.test {
+    redir https://app.gredice.test{uri}
 }
 
-https://app.gredice.local {
+https://app.gredice.test {
     tls internal
     reverse_proxy http://host.docker.internal:3003 {
         header_up X-Forwarded-Proto {http.request.scheme}
     }
 }
 
-http://api.gredice.local {
-    redir https://api.gredice.local{uri}
+http://api.gredice.test {
+    redir https://api.gredice.test{uri}
 }
 
-https://api.gredice.local {
+https://api.gredice.test {
     tls internal
     reverse_proxy http://host.docker.internal:3005 {
         header_up X-Forwarded-Proto {http.request.scheme}

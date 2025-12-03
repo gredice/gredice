@@ -8,7 +8,13 @@ import { PlantsGalleryItem } from './biljke/PlantsGalleryItem';
 
 export async function PlantsShowcase() {
     const entities = await getPlantsData();
-    const plants = entities?.slice(0, 4);
+    const plants = entities
+        ?.slice()
+        ?.sort(
+            (first, second) =>
+                Number(second.isRecommended) - Number(first.isRecommended),
+        )
+        ?.slice(0, 4);
 
     return (
         <div>
@@ -27,12 +33,13 @@ export async function PlantsShowcase() {
                             attributes={plant.attributes}
                             image={plant.image}
                             prices={plant.prices}
+                            isRecommended={plant.isRecommended}
                         />
                     </div>
                 ))}
                 <Link
                     href={KnownPages.Plants}
-                    className="flex flex-col justify-center items-center hover:border-muted-foreground/50 hover:bg-white/30 bg-white/70 rounded-lg border border-dashed p-4 transition-all"
+                    className="flex flex-col justify-center items-center hover:border-muted-foreground/50 hover:bg-white/30 bg-white/70 rounded-lg border border-tertiary border-dashed p-4 transition-all"
                 >
                     <Row spacing={1}>
                         <span>Sve biljke</span>

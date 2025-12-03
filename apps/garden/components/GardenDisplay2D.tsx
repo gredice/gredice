@@ -9,6 +9,7 @@ export type GardenDisplay2DProps = {
                 [x: string]: {
                     id: string;
                     name: string;
+                    rotation?: number | null;
                 }[];
             };
         };
@@ -44,7 +45,7 @@ export function GardenDisplay2D({
     // Expand the garden data to a flat array of stacks
     const stacks: {
         position: { x: number; y: number };
-        blocks: { id: string; name: string }[];
+        blocks: { id: string; name: string; rotation?: number | null }[];
     }[] = [];
     const xPositions = Object.keys(garden.stacks);
     for (const x of xPositions) {
@@ -58,6 +59,7 @@ export function GardenDisplay2D({
                           return {
                               id: block.id,
                               name: block.name,
+                              rotation: block.rotation,
                           };
                       })
                     : [],
@@ -120,16 +122,16 @@ export function GardenDisplay2D({
                             underStackHeight +=
                                 blockData?.find(
                                     (b) =>
-                                        b.information.name ===
+                                        b.information?.name ===
                                         currentBlock.name,
-                                )?.attributes.height ?? 0;
+                                )?.attributes?.height ?? 0;
                         }
 
                         // Large blocks do snaphots with zoomed view so we need to compensite with 1.5x size and -0.25x offset
                         const isLargeBlock =
                             (blockData?.find(
-                                (b) => b.information.name === block.name,
-                            )?.attributes.height ?? 0) > 1.5;
+                                (b) => b.information?.name === block.name,
+                            )?.attributes?.height ?? 0) > 1.5;
                         const realizedBlockSize = isLargeBlock
                             ? blockSize * 1.5
                             : blockSize;
@@ -137,11 +139,14 @@ export function GardenDisplay2D({
                             ? -((realizedBlockSize - blockSize) / 2)
                             : 0;
 
+                        const rotationIndex =
+                            (((block.rotation ?? 0) % 4) + 4) % 4;
+                        const rotationSuffix = rotationIndex + 1;
                         return (
                             // biome-ignore lint/performance/noImgElement: Not part of NextJS app - OG image generation doesn't support next image
                             <img
                                 key={block.id}
-                                src={`https://www.gredice.com/assets/blocks/${block.name}.png`}
+                                src={`https://www.gredice.com/assets/blocks/${block.name}_${rotationSuffix}.png`}
                                 alt={`${block.name}`}
                                 width={realizedBlockSize}
                                 height={realizedBlockSize}

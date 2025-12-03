@@ -8,6 +8,7 @@ export function RiasedBedFields({ blockId }: { blockId: string }) {
     const raisedBed = currentGarden?.raisedBeds?.find(
         (rb) => rb.blockId === blockId,
     );
+    const orientation = raisedBed?.orientation ?? 'vertical';
 
     const cartItems = cart?.items.filter(
         (item) =>
@@ -33,7 +34,13 @@ export function RiasedBedFields({ blockId }: { blockId: string }) {
         <>
             {displayedFields.map((field) => {
                 if (!field) return null;
-                return <RaisedBedPlantField key={field.id} field={field} />;
+                return (
+                    <RaisedBedPlantField
+                        key={field.id}
+                        field={field}
+                        orientation={orientation}
+                    />
+                );
             })}
         </>
     );

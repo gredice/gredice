@@ -28,7 +28,10 @@ import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
-import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
+import {
+    calculateRaisedBedsValidity,
+    updateRaisedBedsOrientation,
+} from '../../../lib/garden/raisedBedsService';
 import {
     type AuthVariables,
     authValidator,
@@ -195,6 +198,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         physicalId: raisedBed.physicalId,
                         blockId: raisedBed.blockId,
                         status: raisedBed.status,
+                        orientation: raisedBed.orientation,
                         fields: raisedBed.fields,
                         createdAt: raisedBed.createdAt,
                         updatedAt: raisedBed.updatedAt,
@@ -703,6 +707,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
             }
 
+            // Update raised beds orientation after stack changes
+            const updatedGarden = await getGarden(gardenIdNumber);
+            if (updatedGarden) {
+                await updateRaisedBedsOrientation(updatedGarden);
+            }
+
             return context.json(null, 200);
         },
     )
@@ -752,7 +762,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Retrieve block information (cost)
             const block = blockData.find(
-                (block) => block.information.name === blockName,
+                (block) => block.information?.name === blockName,
             );
             if (!block) {
                 return context.json(
@@ -760,7 +770,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     400,
                 );
             }
-            const cost = block.prices.sunflowers ?? 0;
+            const cost = block.prices?.sunflowers ?? 0;
             if (cost <= 0) {
                 return context.json(
                     { error: 'Requested block not for sale' },
@@ -770,12 +780,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Spend sunflowers and create block in parallel
             const [, blockId] = await Promise.all([
-                spendSunflowers(
-                    accountId,
-                    cost,
-                    `block:${block.information.name}`,
-                ),
-                createGardenBlock(gardenIdNumber, block.information.name),
+                spendSunflowers(accountId, cost, `block:${blockName}`),
+                createGardenBlock(gardenIdNumber, blockName),
             ]);
 
             return context.json({ id: blockId });
@@ -873,6 +879,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     result.errorStatus as ContentfulStatusCode,
                 );
             }
+
+            // Update raised beds orientation after stack changes
+            const updatedGarden = await getGarden(gardenIdNumber);
+            if (updatedGarden) {
+                await updateRaisedBedsOrientation(updatedGarden);
+            }
+
             return context.json(null, 200);
         },
     )
@@ -915,6 +928,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 garden.raisedBeds.map((raisedBed) => ({
                     id: raisedBed.id,
                     blockId: raisedBed.blockId,
+                    orientation: raisedBed.orientation,
                     createdAt: raisedBed.createdAt,
                     updatedAt: raisedBed.updatedAt,
                     isValid: validityMap.get(raisedBed.id) ?? false,
@@ -965,6 +979,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json({
                 id: raisedBed.id,
                 blockId: raisedBed.blockId,
+                orientation: raisedBed.orientation,
                 createdAt: raisedBed.createdAt,
                 updatedAt: raisedBed.updatedAt,
                 isValid: validityMap.get(raisedBed.id) ?? false,

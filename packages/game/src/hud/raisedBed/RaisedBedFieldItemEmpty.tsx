@@ -1,6 +1,5 @@
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { ShoppingCart } from '@signalco/ui-icons';
-import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
-import Image from 'next/image';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
@@ -73,20 +72,16 @@ export function RaisedBedFieldItemEmpty({
                     )}
                     {!isLoading && cartPlantItem && (
                         <>
-                            <Image
-                                src={`https://www.gredice.com/${cartPlantItem.shopData.image}`}
+                            <PlantOrSortImage
+                                coverUrl={cartPlantItem.shopData.image}
                                 alt={cartPlantItem.shopData.name ?? 'Nepoznato'}
                                 width={60}
                                 height={60}
                             />
-                            <div className="absolute right-1 top-1">
-                                <DotIndicator
-                                    size={30}
-                                    color={'success'}
-                                    content={
-                                        <ShoppingCart className="size-6 stroke-white" />
-                                    }
-                                />
+                            <div className="absolute right-1.5 top-1.5">
+                                <div className="rounded-full border-2 p-1 bg-yellow-600 border-white shadow-lg">
+                                    <ShoppingCart className="size-4 stroke-white" />
+                                </div>
                             </div>
                         </>
                     )}

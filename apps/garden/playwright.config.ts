@@ -1,8 +1,30 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
     defineConfig,
     devices,
     type PlaywrightTestConfig,
 } from '@playwright/experimental-ct-react';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Plugin to intercept next/font/google before Vite's resolver
+function nextFontMockPlugin() {
+    const mockPath = path.resolve(
+        __dirname,
+        'playwright/__mocks__/next-font-google.ts',
+    );
+    return {
+        name: 'next-font-mock',
+        enforce: 'pre' as const,
+        async resolveId(source: string) {
+            if (source === 'next/font/google') {
+                return { id: mockPath, external: false };
+            }
+            return null;
+        },
+    };
+}
 
 export const config: PlaywrightTestConfig = {
     testDir: './',
@@ -17,6 +39,12 @@ export const config: PlaywrightTestConfig = {
         baseURL: 'http://127.0.0.1:3001',
         trace: 'on-first-retry',
         ctPort: 3100,
+        ctViteConfig: {
+            plugins: [nextFontMockPlugin()],
+            optimizeDeps: {
+                exclude: ['next/font/google'],
+            },
+        },
     },
     projects: [
         {

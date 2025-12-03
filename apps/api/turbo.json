@@ -1,0 +1,45 @@
+{
+    "$schema": "https://turbo.build/schema.json",
+    "extends": ["//"],
+    "tasks": {
+        "build": {
+            "env": [
+                "ACS_CONNECTION_STRING",
+                "BLOB_READ_WRITE_TOKEN",
+                "CRON_SECRET",
+                "ENABLE_EXPERIMENTAL_COREPACK",
+                "FACEBOOK_CLIENT_ID",
+                "FACEBOOK_CLIENT_SECRET",
+                "GOOGLE_CLIENT_ID",
+                "GOOGLE_CLIENT_SECRET",
+                "GREDICE_JWT_SIGN_SECRET",
+                "GREDICE_MCP_JWT_SECRET",
+                "GREDICE_SILO_KV_REST_API_READ_ONLY_TOKEN",
+                "GREDICE_SILO_KV_REST_API_TOKEN",
+                "GREDICE_SILO_KV_REST_API_URL",
+                "GREDICE_SILO_KV_URL",
+                "GREDICE_SILO_REDIS_URL",
+                "NEXT_PUBLIC_STRIPE_PUBLISHABLE",
+                "NEXT_PUBLIC_STRIPE_RETURN_URL",
+                "PLANTS_SILO_KV_REST_API_READ_ONLY_TOKEN",
+                "PLANTS_SILO_KV_REST_API_TOKEN",
+                "PLANTS_SILO_KV_REST_API_URL",
+                "PLANTS_SILO_KV_URL",
+                "PLANTS_SILO_REDIS_URL",
+                "POSTGRES_DATABASE",
+                "POSTGRES_HOST",
+                "POSTGRES_PASSWORD",
+                "POSTGRES_PRISMA_URL",
+                "POSTGRES_URL",
+                "POSTGRES_URL_NON_POOLING",
+                "POSTGRES_URL_NO_SSL",
+                "POSTGRES_USER",
+                "RESEND_API_KEY",
+                "SIGNALCO_API_KEY",
+                "STRIPE_SECRETKEY",
+                "STRIPE_WEBHOOK_SECRET",
+                "VERCEL_OIDC_TOKEN"
+            ]
+        }
+    }
+}

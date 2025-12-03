@@ -12,11 +12,21 @@ import { BlockGround } from './BlockGround';
 import { BlockGroundAngle } from './BlockGroundAngle';
 import { BlockSand } from './BlockSand';
 import { BlockSandAngle } from './BlockSandAngle';
+import { BlockSnow } from './BlockSnow';
+import { BlockSnowAngle } from './BlockSnowAngle';
+import { BlockSnowFalling } from './BlockSnowFalling';
 import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Composter } from './Composter';
 import { Fence } from './Fence';
+import { GiftBoxBlueWhite } from './GiftBoxBlueWhite';
+import { GiftBoxGoldRed } from './GiftBoxGoldRed';
+import { GiftBoxGreenGold } from './GiftBoxGreenGold';
+import { GiftBoxPurpleSilver } from './GiftBoxPurpleSilver';
+import { GiftBoxRedWhite } from './GiftBoxRedWhite';
+import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
 import { Pine } from './Pine';
+import { PineAdvent } from './PineAdvent';
 import { RaisedBed } from './RaisedBed';
 import { MulchCoconut } from './raisedBed/MulchCoconut';
 import { MulchHey } from './raisedBed/MulchHey';
@@ -25,6 +35,7 @@ import { Seed } from './raisedBed/Seed';
 import { Stick } from './raisedBed/Stick';
 import { Shade } from './Shade';
 import { ShovelSmall } from './ShovelSmall';
+import { Snowman } from './Snowman';
 import { StoneLarge } from './StoneLarge';
 import { StoneMedium } from './StoneMedium';
 import { StoneSmall } from './StoneSmall';
@@ -42,19 +53,30 @@ export const entityNameMap: Record<
     Block_Ground_Angle: BlockGroundAngle,
     Block_Grass_Angle: BlockGrassAngle,
     Block_Sand_Angle: BlockSandAngle,
+    Block_Snow: BlockSnow,
+    Block_Snow_Angle: BlockSnowAngle,
+    Block_Snow_Falling: BlockSnowFalling,
     Composter: Composter,
     Raised_Bed: RaisedBed,
     Shade: Shade,
     Fence: Fence,
     Stool: Stool,
     Bucket: Bucket,
+    GiftBox_RedWhite: GiftBoxRedWhite,
+    GiftBox_GreenGold: GiftBoxGreenGold,
+    GiftBox_BlueWhite: GiftBoxBlueWhite,
+    GiftBox_PurpleSilver: GiftBoxPurpleSilver,
+    GiftBox_GoldRed: GiftBoxGoldRed,
+    GiftBox_WhiteGreen: GiftBoxWhiteGreen,
     Bush: Bush,
     Tree: Tree,
     Pine: Pine,
+    PineAdvent: PineAdvent,
     StoneSmall: StoneSmall,
     StoneMedium: StoneMedium,
     StoneLarge: StoneLarge,
     ShovelSmall: ShovelSmall,
+    Snowman: Snowman,
     Tulip: Tulip,
     BaleHey: BaleHey,
 
@@ -66,7 +88,7 @@ export const entityNameMap: Record<
     Seed: Seed,
 };
 
-type EntityFactoryProps = {
+export type EntityFactoryProps = {
     name: string;
     noControl?: boolean;
     noRenderInView?: string[];
@@ -92,15 +114,15 @@ export function EntityFactory({
         return null;
     }
 
-    const SelectableGroupWrapper =
-        view !== 'closeup'
-            ? SelectableGroup
-            : (props: PropsWithChildren) => <>{props.children}</>;
-
     if (!isEditMode) {
         if (noRenderInView?.includes(name)) {
             return null;
         }
+
+        const SelectableGroupWrapper =
+            view !== 'closeup'
+                ? SelectableGroup
+                : (props: PropsWithChildren) => <>{props.children}</>;
 
         return (
             <SelectableGroupWrapper block={block}>

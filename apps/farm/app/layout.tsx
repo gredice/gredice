@@ -1,6 +1,5 @@
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
-import { AxiomWebVitals } from 'next-axiom';
 import './globals.css';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
@@ -34,7 +33,6 @@ export default function RootLayout({
                     <AuthAppProvider>{children}</AuthAppProvider>
                 </ClientAppProvider>
                 <Analytics />
-                <AxiomWebVitals />
             </body>
         </html>
     );

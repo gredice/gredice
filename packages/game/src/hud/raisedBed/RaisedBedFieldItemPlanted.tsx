@@ -1,6 +1,8 @@
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
 import {
     Book,
+    Check,
     ExternalLink,
     Hammer,
     Sprout,
@@ -18,7 +20,6 @@ import {
     TabsTrigger,
 } from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import Image from 'next/image';
 import { useState } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
@@ -56,6 +57,7 @@ export function RaisedBedFieldItemPlanted({
         harvestValue,
         harvestPercentage,
     } = useRaisedBedFieldLifecycleData(raisedBedId, positionIndex);
+    const isHarvested = field?.plantHarvestedDate;
     const [activeTab, setActiveTab] =
         useState<RaisedBedFieldTabValue>('lifecycle');
 
@@ -70,6 +72,7 @@ export function RaisedBedFieldItemPlanted({
         return null;
     }
 
+    // Loading state
     const isLoading =
         isGardenLoading || (Boolean(plantSortId) && isPlantSortLoading);
     if (isLoading) {
@@ -81,6 +84,7 @@ export function RaisedBedFieldItemPlanted({
         );
     }
 
+    // Error state (plant sort unknown)
     if (!plantSort) {
         return (
             <RaisedBedFieldItemButton positionIndex={positionIndex}>
@@ -89,41 +93,42 @@ export function RaisedBedFieldItemPlanted({
         );
     }
 
-    const segments = field.toBeRemoved
-        ? [
-              {
-                  value: 100,
-                  percentage: 100,
-                  color: 'stroke-red-500',
-                  trackColor: 'stroke-red-50 dark:stroke-red-50/80',
-              },
-          ]
-        : [
-              {
-                  value: germinationValue,
-                  percentage: germinationPercentage,
-                  color: 'stroke-yellow-500',
-                  trackColor: 'stroke-yellow-50 dark:stroke-yellow-50/80',
-                  pulse: !field.plantGrowthDate,
-                  borderColor: 'stroke-yellow-500',
-              },
-              {
-                  value: growthValue,
-                  percentage: growthPercentage,
-                  color: 'stroke-green-500',
-                  trackColor: 'stroke-green-50 dark:stroke-green-50/80',
-                  pulse: !field.plantReadyDate,
-                  borderColor: 'stroke-green-500',
-              },
-              {
-                  value: harvestValue,
-                  percentage: harvestPercentage,
-                  color: 'stroke-blue-500',
-                  trackColor: 'stroke-blue-50 dark:stroke-blue-50/80',
-                  pulse: Boolean(harvestValue),
-                  borderColor: 'stroke-blue-500',
-              },
-          ];
+    const segments =
+        field.toBeRemoved || field.plantDeadDate
+            ? [
+                  {
+                      value: 100,
+                      percentage: 100,
+                      color: 'stroke-red-500',
+                      trackColor: 'stroke-red-50 dark:stroke-red-50/80',
+                  },
+              ]
+            : [
+                  {
+                      value: germinationValue,
+                      percentage: germinationPercentage,
+                      color: 'stroke-yellow-500',
+                      trackColor: 'stroke-yellow-50 dark:stroke-yellow-50/80',
+                      pulse: !field.plantGrowthDate,
+                      borderColor: 'stroke-yellow-500',
+                  },
+                  {
+                      value: growthValue,
+                      percentage: growthPercentage,
+                      color: 'stroke-green-500',
+                      trackColor: 'stroke-green-50 dark:stroke-green-50/80',
+                      pulse: !field.plantReadyDate,
+                      borderColor: 'stroke-green-500',
+                  },
+                  {
+                      value: harvestValue,
+                      percentage: harvestPercentage,
+                      color: 'stroke-blue-500',
+                      trackColor: 'stroke-blue-50 dark:stroke-blue-50/80',
+                      pulse: Boolean(harvestValue) && harvestValue < 100,
+                      borderColor: 'stroke-blue-500',
+                  },
+              ];
 
     const plantDetailsUrl = KnownPages.GredicePlantSort(
         plantSort.information.plant.information?.name ??
@@ -143,29 +148,46 @@ export function RaisedBedFieldItemPlanted({
                         strokeWidth={4}
                         segments={segments}
                     >
-                        <Image
-                            src={`https://www.gredice.com/${plantSort.image?.cover?.url || plantSort.information.plant.image?.cover?.url}`}
-                            alt={plantSort.information.name}
+                        <PlantOrSortImage
+                            plantSort={plantSort}
                             className="absolute top-1/2 start-1/2 transform -translate-y-1/2 -translate-x-1/2"
                             width={60}
                             height={60}
                         />
+                        {harvestValue && !isHarvested && (
+                            <div className="absolute -top-1 -end-1">
+                                <span className="inline-flex items-center justify-center p-1 bg-blue-600 rounded-full border-2 border-white shadow-lg">
+                                    <Sprout className="size-4 text-white" />
+                                </span>
+                            </div>
+                        )}
+                        {isHarvested && (
+                            <div className="absolute -top-1 -end-1">
+                                <span className="inline-flex items-center justify-center p-1 bg-green-600 rounded-full border-2 border-white shadow-lg">
+                                    <Check className="size-4 text-white" />
+                                </span>
+                            </div>
+                        )}
                     </SegmentedCircularProgress>
                 </RaisedBedFieldItemButton>
             }
         >
             <Stack spacing={2}>
-                <Row spacing={2} className="flex-wrap gap-y-2">
-                    <Image
-                        src={`https://www.gredice.com/${plantSort.image?.cover?.url || plantSort.information.plant.image?.cover?.url}`}
-                        alt={plantSort.information.name}
+                <Row spacing={2}>
+                    <PlantOrSortImage
+                        plantSort={plantSort}
                         width={60}
                         height={60}
                     />
-                    <Row spacing={2} alignItems="end">
+                    <Row
+                        spacing={2}
+                        alignItems="center"
+                        justifyContent="space-between"
+                        className="w-full"
+                    >
                         <Typography
-                            level="h3"
-                            className="truncate"
+                            level="h4"
+                            className="truncate line-clamp-2"
                             title={plantSort.information.name}
                         >
                             {plantSort.information.name}
@@ -183,9 +205,9 @@ export function RaisedBedFieldItemPlanted({
                 </Row>
                 <Tabs
                     value={activeTab}
-                    onValueChange={(value: RaisedBedFieldTabValue) =>
-                        setActiveTab(value)
-                    }
+                    onValueChange={(value: string) => {
+                        setActiveTab(value as RaisedBedFieldTabValue);
+                    }}
                     className="flex flex-col gap-2"
                 >
                     <TabsList className="border w-fit self-center">

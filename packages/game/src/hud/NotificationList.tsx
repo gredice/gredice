@@ -1,4 +1,5 @@
 import { ImageViewer } from '@gredice/ui/ImageViewer';
+import { Markdown } from '@gredice/ui/Markdown';
 import { Alert } from '@signalco/ui/Alert';
 import { Check } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
@@ -9,7 +10,6 @@ import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
-import { Markdown } from '../content/Markdown';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useNotifications } from '../hooks/useNotifications';
 import { useSetNotificationRead } from '../hooks/useSetNotificationRead';
@@ -76,7 +76,9 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
                             <Typography level="body2" bold className="mr-3">
                                 {header}
                             </Typography>
-                            <Markdown>{content}</Markdown>
+                            <div className="font-normal -my-1">
+                                <Markdown>{content}</Markdown>
+                            </div>
                             <Typography
                                 level="body3"
                                 className="text-gray-500 mr-3s"

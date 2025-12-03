@@ -5,7 +5,7 @@ import {
 } from '@playwright/test';
 
 export const config: PlaywrightTestConfig = {
-    testDir: './',
+    testDir: './tests',
     snapshotDir: './__snapshots__',
     timeout: 10 * 1000,
     fullyParallel: true,

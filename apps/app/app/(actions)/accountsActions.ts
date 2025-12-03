@@ -22,7 +22,7 @@ export async function sendDeleteAccountEmail(accountId: string) {
 
     const token = await createJwt(user.id, '72h');
     const confirmLink = `https://vrt.gredice.com/racun/brisanje?token=${token}`;
-    sendEmail({
+    await sendEmail({
         from: 'suncokret@obavijesti.gredice.com',
         to: email,
         subject: 'Gredice - potvrda brisanja računa',
@@ -30,5 +30,10 @@ export async function sendDeleteAccountEmail(accountId: string) {
             confirmLink,
             email,
         }),
+        templateName: 'account-delete-confirmation',
+        messageType: 'account',
+        metadata: {
+            accountId,
+        },
     });
 }

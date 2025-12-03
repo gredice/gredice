@@ -2,6 +2,7 @@
 
 import type { GameSceneProps } from './GameScene';
 import { AccountHud } from './hud/AccountHud';
+import { AdventHud } from './hud/AdventHud';
 import { AudioHud } from './hud/AudioHud';
 import { CameraHud } from './hud/CameraHud';
 import { DayNightCycleHud } from './hud/DayNightCycleHud';
@@ -14,6 +15,7 @@ import { ShoppingCartHud } from './hud/ShoppingCartHud';
 import { SunflowersHud } from './hud/SunflowersHud';
 import { WeatherHud } from './hud/WeatherHud';
 import { WelcomeMessage } from './hud/WelcomeMessage';
+import { AdventModal } from './modals/advent/AdventModal';
 import { OverviewModal } from './modals/OverviewModal';
 import { useGameState } from './useGameState';
 
@@ -25,6 +27,7 @@ export function GameHud({ flags }: { flags: GameSceneProps['flags'] }) {
             <div className="absolute top-2 left-2 flex flex-col items-start gap-2">
                 <AccountHud />
                 {!isCloseup && <GameModeHud />}
+                {!isCloseup && <AdventHud />}
                 <ShoppingCartHud />
             </div>
             <div className="absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2">
@@ -42,6 +45,7 @@ export function GameHud({ flags }: { flags: GameSceneProps['flags'] }) {
             </div>
             <RaisedBedFieldHud flags={flags} />
             <OverviewModal />
+            <AdventModal />
             <WelcomeMessage />
             <PaymentSuccessfulMessage />
             {Boolean(flags?.enableDebugHudFlag) && <DebugHud />}

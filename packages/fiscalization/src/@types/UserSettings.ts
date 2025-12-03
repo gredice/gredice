@@ -6,5 +6,5 @@ export type UserSettings = {
     credentials: {
         cert: string; // PKCS#12 certificate in binary format
         password: string; // Password for the PKCS#12 certificate
-    }
-}
+    };
+};

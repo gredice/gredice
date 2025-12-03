@@ -25,16 +25,16 @@
 			"path": "apps/api"
 		},
 		{
-			"name": "📦 @gredice/apidocs",
-			"path": "packages/apidocs"
-		},
-		{
 			"name": "📦 @gredice/client",
 			"path": "packages/client"
 		},
 		{
 			"name": "📦 @gredice/cdn",
 			"path": "packages/cdn"
+		},
+		{
+			"name": "📦 @gredice/directory-types",
+			"path": "packages/directory-types"
 		},
 		{
 			"name": "📦 @gredice/email",
@@ -51,6 +51,10 @@
 		{
 			"name": "📦 @gredice/js",
 			"path": "packages/js"
+		},
+		{
+			"name": "📦 @gredice/observability",
+			"path": "packages/observability"
 		},
 		{
 			"name": "📦 @gredice/signalco",
@@ -77,5 +81,19 @@
 		"typescript.tsdk": "📦 @gredice/game/node_modules/typescript/lib",
 		"powershell.cwd": "✨ gredice-monorepo",
 		"editor.defaultFormatter": "biomejs.biome",
+		"mcp": {
+			"servers": {
+				"next-devtools": {
+					"type": "stdio",
+					"command": "npx",
+					"args": [
+						"-y",
+						"next-devtools-mcp@latest"
+					]
+				}
+			},
+			"inputs": []
+		},
+		"chatgpt.runCodexInWindowsSubsystemForLinux": true
 	}
 }

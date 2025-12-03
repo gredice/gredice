@@ -3,15 +3,20 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
 import { KnownPages } from '../../../src/KnownPages';
+import { GrowthAttributeCards } from './GrowthAttributeCards';
 import { getPlantInforationSections } from './getPlantInforationSections';
+import { HarvestAttributeCards } from './HarvestAttributeCards';
 import { InformationSection } from './InformationSection';
 import { PlantPageHeader } from './PlantPageHeader';
 import { PlantSortsList } from './PlantSortsList';
 import { PlantTips } from './PlantTips';
+import { SowingAttributeCards } from './SowingAttributeCards';
+import { WateringAttributeCards } from './WateringAttributeCards';
 
 export const revalidate = 3600; // 1 hour
 export async function generateMetadata(
@@ -60,6 +65,22 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
 
     const informationSections = getPlantInforationSections(plant);
 
+    // Map section IDs to their corresponding attribute cards
+    const getAttributeCardsForSection = (sectionId: string) => {
+        switch (sectionId) {
+            case 'sowing':
+                return <SowingAttributeCards attributes={plant.attributes} />;
+            case 'growth':
+                return <GrowthAttributeCards attributes={plant.attributes} />;
+            case 'watering':
+                return <WateringAttributeCards attributes={plant.attributes} />;
+            case 'harvest':
+                return <HarvestAttributeCards attributes={plant.attributes} />;
+            default:
+                return undefined;
+        }
+    };
+
     return (
         <div className="py-8">
             <Stack spacing={4}>
@@ -80,12 +101,23 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                             header={section.header}
                             content={plant.information[section.id]}
                             operations={plant.information.operations}
+                            attributeCards={getAttributeCardsForSection(
+                                section.id,
+                            )}
                         />
                     ))}
                 <PlantSortsList basePlantName={plant.information.name} />
                 {(plant.information.tip?.length ?? 0) > 0 && (
                     <PlantTips plant={plant} />
                 )}
+                <Typography level="body1" component="p">
+                    Želiš saznati više o tome kako naručiti sjetvu? Posjeti našu
+                    stranicu o{' '}
+                    <Link className="underline" href={KnownPages.Sowing}>
+                        sjetvi biljaka
+                    </Link>{' '}
+                    za detalje o sjetvi, rasporedu i pogodnostima.
+                </Typography>
                 <Row spacing={2}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj biljci korisne?

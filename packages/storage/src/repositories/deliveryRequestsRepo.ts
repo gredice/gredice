@@ -1,16 +1,22 @@
-import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq } from 'drizzle-orm';
+import type { OperationData, PlantSortData } from '@gredice/directory-types';
+import { and, asc, desc, eq, gte, inArray } from 'drizzle-orm';
+import 'server-only';
 import { AUTO_CLOSE_WINDOW_MS } from '../helpers/timeSlotAutomation';
 import {
+    accounts,
+    accountUsers,
     DeliveryRequestStates,
     deliveryRequests,
+    events,
     type SelectDeliveryRequest,
     TimeSlotStatuses,
     timeSlots,
+    users,
 } from '../schema';
 import { storage } from '../storage';
 import { getDeliveryAddress } from './deliveryAddressesRepo';
+import { getEntityFormatted } from './entitiesRepo';
 import {
     createEvent,
     type Event as DbEvent,
@@ -18,12 +24,66 @@ import {
     knownEvents,
     knownEventTypes,
 } from './eventsRepo';
+import { getRaisedBed, getRaisedBedFieldsWithEvents } from './gardensRepo';
+import { getOperationById } from './operationsRepo';
 import { getPickupLocation } from './pickupLocationsRepo';
 import { closeTimeSlot, getTimeSlot } from './timeSlotsRepo';
 
+// TODO: Should use types from union of payloads for delivery events
+interface DeliveryEventData {
+    slotId?: number;
+    newSlotId?: number;
+    addressId?: number;
+    locationId?: number;
+    mode?: 'delivery' | 'pickup';
+    requestNotes?: string;
+    deliveryNotes?: string;
+    cancelReason?: string;
+    accountId?: string;
+}
+
+function parseDeliveryEventData(value: unknown): DeliveryEventData {
+    if (!value || typeof value !== 'object') {
+        return {};
+    }
+
+    const record = value as Record<string, unknown>;
+    const data: DeliveryEventData = {};
+
+    if (typeof record.slotId === 'number') {
+        data.slotId = record.slotId;
+    }
+    if (typeof record.newSlotId === 'number') {
+        data.newSlotId = record.newSlotId;
+    }
+    if (typeof record.addressId === 'number') {
+        data.addressId = record.addressId;
+    }
+    if (typeof record.locationId === 'number') {
+        data.locationId = record.locationId;
+    }
+    if (record.mode === 'delivery' || record.mode === 'pickup') {
+        data.mode = record.mode;
+    }
+    if (typeof record.requestNotes === 'string') {
+        data.requestNotes = record.requestNotes;
+    }
+    if (typeof record.deliveryNotes === 'string') {
+        data.deliveryNotes = record.deliveryNotes;
+    }
+    if (typeof record.cancelReason === 'string') {
+        data.cancelReason = record.cancelReason;
+    }
+    if (typeof record.accountId === 'string') {
+        data.accountId = record.accountId;
+    }
+
+    return data;
+}
+
 // Business state projection interface
-export type DeliveryRequestWithEvents = ReturnType<
-    typeof reconstructDeliveryRequestFromEvents
+export type DeliveryRequestWithEvents = Awaited<
+    ReturnType<typeof reconstructDeliveryRequestFromEvents>
 >;
 
 // Helper function to reconstruct business state from events
@@ -40,25 +100,42 @@ async function reconstructDeliveryRequestFromEvents(
     let requestNotes: string | undefined;
     let deliveryNotes: string | undefined;
     let accountId: string | undefined;
+    let surveySent = false;
+
+    // helpers to safely read typed values from event data
+    const asNumber = (v: unknown): number | undefined => {
+        if (typeof v === 'number') return v;
+        if (typeof v === 'string' && v !== '' && /^-?\d+$/.test(v))
+            return Number(v);
+        return undefined;
+    };
+
+    const asString = (v: unknown): string | undefined =>
+        typeof v === 'string' ? v : undefined;
+
+    const asMode = (v: unknown): 'delivery' | 'pickup' | undefined =>
+        v === 'delivery' || v === 'pickup'
+            ? (v as 'delivery' | 'pickup')
+            : undefined;
 
     for (const event of events) {
-        const data = event.data as Record<string, any> | undefined;
+        const data = parseDeliveryEventData(event.data);
 
         if (event.type === knownEventTypes.delivery.requestCreated) {
-            slotId = data?.slotId;
-            addressId = data?.addressId;
-            locationId = data?.locationId;
-            mode = data?.mode;
-            requestNotes = data?.requestNotes;
+            slotId = asNumber(data?.slotId);
+            addressId = asNumber(data?.addressId);
+            locationId = asNumber(data?.locationId);
+            mode = asMode(data?.mode);
+            requestNotes = asString(data?.requestNotes);
             state = DeliveryRequestStates.PENDING;
-            accountId = data?.accountId;
+            accountId = asString(data?.accountId);
         } else if (
             event.type === knownEventTypes.delivery.requestAddressChanged
         ) {
-            addressId = data?.addressId;
-            locationId = data?.locationId;
-            mode = data?.mode;
-            requestNotes = data?.requestNotes;
+            addressId = asNumber(data?.addressId);
+            locationId = asNumber(data?.locationId);
+            mode = asMode(data?.mode);
+            requestNotes = asString(data?.requestNotes);
         } else if (event.type === knownEventTypes.delivery.requestConfirmed) {
             state = DeliveryRequestStates.CONFIRMED;
         } else if (event.type === knownEventTypes.delivery.requestPreparing) {
@@ -67,28 +144,90 @@ async function reconstructDeliveryRequestFromEvents(
             state = DeliveryRequestStates.READY;
         } else if (event.type === knownEventTypes.delivery.requestFulfilled) {
             state = DeliveryRequestStates.FULFILLED;
+            deliveryNotes = data.deliveryNotes ?? deliveryNotes;
         } else if (event.type === knownEventTypes.delivery.requestSlotChanged) {
-            slotId = data?.newSlotId;
+            slotId = asNumber(data?.newSlotId);
         } else if (event.type === knownEventTypes.delivery.userCancelled) {
             state = DeliveryRequestStates.CANCELLED;
         } else if (event.type === knownEventTypes.delivery.requestCancelled) {
             state = DeliveryRequestStates.CANCELLED;
-            cancelReason = data?.cancelReason;
+            cancelReason = asString(data?.cancelReason);
+        } else if (event.type === knownEventTypes.delivery.requestSurveySent) {
+            surveySent = true;
         }
     }
 
-    const slot = slotId ? await getTimeSlot(slotId) : undefined;
-    const address =
+    // Fetch slot, address, location, and operation in parallel
+    const [slot, address, location, operation] = await Promise.all([
+        slotId ? getTimeSlot(slotId) : undefined,
         addressId && accountId
-            ? await getDeliveryAddress(addressId, accountId)
-            : undefined;
-    const location = locationId
-        ? await getPickupLocation(locationId)
-        : undefined;
+            ? getDeliveryAddress(addressId, accountId)
+            : undefined,
+        locationId ? getPickupLocation(locationId) : undefined,
+        getOperationById(request.operationId),
+    ]);
+
+    // Fetch operation entity, raised bed, and plantSort fields in parallel
+    const [operationEntity, raisedBed, fields] = await Promise.all([
+        operation?.entityId
+            ? getEntityFormatted<OperationData>(operation.entityId).catch(
+                  (error) => {
+                      console.error('Failed to fetch operation entity:', error);
+                      return null;
+                  },
+              )
+            : null,
+        operation?.raisedBedId
+            ? getRaisedBed(operation.raisedBedId).catch((error) => {
+                  console.error('Failed to fetch raised bed:', error);
+                  return null;
+              })
+            : null,
+        operation?.raisedBedId && operation?.raisedBedFieldId
+            ? getRaisedBedFieldsWithEvents(operation.raisedBedId).catch(
+                  (error) => {
+                      console.error(
+                          'Failed to fetch raised bed fields:',
+                          error,
+                      );
+                      return [];
+                  },
+              )
+            : [],
+    ]);
+
+    // Get plantSort info if we have fields
+    let plantSort: PlantSortData | null = null;
+    if (fields.length > 0 && operation?.raisedBedFieldId) {
+        const field = fields.find((f) => f.id === operation.raisedBedFieldId);
+        if (field?.plantSortId) {
+            try {
+                const plantSortEntity = await getEntityFormatted<PlantSortData>(
+                    field.plantSortId,
+                );
+                if (plantSortEntity) {
+                    plantSort = plantSortEntity;
+                }
+            } catch (error) {
+                console.error('Failed to fetch plantSort info:', error);
+            }
+        }
+    }
+
+    // Get the field for position index info
+    const raisedBedField =
+        fields.length > 0 && operation?.raisedBedFieldId
+            ? fields.find((f) => f.id === operation.raisedBedFieldId)
+            : null;
 
     return {
         id: request.id,
         operationId: request.operationId,
+        operation,
+        operationData: operationEntity,
+        raisedBed,
+        raisedBedField,
+        plantSort,
         state,
         slot,
         address,
@@ -97,6 +236,7 @@ async function reconstructDeliveryRequestFromEvents(
         cancelReason,
         requestNotes,
         deliveryNotes,
+        surveySent,
         createdAt: request.createdAt,
         updatedAt: request.updatedAt,
         accountId,
@@ -111,11 +251,25 @@ export async function getDeliveryRequestsWithEvents(
     fromDate?: Date,
     toDate?: Date,
 ) {
-    // First get the projection records
+    // First get the projection records with operation details
     const requests = await storage().query.deliveryRequests.findMany({
         orderBy: [desc(deliveryRequests.createdAt)],
         with: {
-            operation: true,
+            operation: {
+                with: {
+                    raisedBed: true,
+                    raisedBedField: true,
+                    entity: {
+                        with: {
+                            attributes: {
+                                with: {
+                                    attributeDefinition: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         },
     });
 
@@ -132,6 +286,7 @@ export async function getDeliveryRequestsWithEvents(
             knownEventTypes.delivery.requestPreparing,
             knownEventTypes.delivery.requestReady,
             knownEventTypes.delivery.requestFulfilled,
+            knownEventTypes.delivery.requestSurveySent,
             knownEventTypes.delivery.requestSlotChanged,
             knownEventTypes.delivery.userCancelled,
         ],
@@ -214,9 +369,6 @@ export async function getDeliveryRequest(
 ): Promise<DeliveryRequestWithEvents | undefined> {
     const request = await storage().query.deliveryRequests.findFirst({
         where: and(eq(deliveryRequests.id, requestId)),
-        with: {
-            operation: true,
-        },
     });
 
     if (!request) return undefined;
@@ -231,6 +383,7 @@ export async function getDeliveryRequest(
             knownEventTypes.delivery.requestPreparing,
             knownEventTypes.delivery.requestReady,
             knownEventTypes.delivery.requestFulfilled,
+            knownEventTypes.delivery.requestSurveySent,
             knownEventTypes.delivery.requestSlotChanged,
             knownEventTypes.delivery.userCancelled,
         ],
@@ -249,7 +402,21 @@ export async function getDeliveryRequestByOperation(
     const request = await storage().query.deliveryRequests.findFirst({
         where: and(eq(deliveryRequests.operationId, operationId)),
         with: {
-            operation: true,
+            operation: {
+                with: {
+                    raisedBed: true,
+                    raisedBedField: true,
+                    entity: {
+                        with: {
+                            attributes: {
+                                with: {
+                                    attributeDefinition: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         },
     });
 
@@ -265,6 +432,7 @@ export async function getDeliveryRequestByOperation(
             knownEventTypes.delivery.requestPreparing,
             knownEventTypes.delivery.requestReady,
             knownEventTypes.delivery.requestFulfilled,
+            knownEventTypes.delivery.requestSurveySent,
             knownEventTypes.delivery.requestSlotChanged,
             knownEventTypes.delivery.userCancelled,
         ],
@@ -544,6 +712,182 @@ export async function fulfillDeliveryRequest(
         knownEvents.delivery.requestFulfilledV1(requestId, {
             status: DeliveryRequestStates.FULFILLED,
             deliveryNotes,
+        }),
+    );
+}
+
+export interface DeliverySurveyCandidate {
+    requestId: string;
+    accountId: string;
+    accountTimeZone: string;
+    operationId: number;
+    fulfilledAt: Date;
+    userEmails: { userId: string; email: string }[];
+    monthKey: string;
+    monthAlreadySent: boolean;
+}
+
+export async function getDeliverySurveyCandidates({
+    since,
+}: {
+    since: Date;
+}): Promise<DeliverySurveyCandidate[]> {
+    const fulfilledEvents = await storage().query.events.findMany({
+        where: and(
+            eq(events.type, knownEventTypes.delivery.requestFulfilled),
+            gte(events.createdAt, since),
+        ),
+        orderBy: [asc(events.createdAt)],
+    });
+
+    if (fulfilledEvents.length === 0) {
+        return [];
+    }
+
+    const requestIds = fulfilledEvents.map((event) => event.aggregateId);
+
+    const fulfilledEventMap = new Map(
+        fulfilledEvents.map((event) => [event.aggregateId, event] as const),
+    );
+
+    const surveySentEvents = await storage().query.events.findMany({
+        where: and(
+            eq(events.type, knownEventTypes.delivery.requestSurveySent),
+            inArray(events.aggregateId, requestIds),
+        ),
+    });
+
+    const surveySentIds = new Set(
+        surveySentEvents.map((event) => event.aggregateId),
+    );
+
+    const pendingEvents = fulfilledEvents.filter(
+        (event) => !surveySentIds.has(event.aggregateId),
+    );
+
+    if (pendingEvents.length === 0) {
+        return [];
+    }
+
+    const requests = await storage().query.deliveryRequests.findMany({
+        where: inArray(deliveryRequests.id, requestIds),
+        with: {
+            operation: true,
+        },
+    });
+
+    const requestsById = new Map(
+        requests.map((request) => [request.id, request] as const),
+    );
+
+    const getMonthKey = (date: Date) => {
+        const monthDate = new Date(date);
+        const year = monthDate.getFullYear();
+        const month = String(monthDate.getMonth() + 1).padStart(2, '0');
+        return `${year}-${month}`;
+    };
+
+    const sentMonthKeys = new Set<string>();
+
+    for (const event of surveySentEvents) {
+        const request = requestsById.get(event.aggregateId);
+        const fulfilledEvent = fulfilledEventMap.get(event.aggregateId);
+
+        const accountId = request?.operation?.accountId;
+        if (!accountId || !fulfilledEvent) {
+            continue;
+        }
+
+        const monthKey = getMonthKey(fulfilledEvent.createdAt);
+        sentMonthKeys.add(`${accountId}:${monthKey}`);
+    }
+
+    const accountIds = Array.from(
+        new Set(
+            requests
+                .map((request) => request.operation?.accountId)
+                .filter((id): id is string => Boolean(id)),
+        ),
+    );
+
+    const accountUserRows = accountIds.length
+        ? await storage()
+              .select({
+                  accountId: accountUsers.accountId,
+                  userId: accountUsers.userId,
+                  email: users.userName,
+              })
+              .from(accountUsers)
+              .innerJoin(users, eq(accountUsers.userId, users.id))
+              .where(inArray(accountUsers.accountId, accountIds))
+        : [];
+
+    // Fetch account timezones
+    const accountTimeZones = accountIds.length
+        ? await storage()
+              .select({
+                  id: accounts.id,
+                  timeZone: accounts.timeZone,
+              })
+              .from(accounts)
+              .where(inArray(accounts.id, accountIds))
+        : [];
+
+    const accountTimeZoneMap = new Map(
+        accountTimeZones.map((a) => [a.id, a.timeZone] as const),
+    );
+
+    return pendingEvents
+        .map((event) => {
+            const request = requestsById.get(event.aggregateId);
+
+            const accountId = request?.operation?.accountId;
+            const operationId = request?.operationId;
+
+            if (!accountId || !operationId) {
+                return null;
+            }
+
+            const monthKey = getMonthKey(event.createdAt);
+            const monthAlreadySent = sentMonthKeys.has(
+                `${accountId}:${monthKey}`,
+            );
+
+            const userEmails = accountUserRows
+                .filter((row) => row.accountId === accountId)
+                .map((row) => ({
+                    userId: row.userId,
+                    email: row.email ?? '',
+                }))
+                .filter((row) => row.email.length > 0);
+
+            const accountTimeZone =
+                accountTimeZoneMap.get(accountId) ?? 'Europe/Paris';
+
+            return {
+                requestId: event.aggregateId,
+                accountId,
+                accountTimeZone,
+                operationId,
+                fulfilledAt: event.createdAt,
+                userEmails,
+                monthKey,
+                monthAlreadySent,
+            } satisfies DeliverySurveyCandidate;
+        })
+        .filter(
+            (candidate): candidate is DeliverySurveyCandidate =>
+                candidate !== null,
+        );
+}
+
+export async function markDeliverySurveySent(
+    requestId: string,
+    sentTo: string[],
+) {
+    await createEvent(
+        knownEvents.delivery.requestSurveySentV1(requestId, {
+            sentTo,
         }),
     );
 }

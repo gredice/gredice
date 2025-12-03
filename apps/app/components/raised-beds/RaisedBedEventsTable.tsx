@@ -1,9 +1,13 @@
-import { getEvents, getRaisedBed, knownEventTypes } from '@gredice/storage';
+import {
+    getEvents,
+    getRaisedBed,
+    knownEventTypes,
+    type RaisedBedFieldPlantEventPayload,
+} from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import type { ReactNode } from 'react';
+import { EventsTable } from '../shared/events/EventsTable';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
 import { RaisedBedEventDeleteButton } from './RaisedBedEventDeleteButton';
 
@@ -53,22 +57,27 @@ function parseDateValue(value: unknown): Date | null {
 }
 
 function renderEventDetails(event: StorageEvent) {
-    const data = event.data as Record<string, unknown> | null | undefined;
+    const data = event.data as
+        | RaisedBedFieldPlantEventPayload
+        | null
+        | undefined;
     if (!data || Object.keys(data).length === 0) {
         return null;
     }
 
     const details: ReactNode[] = [];
 
-    if (typeof data.status === 'string' && data.status.length) {
+    if ('status' in data && data.status) {
         details.push(<span key="status">Status: {data.status}</span>);
     }
 
-    if (typeof data.plantSortId === 'string' && data.plantSortId.length) {
+    if ('plantSortId' in data && data.plantSortId.length) {
         details.push(<span key="plant">Biljka ID: {data.plantSortId}</span>);
     }
 
-    const scheduledDate = parseDateValue(data.scheduledDate);
+    const scheduledDate = parseDateValue(
+        'scheduledDate' in data ? data.scheduledDate : undefined,
+    );
     if (scheduledDate) {
         details.push(
             <span key="scheduled">
@@ -78,7 +87,9 @@ function renderEventDetails(event: StorageEvent) {
         );
     }
 
-    const stoppedDate = parseDateValue(data.stoppedDate);
+    const stoppedDate = parseDateValue(
+        'stoppedDate' in data ? data.stoppedDate : undefined,
+    );
     if (stoppedDate) {
         details.push(
             <span key="stopped">
@@ -89,7 +100,11 @@ function renderEventDetails(event: StorageEvent) {
     }
 
     const harvestedDate = parseDateValue(
-        data.harvestedDate ?? data.harvestedAt,
+        'harvestedDate' in data
+            ? data.harvestedDate
+            : 'harvestedAt' in data
+              ? data.harvestedAt
+              : undefined,
     );
     if (harvestedDate) {
         details.push(
@@ -154,61 +169,20 @@ export async function RaisedBedEventsTable({
     );
 
     return (
-        <Table>
-            <Table.Header>
-                <Table.Row>
-                    <Table.Head>ID</Table.Head>
-                    <Table.Head>Tip</Table.Head>
-                    <Table.Head>Lokacija</Table.Head>
-                    <Table.Head>Detalji</Table.Head>
-                    <Table.Head>Vrijeme</Table.Head>
-                    <Table.Head className="w-32 text-right">Akcije</Table.Head>
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {sortedEvents.length === 0 && (
-                    <Table.Row>
-                        <Table.Cell colSpan={6}>
-                            <NoDataPlaceholder />
-                        </Table.Cell>
-                    </Table.Row>
-                )}
-                {sortedEvents.map((event) => {
-                    const location = getEventLocationLabel(
-                        event.aggregateId,
-                        raisedBedId,
-                    );
-                    const typeLabel =
-                        EVENT_TYPE_LABELS[event.type] ?? event.type;
-                    const details = renderEventDetails(event);
-
-                    return (
-                        <Table.Row key={event.id}>
-                            <Table.Cell>{event.id}</Table.Cell>
-                            <Table.Cell>{typeLabel}</Table.Cell>
-                            <Table.Cell>{location}</Table.Cell>
-                            <Table.Cell>
-                                {details ? (
-                                    details
-                                ) : (
-                                    <Typography level="body3" color="neutral">
-                                        -
-                                    </Typography>
-                                )}
-                            </Table.Cell>
-                            <Table.Cell>
-                                <LocalDateTime>{event.createdAt}</LocalDateTime>
-                            </Table.Cell>
-                            <Table.Cell className="text-right">
-                                <RaisedBedEventDeleteButton
-                                    eventId={event.id}
-                                    raisedBedId={raisedBedId}
-                                />
-                            </Table.Cell>
-                        </Table.Row>
-                    );
-                })}
-            </Table.Body>
-        </Table>
+        <EventsTable
+            events={sortedEvents}
+            renderType={(event) => EVENT_TYPE_LABELS[event.type] ?? event.type}
+            renderDetails={(event) => renderEventDetails(event)}
+            renderLocation={(event) =>
+                getEventLocationLabel(event.aggregateId, raisedBedId)
+            }
+            renderActions={(event) => (
+                <RaisedBedEventDeleteButton
+                    eventId={event.id}
+                    raisedBedId={raisedBedId}
+                />
+            )}
+            actionsColumnClassName="w-32 text-right"
+        />
     );
 }

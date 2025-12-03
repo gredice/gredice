@@ -8,20 +8,24 @@
         "db-generate": "turbo db-generate",
         "db-push": "turbo db-push",
         "regenerate": "turbo regenerate",
-        "test": "turbo test"
+        "test": "turbo test",
+        "generate:models-types": "turbo generate:models-types",
+        "generate:game-assets": "node ./scripts/generate-game-assets.mjs"
     },
     "devDependencies": {
-        "turbo": "2.5.7",
-        "typescript": "5.9.2"
+        "turbo": "2.6.1",
+        "typescript": "5.9.3"
     },
-    "packageManager": "pnpm@10.17.1+sha512.17c560fca4867ae9473a3899ad84a88334914f379be46d455cbf92e5cf4b39d34985d452d2583baf19967fa76cb5c17bc9e245529d0b98745721aa7200ecaf7a",
+    "packageManager": "pnpm@10.24.0+sha512.01ff8ae71b4419903b65c60fb2dc9d34cf8bb6e06d03bde112ef38f7a34d6904c424ba66bea5cdcf12890230bf39f9580473140ed9c946fef328b6e5238a345a",
     "engines": {
         "node": ">=22"
     },
     "pnpm": {
         "onlyBuiltDependencies": [
+            "@ffmpeg-installer/darwin-arm64",
             "@ffmpeg-installer/linux-x64",
             "@parcel/watcher",
+            "@sentry/cli",
             "bufferutil",
             "core-js",
             "es5-ext",
@@ -31,8 +35,8 @@
             "vue-demi"
         ],
         "overrides": {
-            "@types/react": "19.1.13",
-            "@types/react-dom": "19.1.9"
+            "@types/react": "19.2.7",
+            "@types/react-dom": "19.2.3"
         }
     }
 }

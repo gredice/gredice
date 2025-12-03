@@ -13,7 +13,6 @@ import {
     TabsTrigger,
 } from '@signalco/ui-primitives/Tabs';
 import { useQueryClient } from '@tanstack/react-query';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { EmailPasswordForm } from './EmailPasswordForm';
@@ -123,16 +122,8 @@ export default function LoginModal() {
             dismissible={false}
         >
             <Tabs defaultValue="login" className="w-full">
-                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 w-full">
-                    <Image
-                        src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/GrediceLogomark-v1LQ0bdzsonOf0SXkAUHj0h4G36mGB.svg"
-                        alt="Gredice Logo"
-                        width={32}
-                        height={32}
-                        priority
-                        className="dark:mix-blend-plus-lighter"
-                    />
-                    <TabsList className="grid w-full grid-cols-2">
+                <div className="flex justify-center w-full">
+                    <TabsList className="grid grid-cols-2">
                         <TabsTrigger value="login">Prijava</TabsTrigger>
                         <TabsTrigger value="register">Registracija</TabsTrigger>
                     </TabsList>

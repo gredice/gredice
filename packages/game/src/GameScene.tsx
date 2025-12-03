@@ -17,6 +17,7 @@ import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import { Scene } from './scene/Scene';
+import type { GameState } from './useGameState';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string;
@@ -30,6 +31,8 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     noWeather?: boolean;
     noSound?: boolean;
     mockGarden?: boolean;
+    isWinterMode?: boolean;
+    weather?: Partial<GameState['weather']>;
 
     // Development purposes
     flags?: {
@@ -49,17 +52,24 @@ const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
 const noRenderInViewDefault = [
     'Block_Grass',
     'Block_Grass_Angle',
-    'Pine',
     'Block_Sand',
     'Block_Sand_Angle',
-    'Shovel_Small',
-    'Mulch_Hey',
-    'Mulch_Coconut',
-    'Mulch_Wood',
+    'Block_Snow',
+    'Block_Snow_Angle',
+    'Bush',
+    'Pine',
+    'Tree',
+    'ShovelSmall',
+    'MulchHey',
+    'MulchCoconut',
+    'MulchWood',
     'Tulip',
     'BaleHey',
     'Stick',
     'Seed',
+    'StoneSmall',
+    'StoneMedium',
+    'StoneLarge',
 ];
 
 export function GameScene({
@@ -71,6 +81,7 @@ export function GameScene({
     hideHud,
     className,
     flags,
+    weather,
     ...rest
 }: GameSceneProps) {
     useGameTimeManager();
@@ -79,7 +90,7 @@ export function GameScene({
     // Prelaod all required data
     const { isLoading: blockDataPending } = useBlockData();
     const { data: garden, isLoading: gardenPending } = useCurrentGarden();
-    const { isLoading: weatherPending } = useWeatherNow();
+    const { isLoading: weatherPending } = useWeatherNow(!noWeather);
     const isLoading = gardenPending || blockDataPending || weatherPending;
     if (isLoading) {
         return <GardenLoadingIndicator />;
@@ -101,6 +112,7 @@ export function GameScene({
                         noBackground={noBackground}
                         noWeather={noWeather}
                         noSound={noSound}
+                        weather={weather}
                     />
                     <group>
                         {garden?.stacks.map((stack) =>

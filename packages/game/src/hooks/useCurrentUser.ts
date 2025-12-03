@@ -1,6 +1,5 @@
 import { client } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
-import type { InferResponseType } from 'hono/client';
 
 export const queryKey = {
     currentUser: ['currentUser'],
@@ -21,8 +20,11 @@ export type CurrentUser = Omit<
     birthdayLastRewardAt: Date | null;
 };
 
-async function getCurrentUser(): Promise<CurrentUser | null> {
-    const response = await client().api.users.current.$get();
+async function getCurrentUser() {
+    const response = await client(true).api.users.current.$get();
+    if (response.status === 401) {
+        return null;
+    }
     if (response.status === 404) {
         console.error('User not found');
         return null;

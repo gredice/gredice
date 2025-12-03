@@ -2,6 +2,7 @@
 
 import { Add, Close, Remove, Save, Search } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
+import { cx } from '@signalco/ui-primitives/cx';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import Image from 'next/image';
@@ -195,15 +196,16 @@ export function ImageViewer({
             <button
                 type="button"
                 title="Otvori u punoj veličini"
-                className="group relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
+                className="group relative flex items-center justify-center overflow-hidden rounded-lg shadow-md bg-muted hover:shadow-lg transition-shadow duration-200"
+                style={{ width: previewWidth, height: previewHeight }}
                 onClick={() => setIsExpanded(true)}
             >
                 <Image
                     src={src}
                     alt={alt}
-                    width={previewWidth}
-                    height={previewHeight}
-                    className="object-cover rounded-lg shadow-sm shrink-0"
+                    fill
+                    sizes={`${previewWidth}px`}
+                    className="h-full w-full object-contain"
                 />
                 <div className="absolute inset-0 bg-white/30 opacity-0 group-hover:opacity-50 transition-opacity"></div>
                 <Search className="size-4 shrink-0 absolute bottom-1 right-1" />
@@ -214,16 +216,25 @@ export function ImageViewer({
                 open={isExpanded}
                 onOpenChange={handleModalOpenChange}
                 title="Pregled slike"
-                hideClose
                 dismissible={false}
-                className="p-0 m-0 max-w-none max-h-none w-[100dvw] h-[100dvh] border-0"
+                className={cx(
+                    'm-0 h-[100dvh] w-[100dvw] max-h-none max-w-none border-0 p-0 rounded-none',
+                    'bg-black/60 backdrop-blur',
+                    '[&>div:last-child]:h-full [&>div:last-child]:p-0 [&>div:not(:last-child)]:hidden',
+                )}
             >
-                <div className="relative w-full h-full flex items-center justify-center">
+                <div className="relative flex h-full w-full overflow-clip">
                     {/* Controls */}
-                    <div className="absolute top-4 right-4 flex gap-2 z-10">
+                    <div
+                        className="absolute right-4 top-4 z-10 flex gap-1"
+                        style={{
+                            top: 'calc(env(safe-area-inset-top) + 1rem)',
+                        }}
+                    >
                         <IconButton
                             title="Smanji"
-                            variant="solid"
+                            variant="outlined"
+                            className="rounded-xl bg-background/80 backdrop-blur"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleZoomOut(e);
@@ -234,7 +245,8 @@ export function ImageViewer({
                         </IconButton>
                         <IconButton
                             title="Uvećaj"
-                            variant="solid"
+                            variant="outlined"
+                            className="rounded-xl bg-background/80 backdrop-blur"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleZoomIn(e);
@@ -245,7 +257,8 @@ export function ImageViewer({
                         </IconButton>
                         <IconButton
                             title="Preuzmi"
-                            variant="solid"
+                            variant="outlined"
+                            className="rounded-xl bg-background/80 backdrop-blur"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleDownload(e);
@@ -256,6 +269,7 @@ export function ImageViewer({
                         <IconButton
                             title="Zatvori"
                             variant="solid"
+                            className="rounded-xl"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 closeExpanded(e);
@@ -266,52 +280,56 @@ export function ImageViewer({
                     </div>
 
                     {/* Image Container */}
-                    <div
-                        ref={imageRef}
-                        role="option"
-                        tabIndex={0}
-                        className="relative max-w-full max-h-full overflow-hidden cursor-grab active:cursor-grabbing touch-none"
-                        onMouseDown={handleMouseDown}
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
-                        onClick={handleClick}
-                        onKeyDown={handleKeyDown}
-                        onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
-                        onWheel={handleWheel}
-                        style={{ touchAction: 'none' }}
-                    >
+                    <div className="flex h-full w-full items-center justify-center">
                         <div
-                            className="transition-transform duration-200 ease-out select-none pointer-events-none"
-                            style={{
-                                transform: `scale(${zoomLevel}) translate(${position.x / zoomLevel}px, ${position.y / zoomLevel}px)`,
-                                transformOrigin: 'center center',
-                            }}
+                            ref={imageRef}
+                            role="option"
+                            tabIndex={0}
+                            className="relative h-full w-full overflow-hidden cursor-grab active:cursor-grabbing touch-none"
+                            onMouseDown={handleMouseDown}
+                            onMouseMove={handleMouseMove}
+                            onMouseUp={handleMouseUp}
+                            onMouseLeave={handleMouseUp}
+                            onClick={handleClick}
+                            onKeyDown={handleKeyDown}
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                            onWheel={handleWheel}
+                            style={{ touchAction: 'none' }}
                         >
-                            <Image
-                                src={src}
-                                alt={alt}
-                                width={800}
-                                height={600}
-                                className="max-w-[90vw] max-h-[90vh] object-contain select-none pointer-events-none"
-                                draggable={false}
-                            />
+                            <div
+                                className="relative h-full w-full select-none transition-transform duration-200 ease-out will-change-transform"
+                                style={{
+                                    transform: `scale(${zoomLevel}) translate(${position.x / zoomLevel}px, ${position.y / zoomLevel}px)`,
+                                    transformOrigin: 'center center',
+                                }}
+                            >
+                                {/** biome-ignore lint/performance/noImgElement: Using raw <img> intentionally for fallback display */}
+                                <img
+                                    src={src}
+                                    alt={alt}
+                                    className="object-contain select-none"
+                                    draggable={false}
+                                />
+                            </div>
                         </div>
                     </div>
 
                     {/* Zoom Level Indicator */}
-                    <Chip className="absolute top-4 left-4" variant="solid">
+                    <Chip
+                        className="absolute left-4 [top:calc(env(safe-area-inset-top)+1rem)] z-10 select-none bg-black/60 text-white/80 backdrop-blur border-0"
+                        variant="solid"
+                    >
                         {Math.round(zoomLevel * 100)}%
                     </Chip>
 
                     {/* Instructions */}
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/70 text-sm text-center">
-                        <p className="hidden sm:block">
+                    <div className="pointer-events-none absolute bottom-0 left-1/2 flex -translate-x-1/2 transform justify-center text-center text-xs [padding-bottom:calc(env(safe-area-inset-bottom)+1rem)]">
+                        <p className="hidden rounded-full bg-black/60 px-4 py-1 text-white/80 backdrop-blur sm:block">
                             Koristi kotač za zoom • Povuci za pomicanje slike
                         </p>
-                        <p className="sm:hidden">
+                        <p className="rounded-full bg-black/60 px-4 py-1 text-white/80 backdrop-blur sm:hidden">
                             Dodirni i drži za pomicanje • Uštipni za zoom
                         </p>
                     </div>

@@ -1,4 +1,4 @@
-import { Porez } from "./Porez";
+import type { Porez } from './Porez';
 
 /**
  * Pnp

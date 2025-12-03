@@ -1,16 +1,14 @@
+import { type SentryBuildOptions, withSentryConfig } from '@sentry/nextjs';
 import vercelToolbar from '@vercel/toolbar/plugins/next';
 import type { NextConfig } from 'next';
-import { withAxiom } from 'next-axiom';
 
 const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
+    reactCompiler: true,
     experimental: {
+        turbopackFileSystemCacheForDev: true,
         typedEnv: true,
-        reactCompiler: true,
-        // Scope hoisting is disabled as a workaround for current compatibility issues with Turbopack and our codebase.
-        // This should be revisited in future Next.js versions as the underlying issues may be resolved.
-        turbopackScopeHoisting: false,
     },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
     images: {
@@ -36,9 +34,11 @@ const nextConfig: NextConfig = {
         ],
     },
     productionBrowserSourceMaps: true,
-    allowedDevOrigins: ['www.gredice.local'],
+    allowedDevOrigins: ['www.gredice.test'],
 };
+
+const sentryConfig: SentryBuildOptions = {};
 
 const withVercelToolbar = vercelToolbar();
 
-export default withVercelToolbar(withAxiom(nextConfig));
+export default withSentryConfig(withVercelToolbar(nextConfig), sentryConfig);

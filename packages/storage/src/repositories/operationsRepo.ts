@@ -1,11 +1,55 @@
-import { and, desc, eq, gte, inArray, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import {
+    events,
     type InsertOperation,
     operations,
     type SelectOperation,
 } from '../schema';
 import { storage } from '../storage';
-import { getEvents, knownEventTypes } from './eventsRepo';
+import { getEvents, knownEventTypes } from './events';
+import type { OperationEventsAnyPayload } from './events/types';
+
+export type OperationStatus =
+    | 'new'
+    | 'planned'
+    | 'completed'
+    | 'failed'
+    | 'canceled';
+
+function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
+    if (!value || typeof value !== 'object') {
+        return {};
+    }
+
+    const record = value as Record<string, unknown>;
+    const data: OperationEventsAnyPayload = {};
+
+    if (typeof record.completedBy === 'string') {
+        data.completedBy = record.completedBy;
+    }
+    if (Array.isArray(record.images)) {
+        data.images = record.images.filter(
+            (value): value is string => typeof value === 'string',
+        );
+    }
+    if (typeof record.error === 'string') {
+        data.error = record.error;
+    }
+    if (typeof record.errorCode === 'string') {
+        data.errorCode = record.errorCode;
+    }
+    if (typeof record.canceledBy === 'string') {
+        data.canceledBy = record.canceledBy;
+    }
+    if (typeof record.reason === 'string') {
+        data.reason = record.reason;
+    }
+    if (typeof record.scheduledDate === 'string') {
+        data.scheduledDate = record.scheduledDate;
+    }
+
+    return data;
+}
 
 async function fillOperationAggregates(operations: SelectOperation[]) {
     const aggregateIds = operations.map((op) => op.id.toString());
@@ -37,39 +81,34 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         let cancelReason: string | undefined;
         let imageUrls: string[] | undefined;
 
+        // helpers to safely extract typed values from unknown event.data
+        const asString = (v: unknown): string | undefined =>
+            typeof v === 'string' ? v : undefined;
+
         for (const event of events) {
-            const data = event.data as Record<string, any> | undefined;
+            const data = parseOperationEventData(event.data);
             if (event.type === knownEventTypes.operations.complete) {
                 status = 'completed';
-                completedBy = data?.completedBy;
-                completedAt = data?.completedAt
-                    ? new Date(data.completedAt)
-                    : undefined;
+                completedBy = asString(data?.completedBy) ?? completedBy;
+                completedAt = event.createdAt;
                 if (Array.isArray(data?.images)) {
-                    imageUrls = data.images.filter(
-                        (url: unknown) => typeof url === 'string',
+                    imageUrls = (data.images as unknown[]).filter(
+                        (url): url is string => typeof url === 'string',
                     );
-                }
-                if (typeof data?.imageUrl === 'string') {
-                    imageUrls = imageUrls
-                        ? [...imageUrls, data.imageUrl]
-                        : [data.imageUrl];
                 }
             } else if (event.type === knownEventTypes.operations.fail) {
                 status = 'failed';
-                error = data?.error;
-                errorCode = data?.errorCode;
+                error = asString(data?.error);
+                errorCode = asString(data?.errorCode);
             } else if (event.type === knownEventTypes.operations.cancel) {
                 status = 'canceled';
-                canceledBy = data?.canceledBy;
-                cancelReason = data?.reason;
-                canceledAt = event.createdAt
-                    ? new Date(event.createdAt)
-                    : undefined;
+                canceledBy = asString(data?.canceledBy);
+                cancelReason = asString(data?.reason);
+                canceledAt = event.createdAt;
             } else if (event.type === knownEventTypes.operations.schedule) {
                 status = 'planned';
                 scheduledDate = data?.scheduledDate
-                    ? new Date(data.scheduledDate)
+                    ? new Date(String(data.scheduledDate))
                     : undefined;
             }
         }
@@ -112,16 +151,52 @@ export async function getOperations(
     return await fillOperationAggregates(query);
 }
 
-export async function getAllOperations(filter?: { from?: Date; to?: Date }) {
-    const operationsList = await storage().query.operations.findMany({
-        where: and(
-            eq(operations.isDeleted, false),
-            filter?.from ? gte(operations.timestamp, filter.from) : undefined,
-            filter?.to ? lte(operations.timestamp, filter.to) : undefined,
-        ),
-        orderBy: desc(operations.timestamp),
-    });
-    return await fillOperationAggregates(operationsList);
+export async function getAllOperations(filter?: {
+    from?: Date;
+    to?: Date;
+    completedFrom?: Date;
+    completedTo?: Date;
+    status?: OperationStatus | OperationStatus[];
+}) {
+    let operationsWithAggregates: Awaited<
+        ReturnType<typeof fillOperationAggregates>
+    >;
+
+    // If completion date filtering is requested, use event-based filtering
+    if (filter?.completedFrom || filter?.completedTo) {
+        operationsWithAggregates = await getCompletedOperationsByCompletionDate(
+            {
+                from: filter.completedFrom || new Date('1970-01-01'),
+                to: filter.completedTo || new Date('2099-12-31'),
+            },
+        );
+    } else {
+        // Otherwise, use the original timestamp-based filtering
+        const operationsList = await storage().query.operations.findMany({
+            where: and(
+                eq(operations.isDeleted, false),
+                filter?.from
+                    ? gte(operations.timestamp, filter.from)
+                    : undefined,
+                filter?.to ? lte(operations.timestamp, filter.to) : undefined,
+            ),
+            orderBy: desc(operations.timestamp),
+        });
+        operationsWithAggregates =
+            await fillOperationAggregates(operationsList);
+    }
+
+    // Apply status filtering if specified
+    if (filter?.status) {
+        const statusArray = Array.isArray(filter.status)
+            ? filter.status
+            : [filter.status];
+        operationsWithAggregates = operationsWithAggregates.filter(
+            (op) => op && statusArray.includes(op.status as OperationStatus),
+        );
+    }
+
+    return operationsWithAggregates;
 }
 
 export async function getOperationById(id: number) {
@@ -170,4 +245,40 @@ export async function deleteOperation(id: number) {
         .update(operations)
         .set({ isDeleted: true })
         .where(eq(operations.id, id));
+}
+
+async function getCompletedOperationsByCompletionDate(filter: {
+    from: Date;
+    to: Date;
+}) {
+    // First, get completion events within the date range
+    const completionEvents = await storage().query.events.findMany({
+        where: and(
+            eq(events.type, knownEventTypes.operations.complete),
+            gte(events.createdAt, filter.from),
+            lte(events.createdAt, filter.to),
+        ),
+        orderBy: [asc(events.createdAt)],
+    });
+
+    if (completionEvents.length === 0) {
+        return [];
+    }
+
+    // Extract operation IDs from the completion events
+    const operationIds = completionEvents.map((event) =>
+        parseInt(event.aggregateId, 10),
+    );
+
+    // Get the operations that were completed
+    const completedOperations = await storage().query.operations.findMany({
+        where: and(
+            inArray(operations.id, operationIds),
+            eq(operations.isDeleted, false),
+        ),
+        orderBy: desc(operations.timestamp),
+    });
+
+    // Fill aggregates for these specific operations
+    return await fillOperationAggregates(completedOperations);
 }

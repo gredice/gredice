@@ -1,4 +1,5 @@
 import { animated } from '@react-spring/three';
+import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -26,6 +27,12 @@ export function BlockGroundAngle({
                 receiveShadow
                 geometry={nodes[variantResolved1].geometry}
                 material={nodes[variantResolved1].material}
+            />
+            <SnowOverlay
+                geometry={nodes[variantResolved1].geometry}
+                maxThickness={0.18}
+                slopeExponent={2.2}
+                noiseScale={1.8}
             />
             <mesh
                 castShadow

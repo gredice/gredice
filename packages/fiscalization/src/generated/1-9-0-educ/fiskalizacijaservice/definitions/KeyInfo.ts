@@ -1,8 +1,8 @@
-import { KeyValue } from "./KeyValue";
-import { RetrievalMethod } from "./RetrievalMethod";
-import { X509Data } from "./X509Data";
-import { PgpData } from "./PgpData";
-import { SpkiData } from "./SpkiData";
+import type { KeyValue } from './KeyValue';
+import type { PgpData } from './PgpData';
+import type { RetrievalMethod } from './RetrievalMethod';
+import type { SpkiData } from './SpkiData';
+import type { X509Data } from './X509Data';
 
 /**
  * KeyInfo

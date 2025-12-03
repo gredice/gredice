@@ -28,19 +28,19 @@ jobs:
         runs-on: ubuntu-latest
         if: github.event_name == 'pull_request'
         steps:
-            - uses: actions/checkout@v5
+            - uses: actions/checkout@v6
               with:
                 fetch-depth: 2
             
             - uses: pnpm/action-setup@v3
               name: ✨ Install pnpm
               with:
-                version: 10.17.1
+                version: 10.24.0
 
             - name: ✨ Setup Node
-              uses: actions/setup-node@v5
+              uses: actions/setup-node@v6
               with:
-                node-version: "22.19.0"
+                node-version: "24.11.1"
       
             - name: ✨ Get pnpm store directory
               shell: bash
@@ -66,19 +66,19 @@ jobs:
         needs: lint
         if: github.event_name == 'pull_request'
         steps:
-          - uses: actions/checkout@v5
+          - uses: actions/checkout@v6
             with:
               fetch-depth: 2
 
           - uses: pnpm/action-setup@v3
             name: ✨ Install pnpm
             with:
-              version: 10.17.1
+              version: 10.24.0
 
           - name: ✨ Setup Node
-            uses: actions/setup-node@v5
+            uses: actions/setup-node@v6
             with:
-              node-version: "22.19.0"
+              node-version: "24.11.1"
         
           - name: ✨ Get pnpm store directory
             shell: bash

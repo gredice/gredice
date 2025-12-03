@@ -1,4 +1,6 @@
 import { animated } from '@react-spring/three';
+import { SnowOverlay } from '../snow/SnowOverlay';
+import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -20,7 +22,12 @@ export function Pine({ stack, block, rotation }: EntityInstanceProps) {
                 receiveShadow
                 geometry={nodes.Tree_2.geometry}
                 material={materials['Material.ColorPaletteMain']}
-            />
+            >
+                <SnowOverlay
+                    geometry={nodes.Tree_2.geometry}
+                    {...snowPresets.pine}
+                />
+            </mesh>
         </animated.group>
     );
 }

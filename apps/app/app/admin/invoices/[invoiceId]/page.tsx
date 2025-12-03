@@ -62,12 +62,11 @@ function getStatusLabel(status: string) {
 
 export default async function InvoicePage({
     params,
-}: {
-    params: { invoiceId: string };
-}) {
+}: PageProps<'/admin/invoices/[invoiceId]'>) {
     await auth(['admin']);
 
-    const invoiceId = parseInt(params.invoiceId, 10);
+    const { invoiceId: invoiceIdString } = await params;
+    const invoiceId = parseInt(invoiceIdString, 10);
     if (Number.isNaN(invoiceId)) {
         notFound();
     }

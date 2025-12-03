@@ -1,20 +1,19 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
-import { AiWatermark } from '@gredice/ui/AiWatermark';
-import { SeedTimeInformationBadge } from '@gredice/ui/plants';
+import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
+import { PlantGridIcon } from '@gredice/ui/GridIcons';
+import { PlantOrSortImage, SeedTimeInformationBadge } from '@gredice/ui/plants';
 import { slug } from '@signalco/js';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Euro, LayoutGrid, MapPinHouse } from '@signalco/ui-icons';
+import { MapPinHouse, Sprout } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
-import { PlantImage } from '../../../components/plants/PlantImage';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../../components/shared/PageHeader';
 import { KnownPages } from '../../../src/KnownPages';
 import { getPlantInforationSections } from './getPlantInforationSections';
-import { PlantAttributeCards } from './PlantAttributeCards';
 import { PlantCalendarPicker } from './PlantCalendarPicker';
 import { VerifiedInformationBadge } from './VerifiedInformationBadge';
 
@@ -26,16 +25,9 @@ export function PlantPageHeader({
     sort?: PlantSortData;
 }) {
     const informationSections = getPlantInforationSections(plant);
-    let plantsPerRow = Math.floor(
-        30 / (plant.attributes?.seedingDistance ?? 30),
+    const { totalPlants } = calculatePlantsPerField(
+        plant.attributes?.seedingDistance,
     );
-    if (plantsPerRow < 1) {
-        console.warn(
-            `Plants per row is less than 1 (${plantsPerRow}) for ${plant.information.name}. Setting to 1.`,
-        );
-        plantsPerRow = 1;
-    }
-    const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
 
     const baseLatinName = plant.information.latinName
         ? `lat. ${plant.information.latinName}`
@@ -44,27 +36,15 @@ export function PlantPageHeader({
     return (
         <PageHeader
             visual={
-                <AiWatermark
-                    reason="Primjer ploda biljke visoke rezolucije bez nedostataka."
-                    aiPrompt={`Realistic and not perfect image of requested plant on white background. No Text Or Banners. Square image. ${plant.information.name}`}
-                    aiModel="ChatGPT-4o"
-                >
-                    <PlantImage
-                        plant={{
-                            information: {
-                                name:
-                                    sort?.information?.name ??
-                                    plant.information.name,
-                            },
-                            image: {
-                                cover: sort?.image?.cover ?? plant.image?.cover,
-                            },
-                        }}
-                        priority
-                        width={142}
-                        height={142}
-                    />
-                </AiWatermark>
+                <PlantOrSortImage
+                    coverUrl={
+                        sort?.image?.cover?.url ?? plant.image?.cover?.url
+                    }
+                    alt={sort?.information?.name ?? plant.information.name}
+                    preload
+                    width={192}
+                    height={192}
+                />
             }
             header={sort?.information?.name ?? plant.information.name}
             alternativeName={
@@ -104,6 +84,14 @@ export function PlantPageHeader({
                         )}
                         {plant.isRecommended && <SeedTimeInformationBadge />}
                     </Row>
+                    {sort?.store?.availableInStore === false && (
+                        <Typography
+                            level="body2"
+                            className="text-amber-600 font-semibold"
+                        >
+                            Trenutno nije dostupna za sjetvu
+                        </Typography>
+                    )}
                     {informationSections.some(
                         (section) => section.avaialble,
                     ) && (
@@ -140,47 +128,30 @@ export function PlantPageHeader({
                         Informacije
                     </Typography>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {plant.prices?.perPlant && (
+                            <AttributeCard
+                                icon={<Sprout />}
+                                header="Cijena sijanja"
+                                value={`${plant.prices.perPlant.toFixed(2)}€`}
+                                description="Cijena jedne biljke uključuje troškove sjemena, pripreme tla, sjetve i sezonske pogodnosti. Više o samoj sjetvi u gredicama možeš pročitati u nastavku."
+                                navigateHref={KnownPages.Sowing}
+                                navigateLabel="Više o sjetvi"
+                            />
+                        )}
                         <AttributeCard
-                            icon={<LayoutGrid />}
-                            header="Broj biljaka na 30x30 cm"
+                            icon={<PlantGridIcon totalPlants={totalPlants} />}
+                            header={`Broj biljaka na ${FIELD_SIZE_LABEL}`}
                             value={totalPlants.toString()}
-                            description="Podignutim gredica podjeljena je na polja veličine 30x30 cm. Tako podignuta gredica od 2x1m ima 18 polja za sadnju tvojih biljaka. U svako polje može stati određeni broj biljaka, ovisno o vrsti odnosno o razmaku sijanje/sadnje biljke."
+                            description={`Podignuta gredica podjeljena je na polja veličine ${FIELD_SIZE_LABEL}. Gredica dimenzija 2x1 metar ima 18 polja za sijanje tvojih biljaka. U svako polje može stati određeni broj biljaka, ovisno o vrsti odnosno o razmaku sijanja/sadnje biljke.`}
                             navigateHref={KnownPages.RaisedBeds}
                             navigateLabel="Više o gredicama"
                         />
-                        {plant.prices?.perPlant && (
-                            <AttributeCard
-                                icon={<Euro />}
-                                header="Cijena za sadnju"
-                                value={`${plant.prices.perPlant.toFixed(2)}€`}
-                            />
-                        )}
                     </div>
                     <FeedbackModal
                         topic={
                             sort
                                 ? 'www/plants/sorts/information'
                                 : 'www/plants/information'
-                        }
-                        data={{
-                            plantId: plant.id,
-                            plantAlias: plant.information.name,
-                            sortId: sort?.id,
-                            sortAlias: sort?.information.name,
-                        }}
-                        className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
-                    />
-                </Stack>
-                <Stack spacing={1} className="group">
-                    <Typography level="h5" component="h2">
-                        Svojstva
-                    </Typography>
-                    <PlantAttributeCards attributes={plant.attributes} />
-                    <FeedbackModal
-                        topic={
-                            sort
-                                ? 'www/plants/sorts/attributes'
-                                : 'www/plants/attributes'
                         }
                         data={{
                             plantId: plant.id,

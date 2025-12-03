@@ -5,7 +5,11 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { plantTypeNames, plantTypes } from '../../lib/plant-definitions';
+import {
+    type PlantDefinition,
+    plantTypeNames,
+    plantTypes,
+} from '../../lib/plant-definitions';
 import type {
     PlantGeneratorState,
     VisibilityState,
@@ -47,7 +51,9 @@ export function usePlantState() {
             const savedCustomPlants = localStorage.getItem(CUSTOM_PLANTS_KEY);
             if (savedCustomPlants) {
                 try {
-                    const customPlants = JSON.parse(savedCustomPlants);
+                    const customPlants = JSON.parse(
+                        savedCustomPlants,
+                    ) as Record<string, PlantDefinition>;
                     setState((prev) => ({ ...prev, customPlants }));
                 } catch (e) {
                     console.warn(
@@ -61,7 +67,10 @@ export function usePlantState() {
             const savedDefinitions = localStorage.getItem(STORAGE_KEY);
             if (savedDefinitions) {
                 try {
-                    const parsedDefs = JSON.parse(savedDefinitions);
+                    const parsedDefs = JSON.parse(savedDefinitions) as Record<
+                        string,
+                        PlantDefinition
+                    >;
                     const defaultPlantType = plantTypeNames[0];
                     if (parsedDefs[defaultPlantType]) {
                         const baseDef = plantTypes[defaultPlantType];
@@ -115,7 +124,10 @@ export function usePlantState() {
             const savedDefinitions = localStorage.getItem(STORAGE_KEY);
             if (savedDefinitions) {
                 try {
-                    const parsedDefs = JSON.parse(savedDefinitions);
+                    const parsedDefs = JSON.parse(savedDefinitions) as Record<
+                        string,
+                        PlantDefinition
+                    >;
                     if (parsedDefs[state.plantType]) {
                         const baseDef = allPlants[state.plantType];
                         const savedDef = parsedDefs[state.plantType];
@@ -151,12 +163,12 @@ export function usePlantState() {
      * Save definition changes to localStorage (debounced via parent component)
      */
     const saveDefinitionToStorage = useCallback(
-        (definition: any, plantType: string) => {
+        (definition: PlantDefinition, plantType: string) => {
             if (typeof window !== 'undefined') {
                 try {
                     const existingDefs = JSON.parse(
                         localStorage.getItem(STORAGE_KEY) || '{}',
-                    );
+                    ) as Record<string, PlantDefinition>;
                     existingDefs[plantType] = definition;
                     localStorage.setItem(
                         STORAGE_KEY,
@@ -177,7 +189,7 @@ export function usePlantState() {
      * Save custom plants to localStorage
      */
     const saveCustomPlantsToStorage = useCallback(
-        (customPlants: Record<string, any>) => {
+        (customPlants: Record<string, PlantDefinition>) => {
             if (typeof window !== 'undefined') {
                 try {
                     localStorage.setItem(
@@ -236,7 +248,7 @@ export function usePlantState() {
                 try {
                     const existingDefs = JSON.parse(
                         localStorage.getItem(STORAGE_KEY) || '{}',
-                    );
+                    ) as Record<string, PlantDefinition>;
                     delete existingDefs[name];
                     localStorage.setItem(
                         STORAGE_KEY,
@@ -273,14 +285,24 @@ export function usePlantState() {
     /**
      * Update nested definition properties using dot notation path
      */
-    const updateDefinition = useCallback((path: string, value: any) => {
+    const updateDefinition = useCallback((path: string, value: unknown) => {
         setState((prev) => {
-            const newDef = JSON.parse(JSON.stringify(prev.definition));
+            const newDef = JSON.parse(
+                JSON.stringify(prev.definition),
+            ) as PlantDefinition;
             const keys = path.split('.');
-            let current: any = newDef;
+            let current: Record<string, unknown> = newDef as unknown as Record<
+                string,
+                unknown
+            >;
             for (let i = 0; i < keys.length - 1; i++) {
-                current = current[keys[i]];
+                const next = current[keys[i]];
+                if (typeof next !== 'object' || next === null) {
+                    return prev;
+                }
+                current = next as Record<string, unknown>;
             }
+            // assign the new value
             current[keys[keys.length - 1]] = value;
             return { ...prev, definition: newDef };
         });

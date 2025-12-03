@@ -2,6 +2,7 @@ import { BlockImage } from '@gredice/ui/BlockImage';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
+import { getPositionIndexFromGrid } from '../../utils/raisedBedOrientation';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { RaisedBedFieldItemEmpty } from './RaisedBedFieldItemEmpty';
 import { RaisedBedFieldItemPlanted } from './RaisedBedFieldItemPlanted';
@@ -26,6 +27,7 @@ function RaisedBedFieldItem({
     );
     const hasField = Boolean(field);
 
+    // Loading state
     if (isGardenLoading) {
         return (
             <RaisedBedFieldItemButton
@@ -35,6 +37,7 @@ function RaisedBedFieldItem({
         );
     }
 
+    // Empty/in-cart state
     if (!hasField) {
         return (
             <RaisedBedFieldItemEmpty
@@ -45,6 +48,7 @@ function RaisedBedFieldItem({
         );
     }
 
+    // Planted state
     return (
         <RaisedBedFieldItemPlanted
             raisedBedId={raisedBedId}
@@ -93,6 +97,7 @@ export function RaisedBedField({
 }) {
     const { data: garden } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
+    const orientation = raisedBed?.orientation ?? 'vertical';
     if (!raisedBed?.isValid) {
         return (
             <div className="flex flex-col mt-4 items-center h-full">
@@ -150,9 +155,11 @@ export function RaisedBedField({
                                 <RaisedBedFieldItem
                                     gardenId={gardenId}
                                     raisedBedId={raisedBedId}
-                                    positionIndex={
-                                        (2 - rowIndex) * 3 + (2 - colIndex)
-                                    }
+                                    positionIndex={getPositionIndexFromGrid(
+                                        rowIndex,
+                                        colIndex,
+                                        orientation,
+                                    )}
                                 />
                             </div>
                         ))}

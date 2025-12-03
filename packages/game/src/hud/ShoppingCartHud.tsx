@@ -10,7 +10,6 @@ import {
 import { Button } from '@signalco/ui-primitives/Button';
 import { cx } from '@signalco/ui-primitives/cx';
 import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -327,15 +326,21 @@ export function ShoppingCartHud() {
             <Row spacing={1}>
                 <Modal
                     title="Košarica"
-                    className="bg-card border-tertiary border-b-4 md:max-w-2xl"
-                    modal={false}
+                    className="border-tertiary border-b-4 md:max-w-2xl"
                     trigger={
-                        <IconButton
+                        <Button
                             title="Košarica"
                             variant="plain"
-                            className="relative rounded-full size-10"
+                            className="relative rounded-full p-2 gap-2"
                         >
-                            <ShoppingCartIcon className="!stroke-[1.4px] shrink-0" />
+                            <ShoppingCartIcon className="!stroke-[1.4px] shrink-0  size-6" />
+                            <Typography
+                                level="body2"
+                                semiBold
+                                className="text-foreground"
+                            >
+                                {(cart.total ?? 0).toFixed(2)} €
+                            </Typography>
                             {Boolean(cart?.items.length) && (
                                 <div className="absolute -right-2 -top-2">
                                     <DotIndicator
@@ -349,7 +354,7 @@ export function ShoppingCartHud() {
                                     />
                                 </div>
                             )}
-                        </IconButton>
+                        </Button>
                     }
                 >
                     <ShoppingCart />

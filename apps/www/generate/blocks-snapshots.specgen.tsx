@@ -5,36 +5,91 @@ import { test } from '@playwright/experimental-ct-react';
 
 test.use({ deviceScaleFactor: 2, viewport: { width: 320 / 2, height: 320 } });
 
+type SnapshotView = 'normal' | 'far' | 'closeup';
+
+const CLOSEUP_ENTITIES = new Set<string>([
+    // Flowers and other small props look better when zoomed in
+    'Tulip',
+]);
+
+function getSnapshotView(entity: BlockData): SnapshotView {
+    if (CLOSEUP_ENTITIES.has(entity.information.name)) {
+        return 'closeup';
+    }
+
+    if (entity.attributes.height > 1.5) {
+        return 'far';
+    }
+
+    return 'normal';
+}
+
+function getViewOptions(view: SnapshotView): {
+    zoom?: number;
+    itemPosition?: [number, number, number];
+    label: string;
+} {
+    switch (view) {
+        case 'far':
+            return {
+                zoom: 60,
+                itemPosition: [1.25, 0, 1.25],
+                label: 'zoomed out',
+            };
+        case 'closeup':
+            return {
+                zoom: 130,
+                label: 'zoomed in',
+            };
+        default:
+            return { label: 'normal' };
+    }
+}
+
 test.describe('block screenshots', async () => {
     const entities = JSON.parse(
         readFileSync('./generate/test-cases.json', 'utf8'),
     ) as BlockData[];
     for (const entity of entities) {
-        test(entity.information.name, async ({ mount }) => {
-            console.info(
-                'Taking screenshot of',
-                entity.information.name,
-                entity.attributes.height > 1.5 ? '(zoomed)' : '(normal)',
-            );
-            const component = await mount(
-                <EntityViewer
-                    className="size-80"
-                    zoom={entity.attributes.height > 1.5 ? 60 : undefined}
-                    itemPosition={
-                        entity.attributes.height > 1.5
-                            ? [1.25, 0, 1.25]
-                            : undefined
-                    }
-                    entityName={entity.information.name}
-                    appBaseUrl="https://vrt.gredice.com"
-                />,
-            );
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-            await component.screenshot({
-                omitBackground: true,
-                path: `./public/assets/blocks/${entity.information.name}.png`,
+        for (let rotation = 0; rotation < 4; rotation += 1) {
+            test(`${entity.information.name} rotation ${rotation + 1}`, async ({
+                mount,
+            }) => {
+                const view = getSnapshotView(entity);
+                const { itemPosition, label, zoom } = getViewOptions(view);
+                console.info(
+                    'Taking screenshot of',
+                    entity.information.name,
+                    `(${label})`,
+                    `rotation ${rotation + 1}`,
+                );
+                const component = await mount(
+                    <EntityViewer
+                        className="size-80"
+                        zoom={zoom}
+                        itemPosition={itemPosition}
+                        entityName={entity.information.name}
+                        appBaseUrl="https://vrt.gredice.com"
+                        rotation={rotation}
+                    />,
+                );
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+
+                // Save rotation-specific version
+                await component.screenshot({
+                    omitBackground: true,
+                    path: `./public/assets/blocks/${entity.information.name}_${rotation + 1}.png`,
+                });
+
+                // Save base version (unsuffixed) for the first rotation to maintain backward compatibility
+                if (rotation === 0) {
+                    await component.screenshot({
+                        omitBackground: true,
+                        path: `./public/assets/blocks/${entity.information.name}.png`,
+                    });
+                }
             });
-        });
+        }
     }
 });
 

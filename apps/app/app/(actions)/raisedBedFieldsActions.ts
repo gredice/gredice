@@ -50,7 +50,7 @@ export async function raisedBedFieldUpdatePlant({
     // If a plant sort id is provided and differs from current field, place the plant
     const aggregateId = `${raisedBedId.toString()}|${positionIndex.toString()}`;
     const existingField = raisedBed.fields.find(
-        (field) => field.positionIndex === positionIndex,
+        (field) => field.positionIndex === positionIndex && field.active,
     );
     if (plantSortId && existingField?.plantSortId !== plantSortId) {
         await createEvent(
@@ -168,17 +168,16 @@ export async function rescheduleRaisedBedFieldAction(formData: FormData) {
         throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
     }
     const field = raisedBed.fields.find(
-        (f) => f.positionIndex === positionIndex,
+        (f) => f.positionIndex === positionIndex && f.active,
     );
     if (!field || !field.plantSortId) {
         throw new Error('Field or plant sort not found.');
     }
 
     await createEvent(
-        knownEvents.raisedBedFields.plantPlaceV1(
+        knownEvents.raisedBedFields.plantScheduleV1(
             `${raisedBedId}|${positionIndex}`,
             {
-                plantSortId: field.plantSortId.toString(),
                 scheduledDate: new Date(scheduledDate).toISOString(),
             },
         ),
@@ -219,7 +218,7 @@ export async function cancelRaisedBedFieldAction(formData: FormData) {
         throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
     }
     const field = raisedBed.fields.find(
-        (f) => f.positionIndex === positionIndex,
+        (f) => f.positionIndex === positionIndex && f.active,
     );
     if (!field) {
         throw new Error(

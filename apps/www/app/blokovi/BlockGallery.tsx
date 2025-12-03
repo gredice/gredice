@@ -23,20 +23,27 @@ function BlockGalleryItem(
                     justifyContent={cx(showPrices ? 'space-between' : 'center')}
                 >
                     <Typography>{entity.information.label}</Typography>
-                    {showPrices && entity.prices && (
-                        <Typography
-                            level="body2"
-                            className="flex flex-row gap-2"
-                        >
-                            <span>🌻</span>
-                            <span>{entity.prices.sunflowers ?? '-'}</span>
-                        </Typography>
-                    )}
+                    {showPrices &&
+                        entity.prices &&
+                        entity.prices.sunflowers > 0 && (
+                            <Typography
+                                level="body2"
+                                className="flex flex-row gap-2"
+                            >
+                                <span>🌻</span>
+                                <span>{entity.prices.sunflowers}</span>
+                            </Typography>
+                        )}
                 </Row>
             }
             href={KnownPages.Block(entity.information.label)}
         >
-            <BlockImage blockName={entity.information.name} fill />
+            <BlockImage
+                blockName={entity.information.name}
+                fill
+                preload
+                sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
+            />
         </ItemCard>
     );
 }

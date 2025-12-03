@@ -1,6 +1,7 @@
 'use server';
 
 import { randomUUID } from 'node:crypto';
+import { notifyOperationUpdate } from '@gredice/notifications';
 import {
     acceptOperation,
     createEvent,
@@ -54,14 +55,16 @@ export async function createOperationAction(formData: FormData) {
             : undefined,
     };
     const operationId = await createOperation(operation);
-    await Promise.all([
-        scheduledDate &&
-            createEvent(
-                knownEvents.operations.scheduledV1(operationId.toString(), {
-                    scheduledDate: scheduledDate.toISOString(),
-                }),
-            ),
-    ]);
+    if (scheduledDate) {
+        await createEvent(
+            knownEvents.operations.scheduledV1(operationId.toString(), {
+                scheduledDate: scheduledDate.toISOString(),
+            }),
+        );
+        await notifyOperationUpdate(operationId, 'scheduled', {
+            scheduledDate: scheduledDate.toISOString(),
+        });
+    }
     revalidatePath(KnownPages.Schedule);
     if (operation.accountId)
         revalidatePath(KnownPages.Account(operation.accountId));
@@ -106,6 +109,9 @@ export async function bulkCreateOperationsAction(formData: FormData) {
                     scheduledDate: scheduledDate.toISOString(),
                 }),
             );
+            await notifyOperationUpdate(operationId, 'scheduled', {
+                scheduledDate: scheduledDate.toISOString(),
+            });
         }
     }
     revalidatePath(KnownPages.Schedule);
@@ -131,11 +137,16 @@ export async function rescheduleOperationAction(formData: FormData) {
     }
 
     // Create a new scheduled event to reschedule the operation
+    const newDate = new Date(scheduledDate);
     await createEvent(
         knownEvents.operations.scheduledV1(operationId.toString(), {
-            scheduledDate: new Date(scheduledDate).toISOString(),
+            scheduledDate: newDate.toISOString(),
         }),
     );
+
+    await notifyOperationUpdate(operationId, 'rescheduled', {
+        scheduledDate: newDate.toISOString(),
+    });
 
     revalidatePath(KnownPages.Schedule);
     if (operation.accountId)
@@ -154,6 +165,7 @@ export async function acceptOperationAction(operationId: number) {
         throw new Error(`Operation with ID ${operationId} not found.`);
     }
     await acceptOperation(operationId);
+    await notifyOperationUpdate(operationId, 'approved');
     revalidatePath(KnownPages.Schedule);
     if (operation.accountId)
         revalidatePath(KnownPages.Account(operation.accountId));
@@ -204,13 +216,15 @@ export async function completeOperation(
         }
     }
 
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy,
+            images: imageUrls,
+        }),
+    );
+
     await Promise.all([
-        createEvent(
-            knownEvents.operations.completedV1(operationId.toString(), {
-                completedBy,
-                images: imageUrls,
-            }),
-        ),
+        notifyOperationUpdate(operationId, 'completed', { completedBy }),
         operation.accountId
             ? createNotification({
                   accountId: operation.accountId,
@@ -276,6 +290,13 @@ export async function cancelOperationAction(formData: FormData) {
         throw new Error('Cancellation reason is required');
     }
 
+    const refundEntries = formData.getAll('shouldRefund');
+    const notifyEntries = formData.getAll('shouldNotify');
+    const shouldRefund =
+        refundEntries.length === 0 || refundEntries.includes('true');
+    const shouldNotify =
+        notifyEntries.length === 0 || notifyEntries.includes('true');
+
     const operation = await getOperationById(operationId);
     if (!operation) {
         throw new Error(`Operation with ID ${operationId} not found.`);
@@ -330,28 +351,30 @@ export async function cancelOperationAction(formData: FormData) {
     }
 
     // Add refund information
-    if (refundAmount > 0) {
+    if (shouldRefund && refundAmount > 0) {
         content += `\nSredstva su ti vraćana u iznosu od ${refundAmount} 🌻.`;
     }
 
+    await createEvent(
+        knownEvents.operations.canceledV1(operationId.toString(), {
+            canceledBy: userId,
+            reason,
+        }),
+    );
+
     await Promise.all([
-        // Create cancellation event
-        createEvent(
-            knownEvents.operations.canceledV1(operationId.toString(), {
-                canceledBy: userId,
-                reason,
-            }),
-        ),
-        // Refund sunflowers if operation had a cost
-        refundAmount > 0 && operation.accountId
+        notifyOperationUpdate(operationId, 'canceled', {
+            reason,
+            canceledBy: userId,
+        }),
+        shouldRefund && refundAmount > 0 && operation.accountId
             ? earnSunflowers(
                   operation.accountId,
                   refundAmount,
                   `refund:operation:${operationId}`,
               )
             : Promise.resolve(),
-        // Send notification to user
-        operation.accountId
+        shouldNotify && operation.accountId
             ? createNotification({
                   accountId: operation.accountId,
                   gardenId: operation.gardenId,
@@ -370,5 +393,4 @@ export async function cancelOperationAction(formData: FormData) {
         revalidatePath(KnownPages.Garden(operation.gardenId));
     if (operation.raisedBedId)
         revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
-    return { success: true };
 }

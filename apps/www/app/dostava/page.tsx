@@ -1,3 +1,4 @@
+import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Alert } from '@signalco/ui/Alert';
 import { Calendar, Warning } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -14,7 +15,6 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../components/shared/PageHeader';
-import { StyledHtml } from '../../components/shared/StyledHtml';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
 import { KnownPages } from '../../src/KnownPages';
 

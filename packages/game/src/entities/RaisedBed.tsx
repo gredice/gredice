@@ -1,5 +1,6 @@
 import { animated } from '@react-spring/three';
 import { useHoveredBlockStore } from '../controls/SelectableGroup';
+import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -88,6 +89,13 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                 >
                     <HoverOutline hovered={hovered} />
                 </mesh>
+                <SnowOverlay
+                    geometry={nodes[shape1].geometry}
+                    maxThickness={0.16}
+                    slopeExponent={2.8}
+                    noiseScale={3}
+                    coverageMultiplier={0.9}
+                />
                 <mesh
                     castShadow
                     receiveShadow
@@ -102,6 +110,13 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                 >
                     <HoverOutline hovered={hovered} />
                 </mesh>
+                <SnowOverlay
+                    geometry={nodes[shape2].geometry}
+                    maxThickness={0.16}
+                    slopeExponent={2.8}
+                    noiseScale={3}
+                    coverageMultiplier={0.9}
+                />
             </animated.group>
             <group
                 position={stack.position.clone().setY(currentStackHeight + 1)}

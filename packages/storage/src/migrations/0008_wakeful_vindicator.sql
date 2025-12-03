@@ -1,0 +1,1 @@
+ALTER TABLE "farms" ADD COLUMN "snow_accumulation" real DEFAULT 0 NOT NULL;

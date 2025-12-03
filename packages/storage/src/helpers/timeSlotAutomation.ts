@@ -1,6 +1,6 @@
 import 'server-only';
-import { and, eq, gte, lt } from 'drizzle-orm';
-import { TimeSlotStatuses, timeSlots } from '../schema';
+import { and, eq, gte, inArray, lt } from 'drizzle-orm';
+import { DeliveryModes, TimeSlotStatuses, timeSlots } from '../schema';
 import { storage } from '../storage';
 
 export const AUTO_CLOSE_WINDOW_HOURS = 48;
@@ -11,7 +11,7 @@ function getAutoCloseThreshold(referenceDate: Date) {
 }
 
 /**
- * Automatically closes upcoming delivery slots that are within the auto-close window.
+ * Automatically closes upcoming delivery and pickup slots that are within the auto-close window.
  * This function should be called by a CRON job rather than during read operations.
  */
 export async function autoCloseUpcomingSlots(
@@ -25,7 +25,10 @@ export async function autoCloseUpcomingSlots(
         .set({ status: TimeSlotStatuses.CLOSED })
         .where(
             and(
-                eq(timeSlots.type, 'delivery'),
+                inArray(timeSlots.type, [
+                    DeliveryModes.DELIVERY,
+                    DeliveryModes.PICKUP,
+                ]),
                 eq(timeSlots.status, TimeSlotStatuses.SCHEDULED),
                 gte(timeSlots.startAt, now),
                 lt(timeSlots.startAt, cutoffTime),

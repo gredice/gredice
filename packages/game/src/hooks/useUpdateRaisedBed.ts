@@ -1,11 +1,15 @@
 import { client } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useGameState } from '../useGameState';
 import { currentGardenKeys } from './useCurrentGarden';
 import { useCurrentUser } from './useCurrentUser';
 
 export function useUpdateRaisedBed(gardenId: number, raisedBedId: number) {
     const queryClient = useQueryClient();
     const currentUser = useCurrentUser();
+    const isWinterMode = useGameState((state) => state.isWinterMode);
+    const gardenQueryKey = currentGardenKeys(isWinterMode);
+
     return useMutation({
         mutationFn: async ({ name }: { name?: string | null }) => {
             if (!currentUser.data) {
@@ -28,7 +32,7 @@ export function useUpdateRaisedBed(gardenId: number, raisedBedId: number) {
             console.error('Failed to update raised bed:', error);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: currentGardenKeys });
+            queryClient.invalidateQueries({ queryKey: gardenQueryKey });
         },
     });
 }

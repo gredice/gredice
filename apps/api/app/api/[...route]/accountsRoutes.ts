@@ -1,13 +1,17 @@
+import { tz } from '@date-fns/tz';
 import {
     deleteAccountWithDependencies,
     earnSunflowers,
     getAccount,
+    getAccountAchievements,
     getAccountUsers,
     getSunflowers,
     getSunflowersHistory,
     getUser,
     knownEventTypes,
+    updateAccountTimeZone,
 } from '@gredice/storage';
+import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
 import { verifyJwt } from '../../../lib/auth/auth';
@@ -17,6 +21,7 @@ import {
 } from '../../../lib/hono/authValidator';
 
 const dailyRewards = [5, 10, 15, 20, 25, 50];
+const DAILY_REWARD_TIME_ZONE = 'Europe/Zagreb';
 
 function rewardForDay(day: number) {
     return dailyRewards[Math.min(day, dailyRewards.length) - 1] ?? 0;
@@ -24,8 +29,11 @@ function rewardForDay(day: number) {
 
 async function getDailyRewardState(accountId: string) {
     const history = await getSunflowersHistory(accountId, 0, 10000);
+    const toLocalTime = tz(DAILY_REWARD_TIME_ZONE);
     const dailyEvents = history
-        .filter((e) => e.reason.startsWith('daily'))
+        .filter(
+            (e) => typeof e.reason === 'string' && e.reason.startsWith('daily'),
+        )
         .sort(
             (a, b) =>
                 new Date(b.createdAt).getTime() -
@@ -38,9 +46,16 @@ async function getDailyRewardState(accountId: string) {
         [];
 
     if (dailyEvents.length > 0) {
+        const toLocalDay = (date: Date) => startOfDay(toLocalTime(date));
         const latest = dailyEvents[0];
-        lastDay = Number(latest.reason.split(':')[1] ?? '1');
+        const latestReasonPart =
+            typeof latest.reason === 'string'
+                ? latest.reason.split(':')[1]
+                : undefined;
+        lastDay = Number(latestReasonPart ?? '1');
         lastDate = new Date(latest.createdAt);
+        const latestLocalDay = toLocalDay(lastDate);
+        const seenLocalDays = new Set<number>([latestLocalDay.getTime()]);
         streak.push({
             day: lastDay,
             amount: rewardForDay(lastDay),
@@ -48,37 +63,51 @@ async function getDailyRewardState(accountId: string) {
         });
 
         let expectedDay = lastDay - 1;
-        let prevDate = lastDate;
+        let expectedLocalDay = addDays(latestLocalDay, -1);
         for (let i = 1; i < dailyEvents.length && expectedDay > 0; i++) {
             const ev = dailyEvents[i];
-            const day = Number(ev.reason.split(':')[1] ?? '1');
+            const day = Number(
+                (typeof ev.reason === 'string'
+                    ? ev.reason.split(':')[1]
+                    : undefined) ?? '1',
+            );
             const date = new Date(ev.createdAt);
-            const diff = prevDate.getTime() - date.getTime();
-            if (day === expectedDay && diff <= 1000 * 60 * 60 * 48) {
-                streak.push({
-                    day,
-                    amount: rewardForDay(day),
-                    claimedAt: date.toISOString(),
-                });
-                expectedDay--;
-                prevDate = date;
-            } else {
+            const eventLocalDay = toLocalDay(date);
+
+            const eventLocalTime = eventLocalDay.getTime();
+            if (seenLocalDays.has(eventLocalTime)) {
+                continue;
+            }
+
+            if (eventLocalTime !== expectedLocalDay.getTime()) {
                 break;
             }
+
+            streak.push({
+                day,
+                amount: rewardForDay(day),
+                claimedAt: date.toISOString(),
+            });
+            seenLocalDays.add(eventLocalTime);
+            expectedDay--;
+            expectedLocalDay = addDays(expectedLocalDay, -1);
         }
         streak.sort((a, b) => a.day - b.day);
     }
 
     const now = new Date();
+    const nowLocal = toLocalTime(now);
     let currentDay = 1;
     let canClaim = true;
 
     if (lastDate) {
-        const diffMs = now.getTime() - lastDate.getTime();
-        if (diffMs < 1000 * 60 * 60 * 24) {
+        const lastLocal = toLocalTime(lastDate);
+        const diffDays = differenceInCalendarDays(nowLocal, lastLocal);
+
+        if (diffDays === 0) {
             currentDay = lastDay;
             canClaim = false;
-        } else if (diffMs < 1000 * 60 * 60 * 48) {
+        } else if (diffDays === 1) {
             currentDay = Math.min(lastDay + 1, 7);
             canClaim = true;
         } else {
@@ -88,9 +117,31 @@ async function getDailyRewardState(accountId: string) {
         }
     }
 
+    // When user has reached day 7, ensure all days 1-6 are always marked as claimed
+    // This handles the case where user continues claiming day 7 on subsequent days
+    if (currentDay >= 7 && lastDay >= 7) {
+        // Ensure days 1-6 are in the streak
+        for (let day = 1; day <= 6; day++) {
+            const existing = streak.find((s) => s.day === day);
+            if (!existing) {
+                streak.push({
+                    day,
+                    amount: rewardForDay(day),
+                    claimedAt:
+                        lastDate?.toISOString() ?? nowLocal.toISOString(),
+                });
+            }
+        }
+        streak.sort((a, b) => a.day - b.day);
+    }
+
     const nextDay = Math.min(currentDay + 1, 7);
-    const expiresBase = lastDate ?? now;
-    const expiresAt = new Date(expiresBase.getTime() + 1000 * 60 * 60 * 48);
+    const expiresLocalBase = lastDate ? toLocalTime(lastDate) : nowLocal;
+    const expiresLocal = addDays(
+        startOfDay(expiresLocalBase),
+        lastDate ? 2 : 1,
+    );
+    const expiresAt = new Date(+expiresLocal);
 
     return {
         canClaim,
@@ -121,6 +172,38 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
             return context.json({
                 id: dbAccount?.id,
+                timeZone: dbAccount?.timeZone,
+                createdAt: dbAccount?.createdAt.toISOString(),
+                updatedAt: dbAccount?.updatedAt.toISOString(),
+            });
+        },
+    )
+    .patch(
+        '/current',
+        describeRoute({
+            description: 'Update the current account settings',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const body = await context.req.json<{ timeZone?: string }>();
+
+            if (body.timeZone !== undefined) {
+                await updateAccountTimeZone(accountId, body.timeZone);
+            }
+
+            const dbAccount = await getAccount(accountId);
+            if (!dbAccount) {
+                return context.json(
+                    {
+                        error: 'Account not found',
+                    },
+                    404,
+                );
+            }
+            return context.json({
+                id: dbAccount?.id,
+                timeZone: dbAccount?.timeZone,
                 createdAt: dbAccount?.createdAt.toISOString(),
                 updatedAt: dbAccount?.updatedAt.toISOString(),
             });
@@ -149,6 +232,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             ? -event.amount
                             : event.amount,
                     reason: event.reason,
+                })),
+            });
+        },
+    )
+    .get(
+        '/current/achievements',
+        describeRoute({
+            description: 'Get the current account achievements',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const achievements = await getAccountAchievements(accountId);
+            return context.json({
+                achievements: achievements.map((achievement) => ({
+                    id: achievement.id,
+                    key: achievement.achievementKey,
+                    status: achievement.status,
+                    rewardSunflowers: achievement.rewardSunflowers,
+                    progressValue: achievement.progressValue,
+                    threshold: achievement.threshold,
+                    rewardGrantedAt:
+                        achievement.rewardGrantedAt?.toISOString() ?? null,
                 })),
             });
         },

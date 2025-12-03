@@ -64,9 +64,11 @@ function getTimeOfDay(
 
 type GameMode = 'normal' | 'edit';
 
-type GameState = {
+export type GameState = {
     // General
     isMock: boolean;
+    isWinterMode: boolean;
+    setIsWinterMode: (isWinterMode: boolean) => void;
     appBaseUrl: string;
     audio: {
         ambient: ReturnType<typeof audioMixer>;
@@ -98,13 +100,28 @@ type GameState = {
     ) => void;
 
     // Debug (overrides)
-    weather?: { cloudy: number; rainy: number; snowy: number; foggy: number };
+    weather?: {
+        cloudy: number;
+        rainy: number;
+        snowy: number;
+        foggy: number;
+        windSpeed?: number;
+        windDirection?: number;
+        snowAccumulation?: number;
+    };
     setWeather: (weather: {
         cloudy: number;
         rainy: number;
         snowy: number;
         foggy: number;
+        windSpeed?: number;
+        windDirection?: number;
+        snowAccumulation?: number;
     }) => void;
+
+    // Environment derived state
+    snowCoverage: number;
+    setSnowCoverage: (snowCoverage: number) => void;
 
     // World
     orbitControls: OrbitControls | null;
@@ -122,15 +139,19 @@ export function createGameState({
     appBaseUrl,
     freezeTime,
     isMock,
+    isWinterMode,
 }: {
     appBaseUrl: string;
     freezeTime: Date | null;
     isMock: boolean;
+    isWinterMode: boolean;
 }) {
     const now = freezeTime ?? new Date();
     const timeOfDay = getTimeOfDay(defaultLocation, now);
     return createStore<GameState>((set, get) => ({
         isMock: isMock,
+        isWinterMode: isWinterMode,
+        setIsWinterMode: (isWinterMode) => set({ isWinterMode }),
         appBaseUrl: appBaseUrl,
         audio: {
             ambient: audioMixer(
@@ -210,6 +231,8 @@ export function createGameState({
             });
         },
         setWeather: (weather) => set({ weather }),
+        snowCoverage: 0,
+        setSnowCoverage: (snowCoverage) => set({ snowCoverage }),
     }));
 }
 

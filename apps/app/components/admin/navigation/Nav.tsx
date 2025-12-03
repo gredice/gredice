@@ -29,8 +29,13 @@ import {
     Hammer,
     Home,
     Inbox,
+    Mail,
+    Map as MapIcon,
+    Megaphone,
+    Settings,
     ShoppingCart,
     SmileHappy,
+    Success,
     Tally3,
     Truck,
     User,
@@ -144,6 +149,36 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                 />
             </List>
             <Stack spacing={1}>
+                <AuthProtectedSection>
+                    {/* Categories with their entity types */}
+                    {categorizedTypes.map((category) => (
+                        <Stack key={category.id} spacing={1}>
+                            <ListHeader
+                                header={category.label}
+                                actions={[
+                                    <Link
+                                        key={`edit-${category.id}`}
+                                        href={KnownPages.DirectoryCategoryEdit(
+                                            category.id,
+                                        )}
+                                    >
+                                        <IconButton
+                                            title="Uredi kategoriju"
+                                            variant="plain"
+                                        >
+                                            <Edit className="size-4" />
+                                        </IconButton>
+                                    </Link>,
+                                ]}
+                            />
+                            <EntityTypeList
+                                items={category.entityTypes}
+                                onItemClick={onItemClick}
+                            />
+                        </Stack>
+                    ))}
+                </AuthProtectedSection>
+
                 <ListHeader
                     header="Zapisi"
                     actions={[
@@ -199,34 +234,6 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                             onItemClick={onItemClick}
                         />
                     )}
-
-                    {/* Categories with their entity types */}
-                    {categorizedTypes.map((category) => (
-                        <Stack key={category.id} spacing={1}>
-                            <ListHeader
-                                header={category.label}
-                                actions={[
-                                    <Link
-                                        key={`edit-${category.id}`}
-                                        href={KnownPages.DirectoryCategoryEdit(
-                                            category.id,
-                                        )}
-                                    >
-                                        <IconButton
-                                            title="Uredi kategoriju"
-                                            variant="plain"
-                                        >
-                                            <Edit className="size-4" />
-                                        </IconButton>
-                                    </Link>,
-                                ]}
-                            />
-                            <EntityTypeList
-                                items={category.entityTypes}
-                                onItemClick={onItemClick}
-                            />
-                        </Stack>
-                    ))}
                 </AuthProtectedSection>
             </Stack>
             <Stack spacing={1}>
@@ -236,6 +243,12 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         href={KnownPages.Accounts}
                         label="Korisnički računi"
                         icon={<Bank className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                    <NavItem
+                        href={KnownPages.Achievements}
+                        label="Postignuća"
+                        icon={<Success className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
@@ -266,6 +279,12 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         href={KnownPages.Users}
                         label="Korisnici"
                         icon={<User className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                    <NavItem
+                        href={KnownPages.Farms}
+                        label="Farme"
+                        icon={<MapIcon className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
@@ -321,9 +340,32 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         onClick={onItemClick}
                     />
                     <NavItem
+                        href={KnownPages.CommunicationEmails}
+                        label="Poslani emailovi"
+                        icon={<Mail className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                    <NavItem
+                        href={KnownPages.Notifications}
+                        label="Obavijesti"
+                        icon={<Megaphone className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                    <NavItem
                         href={KnownPages.Feedback}
                         label="Povratne informacije"
                         icon={<SmileHappy className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                </List>
+            </Stack>
+            <Stack spacing={1}>
+                <ListHeader header="Postavke" />
+                <List>
+                    <NavItem
+                        href={KnownPages.Settings}
+                        label="Postavke"
+                        icon={<Settings className="size-5" />}
                         onClick={onItemClick}
                     />
                 </List>

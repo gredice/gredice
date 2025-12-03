@@ -21,6 +21,10 @@ test('getAnalyticsTotals returns correct counts for empty db', async () => {
     assert.strictEqual(typeof totals.events, 'number');
     assert.strictEqual(typeof totals.raisedBeds, 'number');
     assert.strictEqual(typeof totals.transactions, 'number');
+    assert.ok(totals.activeUsers);
+    assert.strictEqual(typeof totals.activeUsers.daily, 'number');
+    assert.strictEqual(typeof totals.activeUsers.weekly, 'number');
+    assert.strictEqual(typeof totals.activeUsers.monthly, 'number');
 });
 
 test('getAnalyticsTotals increases after creating entities', async () => {

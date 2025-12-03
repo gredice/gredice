@@ -1,11 +1,13 @@
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
-import { Delete, Euro, Navigate, Timer } from '@signalco/ui-icons';
+import { Delete, Euro, Hammer, Navigate, Timer } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import Image from 'next/image';
+import type { CSSProperties } from 'react';
+import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
 import type { ShoppingCartItemData } from '../../../hooks/useShoppingCart';
@@ -13,6 +15,7 @@ import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
 
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
+    const { data: account } = useCurrentAccount();
 
     const hasDiscount = typeof item.shopData.discountPrice === 'number';
     const hasGarden = Boolean(item.gardenId && garden);
@@ -53,18 +56,35 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     // Hide delete button for paid items
     const isProcessed = item.status === 'paid';
 
+    const hasShopImage = Boolean(item.shopData.image);
+    const shouldShowOperationFallback =
+        item.entityTypeName === 'operation' && !hasShopImage;
+
     return (
         <Row spacing={2} alignItems="start">
-            <Image
-                className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0"
-                width={56}
-                height={56}
-                alt={item.shopData.name ?? 'Nepoznato'}
-                src={
-                    'https://www.gredice.com' +
-                    (item.shopData.image ?? '/assets/plants/placeholder.png')
-                }
-            />
+            {shouldShowOperationFallback ? (
+                <div className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0 flex items-center justify-center">
+                    <Hammer
+                        role="img"
+                        aria-label={item.shopData.name ?? 'Nepoznato'}
+                        style={
+                            {
+                                '--imageSize': '32px',
+                            } as CSSProperties
+                        }
+                        className="size-[--imageSize] shrink-0"
+                    />
+                </div>
+            ) : (
+                <PlantOrSortImage
+                    className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0"
+                    width={56}
+                    height={56}
+                    alt={item.shopData.name ?? 'Nepoznato'}
+                    coverUrl={item.shopData.image}
+                    baseUrl="https://www.gredice.com"
+                />
+            )}
             <Stack className="grow">
                 <div className="grid grid-cols-[1fr_auto] items-center gap-2">
                     <Typography level="body1" noWrap>
@@ -75,6 +95,9 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             price={item.shopData.price}
                             isSunflower={item.currency === 'sunflower'}
                             onChange={handleChangePaymentType}
+                            availableSunflowers={
+                                account?.sunflowers.amount ?? 0
+                            }
                         />
                     )}
                 </div>
@@ -107,7 +130,11 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         <Row spacing={1}>
                             <Row spacing={0.5} className="flex-wrap gap-y-0">
                                 {hasGarden && (
-                                    <Typography level="body3" secondary>
+                                    <Typography
+                                        level="body3"
+                                        className="overflow-ellipsis max-w-[200px] overflow-hidden whitespace-nowrap"
+                                        secondary
+                                    >
                                         {garden?.name || 'Nepoznati vrt'}
                                     </Typography>
                                 )}

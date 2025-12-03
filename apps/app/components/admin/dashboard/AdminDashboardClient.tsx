@@ -1,13 +1,20 @@
 'use client';
 
 import type { getAnalyticsTotals } from '@gredice/storage';
+import { Calendar, Tally3 } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
 import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { useEffect, useState, useTransition } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { KnownPages } from '../../../src/KnownPages';
 import { FactCard } from '../cards/FactCard';
 import { DashboardDivider } from './DashboardDivider';
+import {
+    OperationsDurationCard,
+    type OperationsDurationData,
+} from './OperationsDurationCard';
 
 type EntityData = {
     entityTypeName: string;
@@ -18,21 +25,30 @@ type EntityData = {
 export function AdminDashboardClient({
     initialAnalyticsData,
     initialEntitiesData,
-    onPeriodChange,
     initialPeriod = '7',
+    initialOperationsDurationData,
 }: {
     initialAnalyticsData: Awaited<ReturnType<typeof getAnalyticsTotals>>;
     initialEntitiesData: EntityData[];
-    onPeriodChange: (period: string) => void;
     initialPeriod?: string;
+    initialOperationsDurationData: OperationsDurationData;
 }) {
     const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
     const [isPending, startTransition] = useTransition();
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
 
     // Sync with URL parameter changes
     useEffect(() => {
         setSelectedPeriod(initialPeriod);
     }, [initialPeriod]);
+
+    const baseSearchParams = useMemo(() => {
+        const params = new URLSearchParams(searchParams?.toString() ?? '');
+        params.delete('period');
+        return params;
+    }, [searchParams]);
 
     const periodOptions = [
         { value: '1', label: '24h' },
@@ -43,7 +59,10 @@ export function AdminDashboardClient({
     const handlePeriodChange = (value: string) => {
         setSelectedPeriod(value);
         startTransition(() => {
-            onPeriodChange(value);
+            const params = new URLSearchParams(baseSearchParams);
+            params.set('period', value);
+            const nextUrl = `${pathname}?${params.toString()}`;
+            router.replace(nextUrl);
         });
     };
 
@@ -66,10 +85,33 @@ export function AdminDashboardClient({
         transactionsBefore: transactionsBeforeCount,
         deliveryRequests: deliveryRequestsCount,
         deliveryRequestsBefore: deliveryRequestsBeforeCount,
+        activeUsers,
     } = initialAnalyticsData;
 
     return (
         <Stack spacing={2}>
+            <Row spacing={1}>
+                <Button
+                    variant="outlined"
+                    className="rounded-full"
+                    size="sm"
+                    startDecorator={<Calendar className="size-4 shrink-0" />}
+                    href={KnownPages.Schedule}
+                >
+                    Raspored
+                </Button>
+                <Button
+                    variant="outlined"
+                    size="sm"
+                    className="rounded-full"
+                    startDecorator={
+                        <Tally3 className="size-4 shrink-0 -rotate-90 -mt-1" />
+                    }
+                    href={KnownPages.RaisedBeds}
+                >
+                    Gredice
+                </Button>
+            </Row>
             <Stack spacing={1}>
                 <Row justifyContent="space-between">
                     <DashboardDivider>Računi i korisnici</DashboardDivider>
@@ -97,9 +139,16 @@ export function AdminDashboardClient({
                         href={KnownPages.Users}
                         beforeValue={usersBeforeCount}
                     />
+                    <FactCard header="DAU" value={activeUsers.daily} />
+                    <FactCard header="WAU" value={activeUsers.weekly} />
+                    <FactCard header="MAU" value={activeUsers.monthly} />
+                </div>
+                <DashboardDivider>Vrtovi</DashboardDivider>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
                     <FactCard
                         header="Farme"
                         value={farmsCount}
+                        href={KnownPages.Farms}
                         beforeValue={farmsBeforeCount}
                     />
                     <FactCard
@@ -114,15 +163,18 @@ export function AdminDashboardClient({
                         beforeValue={blocksBeforeCount}
                     />
                     <FactCard
-                        header="Događaji"
-                        value={eventsCount}
-                        beforeValue={eventsBeforeCount}
-                    />
-                    <FactCard
                         header="Gredice"
                         value={raisedBedsCount}
                         href={KnownPages.RaisedBeds}
                         beforeValue={raisedBedsBeforeCount}
+                    />
+                </div>
+                <DashboardDivider>Ostalo</DashboardDivider>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    <FactCard
+                        header="Događaji"
+                        value={eventsCount}
+                        beforeValue={eventsBeforeCount}
                     />
                     <FactCard
                         header="Transakcije"
@@ -137,6 +189,10 @@ export function AdminDashboardClient({
                         beforeValue={deliveryRequestsBeforeCount}
                     />
                 </div>
+            </Stack>
+            <Stack spacing={1}>
+                <DashboardDivider>Radnje</DashboardDivider>
+                <OperationsDurationCard data={initialOperationsDurationData} />
             </Stack>
             <Stack spacing={1}>
                 <DashboardDivider>Zapisi</DashboardDivider>

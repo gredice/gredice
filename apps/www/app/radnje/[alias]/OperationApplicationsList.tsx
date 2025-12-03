@@ -1,9 +1,9 @@
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { PlantImage } from '../../../components/plants/PlantImage';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
@@ -27,7 +27,7 @@ export async function OperationApplicationsList({
     if (operation.attributes.application === 'garden') {
         return (
             <div className="py-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                <Card>
+                <Card className="border-tertiary border-b-4">
                     <CardContent noHeader>
                         <Row justifyContent="space-between">
                             <Typography>Dostupno u tvom vrtu</Typography>
@@ -50,7 +50,7 @@ export async function OperationApplicationsList({
     ) {
         return (
             <div className="py-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                <Card>
+                <Card className="border-tertiary border-b-4">
                     <CardContent noHeader>
                         <Row spacing={2}>
                             <BlockImage
@@ -82,10 +82,11 @@ export async function OperationApplicationsList({
                         <Card
                             key={plant.id}
                             href={KnownPages.Plant(plant.information.name)}
+                            className="border-tertiary border-b-4"
                         >
                             <CardContent noHeader>
                                 <Row spacing={2}>
-                                    <PlantImage
+                                    <PlantOrSortImage
                                         plant={plant}
                                         width={42}
                                         height={42}

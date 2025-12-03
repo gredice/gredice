@@ -83,11 +83,11 @@ export default async function RaisedBedPage({
                 </Stack>
             </Stack>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <Card>
+                <Card className="h-fit">
                     <CardHeader>
                         <CardTitle>Polja</CardTitle>
                     </CardHeader>
-                    <CardOverflow>
+                    <CardOverflow className="mt-0">
                         <Suspense>
                             <RaisedBedFieldsTable raisedBedId={raisedBed.id} />
                         </Suspense>
@@ -104,6 +104,7 @@ export default async function RaisedBedPage({
                             accountId={raisedBed.accountId}
                             gardenId={raisedBed.gardenId}
                             raisedBedId={raisedBed.id}
+                            scroll
                         />
                     </>
                 )}

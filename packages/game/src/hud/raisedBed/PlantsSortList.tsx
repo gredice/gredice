@@ -1,4 +1,5 @@
 import type { PlantSortData } from '@gredice/client';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
@@ -9,7 +10,6 @@ import { List } from '@signalco/ui-primitives/List';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import Image from 'next/image';
 import { useEffect } from 'react';
 import { usePlantSorts } from '../../hooks/usePlantSorts';
 import {
@@ -63,13 +63,8 @@ function PlantSortListItem({
             >
                 <Row spacing={1.5}>
                     <AnimateFlyToItem {...animateFlyToShoppingCart.props}>
-                        <Image
-                            src={
-                                'https://www.gredice.com/' +
-                                (sort.image?.cover?.url ??
-                                    sort.information.plant.image?.cover?.url)
-                            }
-                            alt={sort.information.name}
+                        <PlantOrSortImage
+                            plantSort={sort}
                             width={48}
                             height={48}
                             className="size-12 shrink-0 min-w-12"
