@@ -70,7 +70,7 @@ export function useBlockRotate() {
             };
         },
         onError: (error, _variables, context) => {
-            console.error('Error creating block', error);
+            console.error('Error rotating block', error);
             if (context?.previousItem) {
                 queryClient.setQueryData(
                     gardenQueryKey,
