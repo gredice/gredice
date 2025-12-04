@@ -109,10 +109,7 @@ export function useBlockPlace() {
         onError: (error, _variables, context) => {
             console.error('Error creating block', error);
             if (context?.previousItem) {
-                queryClient.setQueryData(
-                    gardenQueryKey,
-                    context.previousItem,
-                );
+                queryClient.setQueryData(gardenQueryKey, context.previousItem);
             }
         },
         onSettled: async () => {

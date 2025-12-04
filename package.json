@@ -5,6 +5,7 @@
         "build": "turbo build",
         "dev": "node ./scripts/dev-with-proxy.mjs",
         "lint": "turbo lint",
+        "lint:migrate": "turbo lint:migrate",
         "db-generate": "turbo db-generate",
         "db-push": "turbo db-push",
         "regenerate": "turbo regenerate",

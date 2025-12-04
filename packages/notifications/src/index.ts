@@ -1,4 +1,4 @@
-import { OperationData } from '@gredice/directory-types';
+import type { OperationData } from '@gredice/directory-types';
 import { postMessage } from '@gredice/slack';
 import {
     type DeliveryRequestState,
@@ -12,9 +12,9 @@ import {
     IntegrationTypes,
     type NotificationSettingKey,
     NotificationSettingKeys,
-    OperationCancelPayload,
-    OperationCompletePayload,
-    OperationSchedulePayload,
+    type OperationCancelPayload,
+    type OperationCompletePayload,
+    type OperationSchedulePayload,
 } from '@gredice/storage';
 
 type OperationEventType =
@@ -225,7 +225,10 @@ async function getSlackChannelId(
 export async function notifyOperationUpdate(
     operationId: number,
     type: OperationEventType,
-    options?: OperationCompletePayload | OperationSchedulePayload | OperationCancelPayload,
+    options?:
+        | OperationCompletePayload
+        | OperationSchedulePayload
+        | OperationCancelPayload,
 ) {
     const context = await buildOperationContext(operationId);
     if (!context) {
@@ -245,10 +248,9 @@ export async function notifyOperationUpdate(
     }
 
     const formattedScheduledDate = formatDateTime(
-        (options && 'scheduledDate' in options 
-            ? options.scheduledDate 
-            : undefined) 
-        ?? context.scheduledDate,
+        (options && 'scheduledDate' in options
+            ? options.scheduledDate
+            : undefined) ?? context.scheduledDate,
     );
 
     const lines: (string | undefined)[] = [];

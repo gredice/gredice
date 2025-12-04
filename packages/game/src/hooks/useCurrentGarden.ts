@@ -5,7 +5,11 @@ import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { useGardens, useGardensKeys } from './useGardens';
 
-export const currentGardenKeys = (isWinterMode: boolean) => [...useGardensKeys, 'current', isWinterMode];
+export const currentGardenKeys = (isWinterMode: boolean) => [
+    ...useGardensKeys,
+    'current',
+    isWinterMode,
+];
 
 function mockGarden(isWinterMode: boolean) {
     return {
