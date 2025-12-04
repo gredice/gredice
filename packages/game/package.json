@@ -26,7 +26,7 @@
         "@react-spring/three": "10.0.3",
         "@react-spring/web": "10.0.3",
         "@react-three/drei": "10.7.7",
-        "@react-three/fiber": "9.4.0",
+        "@react-three/fiber": "9.4.2",
         "@signalco/hooks": "0.2.1",
         "@signalco/js": "0.1.0",
         "@signalco/ui": "0.2.10",
