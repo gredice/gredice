@@ -138,10 +138,7 @@ export function useBlockRecycle() {
         onError: (error, _variables, context) => {
             console.error('Error removing block', error);
             if (context?.previousItem) {
-                queryClient.setQueryData(
-                    gardenQueryKey,
-                    context.previousItem,
-                );
+                queryClient.setQueryData(gardenQueryKey, context.previousItem);
             }
             if (context?.previousShoppingCart) {
                 queryClient.setQueryData(

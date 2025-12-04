@@ -4,12 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type HTMLAttributes, useRef } from 'react';
 import { Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
-import { EntityFactory, EntityFactoryProps } from '../entities/EntityFactory';
+import { EntityFactory } from '../entities/EntityFactory';
 import { EntityInstances } from '../entities/EntityInstances';
 import { Environment } from '../scene/Environment';
 import { Scene } from '../scene/Scene';
 import type { Block } from '../types/Block';
-import { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import {
     createGameState,
     GameStateContext,

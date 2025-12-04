@@ -6,7 +6,8 @@
         ".react-email"
     ],
     "scripts": {
-        "lint": "biome check",
+        "lint": "biome check --write",
+        "lint:migrate": "biome migrate --write",
         "dev": "email dev -p 4001"
     },
     "devDependencies": {
@@ -21,7 +22,7 @@
     "dependencies": {
         "@gredice/js": "workspace:*",
         "@react-email/components": "1.0.1",
-        "react": "19.2.0",
+        "react": "19.2.1",
         "react-email": "5.0.5"
     }
 }

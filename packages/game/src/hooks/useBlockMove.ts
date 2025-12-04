@@ -145,10 +145,7 @@ export function useBlockMove() {
         onError: (error, _variables, context) => {
             console.error('Error moving block', error);
             if (context?.previousItem) {
-                queryClient.setQueryData(
-                    gardenQueryKey,
-                    context.previousItem,
-                );
+                queryClient.setQueryData(gardenQueryKey, context.previousItem);
             }
         },
         onSettled: async () => {

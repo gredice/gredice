@@ -112,10 +112,7 @@ export function useRaisedBedFieldRemove() {
         onError: (error, _variables, context) => {
             console.error('Error removing plant from field:', error);
             if (context?.previousItem) {
-                queryClient.setQueryData(
-                    gardenQueryKey,
-                    context.previousItem,
-                );
+                queryClient.setQueryData(gardenQueryKey, context.previousItem);
             }
         },
         onSettled: async () => {

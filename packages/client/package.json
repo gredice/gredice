@@ -9,7 +9,8 @@
         ".": "./src/index.ts"
     },
     "scripts": {
-        "lint": "biome check"
+        "lint": "biome check --write",
+        "lint:migrate": "biome migrate --write"
     },
     "dependencies": {
         "@gredice/directory-types": "workspace:*",

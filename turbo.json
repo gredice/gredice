@@ -12,6 +12,9 @@
             ]
         },
         "lint": {},
+        "lint:migrate": {
+            "cache": false
+        },
         "dev": {
             "cache": false,
             "persistent": true

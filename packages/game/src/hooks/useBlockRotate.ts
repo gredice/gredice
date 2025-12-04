@@ -11,7 +11,7 @@ export function useBlockRotate() {
     const { data: garden } = useCurrentGarden();
     const isWinterMode = useGameState((state) => state.isWinterMode);
     const gardenQueryKey = currentGardenKeys(isWinterMode);
-    
+
     return useMutation({
         mutationFn: async ({
             blockId,
@@ -36,7 +36,8 @@ export function useBlockRotate() {
         },
         onMutate: async ({ blockId, rotation }) => {
             // Get fresh garden data from query cache, not from closure
-            const currentGarden = queryClient.getQueryData<typeof garden>(gardenQueryKey);
+            const currentGarden =
+                queryClient.getQueryData<typeof garden>(gardenQueryKey);
             if (!currentGarden) {
                 return;
             }
@@ -72,10 +73,7 @@ export function useBlockRotate() {
         onError: (error, _variables, context) => {
             console.error('Error rotating block', error);
             if (context?.previousItem) {
-                queryClient.setQueryData(
-                    gardenQueryKey,
-                    context.previousItem,
-                );
+                queryClient.setQueryData(gardenQueryKey, context.previousItem);
             }
         },
         onSettled: async () => {

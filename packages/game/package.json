@@ -11,7 +11,8 @@
         ".": "./src/index.ts"
     },
     "scripts": {
-        "lint": "biome check"
+        "lint": "biome check --write",
+        "lint:migrate": "biome migrate --write"
     },
     "devDependencies": {
         "@biomejs/biome": "2.3.8",
@@ -45,9 +46,9 @@
         "next": "16.0.7",
         "next-themes": "0.4.6",
         "r3f-perf": "7.2.3",
-        "react": "19.2.0",
+        "react": "19.2.1",
         "react-confetti-boom": "2.0.1",
-        "react-dom": "19.2.0",
+        "react-dom": "19.2.1",
         "react-markdown": "10.1.0",
         "recharts": "3.5.1",
         "suncalc": "1.9.0",
@@ -56,10 +57,10 @@
         "three": "0.181.2",
         "three-custom-shader-material": "6.4.0",
         "three-stdlib": "2.36.1",
-        "tsx": "4.20.6",
+        "tsx": "4.21.0",
         "typescript": "5.9.3",
         "uuid": "13.0.0",
-        "zustand": "5.0.8"
+        "zustand": "5.0.9"
     },
     "peerDependencies": {
         "@signalco/ui": ">=0",
