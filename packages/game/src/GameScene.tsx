@@ -168,8 +168,8 @@ function useRaisedBedCloseup(
 
         const raisedBed = garden.raisedBeds.find(
             (bed) =>
-                bed.name?.trim().toLocaleLowerCase() ===
-                decodedRaisedBedName.toLocaleLowerCase(),
+                bed.name?.trim().toLowerCase() ===
+                decodedRaisedBedName.toLowerCase(),
         );
         if (!raisedBed) {
             return;
