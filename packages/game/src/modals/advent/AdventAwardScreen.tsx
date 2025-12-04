@@ -1,12 +1,14 @@
 'use client';
 
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Navigate } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
 import Confetti from 'react-confetti-boom';
+import { usePlantSort } from '../../hooks/usePlantSorts';
 import { SantaCapIcon } from '../../icons/SantaCap';
 
 type AdventAward = {
@@ -31,6 +33,26 @@ type AdventAwardScreenProps = {
     onContinue: () => void;
 };
 
+function PlantAwardImage({ plantSortId }: { plantSortId?: number }) {
+    const { data: plantSort } = usePlantSort(plantSortId);
+    const coverUrl = plantSort?.image?.cover?.url;
+
+    if (coverUrl) {
+        return (
+            <PlantOrSortImage
+                width={120}
+                height={120}
+                className="rounded-lg"
+                coverUrl={coverUrl}
+                alt={plantSort?.information?.name ?? 'Biljka'}
+                baseUrl="https://www.gredice.com"
+            />
+        );
+    }
+
+    return <div className="text-6xl">🌱</div>;
+}
+
 function AwardImage({ award }: { award: AdventAward }) {
     switch (award.kind) {
         case 'sunflowers':
@@ -46,7 +68,7 @@ function AwardImage({ award }: { award: AdventAward }) {
                 </div>
             );
         case 'plant':
-            return <div className="text-6xl">🌱</div>;
+            return <PlantAwardImage plantSortId={award.plantSortId} />;
         case 'decoration':
         case 'tree-decoration':
             if (award.blockId) {

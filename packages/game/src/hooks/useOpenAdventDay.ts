@@ -4,6 +4,7 @@ import { useGameState } from '../useGameState';
 import { adventCalendarKeys } from './useAdventCalendar';
 import { currentAccountKeys } from './useCurrentAccount';
 import { currentGardenKeys } from './useCurrentGarden';
+import { inventoryQueryKey } from './useInventory';
 
 export function useOpenAdventDay() {
     const queryClient = useQueryClient();
@@ -23,6 +24,7 @@ export function useOpenAdventDay() {
             queryClient.invalidateQueries({ queryKey: adventCalendarKeys });
             queryClient.invalidateQueries({ queryKey: currentAccountKeys });
             queryClient.invalidateQueries({ queryKey: gardenQueryKey });
+            queryClient.invalidateQueries({ queryKey: inventoryQueryKey });
         },
     });
 }

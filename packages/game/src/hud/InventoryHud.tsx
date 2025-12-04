@@ -1,4 +1,6 @@
+import type { PlantSortData } from '@gredice/client';
 import { PlantOrSortImage } from '@gredice/ui/plants';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -6,27 +8,207 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useMemo, useState } from 'react';
 import { useInventory } from '../hooks/useInventory';
+import { useSorts } from '../hooks/usePlantSorts';
 import { BackpackIcon } from '../icons/Backpack';
 import { HudCard } from './components/HudCard';
+
+const GRID_SIZE = 24; // 3x4 grid
+
+type InventoryItemData = {
+    entityTypeName: string;
+    entityId: string;
+    amount: number;
+    name?: string;
+    image?: string;
+};
+
+function InventoryItemCell({
+    item,
+    sortData,
+    onClick,
+}: {
+    item?: InventoryItemData;
+    sortData?: PlantSortData;
+    onClick: () => void;
+}) {
+    if (!item || !sortData) {
+        // Empty slot
+        return (
+            <div className="aspect-square rounded-lg border-2 border-dashed border-muted/30 bg-muted/5" />
+        );
+    }
+
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="aspect-square rounded-lg border-2 p-0.5 relative transition-all border-muted/30 bg-background hover:border-primary hover:bg-primary/10 hover:scale-105 cursor-pointer"
+        >
+            <PlantOrSortImage
+                width={48}
+                height={48}
+                className="rounded-md w-full h-full object-cover"
+                plantSort={sortData}
+            />
+            <Chip
+                color="success"
+                className="absolute -top-1.5 -right-1.5 text-[10px] px-1 py-0 min-w-4 h-4 flex items-center justify-center"
+            >
+                {item.amount}
+            </Chip>
+        </button>
+    );
+}
+
+function InventoryItemModal({
+    item,
+    sortData,
+    open,
+    onClose,
+}: {
+    item: InventoryItemData;
+    sortData?: PlantSortData;
+    open: boolean;
+    onClose: () => void;
+}) {
+    const displayName =
+        sortData?.information?.name ?? item.name ?? 'Nepoznati predmet';
+    const description = sortData?.information?.shortDescription;
+
+    const entityTypeLabel =
+        item.entityTypeName === 'plantSort'
+            ? 'Sorta biljke'
+            : item.entityTypeName;
+
+    return (
+        <Modal
+            open={open}
+            onOpenChange={(isOpen) => !isOpen && onClose()}
+            title={displayName}
+        >
+            <Stack spacing={3}>
+                <div className="flex gap-4 items-start">
+                    <PlantOrSortImage
+                        width={80}
+                        height={80}
+                        className="rounded-lg border shrink-0"
+                        plantSort={sortData ?? null}
+                    />
+                    <Stack spacing={1} className="min-w-0">
+                        <Row spacing={1} alignItems="center">
+                            <Typography level="body2" secondary>
+                                {entityTypeLabel}
+                            </Typography>
+                            <Chip color="success" className="text-xs">
+                                {item.amount}
+                            </Chip>
+                        </Row>
+                        {description && (
+                            <Typography level="body2" secondary>
+                                {description}
+                            </Typography>
+                        )}
+                    </Stack>
+                </div>
+
+                <Stack spacing={1.5} className="bg-card rounded-lg p-3 border">
+                    <Typography level="body2" semiBold>
+                        Kako koristiti:
+                    </Typography>
+                    <Stack spacing={1}>
+                        {item.entityTypeName === 'plantSort' ? (
+                            <>
+                                <Typography level="body3">
+                                    1. Odaberi prazno polje na gredici
+                                </Typography>
+                                <Typography level="body3">
+                                    2. Klikni &quot;Posadi biljku&quot; i
+                                    odaberi ovu sortu
+                                </Typography>
+                                <Typography level="body3">
+                                    3. U košarici označi &quot;Koristi iz
+                                    ruksaka&quot;
+                                </Typography>
+                            </>
+                        ) : (
+                            <>
+                                <Typography level="body3">
+                                    1. Odaberi gredicu u vrtu
+                                </Typography>
+                                <Typography level="body3">
+                                    2. Dodaj radnju u košaricu
+                                </Typography>
+                                <Typography level="body3">
+                                    3. U košarici označi &quot;Koristi iz
+                                    ruksaka&quot;
+                                </Typography>
+                            </>
+                        )}
+                    </Stack>
+                </Stack>
+            </Stack>
+        </Modal>
+    );
+}
 
 export function InventoryHud() {
     const { data: inventory } = useInventory();
     const [open, setOpen] = useState(false);
+    const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null);
+
+    const items = inventory?.items as InventoryItemData[] | undefined;
+
+    // Extract plant sort IDs for fetching sort data
+    const plantSortIds = useMemo(() => {
+        return (
+            items
+                ?.filter((item) => item.entityTypeName === 'plantSort')
+                .map((item) => Number(item.entityId)) ?? []
+        );
+    }, [items]);
+
+    const { data: sortData } = useSorts(
+        plantSortIds.length > 0 ? plantSortIds : undefined,
+    );
 
     const totalItems = useMemo(
-        () =>
-            inventory?.items?.reduce(
-                (sum: number, item: { amount: number }) => sum + item.amount,
-                0,
-            ) ?? 0,
-        [inventory?.items],
+        () => items?.reduce((sum, item) => sum + item.amount, 0) ?? 0,
+        [items],
     );
+
+    // Create grid items: fill with actual items, then empty slots
+    const gridItems = useMemo(() => {
+        const result: (InventoryItemData | null)[] = [];
+        if (items) {
+            result.push(...items);
+        }
+        // Fill remaining slots with nulls up to GRID_SIZE
+        while (result.length < GRID_SIZE) {
+            result.push(null);
+        }
+        return result;
+    }, [items]);
+
+    const selectedItem = selectedItemKey
+        ? items?.find(
+              (item) =>
+                  `${item.entityTypeName}-${item.entityId}` === selectedItemKey,
+          )
+        : null;
+
+    const selectedSortData =
+        selectedItem?.entityTypeName === 'plantSort'
+            ? sortData?.find((s) => s.id === Number(selectedItem.entityId))
+            : undefined;
 
     return (
         <HudCard open position="floating" className="static p-0.5">
             <Modal
                 open={open}
-                onOpenChange={setOpen}
+                onOpenChange={(isOpen) => {
+                    setOpen(isOpen);
+                    if (!isOpen) setSelectedItemKey(null);
+                }}
                 title="Ruksak"
                 trigger={
                     <IconButton
@@ -46,47 +228,60 @@ export function InventoryHud() {
                 }
             >
                 <Stack spacing={2}>
-                    <Typography level="body2" secondary>
-                        Pregled biljaka i radnji spremljenih u ruksak.
+                    <Typography level="body3" secondary>
+                        Klikni na predmet za više informacija.
                     </Typography>
-                    <Stack spacing={1} className="max-h-80 overflow-y-auto pr-1">
-                        {inventory?.items?.length ? (
-                            inventory.items.map((item: any) => (
-                                <Row
-                                    key={`${item.entityTypeName}-${item.entityId}`}
-                                    spacing={1.5}
-                                    alignItems="center"
-                                    className="border rounded-lg p-2"
-                                >
-                                    <PlantOrSortImage
-                                        width={40}
-                                        height={40}
-                                        className="rounded-md border"
-                                        coverUrl={item.image}
-                                        alt={item.name || item.entityId}
-                                        baseUrl="https://www.gredice.com"
-                                    />
-                                    <Stack className="grow">
-                                        <Typography level="body2" semiBold>
-                                            {item.name ?? 'Nepoznati predmet'}
-                                        </Typography>
-                                        <Typography level="body3" secondary>
-                                            {item.entityTypeName}
-                                        </Typography>
-                                    </Stack>
-                                    <Typography level="body2" semiBold>
-                                        ×{item.amount}
-                                    </Typography>
-                                </Row>
-                            ))
-                        ) : (
-                            <Typography level="body2" secondary>
-                                Još nema spremljenih predmeta.
-                            </Typography>
-                        )}
-                    </Stack>
+
+                    {/* Grid display - smaller 3 columns */}
+                    <div className="grid grid-cols-6 md:grid-cols-8 gap-1.5">
+                        {gridItems.map((item, index) => {
+                            const key = item
+                                ? `${item.entityTypeName}-${item.entityId}`
+                                : `empty-${index}`;
+                            const itemSortData =
+                                item?.entityTypeName === 'plantSort'
+                                    ? sortData?.find(
+                                          (s) => s.id === Number(item.entityId),
+                                      )
+                                    : undefined;
+
+                            return (
+                                <InventoryItemCell
+                                    key={key}
+                                    item={item ?? undefined}
+                                    sortData={itemSortData}
+                                    onClick={() => {
+                                        if (item) {
+                                            setSelectedItemKey(key);
+                                        }
+                                    }}
+                                />
+                            );
+                        })}
+                    </div>
+
+                    {/* Empty state message */}
+                    {(!items || items.length === 0) && (
+                        <Typography
+                            level="body3"
+                            secondary
+                            className="text-center"
+                        >
+                            Predmeti se dodaju kroz kupnju ili nagrade.
+                        </Typography>
+                    )}
                 </Stack>
             </Modal>
+
+            {/* Item details modal */}
+            {selectedItem && (
+                <InventoryItemModal
+                    item={selectedItem}
+                    sortData={selectedSortData}
+                    open={Boolean(selectedItemKey)}
+                    onClose={() => setSelectedItemKey(null)}
+                />
+            )}
         </HudCard>
     );
 }

@@ -1,10 +1,12 @@
 'use client';
 
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
+import { usePlantSort } from '../../hooks/usePlantSorts';
 
 type AdventAward = {
     kind: 'sunflowers' | 'plant' | 'decoration' | 'tree-decoration' | 'gift';
@@ -23,6 +25,18 @@ type AdventAlreadyOpenedScreenProps = {
     onClose: () => void;
 };
 
+function PlantAwardSmallImage({ plantSortId }: { plantSortId?: number }) {
+    const { data: plantSort } = usePlantSort(plantSortId);
+    return (
+        <PlantOrSortImage
+            width={40}
+            height={40}
+            className="rounded-md"
+            plantSort={plantSort ?? null}
+        />
+    );
+}
+
 function SmallAwardImage({ award }: { award: AdventAward }) {
     switch (award.kind) {
         case 'sunflowers':
@@ -40,7 +54,7 @@ function SmallAwardImage({ award }: { award: AdventAward }) {
                 </div>
             );
         case 'plant':
-            return <div className="text-3xl">🌱</div>;
+            return <PlantAwardSmallImage plantSortId={award.plantSortId} />;
         case 'decoration':
         case 'tree-decoration':
             if (award.blockId) {
