@@ -1,8 +1,9 @@
 'use client';
 
 import { cx } from '@signalco/ui-primitives/cx';
+import { useSearchParams } from 'next/navigation';
 // import { Perf } from 'r3f-perf';
-import type { HTMLAttributes } from 'react';
+import { type HTMLAttributes, useEffect, useMemo } from 'react';
 import { Controls } from './controls/Controls';
 import { EntityFactory } from './entities/EntityFactory';
 import { EntityInstances } from './entities/EntityInstances';
@@ -17,7 +18,7 @@ import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import { Scene } from './scene/Scene';
-import type { GameState } from './useGameState';
+import { type GameState, useGameState } from './useGameState';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string;
@@ -91,6 +92,7 @@ export function GameScene({
     const { isLoading: blockDataPending } = useBlockData();
     const { data: garden, isLoading: gardenPending } = useCurrentGarden();
     const { isLoading: weatherPending } = useWeatherNow(!noWeather);
+    useRaisedBedCloseup(garden);
     const isLoading = gardenPending || blockDataPending || weatherPending;
     if (isLoading) {
         return <GardenLoadingIndicator />;
@@ -137,4 +139,62 @@ export function GameScene({
             {!hideHud && <GameHud flags={flags} />}
         </div>
     );
+}
+
+function useRaisedBedCloseup(
+    garden: ReturnType<typeof useCurrentGarden>['data'],
+) {
+    const searchParams = useSearchParams();
+    const setView = useGameState((state) => state.setView);
+    const closeupBlock = useGameState((state) => state.closeupBlock);
+    const view = useGameState((state) => state.view);
+
+    const blocks = useMemo(
+        () => garden?.stacks.flatMap((stack) => stack.blocks) ?? [],
+        [garden],
+    );
+
+    useEffect(() => {
+        const raisedBedParam = searchParams?.get('gredica');
+        if (!garden || !raisedBedParam) {
+            return;
+        }
+
+        const decodedRaisedBedName =
+            decodeUriComponentSafe(raisedBedParam).trim();
+        if (!decodedRaisedBedName) {
+            return;
+        }
+
+        const raisedBed = garden.raisedBeds.find(
+            (bed) =>
+                bed.name?.trim().toLocaleLowerCase() ===
+                decodedRaisedBedName.toLocaleLowerCase(),
+        );
+        if (!raisedBed) {
+            return;
+        }
+
+        const block = blocks.find(
+            (candidate) => String(candidate.id) === String(raisedBed.blockId),
+        );
+        if (!block) {
+            return;
+        }
+
+        if (view === 'closeup' && closeupBlock?.id === block.id) {
+            return;
+        }
+
+        setView({ view: 'closeup', block });
+    }, [blocks, closeupBlock?.id, garden, searchParams, setView, view]);
+}
+
+function decodeUriComponentSafe(value: string) {
+    try {
+        return decodeURIComponent(value);
+    } catch (error) {
+        console.error('Failed to decode URI component', error);
+        return value;
+    }
 }
