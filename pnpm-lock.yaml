@@ -64,8 +64,8 @@ importers:
         specifier: 8.16.3
         version: 8.16.3
       prettier:
-        specifier: 3.7.2
-        version: 3.7.2
+        specifier: 3.7.3
+        version: 3.7.3
       react:
         specifier: 19.2.0
         version: 19.2.0
@@ -227,8 +227,8 @@ importers:
         specifier: 8.16.3
         version: 8.16.3
       prettier:
-        specifier: 3.7.2
-        version: 3.7.2
+        specifier: 3.7.3
+        version: 3.7.3
       react:
         specifier: 19.2.0
         version: 19.2.0
@@ -7444,8 +7444,8 @@ packages:
   potpack@1.0.2:
     resolution: {integrity: sha512-choctRBIV9EMT9WGAZHn3V7t0Z2pMQyl0EZE6pFc/6ml3ssw7Dlf/oAOvFwjm1HVsqfQN8GfeFyJ+d8tRzqueQ==}
 
-  prettier@3.7.2:
-    resolution: {integrity: sha512-n3HV2J6QhItCXndGa3oMWvWFAgN1ibnS7R9mt6iokScBOC0Ul9/iZORmU2IWUMcyAQaMPjTlY3uT34TqocUxMA==}
+  prettier@3.7.3:
+    resolution: {integrity: sha512-QgODejq9K3OzoBbuyobZlUhznP5SKwPqp+6Q6xw6o8gnhr4O85L2U915iM2IDcfF2NPXVaM9zlo9tdwipnYwzg==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -11542,7 +11542,7 @@ snapshots:
   '@react-email/render@2.0.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
       html-to-text: 9.0.5
-      prettier: 3.7.2
+      prettier: 3.7.3
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
@@ -16304,7 +16304,7 @@ snapshots:
 
   potpack@1.0.2: {}
 
-  prettier@3.7.2: {}
+  prettier@3.7.3: {}
 
   pretty-bytes@6.1.1: {}
 
