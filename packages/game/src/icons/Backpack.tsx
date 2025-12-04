@@ -9,6 +9,7 @@ export function BackpackIcon(props: SVGProps<SVGSVGElement>) {
             strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
             {...props}
         >
             <path d="M9 6.5v-1a3 3 0 0 1 6 0v1" />

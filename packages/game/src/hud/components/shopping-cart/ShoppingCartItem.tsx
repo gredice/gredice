@@ -1,8 +1,8 @@
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import { Delete, Euro, Hammer, Navigate, Timer } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
 import { Button } from '@signalco/ui-primitives/Button';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -129,18 +129,18 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     )}
                 </div>
                 <Row spacing={1} className="flex-wrap justify-end">
-                    <Button
-                        size="sm"
-                        variant={usesInventory ? 'solid' : 'outlined'}
-                        disabled={!availableFromInventory}
-                        onClick={handleToggleInventory}
-                    >
-                        {usesInventory
-                            ? 'Korištenje ruksaka'
-                            : availableFromInventory
-                              ? `Iskoristi (${availableFromInventory})`
-                              : 'Nema u ruksaku'}
-                    </Button>
+                    {(usesInventory || availableFromInventory) && (
+                        <Button
+                            size="sm"
+                            variant={usesInventory ? 'solid' : 'outlined'}
+                            disabled={!availableFromInventory}
+                            onClick={handleToggleInventory}
+                        >
+                            {usesInventory
+                                ? 'Korištenje ruksaka'
+                                : `Iskoristi (${availableFromInventory})`}
+                        </Button>
+                    )}
                 </Row>
                 {hasDiscount &&
                     typeof item.shopData.discountPrice === 'number' &&

@@ -4,11 +4,11 @@ import {
     type AdventAward,
     AdventCalendarDayAlreadyOpenedError,
     type AdventCalendarOpenPayload,
+    addInventoryItem,
     createAdventCalendarOpenEvent,
     createGardenBlock,
     createGardenStack,
     earnSunflowers,
-    addInventoryItem,
     getAccountGardens,
     getAdventCalendarOpenEvents,
     getEntitiesFormatted,
@@ -185,16 +185,14 @@ async function pickPlantAward(): Promise<AdventAward> {
     // Pick a random plant sort
     const randomIndex = Math.floor(Math.random() * plantSorts.length);
     const plantSort = plantSorts[randomIndex];
-    const title = (plantSort as { name?: string }).name;
+    const title = plantSort.information.name;
     if (!title) {
         throw new Error('Selected plant sort has no name.');
     }
 
     return {
         kind: 'plant' as const,
-        plantSortId: Number(
-            (plantSort as { id?: number | string }).id ?? randomIndex + 1,
-        ),
+        plantSortId: Number(plantSort.id ?? randomIndex + 1),
         title,
     };
 }

@@ -30,7 +30,7 @@ type PlantOrSortImageProps = Omit<ImageProps, 'src' | 'alt'> &
                * Plant sort data object containing image and information.
                * Will fall back to plant image if sort image is not available.
                */
-              plantSort: PlantSortLike;
+              plantSort: PlantSortLike | null;
               plant?: never;
               /**
                * Optional custom alt text. If not provided, uses plantSort.information.name
