@@ -66,4 +66,8 @@ export const knownEventTypes = {
     occasions: {
         adventCalendarOpen: 'occasion.advent.calendar.open',
     },
+    inventory: {
+        add: 'inventory.add',
+        consume: 'inventory.consume',
+    },
 } as const;

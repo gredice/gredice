@@ -1,4 +1,8 @@
-import { getEntitiesFormatted, getShoppingCart } from '@gredice/storage';
+import {
+    getEntitiesFormatted,
+    getInventory,
+    getShoppingCart,
+} from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
@@ -31,6 +35,16 @@ export default async function ShoppingCartDetailsPage({
         notFound();
     }
 
+    const inventory = cart.accountId
+        ? await getInventory(cart.accountId)
+        : [];
+    const inventoryLookup = new Map(
+        inventory.map((item) => [
+            `${item.entityTypeName}-${item.entityId}`,
+            item.amount,
+        ]),
+    );
+
     // Get unique entity types from cart items
     const entityTypes = [
         ...new Set(cart.items.map((item) => item.entityTypeName)),
@@ -55,6 +69,15 @@ export default async function ShoppingCartDetailsPage({
         const entities = entitiesLookup[item.entityTypeName] || [];
         const entity = entities.find((e) => e.id?.toString() === item.entityId);
 
+        const parsedAdditional = item.additionalData
+            ? JSON.parse(item.additionalData)
+            : {};
+        const usesInventory =
+            item.currency === 'inventory' || parsedAdditional.useInventory;
+        const inventoryAvailable = usesInventory
+            ? inventoryLookup.get(`${item.entityTypeName}-${item.entityId}`) ?? 0
+            : 0;
+
         // Calculate price based on entity type and amount
         let unitPrice =
             entity?.prices?.perPlant ||
@@ -68,8 +91,15 @@ export default async function ShoppingCartDetailsPage({
             totalPrice = totalPrice * 1000;
         }
 
+        if (usesInventory) {
+            unitPrice = 0;
+            totalPrice = 0;
+        }
+
         return {
             ...item,
+            usesInventory,
+            inventoryAvailable,
             entityName:
                 entity?.information?.label ||
                 entity?.information?.name ||
@@ -81,6 +111,10 @@ export default async function ShoppingCartDetailsPage({
 
     // Helper function to format currency
     const formatCurrency = (amount: number, currency: string) => {
+        if (currency.toLowerCase() === 'inventory') {
+            return 'Inventar';
+        }
+
         const currencyMap: Record<string, { symbol: string; code?: string }> = {
             eur: { symbol: '€', code: 'EUR' },
             usd: { symbol: '$', code: 'USD' },
@@ -89,7 +123,7 @@ export default async function ShoppingCartDetailsPage({
 
         const currencyInfo = currencyMap[currency.toLowerCase()];
         if (!currencyInfo?.code) {
-            return `${amount} ${currencyInfo.symbol}`; // Fallback if currency is unknown
+            return `${amount} ${currencyInfo?.symbol ?? ''}`; // Fallback if currency is unknown
         }
 
         return new Intl.NumberFormat('hr-HR', {
@@ -111,6 +145,8 @@ export default async function ShoppingCartDetailsPage({
         },
         {} as Record<string, number>,
     );
+
+    const inventoryItems = enhancedItems.filter((item) => item.usesInventory);
 
     return (
         <Stack spacing={4}>
@@ -153,6 +189,12 @@ export default async function ShoppingCartDetailsPage({
                             name="Broj stavki"
                             value={cart.items?.length || 0}
                         />
+                        {inventoryItems.length > 0 && (
+                            <Field
+                                name="Inventar stavke"
+                                value={inventoryItems.length}
+                            />
+                        )}
                         {Object.entries(currencyTotals).map(
                             ([currency, total]) => (
                                 <Field
@@ -182,6 +224,7 @@ export default async function ShoppingCartDetailsPage({
                                 <Table.Head>Količina</Table.Head>
                                 <Table.Head>Cijena/kom</Table.Head>
                                 <Table.Head>Ukupno</Table.Head>
+                                <Table.Head>Inventar</Table.Head>
                                 <Table.Head>Status</Table.Head>
                                 <Table.Head>
                                     Vrt | Gredica | Pozicija
@@ -193,7 +236,7 @@ export default async function ShoppingCartDetailsPage({
                         <Table.Body>
                             {enhancedItems.length === 0 && (
                                 <Table.Row>
-                                    <Table.Cell colSpan={8}>
+                                    <Table.Cell colSpan={9}>
                                         <NoDataPlaceholder>
                                             Nema stavki u košarici
                                         </NoDataPlaceholder>
@@ -236,6 +279,28 @@ export default async function ShoppingCartDetailsPage({
                                             <span className="text-gray-400">
                                                 N/A
                                             </span>
+                                        )}
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        {item.usesInventory ? (
+                                            <Chip
+                                                className="w-fit"
+                                                color={
+                                                    item.inventoryAvailable >=
+                                                    item.amount
+                                                        ? 'success'
+                                                        : 'warning'
+                                                }
+                                            >
+                                                {`Inventar (${item.inventoryAvailable}/${item.amount})`}
+                                            </Chip>
+                                        ) : (
+                                            <Typography
+                                                level="body2"
+                                                className="text-gray-500"
+                                            >
+                                                Nije
+                                            </Typography>
                                         )}
                                     </Table.Cell>
                                     <Table.Cell>

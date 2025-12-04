@@ -49,6 +49,16 @@ export type AdventCalendarOpenPayload = {
 };
 
 // ============================================================================
+// Inventory event payload types
+// ============================================================================
+export type InventoryChangePayload = {
+    entityTypeName: string;
+    entityId: string;
+    amount: number;
+    source?: string | null;
+};
+
+// ============================================================================
 // Garden event payload types
 // ============================================================================
 export type GardenCreatePayload = {

@@ -9,6 +9,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
 import {
     AnimateFlyToItem,
@@ -153,12 +154,20 @@ export function OperationsListItem({
 }) {
     const setShoppingCartItem = useSetShoppingCartItem();
     const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
+    const { data: inventory } = useInventory();
 
     const price = formatPrice(operation.prices?.perOperation);
+
+    const availableFromInventory = inventory?.items?.find(
+        (item: any) =>
+            item.entityTypeName === operation.entityType.name &&
+            item.entityId === operation.id.toString(),
+    )?.amount;
 
     async function handleOperationPicked(
         operation: OperationData,
         scheduledDate?: Date,
+        useInventoryItem?: boolean,
     ) {
         setShoppingCartItem.mutate({
             amount: 1,
@@ -170,8 +179,10 @@ export function OperationsListItem({
             additionalData: scheduledDate
                 ? JSON.stringify({
                       scheduledDate: scheduledDate.toISOString(),
+                      useInventory: useInventoryItem,
                   })
-                : null,
+                : JSON.stringify({ useInventory: useInventoryItem }),
+            currency: useInventoryItem ? 'inventory' : 'eur',
         });
         animateFlyToShoppingCart.run();
     }
@@ -229,6 +240,18 @@ export function OperationsListItem({
                         </Button>
                     }
                 />
+                <Button
+                    variant={availableFromInventory ? 'solid' : 'outlined'}
+                    size="sm"
+                    disabled={!availableFromInventory}
+                    onClick={() =>
+                        handleOperationPicked(operation, undefined, true)
+                    }
+                >
+                    {availableFromInventory
+                        ? `Iskoristi (${availableFromInventory})`
+                        : 'Nema u ruksaku'}
+                </Button>
                 <Button
                     title="Više informacija"
                     variant="link"

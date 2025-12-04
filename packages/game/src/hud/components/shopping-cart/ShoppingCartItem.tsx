@@ -2,6 +2,7 @@ import { PlantOrSortImage } from '@gredice/ui/plants';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import { Delete, Euro, Hammer, Navigate, Timer } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
+import { Button } from '@signalco/ui-primitives/Button';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -9,6 +10,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import type { CSSProperties } from 'react';
 import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
+import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
 import type { ShoppingCartItemData } from '../../../hooks/useShoppingCart';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
@@ -16,6 +18,7 @@ import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
     const { data: account } = useCurrentAccount();
+    const { data: inventory } = useInventory();
 
     const hasDiscount = typeof item.shopData.discountPrice === 'number';
     const hasGarden = Boolean(item.gardenId && garden);
@@ -33,6 +36,16 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         : null;
     const changeCurrencyShoppingCartItem = useSetShoppingCartItem();
     const removeShoppingCartItem = useSetShoppingCartItem();
+    const parsedAdditional = item.additionalData
+        ? JSON.parse(item.additionalData)
+        : {};
+    const usesInventory =
+        item.currency === 'inventory' || parsedAdditional.useInventory;
+    const availableFromInventory = inventory?.items?.find(
+        (invItem: any) =>
+            invItem.entityTypeName === item.entityTypeName &&
+            invItem.entityId === item.entityId,
+    )?.amount;
 
     async function handleChangePaymentType(isSunflower: boolean) {
         await changeCurrencyShoppingCartItem.mutateAsync({
@@ -50,6 +63,20 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
             amount: 0,
             entityId: item.entityId,
             entityTypeName: item.entityTypeName,
+        });
+    }
+
+    async function handleToggleInventory() {
+        await changeCurrencyShoppingCartItem.mutateAsync({
+            id: item.id,
+            amount: item.amount,
+            entityId: item.entityId,
+            entityTypeName: item.entityTypeName,
+            currency: usesInventory ? 'eur' : 'inventory',
+            additionalData: JSON.stringify({
+                ...parsedAdditional,
+                useInventory: !usesInventory,
+            }),
         });
     }
 
@@ -101,6 +128,20 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         />
                     )}
                 </div>
+                <Row spacing={1} className="flex-wrap justify-end">
+                    <Button
+                        size="sm"
+                        variant={usesInventory ? 'solid' : 'outlined'}
+                        disabled={!availableFromInventory}
+                        onClick={handleToggleInventory}
+                    >
+                        {usesInventory
+                            ? 'Korištenje ruksaka'
+                            : availableFromInventory
+                              ? `Iskoristi (${availableFromInventory})`
+                              : 'Nema u ruksaku'}
+                    </Button>
+                </Row>
                 {hasDiscount &&
                     typeof item.shopData.discountPrice === 'number' &&
                     typeof item.shopData.price === 'number' && (

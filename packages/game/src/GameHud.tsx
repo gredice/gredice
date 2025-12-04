@@ -9,6 +9,7 @@ import { DayNightCycleHud } from './hud/DayNightCycleHud';
 import { DebugHud } from './hud/DebugHud';
 import { GameModeHud } from './hud/GameModeHud';
 import { ItemsHud } from './hud/ItemsHud';
+import { InventoryHud } from './hud/InventoryHud';
 import { PaymentSuccessfulMessage } from './hud/PaymentSuccessfulMessage';
 import { RaisedBedFieldHud } from './hud/RaisedBedFieldHud';
 import { ShoppingCartHud } from './hud/ShoppingCartHud';
@@ -28,6 +29,7 @@ export function GameHud({ flags }: { flags: GameSceneProps['flags'] }) {
                 <AccountHud />
                 {!isCloseup && <GameModeHud />}
                 {!isCloseup && <AdventHud />}
+                {!isCloseup && <InventoryHud />}
                 <ShoppingCartHud />
             </div>
             <div className="absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2">

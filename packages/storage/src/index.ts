@@ -21,6 +21,7 @@ export * from './repositories/farmsRepo';
 export * from './repositories/feedbacksRepo';
 export * from './repositories/fiscalizationRepo';
 export * from './repositories/gardensRepo';
+export * from './repositories/inventoryRepo';
 export * from './repositories/invoicesRepo';
 export * from './repositories/notificationSettingsRepo';
 export * from './repositories/notificationsRepo';
