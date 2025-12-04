@@ -37,6 +37,7 @@ export type {
     // Garden
     GardenCreatePayload,
     GardenRenamePayload,
+    InventoryChangePayload,
     // Invoice
     InvoiceCreatePayload,
     InvoicePaidPayload,

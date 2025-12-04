@@ -3,6 +3,7 @@ import {
     type EntityStandardized,
     getAccount,
     getEntitiesFormatted,
+    getInventory,
     getRaisedBed,
     getShoppingCart,
     getUser,
@@ -10,6 +11,7 @@ import {
     type SelectShoppingCartItem,
     setCartItemPaid,
     spendSunflowers,
+    consumeInventoryItem,
 } from '@gredice/storage';
 import {
     type CheckoutItem,
@@ -44,7 +46,10 @@ export type ShoppingCartItemWithShopData = SelectShoppingCartItem & {
 };
 
 // TODO: Move to lib
-export async function getCartInfo(items: SelectShoppingCartItem[]) {
+export async function getCartInfo(
+    items: SelectShoppingCartItem[],
+    accountId?: string,
+) {
     const entityTypeNames = items.map((item) => item.entityTypeName);
     const uniqueEntityTypeNames = Array.from(new Set(entityTypeNames));
     const entitiesData = await Promise.all(
@@ -63,6 +68,13 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
     );
 
     const discounts: ShoppingCartDiscount[] = [];
+    const inventory = accountId ? await getInventory(accountId) : [];
+    const inventoryLookup = new Map(
+        inventory.map((item) => [
+            `${item.entityTypeName}-${item.entityId}`,
+            item.amount,
+        ]),
+    );
 
     // Process paid discounts for items that are already paid
     const paidItems = items.filter((item) => item.status === 'paid');
@@ -75,6 +87,29 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
             });
         }
     }
+
+    // Inventory discounts (free items when available)
+    for (const item of items) {
+        const parsedAdditional = item.additionalData
+            ? JSON.parse(item.additionalData)
+            : {};
+        const wantsInventory =
+            item.currency === 'inventory' || parsedAdditional.useInventory;
+        if (wantsInventory) {
+            const availableCount =
+                inventoryLookup.get(`${item.entityTypeName}-${item.entityId}`) ?? 0;
+            if (availableCount > 0) {
+                discounts.push({
+                    cartItemId: item.id,
+                    discountPrice: 0,
+                    discountDescription: 'Korištenje inventara',
+                });
+            }
+        }
+    }
+
+    let allowPurchase = true;
+    const notes: string[] = [];
 
     const cartItemsWithShopInfo = items
         .map((item) => {
@@ -89,8 +124,28 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
                 return null;
             }
 
+            const parsedAdditional = item.additionalData
+                ? JSON.parse(item.additionalData)
+                : {};
+            const wantsInventory =
+                item.currency === 'inventory' || parsedAdditional.useInventory;
+            const inventoryAvailable = wantsInventory
+                ? inventoryLookup.get(`${item.entityTypeName}-${item.entityId}`) ?? 0
+                : 0;
+
+            if (wantsInventory && inventoryAvailable <= 0) {
+                notes.push(
+                    `${
+                        entityData.information?.label || entityData.information?.name
+                    } trenutno nije dostupan u inventaru`,
+                );
+                allowPurchase = false;
+            }
+
             return {
                 ...item,
+                usesInventory: wantsInventory,
+                inventoryAvailable,
                 shopData: {
                     name:
                         entityData.information?.label ??
@@ -123,10 +178,8 @@ export async function getCartInfo(items: SelectShoppingCartItem[]) {
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
     // --- Notes logic ---
-    const notes: string[] = [];
     // Group items by raisedBedId, count items per raised bed (excluding paid items)
     // Find all 'new' raised beds
-    let allowPurchase = true;
     const raisedBedItemCounts: Record<number, number> = {};
     cartItemsWithShopInfo.forEach((item) => {
         if (item.raisedBedId && item.status !== 'paid') {
@@ -258,7 +311,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Retrieve entities data
-            const cartInfo = await getCartInfo(cart.items);
+            const cartInfo = await getCartInfo(cart.items, accountId);
             if (!cartInfo.allowPurchase) {
                 return context.json({ error: 'Cart in invalid state' }, 400);
             }
@@ -314,6 +367,47 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
 
                 // After processing sunflower items, check if all items are paid
+                await markCartPaidIfAllItemsPaid(cart.id);
+            }
+
+            // Handle inventory items
+            const inventoryCartItems = cartInfo.items.filter(
+                (item) =>
+                    item.status !== 'paid' &&
+                    (item.currency === 'inventory' || item.usesInventory),
+            );
+
+            if (inventoryCartItems.length > 0) {
+                for (const item of inventoryCartItems) {
+                    if ((item.inventoryAvailable ?? 0) < item.amount) {
+                        return context.json(
+                            { error: 'Nema dovoljno predmeta u inventaru' },
+                            400,
+                        );
+                    }
+
+                    await Promise.all([
+                        consumeInventoryItem(accountId, {
+                            entityTypeName: item.entityTypeName,
+                            entityId: item.entityId,
+                            amount: item.amount,
+                            source: `shoppingCartItem:${item.id}`,
+                        }),
+                        setCartItemPaid(item.id),
+                        processItem({
+                            accountId,
+                            ...item,
+                            amount_total: 0,
+                            additionalData: {
+                                ...(item.additionalData
+                                    ? JSON.parse(item.additionalData)
+                                    : {}),
+                                ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
+                            },
+                        }),
+                    ]);
+                }
+
                 await markCartPaidIfAllItemsPaid(cart.id);
             }
 

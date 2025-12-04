@@ -21,6 +21,7 @@ import type {
     OperationCompletePayload,
     OperationFailPayload,
     OperationSchedulePayload,
+    InventoryChangePayload,
     RaisedBedAbandonPayload,
     RaisedBedCreatePayload,
     RaisedBedFieldCreatePayload,
@@ -377,6 +378,23 @@ export const knownEvents = {
             data: AdventCalendarOpenPayload,
         ) => ({
             type: knownEventTypes.occasions.adventCalendarOpen,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+    },
+    inventory: {
+        addedV1: (aggregateId: string, data: InventoryChangePayload) => ({
+            type: knownEventTypes.inventory.add,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        consumedV1: (
+            aggregateId: string,
+            data: InventoryChangePayload,
+        ) => ({
+            type: knownEventTypes.inventory.consume,
             version: 1,
             aggregateId,
             data,

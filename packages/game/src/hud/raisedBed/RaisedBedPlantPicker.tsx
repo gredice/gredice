@@ -10,6 +10,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { type ReactElement, useState } from 'react';
 import { SegmentedProgress } from '../../controls/components/SegmentedProgress';
+import { useInventory } from '../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import {
     type ShoppingCartItemData,
@@ -62,6 +63,7 @@ export function PlantPicker({
     ];
     const { data: cart } = useShoppingCart();
     const setCartItem = useSetShoppingCartItem();
+    const { data: inventory } = useInventory();
     const [selectedPlantId, setSelectedPlantId] = useState<number | null>(
         preselectedPlantId ?? null,
     );
@@ -72,6 +74,7 @@ export function PlantPicker({
         scheduledDate: Date | null | undefined;
     } | null>(preselectedPlantOptions ?? null);
     const [flyToShoppingCart, setFlyToShoppingCart] = useState(false);
+    const [useInventoryItem, setUseInventoryItem] = useState(false);
 
     let currentStep = 0;
     if (selectedPlantId) {
@@ -116,6 +119,7 @@ export function PlantPicker({
         setSelectedPlantId(null);
         setSelectedSortId(null);
         setPlantOptions(null);
+        setUseInventoryItem(false);
         setSearch(undefined);
         await removeFromCart();
     }
@@ -151,7 +155,9 @@ export function PlantPicker({
             positionIndex,
             additionalData: JSON.stringify({
                 scheduledDate: plantOptions?.scheduledDate?.toISOString(),
+                useInventory: useInventoryItem,
             }),
+            currency: useInventoryItem ? 'inventory' : 'eur',
         });
         await new Promise((resolve) => setTimeout(resolve, 800)); // Wait for animation to finish
         setOpen(false);
@@ -163,6 +169,22 @@ export function PlantPicker({
         setSelectedPlantId(preselectedPlantId ?? null);
         setSelectedSortId(preselectedSortId ?? null);
         setPlantOptions(preselectedPlantOptions ?? null);
+        const existingItem = cart?.items.find(
+            (item) =>
+                item.entityTypeName === 'plantSort' &&
+                item.gardenId === gardenId &&
+                item.raisedBedId === raisedBedId &&
+                item.positionIndex === positionIndex,
+        );
+        const parsedAdditional = existingItem?.additionalData
+            ? JSON.parse(existingItem.additionalData)
+            : {};
+        setUseInventoryItem(
+            Boolean(
+                existingItem?.currency === 'inventory' ||
+                    parsedAdditional.useInventory,
+            ),
+        );
     }
 
     // Plant options
@@ -186,6 +208,12 @@ export function PlantPicker({
 
     const min = formatLocalDate(tomorrow);
     const max = formatLocalDate(threeMonthsFromTomorrow);
+
+    const availableFromInventory = inventory?.items?.find(
+        (item: any) =>
+            item.entityTypeName === 'plantSort' &&
+            item.entityId === selectedSortId?.toString(),
+    )?.amount;
 
     return (
         <Modal
@@ -260,6 +288,24 @@ export function PlantPicker({
                                 }}
                                 flyToShoppingCart={flyToShoppingCart}
                             />
+                            <Row spacing={1} className="flex-wrap">
+                                <Button
+                                    variant={
+                                        useInventoryItem ? 'solid' : 'outlined'
+                                    }
+                                    size="sm"
+                                    disabled={!availableFromInventory}
+                                    onClick={() =>
+                                        setUseInventoryItem(
+                                            (previous) => !previous,
+                                        )
+                                    }
+                                >
+                                    {availableFromInventory
+                                        ? `Iskoristi iz ruksaka (${availableFromInventory})`
+                                        : 'Nema u ruksaku'}
+                                </Button>
+                            </Row>
                             <Input
                                 type="date"
                                 label="Datum sijanja"

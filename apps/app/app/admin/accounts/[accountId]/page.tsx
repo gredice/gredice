@@ -15,6 +15,7 @@ import { getAccountTimeZone } from '../../../(actions)/accountTimeZoneActions';
 import { AccountAchievementsCard } from './AccountAchievementsCard';
 import { AccountEventsCard } from './AccountEventsCard';
 import { AccountGardensCard } from './AccountGardensCard';
+import { AccountInventoryCard } from './AccountInventoryCard';
 import { AccountShoppingCartsCard } from './AccountShoppingCartsCard';
 import { AccountSunflowersCard } from './AccountSunflowersCard';
 import { AccountTimeZonePicker } from './AccountTimeZonePicker';
@@ -85,6 +86,7 @@ export default async function AccountPage({
                 <RaisedBedsTableCard accountId={accountId} />
                 <AccountEventsCard accountId={accountId} />
                 <NotificationsTableCard accountId={accountId} scroll />
+                <AccountInventoryCard accountId={accountId} />
                 <AccountShoppingCartsCard accountId={accountId} />
             </div>
         </Stack>

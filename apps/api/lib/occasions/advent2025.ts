@@ -8,6 +8,7 @@ import {
     createGardenBlock,
     createGardenStack,
     earnSunflowers,
+    addInventoryItem,
     getAccountGardens,
     getAdventCalendarOpenEvents,
     getEntitiesFormatted,
@@ -476,6 +477,19 @@ export async function openAdventCalendar2025Day({
                         accountId,
                         award.amount,
                         `advent-${ADVENT_YEAR}-dan-${day}`,
+                        tx,
+                    );
+                }
+
+                if (award.kind === 'plant') {
+                    await addInventoryItem(
+                        accountId,
+                        {
+                            entityTypeName: 'plantSort',
+                            entityId: award.plantSortId.toString(),
+                            amount: 1,
+                            source: `advent-${ADVENT_YEAR}-dan-${day}`,
+                        },
                         tx,
                     );
                 }
