@@ -12,6 +12,7 @@ import directoriesRoutes from './directoriesRoutes';
 import feedbackRoutes from './feedbackRoutes';
 import gardensRoutes from './gardensRoutes';
 import inventoryRoutes from './inventoryRoutes';
+import newsletterRoutes from './newsletterRoutes';
 import notificationsRoutes from './notificationsRoutes';
 import occasionsRoutes from './occasionsRoutes';
 import shoppingCartRoutes from './shoppingCartRoutes';
@@ -67,7 +68,8 @@ const app = new Hono()
     .route('/checkout', checkoutRoutes)
     .route('/delivery', deliveryRoutes)
     .route('/data', dataRoutes)
-    .route('/notifications', notificationsRoutes);
+    .route('/notifications', notificationsRoutes)
+    .route('/newsletter', newsletterRoutes);
 
 app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
     .get('/docs/accounts', docs(accountsRoutes, 'Accounts API', 'accounts'))
@@ -89,6 +91,10 @@ app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
     .get(
         '/docs/notifications',
         docs(notificationsRoutes, 'Notifications API', 'notifications'),
+    )
+    .get(
+        '/docs/newsletter',
+        docs(newsletterRoutes, 'Newsletter API', 'newsletter'),
     );
 
 export const GET = handle(app);

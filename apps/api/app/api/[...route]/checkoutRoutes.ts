@@ -1,5 +1,6 @@
 import {
     assignStripeCustomerId,
+    consumeInventoryItem,
     type EntityStandardized,
     getAccount,
     getEntitiesFormatted,
@@ -11,7 +12,6 @@ import {
     type SelectShoppingCartItem,
     setCartItemPaid,
     spendSunflowers,
-    consumeInventoryItem,
 } from '@gredice/storage';
 import {
     type CheckoutItem,
@@ -97,7 +97,9 @@ export async function getCartInfo(
             item.currency === 'inventory' || parsedAdditional.useInventory;
         if (wantsInventory) {
             const availableCount =
-                inventoryLookup.get(`${item.entityTypeName}-${item.entityId}`) ?? 0;
+                inventoryLookup.get(
+                    `${item.entityTypeName}-${item.entityId}`,
+                ) ?? 0;
             if (availableCount > 0) {
                 discounts.push({
                     cartItemId: item.id,
@@ -130,13 +132,16 @@ export async function getCartInfo(
             const wantsInventory =
                 item.currency === 'inventory' || parsedAdditional.useInventory;
             const inventoryAvailable = wantsInventory
-                ? inventoryLookup.get(`${item.entityTypeName}-${item.entityId}`) ?? 0
+                ? (inventoryLookup.get(
+                      `${item.entityTypeName}-${item.entityId}`,
+                  ) ?? 0)
                 : 0;
 
             if (wantsInventory && inventoryAvailable <= 0) {
                 notes.push(
                     `${
-                        entityData.information?.label || entityData.information?.name
+                        entityData.information?.label ||
+                        entityData.information?.name
                     } trenutno nije dostupan u inventaru`,
                 );
                 allowPurchase = false;
@@ -402,7 +407,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 ...(item.additionalData
                                     ? JSON.parse(item.additionalData)
                                     : {}),
-                                ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
+                                ...(deliveryInfo
+                                    ? { delivery: deliveryInfo }
+                                    : {}),
                             },
                         }),
                     ]);

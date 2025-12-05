@@ -16,5 +16,4 @@ const hypertuneAdapter = createHypertuneAdapter<FlagValues, Context>({
     identify,
 });
 
-export const preSeasonFlag = flag(hypertuneAdapter.declarations.preSeason);
 export const recipesFlag = flag(hypertuneAdapter.declarations.recipes);

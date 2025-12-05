@@ -10,11 +10,11 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
 import { useActionState } from 'react';
 import NewsletterImage from '../assets/NewsletterVisual.webp';
-import { preSeasonNewsletterSubscribe } from './actions';
+import { newsletterSubscribe } from './actions';
 
 export function NewsletterSignUp() {
     const [state, submitAction, isPending] = useActionState(
-        preSeasonNewsletterSubscribe,
+        newsletterSubscribe,
         null,
     );
 

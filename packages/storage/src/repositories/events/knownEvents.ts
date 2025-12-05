@@ -14,6 +14,7 @@ import type {
     GardenBlockRemovePayload,
     GardenCreatePayload,
     GardenRenamePayload,
+    InventoryChangePayload,
     InvoiceCreatePayload,
     InvoicePaidPayload,
     InvoiceUpdatePayload,
@@ -21,7 +22,6 @@ import type {
     OperationCompletePayload,
     OperationFailPayload,
     OperationSchedulePayload,
-    InventoryChangePayload,
     RaisedBedAbandonPayload,
     RaisedBedCreatePayload,
     RaisedBedFieldCreatePayload,
@@ -390,10 +390,7 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
-        consumedV1: (
-            aggregateId: string,
-            data: InventoryChangePayload,
-        ) => ({
+        consumedV1: (aggregateId: string, data: InventoryChangePayload) => ({
             type: knownEventTypes.inventory.consume,
             version: 1,
             aggregateId,
