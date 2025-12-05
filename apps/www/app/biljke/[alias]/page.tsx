@@ -10,6 +10,7 @@ import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
 import { getRecipesData } from '../../../lib/recipes/getRecipesData';
 import { KnownPages } from '../../../src/KnownPages';
+import { recipesFlag } from '../../flags';
 import { GrowthAttributeCards } from './GrowthAttributeCards';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { HarvestAttributeCards } from './HarvestAttributeCards';
@@ -65,10 +66,12 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
         notFound();
     }
 
-    const recipes =
-        (await getRecipesData())?.filter((r) =>
-            r.plants.includes(plant.information.name),
-        ) ?? [];
+    const isRecipesEnabled = await recipesFlag();
+    const recipes = isRecipesEnabled
+        ? ((await getRecipesData())?.filter((r) =>
+              r.plants.includes(plant.information.name),
+          ) ?? [])
+        : [];
     const informationSections = getPlantInforationSections(plant);
 
     // Map section IDs to their corresponding attribute cards

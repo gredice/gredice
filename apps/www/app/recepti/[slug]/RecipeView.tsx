@@ -131,9 +131,14 @@ export function RecipeView({ recipe }: { recipe: Recipe }) {
                         <Typography level="h4" component="h2">
                             Nutrijenti
                         </Typography>
-                        <Typography level="body1">Po porciji / Ukupno</Typography>
+                        <Typography level="body1">
+                            Po porciji / Ukupno
+                        </Typography>
                     </Stack>
-                    <NutritionDisplay recipe={recipe} portionMultiplier={multiplier} />
+                    <NutritionDisplay
+                        recipe={recipe}
+                        portionMultiplier={multiplier}
+                    />
                 </Stack>
             </div>
         </Stack>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getRecipesData } from '../../../lib/recipes/getRecipesData';
+import { recipesFlag } from '../../flags';
 import { RecipeView } from './RecipeView';
 
 export async function generateMetadata(
@@ -19,6 +20,11 @@ export async function generateStaticParams() {
 }
 
 export default async function RecipePage(props: PageProps<'/recepti/[slug]'>) {
+    const isRecipesEnabled = await recipesFlag();
+    if (!isRecipesEnabled) {
+        notFound();
+    }
+
     const { slug } = await props.params;
     const recipe = (await getRecipesData()).find((r) => r.slug === slug);
     if (!recipe) {
