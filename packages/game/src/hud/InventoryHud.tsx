@@ -250,7 +250,7 @@ export function InventoryHud() {
                             Klikni na predmet za više informacija.
                         </Typography>
                     </Stack>
-                    {/* Grid display - smaller 3 columns */}
+                    {/* Grid display - 6 columns */}
                     <div className="grid grid-cols-6 gap-1">
                         {gridItems.map((item, index) => {
                             const key = item
