@@ -8,7 +8,6 @@ import {
     Navigate,
     Timer,
 } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';

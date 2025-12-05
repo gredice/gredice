@@ -35,9 +35,7 @@ export default async function ShoppingCartDetailsPage({
         notFound();
     }
 
-    const inventory = cart.accountId
-        ? await getInventory(cart.accountId)
-        : [];
+    const inventory = cart.accountId ? await getInventory(cart.accountId) : [];
     const inventoryLookup = new Map(
         inventory.map((item) => [
             `${item.entityTypeName}-${item.entityId}`,
@@ -75,7 +73,8 @@ export default async function ShoppingCartDetailsPage({
         const usesInventory =
             item.currency === 'inventory' || parsedAdditional.useInventory;
         const inventoryAvailable = usesInventory
-            ? inventoryLookup.get(`${item.entityTypeName}-${item.entityId}`) ?? 0
+            ? (inventoryLookup.get(`${item.entityTypeName}-${item.entityId}`) ??
+              0)
             : 0;
 
         // Calculate price based on entity type and amount

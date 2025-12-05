@@ -43,7 +43,6 @@
         "@gredice/fiscalization": "workspace:*",
         "@gredice/js": "workspace:*",
         "@gredice/notifications": "workspace:*",
-        "@gredice/observability": "workspace:*",
         "@gredice/signalco": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/stripe": "workspace:*",
