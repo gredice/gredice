@@ -153,6 +153,51 @@ export default function PolitikaPrivatnostiPage() {
                         trećim stranama u svrhu slanja marketinških poruka bez
                         vašeg pristanka.
                     </p>
+                    <h2>Dijagnostika i Praćenje Grešaka</h2>
+                    <p>
+                        Za potrebe dijagnostike, praćenja grešaka i poboljšanja
+                        stabilnosti naše platforme koristimo uslugu{' '}
+                        <strong>Sentry</strong> (Functional Software, Inc.).
+                        Sentry nam pomaže identificirati i otkloniti tehničke
+                        probleme kako bismo vam pružili bolju i pouzdaniju
+                        uslugu.
+                    </p>
+                    <p>
+                        Prilikom praćenja grešaka, Sentry može prikupljati
+                        sljedeće osobne podatke:
+                    </p>
+                    <ul>
+                        <li>
+                            <strong>IP adresa</strong>: koristi se za
+                            identifikaciju geografske lokacije i dijagnostiku
+                            mrežnih problema.
+                        </li>
+                        <li>
+                            <strong>Korisnički identifikator</strong>: ako ste
+                            prijavljeni, vaš korisnički ID može biti povezan s
+                            prijavljenim greškama radi bržeg rješavanja
+                            problema.
+                        </li>
+                        <li>
+                            <strong>Tehničke informacije</strong>: vrsta
+                            preglednika, operativni sustav, verzija aplikacije i
+                            drugi tehnički podaci potrebni za dijagnostiku.
+                        </li>
+                    </ul>
+                    <p>
+                        <strong>Sigurnost i usklađenost s GDPR-om:</strong> Svi
+                        podaci prikupljeni putem Sentry usluge pohranjuju se na
+                        poslužiteljima unutar <strong>Europske unije</strong>,
+                        čime osiguravamo usklađenost s Općom uredbom o zaštiti
+                        podataka (GDPR). Sentry je certificiran prema standardima
+                        zaštite podataka i primjenjuje odgovarajuće tehničke i
+                        organizacijske mjere za zaštitu vaših podataka.
+                    </p>
+                    <p>
+                        Podaci prikupljeni u dijagnostičke svrhe čuvaju se
+                        ograničeno vrijeme potrebno za analizu i otklanjanje
+                        grešaka, nakon čega se automatski brišu.
+                    </p>
                     <h2>Promjene Politike</h2>
                     <p>
                         Ova Politika privatnosti može se povremeno ažurirati.
@@ -175,7 +220,7 @@ export default function PolitikaPrivatnostiPage() {
                     </p>
                 </StyledHtml>
                 <Typography level="body2" secondary className="mt-8">
-                    Zadnja izmjena: 7. kolovoza 2025.
+                    Zadnja izmjena: 5. prosinca 2025.
                 </Typography>
             </Stack>
         </Container>
