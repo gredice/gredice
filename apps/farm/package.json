@@ -16,7 +16,7 @@
         "regenerate:feature-flags": "hypertune"
     },
     "dependencies": {
-        "@sentry/cli": "^2.58.2",
+        "@sentry/cli": "2.58.2",
         "hypertune": "2.10.1",
         "next": "16.0.7",
         "pg": "8.16.3",
