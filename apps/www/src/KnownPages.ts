@@ -1,5 +1,6 @@
 import type { Route } from 'next';
 
+// TODO: Deprecate KnownPages in favor of using route types directly
 export const KnownPages = {
     Landing: '/',
 
@@ -22,7 +23,6 @@ export const KnownPages = {
     AboutUs: '/o-nama',
     FAQ: '/cesta-pitanja',
     Contact: '/kontakt',
-    AdventRules2025: '/advent-2025/pravila-natjecaja',
 
     LegalPrivacy: '/legalno/politika-privatnosti',
     LegalTerms: '/legalno/uvjeti-koristenja',
@@ -32,6 +32,5 @@ export const KnownPages = {
     LegalCompany: '/legalno/tvrtka',
 
     GardenApp: 'https://vrt.gredice.com',
-
     GoogleMapsGrediceHQ: 'https://maps.app.goo.gl/hJbidDQzhHWGCZwS6',
 } as const;
