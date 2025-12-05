@@ -4,6 +4,7 @@
     "scripts": {
         "build": "turbo build",
         "dev": "node ./scripts/dev-with-proxy.mjs",
+        "env:pull": "node ./scripts/pull-envs.mjs",
         "lint": "turbo lint",
         "lint:migrate": "turbo lint:migrate",
         "db-generate": "turbo db-generate",

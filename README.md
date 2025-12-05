@@ -50,7 +50,11 @@ Gredice is a Turborepo monorepo that powers the entire Gredice platform. It incl
    pnpm install
    ```
 
-3. Pull environment variables for each application (see below).
+3. Pull environment variables for all applications:
+
+   ```bash
+   pnpm env:pull
+   ```
 
 4. Start the development server from the project root:
 
@@ -90,13 +94,13 @@ After the certificate is trusted, browsers will stop warning about the `*.gredic
 
 ### Environment variables
 
-Use the Vercel CLI to pull the environment variables for each application by running the following command inside the `apps/<app-name>` directory:
+Use the Vercel CLI to pull environment variables for every app at once:
 
 ```bash
-vercel env pull .env.development.local
+pnpm env:pull
 ```
 
-`<app-name>` can be any of `www`, `garden`, `farm`, or `app`.
+This runs `vercel env pull .env` in `apps/www`, `apps/garden`, `apps/farm`, `apps/app`, and `apps/api`.
 
 If you are running the command for the first time on the development machine, make sure you are logged in to the Vercel CLI and that the project is linked:
 
@@ -105,7 +109,7 @@ vercel login
 vercel link
 ```
 
-After logging in and linking, you can proceed with pulling the environment variables for the applications you need.
+After logging in and linking, rerun `pnpm env:pull` to update all local environment files.
 
 ### API reference
 
