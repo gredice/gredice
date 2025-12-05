@@ -112,7 +112,9 @@ export async function AccountInventoryCard({
                                     key={`${item.entityTypeName}-${item.entityId}`}
                                 >
                                     <Table.Cell>{item.label}</Table.Cell>
-                                    <Table.Cell>{item.entityTypeName}</Table.Cell>
+                                    <Table.Cell>
+                                        {item.entityTypeName}
+                                    </Table.Cell>
                                     <Table.Cell>{item.amount}</Table.Cell>
                                     <Table.Cell>
                                         <LocalDateTime time={false}>

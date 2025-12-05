@@ -53,10 +53,6 @@
 			"path": "packages/js"
 		},
 		{
-			"name": "📦 @gredice/observability",
-			"path": "packages/observability"
-		},
-		{
 			"name": "📦 @gredice/signalco",
 			"path": "packages/signalco"
 		},

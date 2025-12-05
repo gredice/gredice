@@ -1,14 +1,20 @@
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import * as Sentry from '@sentry/nextjs';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 
-export const metadata: Metadata = {
-    title: 'Admin | Gredice',
-    description: 'Gredice admin - upravljanje gredicama',
-};
+export function generateMetadata(): Metadata {
+    return {
+        title: 'Admin | Gredice',
+        description: 'Gredice admin - upravljanje gredicama',
+        other: {
+            ...Sentry.getTraceData(),
+        },
+    };
+}
 
 export const viewport: Viewport = {
     initialScale: 1,

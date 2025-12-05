@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
 import './globals.css';
+import * as Sentry from '@sentry/nextjs';
 import { PageNav } from '@signalco/ui/Nav';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
 import { Container } from '@signalco/ui-primitives/Container';
@@ -15,48 +16,53 @@ import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
 import { Footer } from './Footer';
 
-export const metadata: Metadata = {
-    metadataBase: new URL('https://www.gredice.com'),
-    title: {
-        template: '%s | Gredice',
-        default: 'Gredice - vrt po tvom',
-    },
-    description:
-        'Tvoj digitalni vrt s pravim povrćem i besplatnom dostavom. Postavi gredice, zasadi svoje omiljeno povrće, održavaj vrt i uberi plodove, a mi ćemo se pobrinuti o brzoj i besplatnoj dostavi na tvoj kućni prag.',
-    keywords: [
-        'gredice',
-        'gredica',
-        'digitalni',
-        'vrt',
-        'dostava',
-        'besplatna dostava',
-        'sadnja',
-        'sijanje',
-        'berba',
-        'najam',
-        'iznajmljivanje',
-        'opg',
-        'mali proizvođači',
-        'vrtlarstvo',
-        'vrtovi',
-        'vrtlar',
-        'vrtlarica',
-        'vrtlarstvo',
-        'vrtne gredice',
-        'povrce',
-        'povrće',
-        'biljke',
-        'biljka',
-        'virtualni vrt',
-        'virtualno',
-    ],
-    openGraph: {
-        type: 'website',
-        title: 'Gredice - vrt po tvom',
-        url: 'https://www.gredice.com',
-        siteName: 'Gredice - vrt po tvom',
-    },
-};
+export function generateMetadata(): Metadata {
+    return {
+        metadataBase: new URL('https://www.gredice.com'),
+        title: {
+            template: '%s | Gredice',
+            default: 'Gredice - vrt po tvom',
+        },
+        description:
+            'Tvoj digitalni vrt s pravim povrćem i besplatnom dostavom. Postavi gredice, zasadi svoje omiljeno povrće, održavaj vrt i uberi plodove, a mi ćemo se pobrinuti o brzoj i besplatnoj dostavi na tvoj kućni prag.',
+        keywords: [
+            'gredice',
+            'gredica',
+            'digitalni',
+            'vrt',
+            'dostava',
+            'besplatna dostava',
+            'sadnja',
+            'sijanje',
+            'berba',
+            'najam',
+            'iznajmljivanje',
+            'opg',
+            'mali proizvođači',
+            'vrtlarstvo',
+            'vrtovi',
+            'vrtlar',
+            'vrtlarica',
+            'vrtlarstvo',
+            'vrtne gredice',
+            'povrce',
+            'povrće',
+            'biljke',
+            'biljka',
+            'virtualni vrt',
+            'virtualno',
+        ],
+        openGraph: {
+            type: 'website',
+            title: 'Gredice - vrt po tvom',
+            url: 'https://www.gredice.com',
+            siteName: 'Gredice - vrt po tvom',
+        },
+        other: {
+            ...Sentry.getTraceData(),
+        },
+    };
+}
 
 export default async function RootLayout({
     children,

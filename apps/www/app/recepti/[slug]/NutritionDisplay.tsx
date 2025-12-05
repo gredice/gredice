@@ -1,7 +1,6 @@
 'use client';
 
 import { Alert } from '@signalco/ui/Alert';
-import { Button } from '@signalco/ui-primitives/Button';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
