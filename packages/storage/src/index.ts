@@ -23,6 +23,7 @@ export * from './repositories/fiscalizationRepo';
 export * from './repositories/gardensRepo';
 export * from './repositories/inventoryRepo';
 export * from './repositories/invoicesRepo';
+export * from './repositories/newsletterRepo';
 export * from './repositories/notificationSettingsRepo';
 export * from './repositories/notificationsRepo';
 export * from './repositories/occasionsRepo';

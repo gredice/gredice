@@ -2,27 +2,21 @@
 
 import 'server-only';
 
-export const preSeasonNewsletterSubscribe = async (
+import { client } from '@gredice/client';
+
+export const newsletterSubscribe = async (
     _previousState: unknown,
     formData: FormData,
 ) => {
     const email = formData.get('email') as string;
 
-    // Send the form data to the server
-    const response = await fetch(
-        'https://connect.mailerlite.com/api/subscribers',
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${process.env.MAILERLITE_PRESEASON_API_TOKEN}`,
-            },
-            body: JSON.stringify({ email, groups: ['135742419471697742'] }),
-        },
-    );
-    if (response.status >= 299) {
+    const response = await client().api.newsletter.subscribe.$post({
+        json: { email, source: 'www' },
+    });
+
+    if (!response.ok) {
         console.error(
-            'Pre-season newsletter subscribe failed with status',
+            'Newsletter subscribe failed with status',
             response.status,
         );
         return { error: true };

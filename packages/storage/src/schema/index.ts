@@ -8,6 +8,7 @@ export * from './feedbackSchema';
 export * from './fiscalizationSchema';
 export * from './gardenSchema';
 export * from './invoiceSchema';
+export * from './newsletterSchema';
 export * from './notificationSettingsSchema';
 export * from './notificationsSchema';
 export * from './operationsSchema';
