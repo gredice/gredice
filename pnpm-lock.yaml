@@ -345,7 +345,7 @@ importers:
   apps/farm:
     dependencies:
       '@sentry/cli':
-        specifier: ^2.58.2
+        specifier: 2.58.2
         version: 2.58.2
       hypertune:
         specifier: 2.10.1
