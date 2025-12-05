@@ -1,6 +1,7 @@
 import type { PlantSortData } from '@gredice/client';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Chip } from '@signalco/ui-primitives/Chip';
+import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -34,7 +35,7 @@ function InventoryItemCell({
     if (!item || !sortData) {
         // Empty slot
         return (
-            <div className="aspect-square rounded-lg border-2 border-dashed border-muted/30 bg-muted/5" />
+            <div className="aspect-square rounded-lg border-2 border-dashed border-muted/30 bg-card/20" />
         );
     }
 
@@ -42,7 +43,7 @@ function InventoryItemCell({
         <button
             type="button"
             onClick={onClick}
-            className="aspect-square rounded-lg border-2 p-0.5 relative transition-all border-muted/30 bg-background hover:border-primary hover:bg-primary/10 hover:scale-105 cursor-pointer"
+            className="aspect-square rounded-lg border p-0.5 relative transition-all bg-card hover:bg-primary/10"
         >
             <PlantOrSortImage
                 width={48}
@@ -50,12 +51,14 @@ function InventoryItemCell({
                 className="rounded-md w-full h-full object-cover"
                 plantSort={sortData}
             />
-            <Chip
-                color="success"
-                className="absolute -top-1.5 -right-1.5 text-[10px] px-1 py-0 min-w-4 h-4 flex items-center justify-center"
-            >
-                {item.amount}
-            </Chip>
+
+            <div className="absolute -top-1.5 -right-1.5">
+                <DotIndicator
+                    size={18}
+                    color={'success'}
+                    content={<small>{item.amount?.toString()}</small>}
+                />
+            </div>
         </button>
     );
 }
@@ -219,21 +222,36 @@ export function InventoryHud() {
                         <div className="relative flex items-center justify-center">
                             <BackpackIcon className="size-6" />
                             {totalItems > 0 && (
-                                <span className="absolute -top-1 -right-1 text-[10px] font-semibold bg-emerald-500 text-white rounded-full px-1">
-                                    {totalItems}
-                                </span>
+                                <div className="absolute -top-4 -right-4">
+                                    <DotIndicator
+                                        size={24}
+                                        color={'success'}
+                                        content={<span>{totalItems}</span>}
+                                    />
+                                </div>
                             )}
                         </div>
                     </IconButton>
                 }
             >
                 <Stack spacing={2}>
-                    <Typography level="body3" secondary>
-                        Klikni na predmet za više informacija.
-                    </Typography>
-
-                    {/* Grid display - smaller 3 columns */}
-                    <div className="grid grid-cols-6 md:grid-cols-8 gap-1.5">
+                    <Row spacing={1}>
+                        <BackpackIcon className="size-8 shrink-0" />
+                        <Typography level="h6" className="font-bold">
+                            Ruksak
+                        </Typography>
+                    </Row>
+                    <Stack>
+                        <Typography level="body2" semiBold>
+                            Predmeti u ruksaku koje možeš iskoristiti pri sadnji
+                            ili izvođenju radnji u vrtu.
+                        </Typography>
+                        <Typography level="body3" secondary>
+                            Klikni na predmet za više informacija.
+                        </Typography>
+                    </Stack>
+                    {/* Grid display - 6 columns */}
+                    <div className="grid grid-cols-6 gap-1">
                         {gridItems.map((item, index) => {
                             const key = item
                                 ? `${item.entityTypeName}-${item.entityId}`
