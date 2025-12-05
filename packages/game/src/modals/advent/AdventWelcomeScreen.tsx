@@ -42,7 +42,7 @@ export function AdventWelcomeScreen({ onContinue }: AdventWelcomeScreenProps) {
                 iznenađenja 🤩
             </Typography>
 
-            <Typography level="body3" className="text-neutral-600 max-w-xs">
+            <Typography level="body3" className="max-w-xs">
                 Sudjelovanjem prihvaćaš{' '}
                 <a
                     className="underline"

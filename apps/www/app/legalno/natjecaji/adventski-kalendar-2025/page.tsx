@@ -2,7 +2,7 @@ import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Container } from '@signalco/ui-primitives/Container';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import type { Metadata } from 'next';
+import type { Metadata, Route } from 'next';
 import { PageHeader } from '../../../../components/shared/PageHeader';
 
 export const metadata: Metadata = {
@@ -143,7 +143,11 @@ export default function AdventRules2025Page() {
                         Organizator zadržava pravo izmjene ili dopune ovih
                         Pravila ako to zahtijevaju opravdani razlozi, uz objavu
                         izmjena na{' '}
-                        <a href="https://www.gredice.com/advent-2025/pravila-natjecaja">
+                        <a
+                            href={
+                                '/legalno/natjecaji/adventski-kalendar-2025' as Route
+                            }
+                        >
                             ovoj stranici
                         </a>
                         .
