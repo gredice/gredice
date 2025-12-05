@@ -6,6 +6,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
 import { SantaCapIcon } from '../../icons/SantaCap';
+import { KnownPages } from '../../knownPages';
 import { adventTitleFont } from './fonts';
 
 type AdventWelcomeScreenProps = {
@@ -39,6 +40,19 @@ export function AdventWelcomeScreen({ onContinue }: AdventWelcomeScreenProps) {
             <Typography level="body2" className="max-w-xs">
                 Otvori jedno polje svaki dan i pripremi se za najbolja
                 iznenađenja 🤩
+            </Typography>
+
+            <Typography level="body3" className="max-w-xs">
+                Sudjelovanjem prihvaćaš{' '}
+                <a
+                    className="underline"
+                    href={KnownPages.AdventRules2025}
+                    target="_blank"
+                    rel="noreferrer"
+                >
+                    Pravila natječaja
+                </a>
+                .
             </Typography>
 
             {/* Continue button */}
