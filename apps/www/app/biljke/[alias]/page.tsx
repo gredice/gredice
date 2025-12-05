@@ -5,9 +5,12 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { RecipeList } from '../../../components/recipes/RecipeList';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
+import { getRecipesData } from '../../../lib/recipes/getRecipesData';
 import { KnownPages } from '../../../src/KnownPages';
+import { recipesFlag } from '../../flags';
 import { GrowthAttributeCards } from './GrowthAttributeCards';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { HarvestAttributeCards } from './HarvestAttributeCards';
@@ -63,6 +66,12 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
         notFound();
     }
 
+    const isRecipesEnabled = await recipesFlag();
+    const recipes = isRecipesEnabled
+        ? ((await getRecipesData())?.filter((r) =>
+              r.plants.includes(plant.information.name),
+          ) ?? [])
+        : [];
     const informationSections = getPlantInforationSections(plant);
 
     // Map section IDs to their corresponding attribute cards
@@ -109,6 +118,14 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                 <PlantSortsList basePlantName={plant.information.name} />
                 {(plant.information.tip?.length ?? 0) > 0 && (
                     <PlantTips plant={plant} />
+                )}
+                {recipes.length > 0 && (
+                    <Stack spacing={2}>
+                        <Typography level="h2">
+                            Recepti s {plant.information.name}
+                        </Typography>
+                        <RecipeList recipes={recipes} />
+                    </Stack>
                 )}
                 <Typography level="body1" component="p">
                     Želiš saznati više o tome kako naručiti sjetvu? Posjeti našu
