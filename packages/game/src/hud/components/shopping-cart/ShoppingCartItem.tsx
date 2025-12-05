@@ -1,6 +1,13 @@
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
-import { Delete, Euro, Hammer, Navigate, Timer } from '@signalco/ui-icons';
+import {
+    Close,
+    Delete,
+    Euro,
+    Hammer,
+    Navigate,
+    Timer,
+} from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
@@ -13,6 +20,7 @@ import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
 import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
 import type { ShoppingCartItemData } from '../../../hooks/useShoppingCart';
+import { BackpackIcon } from '../../../icons/Backpack';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
 
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
@@ -118,30 +126,46 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         {item.shopData.name}
                     </Typography>
                     {!hasDiscount && (
-                        <ButtonPricePickPaymentMethod
-                            price={item.shopData.price}
-                            isSunflower={item.currency === 'sunflower'}
-                            onChange={handleChangePaymentType}
-                            availableSunflowers={
-                                account?.sunflowers.amount ?? 0
-                            }
-                        />
+                        <Row spacing={1}>
+                            {!usesInventory && availableFromInventory && (
+                                <IconButton
+                                    title="Iskoristi iz ruksaka"
+                                    size="sm"
+                                    variant="solid"
+                                    onClick={handleToggleInventory}
+                                >
+                                    <BackpackIcon className="size-5 shrink-0" />
+                                </IconButton>
+                            )}
+                            <ButtonPricePickPaymentMethod
+                                price={item.shopData.price}
+                                isSunflower={item.currency === 'sunflower'}
+                                onChange={handleChangePaymentType}
+                                availableSunflowers={
+                                    account?.sunflowers.amount ?? 0
+                                }
+                            />
+                        </Row>
                     )}
+                    <Row spacing={1} className="flex-wrap justify-end">
+                        {usesInventory && (
+                            <Row spacing={0.5}>
+                                <BackpackIcon className="size-4 shrink-0" />
+                                <Typography level="body2">
+                                    Iz ruksaka
+                                </Typography>
+                                <IconButton
+                                    title="Poništi korištenje iz ruksaka"
+                                    variant="plain"
+                                    size="sm"
+                                    onClick={handleToggleInventory}
+                                >
+                                    <Close className="size-4 shrink-0" />
+                                </IconButton>
+                            </Row>
+                        )}
+                    </Row>
                 </div>
-                <Row spacing={1} className="flex-wrap justify-end">
-                    {(usesInventory || availableFromInventory) && (
-                        <Button
-                            size="sm"
-                            variant={usesInventory ? 'solid' : 'outlined'}
-                            disabled={!availableFromInventory}
-                            onClick={handleToggleInventory}
-                        >
-                            {usesInventory
-                                ? 'Korištenje ruksaka'
-                                : `Iskoristi (${availableFromInventory})`}
-                        </Button>
-                    )}
-                </Row>
                 {hasDiscount &&
                     typeof item.shopData.discountPrice === 'number' &&
                     typeof item.shopData.price === 'number' && (

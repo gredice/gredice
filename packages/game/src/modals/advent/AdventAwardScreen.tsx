@@ -35,22 +35,14 @@ type AdventAwardScreenProps = {
 
 function PlantAwardImage({ plantSortId }: { plantSortId?: number }) {
     const { data: plantSort } = usePlantSort(plantSortId);
-    const coverUrl = plantSort?.image?.cover?.url;
-
-    if (coverUrl) {
-        return (
-            <PlantOrSortImage
-                width={120}
-                height={120}
-                className="rounded-lg"
-                coverUrl={coverUrl}
-                alt={plantSort?.information?.name ?? 'Biljka'}
-                baseUrl="https://www.gredice.com"
-            />
-        );
-    }
-
-    return <div className="text-6xl">🌱</div>;
+    return (
+        <PlantOrSortImage
+            width={120}
+            height={120}
+            className="rounded-lg"
+            plantSort={plantSort ?? null}
+        />
+    );
 }
 
 function AwardImage({ award }: { award: AdventAward }) {
