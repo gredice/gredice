@@ -36,7 +36,12 @@
     "scope": "https://vrt.gredice.com",
     "scope_extensions": [
         {
-            "origin": "vrt.gredice.com"
+            "type": "origin",
+            "origin": "https://www.gredice.com"
+        },
+        {
+            "type": "origin",
+            "origin": "https://placanje.gredice.com"
         }
     ],
     "icons": [
