@@ -69,9 +69,11 @@
         "react": "19.2.1",
         "react-dom": "19.2.1",
         "tailwindcss": ">=3",
-        "tailwindcss-animate": ">=1"
+        "tailwindcss-animate": ">=1",
+        "nuqs": "2.8.4"
     },
     "dependencies": {
-        "@vvo/tzdb": "6.198.0"
+        "@vvo/tzdb": "6.198.0",
+        "nuqs": "2.8.4"
     }
 }
