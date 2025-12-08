@@ -1,7 +1,11 @@
 import { type PropsWithChildren, useRef } from 'react';
 import { create } from 'zustand';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { Block } from '../types/Block';
-import { useGameState } from '../useGameState';
+import {
+    useRemoveRaisedBedCloseupParam,
+    useSetRaisedBedCloseupParam,
+} from '../useRaisedBedCloseup';
 
 type useHoveredBlockStore = {
     hoveredBlock: Block | null;
@@ -19,9 +23,19 @@ export function SelectableGroup({
 }: PropsWithChildren<{ block: Block }>) {
     const groupRef = useRef(null);
     const hovered = useHoveredBlockStore();
-    const setView = useGameState((state) => state.setView);
+    const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
+    const { mutate: removeRaisedBedCloseupParam } =
+        useRemoveRaisedBedCloseupParam();
+    const { data: garden } = useCurrentGarden();
 
     if (block.name !== 'Raised_Bed') {
+        return children;
+    }
+
+    const raisedBed = garden?.raisedBeds.find(
+        (bed) => bed.blockId === block.id,
+    );
+    if (!raisedBed) {
         return children;
     }
 
@@ -30,11 +44,11 @@ export function SelectableGroup({
     }
 
     function handleOpenChange(open: boolean) {
-        if (open) {
-            setView({ view: 'closeup', block });
+        if (raisedBed && open) {
+            setRaisedBedCloseupParam(raisedBed.name);
             hovered.setHoveredBlock(null);
         } else {
-            setView({ view: 'normal' });
+            removeRaisedBedCloseupParam();
         }
     }
 

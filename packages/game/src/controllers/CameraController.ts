@@ -32,7 +32,7 @@ export function CameraController({
     const animationDuration = 1; // seconds
     const animationStartTime = useRef(0);
     const isAnimating = useRef(false);
-    const previousCloseUp = useRef(isCloseUp);
+    const previousCloseUp = useRef(false);
 
     const startPosition = useRef(new THREE.Vector3());
     const startTarget = useRef(new THREE.Vector3());
