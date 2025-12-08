@@ -37,10 +37,6 @@
     "scope_extensions": [
         {
             "type": "origin",
-            "origin": "https://vrt.gredice.com"
-        },
-        {
-            "type": "origin",
             "origin": "https://www.gredice.com"
         },
         {
