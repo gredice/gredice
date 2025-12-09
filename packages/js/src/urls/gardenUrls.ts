@@ -9,20 +9,21 @@
  */
 function getGardenBaseUrl(): string {
     // Check if we're in a browser environment
-    if (typeof globalThis !== 'undefined' && 'location' in globalThis) {
+    if (
+        typeof window !== 'undefined' &&
+        window.location?.hostname?.includes('.test')
+    ) {
         // Use .test domain if current hostname includes .test
-        const hostname = (
-            globalThis as unknown as { location: { hostname: string } }
-        ).location.hostname;
-        if (hostname.includes('.test')) {
-            return 'https://vrt.gredice.test';
-        }
+        return 'https://vrt.gredice.test';
     }
 
     // Check environment variable (for server-side rendering or Node.js)
     if (
         typeof process !== 'undefined' &&
-        process.env?.NODE_ENV === 'development'
+        (process.env?.VERCEL_ENV === 'development' ||
+            process.env?.VERCEL_ENV === 'preview' ||
+            process.env?.NEXT_PUBLIC_ENVIRONMENT === 'development' ||
+            process.env?.NODE_ENV === 'development')
     ) {
         return 'https://vrt.gredice.test';
     }
@@ -39,5 +40,8 @@ function getGardenBaseUrl(): string {
  * getRaisedBedCloseupUrl('Moja gredica') // => 'https://vrt.gredice.com?gredica=Moja%20gredica'
  */
 export function getRaisedBedCloseupUrl(raisedBedName: string): string {
+    if (!raisedBedName || !raisedBedName.trim()) {
+        return getGardenBaseUrl();
+    }
     return `${getGardenBaseUrl()}?gredica=${encodeURIComponent(raisedBedName)}`;
 }

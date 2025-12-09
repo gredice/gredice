@@ -81,7 +81,9 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
             <ListItem
                 nodeId={id}
                 onSelected={() => {
-                    router.push(computedLinkUrl);
+                    if (computedLinkUrl && computedLinkUrl !== '#') {
+                        router.push(computedLinkUrl);
+                    }
                 }}
                 className="rounded-none p-4"
                 label={
