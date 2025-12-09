@@ -31,7 +31,6 @@ export default async function Home() {
             <GameScene flags={flags} />
             <SignedOut>
                 <div className="relative h-full">
-                    <LoginBanner />
                     <LoginModal />
                 </div>
             </SignedOut>
