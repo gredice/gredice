@@ -59,9 +59,13 @@ export function getNotificationsByAccount(
 ): Promise<SelectNotification[]> {
     return storage().query.notifications.findMany({
         where: read
-            ? eq(notifications.accountId, accountId)
+            ? and(
+                  eq(notifications.accountId, accountId),
+                  isNull(notifications.userId),
+              )
             : and(
                   eq(notifications.accountId, accountId),
+                  isNull(notifications.userId),
                   isNull(notifications.readAt),
               ),
         orderBy: desc(notifications.timestamp),
