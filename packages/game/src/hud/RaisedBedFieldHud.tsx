@@ -8,6 +8,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import { useGameState } from '../useGameState';
+import { useRemoveRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 import { RaisedBedField } from './raisedBed/RaisedBedField';
 import { RaisedBedFieldSuggestions } from './raisedBed/RaisedBedFieldSuggestions';
 import { RaisedBedGreenhouseSuggestion } from './raisedBed/RaisedBedGreenhouseSuggestion';
@@ -27,7 +28,8 @@ export function RaisedBedFieldHud(_props: {
 }) {
     const { data: currentGarden } = useCurrentGarden();
     const view = useGameState((state) => state.view);
-    const setView = useGameState((state) => state.setView);
+    const { mutate: removeRaisedBedCloseupParam } =
+        useRemoveRaisedBedCloseupParam();
     const closeupBlock = useGameState((state) => state.closeupBlock);
     const raisedBed = currentGarden?.raisedBeds.find(
         (bed) => bed.blockId === closeupBlock?.id,
@@ -113,9 +115,7 @@ export function RaisedBedFieldHud(_props: {
                     'absolute top-[calc(50%-203.5px)] md:left-[calc(50%+210px)] md:size-auto',
                     'rounded-full size-10 left-[calc(50%+118px)]',
                 )}
-                onClick={() => {
-                    setView({ view: 'normal' });
-                }}
+                onClick={removeRaisedBedCloseupParam}
                 startDecorator={<Check className="size-5 shrink-0" />}
             >
                 <span className="hidden md:block">Završi uređivanje</span>

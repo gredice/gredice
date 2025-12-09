@@ -23,6 +23,7 @@ import {
     type DeliverySelectionData,
     DeliveryStep,
 } from '../shared-ui/delivery/DeliveryStep';
+import { useShoppingCartOpenParam } from '../useUrlState';
 import { HudCard } from './components/HudCard';
 import { ShoppingCartItem } from './components/shopping-cart/ShoppingCartItem';
 
@@ -317,6 +318,8 @@ function ButtonConfirmPayment({
 
 export function ShoppingCartHud() {
     const { data: cart } = useShoppingCart();
+    const [isOpen, setIsOpen] = useShoppingCartOpenParam();
+
     if (!cart || !cart.items.length) {
         return null;
     }
@@ -325,6 +328,8 @@ export function ShoppingCartHud() {
         <HudCard open position="floating" className="static p-0.5">
             <Row spacing={1}>
                 <Modal
+                    open={isOpen}
+                    onOpenChange={setIsOpen}
                     title="Košarica"
                     className="border-tertiary border-b-4 md:max-w-2xl"
                     trigger={

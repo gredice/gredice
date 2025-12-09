@@ -1,11 +1,13 @@
 'use client';
 
 import { cx } from '@signalco/ui-primitives/cx';
-// import { Perf } from 'r3f-perf';
 import type { HTMLAttributes } from 'react';
 import { Controls } from './controls/Controls';
 import { EntityFactory } from './entities/EntityFactory';
-import { EntityInstances } from './entities/EntityInstances';
+import {
+    EntityInstances,
+    instancedBlockNames,
+} from './entities/EntityInstances';
 import { GameHud } from './GameHud';
 import { useBlockData } from './hooks/useBlockData';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
@@ -18,6 +20,7 @@ import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import { Scene } from './scene/Scene';
 import type { GameState } from './useGameState';
+import { useRaisedBedCloseup } from './useRaisedBedCloseup';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string;
@@ -48,30 +51,6 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
 
 const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
 
-// TODO: Move all blocks to instanced rendering
-const noRenderInViewDefault = [
-    'Block_Grass',
-    'Block_Grass_Angle',
-    'Block_Sand',
-    'Block_Sand_Angle',
-    'Block_Snow',
-    'Block_Snow_Angle',
-    'Bush',
-    'Pine',
-    'Tree',
-    'ShovelSmall',
-    'MulchHey',
-    'MulchCoconut',
-    'MulchWood',
-    'Tulip',
-    'BaleHey',
-    'Stick',
-    'Seed',
-    'StoneSmall',
-    'StoneMedium',
-    'StoneLarge',
-];
-
 export function GameScene({
     zoom = 'normal',
     noControls,
@@ -86,6 +65,7 @@ export function GameScene({
 }: GameSceneProps) {
     useGameTimeManager();
     useThemeManager();
+    useRaisedBedCloseup();
 
     // Prelaod all required data
     const { isLoading: blockDataPending } = useBlockData();
@@ -124,14 +104,13 @@ export function GameScene({
                                     block={block}
                                     rotation={block.rotation}
                                     variant={block.variant}
-                                    noRenderInView={noRenderInViewDefault}
+                                    noRenderInView={instancedBlockNames}
                                 />
                             )),
                         )}
                         <EntityInstances stacks={garden?.stacks} />
                     </group>
                     {!noControls && <Controls />}
-                    {/* {!hideHud && <Perf position="bottom-right" />} */}
                 </ParticleSystemProvider>
             </Scene>
             {!hideHud && <GameHud flags={flags} />}

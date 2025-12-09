@@ -11,6 +11,7 @@ import { useMemo, useState } from 'react';
 import { useInventory } from '../hooks/useInventory';
 import { useSorts } from '../hooks/usePlantSorts';
 import { BackpackIcon } from '../icons/Backpack';
+import { useBackpackOpenParam } from '../useUrlState';
 import { HudCard } from './components/HudCard';
 
 const GRID_SIZE = 24; // 3x4 grid
@@ -156,7 +157,7 @@ function InventoryItemModal({
 
 export function InventoryHud() {
     const { data: inventory } = useInventory();
-    const [open, setOpen] = useState(false);
+    const [isOpen, setIsOpen] = useBackpackOpenParam();
     const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null);
 
     const items = inventory?.items as InventoryItemData[] | undefined;
@@ -204,14 +205,16 @@ export function InventoryHud() {
             ? sortData?.find((s) => s.id === Number(selectedItem.entityId))
             : undefined;
 
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open);
+        if (!open) setSelectedItemKey(null);
+    };
+
     return (
         <HudCard open position="floating" className="static p-0.5">
             <Modal
-                open={open}
-                onOpenChange={(isOpen) => {
-                    setOpen(isOpen);
-                    if (!isOpen) setSelectedItemKey(null);
-                }}
+                open={isOpen}
+                onOpenChange={handleOpenChange}
                 title="Ruksak"
                 trigger={
                     <IconButton

@@ -189,9 +189,10 @@ export default function PolitikaPrivatnostiPage() {
                         podaci prikupljeni putem Sentry usluge pohranjuju se na
                         poslužiteljima unutar <strong>Europske unije</strong>,
                         čime osiguravamo usklađenost s Općom uredbom o zaštiti
-                        podataka (GDPR). Sentry je certificiran prema standardima
-                        zaštite podataka i primjenjuje odgovarajuće tehničke i
-                        organizacijske mjere za zaštitu vaših podataka.
+                        podataka (GDPR). Sentry je certificiran prema
+                        standardima zaštite podataka i primjenjuje odgovarajuće
+                        tehničke i organizacijske mjere za zaštitu vaših
+                        podataka.
                     </p>
                     <p>
                         Podaci prikupljeni u dijagnostičke svrhe čuvaju se

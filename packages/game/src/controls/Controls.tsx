@@ -103,20 +103,17 @@ export function Controls() {
     const [isAnimating, setIsAnimating] = useState(false);
 
     // Closeup
-    const isCloseUpView = useGameState((state) => state.view) === 'closeup';
+    const isCloseUp = useGameState((state) => state.view) === 'closeup';
     const closeupBlock = useGameState((state) => state.closeupBlock);
-    // Find stat containing the closeup block
-    const closeupPosition: [number, number, number] = closeupBlock
+
+    // Find stack position containing the closeup block
+    const targetPosition: [number, number, number] = closeupBlock
         ? (garden.data?.stacks
               .find((stack) =>
                   stack.blocks.some((block) => block.id === closeupBlock.id),
               )
               ?.position.toArray() as [number, number, number])
         : [0, 0, 0];
-    const { isCloseUp, targetPosition } = {
-        isCloseUp: isCloseUpView,
-        targetPosition: closeupPosition,
-    };
 
     return (
         <>
