@@ -1,3 +1,4 @@
+import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { Markdown } from '@gredice/ui/Markdown';
 import { Alert } from '@signalco/ui/Alert';
@@ -10,6 +11,9 @@ import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useMemo } from 'react';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useNotifications } from '../hooks/useNotifications';
 import { useSetNotificationRead } from '../hooks/useSetNotificationRead';
@@ -30,12 +34,37 @@ type NotificationListItemProps = {
         imageUrl: string | null;
         readAt: Date | null;
         timestamp: Date;
+        raisedBedId: number | null;
     };
 };
 
 function NotificationListItem({ notification }: NotificationListItemProps) {
-    const { id, header, content, linkUrl, readAt, timestamp } = notification;
+    const router = useRouter();
+    const { id, header, content, linkUrl, readAt, timestamp, raisedBedId } =
+        notification;
     const setNotificationRead = useSetNotificationRead();
+    const { data: currentGarden } = useCurrentGarden();
+
+    // TODO: Remove this backward compatibility code after December 9, 2026
+    // This generates the raised bed closeup URL from raisedBedId if linkUrl is not present
+    // After all notifications have been migrated to include linkUrl, this can be removed
+    const computedLinkUrl = useMemo(() => {
+        if (linkUrl) {
+            return linkUrl;
+        }
+
+        // Backward compatibility: generate URL from raisedBedId if linkUrl is missing
+        if (raisedBedId && currentGarden) {
+            const raisedBed = currentGarden.raisedBeds.find(
+                (bed) => bed.id === raisedBedId,
+            );
+            if (raisedBed?.name) {
+                return getRaisedBedCloseupUrl(raisedBed.name);
+            }
+        }
+
+        return '#';
+    }, [linkUrl, raisedBedId, currentGarden]);
 
     function handleSetNotificationRead() {
         setNotificationRead.mutate({
@@ -50,7 +79,10 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
     return (
         <div className="relative">
             <ListItem
-                href={linkUrl ?? '#'}
+                nodeId={id}
+                onSelected={() => {
+                    router.push(computedLinkUrl);
+                }}
                 className="rounded-none p-4"
                 label={
                     <Row spacing={2}>

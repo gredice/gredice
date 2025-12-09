@@ -1,6 +1,7 @@
 'use server';
 
 import { randomUUID } from 'node:crypto';
+import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import { notifyOperationUpdate } from '@gredice/notifications';
 import {
     acceptOperation,
@@ -196,6 +197,7 @@ export async function completeOperation(
     // TODO: Add operation icon
     const header = `${operationData?.information?.label}`;
     let content = `Danas je određeno **${operationData?.information?.label}**.`;
+    let linkUrl: string | undefined;
     if (operation.raisedBedId) {
         const raisedBed = await getRaisedBed(operation.raisedBedId);
         if (!raisedBed) {
@@ -203,6 +205,11 @@ export async function completeOperation(
                 `Raised bed with ID ${operation.raisedBedId} not found.`,
             );
         } else {
+            // Generate the linkUrl for raised bed closeup
+            if (raisedBed.name) {
+                linkUrl = getRaisedBedCloseupUrl(raisedBed.name);
+            }
+
             const positionIndex = operation.raisedBedFieldId
                 ? raisedBed.fields.find(
                       (f) => f.id === operation.raisedBedFieldId,
@@ -233,6 +240,7 @@ export async function completeOperation(
                   header,
                   content,
                   imageUrl: imageUrls?.[0],
+                  linkUrl,
                   timestamp: new Date(),
               })
             : undefined,
