@@ -1,6 +1,7 @@
 import { GameScene } from '@gredice/game';
 import { SignedOut } from '@signalco/auth-client/components';
 import type { ComponentProps } from 'react';
+import LoginBanner from '../components/auth/LoginBanner';
 import LoginModal from '../components/auth/LoginModal';
 import {
     enableDebugHudFlag,
@@ -29,7 +30,10 @@ export default async function Home() {
         <div className="grid grid-cols-1 h-[100dvh] relative overflow-hidden">
             <GameScene flags={flags} />
             <SignedOut>
-                <LoginModal />
+                <div className="relative h-full">
+                    <LoginBanner />
+                    <LoginModal />
+                </div>
             </SignedOut>
         </div>
     );
