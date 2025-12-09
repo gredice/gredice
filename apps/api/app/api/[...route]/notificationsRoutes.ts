@@ -72,10 +72,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 ],
             );
 
-            return context.json(
-                userNotifications.concat(accountNotifications),
-                200,
+            // Deduplicate notifications by ID to prevent duplicates when a notification
+            // has both userId and accountId set
+            const allNotifications =
+                userNotifications.concat(accountNotifications);
+            const uniqueNotifications = Array.from(
+                new Map(allNotifications.map((n) => [n.id, n])).values(),
             );
+
+            return context.json(uniqueNotifications, 200);
         },
     )
     .put(
