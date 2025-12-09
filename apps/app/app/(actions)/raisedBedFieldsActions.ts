@@ -1,5 +1,6 @@
 'use server';
 
+import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import {
     createEvent,
     createNotification,
@@ -116,6 +117,9 @@ export async function raisedBedFieldUpdatePlant({
                     raisedBedId: raisedBed.id,
                     header,
                     content,
+                    linkUrl: raisedBed.name
+                        ? getRaisedBedCloseupUrl(raisedBed.name)
+                        : undefined,
                     timestamp: new Date(),
                 });
             }
