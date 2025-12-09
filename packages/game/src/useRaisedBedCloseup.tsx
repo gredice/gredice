@@ -1,12 +1,8 @@
 import { decodeUriComponentSafe } from '@gredice/js/uri';
-import { parseAsString, useQueryState } from 'nuqs';
 import { useEffect, useMemo } from 'react';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useGameState } from './useGameState';
-
-export function useRaisedBedCloseupParam() {
-    return useQueryState('gredica', parseAsString);
-}
+import { useRaisedBedCloseupParam } from './useUrlState';
 
 export function useRemoveRaisedBedCloseupParam() {
     const [, setGredica] = useRaisedBedCloseupParam();
