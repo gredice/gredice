@@ -16,6 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { EmailPasswordForm } from './EmailPasswordForm';
+import LoginBanner from './LoginBanner';
 
 export default function LoginModal() {
     const router = useRouter();
@@ -115,75 +116,84 @@ export default function LoginModal() {
     };
 
     return (
-        <Modal
-            open
-            title="Prijava"
-            className="bg-card border-tertiary border-b-4 rounded-lg shadow-2xl"
-            dismissible={false}
-        >
-            <Tabs defaultValue="login" className="w-full">
-                <div className="flex justify-center w-full">
-                    <TabsList className="grid grid-cols-2">
-                        <TabsTrigger value="login">Prijava</TabsTrigger>
-                        <TabsTrigger value="register">Registracija</TabsTrigger>
-                    </TabsList>
-                </div>
-                <Stack spacing={2}>
-                    <TabsContent value="login" className="mt-4">
-                        <div className="space-y-4 px-1">
-                            <Stack spacing={2}>
-                                <EmailPasswordForm
-                                    onSubmit={handleLogin}
-                                    submitText="Prijava"
-                                />
-                                {error && <Alert color="danger">{error}</Alert>}
-                            </Stack>
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <Divider />
-                                </div>
-                                <div className="relative flex justify-center">
-                                    <span className="bg-background px-2 text-xs rounded-sm">
-                                        ili nastavi sa
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </TabsContent>
-                    <TabsContent value="register" className="mt-4">
-                        <div className="space-y-4 px-1">
-                            <Stack spacing={2}>
-                                <EmailPasswordForm
-                                    onSubmit={handleRegister}
-                                    submitText="Registriraj se"
-                                    registration
-                                />
-                                {error && <Alert color="danger">{error}</Alert>}
-                            </Stack>
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <Divider />
-                                </div>
-                                <div className="relative flex justify-center">
-                                    <span className="bg-background px-2 text-xs rounded-sm">
-                                        ili nastavi sa
-                                    </span>
+        <>
+            <LoginBanner />
+            <Modal
+                open
+                title="Prijava"
+                className="bg-card z-[60] border-tertiary border-b-4 rounded-lg shadow-2xl"
+                dismissible={false}
+            >
+                <Tabs defaultValue="login" className="w-full">
+                    <div className="flex justify-center w-full">
+                        <TabsList className="grid grid-cols-2">
+                            <TabsTrigger value="login">Prijava</TabsTrigger>
+                            <TabsTrigger value="register">
+                                Registracija
+                            </TabsTrigger>
+                        </TabsList>
+                    </div>
+                    <Stack spacing={2}>
+                        <TabsContent value="login" className="mt-4">
+                            <div className="space-y-4 px-1">
+                                <Stack spacing={2}>
+                                    <EmailPasswordForm
+                                        onSubmit={handleLogin}
+                                        submitText="Prijava"
+                                    />
+                                    {error && (
+                                        <Alert color="danger">{error}</Alert>
+                                    )}
+                                </Stack>
+                                <div className="relative">
+                                    <div className="absolute inset-0 flex items-center">
+                                        <Divider />
+                                    </div>
+                                    <div className="relative flex justify-center">
+                                        <span className="bg-background px-2 text-xs rounded-sm">
+                                            ili nastavi sa
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </TabsContent>
-                    <Stack spacing={1}>
-                        <FacebookLoginButton
-                            onClick={() => handleOAuthLogin('facebook')}
-                            lastUsed={lastLoginProvider === 'facebook'}
-                        />
-                        <GoogleLoginButton
-                            onClick={() => handleOAuthLogin('google')}
-                            lastUsed={lastLoginProvider === 'google'}
-                        />
+                        </TabsContent>
+                        <TabsContent value="register" className="mt-4">
+                            <div className="space-y-4 px-1">
+                                <Stack spacing={2}>
+                                    <EmailPasswordForm
+                                        onSubmit={handleRegister}
+                                        submitText="Registriraj se"
+                                        registration
+                                    />
+                                    {error && (
+                                        <Alert color="danger">{error}</Alert>
+                                    )}
+                                </Stack>
+                                <div className="relative">
+                                    <div className="absolute inset-0 flex items-center">
+                                        <Divider />
+                                    </div>
+                                    <div className="relative flex justify-center">
+                                        <span className="bg-background px-2 text-xs rounded-sm">
+                                            ili nastavi sa
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </TabsContent>
+                        <Stack spacing={1}>
+                            <FacebookLoginButton
+                                onClick={() => handleOAuthLogin('facebook')}
+                                lastUsed={lastLoginProvider === 'facebook'}
+                            />
+                            <GoogleLoginButton
+                                onClick={() => handleOAuthLogin('google')}
+                                lastUsed={lastLoginProvider === 'google'}
+                            />
+                        </Stack>
                     </Stack>
-                </Stack>
-            </Tabs>
-        </Modal>
+                </Tabs>
+            </Modal>
+        </>
     );
 }
