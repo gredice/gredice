@@ -57,6 +57,9 @@ export function CameraController({
 
     // Track if the component has been initialized to handle remount edge case
     const isInitialized = useRef(false);
+    // Store initial mount state to prevent re-initialization
+    const initialCloseUp = useRef(isCloseUp);
+    const initialTargetPosition = useRef(targetPosition);
 
     // Initialize isometric refs on mount if starting in close-up mode
     // This handles the edge case where the component remounts while isCloseUp is true
@@ -66,11 +69,11 @@ export function CameraController({
             // we need to mark the refs as initialized but NOT save the current position
             // as isometric, since we're already in close-up. The isometric position
             // should remain at (0,0,0) until we actually transition from isometric to close-up.
-            if (isCloseUp) {
+            if (initialCloseUp.current) {
                 // Initialize previousCloseUp to match current state to prevent
                 // incorrect isometric position capture on first frame
                 previousCloseUp.current = true;
-                previousTargetPosition.current = targetPosition;
+                previousTargetPosition.current = initialTargetPosition.current;
             } else {
                 // Starting in isometric mode - save current position as isometric
                 isometricPosition.current.copy(camera.position);
@@ -79,7 +82,7 @@ export function CameraController({
             }
             isInitialized.current = true;
         }
-    }, [camera, controlsRef, isCloseUp, targetPosition]);
+    }, [camera, controlsRef]);
 
     useFrame((_, delta) => {
         // Check if state changed or target position changed
