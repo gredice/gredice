@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Vector3 } from 'three';
 import { useGameState } from '../useGameState';
 import { useCurrentGarden } from './useCurrentGarden';
 
@@ -14,7 +15,7 @@ function getPlacementKey({
 
 export function useFocusPlacedBlock() {
     const { data: garden } = useCurrentGarden();
-    const setView = useGameState((state) => state.setView);
+    const orbitControls = useGameState((state) => state.orbitControls);
 
     const previousPlacements = useRef<Set<string> | null>(null);
 
@@ -28,6 +29,7 @@ export function useFocusPlacedBlock() {
                     index,
                 }),
                 block,
+                position: stack.position,
             })),
         );
 
@@ -44,13 +46,21 @@ export function useFocusPlacedBlock() {
             (entry) => !previousPlacements.current?.has(entry.key),
         );
 
-        if (newPlacements.length > 0) {
+        if (newPlacements.length > 0 && orbitControls) {
             const latestPlacement = newPlacements.at(-1);
-            if (latestPlacement?.block) {
-                setView({ view: 'closeup', block: latestPlacement.block });
+            if (latestPlacement?.position) {
+                const targetPosition = latestPlacement.position;
+                const offset = new Vector3().subVectors(
+                    targetPosition,
+                    orbitControls.target,
+                );
+
+                orbitControls.target.add(offset);
+                orbitControls.object.position.add(offset);
+                orbitControls.update();
             }
         }
 
         previousPlacements.current = currentPlacements;
-    }, [garden, setView]);
+    }, [garden, orbitControls]);
 }
