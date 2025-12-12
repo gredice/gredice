@@ -196,7 +196,7 @@ export function ImageViewer({
             <button
                 type="button"
                 title="Otvori u punoj veličini"
-                className="group relative flex items-center justify-center overflow-hidden rounded-lg shadow-md bg-muted hover:shadow-lg transition-shadow duration-200"
+                className="group relative hover:cursor-zoom-in flex items-center justify-center overflow-hidden rounded-lg shadow-md bg-muted hover:shadow-lg transition-shadow duration-200"
                 style={{ width: previewWidth, height: previewHeight }}
                 onClick={(event) => {
                     event.stopPropagation();
@@ -208,10 +208,10 @@ export function ImageViewer({
                     alt={alt}
                     fill
                     sizes={`${previewWidth}px`}
-                    className="h-full w-full object-contain"
+                    className="h-full w-full object-cover"
                 />
-                <div className="absolute inset-0 bg-white/30 opacity-0 group-hover:opacity-50 transition-opacity"></div>
-                <Search className="size-4 shrink-0 absolute bottom-1 right-1" />
+                <div className="absolute inset-0 bg-white/40 opacity-0 group-hover:opacity-50 transition-opacity"></div>
+                <Search className="stroke-white group-hover:scale-110 size-4 shrink-0 absolute bottom-1 right-1" />
             </button>
 
             {/* Modal for expanded view */}
