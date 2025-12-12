@@ -17,7 +17,7 @@ export const useHoveredBlockStore = create<useHoveredBlockStore>((set) => ({
     setHoveredBlock: (block: Block | null) => set({ hoveredBlock: block }),
 }));
 
-export function SelectableGroup({
+function RenderSelectableGroup({
     children,
     block,
 }: PropsWithChildren<{ block: Block }>) {
@@ -26,17 +26,14 @@ export function SelectableGroup({
     const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
     const { mutate: removeRaisedBedCloseupParam } =
         useRemoveRaisedBedCloseupParam();
+
+    // Retrieve raised bed data
     const { data: garden } = useCurrentGarden();
-
-    if (block.name !== 'Raised_Bed') {
-        return children;
-    }
-
     const raisedBed = garden?.raisedBeds.find(
         (bed) => bed.blockId === block.id,
     );
     if (!raisedBed) {
-        return children;
+        return <>{children}</>;
     }
 
     function handleSelected() {
@@ -70,5 +67,29 @@ export function SelectableGroup({
         >
             {children}
         </group>
+    );
+}
+
+export function SelectableGroup({
+    children,
+    block,
+}: PropsWithChildren<{ block: Block }>) {
+    const { data: garden } = useCurrentGarden();
+
+    // If not raised bed block - not selectable
+    if (block.name !== 'Raised_Bed') {
+        return <>{children}</>;
+    }
+
+    // If raised bed not assigned to the block - not selectable
+    const raisedBed = garden?.raisedBeds.find(
+        (bed) => bed.blockId === block.id,
+    );
+    if (!raisedBed) {
+        return <>{children}</>;
+    }
+
+    return (
+        <RenderSelectableGroup block={block}>{children}</RenderSelectableGroup>
     );
 }
