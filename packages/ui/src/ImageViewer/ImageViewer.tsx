@@ -198,7 +198,10 @@ export function ImageViewer({
                 title="Otvori u punoj veličini"
                 className="group relative flex items-center justify-center overflow-hidden rounded-lg shadow-md bg-muted hover:shadow-lg transition-shadow duration-200"
                 style={{ width: previewWidth, height: previewHeight }}
-                onClick={() => setIsExpanded(true)}
+                onClick={(event) => {
+                    event.stopPropagation();
+                    setIsExpanded(true);
+                }}
             >
                 <Image
                     src={src}
