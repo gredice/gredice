@@ -15,7 +15,8 @@
         "test-ui": "playwright test --ui",
         "regenerate": "pnpm run /^regenerate:.*/",
         "regenerate:feature-flags": "hypertune",
-        "generate:playwright": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts"
+        "generate-playwright": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts",
+        "generate-playwright:ui": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts --ui"
     },
     "dependencies": {
         "@flags-sdk/hypertune": "0.3.2",
@@ -24,6 +25,7 @@
         "flags": "4.0.2",
         "hypertune": "2.10.1",
         "next": "16.0.9",
+        "nuqs": "2.8.5",
         "react": "19.2.1",
         "react-dom": "19.2.1",
         "server-only": "0.0.1"

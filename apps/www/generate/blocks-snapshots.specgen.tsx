@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import type { BlockData } from '@gredice/client';
 import { EntityViewer } from '@gredice/game';
 import { test } from '@playwright/experimental-ct-react';
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 
 test.use({ deviceScaleFactor: 2, viewport: { width: 320 / 2, height: 320 } });
 
@@ -64,21 +65,28 @@ test.describe('block screenshots', async () => {
                     `rotation ${rotation + 1}`,
                 );
                 const component = await mount(
-                    <EntityViewer
-                        className="size-80"
-                        zoom={zoom}
-                        itemPosition={itemPosition}
-                        entityName={entity.information.name}
-                        appBaseUrl="https://vrt.gredice.com"
-                        rotation={rotation}
-                    />,
+                    <NuqsTestingAdapter>
+                        <EntityViewer
+                            className="size-80"
+                            zoom={zoom}
+                            itemPosition={itemPosition}
+                            entityName={entity.information.name}
+                            appBaseUrl="https://vrt.gredice.com"
+                            rotation={rotation}
+                        />
+                    </NuqsTestingAdapter>,
                 );
+
+                // Wait for possible animations to finish
                 await new Promise((resolve) => setTimeout(resolve, 1000));
+
+                console.debug('Taking screenshot now...');
 
                 // Save rotation-specific version
                 await component.screenshot({
                     omitBackground: true,
                     path: `./public/assets/blocks/${entity.information.name}_${rotation + 1}.png`,
+                    animations: 'disabled',
                 });
 
                 // Save base version (unsuffixed) for the first rotation to maintain backward compatibility
