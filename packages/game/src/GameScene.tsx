@@ -11,6 +11,7 @@ import {
 import { GameHud } from './GameHud';
 import { useBlockData } from './hooks/useBlockData';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
+import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
 import { useGameTimeManager } from './hooks/useGameTimeManager';
 import { useThemeManager } from './hooks/useThemeManager';
 import { useWeatherNow } from './hooks/useWeatherNow';
@@ -65,6 +66,7 @@ export function GameScene({
 }: GameSceneProps) {
     useGameTimeManager();
     useThemeManager();
+    useFocusPlacedBlock();
     useRaisedBedCloseup();
 
     // Prelaod all required data
