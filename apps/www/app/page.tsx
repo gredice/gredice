@@ -245,6 +245,13 @@ export default function Home() {
                     </CardContent>
                 </Card>
                 <div className="h-[600px] -mx-4 relative overflow-hidden">
+                    <Image
+                        alt="Tvoj novi vrt u Gredice aplikaciji"
+                        className="absolute inset-0 h-full w-full object-contain opacity-0 pointer-events-none"
+                        height={1080}
+                        src="/seo-fallback.png"
+                        width={1920}
+                    />
                     <LandingGameScene />
                 </div>
             </Stack>
