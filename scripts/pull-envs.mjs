@@ -16,6 +16,7 @@ function run(command, args, options) {
         const child = spawn(command, args, {
             ...options,
             stdio: 'inherit',
+            shell: true,
         });
 
         child.on('error', (error) => {
