@@ -249,7 +249,6 @@ export default function Home() {
                         alt="Isometric raised garden bed with a tree on grass"
                         className="absolute inset-0 h-full w-full object-contain opacity-0 pointer-events-none"
                         height={1080}
-                        priority
                         src="/seo-fallback.svg"
                         width={1920}
                     />
