@@ -13,6 +13,10 @@ import {
     readyDeliveryRequest,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
+import {
+    notifyDeliveryCancelled,
+    notifyDeliveryReady,
+} from '../../../../../api/lib/delivery/emailNotifications';
 import { auth } from '../../../../lib/auth/auth';
 
 export async function updateDeliveryRequestStatusAction(
@@ -34,6 +38,9 @@ export async function updateDeliveryRequestStatusAction(
             };
         }
 
+        // TODO: Refactor this so we don't call 3 similar requests for each
+        //       status change, notification should be piped through notification service
+        //       which should send emails to users and slack messages to admins
         if (status === DeliveryRequestStates.CONFIRMED) {
             await confirmDeliveryRequest(requestId);
         } else if (status === DeliveryRequestStates.CANCELLED) {
@@ -48,6 +55,7 @@ export async function updateDeliveryRequestStatusAction(
                 note: notes,
                 status,
             });
+            await notifyDeliveryCancelled(requestId);
         } else if (status === DeliveryRequestStates.PREPARING) {
             await prepareDeliveryRequest(requestId);
             await notifyDeliveryRequestEvent(requestId, 'updated', {
@@ -60,6 +68,7 @@ export async function updateDeliveryRequestStatusAction(
                 status,
                 note: notes,
             });
+            await notifyDeliveryReady(requestId);
         } else if (status === DeliveryRequestStates.FULFILLED) {
             await fulfillDeliveryRequest(requestId, notes);
             await notifyDeliveryRequestEvent(requestId, 'updated', {

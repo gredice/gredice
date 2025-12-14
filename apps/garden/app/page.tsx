@@ -1,7 +1,6 @@
 import { GameScene } from '@gredice/game';
 import { SignedOut } from '@signalco/auth-client/components';
 import type { ComponentProps } from 'react';
-import LoginBanner from '../components/auth/LoginBanner';
 import LoginModal from '../components/auth/LoginModal';
 import {
     enableDebugHudFlag,

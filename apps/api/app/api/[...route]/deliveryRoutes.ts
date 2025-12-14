@@ -2,7 +2,6 @@ import { notifyDeliveryRequestEvent } from '@gredice/notifications';
 import {
     cancelDeliveryRequest,
     createDeliveryAddress,
-    createDeliveryRequest,
     deleteDeliveryAddress,
     getDeliveryAddress,
     getDeliveryAddresses,
@@ -49,18 +48,9 @@ const updateAddressSchema = z.object({
 
 const slotsQuerySchema = z.object({
     type: z.enum(['delivery', 'pickup']).optional(),
-    from: z.string().datetime().optional(),
-    to: z.string().datetime().optional(),
+    from: z.iso.datetime().optional(),
+    to: z.iso.datetime().optional(),
     locationId: z.coerce.number().optional(),
-});
-
-const createRequestSchema = z.object({
-    operationId: z.number(),
-    slotId: z.number(),
-    mode: z.enum(['delivery', 'pickup']),
-    addressId: z.number().optional(),
-    locationId: z.number().optional(),
-    notes: z.string().max(500).optional(),
 });
 
 const cancelRequestSchema = z.object({
@@ -110,17 +100,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 accountId,
             };
 
-            try {
-                const addressId = await createDeliveryAddress(insertData);
-                const newAddress = await getDeliveryAddress(
-                    addressId,
-                    accountId,
-                );
-                return context.json(newAddress, 201);
-            } catch (error) {
-                console.error('Failed to create delivery address:', error);
-                return context.json({ error: 'Failed to create address' }, 500);
-            }
+            const addressId = await createDeliveryAddress(insertData);
+            const newAddress = await getDeliveryAddress(addressId, accountId);
+            return context.json(newAddress, 201);
         },
     )
     // PATCH /addresses/:id - update address
@@ -152,14 +134,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 ...data,
             };
 
-            try {
-                await updateDeliveryAddress(updateData, accountId);
-                const updatedAddress = await getDeliveryAddress(id, accountId);
-                return context.json(updatedAddress);
-            } catch (error) {
-                console.error('Failed to update delivery address:', error);
-                return context.json({ error: 'Failed to update address' }, 500);
-            }
+            await updateDeliveryAddress(updateData, accountId);
+            const updatedAddress = await getDeliveryAddress(id, accountId);
+            return context.json(updatedAddress);
         },
     )
     // DELETE /addresses/:id - soft delete address
@@ -175,13 +152,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { accountId } = context.get('authContext');
             const { id } = context.req.valid('param');
 
-            try {
-                await deleteDeliveryAddress(id, accountId);
-                return context.json({ success: true });
-            } catch (error) {
-                console.error('Failed to delete delivery address:', error);
-                return context.json({ error: 'Failed to delete address' }, 500);
-            }
+            await deleteDeliveryAddress(id, accountId);
+            return context.json({ success: true });
         },
     )
     // GET /pickup-locations - list pickup locations
@@ -192,16 +164,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
             tags: ['Delivery'],
         }),
         async (context) => {
-            try {
-                const locations = await getPickupLocations();
-                return context.json(locations);
-            } catch (error) {
-                console.error('Failed to get pickup locations:', error);
-                return context.json(
-                    { error: 'Failed to get pickup locations' },
-                    500,
-                );
-            }
+            const locations = await getPickupLocations();
+            return context.json(locations);
         },
     )
     // GET /slots - list available time slots
@@ -221,19 +185,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 ? new Date(to)
                 : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
-            try {
-                const slots = await getTimeSlots({
-                    type,
-                    locationId,
-                    fromDate,
-                    toDate,
-                    status: 'scheduled', // Only return bookable slots
-                });
-                return context.json(slots);
-            } catch (error) {
-                console.error('Failed to get time slots:', error);
-                return context.json({ error: 'Failed to get time slots' }, 500);
-            }
+            const slots = await getTimeSlots({
+                type,
+                locationId,
+                fromDate,
+                toDate,
+                status: 'scheduled', // Only return bookable slots
+            });
+            return context.json(slots);
         },
     )
     // GET /requests - list user's delivery requests
@@ -246,52 +205,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId } = context.get('authContext');
-
-            try {
-                const requests = await getDeliveryRequestsWithEvents(accountId);
-                return context.json(requests);
-            } catch (error) {
-                console.error('Failed to get delivery requests:', error);
-                return context.json(
-                    { error: 'Failed to get delivery requests' },
-                    500,
-                );
-            }
-        },
-    )
-    // POST /requests - create delivery request
-    .post(
-        '/requests',
-        describeRoute({
-            description: 'Create a new delivery request',
-            tags: ['Delivery'],
-        }),
-        authValidator(['user', 'admin']),
-        zValidator('json', createRequestSchema),
-        async (context) => {
-            const { accountId } = context.get('authContext');
-            const data = context.req.valid('json');
-
-            try {
-                const requestId = await createDeliveryRequest({
-                    ...data,
-                    accountId: accountId,
-                });
-                await notifyDeliveryRequestEvent(requestId, 'created');
-                return context.json({ id: requestId }, 201);
-            } catch (error) {
-                console.error('Failed to create delivery request:', error);
-                return context.json(
-                    {
-                        error: 'Failed to create delivery request',
-                        details:
-                            error instanceof Error
-                                ? error.message
-                                : 'Unknown error',
-                    },
-                    500,
-                );
-            }
+            const requests = await getDeliveryRequestsWithEvents(accountId);
+            return context.json(requests);
         },
     )
     // PATCH /requests/:id/cancel - cancel delivery request
@@ -310,6 +225,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { cancelReason, note } = context.req.valid('json');
 
             try {
+                // TODO: Move to service
+                // TODO: Add email notification for delivery cancellation
                 await cancelDeliveryRequest(
                     id,
                     'user',
