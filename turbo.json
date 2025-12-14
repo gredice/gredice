@@ -11,6 +11,9 @@
                 "!.next/cache/**"
             ]
         },
+        "clean": {
+            "cache": false
+        },
         "lint": {},
         "lint:migrate": {
             "cache": false
