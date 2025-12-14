@@ -36,7 +36,7 @@ function InventoryItemCell({
     if (!item || !sortData) {
         // Empty slot
         return (
-            <div className="aspect-square rounded-lg border-2 border-dashed border-muted/30 bg-card/20" />
+            <div className="aspect-square rounded-lg border-2 border-dashed bg-card/20" />
         );
     }
 
