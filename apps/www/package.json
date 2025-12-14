@@ -4,6 +4,7 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "clean": "rimraf .next .turbo dist build out coverage .vercel storybook-static",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
         "dev": "next dev -p 3000",

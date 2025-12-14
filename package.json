@@ -3,6 +3,7 @@
     "private": true,
     "scripts": {
         "build": "turbo build",
+        "clean": "turbo clean",
         "dev": "node ./scripts/dev-with-proxy.mjs",
         "env:pull": "node ./scripts/pull-envs.mjs",
         "lint": "turbo lint",
@@ -15,6 +16,7 @@
         "generate:game-assets": "node ./scripts/generate-game-assets.mjs"
     },
     "devDependencies": {
+        "rimraf": "6.0.1",
         "turbo": "2.6.3",
         "typescript": "5.9.3"
     },

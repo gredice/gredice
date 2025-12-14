@@ -11,6 +11,7 @@
         ".": "./src/index.ts"
     },
     "scripts": {
+        "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write"
     },
