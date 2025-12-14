@@ -2,7 +2,6 @@ import { notifyDeliveryRequestEvent } from '@gredice/notifications';
 import {
     cancelDeliveryRequest,
     createDeliveryAddress,
-    createDeliveryRequest,
     deleteDeliveryAddress,
     getDeliveryAddress,
     getDeliveryAddresses,
@@ -17,7 +16,6 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
-import { notifyDeliveryScheduled } from '../../../lib/delivery/emailNotifications';
 import {
     type AuthVariables,
     authValidator,
@@ -53,15 +51,6 @@ const slotsQuerySchema = z.object({
     from: z.iso.datetime().optional(),
     to: z.iso.datetime().optional(),
     locationId: z.coerce.number().optional(),
-});
-
-const createRequestSchema = z.object({
-    operationId: z.number(),
-    slotId: z.number(),
-    mode: z.enum(['delivery', 'pickup']),
-    addressId: z.number().optional(),
-    locationId: z.number().optional(),
-    notes: z.string().max(500).optional(),
 });
 
 const cancelRequestSchema = z.object({
@@ -218,43 +207,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { accountId } = context.get('authContext');
             const requests = await getDeliveryRequestsWithEvents(accountId);
             return context.json(requests);
-        },
-    )
-    // POST /requests - create delivery request
-    .post(
-        '/requests',
-        describeRoute({
-            description: 'Create a new delivery request',
-            tags: ['Delivery'],
-        }),
-        authValidator(['user', 'admin']),
-        zValidator('json', createRequestSchema),
-        async (context) => {
-            const { accountId, userId } = context.get('authContext');
-            const data = context.req.valid('json');
-
-            try {
-                // TODO: Move to service
-                const requestId = await createDeliveryRequest({
-                    ...data,
-                    accountId: accountId,
-                });
-                await notifyDeliveryRequestEvent(requestId, 'created');
-                await notifyDeliveryScheduled(requestId, { userId });
-                return context.json({ id: requestId }, 201);
-            } catch (error) {
-                console.error('Failed to create delivery request:', error);
-                return context.json(
-                    {
-                        error: 'Failed to create delivery request',
-                        details:
-                            error instanceof Error
-                                ? error.message
-                                : 'Unknown error',
-                    },
-                    500,
-                );
-            }
         },
     )
     // PATCH /requests/:id/cancel - cancel delivery request
