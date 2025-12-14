@@ -7,11 +7,11 @@ import {
 } from '@react-email/components';
 import { ContentCard } from '../../components/ContentCard';
 import { Divider } from '../../components/Divider';
-import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 import { GrediceLogotype } from '../../components/GrediceLogotype';
 import { Header } from '../../components/Header';
 import { Paragraph } from '../../components/Paragraph';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 
 export interface DeliveryReadyEmailTemplateProps {
     email: string;
@@ -59,11 +59,13 @@ export default function DeliveryReadyEmailTemplate({
                         </Paragraph>
                     ) : null}
                     <Paragraph>
-                        Ako ti nešto iskrsne ili trebaš dodatne upute, javi nam se da
-                        na vrijeme prilagodimo dostavu.
+                        Ako ti nešto iskrsne ili trebaš dodatne upute, javi nam
+                        se da na vrijeme prilagodimo dostavu.
                     </Paragraph>
                     <Section className="my-[32px] text-center">
-                        <PrimaryButton href={manageUrl}>Prikaži detalje</PrimaryButton>
+                        <PrimaryButton href={manageUrl}>
+                            Prikaži detalje
+                        </PrimaryButton>
                     </Section>
                     <Paragraph>Vidimo se uskoro! 🌱</Paragraph>
                     <Paragraph>{appName} tim</Paragraph>

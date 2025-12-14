@@ -36,6 +36,7 @@ async function sendDeliveryEmails(
         await Promise.all(
             details.recipients.map((recipient) =>
                 senders[type](recipient, {
+                    email: recipient,
                     deliveryWindow: details.deliveryWindow,
                     addressLine: details.addressLine,
                     contactName: details.contactName,

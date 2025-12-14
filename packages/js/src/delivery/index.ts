@@ -28,7 +28,10 @@ function capitalize(value: string): string {
 export function formatDeliveryWindow(
     start: Date | string,
     end: Date | string,
-    { locale = 'hr-HR', timeZone = 'Europe/Zagreb' }: FormatDeliveryWindowOptions = {},
+    {
+        locale = 'hr-HR',
+        timeZone = 'Europe/Zagreb',
+    }: FormatDeliveryWindowOptions = {},
 ): string {
     const startDate = toDate(start);
     const endDate = toDate(end);

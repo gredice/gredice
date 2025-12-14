@@ -7,11 +7,11 @@ import {
 } from '@react-email/components';
 import { ContentCard } from '../../components/ContentCard';
 import { Divider } from '../../components/Divider';
-import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 import { GrediceLogotype } from '../../components/GrediceLogotype';
 import { Header } from '../../components/Header';
 import { Paragraph } from '../../components/Paragraph';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 
 export interface DeliveryScheduledEmailTemplateProps {
     email: string;
@@ -47,8 +47,8 @@ export default function DeliveryScheduledEmailTemplate({
                     <Header>Hvala na narudžbi! 🌱</Header>
                     <Paragraph>{greeting}</Paragraph>
                     <Paragraph>
-                        Zaprimili smo tvoj zahtjev za dostavu i spremit ćemo sve na
-                        vrijeme za dogovoreni termin.
+                        Zaprimili smo tvoj zahtjev za dostavu i spremit ćemo sve
+                        na vrijeme za dogovoreni termin.
                     </Paragraph>
                     <Paragraph>
                         Čim pripremimo dostavu poslat ćemo ti podsjetnik s istim
@@ -63,15 +63,17 @@ export default function DeliveryScheduledEmailTemplate({
                         </Paragraph>
                     ) : null}
                     <Paragraph>
-                        Budi dostupan/dostupna u navedenom terminu kako bismo mogli
-                        predati dostavu bez čekanja.
+                        Budi dostupan/dostupna u navedenom terminu kako bismo
+                        mogli predati dostavu bez čekanja.
                     </Paragraph>
                     <Section className="my-[32px] text-center">
-                        <PrimaryButton href={manageUrl}>Otvori aplikaciju</PrimaryButton>
+                        <PrimaryButton href={manageUrl}>
+                            Otvori aplikaciju
+                        </PrimaryButton>
                     </Section>
                     <Paragraph>
-                        Ako trebaš bilo kakvu pomoć, možeš nam se javiti direktno iz
-                        aplikacije.
+                        Ako trebaš bilo kakvu pomoć, možeš nam se javiti
+                        direktno iz aplikacije.
                     </Paragraph>
                     <Paragraph>{appName} tim</Paragraph>
                     <Divider className="my-[26px]" />

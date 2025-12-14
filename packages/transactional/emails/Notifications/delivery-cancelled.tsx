@@ -7,11 +7,11 @@ import {
 } from '@react-email/components';
 import { ContentCard } from '../../components/ContentCard';
 import { Divider } from '../../components/Divider';
-import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 import { GrediceLogotype } from '../../components/GrediceLogotype';
 import { Header } from '../../components/Header';
 import { Paragraph } from '../../components/Paragraph';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 
 export interface DeliveryCancelledEmailTemplateProps {
     email: string;
@@ -47,7 +47,8 @@ export default function DeliveryCancelledEmailTemplate({
                     <Header>Žao nam je - dostava je otkazana</Header>
                     <Paragraph>{greeting}</Paragraph>
                     <Paragraph>
-                        Nažalost, dostava zakazana za navedeni termin je otkazana.
+                        Nažalost, dostava zakazana za navedeni termin je
+                        otkazana.
                     </Paragraph>
                     <Paragraph>
                         <strong>📅 Termin:</strong> {deliveryWindow}
@@ -62,11 +63,13 @@ export default function DeliveryCancelledEmailTemplate({
                         dogovoriti termin u aplikaciji.
                     </Paragraph>
                     <Section className="my-[32px] text-center">
-                        <PrimaryButton href={manageUrl}>Upravljaj narudžbom</PrimaryButton>
+                        <PrimaryButton href={manageUrl}>
+                            Upravljaj narudžbom
+                        </PrimaryButton>
                     </Section>
                     <Paragraph>
-                        Ako trebaš pomoć ili želiš dodatne informacije, javi nam se iz
-                        aplikacije i rado ćemo pomoći.
+                        Ako trebaš pomoć ili želiš dodatne informacije, javi nam
+                        se iz aplikacije i rado ćemo pomoći.
                     </Paragraph>
                     <Paragraph>{appName} tim</Paragraph>
                     <Divider className="my-[26px]" />
