@@ -1,34 +1,26 @@
+import { buildDeliveryEmailDetails } from '@gredice/storage';
 import {
-    type BuildDeliveryEmailDetailsOptions,
-    buildDeliveryEmailDetails,
-} from '@gredice/storage';
-import {
+    sendDeliveryCancelled,
     sendDeliveryReady,
     sendDeliveryScheduled,
 } from '../email/transactional';
 
+// TODO: Move to shared location so env vars can be shared between services
 const CUSTOMER_APP_URL =
     process.env.GREDICE_GARDEN_APP_URL ?? 'https://vrt.gredice.com';
 
-type DeliveryNotificationType = 'scheduled' | 'ready';
-
-type DeliverySenders = {
-    scheduled: typeof sendDeliveryScheduled;
-    ready: typeof sendDeliveryReady;
-};
-
-const senders: DeliverySenders = {
+const senders = {
     scheduled: sendDeliveryScheduled,
     ready: sendDeliveryReady,
+    cancelled: sendDeliveryCancelled,
 };
 
 async function sendDeliveryEmails(
     requestId: string,
-    type: DeliveryNotificationType,
-    options?: BuildDeliveryEmailDetailsOptions,
+    type: keyof typeof senders,
 ) {
     try {
-        const details = await buildDeliveryEmailDetails(requestId, options);
+        const details = await buildDeliveryEmailDetails(requestId);
         if (!details) {
             return false;
         }
@@ -56,13 +48,14 @@ async function sendDeliveryEmails(
     }
 }
 
-export async function notifyDeliveryScheduled(
-    requestId: string,
-    options?: BuildDeliveryEmailDetailsOptions,
-) {
-    return sendDeliveryEmails(requestId, 'scheduled', options);
+export async function notifyDeliveryScheduled(requestId: string) {
+    return sendDeliveryEmails(requestId, 'scheduled');
 }
 
 export async function notifyDeliveryReady(requestId: string) {
     return sendDeliveryEmails(requestId, 'ready');
+}
+
+export async function notifyDeliveryCancelled(requestId: string) {
+    return sendDeliveryEmails(requestId, 'cancelled');
 }

@@ -2,7 +2,6 @@ import 'server-only';
 import { formatDeliveryWindow } from '@gredice/js/delivery';
 import { getAccountUsers } from '../repositories/accountsRepo';
 import { getDeliveryRequest } from '../repositories/deliveryRequestsRepo';
-import { getUser } from '../repositories/usersRepo';
 
 export interface DeliveryEmailDetails {
     requestId: string;
@@ -13,13 +12,8 @@ export interface DeliveryEmailDetails {
     contactName?: string;
 }
 
-export interface BuildDeliveryEmailDetailsOptions {
-    userId?: string;
-}
-
 export async function buildDeliveryEmailDetails(
     requestId: string,
-    { userId }: BuildDeliveryEmailDetailsOptions = {},
 ): Promise<DeliveryEmailDetails | null> {
     const request = await getDeliveryRequest(requestId);
 
@@ -31,16 +25,8 @@ export async function buildDeliveryEmailDetails(
         return null;
     }
 
+    // We send emails for delivery to all account users
     const recipients = new Set<string>();
-
-    if (userId) {
-        const user = await getUser(userId);
-        const email = user?.userName?.trim();
-        if (email) {
-            recipients.add(email);
-        }
-    }
-
     const accountUsers = await getAccountUsers(request.accountId);
     for (const accountUser of accountUsers) {
         const email = accountUser.user?.userName?.trim();
@@ -50,6 +36,10 @@ export async function buildDeliveryEmailDetails(
     }
 
     if (recipients.size === 0) {
+        console.error('No recipients found for delivery request email', {
+            requestId,
+            accountId: request.accountId,
+        });
         return null;
     }
 
@@ -58,6 +48,8 @@ export async function buildDeliveryEmailDetails(
         request.slot.endAt,
     );
 
+    // TODO: Extract address line formatting utility
+    // TODO: Use full address in email templates (currently only street1 and city are used)
     const addressLine = request.address
         ? [request.address.street1, request.address.city]
               .filter(Boolean)

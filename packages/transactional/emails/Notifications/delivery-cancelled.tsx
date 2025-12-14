@@ -28,7 +28,7 @@ export default function DeliveryCancelledEmailTemplate({
     deliveryWindow,
     addressLine,
     contactName,
-    manageUrl = 'https://vrt.gredice.com',
+    manageUrl = 'https://vrt.gredice.com/?pregled=dostava',
     appName = 'Gredice',
     appDomain = 'gredice.com',
 }: DeliveryCancelledEmailTemplateProps) {
@@ -64,7 +64,7 @@ export default function DeliveryCancelledEmailTemplate({
                     </Paragraph>
                     <Section className="my-[32px] text-center">
                         <PrimaryButton href={manageUrl}>
-                            Upravljaj narudžbom
+                            Upravljaj dostavama
                         </PrimaryButton>
                     </Section>
                     <Paragraph>

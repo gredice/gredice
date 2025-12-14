@@ -37,7 +37,7 @@ export function StepItem({
     const [checked, setChecked] = useState(false);
     const [expanded, setExpanded] = useState<boolean | null>(null);
     const {
-        timers,
+        // timers,
         createTimer,
         startTimer,
         pauseTimer,

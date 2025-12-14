@@ -402,9 +402,7 @@ export async function processItem(itemData: {
                                 deliveryRequestId,
                                 'created',
                             );
-                            await notifyDeliveryScheduled(deliveryRequestId, {
-                                userId: itemData.userId,
-                            });
+                            await notifyDeliveryScheduled(deliveryRequestId);
                         } catch (error) {
                             console.error(
                                 `Failed to create delivery request for operation ${operationId}:`,

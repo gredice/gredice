@@ -28,7 +28,7 @@ export default function DeliveryReadyEmailTemplate({
     deliveryWindow,
     addressLine,
     contactName,
-    manageUrl = 'https://vrt.gredice.com',
+    manageUrl = 'https://vrt.gredice.com/?pregled=dostava',
     appName = 'Gredice',
     appDomain = 'gredice.com',
 }: DeliveryReadyEmailTemplateProps) {
