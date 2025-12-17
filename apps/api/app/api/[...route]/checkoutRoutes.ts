@@ -1,15 +1,10 @@
 import {
     assignStripeCustomerId,
     consumeInventoryItem,
-    type EntityStandardized,
     getAccount,
-    getEntitiesFormatted,
-    getInventory,
-    getRaisedBed,
     getShoppingCart,
     getUser,
     markCartPaidIfAllItemsPaid,
-    type SelectShoppingCartItem,
     setCartItemPaid,
     spendSunflowers,
 } from '@gredice/storage';
@@ -22,244 +17,12 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { getCartInfo } from '../../../lib/checkout/cartInfo';
 import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
 import { processItem } from '../../../lib/stripe/processCheckoutSession';
-
-export type ShoppingCartDiscount = {
-    cartItemId: number;
-    discountPrice: number;
-    discountDescription: string;
-};
-
-export type ShoppingCartItemWithShopData = SelectShoppingCartItem & {
-    shopData: {
-        name?: string;
-        description?: string;
-        image?: string;
-        price?: number;
-        discountPrice?: number;
-        discountDescription?: string;
-    };
-};
-
-// TODO: Move to lib
-export async function getCartInfo(
-    items: SelectShoppingCartItem[],
-    accountId?: string,
-) {
-    const entityTypeNames = items.map((item) => item.entityTypeName);
-    const uniqueEntityTypeNames = Array.from(new Set(entityTypeNames));
-    const entitiesData = await Promise.all(
-        uniqueEntityTypeNames.map(getEntitiesFormatted),
-    );
-    const entitiesByTypeName = uniqueEntityTypeNames.reduce(
-        (acc, typeName, index) => {
-            const entities = entitiesData[index] as EntityStandardized[];
-            if (!acc[typeName]) {
-                acc[typeName] = [];
-            }
-            acc[typeName].push(...entities);
-            return acc;
-        },
-        {} as Record<string, EntityStandardized[]>,
-    );
-
-    const discounts: ShoppingCartDiscount[] = [];
-    const inventory = accountId ? await getInventory(accountId) : [];
-    const inventoryLookup = new Map(
-        inventory.map((item) => [
-            `${item.entityTypeName}-${item.entityId}`,
-            item.amount,
-        ]),
-    );
-
-    // Process paid discounts for items that are already paid
-    const paidItems = items.filter((item) => item.status === 'paid');
-    if (paidItems.length > 0) {
-        for (const item of paidItems) {
-            discounts.push({
-                cartItemId: item.id,
-                discountPrice: 0,
-                discountDescription: 'Već plaćeno',
-            });
-        }
-    }
-
-    // Inventory discounts (free items when available)
-    for (const item of items) {
-        const parsedAdditional = item.additionalData
-            ? JSON.parse(item.additionalData)
-            : {};
-        const wantsInventory =
-            item.currency === 'inventory' || parsedAdditional.useInventory;
-        if (wantsInventory) {
-            const availableCount =
-                inventoryLookup.get(
-                    `${item.entityTypeName}-${item.entityId}`,
-                ) ?? 0;
-            if (availableCount > 0) {
-                discounts.push({
-                    cartItemId: item.id,
-                    discountPrice: 0,
-                    discountDescription: 'Korištenje inventara',
-                });
-            }
-        }
-    }
-
-    let allowPurchase = true;
-    const notes: string[] = [];
-
-    const cartItemsWithShopInfo = items
-        .map((item) => {
-            const entityData = entitiesByTypeName[item.entityTypeName].find(
-                (entity) => entity?.id.toString() === item.entityId,
-            );
-            if (!entityData) {
-                console.warn('Entity not found', {
-                    entityId: item.entityId,
-                    entityTypeName: item.entityTypeName,
-                });
-                return null;
-            }
-
-            const parsedAdditional = item.additionalData
-                ? JSON.parse(item.additionalData)
-                : {};
-            const wantsInventory =
-                item.currency === 'inventory' || parsedAdditional.useInventory;
-            const inventoryAvailable = wantsInventory
-                ? (inventoryLookup.get(
-                      `${item.entityTypeName}-${item.entityId}`,
-                  ) ?? 0)
-                : 0;
-
-            if (wantsInventory && inventoryAvailable <= 0) {
-                notes.push(
-                    `${
-                        entityData.information?.label ||
-                        entityData.information?.name
-                    } trenutno nije dostupan u inventaru`,
-                );
-                allowPurchase = false;
-            }
-
-            return {
-                ...item,
-                usesInventory: wantsInventory,
-                inventoryAvailable,
-                shopData: {
-                    name:
-                        entityData.information?.label ??
-                        entityData.information?.name,
-                    description:
-                        entityData.information?.shortDescription ??
-                        entityData.information?.description,
-                    image:
-                        entityData.image?.cover?.url ??
-                        entityData.images?.cover?.url ??
-                        entityData.information?.plant?.image?.cover?.url ??
-                        entityData.information?.plant?.images?.cover?.url,
-                    price:
-                        entityData.prices?.perOperation ??
-                        entityData.prices?.perPlant ??
-                        entityData.information?.plant?.prices?.perOperation ??
-                        entityData.information?.plant?.prices?.perPlant,
-                    discountPrice: discounts.find(
-                        (discount) => discount.cartItemId === item.id,
-                    )?.discountPrice,
-                    discountDescription: discounts.find(
-                        (discount) => discount.cartItemId === item.id,
-                    )?.discountDescription,
-                },
-            };
-        })
-        .filter((i) => Boolean(i))
-        // biome-ignore lint/style/noNonNullAssertion: Applied boolean filter line above
-        .map((i) => i!)
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
-    // --- Notes logic ---
-    // Group items by raisedBedId, count items per raised bed (excluding paid items)
-    // Find all 'new' raised beds
-    const raisedBedItemCounts: Record<number, number> = {};
-    cartItemsWithShopInfo.forEach((item) => {
-        if (item.raisedBedId && item.status !== 'paid') {
-            raisedBedItemCounts[item.raisedBedId] =
-                (raisedBedItemCounts[item.raisedBedId] || 0) + 1;
-        }
-    });
-    const mentionedRaisedBedIds = Array.from(
-        new Set(
-            cartItemsWithShopInfo
-                .filter((item) => Boolean(item.raisedBedId))
-                // biome-ignore lint/style/noNonNullAssertion: Applied boolean filter line above
-                .map((item) => item.raisedBedId!),
-        ),
-    );
-    const mentionedRaisedBeds = await Promise.all(
-        mentionedRaisedBedIds.map((id) => getRaisedBed(id)),
-    );
-
-    const newRaisedBeds = mentionedRaisedBeds.filter(
-        (rb) => rb && rb.status === 'new',
-    );
-    const requiredItemsCount = Math.ceil(newRaisedBeds.length / 2) * 9;
-
-    const cartItemsInNewRaisedBeds = cartItemsWithShopInfo.filter(
-        (item) =>
-            item.status !== 'paid' &&
-            item.raisedBedId &&
-            item.entityTypeName === 'plantSort' &&
-            newRaisedBeds.some((rb) => rb?.id === item.raisedBedId),
-    );
-    if (cartItemsInNewRaisedBeds.length < requiredItemsCount) {
-        const missingItemsCount =
-            requiredItemsCount - cartItemsInNewRaisedBeds.length;
-        const neededPlural =
-            missingItemsCount === 1
-                ? 'Potrebna je'
-                : missingItemsCount > 4
-                  ? 'Potrebno je'
-                  : 'Potrebne su';
-        const plantPlural =
-            missingItemsCount === 1
-                ? 'biljka'
-                : missingItemsCount > 4
-                  ? 'biljaka'
-                  : 'biljke';
-        const raisedBedsPlural =
-            newRaisedBeds.length === 1 ? 'nove gredice' : 'novih gredica';
-        notes.push(
-            `${neededPlural} još ${missingItemsCount} ${plantPlural} u ovoj ili susjednoj gredici za postavljanje ${raisedBedsPlural}.`,
-        );
-        allowPurchase = false;
-    }
-
-    // Minimum order (0.5 EUR)
-    const totalCartValue = cartItemsWithShopInfo.reduce((sum, item) => {
-        if (item.status !== 'paid' && item.currency === 'eur') {
-            const price =
-                item.shopData.discountPrice ?? item.shopData.price ?? 0;
-            return sum + price * item.amount;
-        }
-        return sum;
-    }, 0);
-    if (totalCartValue > 0 && totalCartValue < 0.5) {
-        notes.push('Minimalna vrijednost narudžbe je 0,50 €.');
-        allowPurchase = false;
-    }
-    // --- End notes logic ---
-
-    return {
-        notes,
-        allowPurchase,
-        items: cartItemsWithShopInfo,
-    };
-}
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .post(
@@ -321,43 +84,93 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Cart in invalid state' }, 400);
             }
 
-            // Handle sunflower items
-            const sunflowerCartItemsWithShopData = cartInfo.items.filter(
-                (item) =>
-                    item.status !== 'paid' && item.currency === 'sunflower',
+            const requiresStripePayment = cartInfo.items.some(
+                (item) => item.status !== 'paid' && item.currency === 'eur',
             );
-            if (sunflowerCartItemsWithShopData.length > 0) {
-                // Check if there are enough sunflowers in the account
-                for (const item of sunflowerCartItemsWithShopData) {
-                    const sunflowerAmount = Math.round(
-                        (typeof item.shopData.discountPrice === 'number'
-                            ? item.shopData.discountPrice
-                            : (item.shopData.price ?? 0)) * 1000,
-                    );
-                    let didPaySunflowers = false;
-                    try {
-                        await spendSunflowers(
-                            accountId,
-                            sunflowerAmount,
-                            `shoppingCartItem:${item.id}`,
+
+            // Handle sunflower items
+            if (!requiresStripePayment) {
+                const sunflowerCartItemsWithShopData = cartInfo.items.filter(
+                    (item) =>
+                        item.status !== 'paid' && item.currency === 'sunflower',
+                );
+                if (sunflowerCartItemsWithShopData.length > 0) {
+                    // Check if there are enough sunflowers in the account
+                    for (const item of sunflowerCartItemsWithShopData) {
+                        const sunflowerAmount = Math.round(
+                            (typeof item.shopData.discountPrice === 'number'
+                                ? item.shopData.discountPrice
+                                : (item.shopData.price ?? 0)) * 1000,
                         );
-                        didPaySunflowers = true;
-                    } catch (error) {
-                        console.error('Error spending sunflowers', {
-                            error,
-                            accountId,
-                            sunflowerAmount,
-                            item,
-                        });
+                        let didPaySunflowers = false;
+                        try {
+                            await spendSunflowers(
+                                accountId,
+                                sunflowerAmount,
+                                `shoppingCartItem:${item.id}`,
+                            );
+                            didPaySunflowers = true;
+                        } catch (error) {
+                            console.error('Error spending sunflowers', {
+                                error,
+                                accountId,
+                                sunflowerAmount,
+                                item,
+                            });
+                        }
+
+                        if (didPaySunflowers) {
+                            await Promise.all([
+                                setCartItemPaid(item.id),
+                                processItem({
+                                    accountId,
+                                    ...item,
+                                    amount_total: sunflowerAmount,
+                                    additionalData: {
+                                        ...(item.additionalData
+                                            ? JSON.parse(item.additionalData)
+                                            : {}),
+                                        ...(deliveryInfo
+                                            ? { delivery: deliveryInfo }
+                                            : {}),
+                                    },
+                                }),
+                            ]);
+                        }
                     }
 
-                    if (didPaySunflowers) {
+                    // After processing sunflower items, check if all items are paid
+                    await markCartPaidIfAllItemsPaid(cart.id);
+                }
+
+                // Handle inventory items
+                const inventoryCartItems = cartInfo.items.filter(
+                    (item) =>
+                        item.status !== 'paid' &&
+                        (item.currency === 'inventory' || item.usesInventory),
+                );
+
+                if (inventoryCartItems.length > 0) {
+                    for (const item of inventoryCartItems) {
+                        if ((item.inventoryAvailable ?? 0) < item.amount) {
+                            return context.json(
+                                { error: 'Nema dovoljno predmeta u inventaru' },
+                                400,
+                            );
+                        }
+
                         await Promise.all([
+                            consumeInventoryItem(accountId, {
+                                entityTypeName: item.entityTypeName,
+                                entityId: item.entityId,
+                                amount: item.amount,
+                                source: `shoppingCartItem:${item.id}`,
+                            }),
                             setCartItemPaid(item.id),
                             processItem({
                                 accountId,
                                 ...item,
-                                amount_total: sunflowerAmount,
+                                amount_total: 0,
                                 additionalData: {
                                     ...(item.additionalData
                                         ? JSON.parse(item.additionalData)
@@ -369,53 +182,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             }),
                         ]);
                     }
+
+                    await markCartPaidIfAllItemsPaid(cart.id);
                 }
-
-                // After processing sunflower items, check if all items are paid
-                await markCartPaidIfAllItemsPaid(cart.id);
-            }
-
-            // Handle inventory items
-            const inventoryCartItems = cartInfo.items.filter(
-                (item) =>
-                    item.status !== 'paid' &&
-                    (item.currency === 'inventory' || item.usesInventory),
-            );
-
-            if (inventoryCartItems.length > 0) {
-                for (const item of inventoryCartItems) {
-                    if ((item.inventoryAvailable ?? 0) < item.amount) {
-                        return context.json(
-                            { error: 'Nema dovoljno predmeta u inventaru' },
-                            400,
-                        );
-                    }
-
-                    await Promise.all([
-                        consumeInventoryItem(accountId, {
-                            entityTypeName: item.entityTypeName,
-                            entityId: item.entityId,
-                            amount: item.amount,
-                            source: `shoppingCartItem:${item.id}`,
-                        }),
-                        setCartItemPaid(item.id),
-                        processItem({
-                            accountId,
-                            ...item,
-                            amount_total: 0,
-                            additionalData: {
-                                ...(item.additionalData
-                                    ? JSON.parse(item.additionalData)
-                                    : {}),
-                                ...(deliveryInfo
-                                    ? { delivery: deliveryInfo }
-                                    : {}),
-                            },
-                        }),
-                    ]);
-                }
-
-                await markCartPaidIfAllItemsPaid(cart.id);
             }
 
             // Generate a stripe checkout items from cart items

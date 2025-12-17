@@ -4,6 +4,7 @@ import {
     notifyPurchase,
 } from '@gredice/notifications';
 import {
+    consumeInventoryItem,
     createDeliveryRequest,
     createEvent,
     createOperation,
@@ -11,17 +12,133 @@ import {
     createTransaction,
     earnSunflowersForPayment,
     getAllTransactions,
+    getInventory,
     getRaisedBedFieldsWithEvents,
     getShoppingCart,
     isCartItemDeliverable,
     knownEvents,
     markCartPaidIfAllItemsPaid,
     setCartItemPaid,
+    spendSunflowers,
     updateRaisedBed,
     upsertRaisedBedField,
 } from '@gredice/storage';
 import { getStripeCheckoutSession } from '@gredice/stripe/server';
+import {
+    getCartInfo,
+    type ShoppingCartItemWithShopData,
+} from '../checkout/cartInfo';
 import { notifyDeliveryScheduled } from '../delivery/emailNotifications';
+
+async function processNonStripeCartItems(
+    cartId: number,
+    accountId: string,
+): Promise<ShoppingCartItemWithShopData[]> {
+    const cart = await getShoppingCart(cartId);
+    if (!cart) {
+        console.warn(
+            `No cart found for ID ${cartId} when processing non-stripe items.`,
+        );
+        return [];
+    }
+
+    const cartInfo = await getCartInfo(cart.items, accountId);
+    if (!cartInfo.allowPurchase) {
+        console.warn(
+            `Cart ${cartId} failed validation when processing non-stripe items: ${cartInfo.notes.join('; ')}`,
+        );
+        return cartInfo.items;
+    }
+
+    const sunflowerCartItemsWithShopData = cartInfo.items.filter(
+        (item) => item.status !== 'paid' && item.currency === 'sunflower',
+    );
+
+    for (const item of sunflowerCartItemsWithShopData) {
+        const sunflowerAmount = Math.round(
+            (typeof item.shopData.discountPrice === 'number'
+                ? item.shopData.discountPrice
+                : (item.shopData.price ?? 0)) * 1000,
+        );
+        let didPaySunflowers = false;
+        try {
+            await spendSunflowers(
+                accountId,
+                sunflowerAmount,
+                `shoppingCartItem:${item.id}`,
+            );
+            didPaySunflowers = true;
+        } catch (error) {
+            console.error('Error spending sunflowers after stripe payment', {
+                error,
+                accountId,
+                sunflowerAmount,
+                item,
+            });
+        }
+
+        if (didPaySunflowers) {
+            await Promise.all([
+                setCartItemPaid(item.id),
+                processItem({
+                    accountId,
+                    ...item,
+                    amount_total: sunflowerAmount,
+                    additionalData: item.additionalData
+                        ? JSON.parse(item.additionalData)
+                        : {},
+                }),
+            ]);
+        }
+    }
+
+    const inventoryCartItems = cartInfo.items.filter(
+        (item) =>
+            item.status !== 'paid' &&
+            (item.currency === 'inventory' || item.usesInventory),
+    );
+
+    const inventory = await getInventory(accountId);
+    const inventoryLookup = new Map(
+        inventory.map((inventoryItem) => [
+            `${inventoryItem.entityTypeName}-${inventoryItem.entityId}`,
+            inventoryItem.amount,
+        ]),
+    );
+
+    for (const item of inventoryCartItems) {
+        const available =
+            inventoryLookup.get(`${item.entityTypeName}-${item.entityId}`) ?? 0;
+        if (available < item.amount) {
+            console.error(
+                `Not enough inventory to process item ${item.id} from cart ${cartId} after payment.`,
+            );
+            continue;
+        }
+
+        await Promise.all([
+            consumeInventoryItem(accountId, {
+                entityTypeName: item.entityTypeName,
+                entityId: item.entityId,
+                amount: item.amount,
+                source: `shoppingCartItem:${item.id}`,
+            }),
+            setCartItemPaid(item.id),
+            processItem({
+                accountId,
+                ...item,
+                amount_total: 0,
+                additionalData: item.additionalData
+                    ? JSON.parse(item.additionalData)
+                    : {},
+            }),
+        ]);
+    }
+
+    await markCartPaidIfAllItemsPaid(cart.id);
+
+    return cartInfo.items;
+}
 
 export async function processCheckoutSession(checkoutSessionId?: string) {
     if (!checkoutSessionId) {
@@ -209,9 +326,16 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         // TODO: Send invoice to customer
     }
 
+    const uniqueAffectedCartIds = Array.from(new Set(affectedCartIds));
+    if (accountId && uniqueAffectedCartIds.length > 0) {
+        for (const cartId of uniqueAffectedCartIds) {
+            await processNonStripeCartItems(cartId, accountId);
+        }
+    }
+
     // Update all affected carts to mark them as paid if all items are paid
     await Promise.all([
-        ...affectedCartIds.map(markCartPaidIfAllItemsPaid),
+        ...uniqueAffectedCartIds.map(markCartPaidIfAllItemsPaid),
         accountId && session.amountTotal
             ? createTransaction({
                   accountId,
