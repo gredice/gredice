@@ -8,7 +8,7 @@ export function GiftBoxRedWhite(props: EntityInstanceProps) {
             boxColor="#ff0000"
             ribbonColor="#ffffff"
             boxMetalness={0.5}
-            boxRoughness={1}
+            boxRoughness={1.0}
         />
     );
 }
