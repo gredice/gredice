@@ -11,6 +11,8 @@ import { useAnimatedEntityRotation } from './useAnimatedEntityRotation';
 type GiftBoxProps = EntityInstanceProps & {
     boxColor: string;
     ribbonColor: string;
+    boxMetalness?: number;
+    boxRoughness?: number;
 };
 
 export function GiftBox({
@@ -19,6 +21,8 @@ export function GiftBox({
     rotation,
     boxColor,
     ribbonColor,
+    boxMetalness = 0.3,
+    boxRoughness = 0.7,
 }: GiftBoxProps) {
     const { nodes } = useGameGLTF();
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
@@ -38,8 +42,8 @@ export function GiftBox({
             >
                 <meshStandardMaterial
                     color={boxColor}
-                    metalness={0.3}
-                    roughness={0.7}
+                    metalness={boxMetalness}
+                    roughness={boxRoughness}
                 />
                 <HoverOutline hovered={hovered} variant="outlines" />
             </mesh>

@@ -11,7 +11,7 @@ export function GiftBoxModal() {
 
     const isOpen = Boolean(giftBoxParam);
 
-    const handleClose = () => setGiftBoxParam(undefined);
+    const handleClose = () => setGiftBoxParam(null);
 
     return (
         <Modal
