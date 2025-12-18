@@ -1,5 +1,6 @@
 'use client';
 
+import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -20,14 +21,24 @@ export function GiftBoxModal() {
             title="Poklon kutija"
         >
             <Stack spacing={3}>
+                {giftBoxParam && (
+                    <div className="flex justify-center">
+                        <BlockImage
+                            blockName={giftBoxParam}
+                            width={120}
+                            height={120}
+                            className="rounded-lg"
+                        />
+                    </div>
+                )}
+
                 <Stack spacing={1}>
                     <Typography level="body1" semiBold>
                         Poklon kutije možeš otvoriti nakon adventa (25.12.).
                     </Typography>
                     <Typography level="body2" secondary>
-                        Svaka kutija{giftBoxParam ? ` (${giftBoxParam})` : ''}
-                        skriva iznenađenje za tebe koje će se otkriti tek nakon
-                        blagdana.
+                        Svaka kutija skriva iznenađenje za tebe koje će se
+                        otkriti tek nakon blagdana.
                     </Typography>
                 </Stack>
 
