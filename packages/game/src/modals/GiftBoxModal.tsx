@@ -15,7 +15,7 @@ export function GiftBoxModal() {
     const handleClose = () => setGiftBoxParam(null);
 
     const blockName = garden?.stacks
-        .flatMap((stack) => stack.blocks)
+        ?.flatMap((stack) => stack.blocks)
         .find((block) => block.id === giftBoxParam)?.name;
 
     return (
