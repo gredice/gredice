@@ -17,6 +17,7 @@ import { SunflowersHud } from './hud/SunflowersHud';
 import { WeatherHud } from './hud/WeatherHud';
 import { WelcomeMessage } from './hud/WelcomeMessage';
 import { AdventModal } from './modals/advent/AdventModal';
+import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
 import { useGameState } from './useGameState';
 
@@ -48,6 +49,7 @@ export function GameHud({ flags }: { flags: GameSceneProps['flags'] }) {
             <RaisedBedFieldHud flags={flags} />
             <OverviewModal />
             <AdventModal />
+            <GiftBoxModal />
             <WelcomeMessage />
             <PaymentSuccessfulMessage />
             {Boolean(flags?.enableDebugHudFlag) && <DebugHud />}
