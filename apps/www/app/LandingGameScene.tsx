@@ -37,6 +37,7 @@ export function LandingGameScene() {
         <GameScene
             appBaseUrl="https://vrt.gredice.com"
             freezeTime={freezeTime}
+            zoom="far"
             noBackground
             hideHud
             noControls
