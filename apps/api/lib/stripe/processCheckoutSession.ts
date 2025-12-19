@@ -120,25 +120,25 @@ async function processNonStripeCartItems(
             (item.currency === 'inventory' || item.usesInventory),
     );
 
-    // Refresh inventory before processing each item to avoid race conditions
-    for (const item of inventoryCartItems) {
+    // Validate inventory availability before processing to avoid race conditions
+    let inventoryLookup = new Map<string, number>();
+    if (inventoryCartItems.length > 0) {
         const inventory = await getInventory(accountId);
-        const inventoryLookup = new Map(
+        inventoryLookup = new Map(
             inventory.map((inventoryItem) => [
                 `${inventoryItem.entityTypeName}-${inventoryItem.entityId}`,
                 inventoryItem.amount,
             ]),
         );
+    }
 
-        const available =
-            inventoryLookup.get(`${item.entityTypeName}-${item.entityId}`) ?? 0;
+    for (const item of inventoryCartItems) {
+        const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
+        const available = inventoryLookup.get(inventoryKey) ?? 0;
         if (available < item.amount) {
-            console.error(
-                `Not enough inventory to process item ${item.id} from cart ${cartId} after payment.`,
-            );
-            throw new Error(
-                `Insufficient inventory for item ${item.id}. This cart is in an inconsistent state.`,
-            );
+            const errorMsg = `Insufficient inventory for item ${item.id} from cart ${cartId}. Required: ${item.amount}, Available: ${available}. The inventory may have been consumed by another process after payment was initiated. Manual intervention required to refund or fulfill this order.`;
+            console.error(errorMsg);
+            throw new Error(errorMsg);
         }
 
         const baseAdditionalData = item.additionalData
@@ -170,6 +170,9 @@ async function processNonStripeCartItems(
                 additionalData,
             }),
         ]);
+
+        // Update the lookup to reflect consumed inventory
+        inventoryLookup.set(inventoryKey, available - item.amount);
     }
 
     return cartInfo.items;
