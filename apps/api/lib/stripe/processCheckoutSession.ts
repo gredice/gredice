@@ -69,6 +69,9 @@ async function processNonStripeCartItems(
     let didSpendSunflowersForCart = false;
     if (totalSunflowersToSpend > 0) {
         try {
+            // Spend all sunflowers in a single transaction for the entire cart
+            // to prevent race conditions. Reference format: shoppingCart:${cartId}
+            // (Note: This differs from immediate processing which uses shoppingCartItem:${item.id})
             await spendSunflowers(
                 accountId,
                 totalSunflowersToSpend,
@@ -136,7 +139,7 @@ async function processNonStripeCartItems(
         const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
         const available = inventoryLookup.get(inventoryKey) ?? 0;
         if (available < item.amount) {
-            const errorMsg = `Insufficient inventory for item ${item.id} from cart ${cartId}. Required: ${item.amount}, Available: ${available}. The inventory may have been consumed by another process after payment was initiated. Manual intervention required to refund or fulfill this order.`;
+            const errorMsg = `Insufficient inventory for item ${item.id} from cart ${cartId}. Required: ${item.amount}, Available: ${available}. Manual intervention required to refund or fulfill this order.`;
             console.error(errorMsg);
             throw new Error(errorMsg);
         }
@@ -364,7 +367,9 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         // TODO: Send invoice to customer
     }
 
-    // Extract delivery info from the first Stripe item to use for non-Stripe items
+    // Extract delivery info from the first Stripe item to use for non-Stripe items.
+    // All items in a single checkout session share the same delivery information,
+    // so we can safely use the delivery info from any Stripe item for all non-Stripe items.
     let deliveryInfo: unknown;
     for (const item of session.lineItems?.data ?? []) {
         const product = item.price?.product;
