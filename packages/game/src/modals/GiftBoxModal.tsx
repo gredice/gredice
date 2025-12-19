@@ -5,14 +5,18 @@ import { Button } from '@signalco/ui-primitives/Button';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useGiftBoxParam } from '../useUrlState';
 
 export function GiftBoxModal() {
     const [giftBoxParam, setGiftBoxParam] = useGiftBoxParam();
-
+    const { data: garden, isLoading } = useCurrentGarden();
     const isOpen = Boolean(giftBoxParam);
-
     const handleClose = () => setGiftBoxParam(null);
+
+    const blockName = garden?.stacks
+        .flatMap((stack) => stack.blocks)
+        .find((block) => block.id === giftBoxParam)?.name;
 
     return (
         <Modal
@@ -21,24 +25,28 @@ export function GiftBoxModal() {
             title="Poklon kutija"
         >
             <Stack spacing={3}>
-                {giftBoxParam && (
-                    <div className="flex justify-center">
+                <div className="flex justify-center">
+                    {!giftBoxParam || isLoading ? (
+                        <span className="size-28"></span>
+                    ) : blockName ? (
                         <BlockImage
-                            blockName={giftBoxParam}
-                            width={120}
-                            height={120}
+                            blockName={blockName}
+                            width={160}
+                            height={160}
                             className="rounded-lg"
                         />
-                    </div>
-                )}
+                    ) : (
+                        <span className="size-20 text-[80px]">🎁</span>
+                    )}
+                </div>
 
                 <Stack spacing={1}>
                     <Typography level="body1" semiBold>
-                        Poklon kutije možeš otvoriti nakon adventa (25.12.).
+                        Poklon kutija te čeka.
                     </Typography>
                     <Typography level="body2" secondary>
-                        Svaka kutija skriva iznenađenje za tebe koje će se
-                        otkriti tek nakon blagdana.
+                        Poklon kutije možeš otvoriti nakon adventa (25.12.).
+                        Svaka kutija skriva posebno iznenađenje samo za tebe 🎊.
                     </Typography>
                 </Stack>
 
