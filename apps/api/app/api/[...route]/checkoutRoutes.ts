@@ -18,6 +18,7 @@ import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getCartInfo } from '../../../lib/checkout/cartInfo';
+import { calculateSunflowerAmount } from '../../../lib/checkout/sunflowerCalculations';
 import {
     type AuthVariables,
     authValidator,
@@ -97,11 +98,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 if (sunflowerCartItemsWithShopData.length > 0) {
                     // Check if there are enough sunflowers in the account
                     for (const item of sunflowerCartItemsWithShopData) {
-                        const sunflowerAmount = Math.round(
-                            (typeof item.shopData.discountPrice === 'number'
-                                ? item.shopData.discountPrice
-                                : (item.shopData.price ?? 0)) * 1000,
-                        );
+                        const sunflowerAmount = calculateSunflowerAmount(item);
                         let didPaySunflowers = false;
                         try {
                             await spendSunflowers(

@@ -28,11 +28,13 @@ import {
     getCartInfo,
     type ShoppingCartItemWithShopData,
 } from '../checkout/cartInfo';
+import { calculateSunflowerAmount } from '../checkout/sunflowerCalculations';
 import { notifyDeliveryScheduled } from '../delivery/emailNotifications';
 
 async function processNonStripeCartItems(
     cartId: number,
     accountId: string,
+    deliveryInfo?: unknown,
 ): Promise<ShoppingCartItemWithShopData[]> {
     const cart = await getShoppingCart(cartId);
     if (!cart) {
@@ -47,46 +49,69 @@ async function processNonStripeCartItems(
         console.warn(
             `Cart ${cartId} failed validation when processing non-stripe items: ${cartInfo.notes.join('; ')}`,
         );
-        return cartInfo.items;
+        return [];
     }
 
     const sunflowerCartItemsWithShopData = cartInfo.items.filter(
         (item) => item.status !== 'paid' && item.currency === 'sunflower',
     );
 
+    // Precompute sunflower amounts and total required, so we can spend in a single operation
+    const sunflowerAmountsByItem = new Map<number, number>();
+    let totalSunflowersToSpend = 0;
+
     for (const item of sunflowerCartItemsWithShopData) {
-        const sunflowerAmount = Math.round(
-            (typeof item.shopData.discountPrice === 'number'
-                ? item.shopData.discountPrice
-                : (item.shopData.price ?? 0)) * 1000,
-        );
-        let didPaySunflowers = false;
+        const sunflowerAmount = calculateSunflowerAmount(item);
+        sunflowerAmountsByItem.set(item.id, sunflowerAmount);
+        totalSunflowersToSpend += sunflowerAmount;
+    }
+
+    let didSpendSunflowersForCart = false;
+    if (totalSunflowersToSpend > 0) {
         try {
+            // Spend all sunflowers in a single transaction for the entire cart
+            // to prevent race conditions. Reference format: shoppingCart:${cartId}
+            // (Note: This differs from immediate processing which uses shoppingCartItem:${item.id})
             await spendSunflowers(
                 accountId,
-                sunflowerAmount,
-                `shoppingCartItem:${item.id}`,
+                totalSunflowersToSpend,
+                `shoppingCart:${cartId}`,
             );
-            didPaySunflowers = true;
+            didSpendSunflowersForCart = true;
         } catch (error) {
-            console.error('Error spending sunflowers after stripe payment', {
+            console.error('Error spending sunflowers during cart processing', {
                 error,
                 accountId,
-                sunflowerAmount,
-                item,
+                totalSunflowersToSpend,
+                cartId,
             });
         }
+    }
 
-        if (didPaySunflowers) {
+    if (didSpendSunflowersForCart) {
+        for (const item of sunflowerCartItemsWithShopData) {
+            const sunflowerAmount = sunflowerAmountsByItem.get(item.id) ?? 0;
+            const baseAdditionalData = item.additionalData
+                ? JSON.parse(item.additionalData)
+                : {};
+            const additionalData = {
+                ...baseAdditionalData,
+                ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
+            };
+
             await Promise.all([
                 setCartItemPaid(item.id),
                 processItem({
-                    accountId,
-                    ...item,
+                    accountId: item.accountId,
+                    entityId: item.entityId,
+                    entityTypeName: item.entityTypeName,
+                    cartId: item.cartId,
+                    gardenId: item.gardenId,
+                    raisedBedId: item.raisedBedId,
+                    positionIndex: item.positionIndex,
+                    currency: item.currency,
                     amount_total: sunflowerAmount,
-                    additionalData: item.additionalData
-                        ? JSON.parse(item.additionalData)
-                        : {},
+                    additionalData,
                 }),
             ]);
         }
@@ -98,23 +123,34 @@ async function processNonStripeCartItems(
             (item.currency === 'inventory' || item.usesInventory),
     );
 
-    const inventory = await getInventory(accountId);
-    const inventoryLookup = new Map(
-        inventory.map((inventoryItem) => [
-            `${inventoryItem.entityTypeName}-${inventoryItem.entityId}`,
-            inventoryItem.amount,
-        ]),
-    );
+    // Validate inventory availability before processing to avoid race conditions
+    let inventoryLookup = new Map<string, number>();
+    if (inventoryCartItems.length > 0) {
+        const inventory = await getInventory(accountId);
+        inventoryLookup = new Map(
+            inventory.map((inventoryItem) => [
+                `${inventoryItem.entityTypeName}-${inventoryItem.entityId}`,
+                inventoryItem.amount,
+            ]),
+        );
+    }
 
     for (const item of inventoryCartItems) {
-        const available =
-            inventoryLookup.get(`${item.entityTypeName}-${item.entityId}`) ?? 0;
+        const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
+        const available = inventoryLookup.get(inventoryKey) ?? 0;
         if (available < item.amount) {
-            console.error(
-                `Not enough inventory to process item ${item.id} from cart ${cartId} after payment.`,
-            );
-            continue;
+            const errorMsg = `Insufficient inventory for item ${item.id} from cart ${cartId}. Required: ${item.amount}, Available: ${available}. Manual intervention required to refund or fulfill this order.`;
+            console.error(errorMsg);
+            throw new Error(errorMsg);
         }
+
+        const baseAdditionalData = item.additionalData
+            ? JSON.parse(item.additionalData)
+            : {};
+        const additionalData = {
+            ...baseAdditionalData,
+            ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
+        };
 
         await Promise.all([
             consumeInventoryItem(accountId, {
@@ -125,17 +161,22 @@ async function processNonStripeCartItems(
             }),
             setCartItemPaid(item.id),
             processItem({
-                accountId,
-                ...item,
+                accountId: item.accountId,
+                entityId: item.entityId,
+                entityTypeName: item.entityTypeName,
+                cartId: item.cartId,
+                gardenId: item.gardenId,
+                raisedBedId: item.raisedBedId,
+                positionIndex: item.positionIndex,
+                currency: item.currency,
                 amount_total: 0,
-                additionalData: item.additionalData
-                    ? JSON.parse(item.additionalData)
-                    : {},
+                additionalData,
             }),
         ]);
-    }
 
-    await markCartPaidIfAllItemsPaid(cart.id);
+        // Update the lookup to reflect consumed inventory
+        inventoryLookup.set(inventoryKey, available - item.amount);
+    }
 
     return cartInfo.items;
 }
@@ -326,10 +367,31 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         // TODO: Send invoice to customer
     }
 
+    // Extract delivery info from the first Stripe item to use for non-Stripe items.
+    // All items in a single checkout session share the same delivery information,
+    // so we can safely use the delivery info from any Stripe item for all non-Stripe items.
+    let deliveryInfo: unknown;
+    for (const item of session.lineItems?.data ?? []) {
+        const product = item.price?.product;
+        if (typeof product !== 'string' && !product?.deleted) {
+            const additionalData = product?.metadata?.additionalData
+                ? JSON.parse(product.metadata.additionalData)
+                : undefined;
+            if (
+                additionalData &&
+                typeof additionalData === 'object' &&
+                'delivery' in additionalData
+            ) {
+                deliveryInfo = additionalData.delivery;
+                break;
+            }
+        }
+    }
+
     const uniqueAffectedCartIds = Array.from(new Set(affectedCartIds));
     if (accountId && uniqueAffectedCartIds.length > 0) {
         for (const cartId of uniqueAffectedCartIds) {
-            await processNonStripeCartItems(cartId, accountId);
+            await processNonStripeCartItems(cartId, accountId, deliveryInfo);
         }
     }
 
