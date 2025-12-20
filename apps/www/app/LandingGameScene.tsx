@@ -1,10 +1,22 @@
 'use client';
 
 import { GameScene } from '@gredice/game';
+import { useEffect, useState } from 'react';
 import { useWinterMode } from '../components/providers/WinterModeProvider';
 
 export function LandingGameScene() {
     const { isWinter } = useWinterMode();
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(max-width: 768px)');
+        const handleChange = (event: MediaQueryListEvent) =>
+            setIsMobile(event.matches);
+
+        setIsMobile(mediaQuery.matches);
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }, []);
 
     // Summer weather - warm and sunny
     const summerWeather = {
@@ -37,6 +49,7 @@ export function LandingGameScene() {
         <GameScene
             appBaseUrl="https://vrt.gredice.com"
             freezeTime={freezeTime}
+            zoom={isMobile ? 'far' : 'normal'}
             noBackground
             hideHud
             noControls

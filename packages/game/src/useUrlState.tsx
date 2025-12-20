@@ -26,10 +26,16 @@ export function useRaisedBedCloseupParam() {
     return useQueryState('gredica', parseAsString);
 }
 
+// Gift box modal parameter (Croatian: "poklon-kutija" = gift box)
+export function useGiftBoxParam() {
+    return useQueryState('poklon-kutija', parseAsString);
+}
+
 // Serializer for building URLs with query params
 export const urlStateSerializer = createSerializer({
     uredivanje: parseAsBoolean,
     kosarica: parseAsBoolean,
     ruksak: parseAsBoolean,
     gredica: parseAsString,
+    'poklon-kutija': parseAsString,
 });

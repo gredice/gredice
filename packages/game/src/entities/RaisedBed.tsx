@@ -1,5 +1,5 @@
 import { animated } from '@react-spring/three';
-import { useHoveredBlockStore } from '../controls/SelectableGroup';
+import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';

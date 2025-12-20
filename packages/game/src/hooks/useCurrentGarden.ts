@@ -65,6 +65,15 @@ function mockGarden(isWinterMode: boolean) {
                         name: 'Block_Grass',
                         rotation: 0,
                     },
+                    ...(isWinterMode
+                        ? [
+                              {
+                                  id: '16',
+                                  name: 'GiftBox_RedWhite',
+                                  rotation: 0,
+                              },
+                          ]
+                        : []),
                 ],
             },
             {
