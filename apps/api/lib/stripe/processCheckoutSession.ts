@@ -425,15 +425,25 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
                 'delivery' in additionalData
             ) {
                 const itemDeliveryInfo = additionalData.delivery;
-                // Use sorted keys for deterministic comparison
-                // Handle null/undefined explicitly to ensure consistent serialization
-                const serialized =
-                    itemDeliveryInfo && typeof itemDeliveryInfo === 'object'
-                        ? JSON.stringify(
-                              itemDeliveryInfo,
-                              Object.keys(itemDeliveryInfo).sort(),
-                          )
-                        : JSON.stringify(itemDeliveryInfo);
+                // Deterministic serialization with sorted keys for reliable comparison
+                // This handles nested objects by recursively sorting all keys
+                const sortKeys = (obj: unknown): unknown => {
+                    if (obj === null || typeof obj !== 'object') {
+                        return obj;
+                    }
+                    if (Array.isArray(obj)) {
+                        return obj.map(sortKeys);
+                    }
+                    return Object.keys(obj)
+                        .sort()
+                        .reduce((result: Record<string, unknown>, key) => {
+                            result[key] = sortKeys(
+                                (obj as Record<string, unknown>)[key],
+                            );
+                            return result;
+                        }, {});
+                };
+                const serialized = JSON.stringify(sortKeys(itemDeliveryInfo));
                 deliveryInfosFound.add(serialized);
 
                 if (!deliveryInfo) {
