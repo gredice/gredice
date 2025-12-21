@@ -35,7 +35,7 @@
         "@gredice/ui": "workspace:*",
         "@playwright/experimental-ct-react": "1.57.0",
         "@playwright/test": "1.57.0",
-        "@sentry/nextjs": "10.32.0",
+        "@sentry/nextjs": "10.32.1",
         "@signalco/auth-client": "0.3.0",
         "@signalco/auth-server": "0.5.3",
         "@signalco/hooks": "0.2.1",
@@ -53,7 +53,7 @@
         "@vercel/analytics": "1.6.1",
         "babel-plugin-react-compiler": "19.1.0-rc.3",
         "postcss": "8.5.6",
-        "sass": "1.97.0",
+        "sass": "1.97.1",
         "tailwindcss": "3.4.19",
         "tailwindcss-animate": "1.0.7",
         "typescript": "5.9.3"

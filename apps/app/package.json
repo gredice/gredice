@@ -17,7 +17,7 @@
         "regenerate:feature-flags": "hypertune"
     },
     "dependencies": {
-        "@aws-sdk/client-s3": "3.955.0",
+        "@aws-sdk/client-s3": "3.956.0",
         "@azure/communication-email": "1.1.0",
         "@dnd-kit/core": "6.3.1",
         "@dnd-kit/sortable": "10.0.0",
@@ -51,7 +51,7 @@
         "@mdxeditor/editor": "3.52.1",
         "@playwright/experimental-ct-react": "1.57.0",
         "@playwright/test": "1.57.0",
-        "@sentry/nextjs": "10.32.0",
+        "@sentry/nextjs": "10.32.1",
         "@signalco/auth-client": "0.3.0",
         "@signalco/auth-server": "0.5.3",
         "@signalco/hooks": "0.2.1",
