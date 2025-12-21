@@ -426,10 +426,14 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
             ) {
                 const itemDeliveryInfo = additionalData.delivery;
                 // Use sorted keys for deterministic comparison
-                const serialized = JSON.stringify(
-                    itemDeliveryInfo,
-                    Object.keys(itemDeliveryInfo || {}).sort(),
-                );
+                // Handle null/undefined explicitly to ensure consistent serialization
+                const serialized =
+                    itemDeliveryInfo && typeof itemDeliveryInfo === 'object'
+                        ? JSON.stringify(
+                              itemDeliveryInfo,
+                              Object.keys(itemDeliveryInfo).sort(),
+                          )
+                        : JSON.stringify(itemDeliveryInfo);
                 deliveryInfosFound.add(serialized);
 
                 if (!deliveryInfo) {
