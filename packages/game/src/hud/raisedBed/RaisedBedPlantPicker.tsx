@@ -155,7 +155,6 @@ export function PlantPicker({
             positionIndex,
             additionalData: JSON.stringify({
                 scheduledDate: plantOptions?.scheduledDate?.toISOString(),
-                useInventory: useInventoryItem,
             }),
             currency: useInventoryItem ? 'inventory' : 'eur',
         });
@@ -176,15 +175,7 @@ export function PlantPicker({
                 item.raisedBedId === raisedBedId &&
                 item.positionIndex === positionIndex,
         );
-        const parsedAdditional = existingItem?.additionalData
-            ? JSON.parse(existingItem.additionalData)
-            : {};
-        setUseInventoryItem(
-            Boolean(
-                existingItem?.currency === 'inventory' ||
-                    parsedAdditional.useInventory,
-            ),
-        );
+        setUseInventoryItem(existingItem?.currency === 'inventory');
     }
 
     // Plant options

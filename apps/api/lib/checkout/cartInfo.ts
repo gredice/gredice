@@ -69,11 +69,7 @@ export async function getCartInfo(
 
     // Inventory discounts (free items when available)
     for (const item of items) {
-        const parsedAdditional = item.additionalData
-            ? JSON.parse(item.additionalData)
-            : {};
-        const wantsInventory =
-            item.currency === 'inventory' || parsedAdditional.useInventory;
+        const wantsInventory = item.currency === 'inventory';
         if (wantsInventory) {
             const availableCount =
                 inventoryLookup.get(
@@ -105,11 +101,8 @@ export async function getCartInfo(
                 return null;
             }
 
-            const parsedAdditional = item.additionalData
-                ? JSON.parse(item.additionalData)
-                : {};
-            const wantsInventory =
-                item.currency === 'inventory' || parsedAdditional.useInventory;
+            // Verify inventory item availability
+            const wantsInventory = item.currency === 'inventory';
             const inventoryAvailable = wantsInventory
                 ? (inventoryLookup.get(
                       `${item.entityTypeName}-${item.entityId}`,

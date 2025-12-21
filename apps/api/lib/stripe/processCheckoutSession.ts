@@ -102,7 +102,7 @@ async function processNonStripeCartItems(
             await Promise.all([
                 setCartItemPaid(item.id),
                 processItem({
-                    accountId: item.accountId,
+                    accountId,
                     entityId: item.entityId,
                     entityTypeName: item.entityTypeName,
                     cartId: item.cartId,
@@ -161,7 +161,7 @@ async function processNonStripeCartItems(
             }),
             setCartItemPaid(item.id),
             processItem({
-                accountId: item.accountId,
+                accountId,
                 entityId: item.entityId,
                 entityTypeName: item.entityTypeName,
                 cartId: item.cartId,
@@ -216,6 +216,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         amountSubtotal?: number | null;
     }[] = [];
     let accountId: string | undefined;
+    let checkedExistingTransactions = false;
     for (const item of session.lineItems?.data ?? []) {
         console.debug(`Item: ${item.id} Quantity: ${item.quantity}`);
 
@@ -276,31 +277,11 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         // Save accountId from metadata if not already set
         accountId ??= itemData.accountId;
 
-        // Check if transaction was already precessed
-        if (accountId) {
-            // TODO: Use paginatino and retrieve last N transactions or match via date
-            const transactions = await getAllTransactions({
-                filter: { accountId },
-            });
-            const existingTransaction = transactions.find(
-                (t) =>
-                    t.stripePaymentId === session.id &&
-                    t.status === 'completed',
-            );
-            if (existingTransaction) {
-                console.info(
-                    `Transaction for session ${checkoutSessionId} already processed for account ${accountId}`,
-                );
-                return;
-            }
-        }
-
-        // Validate required metadata
+        // Validate required metadata (accountId can be derived from cart)
         if (
             !itemData.cartItemId ||
             !itemData.entityId ||
             !itemData.entityTypeName ||
-            !itemData.accountId ||
             !itemData.cartId
         ) {
             console.warn(
@@ -311,12 +292,50 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
 
         // Process cart item
         try {
+            let resolvedAccountId: string | undefined;
             const cart = await getShoppingCart(itemData.cartId);
             if (!cart) {
                 console.warn(
                     `No cart found for ID ${itemData.cartId} in session ${checkoutSessionId}`,
                 );
                 continue;
+            }
+
+            resolvedAccountId =
+                itemData.accountId ?? cart.accountId ?? undefined;
+            if (!resolvedAccountId) {
+                console.warn(
+                    `Missing accountId for cart ${itemData.cartId} when processing session ${checkoutSessionId}`,
+                );
+                continue;
+            }
+
+            // Ensure we have an accountId for the whole session (prefer the cart value)
+            if (accountId && accountId !== resolvedAccountId) {
+                console.warn(
+                    `AccountId mismatch for session ${checkoutSessionId}: metadata ${accountId} vs cart ${resolvedAccountId}. Using cart accountId.`,
+                );
+            }
+            accountId = resolvedAccountId;
+
+            // Check if transaction was already processed
+            if (!checkedExistingTransactions && accountId) {
+                // TODO: Use pagination and retrieve last N transactions or match via date
+                const transactions = await getAllTransactions({
+                    filter: { accountId },
+                });
+                checkedExistingTransactions = true;
+                const existingTransaction = transactions.find(
+                    (t) =>
+                        t.stripePaymentId === session.id &&
+                        t.status === 'completed',
+                );
+                if (existingTransaction) {
+                    console.info(
+                        `Transaction for session ${checkoutSessionId} already processed for account ${accountId}`,
+                    );
+                    return;
+                }
             }
 
             // Find cart item by cartItemId for more reliable matching
@@ -350,18 +369,18 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
 
             await setCartItemPaid(cartItem.id);
             affectedCartIds.push(cart.id);
+
+            await processItem({
+                ...itemData,
+                accountId: resolvedAccountId,
+                amount_total: item.amount_total,
+            });
         } catch (error) {
             console.error(
                 `Error processing cart item ${itemData.cartItemId} in session ${checkoutSessionId}`,
                 error,
             );
-            continue;
         }
-
-        await processItem({
-            ...itemData,
-            amount_total: item.amount_total,
-        });
 
         // TODO: Send email to customer
         // TODO: Send invoice to customer
@@ -447,8 +466,8 @@ export async function processItem(itemData: {
         // TODO: Handle raisedBed operation placement (not currently necessary since we can't buy raised bed operation without planting plants)
 
         // Special cases: Handle sensor installation
+        // TODO: Mitigate hardcoded '180' as place sensor ID
         if (itemData.raisedBedId && itemData.entityId === '180') {
-            // TODO: Mitigate hardcoded '180' as place sensor ID
             try {
                 await Promise.all([
                     createRaisedBedSensor({

@@ -67,11 +67,7 @@ export default async function ShoppingCartDetailsPage({
         const entities = entitiesLookup[item.entityTypeName] || [];
         const entity = entities.find((e) => e.id?.toString() === item.entityId);
 
-        const parsedAdditional = item.additionalData
-            ? JSON.parse(item.additionalData)
-            : {};
-        const usesInventory =
-            item.currency === 'inventory' || parsedAdditional.useInventory;
+        const usesInventory = item.currency === 'inventory';
         const inventoryAvailable = usesInventory
             ? (inventoryLookup.get(`${item.entityTypeName}-${item.entityId}`) ??
               0)
