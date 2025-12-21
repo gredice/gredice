@@ -123,6 +123,12 @@ async function processNonStripeCartItems(
             (item.currency === 'inventory' || item.usesInventory),
     );
 
+    // Helper function to generate inventory key
+    const getInventoryKey = (item: {
+        entityTypeName: string;
+        entityId: string;
+    }) => `${item.entityTypeName}-${item.entityId}`;
+
     // Pre-validate that total required inventory for all items is available
     // This prevents partial processing when multiple items consume the same inventory
     let inventoryLookup = new Map<string, number>();
@@ -130,7 +136,7 @@ async function processNonStripeCartItems(
         const inventory = await getInventory(accountId);
         inventoryLookup = new Map(
             inventory.map((inventoryItem) => [
-                `${inventoryItem.entityTypeName}-${inventoryItem.entityId}`,
+                getInventoryKey(inventoryItem),
                 inventoryItem.amount,
             ]),
         );
@@ -138,7 +144,7 @@ async function processNonStripeCartItems(
         // Calculate total required inventory for each unique entity
         const requiredInventory = new Map<string, number>();
         for (const item of inventoryCartItems) {
-            const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
+            const inventoryKey = getInventoryKey(item);
             const currentRequired = requiredInventory.get(inventoryKey) ?? 0;
             requiredInventory.set(inventoryKey, currentRequired + item.amount);
         }
@@ -158,7 +164,7 @@ async function processNonStripeCartItems(
     }
 
     for (const item of inventoryCartItems) {
-        const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
+        const inventoryKey = getInventoryKey(item);
         const available = inventoryLookup.get(inventoryKey) ?? 0;
 
         const baseAdditionalData = item.additionalData
@@ -419,7 +425,11 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
                 'delivery' in additionalData
             ) {
                 const itemDeliveryInfo = additionalData.delivery;
-                const serialized = JSON.stringify(itemDeliveryInfo);
+                // Use sorted keys for deterministic comparison
+                const serialized = JSON.stringify(
+                    itemDeliveryInfo,
+                    Object.keys(itemDeliveryInfo || {}).sort(),
+                );
                 deliveryInfosFound.add(serialized);
 
                 if (!deliveryInfo) {
