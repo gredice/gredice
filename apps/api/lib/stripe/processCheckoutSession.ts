@@ -182,40 +182,41 @@ async function processNonStripeCartItems(
         }
 
         for (const item of inventoryCartItems) {
-            const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
+            const inventoryKey = getInventoryKey(item);
             const available = inventoryLookup.get(inventoryKey) ?? 0;
-        const baseAdditionalData = item.additionalData
-            ? JSON.parse(item.additionalData)
-            : {};
-        const additionalData = {
-            ...baseAdditionalData,
-            ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
-        };
+            const baseAdditionalData = item.additionalData
+                ? JSON.parse(item.additionalData)
+                : {};
+            const additionalData = {
+                ...baseAdditionalData,
+                ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
+            };
 
-        await Promise.all([
-            consumeInventoryItem(accountId, {
-                entityTypeName: item.entityTypeName,
-                entityId: item.entityId,
-                amount: item.amount,
-                source: `shoppingCartItem:${item.id}`,
-            }),
-            setCartItemPaid(item.id),
-            processItem({
-                accountId,
-                entityId: item.entityId,
-                entityTypeName: item.entityTypeName,
-                cartId: item.cartId,
-                gardenId: item.gardenId,
-                raisedBedId: item.raisedBedId,
-                positionIndex: item.positionIndex,
-                currency: item.currency,
-                amount_total: 0,
-                additionalData,
-            }),
-        ]);
+            await Promise.all([
+                consumeInventoryItem(accountId, {
+                    entityTypeName: item.entityTypeName,
+                    entityId: item.entityId,
+                    amount: item.amount,
+                    source: `shoppingCartItem:${item.id}`,
+                }),
+                setCartItemPaid(item.id),
+                processItem({
+                    accountId,
+                    entityId: item.entityId,
+                    entityTypeName: item.entityTypeName,
+                    cartId: item.cartId,
+                    gardenId: item.gardenId,
+                    raisedBedId: item.raisedBedId,
+                    positionIndex: item.positionIndex,
+                    currency: item.currency,
+                    amount_total: 0,
+                    additionalData,
+                }),
+            ]);
 
-        // Update the lookup to reflect consumed inventory
-        inventoryLookup.set(inventoryKey, available - item.amount);
+            // Update the lookup to reflect consumed inventory
+            inventoryLookup.set(inventoryKey, available - item.amount);
+        }
     }
 
     return cartInfo.items;
@@ -409,6 +410,13 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
 
             await setCartItemPaid(cartItem.id);
             affectedCartIds.push(cart.id);
+
+            if (typeof item.amount_total !== 'number') {
+                console.warn(
+                    `Missing amount_total for Stripe line item ${item.id} in session ${checkoutSessionId}. Skipping processing to avoid inconsistent state.`,
+                );
+                continue;
+            }
 
             await processItem({
                 ...itemData,
