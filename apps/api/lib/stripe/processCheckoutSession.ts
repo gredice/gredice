@@ -319,7 +319,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
             accountId = resolvedAccountId;
 
             // Check if transaction was already processed
-            if (!checkedExistingTransactions && accountId) {
+            if (!checkedExistingTransactions) {
                 // TODO: Use pagination and retrieve last N transactions or match via date
                 const transactions = await getAllTransactions({
                     filter: { accountId },
