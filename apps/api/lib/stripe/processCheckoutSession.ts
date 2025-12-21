@@ -123,7 +123,8 @@ async function processNonStripeCartItems(
             (item.currency === 'inventory' || item.usesInventory),
     );
 
-    // Validate inventory availability before processing to avoid race conditions
+    // Pre-validate that total required inventory for all items is available
+    // This prevents partial processing when multiple items consume the same inventory
     let inventoryLookup = new Map<string, number>();
     if (inventoryCartItems.length > 0) {
         const inventory = await getInventory(accountId);
@@ -133,16 +134,32 @@ async function processNonStripeCartItems(
                 inventoryItem.amount,
             ]),
         );
+
+        // Calculate total required inventory for each unique entity
+        const requiredInventory = new Map<string, number>();
+        for (const item of inventoryCartItems) {
+            const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
+            const currentRequired = requiredInventory.get(inventoryKey) ?? 0;
+            requiredInventory.set(inventoryKey, currentRequired + item.amount);
+        }
+
+        // Validate all required inventory is available before processing any items
+        for (const [
+            inventoryKey,
+            requiredAmount,
+        ] of requiredInventory.entries()) {
+            const available = inventoryLookup.get(inventoryKey) ?? 0;
+            if (available < requiredAmount) {
+                const errorMsg = `Insufficient inventory for key ${inventoryKey} in cart ${cartId}. Required: ${requiredAmount}, Available: ${available}. Manual intervention required to refund or fulfill this order.`;
+                console.error(errorMsg);
+                throw new Error(errorMsg);
+            }
+        }
     }
 
     for (const item of inventoryCartItems) {
         const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
         const available = inventoryLookup.get(inventoryKey) ?? 0;
-        if (available < item.amount) {
-            const errorMsg = `Insufficient inventory for item ${item.id} from cart ${cartId}. Required: ${item.amount}, Available: ${available}. Manual intervention required to refund or fulfill this order.`;
-            console.error(errorMsg);
-            throw new Error(errorMsg);
-        }
 
         const baseAdditionalData = item.additionalData
             ? JSON.parse(item.additionalData)
@@ -386,10 +403,10 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         // TODO: Send invoice to customer
     }
 
-    // Extract delivery info from the first Stripe item to use for non-Stripe items.
-    // All items in a single checkout session share the same delivery information,
-    // so we can safely use the delivery info from any Stripe item for all non-Stripe items.
+    // Extract and validate delivery info from Stripe items to use for non-Stripe items.
+    // All items in a single checkout session should share the same delivery information.
     let deliveryInfo: unknown;
+    const deliveryInfosFound = new Set<string>();
     for (const item of session.lineItems?.data ?? []) {
         const product = item.price?.product;
         if (typeof product !== 'string' && !product?.deleted) {
@@ -401,10 +418,23 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
                 typeof additionalData === 'object' &&
                 'delivery' in additionalData
             ) {
-                deliveryInfo = additionalData.delivery;
-                break;
+                const itemDeliveryInfo = additionalData.delivery;
+                const serialized = JSON.stringify(itemDeliveryInfo);
+                deliveryInfosFound.add(serialized);
+
+                if (!deliveryInfo) {
+                    deliveryInfo = itemDeliveryInfo;
+                }
             }
         }
+    }
+
+    // Warn if multiple different delivery configurations were found
+    if (deliveryInfosFound.size > 1) {
+        console.warn(
+            `Multiple different delivery configurations found in session ${checkoutSessionId}. ` +
+                `Using the first one encountered. This may indicate a checkout flow issue.`,
+        );
     }
 
     const uniqueAffectedCartIds = Array.from(new Set(affectedCartIds));
