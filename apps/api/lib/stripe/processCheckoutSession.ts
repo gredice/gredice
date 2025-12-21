@@ -177,15 +177,26 @@ async function processNonStripeCartItems(
             if (available < requiredAmount) {
                 const errorMsg = `Insufficient inventory for key ${inventoryKey} in cart ${cartId}. Required: ${requiredAmount}, Available: ${available}. Manual intervention required to refund or fulfill this order.`;
                 console.error(errorMsg);
-                throw new Error(errorMsg);
-            }
+    // Pre-validate that total required inventory for all items is available
+    const requiredInventory = new Map<string, number>();
+    for (const item of inventoryCartItems) {
+        const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
+        const currentRequired = requiredInventory.get(inventoryKey) ?? 0;
+        requiredInventory.set(inventoryKey, currentRequired + item.amount);
+    }
+
+    for (const [inventoryKey, requiredAmount] of requiredInventory.entries()) {
+        const available = inventoryLookup.get(inventoryKey) ?? 0;
+        if (available < requiredAmount) {
+            const errorMsg = `Insufficient inventory for key ${inventoryKey} in cart ${cartId}. Required: ${requiredAmount}, Available: ${available}. Manual intervention required to refund or fulfill this order.`;
+            console.error(errorMsg);
+            throw new Error(errorMsg);
         }
     }
 
     for (const item of inventoryCartItems) {
-        const inventoryKey = getInventoryKey(item);
+        const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
         const available = inventoryLookup.get(inventoryKey) ?? 0;
-
         const baseAdditionalData = item.additionalData
             ? JSON.parse(item.additionalData)
             : {};
