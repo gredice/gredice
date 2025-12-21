@@ -31,6 +31,25 @@ import {
 import { calculateSunflowerAmount } from '../checkout/sunflowerCalculations';
 import { notifyDeliveryScheduled } from '../delivery/emailNotifications';
 
+/**
+ * Recursively sorts object keys for deterministic JSON serialization.
+ * Handles nested objects and arrays to ensure consistent comparison.
+ */
+function sortObjectKeys(obj: unknown): unknown {
+    if (obj === null || typeof obj !== 'object') {
+        return obj;
+    }
+    if (Array.isArray(obj)) {
+        return obj.map(sortObjectKeys);
+    }
+    return Object.keys(obj)
+        .sort()
+        .reduce((result: Record<string, unknown>, key) => {
+            result[key] = sortObjectKeys((obj as Record<string, unknown>)[key]);
+            return result;
+        }, {});
+}
+
 async function processNonStripeCartItems(
     cartId: number,
     accountId: string,
@@ -425,25 +444,10 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
                 'delivery' in additionalData
             ) {
                 const itemDeliveryInfo = additionalData.delivery;
-                // Deterministic serialization with sorted keys for reliable comparison
-                // This handles nested objects by recursively sorting all keys
-                const sortKeys = (obj: unknown): unknown => {
-                    if (obj === null || typeof obj !== 'object') {
-                        return obj;
-                    }
-                    if (Array.isArray(obj)) {
-                        return obj.map(sortKeys);
-                    }
-                    return Object.keys(obj)
-                        .sort()
-                        .reduce((result: Record<string, unknown>, key) => {
-                            result[key] = sortKeys(
-                                (obj as Record<string, unknown>)[key],
-                            );
-                            return result;
-                        }, {});
-                };
-                const serialized = JSON.stringify(sortKeys(itemDeliveryInfo));
+                // Use deterministic serialization with sorted keys for reliable comparison
+                const serialized = JSON.stringify(
+                    sortObjectKeys(itemDeliveryInfo),
+                );
                 deliveryInfosFound.add(serialized);
 
                 if (!deliveryInfo) {
