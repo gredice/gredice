@@ -43,13 +43,10 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         : null;
     const changeCurrencyShoppingCartItem = useSetShoppingCartItem();
     const removeShoppingCartItem = useSetShoppingCartItem();
-    const parsedAdditional = item.additionalData
-        ? JSON.parse(item.additionalData)
-        : {};
-    const usesInventory =
-        item.currency === 'inventory' || parsedAdditional.useInventory;
+
+    const usesInventory = item.currency === 'inventory';
     const availableFromInventory = inventory?.items?.find(
-        (invItem: any) =>
+        (invItem) =>
             invItem.entityTypeName === item.entityTypeName &&
             invItem.entityId === item.entityId,
     )?.amount;
@@ -61,6 +58,10 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
             entityId: item.entityId,
             entityTypeName: item.entityTypeName,
             currency: isSunflower ? 'sunflower' : 'eur',
+            additionalData: item.additionalData,
+            positionIndex: item.positionIndex ?? undefined,
+            gardenId: item.gardenId ?? undefined,
+            raisedBedId: item.raisedBedId ?? undefined,
         });
     }
 
@@ -80,10 +81,10 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
             entityId: item.entityId,
             entityTypeName: item.entityTypeName,
             currency: usesInventory ? 'eur' : 'inventory',
-            additionalData: JSON.stringify({
-                ...parsedAdditional,
-                useInventory: !usesInventory,
-            }),
+            additionalData: item.additionalData,
+            positionIndex: item.positionIndex ?? undefined,
+            gardenId: item.gardenId ?? undefined,
+            raisedBedId: item.raisedBedId ?? undefined,
         });
     }
 

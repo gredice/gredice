@@ -8,11 +8,11 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { getCartInfo } from '../../../lib/checkout/cartInfo';
 import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
-import { getCartInfo } from './checkoutRoutes';
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
