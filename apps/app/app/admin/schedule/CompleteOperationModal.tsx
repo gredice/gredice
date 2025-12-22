@@ -64,7 +64,7 @@ export function CompleteOperationModal({
 
     return (
         <Modal
-            title="Potvrda završetka operacije"
+            title="Potvrda završetka radnje"
             open={isOpen}
             onOpenChange={handleOpenChange}
             trigger={<Checkbox className="size-5 mx-2" />}

@@ -23,7 +23,7 @@ export function OperationsTableCard({
         <Card>
             <CardHeader>
                 <Row justifyContent="space-between">
-                    <CardTitle>Operacije</CardTitle>
+                    <CardTitle>Radnje</CardTitle>
                     <OperationCreateModal
                         accountId={accountId}
                         gardenId={gardenId}

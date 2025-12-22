@@ -56,7 +56,7 @@ export function OperationImage({
                 width: `${size ?? 24}px`,
                 height: `${size ?? 24}px`,
             }}
-            alt={operation.information?.label ?? 'Slika operacije'}
+            alt={operation.information?.label ?? 'Slika radnje'}
             className={className}
         />
     );
