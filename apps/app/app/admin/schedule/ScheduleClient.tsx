@@ -8,7 +8,7 @@ import type { EntityStandardized } from '../../../lib/@types/EntityStandardized'
 import { ScheduleDay } from './ScheduleDay';
 import type { DeliveryRequest, Operation, RaisedBed } from './types';
 
-interface ScheduleClientProps {
+export interface ScheduleClientProps {
     allRaisedBeds: RaisedBed[];
     operations: Operation[];
     plantSorts: EntityStandardized[] | null | undefined;

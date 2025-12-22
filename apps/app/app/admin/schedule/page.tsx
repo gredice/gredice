@@ -4,9 +4,11 @@ import {
     getDeliveryRequests,
     getEntitiesFormatted,
 } from '@gredice/storage';
+import { Suspense } from 'react';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { auth } from '../../../lib/auth/auth';
 import { ScheduleClient } from './ScheduleClient';
+import { ScheduleWithDeliveryRequests } from './ScheduleWithDeliveryRequests';
 
 export const dynamic = 'force-dynamic';
 const operationsBackDays = 90;
@@ -19,7 +21,6 @@ export default async function AdminSchedulePage() {
         completedOperationsFuture,
         plantSorts,
         operationsData,
-        deliveryRequests,
     ] = await Promise.all([
         getAllRaisedBeds(),
         getAllOperations({
@@ -35,8 +36,9 @@ export default async function AdminSchedulePage() {
         }),
         getEntitiesFormatted<EntityStandardized>('plantSort'),
         getEntitiesFormatted<EntityStandardized>('operation'),
-        getDeliveryRequests(),
     ]);
+
+    const deliveryRequestsPromise = getDeliveryRequests();
 
     // Make sure operations are sorted by timestamp desc
     // and that we don't have duplicates
@@ -50,14 +52,22 @@ export default async function AdminSchedulePage() {
         new Map(operations.map((op) => [op.id, op])).values(),
     );
 
+    const scheduleProps = {
+        allRaisedBeds,
+        operations: uniqueOperations,
+        plantSorts,
+        operationsData,
+        userId,
+    };
+
     return (
-        <ScheduleClient
-            allRaisedBeds={allRaisedBeds}
-            operations={uniqueOperations}
-            plantSorts={plantSorts}
-            operationsData={operationsData}
-            userId={userId}
-            deliveryRequests={deliveryRequests}
-        />
+        <Suspense
+            fallback={<ScheduleClient {...scheduleProps} deliveryRequests={[]} />}
+        >
+            <ScheduleWithDeliveryRequests
+                {...scheduleProps}
+                deliveryRequestsPromise={deliveryRequestsPromise}
+            />
+        </Suspense>
     );
 }
