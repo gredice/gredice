@@ -3,16 +3,6 @@ import { Vector3 } from 'three';
 import { useGameState } from '../useGameState';
 import { useCurrentGarden } from './useCurrentGarden';
 
-function getPlacementKey({
-    position,
-    index,
-}: {
-    position: { x: number; z: number };
-    index: number;
-}) {
-    return `${position.x}:${position.z}:${index}`;
-}
-
 export function useFocusPlacedBlock() {
     const { data: garden } = useCurrentGarden();
     const orbitControls = useGameState((state) => state.orbitControls);
@@ -23,11 +13,8 @@ export function useFocusPlacedBlock() {
         if (!garden) return;
 
         const placementEntries = garden.stacks.flatMap((stack) =>
-            stack.blocks.map((block, index) => ({
-                key: getPlacementKey({
-                    position: stack.position,
-                    index,
-                }),
+            stack.blocks.map((block) => ({
+                key: block.id,
                 block,
                 position: stack.position,
             })),
