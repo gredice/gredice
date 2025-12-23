@@ -185,7 +185,7 @@ export function RaisedBedOperationsScheduleSection({
             <Stack spacing={1}>
                 {!dayOperations.length && (
                     <Typography level="body2">
-                        Trenutno nema operacija za ovu gredicu.
+                        Trenutno nema radnji za ovu gredicu.
                     </Typography>
                 )}
                 {dayOperations.map((operation) => {
