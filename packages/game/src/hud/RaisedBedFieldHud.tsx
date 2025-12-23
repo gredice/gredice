@@ -9,6 +9,7 @@ import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import { useGameState } from '../useGameState';
 import { useRemoveRaisedBedCloseupParam } from '../useRaisedBedCloseup';
+import { RaisedBedIdentifierIcon } from './components/RaisedBedIdentifierIcon';
 import { RaisedBedField } from './raisedBed/RaisedBedField';
 import { RaisedBedFieldSuggestions } from './raisedBed/RaisedBedFieldSuggestions';
 import { RaisedBedGreenhouseSuggestion } from './raisedBed/RaisedBedGreenhouseSuggestion';
@@ -52,15 +53,9 @@ export function RaisedBedFieldHud(_props: {
                         trigger={
                             <ButtonGreen fullWidth>
                                 <Row spacing={1}>
-                                    <div
-                                        className="relative h-6 min-w-4"
-                                        title="Identifikator gredice"
-                                    >
-                                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 font-bold">
-                                            {raisedBed.physicalId}
-                                        </span>
-                                        <RaisedBedIcon className="absolute top-1 left-1/2 -translate-x-1/2 size-6" />
-                                    </div>
+                                    <RaisedBedIdentifierIcon
+                                        physicalId={raisedBed.physicalId}
+                                    />
                                     <Typography semiBold noWrap>
                                         {raisedBed?.name}
                                     </Typography>

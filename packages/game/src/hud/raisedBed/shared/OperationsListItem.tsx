@@ -3,10 +3,12 @@ import { formatPrice } from '@gredice/js/currency';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Calendar } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
+import { BackpackIcon } from '../../../icons/Backpack';
 import {
     AnimateFlyToItem,
     useAnimateFlyToShoppingCart,
@@ -93,37 +95,40 @@ export function OperationsListItem({
         <Stack key={operation.id}>
             {operationButton}
             <div className="flex flex-wrap gap-y-1 gap-x-2 pr-4 items-center justify-between">
-                <OperationScheduleModal
-                    operation={operation}
-                    onConfirm={async (date) => {
-                        await handleOperationPicked(operation, date);
-                    }}
-                    trigger={
-                        <Button
-                            title="Zakaži radnju"
-                            variant="plain"
-                            size="sm"
-                            startDecorator={
-                                <Calendar className="size-4 shrink-0" />
-                            }
-                            disabled={setShoppingCartItem.isPending}
-                        >
-                            Zakaži
-                        </Button>
-                    }
-                />
-                <Button
-                    variant={availableFromInventory ? 'solid' : 'outlined'}
-                    size="sm"
-                    disabled={!availableFromInventory}
-                    onClick={() =>
-                        handleOperationPicked(operation, undefined, true)
-                    }
-                >
-                    {availableFromInventory
-                        ? `Iskoristi (${availableFromInventory})`
-                        : 'Nema u ruksaku'}
-                </Button>
+                <Row>
+                    <OperationScheduleModal
+                        operation={operation}
+                        onConfirm={async (date) => {
+                            await handleOperationPicked(operation, date);
+                        }}
+                        trigger={
+                            <Button
+                                title="Zakaži radnju"
+                                variant="plain"
+                                size="sm"
+                                startDecorator={
+                                    <Calendar className="size-4 shrink-0" />
+                                }
+                                disabled={setShoppingCartItem.isPending}
+                            >
+                                Zakaži
+                            </Button>
+                        }
+                    />
+                    <Button
+                        variant="plain"
+                        size="sm"
+                        disabled={!availableFromInventory}
+                        startDecorator={
+                            <BackpackIcon className="size-5 shrink-0" />
+                        }
+                        onClick={() =>
+                            handleOperationPicked(operation, undefined, true)
+                        }
+                    >
+                        {`U ruksaku (${availableFromInventory ?? 0})`}
+                    </Button>
+                </Row>
                 <Button
                     title="Više informacija"
                     variant="link"

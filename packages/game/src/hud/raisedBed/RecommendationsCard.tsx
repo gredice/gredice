@@ -168,81 +168,79 @@ export function RecommendationsCard({
     }
 
     return (
-        <Card>
-            <CardHeader className="pb-4">
-                <Row spacing={1} justifyContent="space-between">
-                    <Typography level="body1">Preporučene radnje</Typography>
-                    {onShowOperations && (
-                        <Button
-                            variant="link"
-                            size="sm"
-                            onClick={onShowOperations}
-                            endDecorator={
-                                <Navigate className="size-4 shrink-0" />
-                            }
-                        >
-                            Sve radnje
-                        </Button>
-                    )}
-                </Row>
-            </CardHeader>
-            <CardOverflow>
-                <Stack>
-                    {isOperationsError && (
-                        <Alert color="danger">
-                            Greška prilikom učitavanja radnji
-                        </Alert>
-                    )}
-                    {isLoadingFeaturedOperations ? (
-                        <Stack spacing={1}>
-                            {skeletonKeys.map((skeletonKey) => (
-                                <Skeleton
-                                    key={skeletonKey}
-                                    className="h-16 w-full rounded-md"
-                                />
-                            ))}
-                        </Stack>
-                    ) : featuredOperations.length ? (
-                        <List
-                            variant="outlined"
-                            className="border-b-0 border-l-0 border-r-0 rounded-none max-h-[25dvh] overflow-y-auto"
-                        >
-                            {featuredOperations.map((operation) => (
-                                <OperationsListItem
-                                    key={operation.id}
-                                    operation={operation}
-                                    gardenId={gardenId}
-                                    raisedBedId={raisedBedId}
-                                    positionIndex={positionIndex}
-                                />
-                            ))}
-                        </List>
-                    ) : (
-                        <Typography
-                            level="body2"
-                            secondary
-                            className="p-4 border-t"
-                        >
-                            Trenutno nema dostupnih radnji za ovu fazu.
-                        </Typography>
-                    )}
-                    {hasMoreOperations &&
-                        onShowOperations &&
-                        !isLoadingFeaturedOperations && (
-                            <div className="border-t px-4 py-2">
-                                <Button
-                                    variant="link"
-                                    size="sm"
-                                    className="self-start px-0"
-                                    onClick={onShowOperations}
-                                >
-                                    Prikaži sve radnje
-                                </Button>
-                            </div>
+        <Stack spacing={1}>
+            <Row spacing={1} justifyContent="space-between">
+                <Typography level="body1">Preporučene radnje</Typography>
+                {onShowOperations && (
+                    <Button
+                        variant="link"
+                        size="sm"
+                        onClick={onShowOperations}
+                        endDecorator={<Navigate className="size-4 shrink-0" />}
+                    >
+                        Sve radnje
+                    </Button>
+                )}
+            </Row>
+            <Card>
+                <CardOverflow>
+                    <Stack>
+                        {isOperationsError && (
+                            <Alert color="danger">
+                                Greška prilikom učitavanja radnji
+                            </Alert>
                         )}
-                </Stack>
-            </CardOverflow>
-        </Card>
+                        {isLoadingFeaturedOperations ? (
+                            <Stack spacing={1}>
+                                {skeletonKeys.map((skeletonKey) => (
+                                    <Skeleton
+                                        key={skeletonKey}
+                                        className="h-16 w-full rounded-md"
+                                    />
+                                ))}
+                            </Stack>
+                        ) : featuredOperations.length ? (
+                            <List
+                                variant="outlined"
+                                className="border-b-0 border-l-0 border-r-0 rounded-none max-h-[25dvh] overflow-y-auto"
+                            >
+                                {featuredOperations.map((operation) => (
+                                    <OperationsListItem
+                                        key={operation.id}
+                                        operation={operation}
+                                        gardenId={gardenId}
+                                        raisedBedId={raisedBedId}
+                                        positionIndex={positionIndex}
+                                    />
+                                ))}
+                            </List>
+                        ) : (
+                            <Typography
+                                level="body2"
+                                secondary
+                                className="p-4 border-t"
+                            >
+                                Trenutno nema dostupnih radnji za ovu fazu.
+                            </Typography>
+                        )}
+                        {hasMoreOperations &&
+                            onShowOperations &&
+                            !isLoadingFeaturedOperations && (
+                                <div className="border-t px-4 py-2">
+                                    <Button
+                                        variant="link"
+                                        size="sm"
+                                        className="self-start px-0"
+                                        onClick={onShowOperations}
+                                    >
+                                        Prikaži sve radnje
+                                    </Button>
+                                </div>
+                            )}
+                    </Stack>
+                </CardOverflow>
+            </Card>
+        </Stack>
     );
 }
 

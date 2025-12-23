@@ -23,6 +23,7 @@ export function RaisedBedInfoTab({
     // Get all raised bed fields and calculate average, min and max yield based on plant sorts
     const yieldStats = raisedBed?.fields.reduce(
         (acc, field) => {
+            if (!field.active) return acc;
             const sortData = sorts?.find(
                 (sort) => sort.id === field.plantSortId,
             );
@@ -55,7 +56,9 @@ export function RaisedBedInfoTab({
             </Stack>
             <Stack>
                 <Typography level="body2">Broj popunjenih polja</Typography>
-                <Typography level="body1">{raisedBed.fields.length}</Typography>
+                <Typography level="body1">
+                    {raisedBed.fields.filter((field) => field.active).length}
+                </Typography>
             </Stack>
             <Stack>
                 <Typography level="body2">Očekivani prinos</Typography>

@@ -16,6 +16,7 @@ import {
     type ShoppingCartItemData,
     useShoppingCart,
 } from '../../hooks/useShoppingCart';
+import { BackpackIcon } from '../../icons/Backpack';
 import { PlantsList } from './PlantsList';
 import { PlantsSortList } from './PlantsSortList';
 
@@ -270,19 +271,23 @@ export function PlantPicker({
                             <Row spacing={1} className="flex-wrap">
                                 <Button
                                     variant={
-                                        useInventoryItem ? 'solid' : 'outlined'
+                                        availableFromInventory &&
+                                        useInventoryItem
+                                            ? 'solid'
+                                            : 'outlined'
                                     }
                                     size="sm"
                                     disabled={!availableFromInventory}
+                                    startDecorator={
+                                        <BackpackIcon className="size-5 shrink-0" />
+                                    }
                                     onClick={() =>
                                         setUseInventoryItem(
                                             (previous) => !previous,
                                         )
                                     }
                                 >
-                                    {availableFromInventory
-                                        ? `Iskoristi iz ruksaka (${availableFromInventory})`
-                                        : 'Nema u ruksaku'}
+                                    {`U ruksaku (${availableFromInventory ?? 0})`}
                                 </Button>
                             </Row>
                             <Input
