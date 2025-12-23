@@ -44,7 +44,7 @@ export default async function AdminSchedulePage() {
                                 userId={userId}
                             />
                         </Suspense>
-                        <Divider />
+                        {dateIndex < dates.length - 1 && <Divider />}
                     </Fragment>
                 ))}
             </Stack>
