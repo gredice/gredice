@@ -1,4 +1,5 @@
 import { Instance, Instances } from '@react-three/drei';
+import type { ReactNode } from 'react';
 import type { Material } from 'three';
 import type { BufferGeometry } from 'three/src/Three.Core.js';
 import { useBlockData } from '../hooks/useBlockData';
@@ -7,25 +8,38 @@ import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { getStackHeight } from '../utils/getStackHeight';
 
-export function EntityInstancesBlock({
-    stacks,
-    name,
-    yOffset,
-    snowLift = 0,
-    scale,
-    geometry,
-    material,
-    snow,
-}: {
+type EntityInstancesBlockBaseProps = {
     stacks: Stack[] | undefined;
     name: string;
     yOffset?: number;
     snowLift?: number;
     scale?: [number, number, number];
     geometry: BufferGeometry;
-    material: Material | Material[];
     snow?: SnowMaterialOptions;
-}) {
+};
+
+type EntityInstancesBlockMaterialProps =
+    | {
+          material: Material | Material[];
+          materialNode?: never;
+      }
+    | {
+          material?: never;
+          materialNode: ReactNode;
+      };
+
+export function EntityInstancesBlock(
+    props: EntityInstancesBlockBaseProps & EntityInstancesBlockMaterialProps,
+) {
+    const {
+        stacks,
+        name,
+        yOffset,
+        snowLift = 0,
+        scale,
+        geometry,
+        snow,
+    } = props;
     const { data: blockData } = useBlockData();
     const pickupBlock = useGameState((state) => state.pickupBlock);
 
@@ -89,8 +103,9 @@ export function EntityInstancesBlock({
                 geometry={geometry}
                 receiveShadow
                 castShadow
-                material={material}
+                material={'material' in props ? props.material : undefined}
             >
+                {'materialNode' in props ? props.materialNode : null}
                 {renderInstances('base')}
             </Instances>
             {renderSnowOverlays()}
