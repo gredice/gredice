@@ -14,6 +14,11 @@ interface ImageViewerProps {
     alt: string;
     previewWidth?: number;
     previewHeight?: number;
+    /**
+     * By default the preview is rendered as a native <button>.
+     * Use "div" when ImageViewer is placed inside another <button> to avoid invalid HTML.
+     */
+    previewAs?: 'button' | 'div';
 }
 
 export function ImageViewer({
@@ -21,6 +26,7 @@ export function ImageViewer({
     alt,
     previewWidth = 300,
     previewHeight = 200,
+    previewAs = 'button',
 }: ImageViewerProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [zoomLevel, setZoomLevel] = useState(1);
@@ -190,17 +196,33 @@ export function ImageViewer({
         }
     };
 
+    const PreviewComponent = previewAs;
+
     return (
         <>
             {/* Preview Image */}
-            <button
-                type="button"
+            <PreviewComponent
+                {...(previewAs === 'button'
+                    ? { type: 'button' as const }
+                    : {
+                          role: 'button' as const,
+                          tabIndex: 0,
+                          'aria-label': 'Otvori u punoj veličini',
+                      })}
                 title="Otvori u punoj veličini"
                 className="group relative hover:cursor-zoom-in flex items-center justify-center overflow-hidden rounded-lg shadow-md bg-muted hover:shadow-lg transition-shadow duration-200"
                 style={{ width: previewWidth, height: previewHeight }}
-                onClick={(event) => {
+                onClick={(event: React.MouseEvent) => {
                     event.stopPropagation();
                     setIsExpanded(true);
+                }}
+                onKeyDown={(event: React.KeyboardEvent) => {
+                    if (previewAs === 'button') return;
+                    event.stopPropagation();
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setIsExpanded(true);
+                    }
                 }}
             >
                 <Image
@@ -212,7 +234,7 @@ export function ImageViewer({
                 />
                 <div className="absolute inset-0 bg-white/40 opacity-0 group-hover:opacity-50 transition-opacity"></div>
                 <Search className="stroke-white group-hover:scale-110 size-4 shrink-0 absolute bottom-1 right-1" />
-            </button>
+            </PreviewComponent>
 
             {/* Modal for expanded view */}
             <Modal
