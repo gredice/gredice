@@ -1,12 +1,9 @@
-import { Instance, Instances, MeshWobbleMaterial } from '@react-three/drei';
+import { MeshWobbleMaterial } from '@react-three/drei';
 import { useMemo } from 'react';
-import { type BufferGeometry, MeshStandardMaterial } from 'three';
-import { useBlockData } from '../hooks/useBlockData';
-import { type SnowMaterialOptions, SnowOverlay } from '../snow/SnowOverlay';
+import { MeshStandardMaterial } from 'three';
 import { snowPresets } from '../snow/snowPresets';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
-import { getStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { EntityInstancesBlock } from './EntityInstancesBlock';
 
@@ -33,159 +30,6 @@ export const instancedBlockNames = [
     'StoneLarge',
 ];
 
-function EntityGrassInstances({ stacks }: { stacks: Stack[] | undefined }) {
-    const { nodes, materials } = useGameGLTF();
-    const { data: blockData } = useBlockData();
-    const pickupBlock = useGameState((state) => state.pickupBlock);
-
-    const grassBlockData = stacks
-        ?.filter(
-            (s) =>
-                (!pickupBlock || !s.blocks.includes(pickupBlock)) &&
-                s.blocks.some(
-                    (b) =>
-                        b.name === 'Block_Grass' ||
-                        b.name === 'Block_Grass_Angle',
-                ),
-        )
-        .flatMap((s) =>
-            s.blocks
-                ?.filter(
-                    (b) =>
-                        b.name === 'Block_Grass' ||
-                        b.name === 'Block_Grass_Angle',
-                )
-                .map((b) => {
-                    const y = getStackHeight(blockData, s, b);
-                    const atAngle = b.name === 'Block_Grass_Angle';
-                    return {
-                        id: b.id,
-                        atAngle,
-                        position: [
-                            s.position.x,
-                            y + (atAngle ? 0.2 : 0.2),
-                            s.position.z,
-                        ] as [number, number, number],
-                        rotation: b.rotation || 0,
-                    };
-                }),
-        );
-    type GrassEntry = NonNullable<typeof grassBlockData>[number];
-    const limit = Math.max((grassBlockData?.length ?? 0) + 1, 100);
-
-    const renderGrassInstances = (
-        predicate: (data: GrassEntry) => boolean,
-        keyPrefix: string,
-    ) =>
-        (grassBlockData?.filter(predicate) ?? []).map((data) => (
-            <Instance
-                key={`grass-block-${keyPrefix}-${data.id}`}
-                position={data.position}
-                rotation={[0, data.rotation * (Math.PI / 2), 0]}
-            />
-        ));
-
-    const renderGrassSnow = (
-        predicate: (data: GrassEntry) => boolean,
-        keyPrefix: string,
-        geometry: BufferGeometry,
-        options: SnowMaterialOptions,
-        yLift: number,
-    ) =>
-        (grassBlockData?.filter(predicate) ?? []).map((data) => (
-            <group
-                key={`grass-snow-${keyPrefix}-${data.id}`}
-                position={[
-                    data.position[0],
-                    data.position[1] + yLift,
-                    data.position[2],
-                ]}
-                rotation={[0, data.rotation * (Math.PI / 2), 0]}
-            >
-                <SnowOverlay geometry={geometry} {...options} />
-            </group>
-        ));
-
-    return (
-        <>
-            <Instances
-                limit={limit}
-                geometry={nodes.Block_Grass_1_2.geometry}
-                material={nodes.Block_Grass_1_2.material}
-                receiveShadow
-                castShadow
-            >
-                {renderGrassInstances((data) => !data.atAngle, 'flat-top')}
-            </Instances>
-            {renderGrassSnow(
-                (data) => !data.atAngle,
-                'flat',
-                nodes.Block_Grass_1_2.geometry,
-                snowPresets.grassFlat,
-                0.01,
-            )}
-            <Instances
-                limit={limit}
-                geometry={nodes.Block_Grass_Angle_1_2.geometry}
-                material={nodes.Block_Grass_Angle_1_2.material}
-                receiveShadow
-                castShadow
-            >
-                {renderGrassInstances((data) => data.atAngle, 'angle-top')}
-            </Instances>
-            {renderGrassSnow(
-                (data) => data.atAngle,
-                'angle',
-                nodes.Block_Grass_Angle_1_2.geometry,
-                snowPresets.grassAngle,
-                0.003,
-            )}
-            <Instances
-                limit={limit}
-                geometry={nodes.Block_Grass_1_1.geometry}
-                receiveShadow
-                castShadow
-            >
-                <MeshWobbleMaterial
-                    {...materials['Material.GrassPart']}
-                    factor={0.01}
-                    speed={4}
-                />
-                {grassBlockData
-                    ?.filter((data) => !data.atAngle)
-                    .map((data) => (
-                        <Instance
-                            key={`grass-block-${data.id}`}
-                            position={data.position}
-                            rotation={[0, data.rotation * (Math.PI / 2), 0]}
-                        />
-                    ))}
-            </Instances>
-            <Instances
-                limit={limit}
-                geometry={nodes.Block_Grass_Angle_1_1.geometry}
-                receiveShadow
-                castShadow
-            >
-                <MeshWobbleMaterial
-                    {...materials['Material.GrassPart']}
-                    factor={0.01}
-                    speed={4}
-                />
-                {grassBlockData
-                    ?.filter((data) => data.atAngle)
-                    .map((data) => (
-                        <Instance
-                            key={`grass-block-${data.id}`}
-                            position={data.position}
-                            rotation={[0, data.rotation * (Math.PI / 2), 0]}
-                        />
-                    ))}
-            </Instances>
-        </>
-    );
-}
-
 export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
     const { nodes, materials } = useGameGLTF();
     const isEditMode = useGameState((state) => state.mode) === 'edit';
@@ -206,7 +50,50 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
 
     return (
         <>
-            <EntityGrassInstances stacks={stacks} />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Block_Grass"
+                yOffset={0.2}
+                geometry={nodes.Block_Grass_1_2.geometry}
+                material={nodes.Block_Grass_1_2.material}
+                snow={snowPresets.grassFlat}
+                snowLift={0.01}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Block_Grass_Angle"
+                yOffset={0.2}
+                geometry={nodes.Block_Grass_Angle_1_2.geometry}
+                material={nodes.Block_Grass_Angle_1_2.material}
+                snow={snowPresets.grassAngle}
+                snowLift={0.003}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Block_Grass"
+                yOffset={0.2}
+                geometry={nodes.Block_Grass_1_1.geometry}
+                materialNode={
+                    <MeshWobbleMaterial
+                        {...materials['Material.GrassPart']}
+                        factor={0.01}
+                        speed={4}
+                    />
+                }
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Block_Grass_Angle"
+                yOffset={0.2}
+                geometry={nodes.Block_Grass_Angle_1_1.geometry}
+                materialNode={
+                    <MeshWobbleMaterial
+                        {...materials['Material.GrassPart']}
+                        factor={0.01}
+                        speed={4}
+                    />
+                }
+            />
             <EntityInstancesBlock
                 stacks={stacks}
                 name="Block_Sand"
