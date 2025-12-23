@@ -201,17 +201,19 @@ export function RaisedBedOperationsScheduleSection({
                         isOperationCancelled(operation.status) ||
                         isOperationCompleted(operation.status);
 
-                    const operationStatusText = isOperationCompleted(
+                    const operationStatusText = isOperationCancelled(
                         operation.status,
                     )
-                        ? 'Završeno'
-                        : operation.isAccepted
-                          ? 'Potvrđeno'
-                          : 'Nije potvrđeno';
+                        ? 'Otkazano'
+                        : isOperationCompleted(operation.status)
+                            ? 'Završeno'
+                            : operation.isAccepted
+                                ? 'Potvrđeno'
+                                : 'Nije potvrđeno';
                     const operationStatusClassName = isOperationCancelled(
                         operation.status,
                     )
-                        ? 'text-red-600'
+                        ? 'text-muted-foreground'
                         : isOperationCompleted(operation.status)
                             ? 'text-green-600'
                             : operation.isAccepted
