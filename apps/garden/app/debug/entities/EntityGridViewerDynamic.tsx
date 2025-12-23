@@ -1,6 +1,5 @@
 'use client';
 
-import { entityNameMap } from '@gredice/game';
 import dynamic from 'next/dynamic';
 
 const EntityGridViewer = dynamic(
@@ -8,10 +7,6 @@ const EntityGridViewer = dynamic(
     { ssr: false },
 );
 
-const entityNames = Object.keys(entityNameMap);
-
 export function EntityGridViewerDynamic() {
-    return (
-        <EntityGridViewer entityNames={entityNames} className="w-full h-full" />
-    );
+    return <EntityGridViewer className="w-full h-full" />;
 }

@@ -7,6 +7,7 @@ import { Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
 import { EntityFactory } from '../entities/EntityFactory';
 import { EntityInstances } from '../entities/EntityInstances';
+import { entityNameMap } from '../entities/entityNameMap';
 import { Environment } from '../scene/Environment';
 import { Scene } from '../scene/Scene';
 import type { Block } from '../types/Block';
@@ -17,7 +18,6 @@ import {
 } from '../useGameState';
 
 export type EntityGridViewerProps = {
-    entityNames: string[];
     className?: string;
     /**
      * Number of columns in the grid
@@ -32,7 +32,6 @@ export type EntityGridViewerProps = {
 };
 
 export function EntityGridViewer({
-    entityNames,
     className,
     columns = 6,
     spacing = 5,
@@ -49,6 +48,7 @@ export function EntityGridViewer({
 
     const client = new QueryClient();
 
+    const entityNames = Object.keys(entityNameMap);
     const entities = entityNames.map((entityName, index) => {
         const col = index % columns;
         const row = Math.floor(index / columns);
