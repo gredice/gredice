@@ -29,8 +29,8 @@ export function AcceptOperationModal({
                     <Check className="size-4 shrink-0" />
                 </IconButton>
             }
-            title="Potvrda operacije"
-            header="Potvrda operacije"
+            title="Potvrda radnje"
+            header="Potvrda radnje"
         />
     );
 }

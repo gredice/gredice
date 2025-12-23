@@ -1,73 +1,53 @@
-import {
-    getAllOperations,
-    getAllRaisedBeds,
-    getDeliveryRequests,
-    getEntitiesFormatted,
-} from '@gredice/storage';
-import { Suspense } from 'react';
-import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
+import { Divider } from '@signalco/ui-primitives/Divider';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
+import { Fragment, Suspense } from 'react';
 import { auth } from '../../../lib/auth/auth';
-import { ScheduleClient } from './ScheduleClient';
-import { ScheduleWithDeliveryRequests } from './ScheduleWithDeliveryRequests';
+import { ScheduleDay } from './ScheduleDay';
+import { ScheduleDayDeliveriesSkeleton } from './ScheduleDayDeliveriesSkeleton';
+import { ScheduleDayHeaderSkeleton } from './ScheduleDayHeaderSkeleton';
+import { ScheduleDayOperationsSkeleton } from './ScheduleDayOperationsSkeleton';
+import { ScheduleDayPlantingsSkeleton } from './ScheduleDayPlantingsSkeleton';
 
 export const dynamic = 'force-dynamic';
-const operationsBackDays = 90;
 
 export default async function AdminSchedulePage() {
     const { userId } = await auth(['admin']);
-    const [
-        allRaisedBeds,
-        newOrScheduledOperations,
-        completedOperationsFuture,
-        plantSorts,
-        operationsData,
-    ] = await Promise.all([
-        getAllRaisedBeds(),
-        getAllOperations({
-            // 90 days back
-            from: new Date(
-                new Date().setDate(new Date().getDate() - operationsBackDays),
-            ),
-            status: ['new', 'planned'],
-        }),
-        getAllOperations({
-            completedFrom: new Date(new Date().setHours(0, 0, 0, 0)),
-            status: 'completed',
-        }),
-        getEntitiesFormatted<EntityStandardized>('plantSort'),
-        getEntitiesFormatted<EntityStandardized>('operation'),
-    ]);
-
-    const deliveryRequestsPromise = getDeliveryRequests();
-
-    // Make sure operations are sorted by timestamp desc
-    // and that we don't have duplicates
-    const operations = [
-        ...newOrScheduledOperations,
-        ...completedOperationsFuture,
-    ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
-    // Remove duplicates
-    const uniqueOperations = Array.from(
-        new Map(operations.map((op) => [op.id, op])).values(),
-    );
-
-    const scheduleProps = {
-        allRaisedBeds,
-        operations: uniqueOperations,
-        plantSorts,
-        operationsData,
-        userId,
-    };
+    const dates = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() + i);
+        return date;
+    });
 
     return (
-        <Suspense
-            fallback={<ScheduleClient {...scheduleProps} deliveryRequests={[]} />}
-        >
-            <ScheduleWithDeliveryRequests
-                {...scheduleProps}
-                deliveryRequestsPromise={deliveryRequestsPromise}
-            />
-        </Suspense>
+        <Stack spacing={2}>
+            <Typography level="h4" component="h1">
+                Rasprored
+            </Typography>
+            <Stack spacing={2}>
+                {dates.map((date, dateIndex) => (
+                    <Fragment key={date.toISOString()}>
+                        <Suspense
+                            fallback={
+                                <Stack className="grow" spacing={2}>
+                                    <ScheduleDayHeaderSkeleton />
+                                    <ScheduleDayPlantingsSkeleton />
+                                    <ScheduleDayOperationsSkeleton />
+                                    <ScheduleDayDeliveriesSkeleton />
+                                </Stack>
+                            }
+                        >
+                            <ScheduleDay
+                                isToday={dateIndex === 0}
+                                date={date}
+                                userId={userId}
+                            />
+                        </Suspense>
+                        {dateIndex < dates.length - 1 && <Divider />}
+                    </Fragment>
+                ))}
+            </Stack>
+        </Stack>
     );
 }
