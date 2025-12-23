@@ -21,13 +21,13 @@ export function getGridPositionFromIndex(
 
     if (orientation === 'horizontal') {
         return {
-            row: baseCol,
-            col: 2 - baseRow,
+            row: baseRow,
+            col: 2 - baseCol,
         };
     }
 
     return {
-        row: 2 - baseRow,
-        col: 2 - baseCol,
+        row: baseCol,
+        col: baseRow,
     };
 }
