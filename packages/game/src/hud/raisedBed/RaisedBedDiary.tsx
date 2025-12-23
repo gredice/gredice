@@ -30,6 +30,7 @@ function DiaryEntryImages({
                     alt={name}
                     previewWidth={80}
                     previewHeight={80}
+                    previewAs="div"
                 />
             ))}
         </Row>
