@@ -20,6 +20,7 @@ import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
 import type { ShoppingCartItemData } from '../../../hooks/useShoppingCart';
 import { BackpackIcon } from '../../../icons/Backpack';
+import { RaisedBedIdentifierIcon } from '../RaisedBedIdentifierIcon';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
 
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
@@ -121,7 +122,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                 />
             )}
             <Stack className="grow">
-                <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+                <div className="grid grid-cols-[1fr_auto] items-center">
                     <Typography level="body1" noWrap>
                         {item.shopData.name}
                     </Typography>
@@ -194,23 +195,22 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     <Stack spacing={0.5}>
                         <Row spacing={1}>
                             <Row spacing={0.5} className="flex-wrap gap-y-0">
-                                {hasGarden && (
-                                    <Typography
-                                        level="body3"
-                                        className="overflow-ellipsis max-w-[200px] overflow-hidden whitespace-nowrap"
-                                        secondary
-                                    >
-                                        {garden?.name || 'Nepoznati vrt'}
-                                    </Typography>
-                                )}
-                                {hasGarden && hasRaisedBed && (
-                                    <Navigate className="size-3 shrink-0" />
-                                )}
                                 {hasRaisedBed && (
                                     <Typography level="body3" secondary>
-                                        {item.raisedBedId
-                                            ? `${raisedBed?.name}`
-                                            : 'Nepoznato'}
+                                        {raisedBed?.physicalId ? (
+                                            <Row spacing={1}>
+                                                <RaisedBedIdentifierIcon
+                                                    physicalId={
+                                                        raisedBed.physicalId
+                                                    }
+                                                />
+                                                <span>
+                                                    {`${raisedBed?.name}`}
+                                                </span>
+                                            </Row>
+                                        ) : (
+                                            'Nova gredica'
+                                        )}
                                     </Typography>
                                 )}
                                 {hasRaisedBed && hasPosition && (
