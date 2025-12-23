@@ -249,23 +249,11 @@ export function PlantPicker({
                     <FilterInput
                         searchParamName={'pretraga'}
                         fieldName={'search'}
+                        instant
                     />
                 )}
                 {currentStep === 0 && (
-                    <>
-                        <PlantsList onChange={handlePlantSelect} />
-                        <Row>
-                            <Button
-                                variant="plain"
-                                onClick={() => {
-                                    setOpen(false);
-                                }}
-                                startDecorator={<Left className="size-5" />}
-                            >
-                                Odustani
-                            </Button>
-                        </Row>
-                    </>
+                    <PlantsList onChange={handlePlantSelect} />
                 )}
                 {currentStep === 1 && selectedPlantId && (
                     <>
