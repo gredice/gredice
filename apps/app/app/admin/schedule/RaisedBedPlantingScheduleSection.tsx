@@ -73,7 +73,9 @@ export function RaisedBedPlantingScheduleSection({
         return {
             id: `field-${field.id}`,
             text: `${field.physicalPositionIndex} - sijanje: ${totalPlants} ${field.plantSortId ? `${sortData?.information?.name}` : '?'}`,
-            approved: isFieldApproved(field.plantStatus),
+            approved:
+                isFieldApproved(field.plantStatus) &&
+                !isFieldCompleted(field.plantStatus),
         };
     });
 
