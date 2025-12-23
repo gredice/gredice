@@ -1,11 +1,19 @@
 import type { OperationData } from '@gredice/client';
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
+import { Close, Search } from '@signalco/ui-icons';
+import { cx } from '@signalco/ui-primitives/cx';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Input } from '@signalco/ui-primitives/Input';
 import { List } from '@signalco/ui-primitives/List';
+import { Stack } from '@signalco/ui-primitives/Stack';
+import { memo, useRef, useState } from 'react';
 import { useOperations } from '../../../hooks/useOperations';
 import { usePlantSort } from '../../../hooks/usePlantSorts';
 import { OperationListItemSkeleton } from '../OperationListItemSkeleton';
 import { OperationsListItem } from './OperationsListItem';
+
+const MemoizedOperationsListItem = memo(OperationsListItem);
 
 export function OperationsList({
     gardenId,
@@ -29,6 +37,9 @@ export function OperationsList({
         usePlantSort(plantSortId);
     const isLoading =
         isLoadingOperations || (Boolean(plantSortId) && isPlantSortLoading);
+    const [search, setSearch] = useState('');
+    const inputRef = useRef<HTMLInputElement>(null);
+
     const filteredOperations = operations
         ?.filter(filterFunc)
         .filter((op) =>
@@ -37,10 +48,56 @@ export function OperationsList({
                       ?.map((op) => op.information?.name)
                       .includes(op.information.name)
                 : true,
+        )
+        .filter((op) =>
+            search.length > 0
+                ? op.information.label
+                      ?.toLowerCase()
+                      .includes(search.toLowerCase()) ||
+                  op.information.name
+                      ?.toLowerCase()
+                      .includes(search.toLowerCase())
+                : true,
         );
 
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearch(e.target.value);
+        // Restore focus after state update
+        requestAnimationFrame(() => {
+            inputRef.current?.focus();
+        });
+    };
+
+    const handleClearSearch = () => {
+        setSearch('');
+        inputRef.current?.focus();
+    };
+
     return (
-        <>
+        <Stack spacing={1}>
+            <Input
+                ref={inputRef}
+                value={search}
+                onChange={handleSearchChange}
+                placeholder="Pretraži..."
+                startDecorator={<Search className="size-5 shrink-0 ml-3" />}
+                endDecorator={
+                    <IconButton
+                        className={cx(
+                            'hover:bg-neutral-300 mr-1 rounded-full aspect-square',
+                            search ? 'visible' : 'invisible',
+                        )}
+                        title="Očisti pretragu"
+                        onClick={handleClearSearch}
+                        size="sm"
+                        variant="plain"
+                    >
+                        <Close className="size-5" />
+                    </IconButton>
+                }
+                className="min-w-60"
+                variant="soft"
+            />
             {isError && (
                 <Alert color="danger">Greška prilikom učitavanja radnji</Alert>
             )}
@@ -50,7 +107,9 @@ export function OperationsList({
             >
                 {!isLoading && filteredOperations?.length === 0 && (
                     <NoDataPlaceholder className="p-4">
-                        Nema dostupnih radnji
+                        {search.length > 0
+                            ? 'Nema rezultata pretrage'
+                            : 'Nema dostupnih radnji'}
                     </NoDataPlaceholder>
                 )}
                 {isLoading &&
@@ -59,7 +118,7 @@ export function OperationsList({
                         <OperationListItemSkeleton key={index} />
                     ))}
                 {filteredOperations?.map((operation) => (
-                    <OperationsListItem
+                    <MemoizedOperationsListItem
                         key={operation.id}
                         operation={operation}
                         gardenId={gardenId}
@@ -68,6 +127,6 @@ export function OperationsList({
                     />
                 ))}
             </List>
-        </>
+        </Stack>
     );
 }
