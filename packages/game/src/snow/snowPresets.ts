@@ -5,12 +5,13 @@ export const snowPresets = {
         maxThickness: 0.1,
         slopeExponent: 2.4,
         noiseScale: 0.2,
+        coverageMultiplier: 1.5,
     },
     grassAngle: {
         maxThickness: 0.18,
         slopeExponent: 2.4,
         noiseScale: 0.2,
-        coverageMultiplier: 0.9,
+        coverageMultiplier: 1.4,
     },
     sand: {
         maxThickness: 0.12,
@@ -36,9 +37,10 @@ export const snowPresets = {
         coverageMultiplier: 0.8,
     },
     giftBox: {
-        maxThickness: 0.05,
+        maxThickness: 0.1,
         slopeExponent: 2.5,
         noiseScale: 1.5,
+        coverageMultiplier: 2,
     },
     treeCanopyInner: {
         maxThickness: 0.5,
@@ -53,7 +55,7 @@ export const snowPresets = {
         coverageMultiplier: 0.6,
     },
     hay: {
-        maxThickness: 0.02,
+        maxThickness: 0.2,
         slopeExponent: 1.4,
         noiseScale: 4,
         coverageMultiplier: 0.85,
@@ -79,7 +81,7 @@ export const snowPresets = {
         maxThickness: 0.07,
         slopeExponent: 1.5,
         noiseScale: 5,
-        coverageMultiplier: 0.7,
+        coverageMultiplier: 2,
     },
     stone: {
         maxThickness: 0.09,

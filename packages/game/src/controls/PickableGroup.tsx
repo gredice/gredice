@@ -1,7 +1,7 @@
 'use client';
 
 import { animated, useSpring } from '@react-spring/three';
-import { Billboard, Shadow, useTexture } from '@react-three/drei';
+import { Billboard, Html, Shadow, useTexture } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { type Handler, useDrag } from '@use-gesture/react';
 import {
@@ -28,6 +28,7 @@ import {
     getStackHeight,
     useStackHeight,
 } from '../utils/getStackHeight';
+import { MoveIndicator } from './components/MoveIndicator';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 
@@ -71,6 +72,9 @@ export function PickableGroup({
     const { spawn } = useParticles();
     const { data: garden } = useCurrentGarden();
     const { data: blocksData } = useBlockData();
+    const currentBlockData = blocksData?.find(
+        (data) => data.information.name === block.name,
+    );
     const getStack = ({ x, z }: { x: number; z: number }) => {
         return garden?.stacks.find(
             (stack) => stack.position.x === x && stack.position.z === z,
@@ -347,6 +351,17 @@ export function PickableGroup({
                     </animated.group>
                 </Suspense>
             )}
+            <group
+                position={[
+                    stack.position.x,
+                    currentBlockData?.attributes.height ?? 0,
+                    stack.position.z,
+                ]}
+            >
+                <Html center>
+                    <MoveIndicator />
+                </Html>
+            </group>
         </animated.group>
     );
 }

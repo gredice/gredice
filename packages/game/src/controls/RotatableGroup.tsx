@@ -5,6 +5,8 @@ import { useBlockRotate } from '../hooks/useBlockRotate';
 import type { Block } from '../types/Block';
 import { useGameState } from '../useGameState';
 
+const ROTATE_DRAG_THRESHOLD = 0.1;
+
 export function RotatableGroup({
     children,
     block,
@@ -58,7 +60,8 @@ export function RotatableGroup({
         // Cancel if the pointer moved
         if (
             rotateInitiated.current &&
-            event.point.distanceTo(rotateInitiated.current) > 0.1
+            event.point.distanceTo(rotateInitiated.current) >
+                ROTATE_DRAG_THRESHOLD
         ) {
             rotateInitiated.current = null;
             console.debug('Rotate cancel - moved');

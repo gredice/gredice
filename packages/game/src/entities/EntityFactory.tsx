@@ -50,6 +50,7 @@ export function EntityFactory({
         );
     }
 
+    // Non-top blocks are not pickable
     const isTopBlock = stack.blocks.indexOf(block) === stack.blocks.length - 1;
     if (!isTopBlock) {
         return (
