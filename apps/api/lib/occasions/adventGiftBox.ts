@@ -30,6 +30,9 @@ type GiftBoxErrorResult = {
 };
 
 function pickRandomItem<T>(items: T[]): T {
+    if (!items.length) {
+        throw new Error('Cannot pick a random item from an empty array.');
+    }
     return items[Math.floor(Math.random() * items.length)];
 }
 
