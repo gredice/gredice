@@ -83,6 +83,8 @@ export function AdventAlreadyOpenedScreen({
     awards,
     onClose,
 }: AdventAlreadyOpenedScreenProps) {
+    const isLastDay = day === 24;
+
     return (
         <Stack spacing={4} className="items-center text-center p-8">
             {/* Checkmark icon */}
@@ -121,9 +123,11 @@ export function AdventAlreadyOpenedScreen({
             )}
 
             {/* Come back message */}
-            <Typography level="body2">
-                Vrati se već sutra po nove nagrade! 🎁
-            </Typography>
+            {!isLastDay && (
+                <Typography level="body2">
+                    Vrati se već sutra po nove nagrade! 🎁
+                </Typography>
+            )}
 
             {/* Close button */}
             <Button
