@@ -26,13 +26,15 @@ export function useOpenGiftBox() {
                     },
                 });
 
+            const payload = await response.json().catch(() => null);
             if (!response.ok) {
                 throw new Error(
-                    'Poklon kutija još nije dostupna ili se ne može otvoriti.',
+                    payload?.error ??
+                        'Poklon kutija još nije dostupna ili se ne može otvoriti.',
                 );
             }
 
-            return response.json();
+            return payload;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: gardenQueryKey });

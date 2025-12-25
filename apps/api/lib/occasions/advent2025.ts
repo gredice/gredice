@@ -110,7 +110,9 @@ export function isAdventSeasonOver(
     now: Date = new Date(),
 ): boolean {
     const userNow = tz(timeZone)(now);
-    return userNow >= getAdventSeasonEndAt(timeZone);
+    return (
+        userNow.getTime() >= getAdventSeasonEndAt(timeZone).getTime()
+    );
 }
 
 const CHRISTMAS_TREE_BLOCK_NAME = 'PineAdvent';

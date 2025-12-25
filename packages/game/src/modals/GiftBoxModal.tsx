@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Confetti from 'react-confetti-boom';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useOpenGiftBox } from '../hooks/useOpenGiftBox';
+import { GiftBoxRewardScreen } from './GiftBoxRewardScreen';
 import { useGiftBoxParam } from '../useUrlState';
 
 const ADVENT_YEAR = 2025;
@@ -19,6 +20,15 @@ export function GiftBoxModal() {
     const { data: garden, isLoading } = useCurrentGarden();
     const openGiftBox = useOpenGiftBox();
     const [giftOpened, setGiftOpened] = useState(false);
+    const [reward, setReward] = useState<
+        | {
+              kind: 'plant' | 'operation';
+              entityTypeName: 'plantSort' | 'operation';
+              entityId: string;
+              title: string;
+          }
+        | null
+    >(null);
     const isOpen = Boolean(giftBoxParam);
     const canOpenGift = useMemo(
         () => new Date() >= ADVENT_END_DATE,
@@ -27,14 +37,16 @@ export function GiftBoxModal() {
     const handleClose = () => {
         setGiftBoxParam(null);
         setGiftOpened(false);
+        setReward(null);
         openGiftBox.reset();
     };
 
     useEffect(() => {
-        if (openGiftBox.isSuccess) {
+        if (openGiftBox.isSuccess && openGiftBox.data?.reward) {
             setGiftOpened(true);
+            setReward(openGiftBox.data.reward);
         }
-    }, [openGiftBox.isSuccess]);
+    }, [openGiftBox.data?.reward, openGiftBox.isSuccess]);
 
     const blockName = garden?.stacks
         ?.flatMap((stack) => stack.blocks)
@@ -58,6 +70,9 @@ export function GiftBoxModal() {
             onOpenChange={(open) => !open && handleClose()}
             title="Poklon kutija"
         >
+            {reward ? (
+                <GiftBoxRewardScreen reward={reward} onClose={handleClose} />
+            ) : (
             <Stack spacing={3} className="relative">
                 {isOpen && <Confetti mode="fall" particleCount={40} />}
                 <div className="flex justify-center">
@@ -122,6 +137,7 @@ export function GiftBoxModal() {
                     </Button>
                 )}
             </Stack>
+            )}
         </Modal>
     );
 }
