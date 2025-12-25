@@ -5,18 +5,52 @@ import { Button } from '@signalco/ui-primitives/Button';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useEffect, useMemo, useState } from 'react';
+import Confetti from 'react-confetti-boom';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useOpenGiftBox } from '../hooks/useOpenGiftBox';
 import { useGiftBoxParam } from '../useUrlState';
+
+const ADVENT_YEAR = 2025;
+const ADVENT_END_DATE = new Date(ADVENT_YEAR, 11, 25);
 
 export function GiftBoxModal() {
     const [giftBoxParam, setGiftBoxParam] = useGiftBoxParam();
     const { data: garden, isLoading } = useCurrentGarden();
+    const openGiftBox = useOpenGiftBox();
+    const [giftOpened, setGiftOpened] = useState(false);
     const isOpen = Boolean(giftBoxParam);
-    const handleClose = () => setGiftBoxParam(null);
+    const canOpenGift = useMemo(
+        () => new Date() >= ADVENT_END_DATE,
+        [],
+    );
+    const handleClose = () => {
+        setGiftBoxParam(null);
+        setGiftOpened(false);
+        openGiftBox.reset();
+    };
+
+    useEffect(() => {
+        if (openGiftBox.isSuccess) {
+            setGiftOpened(true);
+        }
+    }, [openGiftBox.isSuccess]);
 
     const blockName = garden?.stacks
         ?.flatMap((stack) => stack.blocks)
         .find((block) => block.id === giftBoxParam)?.name;
+
+    const errorMessage =
+        openGiftBox.error instanceof Error
+            ? openGiftBox.error.message
+            : null;
+
+    const handleOpenGift = () => {
+        if (!garden || !giftBoxParam) {
+            return;
+        }
+        openGiftBox.mutate({ gardenId: garden.id, blockId: giftBoxParam });
+    };
 
     return (
         <Modal
@@ -24,7 +58,8 @@ export function GiftBoxModal() {
             onOpenChange={(open) => !open && handleClose()}
             title="Poklon kutija"
         >
-            <Stack spacing={3}>
+            <Stack spacing={3} className="relative">
+                {isOpen && <Confetti mode="fall" particleCount={40} />}
                 <div className="flex justify-center">
                     {!giftBoxParam || isLoading ? (
                         <span className="size-28"></span>
@@ -42,22 +77,50 @@ export function GiftBoxModal() {
 
                 <Stack spacing={1}>
                     <Typography level="body1" semiBold>
-                        Poklon kutija te čeka.
+                        Sretan Božić! 🎄
                     </Typography>
-                    <Typography level="body2" secondary>
-                        Poklon kutije možeš otvoriti nakon adventa (25.12.).
-                        Svaka kutija skriva posebno iznenađenje samo za tebe 🎊.
-                    </Typography>
+                    {giftOpened ? (
+                        <Typography level="body2" secondary>
+                            Poklon je otvoren i spremljen u tvoj inventar.
+                        </Typography>
+                    ) : (
+                        <Typography level="body2" secondary>
+                            Otvori svoj poklon i preuzmi novo iznenađenje u
+                            inventar.
+                        </Typography>
+                    )}
+                    {!canOpenGift && (
+                        <Typography level="body2" secondary>
+                            Poklon kutije možeš otvoriti nakon adventa (25.12.).
+                        </Typography>
+                    )}
+                    {errorMessage && (
+                        <Typography level="body2" className="text-red-500">
+                            {errorMessage}
+                        </Typography>
+                    )}
                 </Stack>
 
-                <Button
-                    type="button"
-                    variant="solid"
-                    className="self-start"
-                    onClick={handleClose}
-                >
-                    Uredu
-                </Button>
+                {giftOpened ? (
+                    <Button
+                        type="button"
+                        variant="solid"
+                        className="self-start"
+                        onClick={handleClose}
+                    >
+                        U redu
+                    </Button>
+                ) : (
+                    <Button
+                        type="button"
+                        variant="solid"
+                        className="self-start"
+                        onClick={handleOpenGift}
+                        disabled={!canOpenGift || openGiftBox.isPending}
+                    >
+                        Otvori poklon
+                    </Button>
+                )}
             </Stack>
         </Modal>
     );
