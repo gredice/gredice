@@ -3,10 +3,10 @@ import {
     addInventoryItem,
     deleteGardenBlock,
     deleteGardenStack,
+    getEntitiesFormatted,
     getGarden,
     getGardenBlock,
     getGardenStacks,
-    getEntitiesFormatted,
     updateGardenStack,
 } from '@gredice/storage';
 import { isAdventSeasonOver } from './advent2025';
@@ -114,15 +114,15 @@ export async function openAdventGiftBox({
     ]);
 
     if (!garden || garden.accountId !== accountId) {
-        return { errorStatus: 404, errorMessage: 'Garden not found' };
+        return { errorStatus: 404, errorMessage: 'Vrt nije pronađen' };
     }
     if (!block || block.gardenId !== gardenId) {
-        return { errorStatus: 404, errorMessage: 'Block not found' };
+        return { errorStatus: 404, errorMessage: 'Blok nije pronađen' };
     }
     if (!isValidGiftBoxName(block.name)) {
         return {
             errorStatus: 400,
-            errorMessage: 'Requested block is not a gift box.',
+            errorMessage: 'Odabrani blok nije poklon kutija.',
         };
     }
 
@@ -132,7 +132,7 @@ export async function openAdventGiftBox({
     if (!stack) {
         return {
             errorStatus: 404,
-            errorMessage: 'Stack not found for gift box.',
+            errorMessage: 'Stog nije pronađen za poklon kutiju.',
         };
     }
 
