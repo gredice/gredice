@@ -74,7 +74,7 @@ export function GiftBoxModal() {
                 <GiftBoxRewardScreen reward={reward} onClose={handleClose} />
             ) : (
             <Stack spacing={3} className="relative">
-                {isOpen && <Confetti mode="fall" particleCount={40} />}
+                {giftOpened && <Confetti mode="fall" particleCount={40} />}
                 <div className="flex justify-center">
                     {!giftBoxParam || isLoading ? (
                         <span className="size-28"></span>
