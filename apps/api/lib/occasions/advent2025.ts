@@ -92,6 +92,29 @@ function isAdventDayAvailable(
     return day === currentDay;
 }
 
+export function getAdventSeasonEndAt(timeZone: string): Date {
+    return new TZDate(
+        ADVENT_YEAR,
+        11,
+        ADVENT_TOTAL_DAYS + 1,
+        0,
+        0,
+        0,
+        0,
+        timeZone,
+    );
+}
+
+export function isAdventSeasonOver(
+    timeZone: string,
+    now: Date = new Date(),
+): boolean {
+    const userNow = tz(timeZone)(now);
+    return (
+        userNow.getTime() >= getAdventSeasonEndAt(timeZone).getTime()
+    );
+}
+
 const CHRISTMAS_TREE_BLOCK_NAME = 'PineAdvent';
 const DECORATION_BLOCK_IDS = [
     'GiftBox_RedWhite',

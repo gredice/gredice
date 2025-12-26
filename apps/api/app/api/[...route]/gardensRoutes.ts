@@ -5,6 +5,7 @@ import {
     createGardenStack,
     createRaisedBed,
     deleteGardenStack,
+    getAccount,
     getAccountGardens,
     getEvents,
     getGarden,
@@ -36,6 +37,9 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
+
+const DEFAULT_TIMEZONE = 'Europe/Paris';
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -714,6 +718,47 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             return context.json(null, 200);
+        },
+    )
+    .post(
+        '/:gardenId/blocks/:blockId/open-gift-box',
+        describeRoute({
+            description: 'Open an advent gift box and receive a reward.',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                blockId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, blockId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber) || gardenIdNumber <= 0) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const account = await getAccount(accountId);
+            const timeZone = account?.timeZone ?? DEFAULT_TIMEZONE;
+
+            const result = await openAdventGiftBox({
+                accountId,
+                gardenId: gardenIdNumber,
+                blockId,
+                timeZone,
+            });
+
+            if ('errorStatus' in result) {
+                return context.json(
+                    { error: result.errorMessage },
+                    result.errorStatus as ContentfulStatusCode,
+                );
+            }
+
+            return context.json({ reward: result.reward }, 200);
         },
     )
     .post(
