@@ -1,5 +1,6 @@
-import type { PlantSortData } from '@gredice/client';
+import type { OperationData, PlantSortData } from '@gredice/client';
 import { PlantOrSortImage } from '@gredice/ui/plants';
+import { OperationImage } from '@gredice/ui/OperationImage';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
@@ -9,6 +10,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useMemo, useState } from 'react';
 import { useInventory } from '../hooks/useInventory';
+import { useOperations } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
 import { BackpackIcon } from '../icons/Backpack';
 import { useBackpackOpenParam } from '../useUrlState';
@@ -27,13 +29,15 @@ type InventoryItemData = {
 function InventoryItemCell({
     item,
     sortData,
+    operationData,
     onClick,
 }: {
     item?: InventoryItemData;
     sortData?: PlantSortData;
+    operationData?: OperationData;
     onClick: () => void;
 }) {
-    if (!item || !sortData) {
+    if (!item) {
         // Empty slot
         return (
             <div className="aspect-square rounded-lg border-2 border-dashed bg-card/20" />
@@ -46,12 +50,24 @@ function InventoryItemCell({
             onClick={onClick}
             className="aspect-square rounded-lg border p-0.5 relative transition-all bg-card hover:bg-primary/10"
         >
-            <PlantOrSortImage
-                width={48}
-                height={48}
-                className="rounded-md w-full h-full object-cover"
-                plantSort={sortData}
-            />
+            {sortData ? (
+                <PlantOrSortImage
+                    width={48}
+                    height={48}
+                    className="rounded-md w-full h-full object-cover"
+                    plantSort={sortData}
+                />
+            ) : operationData ? (
+                <div className="flex items-center justify-center h-full w-full rounded-md bg-card">
+                    <OperationImage operation={operationData} size={48} />
+                </div>
+            ) : (
+                <div className="flex items-center justify-center h-full w-full rounded-md bg-muted">
+                    <Typography level="body2" className="text-center">
+                        {item.name ?? item.entityTypeName}
+                    </Typography>
+                </div>
+            )}
 
             <div className="absolute -top-1.5 -right-1.5">
                 <DotIndicator
@@ -67,21 +83,30 @@ function InventoryItemCell({
 function InventoryItemModal({
     item,
     sortData,
+    operationData,
     open,
     onClose,
 }: {
     item: InventoryItemData;
     sortData?: PlantSortData;
+    operationData?: OperationData;
     open: boolean;
     onClose: () => void;
 }) {
     const displayName =
-        sortData?.information?.name ?? item.name ?? 'Nepoznati predmet';
-    const description = sortData?.information?.shortDescription;
+        sortData?.information?.name ??
+        operationData?.information?.label ??
+        item.name ??
+        'Nepoznati predmet';
+    const description =
+        sortData?.information?.shortDescription ??
+        operationData?.information?.shortDescription;
 
     const entityTypeLabel =
         item.entityTypeName === 'plantSort'
             ? 'Sorta biljke'
+            : operationData
+              ? 'Radnja'
             : item.entityTypeName;
 
     return (
@@ -92,12 +117,27 @@ function InventoryItemModal({
         >
             <Stack spacing={3}>
                 <div className="flex gap-4 items-start">
-                    <PlantOrSortImage
-                        width={80}
-                        height={80}
-                        className="rounded-lg border shrink-0"
-                        plantSort={sortData ?? null}
-                    />
+                    {sortData ? (
+                        <PlantOrSortImage
+                            width={80}
+                            height={80}
+                            className="rounded-lg border shrink-0"
+                            plantSort={sortData}
+                        />
+                    ) : operationData ? (
+                        <div className="size-20 rounded-lg border shrink-0 flex items-center justify-center bg-card">
+                            <OperationImage
+                                operation={operationData}
+                                size={64}
+                            />
+                        </div>
+                    ) : (
+                        <div className="size-20 rounded-lg border shrink-0 flex items-center justify-center bg-muted">
+                            <Typography level="body2" className="text-center">
+                                {item.name ?? item.entityTypeName}
+                            </Typography>
+                        </div>
+                    )}
                     <Stack spacing={1} className="min-w-0">
                         <Row spacing={1} alignItems="center">
                             <Typography level="body2" secondary>
@@ -157,6 +197,7 @@ function InventoryItemModal({
 
 export function InventoryHud() {
     const { data: inventory } = useInventory();
+    const { data: operations } = useOperations();
     const [isOpen, setIsOpen] = useBackpackOpenParam();
     const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null);
 
@@ -174,6 +215,18 @@ export function InventoryHud() {
     const { data: sortData } = useSorts(
         plantSortIds.length > 0 ? plantSortIds : undefined,
     );
+
+    const operationLookup = useMemo(() => {
+        if (!operations) {
+            return new Map<string, OperationData>();
+        }
+        return new Map(
+            operations.map((operation) => [
+                `${operation.entityType.name}-${operation.id}`,
+                operation,
+            ]),
+        );
+    }, [operations]);
 
     const totalItems = useMemo(
         () => items?.reduce((sum, item) => sum + item.amount, 0) ?? 0,
@@ -204,6 +257,9 @@ export function InventoryHud() {
         selectedItem?.entityTypeName === 'plantSort'
             ? sortData?.find((s) => s.id === Number(selectedItem.entityId))
             : undefined;
+    const selectedOperationData = selectedItemKey
+        ? operationLookup.get(selectedItemKey)
+        : undefined;
 
     const handleOpenChange = (open: boolean) => {
         setIsOpen(open);
@@ -265,12 +321,18 @@ export function InventoryHud() {
                                           (s) => s.id === Number(item.entityId),
                                       )
                                     : undefined;
+                            const itemOperationData = item
+                                ? operationLookup.get(
+                                      `${item.entityTypeName}-${item.entityId}`,
+                                  )
+                                : undefined;
 
                             return (
                                 <InventoryItemCell
                                     key={key}
                                     item={item ?? undefined}
                                     sortData={itemSortData}
+                                    operationData={itemOperationData}
                                     onClick={() => {
                                         if (item) {
                                             setSelectedItemKey(key);
@@ -299,6 +361,7 @@ export function InventoryHud() {
                 <InventoryItemModal
                     item={selectedItem}
                     sortData={selectedSortData}
+                    operationData={selectedOperationData}
                     open={Boolean(selectedItemKey)}
                     onClose={() => setSelectedItemKey(null)}
                 />
