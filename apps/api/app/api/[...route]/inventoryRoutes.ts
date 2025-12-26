@@ -42,7 +42,7 @@ const app = new Hono<{ Variables: AuthVariables }>().get(
                 return {
                     ...item,
                     name:
-                        entity?.information?.label ?? entity?.information?.name,
+                        entity?.information?.name ?? entity?.information?.label,
                     image: (entity as { image?: { cover?: { url?: string } } })
                         ?.image?.cover?.url,
                 };

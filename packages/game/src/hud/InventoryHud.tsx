@@ -95,6 +95,7 @@ function InventoryItemModal({
 }) {
     const displayName =
         sortData?.information?.name ??
+        operationData?.information?.name ??
         operationData?.information?.label ??
         item.name ??
         'Nepoznati predmet';
