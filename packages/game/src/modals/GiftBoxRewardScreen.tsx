@@ -29,7 +29,9 @@ export function GiftBoxRewardScreen({
         reward.title ||
         (reward.kind === 'plant' ? 'Nova biljka' : 'Nova radnja');
     const operationId =
-        reward.entityTypeName === 'operation' ? reward.entityId : undefined;
+        reward.entityTypeName === 'operation'
+            ? Number(reward.entityId)
+            : undefined;
     const plantSortId =
         reward.entityTypeName === 'plantSort'
             ? Number(reward.entityId)

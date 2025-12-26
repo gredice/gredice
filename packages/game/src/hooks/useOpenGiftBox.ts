@@ -17,21 +17,25 @@ export function useOpenGiftBox() {
             gardenId: number;
             blockId: string;
         }) => {
-            const response = await client()
-                .api.gardens[':gardenId']
-                .blocks[':blockId']['open-gift-box'].$post({
-                    param: {
-                        gardenId: gardenId.toString(),
-                        blockId,
-                    },
-                });
+            const response = await client().api.gardens[':gardenId'].blocks[
+                ':blockId'
+            ]['open-gift-box'].$post({
+                param: {
+                    gardenId: gardenId.toString(),
+                    blockId,
+                },
+            });
 
             const payload = await response.json().catch(() => null);
             if (!response.ok) {
-                throw new Error(
-                    payload?.error ??
-                        'Poklon kutija još nije dostupna ili se ne može otvoriti.',
-                );
+                const errorMessage =
+                    payload &&
+                    typeof payload === 'object' &&
+                    'error' in payload &&
+                    typeof payload.error === 'string'
+                        ? payload.error
+                        : 'Poklon kutija još nije dostupna ili se ne može otvoriti.';
+                throw new Error(errorMessage);
             }
 
             return payload;
