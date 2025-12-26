@@ -8,7 +8,11 @@ const workflowPath = path.join(repoRoot, ".github", "workflows", "ci.yml");
 const appsDir = path.join(repoRoot, "apps");
 const packagesDir = path.join(repoRoot, "packages");
 
-const appNames = ["www", "garden", "farm", "app", "api"];
+const appNames = fs
+    .readdirSync(appsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
 
 const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, "utf8"));
 
