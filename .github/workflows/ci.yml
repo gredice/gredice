@@ -24,21 +24,73 @@ jobs:
           filters: |
             app_www:
               - apps/www/**
-              - packages/**
+              - packages/client/**
+              - packages/game/**
+              - packages/js/**
+              - packages/ui/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
             app_garden:
               - apps/garden/**
-              - packages/**
+              - packages/client/**
+              - packages/game/**
+              - packages/ui/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
             app_farm:
               - apps/farm/**
-              - packages/**
+              - packages/storage/**
+              - packages/ui/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
             app_app:
               - apps/app/**
-              - packages/**
+              - packages/client/**
+              - packages/email/**
+              - packages/fiscalization/**
+              - packages/js/**
+              - packages/notifications/**
+              - packages/signalco/**
+              - packages/storage/**
+              - packages/stripe/**
+              - packages/transactional/**
+              - packages/ui/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
             app_api:
               - apps/api/**
-              - packages/**
+              - packages/directory-types/**
+              - packages/email/**
+              - packages/js/**
+              - packages/notifications/**
+              - packages/signalco/**
+              - packages/storage/**
+              - packages/stripe/**
+              - packages/transactional/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
             packages_storage:
               - packages/storage/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
     outputs:
       app_www: ${{ steps.filter.outputs.app_www }}
       app_garden: ${{ steps.filter.outputs.app_garden }}
@@ -152,9 +204,23 @@ jobs:
       - name: ⚒️ Test app
         run: pnpm test --filter=@gredice/storage
 
+  ci_filter_check:
+    name: "CI - verify app package filters"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: ✨ Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24.12.0"
+
+      - name: 🔎 Verify CI app filters
+        run: node ./scripts/check-ci-filters.mjs
+
   ci_ok:
     name: "[CI] OK"
-    needs: [changes, ci_www, ci_garden, ci_farm, ci_app, ci_api, test_packages]
+    needs: [changes, ci_www, ci_garden, ci_farm, ci_app, ci_api, test_packages, ci_filter_check]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:

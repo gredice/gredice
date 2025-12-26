@@ -8,6 +8,7 @@
         "env:pull": "node ./scripts/pull-envs.mjs",
         "lint": "turbo lint",
         "lint:migrate": "turbo lint:migrate",
+        "lint:ci-filters": "node ./scripts/check-ci-filters.mjs",
         "db-generate": "turbo db-generate",
         "db-push": "turbo db-push",
         "regenerate": "turbo regenerate",
