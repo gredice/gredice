@@ -9,8 +9,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Confetti from 'react-confetti-boom';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useOpenGiftBox } from '../hooks/useOpenGiftBox';
-import { GiftBoxRewardScreen } from './GiftBoxRewardScreen';
 import { useGiftBoxParam } from '../useUrlState';
+import { GiftBoxRewardScreen } from './GiftBoxRewardScreen';
 
 const ADVENT_YEAR = 2025;
 const ADVENT_END_DATE = new Date(ADVENT_YEAR, 11, 25);
@@ -20,20 +20,14 @@ export function GiftBoxModal() {
     const { data: garden, isLoading } = useCurrentGarden();
     const openGiftBox = useOpenGiftBox();
     const [giftOpened, setGiftOpened] = useState(false);
-    const [reward, setReward] = useState<
-        | {
-              kind: 'plant' | 'operation';
-              entityTypeName: 'plantSort' | 'operation';
-              entityId: string;
-              title: string;
-          }
-        | null
-    >(null);
+    const [reward, setReward] = useState<{
+        kind: 'plant' | 'operation';
+        entityTypeName: 'plantSort' | 'operation';
+        entityId: string;
+        title: string;
+    } | null>(null);
     const isOpen = Boolean(giftBoxParam);
-    const canOpenGift = useMemo(
-        () => new Date() >= ADVENT_END_DATE,
-        [],
-    );
+    const canOpenGift = useMemo(() => new Date() >= ADVENT_END_DATE, []);
     const handleClose = () => {
         setGiftBoxParam(null);
         setGiftOpened(false);
@@ -58,9 +52,7 @@ export function GiftBoxModal() {
         .find((block) => block.id === giftBoxParam)?.name;
 
     const errorMessage =
-        openGiftBox.error instanceof Error
-            ? openGiftBox.error.message
-            : null;
+        openGiftBox.error instanceof Error ? openGiftBox.error.message : null;
 
     const handleOpenGift = () => {
         if (!garden || !giftBoxParam) {
@@ -78,70 +70,71 @@ export function GiftBoxModal() {
             {reward ? (
                 <GiftBoxRewardScreen reward={reward} onClose={handleClose} />
             ) : (
-            <Stack spacing={3} className="relative">
-                {giftOpened && <Confetti mode="fall" particleCount={40} />}
-                <div className="flex justify-center">
-                    {!giftBoxParam || isLoading ? (
-                        <span className="size-28"></span>
-                    ) : blockName ? (
-                        <BlockImage
-                            blockName={blockName}
-                            width={160}
-                            height={160}
-                            className="rounded-lg"
-                        />
-                    ) : (
-                        <span className="size-20 text-[80px]">🎁</span>
-                    )}
-                </div>
+                <Stack spacing={3} className="relative">
+                    {giftOpened && <Confetti mode="fall" particleCount={40} />}
+                    <div className="flex justify-center">
+                        {!giftBoxParam || isLoading ? (
+                            <span className="size-28"></span>
+                        ) : blockName ? (
+                            <BlockImage
+                                blockName={blockName}
+                                width={160}
+                                height={160}
+                                className="rounded-lg"
+                            />
+                        ) : (
+                            <span className="size-20 text-[80px]">🎁</span>
+                        )}
+                    </div>
 
-                <Stack spacing={1}>
-                    <Typography level="body1" semiBold>
-                        Sretan Božić! 🎄
-                    </Typography>
+                    <Stack spacing={1}>
+                        <Typography level="body1" semiBold>
+                            Sretan Božić! 🎄
+                        </Typography>
+                        {giftOpened ? (
+                            <Typography level="body2" secondary>
+                                Poklon je otvoren i spremljen u tvoj inventar.
+                            </Typography>
+                        ) : (
+                            <Typography level="body2" secondary>
+                                Otvori svoj poklon i preuzmi novo iznenađenje u
+                                inventar.
+                            </Typography>
+                        )}
+                        {!canOpenGift && (
+                            <Typography level="body2" secondary>
+                                Poklon kutije možeš otvoriti nakon adventa
+                                (25.12.).
+                            </Typography>
+                        )}
+                        {errorMessage && (
+                            <Typography level="body2" className="text-red-500">
+                                {errorMessage}
+                            </Typography>
+                        )}
+                    </Stack>
+
                     {giftOpened ? (
-                        <Typography level="body2" secondary>
-                            Poklon je otvoren i spremljen u tvoj inventar.
-                        </Typography>
+                        <Button
+                            type="button"
+                            variant="solid"
+                            className="self-start"
+                            onClick={handleClose}
+                        >
+                            U redu
+                        </Button>
                     ) : (
-                        <Typography level="body2" secondary>
-                            Otvori svoj poklon i preuzmi novo iznenađenje u
-                            inventar.
-                        </Typography>
-                    )}
-                    {!canOpenGift && (
-                        <Typography level="body2" secondary>
-                            Poklon kutije možeš otvoriti nakon adventa (25.12.).
-                        </Typography>
-                    )}
-                    {errorMessage && (
-                        <Typography level="body2" className="text-red-500">
-                            {errorMessage}
-                        </Typography>
+                        <Button
+                            type="button"
+                            variant="solid"
+                            className="self-start"
+                            onClick={handleOpenGift}
+                            disabled={!canOpenGift || openGiftBox.isPending}
+                        >
+                            Otvori poklon
+                        </Button>
                     )}
                 </Stack>
-
-                {giftOpened ? (
-                    <Button
-                        type="button"
-                        variant="solid"
-                        className="self-start"
-                        onClick={handleClose}
-                    >
-                        U redu
-                    </Button>
-                ) : (
-                    <Button
-                        type="button"
-                        variant="solid"
-                        className="self-start"
-                        onClick={handleOpenGift}
-                        disabled={!canOpenGift || openGiftBox.isPending}
-                    >
-                        Otvori poklon
-                    </Button>
-                )}
-            </Stack>
             )}
         </Modal>
     );
