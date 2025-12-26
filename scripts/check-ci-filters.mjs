@@ -81,8 +81,8 @@ const collectAppWorkspaceDeps = (workspacePackages) => {
         const packageJsonPath = path.join(appsDir, appName, "package.json");
         const packageJson = readJson(packageJsonPath);
         const dependencies = {
-            ...packageJson.dependencies,
-            ...packageJson.devDependencies,
+            ...(packageJson.dependencies ?? {}),
+            ...(packageJson.devDependencies ?? {}),
         };
 
         const workspaceDeps = Object.keys(dependencies)
