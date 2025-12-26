@@ -28,10 +28,14 @@ export function useOpenGiftBox() {
 
             const payload = await response.json().catch(() => null);
             if (!response.ok) {
-                throw new Error(
-                    payload?.error ??
-                        'Poklon kutija još nije dostupna ili se ne može otvoriti.',
-                );
+                const errorMessage =
+                    payload &&
+                    typeof payload === 'object' &&
+                    'error' in payload &&
+                    typeof payload.error === 'string'
+                        ? payload.error
+                        : 'Poklon kutija još nije dostupna ili se ne može otvoriti.';
+                throw new Error(errorMessage);
             }
 
             return payload;

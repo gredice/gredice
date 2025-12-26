@@ -42,11 +42,16 @@ export function GiftBoxModal() {
     };
 
     useEffect(() => {
-        if (openGiftBox.isSuccess && openGiftBox.data?.reward) {
+        if (
+            openGiftBox.isSuccess &&
+            openGiftBox.data &&
+            'reward' in openGiftBox.data &&
+            openGiftBox.data.reward
+        ) {
             setGiftOpened(true);
             setReward(openGiftBox.data.reward);
         }
-    }, [openGiftBox.data?.reward, openGiftBox.isSuccess]);
+    }, [openGiftBox.data, openGiftBox.isSuccess]);
 
     const blockName = garden?.stacks
         ?.flatMap((stack) => stack.blocks)
