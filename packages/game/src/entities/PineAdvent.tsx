@@ -57,8 +57,6 @@ type StringLightPosition = {
 const TREE_BASE_Y = 0.15;
 /** Tree top Y position where decorations end */
 const TREE_TOP_Y = 2.3;
-/** Total number of advent days */
-const ADVENT_TOTAL_DAYS = 24;
 /** Default radius when decoration falls outside defined tiers */
 const DEFAULT_RADIUS = 4;
 /** Golden angle multiplier for spiral distribution */
@@ -332,7 +330,7 @@ export function PineAdvent({
     const { data: calendar } = useAdventCalendar();
     const openCalendarDays =
         (variant ?? 0) > 99 ? 24 : (calendar?.openedCount ?? 0);
-    const showStar = openCalendarDays >= ADVENT_TOTAL_DAYS;
+    const showStar = calendar?.days.find((d) => d.day === 24)?.opened ?? false;
 
     // Ball decorations count
     const ballDecorationCount = Math.min(
