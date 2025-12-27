@@ -1,4 +1,8 @@
-import { getEntitiesFormatted, getInventory } from '@gredice/storage';
+import {
+    type EntityStandardized,
+    getEntitiesFormatted,
+    getInventory,
+} from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
 import {
@@ -18,14 +22,14 @@ const app = new Hono<{ Variables: AuthVariables }>().get(
             new Set(inventory.map((item) => item.entityTypeName)),
         );
         const entitiesData = await Promise.all(
-            entityTypeNames.map(getEntitiesFormatted),
+            entityTypeNames.map(getEntitiesFormatted<EntityStandardized>),
         );
         const entitiesByType = entityTypeNames.reduce(
             (acc, type, index) => {
                 acc[type] = entitiesData[index] ?? [];
                 return acc;
             },
-            {} as Record<string, unknown[]>,
+            {} as Record<string, EntityStandardized[]>,
         );
 
         return context.json({
@@ -34,10 +38,7 @@ const app = new Hono<{ Variables: AuthVariables }>().get(
                     (entity) =>
                         (entity as { id?: string | number }).id?.toString() ===
                         item.entityId,
-                ) as {
-                    information?: { label?: string; name?: string };
-                    image?: any;
-                };
+                );
 
                 return {
                     ...item,
