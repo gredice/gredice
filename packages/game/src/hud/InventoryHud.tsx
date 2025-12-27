@@ -1,6 +1,6 @@
 import type { OperationData, PlantSortData } from '@gredice/client';
-import { PlantOrSortImage } from '@gredice/ui/plants';
 import { OperationImage } from '@gredice/ui/OperationImage';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
@@ -95,19 +95,15 @@ function InventoryItemModal({
 }) {
     const displayName =
         sortData?.information?.name ??
+        operationData?.information?.name ??
         operationData?.information?.label ??
+        operationData?.information?.name ??
         item.name ??
         'Nepoznati predmet';
     const description =
         sortData?.information?.shortDescription ??
+        sortData?.information?.plant?.information?.description ??
         operationData?.information?.shortDescription;
-
-    const entityTypeLabel =
-        item.entityTypeName === 'plantSort'
-            ? 'Sorta biljke'
-            : operationData
-              ? 'Radnja'
-            : item.entityTypeName;
 
     return (
         <Modal
@@ -133,32 +129,23 @@ function InventoryItemModal({
                         </div>
                     ) : (
                         <div className="size-20 rounded-lg border shrink-0 flex items-center justify-center bg-muted">
-                            <Typography level="body2" className="text-center">
+                            <Typography level="body2" center>
                                 {item.name ?? item.entityTypeName}
                             </Typography>
                         </div>
                     )}
                     <Stack spacing={1} className="min-w-0">
                         <Row spacing={1} alignItems="center">
-                            <Typography level="body2" secondary>
-                                {entityTypeLabel}
-                            </Typography>
-                            <Chip color="success" className="text-xs">
-                                {item.amount}
-                            </Chip>
+                            <Typography level="body1">{displayName}</Typography>
                         </Row>
                         {description && (
-                            <Typography level="body2" secondary>
-                                {description}
-                            </Typography>
+                            <Typography level="body2">{description}</Typography>
                         )}
                     </Stack>
                 </div>
 
                 <Stack spacing={1.5} className="bg-card rounded-lg p-3 border">
-                    <Typography level="body2" semiBold>
-                        Kako koristiti:
-                    </Typography>
+                    <Typography level="body2">Kako koristiti:</Typography>
                     <Stack spacing={1}>
                         {item.entityTypeName === 'plantSort' ? (
                             <>
