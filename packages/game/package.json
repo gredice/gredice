@@ -44,7 +44,7 @@
         "@types/three": "0.182.0",
         "@use-gesture/react": "10.3.1",
         "chroma-js": "3.2.0",
-        "next": "16.1.0",
+        "next": "16.1.1",
         "next-themes": "0.4.6",
         "react": "19.2.3",
         "react-confetti-boom": "2.0.1",
