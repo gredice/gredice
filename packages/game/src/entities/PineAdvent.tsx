@@ -9,6 +9,7 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
+import { PineAdventStar } from './PineAdventStar';
 
 /** Maximum number of ball decorations on the tree */
 const MAX_BALL_DECORATIONS = 128;
@@ -329,6 +330,7 @@ export function PineAdvent({
     const { data: calendar } = useAdventCalendar();
     const openCalendarDays =
         (variant ?? 0) > 99 ? 24 : (calendar?.openedCount ?? 0);
+    const showStar = calendar?.days.find((d) => d.day === 24)?.opened ?? false;
 
     // Ball decorations count
     const ballDecorationCount = Math.min(
@@ -398,6 +400,7 @@ export function PineAdvent({
                 lightCount={stringLightCount}
                 maxLights={MAX_STRING_LIGHTS}
             />
+            <PineAdventStar isVisible={showStar} />
         </animated.group>
     );
 }
