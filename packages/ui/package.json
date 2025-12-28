@@ -31,7 +31,7 @@
         "@signalco/ui-primitives": "0.6.5",
         "motion": "12.23.26",
         "next": "16.1.1",
-        "nuqs": "2.8.5",
+        "nuqs": "2.8.6",
         "react": "19.2.3",
         "react-dom": "19.2.3",
         "react-markdown": "10.1.0"
