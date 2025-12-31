@@ -1,0 +1,40 @@
+import { cookies } from 'next/headers';
+import { useRefreshToken } from '@gredice/storage';
+import { createJwt, setCookie, verifyJwt } from './baseAuth';
+import {
+    clearRefreshCookie,
+    getRefreshTokenCookie,
+    setRefreshCookie,
+} from './refreshCookies';
+import { accessTokenExpiry } from './sessionConfig';
+
+async function isAccessTokenValid(token: string) {
+    const { result, error } = await verifyJwt(token);
+    if (error || !result?.payload?.sub) {
+        return false;
+    }
+    return true;
+}
+
+export async function refreshSessionIfNeeded() {
+    const accessToken = cookies().get('gredice_session')?.value;
+    if (accessToken && (await isAccessTokenValid(accessToken))) {
+        return accessToken;
+    }
+
+    const refreshToken = getRefreshTokenCookie();
+    if (!refreshToken) {
+        return null;
+    }
+
+    const refreshed = await useRefreshToken(refreshToken);
+    if (!refreshed) {
+        clearRefreshCookie();
+        return null;
+    }
+
+    const newAccessToken = await createJwt(refreshed.userId, accessTokenExpiry);
+    setCookie(newAccessToken);
+    setRefreshCookie(refreshToken);
+    return newAccessToken;
+}

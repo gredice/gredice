@@ -24,10 +24,13 @@ import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import {
     clearCookie,
-    createJwt,
     setCookie,
     verifyJwt,
 } from '../../../lib/auth/auth';
+import {
+    clearRefreshCookie,
+    setRefreshCookie,
+} from '../../../lib/auth/refreshCookies';
 import {
     sendChangePassword,
     sendEmailVerification,
@@ -37,6 +40,12 @@ import {
     fetchUserInfo,
     generateAuthUrl,
 } from '../../../lib/auth/oauth';
+import {
+    issueSessionTokens,
+    refreshSessionTokens,
+    revokeSessionToken,
+} from '../../../lib/auth/sessionTokens';
+import { refreshTokenCookieName } from '../../../lib/auth/sessionConfig';
 import { sendWelcome } from '../../../lib/email/transactional';
 
 const failedAttemptClearTime = 1000 * 60; // 1 minute
@@ -276,14 +285,17 @@ const app = new Hono()
                 );
             }
 
-            const token = await createJwt(user.id);
+            const { accessToken, refreshToken } =
+                await issueSessionTokens(user.id);
             await Promise.all([
-                setCookie(context, token),
+                setCookie(context, accessToken),
                 loginSuccessful(login.id),
+                setRefreshCookie(context, refreshToken),
             ]);
 
             return context.json({
-                token,
+                token: accessToken,
+                refreshToken,
             });
         },
     )
@@ -377,17 +389,20 @@ const app = new Hono()
                     await notifyNewUserRegistered(userId);
                 }
 
-                const token = await createJwt(userId);
+                const { accessToken, refreshToken } =
+                    await issueSessionTokens(userId);
                 await Promise.all([
-                    setCookie(context, token),
+                    setCookie(context, accessToken),
                     loginSuccessful(loginId),
+                    setRefreshCookie(context, refreshToken),
                 ]);
 
                 const redirectUrl = resolveRedirectUrl(
                     context,
                     '/prijava/google-prijava/povratak',
                 );
-                redirectUrl.searchParams.set('session', token);
+                redirectUrl.searchParams.set('session', accessToken);
+                redirectUrl.searchParams.set('refreshToken', refreshToken);
 
                 return context.redirect(redirectUrl.toString());
             } catch (error) {
@@ -492,17 +507,20 @@ const app = new Hono()
                     await notifyNewUserRegistered(userId);
                 }
 
-                const token = await createJwt(userId);
+                const { accessToken, refreshToken } =
+                    await issueSessionTokens(userId);
                 await Promise.all([
-                    setCookie(context, token),
+                    setCookie(context, accessToken),
                     loginSuccessful(loginId),
+                    setRefreshCookie(context, refreshToken),
                 ]);
 
                 const redirectUrl = resolveRedirectUrl(
                     context,
                     '/prijava/facebook-prijava/povratak',
                 );
-                redirectUrl.searchParams.set('session', token);
+                redirectUrl.searchParams.set('session', accessToken);
+                redirectUrl.searchParams.set('refreshToken', refreshToken);
 
                 return context.redirect(redirectUrl.toString());
             } catch (error) {
@@ -532,7 +550,9 @@ const app = new Hono()
             const { token } = context.req.valid('query');
 
             const { result } = await verifyJwt(token);
-            let userId = result?.payload.sub as string | undefined;
+            const payloadSub = result?.payload.sub;
+            let userId =
+                typeof payloadSub === 'string' ? payloadSub : undefined;
             if (!userId) {
                 try {
                     const payload = JSON.parse(
@@ -563,6 +583,39 @@ const app = new Hono()
 
             return context.json({
                 provider: login.loginType,
+            });
+        },
+    )
+    .post(
+        '/refresh',
+        describeRoute({
+            description: 'Refresh access token using refresh token',
+        }),
+        zValidator(
+            'json',
+            z.object({
+                refreshToken: z.string(),
+            }),
+        ),
+        async (context) => {
+            const { refreshToken } = context.req.valid('json');
+            const refreshed = await refreshSessionTokens(refreshToken);
+            if (!refreshed) {
+                await clearRefreshCookie(context);
+                return context.json(
+                    { error: 'Invalid refresh token' },
+                    { status: 401 },
+                );
+            }
+
+            await Promise.all([
+                setCookie(context, refreshed.accessToken),
+                setRefreshCookie(context, refreshed.refreshToken),
+            ]);
+
+            return context.json({
+                token: refreshed.accessToken,
+                refreshToken: refreshed.refreshToken,
             });
         },
     )
@@ -651,7 +704,12 @@ const app = new Hono()
             description: 'Logout user by clearing the session cookie',
         }),
         async (context) => {
+            const refreshToken = getCookie(context, refreshTokenCookieName);
+            if (refreshToken) {
+                await revokeSessionToken(refreshToken);
+            }
             await clearCookie(context);
+            await clearRefreshCookie(context);
             return context.json({
                 message: 'Logged out successfully',
             });
@@ -826,13 +884,16 @@ const app = new Hono()
                     throw new Error('User or user login not found');
                 }
 
-                const jwtToken = await createJwt(user.id);
+                const { accessToken, refreshToken } =
+                    await issueSessionTokens(user.id);
                 await Promise.all([
-                    setCookie(context, jwtToken),
+                    setCookie(context, accessToken),
                     loginSuccessful(userLogin.id),
+                    setRefreshCookie(context, refreshToken),
                 ]);
                 return context.json({
-                    token: jwtToken,
+                    token: accessToken,
+                    refreshToken,
                     ...(alreadyVerified ? { alreadyVerified: true } : {}),
                 });
             }

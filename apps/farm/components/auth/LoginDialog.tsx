@@ -1,5 +1,10 @@
 'use client';
 
+import {
+    clearStoredTokens,
+    getStoredAccessToken,
+    setStoredTokens,
+} from '@gredice/client';
 import { FacebookLoginButton, GoogleLoginButton } from '@gredice/ui/auth';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { Alert } from '@signalco/ui/Alert';
@@ -45,14 +50,25 @@ export function LoginDialog() {
                 return 'Prijava nije uspjela. Provjeri podatke i pokušaj ponovno.';
             }
 
-            const { token } = (await response.json()) as { token?: string };
-            if (token) {
-                localStorage.setItem('gredice-token', token);
+            const data: unknown = await response.json();
+            if (typeof data === 'object' && data !== null) {
+                const tokenValue = 'token' in data ? data.token : null;
+                const refreshValue =
+                    'refreshToken' in data ? data.refreshToken : null;
+                if (typeof tokenValue === 'string') {
+                    setStoredTokens({
+                        accessToken: tokenValue,
+                        refreshToken:
+                            typeof refreshValue === 'string'
+                                ? refreshValue
+                                : null,
+                    });
+                }
             }
 
             const currentUserResponse = await fetch('/api/users/current');
             if (!currentUserResponse.ok) {
-                localStorage.removeItem('gredice-token');
+                clearStoredTokens();
                 return 'Tvoj korisnički račun nema pristup Gredice farmi.';
             }
 
@@ -68,7 +84,7 @@ export function LoginDialog() {
     }, null);
 
     useEffect(() => {
-        const token = localStorage.getItem('gredice-token');
+        const token = getStoredAccessToken();
         if (!token) {
             return;
         }
@@ -83,7 +99,7 @@ export function LoginDialog() {
                     return null;
                 }
 
-                return response.json() as Promise<{ provider?: string }>;
+                return response.json();
             })
             .then((data) => {
                 if (!isMounted || !data) {
@@ -91,8 +107,11 @@ export function LoginDialog() {
                 }
 
                 if (
-                    data.provider === 'google' ||
-                    data.provider === 'facebook'
+                    typeof data === 'object' &&
+                    data !== null &&
+                    'provider' in data &&
+                    (data.provider === 'google' ||
+                        data.provider === 'facebook')
                 ) {
                     setLastLoginProvider(data.provider);
                 }

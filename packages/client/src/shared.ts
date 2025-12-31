@@ -1,3 +1,5 @@
+import { getStoredAccessToken } from './auth/tokenStore';
+
 export function getAppUrl() {
     if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'development') {
         return `https://api.gredice.test`;
@@ -7,11 +9,7 @@ export function getAppUrl() {
 }
 
 export function getAuthToken() {
-    if (typeof localStorage === 'undefined') {
-        return null;
-    }
-
-    return localStorage.getItem('gredice-token');
+    return getStoredAccessToken();
 }
 
 export function getAuthHeaders() {
