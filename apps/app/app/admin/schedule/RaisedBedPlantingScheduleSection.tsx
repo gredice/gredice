@@ -3,7 +3,6 @@
 import { calculatePlantsPerField, FIELD_SIZE_CM } from '@gredice/js/plants';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
-import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import { Calendar, Close } from '@signalco/ui-icons';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
@@ -15,6 +14,7 @@ import { raisedBedPlanted } from '../../(actions)/raisedBedFieldsActions';
 import { AcceptRaisedBedFieldModal } from './AcceptRaisedBedFieldModal';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
 import { CancelRaisedBedFieldModal } from './CancelRaisedBedFieldModal';
+import { CompletePlantingModal } from './CompletePlantingModal';
 import { CopyTasksButton } from './CopyTasksButton';
 import { RescheduleRaisedBedFieldModal } from './RescheduleRaisedBedFieldModal';
 import {
@@ -194,20 +194,10 @@ export function RaisedBedPlantingScheduleSection({
                                             label={fieldLabel}
                                         />
                                     ) : (
-                                        <ModalConfirm
-                                            title="Potvrda sijanja"
-                                            header="Označavanje kao posijano"
+                                        <CompletePlantingModal
+                                            label={fieldLabel}
                                             onConfirm={handlePlantConfirm}
-                                            trigger={
-                                                <Checkbox className="size-5 mx-2" />
-                                            }
-                                        >
-                                            <Typography>
-                                                Jeste li sigurni da želite
-                                                označiti da je posijano:{' '}
-                                                <strong>{fieldLabel}</strong>?
-                                            </Typography>
-                                        </ModalConfirm>
+                                        />
                                     )}
                                     <Typography
                                         className={
