@@ -30,6 +30,7 @@ export * from './repositories/notificationsRepo';
 export * from './repositories/occasionsRepo';
 export * from './repositories/operationsRepo';
 export * from './repositories/pickupLocationsRepo';
+export * from './repositories/refreshTokensRepo';
 export * from './repositories/shoppingCartRepo';
 export * from './repositories/timeSlotsRepo';
 export * from './repositories/transactionsRepo';

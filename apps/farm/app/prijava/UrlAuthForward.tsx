@@ -1,5 +1,6 @@
 'use client';
 
+import { setStoredTokens } from '@gredice/client';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -25,7 +26,10 @@ export function UrlAuthForward() {
                 return;
             }
 
-            localStorage.setItem('gredice-token', token);
+            setStoredTokens({
+                accessToken: token,
+                refreshToken: searchParams.get('refreshToken'),
+            });
             await queryClient.invalidateQueries({
                 queryKey: authCurrentUserQueryKeys,
             });
