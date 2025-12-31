@@ -219,6 +219,15 @@ export function RaisedBedOperationsScheduleSection({
                             : operation.isAccepted
                                 ? 'text-green-600'
                                 : 'text-muted-foreground';
+                    const attachImages =
+                        operationData?.conditions?.completionAttachImages;
+                    const attachRequired =
+                        operationData?.conditions?.completionAttachImagesRequired;
+                    const imageStatusText = attachImages
+                        ? attachRequired
+                            ? 'Slike obavezne'
+                            : 'Slike opcionalne'
+                        : null;
 
                     return (
                         <div key={operation.id}>
@@ -278,6 +287,17 @@ export function RaisedBedOperationsScheduleSection({
                                     >
                                         {operationStatusText}
                                     </Typography>
+                                    {imageStatusText &&
+                                        !isOperationCompleted(
+                                            operation.status,
+                                        ) && (
+                                            <Typography
+                                                level="body2"
+                                                className="ml-1 text-xs text-muted-foreground"
+                                            >
+                                                {imageStatusText}
+                                            </Typography>
+                                        )}
                                     <Typography
                                         level="body2"
                                         className="select-none"

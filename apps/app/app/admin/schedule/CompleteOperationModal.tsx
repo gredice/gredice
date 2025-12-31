@@ -28,6 +28,7 @@ export function CompleteOperationModal({
 }: CompleteOperationModalProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const attachImages = conditions?.completionAttachImages;
@@ -48,26 +49,47 @@ export function CompleteOperationModal({
     };
 
     const handleConfirm = async () => {
-        if (attachImages && files.length > 0) {
-            const formData = new FormData();
-            formData.append('operationId', operationId.toString());
-            formData.append('completedBy', userId);
-            for (const file of files) {
-                formData.append('images', file);
+        try {
+            setIsSubmitting(true);
+            if (attachImages && files.length > 0) {
+                const formData = new FormData();
+                formData.append('operationId', operationId.toString());
+                formData.append('completedBy', userId);
+                for (const file of files) {
+                    formData.append('images', file);
+                }
+                await completeOperationWithImages(formData);
+            } else {
+                await completeOperation(operationId, userId);
             }
-            await completeOperationWithImages(formData);
-        } else {
-            await completeOperation(operationId, userId);
+            handleOpenChange(false);
+        } catch (error) {
+            console.error('Error completing operation:', error);
+        } finally {
+            setIsSubmitting(false);
         }
-        handleOpenChange(false);
     };
+
+    const imageRequirementText = attachImages
+        ? attachRequired
+            ? 'Slike su obavezne za završetak.'
+            : 'Slike su opcionalne za završetak.'
+        : null;
 
     return (
         <Modal
             title="Potvrda završetka radnje"
             open={isOpen}
             onOpenChange={handleOpenChange}
-            trigger={<Checkbox className="size-5 mx-2" />}
+            trigger={
+                <Checkbox
+                    className="size-5 mx-2"
+                    checked={isOpen}
+                    onCheckedChange={(checked: boolean) =>
+                        handleOpenChange(checked)
+                    }
+                />
+            }
         >
             <Stack spacing={2}>
                 <Typography>
@@ -76,6 +98,11 @@ export function CompleteOperationModal({
                 </Typography>
                 {attachImages && (
                     <Stack spacing={1}>
+                        {imageRequirementText && (
+                            <Typography level="body2" className="italic">
+                                {imageRequirementText}
+                            </Typography>
+                        )}
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -88,6 +115,7 @@ export function CompleteOperationModal({
                             variant="outlined"
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
+                            disabled={isSubmitting}
                         >
                             {files.length > 0
                                 ? 'Dodaj još slika'
@@ -99,19 +127,28 @@ export function CompleteOperationModal({
                                 {files.length === 1 ? 'slika' : 'slike'}
                             </Typography>
                         )}
+                        {isSubmitting && (
+                            <Typography level="body2">
+                                Učitavanje slika u tijeku...
+                            </Typography>
+                        )}
                     </Stack>
                 )}
                 <Row spacing={1} justifyContent="end">
                     <Button
                         variant="outlined"
                         onClick={() => handleOpenChange(false)}
+                        disabled={isSubmitting}
                     >
                         Odustani
                     </Button>
                     <Button
                         variant="solid"
                         onClick={handleConfirm}
-                        disabled={attachRequired && files.length === 0}
+                        disabled={
+                            isSubmitting || (attachRequired && files.length === 0)
+                        }
+                        loading={isSubmitting}
                     >
                         Potvrdi
                     </Button>
