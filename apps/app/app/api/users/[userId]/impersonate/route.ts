@@ -1,4 +1,6 @@
+import { createRefreshToken } from '@gredice/storage';
 import { createJwt, setCookie, withAuth } from '../../../../../lib/auth/auth';
+import { setRefreshCookie } from '../../../../../lib/auth/refreshCookies';
 
 export async function POST(
     _request: Request,
@@ -10,7 +12,12 @@ export async function POST(
     }
 
     return await withAuth(['admin'], async () => {
-        await setCookie(createJwt(userId));
+        const [accessToken, refreshToken] = await Promise.all([
+            createJwt(userId),
+            createRefreshToken(userId),
+        ]);
+        await setCookie(accessToken);
+        setRefreshCookie(refreshToken);
         return new Response(null, { status: 201 });
     });
 }

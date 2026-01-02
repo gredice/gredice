@@ -1,11 +1,10 @@
 import 'server-only';
+
 import { getUser as storageGetUser } from '@gredice/storage';
 import { initAuth, initRbac } from '@signalco/auth-server';
-import type { Context } from 'hono';
-import { deleteCookie, setCookie as honoSetCookie } from 'hono/cookie';
 import { accessTokenExpiryMs } from './sessionConfig';
 
-export function jwtSecretFactory() {
+function jwtSecretFactory() {
     const signSecret = process.env.GREDICE_JWT_SIGN_SECRET;
     if (!signSecret) {
         throw new Error('Missing GREDICE_JWT_SIGN_SECRET');
@@ -15,6 +14,7 @@ export function jwtSecretFactory() {
 
 type User = {
     id: string;
+    userName: string;
     accountIds: string[];
     role: string;
 };
@@ -27,30 +27,20 @@ async function getUser(id: string): Promise<User | null> {
 
     return {
         id: user.id,
+        userName: user.userName,
         accountIds: user.accounts.map((accountUsers) => accountUsers.accountId),
         role: user.role,
     };
 }
 
-// TODO: Move to signalco/auth-server/hono
-export async function setCookie(
-    context: Context,
-    value: Promise<string> | string,
-) {
-    honoSetCookie(context, 'gredice_session', await value, {
-        secure: true,
-        httpOnly: true,
-        sameSite: 'Strict',
-        expires: new Date(Date.now() + accessTokenExpiryMs),
-    });
-}
-
-// TODO: Move to signalco/auth-server/hono
-export async function clearCookie(context: Context) {
-    deleteCookie(context, 'gredice_session');
-}
-
-export const { withAuth, createJwt, verifyJwt, auth } = initRbac(
+export const {
+    withAuth: baseWithAuth,
+    createJwt,
+    setCookie,
+    auth: baseAuth,
+    clearCookie,
+    verifyJwt,
+} = initRbac(
     initAuth({
         security: {
             expiry: accessTokenExpiryMs,

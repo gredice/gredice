@@ -1,5 +1,6 @@
 'use client';
 
+import { getStoredAccessToken } from '@gredice/client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -9,7 +10,7 @@ export default function LoginBanner() {
     const [hasToken, setHasToken] = useState(false);
 
     useEffect(() => {
-        const token = localStorage.getItem('gredice-token');
+        const token = getStoredAccessToken();
         setHasToken(!!token);
     }, []);
 
