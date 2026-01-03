@@ -1,6 +1,6 @@
 'use client';
 
-import type { getAnalyticsTotals } from '@gredice/storage';
+import type { AdventCalendarTopUser, getAnalyticsTotals } from '@gredice/storage';
 import { Calendar, Tally3 } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -15,6 +15,7 @@ import {
     OperationsDurationCard,
     type OperationsDurationData,
 } from './OperationsDurationCard';
+import { TopAdventUsersCard } from './TopAdventUsersCard';
 
 type EntityData = {
     entityTypeName: string;
@@ -27,11 +28,13 @@ export function AdminDashboardClient({
     initialEntitiesData,
     initialPeriod = '7',
     initialOperationsDurationData,
+    initialTopAdventUsers,
 }: {
     initialAnalyticsData: Awaited<ReturnType<typeof getAnalyticsTotals>>;
     initialEntitiesData: EntityData[];
     initialPeriod?: string;
     initialOperationsDurationData: OperationsDurationData;
+    initialTopAdventUsers: AdventCalendarTopUser[];
 }) {
     const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
     const [isPending, startTransition] = useTransition();
@@ -193,6 +196,10 @@ export function AdminDashboardClient({
             <Stack spacing={1}>
                 <DashboardDivider>Radnje</DashboardDivider>
                 <OperationsDurationCard data={initialOperationsDurationData} />
+            </Stack>
+            <Stack spacing={1}>
+                <DashboardDivider>Natječaji</DashboardDivider>
+                <TopAdventUsersCard users={initialTopAdventUsers} />
             </Stack>
             <Stack spacing={1}>
                 <DashboardDivider>Zapisi</DashboardDivider>

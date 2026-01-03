@@ -3,6 +3,7 @@
 import {
     getAllOperations,
     getAnalyticsTotals,
+    getAdventCalendarTopUsers,
     getEntitiesFormatted,
     getEntitiesRaw,
     getEntityTypes,
@@ -188,9 +189,12 @@ export async function getAnalyticsData(days: number) {
         sowingTotals,
     );
 
+    const topAdventUsers = await getAdventCalendarTopUsers(today.getFullYear());
+
     return {
         analytics: analyticsResult,
         entities: entitiesCounts,
         operationsDuration,
+        topAdventUsers,
     };
 }
