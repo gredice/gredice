@@ -1,5 +1,5 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
-import { events } from '../schema';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { events, users } from '../schema';
 import { storage } from '../storage';
 import {
     type AdventCalendarOpenPayload,
@@ -50,6 +50,13 @@ export async function getAdventCalendarOpenEvents(
 export type AdventCalendarOpenResult = {
     payload: AdventCalendarOpenPayload;
     openedDaysCount: number;
+};
+
+export type AdventCalendarTopUser = {
+    userId: string;
+    userName: string;
+    displayName: string | null;
+    openedDays: number;
 };
 
 export type AdventCalendarOpenOptions = {
@@ -126,4 +133,33 @@ export async function createAdventCalendarOpenEvent({
             openedDaysCount: openedDaysForYear.length,
         };
     });
+}
+
+export async function getAdventCalendarTopUsers(
+    year: number,
+    limit = 10,
+): Promise<AdventCalendarTopUser[]> {
+    const openedBy = sql<string>`(${events.data} ->> 'openedBy')`;
+    const openedDay = sql<number>`(${events.data} ->> 'day')::int`;
+    const openedYear = sql<number>`(${events.data} ->> 'year')::int`;
+    const openedDaysCount = sql<number>`count(distinct ${openedDay})`;
+
+    return storage()
+        .select({
+            userId: users.id,
+            userName: users.userName,
+            displayName: users.displayName,
+            openedDays: openedDaysCount,
+        })
+        .from(events)
+        .innerJoin(users, eq(users.id, openedBy))
+        .where(
+            and(
+                eq(events.type, knownEventTypes.occasions.adventCalendarOpen),
+                sql`${openedYear} = ${year}`,
+            ),
+        )
+        .groupBy(users.id, users.userName, users.displayName)
+        .orderBy(desc(openedDaysCount), asc(users.userName))
+        .limit(Math.max(1, limit));
 }
