@@ -9,6 +9,8 @@ import {
 } from '@gredice/storage';
 import { getBlockData } from '../blocks/blockDataService';
 
+const DEFAULT_RECYCLE_REFUND = 10;
+
 export async function deleteGardenBlock(
     accountId: string,
     gardenId: number,
@@ -73,11 +75,12 @@ export async function deleteGardenBlock(
 
     // Retrieve block price
     const price = blockData.prices?.sunflowers ?? 0;
+    const refundAmount = price > 0 ? price : DEFAULT_RECYCLE_REFUND;
     if (price <= 0) {
-        console.warn(
-            "Block not for sale so we can't refund. Will continue with removal.",
-            { blockId },
-        );
+        console.info('Block has no sunflower price. Using recycle refund.', {
+            blockId,
+            refundAmount,
+        });
     }
 
     // Prepare stack remove operation
@@ -93,10 +96,11 @@ export async function deleteGardenBlock(
         : Promise.resolve();
 
     // Prepare block refund operation
-    const refundBlockPromise =
-        price > 0
-            ? earnSunflowers(garden.accountId, price, `recycle:${block.name}`)
-            : Promise.resolve();
+    const refundBlockPromise = earnSunflowers(
+        garden.accountId,
+        refundAmount,
+        `recycle:${block.name}`,
+    );
 
     await Promise.all([
         storageDeleteGardenBlock(gardenId, blockId),
