@@ -24,6 +24,8 @@ export type FaqData =
     paths['/entities/faq']['get']['responses']['200']['content']['application/json'][0];
 export type FaqCategoryData =
     paths['/entities/faq-category']['get']['responses']['200']['content']['application/json'][0];
+export type OccasionData =
+    paths['/entities/occasions']['get']['responses']['200']['content']['application/json'][0];
 
 // Component schema types for direct access
 export type ImageData = components['schemas']['image'];

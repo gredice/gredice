@@ -22,13 +22,15 @@ export function PageHeader({
     subHeader,
     headerChildren,
 }: PropsWithChildren<PageHeaderProps>) {
+    const hasVisual = Boolean(visual);
+    const hasChildren = Boolean(children);
     return (
         <div
             className={cx(
                 'grid grid-cols-1 justify-between gap-4',
                 'md:grid-cols-3',
-                Boolean(children) && Boolean(visual) && 'md:grid-cols-2',
-                !children && Boolean(visual) && 'md:grid-cols-1',
+                hasChildren && hasVisual && 'md:grid-cols-2',
+                !hasChildren && hasVisual && 'md:grid-cols-1',
                 padded && 'py-12 md:py-24',
             )}
         >
