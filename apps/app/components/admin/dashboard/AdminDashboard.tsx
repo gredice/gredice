@@ -18,7 +18,6 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
             initialAnalyticsData={data.analytics}
             initialEntitiesData={data.entities}
             initialOperationsDurationData={data.operationsDuration}
-            initialTopAdventUsers={data.topAdventUsers}
             initialPeriod={selectedPeriod}
         />
     );
