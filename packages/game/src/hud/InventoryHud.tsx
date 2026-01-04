@@ -95,7 +95,6 @@ function InventoryItemModal({
 }) {
     const displayName =
         sortData?.information?.name ??
-        operationData?.information?.name ??
         operationData?.information?.label ??
         operationData?.information?.name ??
         item.name ??
