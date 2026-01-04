@@ -57,7 +57,7 @@ export async function consumeInventoryItem(
         )?.amount ?? 0;
 
     if (currentAmount < payload.amount) {
-        throw new Error('Nedovoljno predmeta u inventaru');
+        throw new Error('Nedovoljno predmeta u ruksaku');
     }
 
     await createEvent(

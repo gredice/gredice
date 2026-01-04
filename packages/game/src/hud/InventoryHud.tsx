@@ -1,7 +1,6 @@
 import type { OperationData, PlantSortData } from '@gredice/client';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Chip } from '@signalco/ui-primitives/Chip';
 import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Modal } from '@signalco/ui-primitives/Modal';
@@ -262,7 +261,7 @@ export function InventoryHud() {
                     <IconButton
                         variant="plain"
                         className="rounded-full size-10"
-                        title="Inventar"
+                        title="Ruksak"
                     >
                         <div className="relative flex items-center justify-center">
                             <BackpackIcon className="size-6" />
