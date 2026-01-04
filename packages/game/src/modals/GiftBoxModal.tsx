@@ -98,7 +98,7 @@ export function GiftBoxModal() {
                         ) : (
                             <Typography level="body2" secondary>
                                 Otvori svoj poklon i preuzmi novo iznenađenje u
-                                ruksaku.
+                                ruksak.
                             </Typography>
                         )}
                         {!canOpenGift && (
