@@ -1,7 +1,7 @@
 import type { OperationData, PlantSortData } from '@gredice/client';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
+import { cx } from '@signalco/ui-primitives/cx';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -69,11 +69,9 @@ function InventoryItemCell({
             )}
 
             <div className="absolute -top-1.5 -right-1.5">
-                <DotIndicator
-                    size={18}
-                    color={'success'}
-                    content={<small>{item.amount?.toString()}</small>}
-                />
+                <div className="size-[18px] rounded-full bg-tertiary text-tertiary-foreground text-[10px] font-semibold leading-none flex items-center justify-center shadow-sm border border-tertiary-foreground/30">
+                    {item.amount?.toString()}
+                </div>
             </div>
         </button>
     );
@@ -266,12 +264,13 @@ export function InventoryHud() {
                         <div className="relative flex items-center justify-center">
                             <BackpackIcon className="size-6" />
                             {totalItems > 0 && (
-                                <div className="absolute -top-4 -right-4">
-                                    <DotIndicator
-                                        size={24}
-                                        color={'success'}
-                                        content={<span>{totalItems}</span>}
-                                    />
+                                <div
+                                    className={cx(
+                                        'absolute -top-4 -right-4 size-6 px-1.5 rounded-full bg-tertiary text-tertiary-foreground text-sm font-semibold leading-none flex items-center justify-center shadow-md border border-tertiary-foreground/30',
+                                        totalItems > 99 && 'text-[10px]',
+                                    )}
+                                >
+                                    {totalItems > 99 ? '99+' : totalItems}
                                 </div>
                             )}
                         </div>
