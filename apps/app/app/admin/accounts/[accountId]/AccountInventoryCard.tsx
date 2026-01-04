@@ -64,7 +64,7 @@ export async function AccountInventoryCard({
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Inventar</CardTitle>
+                <CardTitle>Ruksak</CardTitle>
             </CardHeader>
             <CardContent className="pb-4">
                 <div className="grid grid-cols-2 gap-2">
@@ -102,7 +102,7 @@ export async function AccountInventoryCard({
                                 <Table.Row>
                                     <Table.Cell colSpan={4}>
                                         <NoDataPlaceholder>
-                                            Nema predmeta u inventaru
+                                            Nema predmeta u ruksaku
                                         </NoDataPlaceholder>
                                     </Table.Cell>
                                 </Table.Row>

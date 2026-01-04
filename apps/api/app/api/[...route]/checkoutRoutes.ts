@@ -151,7 +151,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     for (const item of inventoryCartItems) {
                         if ((item.inventoryAvailable ?? 0) < item.amount) {
                             return context.json(
-                                { error: 'Nema dovoljno predmeta u inventaru' },
+                                { error: 'Nema dovoljno predmeta u ruksaku' },
                                 400,
                             );
                         }

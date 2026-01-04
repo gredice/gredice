@@ -93,12 +93,12 @@ export function GiftBoxModal() {
                         </Typography>
                         {giftOpened ? (
                             <Typography level="body2" secondary>
-                                Poklon je otvoren i spremljen u tvoj inventar.
+                                Poklon je otvoren i spremljen u tvoj ruksak.
                             </Typography>
                         ) : (
                             <Typography level="body2" secondary>
                                 Otvori svoj poklon i preuzmi novo iznenađenje u
-                                inventar.
+                                ruksak.
                             </Typography>
                         )}
                         {!canOpenGift && (

@@ -64,7 +64,7 @@ export function GiftBoxRewardScreen({
                     {rewardTitle}
                 </Typography>
                 <Typography level="body1" className="text-muted-foreground">
-                    Poklon je dodan u tvoj inventar.
+                    Poklon je dodan u tvoj ruksak.
                 </Typography>
             </Stack>
 

@@ -12,7 +12,7 @@ import {
 
 const app = new Hono<{ Variables: AuthVariables }>().get(
     '/',
-    describeRoute({ description: 'Popis inventara za račun' }),
+    describeRoute({ description: 'Get account inventory' }),
     authValidator(['user', 'admin']),
     async (context) => {
         const { accountId } = context.get('authContext');

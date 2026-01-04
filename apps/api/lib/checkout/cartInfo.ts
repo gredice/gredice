@@ -79,7 +79,7 @@ export async function getCartInfo(
                 discounts.push({
                     cartItemId: item.id,
                     discountPrice: 0,
-                    discountDescription: 'Korištenje inventara',
+                    discountDescription: 'Korištenje iz ruksaka',
                 });
             }
         }
@@ -114,7 +114,7 @@ export async function getCartInfo(
                     `${
                         entityData.information?.label ||
                         entityData.information?.name
-                    } trenutno nije dostupan u inventaru`,
+                    } trenutno nije dostupan u ruksaku.`,
                 );
                 allowPurchase = false;
             }

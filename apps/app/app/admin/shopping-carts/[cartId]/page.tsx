@@ -107,7 +107,7 @@ export default async function ShoppingCartDetailsPage({
     // Helper function to format currency
     const formatCurrency = (amount: number, currency: string) => {
         if (currency.toLowerCase() === 'inventory') {
-            return 'Inventar';
+            return 'Ruksak';
         }
 
         const currencyMap: Record<string, { symbol: string; code?: string }> = {
@@ -186,7 +186,7 @@ export default async function ShoppingCartDetailsPage({
                         />
                         {inventoryItems.length > 0 && (
                             <Field
-                                name="Inventar stavke"
+                                name="Stacke ruksaka"
                                 value={inventoryItems.length}
                             />
                         )}
@@ -219,7 +219,7 @@ export default async function ShoppingCartDetailsPage({
                                 <Table.Head>Količina</Table.Head>
                                 <Table.Head>Cijena/kom</Table.Head>
                                 <Table.Head>Ukupno</Table.Head>
-                                <Table.Head>Inventar</Table.Head>
+                                <Table.Head>Ruksak</Table.Head>
                                 <Table.Head>Status</Table.Head>
                                 <Table.Head>
                                     Vrt | Gredica | Pozicija
@@ -287,7 +287,7 @@ export default async function ShoppingCartDetailsPage({
                                                         : 'warning'
                                                 }
                                             >
-                                                {`Inventar (${item.inventoryAvailable}/${item.amount})`}
+                                                {`Ruksak (${item.inventoryAvailable}/${item.amount})`}
                                             </Chip>
                                         ) : (
                                             <Typography
