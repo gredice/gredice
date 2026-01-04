@@ -9,6 +9,8 @@ import {
 } from '@gredice/storage';
 import { getBlockData } from '../blocks/blockDataService';
 
+const DEFAULT_RECYCLE_REFUND = 10;
+
 export async function deleteGardenBlock(
     accountId: string,
     gardenId: number,
@@ -73,7 +75,7 @@ export async function deleteGardenBlock(
 
     // Retrieve block price
     const price = blockData.prices?.sunflowers ?? 0;
-    const refundAmount = price > 0 ? price : 10;
+    const refundAmount = price > 0 ? price : DEFAULT_RECYCLE_REFUND;
     if (price <= 0) {
         console.info('Block has no sunflower price. Using recycle refund.', {
             blockId,
