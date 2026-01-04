@@ -1,37 +1,55 @@
 'use client';
 
+import type { OccasionData } from '@gredice/client';
+import { slugify } from '@gredice/js/slug';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { List } from '@signalco/ui-primitives/List';
 import { ListItem } from '@signalco/ui-primitives/ListItem';
 import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
 
-const occasions = [
-    {
-        href: '/legalno/natjecaji/adventski-kalendar-2025' satisfies Route,
-        label: 'Adventski kalendar 2025',
-        endDate: new Date('2025-12-25T23:59:59'),
-    },
-];
+type OccasionsFilesMenuProps = {
+    occasions: OccasionData[];
+};
 
-export function OccasionsFilesMenu() {
+export function OccasionsFilesMenu({ occasions }: OccasionsFilesMenuProps) {
     const pathname = usePathname();
     const now = new Date();
 
     return (
         <List variant="outlined" className="bg-card">
             {occasions.map((occasion) => {
-                const isExpired = now > occasion.endDate;
+                const endDate = occasion.information.endDate
+                    ? new Date(occasion.information.endDate)
+                    : null;
+                const startDate = new Date(occasion.information.startDate);
+                const isExpired = endDate ? now > endDate : false;
+                const hasStarted = now >= startDate;
+                const href =
+                    `/legalno/natjecaji/${slugify(occasion.information.name)}` as Route;
+
                 return (
                     <ListItem
-                        key={occasion.href}
-                        selected={(pathname as Route) === occasion.href}
-                        href={occasion.href}
-                        label={occasion.label}
+                        key={occasion.id}
+                        selected={(pathname as Route) === href}
+                        href={href}
+                        label={occasion.information.name}
                         variant="outlined"
                         endDecorator={
-                            <Chip color={isExpired ? 'neutral' : 'success'}>
-                                {isExpired ? 'Završeno' : 'U tijeku'}
+                            <Chip
+                                color={
+                                    isExpired
+                                        ? 'neutral'
+                                        : hasStarted
+                                          ? 'success'
+                                          : 'warning'
+                                }
+                            >
+                                {isExpired
+                                    ? 'Završeno'
+                                    : hasStarted
+                                      ? 'U tijeku'
+                                      : 'Uskoro'}
                             </Chip>
                         }
                     />

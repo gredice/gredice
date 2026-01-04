@@ -4,25 +4,23 @@
 
 import * as sdk from "hypertune";
 
-export const queryCode = `query FullQuery{root{recipes preSeason}}`;
+export const queryCode = `query FullQuery{root{recipes}}`;
 
-export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"recipes":{"fieldArguments":{},"fieldQuery":null},"preSeason":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
+export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"recipes":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
 
-export const initData = {"commitId":42507,"hash":"5060552560921674","reducedExpression":{"id":"aSYD5sRoX5E3yt1VdQu_e","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"mVlU96bBrUq2pFr7LvmL6","body":{"id":"v7OKVmigjMDLFjxa9kFxr","logs":{},"type":"ObjectExpression","fields":{"recipes":{"id":"hCzhCBgG-NTcz1EiwoCqP","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"HW4lG_DPd1AQp_jOPJ_2Q":1}}},"preSeason":{"id":"VSyDYJcckoNeyZlz_UXNS","type":"SwitchExpression","cases":[{"id":"5sY9FQG8YrzbTZ__9VCAC","when":{"a":{"id":"1TrfI3vjyjLGFG5zPTVPf","type":"GetFieldExpression","object":{"id":"mNJH5yfiRvdMPd-6prq4H","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"tvsyZ9Ks8fQ7w0Eze2VXz"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"zoDFcBwaLaFgIGayWb4z5","type":"ListExpression","items":[{"id":"x_qI0aYGB5zNmB2rC_a1L","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"2wvd9ynKWWJP2K47Rw1R2","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"X3W1Zs82gQ0QdeAE9fak_","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"D30yJjI-z7E_T7_49gnZM","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"NDL61LP_HqkAxksxbMyko","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"0ynfs6c7DzYuhe1ilcBBM":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"tvsyZ9Ks8fQ7w0Eze2VXz","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
+export const initData = {"commitId":42520,"hash":"8618409234674833","reducedExpression":{"id":"aSYD5sRoX5E3yt1VdQu_e","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"mVlU96bBrUq2pFr7LvmL6","body":{"id":"v7OKVmigjMDLFjxa9kFxr","logs":{},"type":"ObjectExpression","fields":{"recipes":{"id":"MFluWsnVvDv5cai3-Barn","type":"SwitchExpression","cases":[{"id":"34sjOUITp_6GcyNXGweyt","when":{"a":{"id":"48tjzu3WPHuktFJ08lI04","type":"GetFieldExpression","object":{"id":"F0x4vN3229ZmziqYrrGQI","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"tvsyZ9Ks8fQ7w0Eze2VXz"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"n7bqb9Guh_YAsZGzgMvrL","type":"ListExpression","items":[{"id":"0a_2Fo8xT4kf2T62AmNlx","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"XSVZWIVU8ayrFkfSc1Eop","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"4PnZcYe-h2VSZuz1XOUSe","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"hOJp_ZCP48Xvuf3EBUlBW","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"hCzhCBgG-NTcz1EiwoCqP","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"HW4lG_DPd1AQp_jOPJ_2Q":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"tvsyZ9Ks8fQ7w0Eze2VXz","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
 
 
-export const vercelFlagDefinitions = {"recipes":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3Erecipes"},"preSeason":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3EpreSeason"}};
+export const vercelFlagDefinitions = {"recipes":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3Erecipes"}};
 
 export type FlagValues = {
   "recipes": boolean;
-  "preSeason": boolean;
 }
 
 export type FlagPath = keyof FlagValues & string;
 
 export const flagFallbacks: FlagValues = {
   "recipes": false,
-  "preSeason": false,
 }
 
 export function decodeFlagValues<TFlagPath extends keyof FlagValues & string>(
@@ -60,10 +58,9 @@ export type EmptyObject = {};
 
 export type Root = {
   recipes: boolean;
-  preSeason: boolean;
 }
 
-const rootFallback = {recipes:false,preSeason:false};
+const rootFallback = {recipes:false};
 
 export class RootNode extends sdk.Node {
   override typeName = "Root" as const;
@@ -101,26 +98,6 @@ export class RootNode extends sdk.Node {
     node._logUnexpectedTypeError();
     return node.get({ fallback });
   }
-
-  /**
-   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3EpreSeason})
-   */
-  preSeason({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
-    const props0 = this.getFieldNodeProps("preSeason", { fieldArguments: args });
-    const expression0 = props0.expression;
-
-    if (
-      expression0 &&
-      expression0.type === "BooleanExpression"
-    ) {
-      const node = new sdk.BooleanNode(props0);
-      return node.get({ fallback });
-    }
-
-    const node = new sdk.BooleanNode(props0);
-    node._logUnexpectedTypeError();
-    return node.get({ fallback });
-  }
 }
 
 /**
@@ -144,7 +121,7 @@ export type Source = {
   root: Root;
 }
 
-const sourceFallback = {root:{recipes:false,preSeason:false}};
+const sourceFallback = {root:{recipes:false}};
 
 export type GetQueryRootArgs = {
   args: RootArgs;

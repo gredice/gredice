@@ -30,6 +30,7 @@ export const KnownPages = {
     LegalLicense: '/legalno/licenca',
     LegalThirdParty: '/legalno/trece-strane',
     LegalCompany: '/legalno/tvrtka',
+    LegalOccasions: '/legalno/natjecaji',
 
     GardenApp: 'https://vrt.gredice.com',
     GoogleMapsGrediceHQ: 'https://maps.app.goo.gl/hJbidDQzhHWGCZwS6',

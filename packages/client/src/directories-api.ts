@@ -10,6 +10,7 @@ export type {
     FaqCategoryData,
     FaqData,
     ImageData,
+    OccasionData,
     OperationData,
     OperationFrequencyData,
     PlantData,
