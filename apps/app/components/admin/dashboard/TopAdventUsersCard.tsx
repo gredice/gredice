@@ -7,15 +7,16 @@ import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 
 type TopAdventUsersCardProps = {
     users: AdventCalendarTopUser[];
+    year: number;
 };
 
-export function TopAdventUsersCard({ users }: TopAdventUsersCardProps) {
+export function TopAdventUsersCard({ users, year }: TopAdventUsersCardProps) {
     return (
         <Card>
             <CardOverflow>
                 <Stack spacing={1} className="p-4">
                     <Typography level="h2" className="text-lg" semiBold>
-                        Advent - top korisnici
+                        Advent {year} - top korisnici
                     </Typography>
                     <Table>
                         <Table.Header>

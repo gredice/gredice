@@ -64,6 +64,7 @@ export const KnownPages = {
         `/admin/operations/${operationId}` as Route,
     Sensors: '/admin/sensors',
     Cache: '/admin/cache',
+    Occasions: '/admin/occasions',
 
     // Delivery management
     DeliverySlots: '/admin/delivery/slots',
