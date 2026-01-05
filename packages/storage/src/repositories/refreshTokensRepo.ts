@@ -35,14 +35,16 @@ function nextRefreshExpiry(now: Date) {
 export async function createRefreshToken(userId: string) {
     const { tokenId, secret, token } = generateRefreshToken();
     const now = new Date();
-    await storage().insert(refreshTokens).values({
-        id: tokenId,
-        userId,
-        tokenHash: hashRefreshSecret(secret),
-        createdAt: now,
-        lastUsedAt: now,
-        expiresAt: nextRefreshExpiry(now),
-    });
+    await storage()
+        .insert(refreshTokens)
+        .values({
+            id: tokenId,
+            userId,
+            tokenHash: hashRefreshSecret(secret),
+            createdAt: now,
+            lastUsedAt: now,
+            expiresAt: nextRefreshExpiry(now),
+        });
     return token;
 }
 
@@ -92,10 +94,4 @@ export async function revokeRefreshToken(token: string) {
     await storage()
         .delete(refreshTokens)
         .where(eq(refreshTokens.id, parsed.tokenId));
-}
-
-export function revokeRefreshTokensForUser(userId: string) {
-    return storage()
-        .delete(refreshTokens)
-        .where(eq(refreshTokens.userId, userId));
 }
