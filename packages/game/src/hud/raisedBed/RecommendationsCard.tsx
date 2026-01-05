@@ -2,7 +2,7 @@ import type { OperationData } from '@gredice/client';
 import { Alert } from '@signalco/ui/Alert';
 import { Navigate } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardHeader, CardOverflow } from '@signalco/ui-primitives/Card';
+import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { List } from '@signalco/ui-primitives/List';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Skeleton } from '@signalco/ui-primitives/Skeleton';

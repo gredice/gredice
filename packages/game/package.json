@@ -16,7 +16,7 @@
         "lint:migrate": "biome migrate --write"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.3.10",
+        "@biomejs/biome": "2.3.11",
         "@fontsource/noto-serif-display": "5.2.9",
         "@fontsource/spicy-rice": "5.2.8",
         "@gredice/client": "workspace:*",

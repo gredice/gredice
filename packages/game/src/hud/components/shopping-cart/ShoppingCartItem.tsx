@@ -29,7 +29,6 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: inventory } = useInventory();
 
     const hasDiscount = typeof item.shopData.discountPrice === 'number';
-    const hasGarden = Boolean(item.gardenId && garden);
     const hasRaisedBed = Boolean(item.raisedBedId);
     const hasPosition = typeof item.positionIndex === 'number';
 
