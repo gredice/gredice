@@ -8,7 +8,7 @@ export function Logotype(props: SVGProps<SVGSVGElement>) {
             fill="none"
             {...props}
         >
-            <title>Gredice</title>
+            <title style={{ opacity: 0 }}>Gredice</title>
             <g
                 fill="#2E6F40"
                 fillRule="evenodd"

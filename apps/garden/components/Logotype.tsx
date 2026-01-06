@@ -14,7 +14,7 @@ export function Logotype({
             className={cx('fill-[#2E6F40]', className)}
             {...props}
         >
-            <title>Gredice</title>
+            <title style={{ opacity: 0 }}>Gredice</title>
             <g
                 fill={color}
                 fillRule="evenodd"
