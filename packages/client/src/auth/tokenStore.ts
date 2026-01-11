@@ -47,6 +47,10 @@ export function clearStoredTokens() {
 
 function decodeBase64Url(value: string) {
     const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+    // Calculate required base64 padding: base64 strings must be multiples of 4 characters.
+    // This formula calculates how many '=' padding characters are needed:
+    // - (normalized.length + 3) % 4 gives us the remainder when dividing by 4
+    // - We slice '===' to get 0, 1, or 2 '=' characters as needed
     const padding = '==='.slice((normalized.length + 3) % 4);
     const padded = `${normalized}${padding}`;
 

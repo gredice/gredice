@@ -13,7 +13,7 @@ export function setRefreshCookie(token: string) {
     cookies().set(refreshTokenCookieName, token, {
         httpOnly: true,
         secure: true,
-        sameSite: 'strict',
+        sameSite: 'Strict',
         expires: new Date(Date.now() + refreshTokenExpiryMs),
     });
 }
