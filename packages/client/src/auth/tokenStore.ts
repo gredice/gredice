@@ -1,3 +1,10 @@
+/**
+ * Note: With cookie-based authentication via the API proxy (/api/gredice/),
+ * tokens are now managed via httpOnly cookies set by the server.
+ * These functions are kept for backward compatibility but may not be needed
+ * for the cookie-based flow. The refresh logic is handled server-side.
+ */
+
 const accessTokenKey = 'gredice-token';
 const refreshTokenKey = 'gredice-refresh-token';
 

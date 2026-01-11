@@ -401,8 +401,7 @@ const app = new Hono()
                     context,
                     '/prijava/google-prijava/povratak',
                 );
-                redirectUrl.searchParams.set('session', accessToken);
-                redirectUrl.searchParams.set('refreshToken', refreshToken);
+                // Tokens are now in httpOnly cookies, no need to pass in URL
 
                 return context.redirect(redirectUrl.toString());
             } catch (error) {
@@ -519,8 +518,7 @@ const app = new Hono()
                     context,
                     '/prijava/facebook-prijava/povratak',
                 );
-                redirectUrl.searchParams.set('session', accessToken);
-                redirectUrl.searchParams.set('refreshToken', refreshToken);
+                // Tokens are now in httpOnly cookies, no need to pass in URL
 
                 return context.redirect(redirectUrl.toString());
             } catch (error) {

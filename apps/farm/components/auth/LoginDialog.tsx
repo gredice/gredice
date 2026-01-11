@@ -3,7 +3,6 @@
 import {
     clearStoredTokens,
     getStoredAccessToken,
-    setStoredTokens,
 } from '@gredice/client';
 import { FacebookLoginButton, GoogleLoginButton } from '@gredice/ui/auth';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
@@ -50,21 +49,9 @@ export function LoginDialog() {
                 return 'Prijava nije uspjela. Provjeri podatke i pokušaj ponovno.';
             }
 
-            const data: unknown = await response.json();
-            if (typeof data === 'object' && data !== null) {
-                const tokenValue = 'token' in data ? data.token : null;
-                const refreshValue =
-                    'refreshToken' in data ? data.refreshToken : null;
-                if (typeof tokenValue === 'string') {
-                    setStoredTokens({
-                        accessToken: tokenValue,
-                        refreshToken:
-                            typeof refreshValue === 'string'
-                                ? refreshValue
-                                : null,
-                    });
-                }
-            }
+            // Tokens are now in httpOnly cookies set by the API
+            // No need to store them in localStorage
+            await response.json();
 
             const currentUserResponse = await fetch('/api/users/current');
             if (!currentUserResponse.ok) {
@@ -90,9 +77,9 @@ export function LoginDialog() {
         }
 
         let isMounted = true;
-
+        // Use proxy path instead of direct API URL
         fetch(
-            `https://api.gredice.com/api/auth/last-login?token=${encodeURIComponent(token)}`,
+            `/api/gredice/api/auth/last-login?token=${encodeURIComponent(token)}`,
         )
             .then((response) => {
                 if (!response.ok) {
@@ -131,7 +118,8 @@ export function LoginDialog() {
                 ? '/prijava/google-prijava/povratak'
                 : '/prijava/facebook-prijava/povratak';
         const redirectUrl = `${window.location.origin}${callbackPath}`;
-        const authUrl = new URL(`https://api.gredice.com/api/auth/${provider}`);
+        // Use proxy path instead of direct API URL
+        const authUrl = new URL(`/api/gredice/api/auth/${provider}`, window.location.origin);
         authUrl.searchParams.set('redirect', redirectUrl);
         window.location.href = authUrl.toString();
     };

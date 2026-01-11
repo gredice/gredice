@@ -1,6 +1,5 @@
 'use client';
 
-import { setStoredTokens } from '@gredice/client';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -20,16 +19,8 @@ export function UrlAuthForward() {
                 return;
             }
 
-            const token = searchParams.get('session');
-            if (!token) {
-                router.replace('/');
-                return;
-            }
-
-            setStoredTokens({
-                accessToken: token,
-                refreshToken: searchParams.get('refreshToken'),
-            });
+            // Tokens are now in httpOnly cookies, no need to read from URL
+            // Just invalidate queries to fetch the user with the new session
             await queryClient.invalidateQueries({
                 queryKey: authCurrentUserQueryKeys,
             });
