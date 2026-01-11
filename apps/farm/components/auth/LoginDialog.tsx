@@ -1,9 +1,6 @@
 'use client';
 
-import {
-    clearStoredTokens,
-    getStoredAccessToken,
-} from '@gredice/client';
+import { clearStoredTokens, getStoredAccessToken } from '@gredice/client';
 import { FacebookLoginButton, GoogleLoginButton } from '@gredice/ui/auth';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { Alert } from '@signalco/ui/Alert';
@@ -97,8 +94,7 @@ export function LoginDialog() {
                     typeof data === 'object' &&
                     data !== null &&
                     'provider' in data &&
-                    (data.provider === 'google' ||
-                        data.provider === 'facebook')
+                    (data.provider === 'google' || data.provider === 'facebook')
                 ) {
                     setLastLoginProvider(data.provider);
                 }
@@ -119,7 +115,10 @@ export function LoginDialog() {
                 : '/prijava/facebook-prijava/povratak';
         const redirectUrl = `${window.location.origin}${callbackPath}`;
         // Use proxy path instead of direct API URL
-        const authUrl = new URL(`/api/gredice/api/auth/${provider}`, window.location.origin);
+        const authUrl = new URL(
+            `/api/gredice/api/auth/${provider}`,
+            window.location.origin,
+        );
         authUrl.searchParams.set('redirect', redirectUrl);
         window.location.href = authUrl.toString();
     };

@@ -17,12 +17,12 @@ export async function refreshSessionTokens(refreshToken: string) {
     if (!refreshed) {
         return null;
     }
-    
+
     // Revoke the old refresh token and create a new one (token rotation)
     await revokeRefreshToken(refreshToken);
     const newRefreshToken = await createRefreshToken(refreshed.userId);
     const accessToken = await createJwt(refreshed.userId, accessTokenExpiry);
-    
+
     return { accessToken, refreshToken: newRefreshToken };
 }
 

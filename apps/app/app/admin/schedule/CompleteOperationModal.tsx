@@ -146,7 +146,8 @@ export function CompleteOperationModal({
                         variant="solid"
                         onClick={handleConfirm}
                         disabled={
-                            isSubmitting || (attachRequired && files.length === 0)
+                            isSubmitting ||
+                            (attachRequired && files.length === 0)
                         }
                         loading={isSubmitting}
                     >

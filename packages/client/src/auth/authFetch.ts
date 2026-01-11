@@ -97,7 +97,7 @@ export function createAuthFetch(baseFetch: typeof fetch): typeof fetch {
         // Prevent infinite loop: don't retry on the refresh endpoint itself
         const url = typeof input === 'string' ? input : input.url;
         const isRefreshEndpoint = url.includes('/api/auth/refresh');
-        
+
         if (response.status === 401 && !isRefreshEndpoint) {
             const refreshed = await refreshAccessToken(baseFetch);
             if (refreshed) {

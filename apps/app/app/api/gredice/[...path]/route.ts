@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 /**
  * API Proxy Route
@@ -47,10 +47,7 @@ export async function PATCH(
     return proxyRequest(request, await params);
 }
 
-async function proxyRequest(
-    request: NextRequest,
-    params: { path: string[] },
-) {
+async function proxyRequest(request: NextRequest, params: { path: string[] }) {
     const { path } = params;
     const pathStr = path.join('/');
     const searchParams = request.nextUrl.searchParams.toString();

@@ -84,11 +84,7 @@ export function getJwtExpiryMs(token: string) {
 
     try {
         const parsed: unknown = JSON.parse(decoded);
-        if (
-            typeof parsed === 'object' &&
-            parsed !== null &&
-            'exp' in parsed
-        ) {
+        if (typeof parsed === 'object' && parsed !== null && 'exp' in parsed) {
             const expValue = parsed.exp;
             if (typeof expValue === 'number') {
                 return expValue * 1000;
@@ -101,10 +97,7 @@ export function getJwtExpiryMs(token: string) {
     return null;
 }
 
-export function isAccessTokenExpiringSoon(
-    token: string,
-    bufferMs = 60 * 1000,
-) {
+export function isAccessTokenExpiringSoon(token: string, bufferMs = 60 * 1000) {
     const expiry = getJwtExpiryMs(token);
     if (!expiry) {
         return false;

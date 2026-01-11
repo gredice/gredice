@@ -72,7 +72,10 @@ export async function useRefreshToken(token: string) {
     }
 
     if (record.tokenHash !== hashRefreshSecret(parsed.secret)) {
-        console.warn('Invalid refresh token hash attempt for token ID:', parsed.tokenId);
+        console.warn(
+            'Invalid refresh token hash attempt for token ID:',
+            parsed.tokenId,
+        );
         return null;
     }
 
