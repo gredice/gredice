@@ -120,8 +120,12 @@ async function proxyRequest(request: NextRequest, params: { path: string[] }) {
         const [nameValue] = parts;
         if (!nameValue) continue;
 
-        const [name, value] = nameValue.split('=');
-        if (!name || value === undefined) continue;
+        // Split only on the first '=' since cookie values can contain '='
+        const eqIndex = nameValue.indexOf('=');
+        if (eqIndex === -1) continue;
+        const name = nameValue.substring(0, eqIndex);
+        const value = nameValue.substring(eqIndex + 1);
+        if (!name) continue;
 
         // Parse cookie options
         const options: {
@@ -134,7 +138,14 @@ async function proxyRequest(request: NextRequest, params: { path: string[] }) {
         } = {};
 
         for (const part of parts.slice(1)) {
-            const [key, val] = part.split('=');
+            // Split only on the first '=' since attribute values can contain '='
+            const attrEqIndex = part.indexOf('=');
+            const key =
+                attrEqIndex === -1 ? part : part.substring(0, attrEqIndex);
+            const val =
+                attrEqIndex === -1
+                    ? undefined
+                    : part.substring(attrEqIndex + 1);
             if (!key) continue;
 
             const lowerKey = key.toLowerCase();

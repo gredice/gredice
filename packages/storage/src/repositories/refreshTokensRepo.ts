@@ -109,6 +109,9 @@ export async function revokeRefreshToken(token: string) {
  * Cleanup expired refresh tokens from the database.
  * This should be called periodically (e.g., via a cron job) to prevent
  * accumulation of expired tokens that could degrade query performance.
+ *
+ * @returns A promise that resolves to the database operation result,
+ *          which includes metadata about the number of records deleted.
  */
 export async function cleanupExpiredRefreshTokens() {
     const now = new Date();
