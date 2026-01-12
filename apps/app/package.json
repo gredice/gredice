@@ -23,7 +23,7 @@
         "@dnd-kit/sortable": "10.0.0",
         "@dnd-kit/utilities": "3.2.2",
         "@gredice/transactional": "workspace:*",
-        "@react-email/components": "1.0.3",
+        "@react-email/components": "1.0.4",
         "@vercel/blob": "2.0.0",
         "@vvo/tzdb": "6.198.0",
         "hypertune": "2.10.1",
@@ -33,7 +33,7 @@
         "prettier": "3.7.4",
         "react": "19.2.3",
         "react-dom": "19.2.3",
-        "react-email": "5.1.1",
+        "react-email": "5.2.0",
         "recharts": "3.6.0",
         "server-only": "0.0.1"
     },
