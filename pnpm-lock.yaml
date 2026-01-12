@@ -669,8 +669,8 @@ importers:
         specifier: 17.2.3
         version: 17.2.3
       motion:
-        specifier: 12.24.8
-        version: 12.24.8(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: 12.24.10
+        version: 12.24.10(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       next-sitemap:
         specifier: 4.2.3
         version: 4.2.3(next@16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.2))
@@ -1188,8 +1188,8 @@ importers:
         specifier: 0.6.5
         version: 0.6.5(next@16.1.1(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.2))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))
       motion:
-        specifier: 12.24.8
-        version: 12.24.8(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: 12.24.10
+        version: 12.24.10(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       next:
         specifier: 16.1.1
         version: 16.1.1(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.2)
@@ -7143,8 +7143,8 @@ packages:
   motion-utils@12.24.10:
     resolution: {integrity: sha512-x5TFgkCIP4pPsRLpKoI86jv/q8t8FQOiM/0E8QKBzfMozWHfkKap2gA1hOki+B5g3IsBNpxbUnfOum1+dgvYww==}
 
-  motion@12.24.8:
-    resolution: {integrity: sha512-SxxYOT6FjkoK4TS71mo4LAZ+7zeNF4GyY7o3pivMDEYMShpghYAIo15YByGI8xU9mS4m2tjRBOlyvNjomrcFvA==}
+  motion@12.24.10:
+    resolution: {integrity: sha512-P3tEZfL9N9Feb2sXVZaF085DHNyd4SO/X76Fo37pFv6DDAeL3vU4vYpTZBWiwW66qnF11VmFCM9DxnpAG825yg==}
     peerDependencies:
       '@emotion/is-prop-valid': '*'
       react: ^18.0.0 || ^19.0.0
@@ -16014,7 +16014,7 @@ snapshots:
 
   motion-utils@12.24.10: {}
 
-  motion@12.24.8(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+  motion@12.24.10(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
       framer-motion: 12.25.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       tslib: 2.8.1
