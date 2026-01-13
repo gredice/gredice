@@ -202,7 +202,7 @@ export function PlantPicker({
     const max = formatLocalDate(threeMonthsFromTomorrow);
 
     const availableFromInventory = inventory?.items?.find(
-        (item: any) =>
+        (item) =>
             item.entityTypeName === 'plantSort' &&
             item.entityId === selectedSortId?.toString(),
     )?.amount;
