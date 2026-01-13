@@ -1,4 +1,10 @@
-import { index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import {
+    index,
+    pgTable,
+    text,
+    timestamp,
+    uniqueIndex,
+} from 'drizzle-orm/pg-core';
 import { users } from './usersSchema';
 
 export const refreshTokens = pgTable(
@@ -16,6 +22,8 @@ export const refreshTokens = pgTable(
     (table) => [
         index('refresh_tokens_user_id_idx').on(table.userId),
         index('refresh_tokens_expires_at_idx').on(table.expiresAt),
+        // Unique index on tokenHash prevents hash collisions and enables efficient lookups
+        uniqueIndex('refresh_tokens_token_hash_idx').on(table.tokenHash),
     ],
 );
 

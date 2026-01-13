@@ -22,15 +22,7 @@ import {
 } from 'hono/cookie';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
-import {
-    clearCookie,
-    setCookie,
-    verifyJwt,
-} from '../../../lib/auth/auth';
-import {
-    clearRefreshCookie,
-    setRefreshCookie,
-} from '../../../lib/auth/refreshCookies';
+import { clearCookie, setCookie, verifyJwt } from '../../../lib/auth/auth';
 import {
     sendChangePassword,
     sendEmailVerification,
@@ -41,11 +33,15 @@ import {
     generateAuthUrl,
 } from '../../../lib/auth/oauth';
 import {
+    clearRefreshCookie,
+    setRefreshCookie,
+} from '../../../lib/auth/refreshCookies';
+import { refreshTokenCookieName } from '../../../lib/auth/sessionConfig';
+import {
     issueSessionTokens,
     refreshSessionTokens,
     revokeSessionToken,
 } from '../../../lib/auth/sessionTokens';
-import { refreshTokenCookieName } from '../../../lib/auth/sessionConfig';
 import { sendWelcome } from '../../../lib/email/transactional';
 
 const failedAttemptClearTime = 1000 * 60; // 1 minute
@@ -285,8 +281,9 @@ const app = new Hono()
                 );
             }
 
-            const { accessToken, refreshToken } =
-                await issueSessionTokens(user.id);
+            const { accessToken, refreshToken } = await issueSessionTokens(
+                user.id,
+            );
             await Promise.all([
                 setCookie(context, accessToken),
                 loginSuccessful(login.id),
@@ -401,8 +398,7 @@ const app = new Hono()
                     context,
                     '/prijava/google-prijava/povratak',
                 );
-                redirectUrl.searchParams.set('session', accessToken);
-                redirectUrl.searchParams.set('refreshToken', refreshToken);
+                // Tokens are now in httpOnly cookies, no need to pass in URL
 
                 return context.redirect(redirectUrl.toString());
             } catch (error) {
@@ -519,8 +515,7 @@ const app = new Hono()
                     context,
                     '/prijava/facebook-prijava/povratak',
                 );
-                redirectUrl.searchParams.set('session', accessToken);
-                redirectUrl.searchParams.set('refreshToken', refreshToken);
+                // Tokens are now in httpOnly cookies, no need to pass in URL
 
                 return context.redirect(redirectUrl.toString());
             } catch (error) {
@@ -884,8 +879,9 @@ const app = new Hono()
                     throw new Error('User or user login not found');
                 }
 
-                const { accessToken, refreshToken } =
-                    await issueSessionTokens(user.id);
+                const { accessToken, refreshToken } = await issueSessionTokens(
+                    user.id,
+                );
                 await Promise.all([
                     setCookie(context, accessToken),
                     loginSuccessful(userLogin.id),

@@ -1,3 +1,10 @@
+/**
+ * Note: With cookie-based authentication via the API proxy (/api/gredice/),
+ * tokens are now managed via httpOnly cookies set by the server.
+ * These functions are kept for backward compatibility but may not be needed
+ * for the cookie-based flow. The refresh logic is handled server-side.
+ */
+
 const accessTokenKey = 'gredice-token';
 const refreshTokenKey = 'gredice-refresh-token';
 
@@ -47,6 +54,10 @@ export function clearStoredTokens() {
 
 function decodeBase64Url(value: string) {
     const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+    // Calculate required base64 padding: base64 strings must be multiples of 4 characters.
+    // This formula calculates how many '=' padding characters are needed:
+    // - (normalized.length + 3) % 4 gives us the remainder when dividing by 4
+    // - We slice '===' to get 0, 1, or 2 '=' characters as needed
     const padding = '==='.slice((normalized.length + 3) % 4);
     const padded = `${normalized}${padding}`;
 
@@ -73,11 +84,7 @@ export function getJwtExpiryMs(token: string) {
 
     try {
         const parsed: unknown = JSON.parse(decoded);
-        if (
-            typeof parsed === 'object' &&
-            parsed !== null &&
-            'exp' in parsed
-        ) {
+        if (typeof parsed === 'object' && parsed !== null && 'exp' in parsed) {
             const expValue = parsed.exp;
             if (typeof expValue === 'number') {
                 return expValue * 1000;
@@ -90,10 +97,7 @@ export function getJwtExpiryMs(token: string) {
     return null;
 }
 
-export function isAccessTokenExpiringSoon(
-    token: string,
-    bufferMs = 60 * 1000,
-) {
+export function isAccessTokenExpiringSoon(token: string, bufferMs = 60 * 1000) {
     const expiry = getJwtExpiryMs(token);
     if (!expiry) {
         return false;

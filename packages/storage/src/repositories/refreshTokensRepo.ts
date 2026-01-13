@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { eq, lt } from 'drizzle-orm';
 import { storage } from '..';
 import { refreshTokens } from '../schema';
 
@@ -51,6 +51,7 @@ export async function createRefreshToken(userId: string) {
 export async function useRefreshToken(token: string) {
     const parsed = parseRefreshToken(token);
     if (!parsed) {
+        console.warn('Invalid refresh token format received');
         return null;
     }
 
@@ -61,7 +62,9 @@ export async function useRefreshToken(token: string) {
         return null;
     }
 
-    if (record.expiresAt.getTime() <= Date.now()) {
+    // Use a 1-second buffer to prevent edge cases where token expires during processing
+    const expiryBuffer = 1000;
+    if (record.expiresAt.getTime() <= Date.now() + expiryBuffer) {
         await storage()
             .delete(refreshTokens)
             .where(eq(refreshTokens.id, record.id));
@@ -69,15 +72,20 @@ export async function useRefreshToken(token: string) {
     }
 
     if (record.tokenHash !== hashRefreshSecret(parsed.secret)) {
+        console.warn(
+            'Invalid refresh token hash attempt for token ID:',
+            parsed.tokenId,
+        );
         return null;
     }
 
+    // Update last used timestamp but do NOT extend expiry
+    // Token rotation (creating a new token) should be used instead
     const now = new Date();
     await storage()
         .update(refreshTokens)
         .set({
             lastUsedAt: now,
-            expiresAt: nextRefreshExpiry(now),
         })
         .where(eq(refreshTokens.id, record.id));
 
@@ -89,9 +97,26 @@ export async function useRefreshToken(token: string) {
 export async function revokeRefreshToken(token: string) {
     const parsed = parseRefreshToken(token);
     if (!parsed) {
+        console.warn('Invalid refresh token format in revoke attempt');
         return;
     }
     await storage()
         .delete(refreshTokens)
         .where(eq(refreshTokens.id, parsed.tokenId));
+}
+
+/**
+ * Cleanup expired refresh tokens from the database.
+ * This should be called periodically (e.g., via a cron job) to prevent
+ * accumulation of expired tokens that could degrade query performance.
+ *
+ * @returns A promise that resolves to the database operation result,
+ *          which includes metadata about the number of records deleted.
+ */
+export async function cleanupExpiredRefreshTokens() {
+    const now = new Date();
+    const result = await storage()
+        .delete(refreshTokens)
+        .where(lt(refreshTokens.expiresAt, now));
+    return result;
 }

@@ -78,7 +78,9 @@ async function ensureAccessToken(baseFetch: typeof fetch) {
         return accessToken;
     }
 
-    return (await refreshAccessToken(baseFetch)) ?? accessToken;
+    // If token is expiring soon and refresh fails, return null instead of expired token
+    const refreshed = await refreshAccessToken(baseFetch);
+    return refreshed;
 }
 
 export function createAuthFetch(baseFetch: typeof fetch): typeof fetch {
@@ -92,7 +94,11 @@ export function createAuthFetch(baseFetch: typeof fetch): typeof fetch {
         const nextInit = init ? { ...init, headers } : { headers };
         const response = await baseFetch(input, nextInit);
 
-        if (response.status === 401) {
+        // Prevent infinite loop: don't retry on the refresh endpoint itself
+        const url = typeof input === 'string' ? input : input.url;
+        const isRefreshEndpoint = url.includes('/api/auth/refresh');
+
+        if (response.status === 401 && !isRefreshEndpoint) {
             const refreshed = await refreshAccessToken(baseFetch);
             if (refreshed) {
                 const retryHeaders = new Headers(init?.headers);
@@ -100,6 +106,7 @@ export function createAuthFetch(baseFetch: typeof fetch): typeof fetch {
                 const retryInit = init
                     ? { ...init, headers: retryHeaders }
                     : { headers: retryHeaders };
+                // Only retry once - don't retry again if this also returns 401
                 return baseFetch(input, retryInit);
             }
         }

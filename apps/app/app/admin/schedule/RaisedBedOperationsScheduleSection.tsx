@@ -206,23 +206,24 @@ export function RaisedBedOperationsScheduleSection({
                     )
                         ? 'Otkazano'
                         : isOperationCompleted(operation.status)
-                            ? 'Završeno'
-                            : operation.isAccepted
-                                ? 'Potvrđeno'
-                                : 'Nije potvrđeno';
+                          ? 'Završeno'
+                          : operation.isAccepted
+                            ? 'Potvrđeno'
+                            : 'Nije potvrđeno';
                     const operationStatusClassName = isOperationCancelled(
                         operation.status,
                     )
                         ? 'text-muted-foreground'
                         : isOperationCompleted(operation.status)
+                          ? 'text-green-600'
+                          : operation.isAccepted
                             ? 'text-green-600'
-                            : operation.isAccepted
-                                ? 'text-green-600'
-                                : 'text-muted-foreground';
+                            : 'text-muted-foreground';
                     const attachImages =
                         operationData?.conditions?.completionAttachImages;
                     const attachRequired =
-                        operationData?.conditions?.completionAttachImagesRequired;
+                        operationData?.conditions
+                            ?.completionAttachImagesRequired;
                     const imageStatusText = attachImages
                         ? attachRequired
                             ? 'Slike obavezne'
