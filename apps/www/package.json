@@ -57,7 +57,7 @@
         "@vercel/analytics": "1.6.1",
         "babel-plugin-react-compiler": "19.1.0-rc.3",
         "dotenv": "17.2.3",
-        "motion": "12.24.11",
+        "motion": "12.24.12",
         "next-sitemap": "4.2.3",
         "postcss": "8.5.6",
         "react-confetti-boom": "2.0.1",
