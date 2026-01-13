@@ -1,5 +1,5 @@
+import { doUseRefreshToken } from '@gredice/storage';
 import { cookies } from 'next/headers';
-import { useRefreshToken } from '@gredice/storage';
 import { createJwt, setCookie, verifyJwt } from './baseAuth';
 import {
     clearRefreshCookie,
@@ -17,7 +17,7 @@ async function isAccessTokenValid(token: string) {
 }
 
 export async function refreshSessionIfNeeded() {
-    const accessToken = cookies().get('gredice_session')?.value;
+    const accessToken = (await cookies()).get('gredice_session')?.value;
     if (accessToken && (await isAccessTokenValid(accessToken))) {
         return accessToken;
     }
@@ -27,7 +27,7 @@ export async function refreshSessionIfNeeded() {
         return null;
     }
 
-    const refreshed = await useRefreshToken(refreshToken);
+    const refreshed = await doUseRefreshToken(refreshToken);
     if (!refreshed) {
         clearRefreshCookie();
         return null;

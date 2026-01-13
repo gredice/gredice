@@ -48,7 +48,7 @@ export async function createRefreshToken(userId: string) {
     return token;
 }
 
-export async function useRefreshToken(token: string) {
+export async function doUseRefreshToken(token: string) {
     const parsed = parseRefreshToken(token);
     if (!parsed) {
         console.warn('Invalid refresh token format received');

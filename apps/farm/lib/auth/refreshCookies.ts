@@ -1,8 +1,5 @@
 import { cookies } from 'next/headers';
-import {
-    refreshTokenCookieName,
-    refreshTokenExpiryMs,
-} from './sessionConfig';
+import { refreshTokenCookieName, refreshTokenExpiryMs } from './sessionConfig';
 
 export function getRefreshTokenCookie() {
     const value = cookies().get(refreshTokenCookieName)?.value;

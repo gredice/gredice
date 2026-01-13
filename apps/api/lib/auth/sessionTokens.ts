@@ -1,7 +1,7 @@
 import {
     createRefreshToken,
+    doUseRefreshToken,
     revokeRefreshToken,
-    useRefreshToken,
 } from '@gredice/storage';
 import { createJwt } from './auth';
 import { accessTokenExpiry } from './sessionConfig';
@@ -13,7 +13,7 @@ export async function issueSessionTokens(userId: string) {
 }
 
 export async function refreshSessionTokens(refreshToken: string) {
-    const refreshed = await useRefreshToken(refreshToken);
+    const refreshed = await doUseRefreshToken(refreshToken);
     if (!refreshed) {
         return null;
     }

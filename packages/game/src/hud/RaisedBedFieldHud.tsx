@@ -1,4 +1,3 @@
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Check } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Modal } from '@signalco/ui-primitives/Modal';
