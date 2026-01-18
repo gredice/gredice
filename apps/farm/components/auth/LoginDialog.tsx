@@ -1,5 +1,6 @@
 'use client';
 
+import { clearStoredTokens, getStoredAccessToken } from '@gredice/client';
 import { FacebookLoginButton, GoogleLoginButton } from '@gredice/ui/auth';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { Alert } from '@signalco/ui/Alert';
@@ -45,14 +46,13 @@ export function LoginDialog() {
                 return 'Prijava nije uspjela. Provjeri podatke i pokušaj ponovno.';
             }
 
-            const { token } = (await response.json()) as { token?: string };
-            if (token) {
-                localStorage.setItem('gredice-token', token);
-            }
+            // Tokens are now in httpOnly cookies set by the API
+            // No need to store them in localStorage
+            await response.json();
 
             const currentUserResponse = await fetch('/api/users/current');
             if (!currentUserResponse.ok) {
-                localStorage.removeItem('gredice-token');
+                clearStoredTokens();
                 return 'Tvoj korisnički račun nema pristup Gredice farmi.';
             }
 
@@ -68,22 +68,22 @@ export function LoginDialog() {
     }, null);
 
     useEffect(() => {
-        const token = localStorage.getItem('gredice-token');
+        const token = getStoredAccessToken();
         if (!token) {
             return;
         }
 
         let isMounted = true;
-
+        // Use proxy path instead of direct API URL
         fetch(
-            `https://api.gredice.com/api/auth/last-login?token=${encodeURIComponent(token)}`,
+            `/api/gredice/api/auth/last-login?token=${encodeURIComponent(token)}`,
         )
             .then((response) => {
                 if (!response.ok) {
                     return null;
                 }
 
-                return response.json() as Promise<{ provider?: string }>;
+                return response.json();
             })
             .then((data) => {
                 if (!isMounted || !data) {
@@ -91,8 +91,10 @@ export function LoginDialog() {
                 }
 
                 if (
-                    data.provider === 'google' ||
-                    data.provider === 'facebook'
+                    typeof data === 'object' &&
+                    data !== null &&
+                    'provider' in data &&
+                    (data.provider === 'google' || data.provider === 'facebook')
                 ) {
                     setLastLoginProvider(data.provider);
                 }
@@ -112,7 +114,11 @@ export function LoginDialog() {
                 ? '/prijava/google-prijava/povratak'
                 : '/prijava/facebook-prijava/povratak';
         const redirectUrl = `${window.location.origin}${callbackPath}`;
-        const authUrl = new URL(`https://api.gredice.com/api/auth/${provider}`);
+        // Use proxy path instead of direct API URL
+        const authUrl = new URL(
+            `/api/gredice/api/auth/${provider}`,
+            window.location.origin,
+        );
         authUrl.searchParams.set('redirect', redirectUrl);
         window.location.href = authUrl.toString();
     };

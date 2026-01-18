@@ -1,6 +1,6 @@
 'use client';
 
-import { client } from '@gredice/client';
+import { client, getStoredAccessToken, setStoredTokens } from '@gredice/client';
 import { FacebookLoginButton, GoogleLoginButton } from '@gredice/ui/auth';
 import { Alert } from '@signalco/ui/Alert';
 import { Divider } from '@signalco/ui-primitives/Divider';
@@ -25,7 +25,7 @@ export default function LoginModal() {
     const [lastLoginProvider, setLastLoginProvider] = useState<string>();
 
     useEffect(() => {
-        const token = localStorage.getItem('gredice-token');
+        const token = getStoredAccessToken();
         if (!token) return;
         client()
             .api.auth['last-login'].$get({ query: { token } })
@@ -49,8 +49,16 @@ export default function LoginModal() {
         });
 
         if (response.status === 200) {
-            const { token } = await response.json();
-            localStorage.setItem('gredice-token', token);
+            const data = await response.json();
+            if (data?.token && typeof data.token === 'string') {
+                setStoredTokens({
+                    accessToken: data.token,
+                    refreshToken:
+                        typeof data.refreshToken === 'string'
+                            ? data.refreshToken
+                            : null,
+                });
+            }
             await queryClient.invalidateQueries();
             return;
         } else {
