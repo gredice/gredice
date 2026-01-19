@@ -22,7 +22,7 @@
     "dependencies": {
         "@date-fns/tz": "1.4.1",
         "@hono/mcp": "0.2.3",
-        "@hono/standard-validator": "0.2.1",
+        "@hono/standard-validator": "0.2.2",
         "@modelcontextprotocol/sdk": "1.25.2",
         "@scalar/api-reference-react": "0.8.22",
         "@standard-community/standard-json": "0.3.5",
