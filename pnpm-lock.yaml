@@ -236,8 +236,8 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
       react-email:
-        specifier: 5.2.3
-        version: 5.2.3
+        specifier: 5.2.5
+        version: 5.2.5
       recharts:
         specifier: 3.6.0
         version: 3.6.0(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react-is@17.0.2)(react@19.2.3)(redux@5.0.1)
@@ -766,8 +766,8 @@ importers:
         specifier: 19.2.3
         version: 19.2.3
       react-email:
-        specifier: 5.2.3
-        version: 5.2.3
+        specifier: 5.2.5
+        version: 5.2.5
     devDependencies:
       '@biomejs/biome':
         specifier: 2.3.11
@@ -1139,15 +1139,15 @@ importers:
         specifier: 19.2.3
         version: 19.2.3
       react-email:
-        specifier: 5.2.3
-        version: 5.2.3
+        specifier: 5.2.5
+        version: 5.2.5
     devDependencies:
       '@biomejs/biome':
         specifier: 2.3.11
         version: 2.3.11
       '@react-email/preview-server':
-        specifier: 5.2.3
-        version: 5.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.2)
+        specifier: 5.2.5
+        version: 5.2.5(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.2)
       '@signalco/ui-themes-minimal':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))
@@ -3604,8 +3604,8 @@ packages:
     peerDependencies:
       react: ^18.0 || ^19.0 || ^19.0.0-rc
 
-  '@react-email/preview-server@5.2.3':
-    resolution: {integrity: sha512-1kVIyCGBaHd++N0LAuuIFohS33TvGA/nx3yLlWPBKLW5Wjit9X1MNisoH45tG3bOmx84YZvbtXI++0hPkKL/tQ==}
+  '@react-email/preview-server@5.2.5':
+    resolution: {integrity: sha512-YERhEKl0Dz2qNbHTzdSwnsK15gipEqonKMPEbsoE8C+ACiHIm/f/d1UzQVmhrsN6PW7L+JhAuzcdIX1H3pLmFg==}
 
   '@react-email/preview@0.0.14':
     resolution: {integrity: sha512-aYK8q0IPkBXyMsbpMXgxazwHxYJxTrXrV95GFuu2HbEiIToMwSyUgb8HDFYwPqqfV03/jbwqlsXmFxsOd+VNaw==}
@@ -7842,8 +7842,8 @@ packages:
     peerDependencies:
       react: ^19.2.3
 
-  react-email@5.2.3:
-    resolution: {integrity: sha512-EJZLLsdaFD7DYHQKMotpm5tiUp5Fp/FFB6x8VlZA5z20itiJsQ5zBaTTPBDE0KhJXvAUhBbKjC1BheCEchVoOg==}
+  react-email@5.2.5:
+    resolution: {integrity: sha512-YaCp5n/0czviN4lFndsYongiI0IJOMFtFoRVIPJc9+WPJejJEvzJO94r31p3Cz9swDuV0RhEhH1W0lJFAXntHA==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
@@ -11924,7 +11924,7 @@ snapshots:
       marked: 15.0.12
       react: 19.2.3
 
-  '@react-email/preview-server@5.2.3(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.2)':
+  '@react-email/preview-server@5.2.5(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.2)':
     dependencies:
       next: 16.0.10(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.97.2)
     transitivePeerDependencies:
@@ -16896,7 +16896,7 @@ snapshots:
       react: 19.2.3
       scheduler: 0.27.0
 
-  react-email@5.2.3:
+  react-email@5.2.5:
     dependencies:
       '@babel/parser': 7.28.5
       '@babel/traverse': 7.28.5
