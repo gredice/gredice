@@ -34,7 +34,7 @@
         "hono-openapi": "1.1.2",
         "next": "16.1.1",
         "pg": "8.17.0",
-        "prettier": "3.7.4",
+        "prettier": "3.8.0",
         "react": "19.2.3",
         "react-dom": "19.2.3",
         "server-only": "0.0.1",
