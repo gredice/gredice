@@ -22,7 +22,7 @@
     },
     "dependencies": {
         "@gredice/js": "workspace:*",
-        "@react-email/components": "1.0.4",
+        "@react-email/components": "1.0.5",
         "react": "19.2.3",
         "react-email": "5.2.5"
     }
