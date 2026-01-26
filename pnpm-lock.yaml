@@ -797,8 +797,8 @@ importers:
         specifier: 1.6.3
         version: 1.6.3
       undici:
-        specifier: 7.18.2
-        version: 7.18.2
+        specifier: 7.19.0
+        version: 7.19.0
       xml-crypto:
         specifier: 6.1.2
         version: 6.1.2
@@ -8611,8 +8611,8 @@ packages:
     resolution: {integrity: sha512-hU/10obOIu62MGYjdskASR3CUAiYaFTtC9Pa6vHyf//mAipSvSQg6od2CnJswq7fvzNS3zJhxoRkgNVaHurWKw==}
     engines: {node: '>=18.17'}
 
-  undici@7.18.2:
-    resolution: {integrity: sha512-y+8YjDFzWdQlSE9N5nzKMT3g4a5UBX1HKowfdXh0uvAnTaqqwqB92Jt4UXBAeKekDs5IaDKyJFR4X1gYVCgXcw==}
+  undici@7.19.0:
+    resolution: {integrity: sha512-Heho1hJD81YChi+uS2RkSjcVO+EQLmLSyUlHyp7Y/wFbxQaGb4WXVKD073JytrjXJVkSZVzoE2MCSOKugFGtOQ==}
     engines: {node: '>=20.18.1'}
 
   unhead@1.11.20:
@@ -17804,7 +17804,7 @@ snapshots:
 
   undici@6.22.0: {}
 
-  undici@7.18.2: {}
+  undici@7.19.0: {}
 
   unhead@1.11.20:
     dependencies:
