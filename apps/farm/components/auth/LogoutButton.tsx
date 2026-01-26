@@ -1,5 +1,6 @@
 'use client';
 
+import { clearStoredTokens } from '@gredice/client';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { LogOut } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
@@ -20,7 +21,7 @@ export function LogoutButton() {
                 return;
             }
 
-            localStorage.removeItem('gredice-token');
+            clearStoredTokens();
             await queryClient.invalidateQueries({
                 queryKey: authCurrentUserQueryKeys,
             });
