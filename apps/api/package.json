@@ -30,7 +30,7 @@
         "@upstash/redis": "1.36.1",
         "@valibot/to-json-schema": "1.5.0",
         "date-fns": "4.1.0",
-        "hono": "4.11.4",
+        "hono": "4.11.5",
         "hono-openapi": "1.1.2",
         "next": "16.1.4",
         "pg": "8.17.2",
