@@ -24,7 +24,7 @@
         "@dnd-kit/utilities": "3.2.2",
         "@gredice/transactional": "workspace:*",
         "@react-email/components": "1.0.6",
-        "@vercel/blob": "2.0.0",
+        "@vercel/blob": "2.0.1",
         "@vvo/tzdb": "6.198.0",
         "hypertune": "2.10.1",
         "next": "16.1.5",
