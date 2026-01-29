@@ -10,7 +10,7 @@ Canonical: https://vrt.gredice.com/.well-known/security.txt
     return new NextResponse(securityTxt, {
         headers: {
             'Content-Type': 'text/plain; charset=utf-8',
-            'Cache-Control': 'public, max-age=604800, immutable',
+            'Cache-Control': 'public, max-age=604800',
         },
     });
 }
