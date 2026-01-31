@@ -21,7 +21,7 @@
         "@azure/core-lro": "3.3.1",
         "@gredice/storage": "workspace:*",
         "@react-email/components": "1.0.6",
-        "react": "19.2.3",
+        "react": "19.2.4",
         "react-email": "5.2.5"
     }
 }
