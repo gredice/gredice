@@ -107,7 +107,7 @@ jobs:
             id: playwright-cache
             with:
               path: ~/.cache/ms-playwright
-              key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
+              key: ${{ runner.os }}-playwright-${{ hashFiles(format('{0}/pnpm-lock.yaml', inputs.path)) }}
 
           - name: 📦️ Install playwright browsers
             if: steps.playwright-cache.outputs.cache-hit != 'true'
