@@ -27,6 +27,7 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.3.11",
+        "@gredice/client": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/ui": "workspace:*",
         "@mdxeditor/editor": "3.52.3",

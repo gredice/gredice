@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const data = await response.json();
 
     if (data?.refreshToken) {
-        setRefreshCookie(data.refreshToken);
+        await setRefreshCookie(data.refreshToken);
     }
     await setCookie(data.token);
 

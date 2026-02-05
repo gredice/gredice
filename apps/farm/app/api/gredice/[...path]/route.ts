@@ -54,7 +54,7 @@ async function proxyRequest(request: NextRequest, params: { path: string[] }) {
     const url = `${API_BASE_URL}/${pathStr}${searchParams ? `?${searchParams}` : ''}`;
 
     // Forward cookies from the request
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const cookieHeader = cookieStore
         .getAll()
         .map((cookie) => `${cookie.name}=${cookie.value}`)
@@ -131,7 +131,7 @@ async function proxyRequest(request: NextRequest, params: { path: string[] }) {
         const options: {
             httpOnly?: boolean;
             secure?: boolean;
-            sameSite?: 'Strict' | 'Lax' | 'None';
+            sameSite?: 'strict' | 'lax' | 'none';
             maxAge?: number;
             expires?: Date;
             path?: string;
@@ -154,7 +154,10 @@ async function proxyRequest(request: NextRequest, params: { path: string[] }) {
             } else if (lowerKey === 'secure') {
                 options.secure = true;
             } else if (lowerKey === 'samesite' && val) {
-                options.sameSite = val as 'Strict' | 'Lax' | 'None';
+                options.sameSite = val.toLowerCase() as
+                    | 'strict'
+                    | 'lax'
+                    | 'none';
             } else if (lowerKey === 'max-age' && val) {
                 options.maxAge = Number.parseInt(val, 10);
             } else if (lowerKey === 'expires' && val) {

@@ -11,7 +11,8 @@
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
-        "lint:migrate": "biome migrate --write"
+        "lint:migrate": "biome migrate --write",
+        "test": "node --import tsx --test ./tests/**/*.node.spec.ts"
     },
     "dependencies": {
         "@gredice/directory-types": "workspace:*",
@@ -22,6 +23,7 @@
         "@types/node": "24.10.4",
         "api": "workspace:*",
         "hono": "4.11.3",
+        "tsx": "4.20.3",
         "typescript": "5.9.3"
     }
 }

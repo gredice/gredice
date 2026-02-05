@@ -1,20 +1,23 @@
 import { cookies } from 'next/headers';
 import { refreshTokenCookieName, refreshTokenExpiryMs } from './sessionConfig';
 
-export function getRefreshTokenCookie() {
-    const value = cookies().get(refreshTokenCookieName)?.value;
+export async function getRefreshTokenCookie() {
+    const cookieStore = await cookies();
+    const value = cookieStore.get(refreshTokenCookieName)?.value;
     return value ?? null;
 }
 
-export function setRefreshCookie(token: string) {
-    cookies().set(refreshTokenCookieName, token, {
+export async function setRefreshCookie(token: string) {
+    const cookieStore = await cookies();
+    cookieStore.set(refreshTokenCookieName, token, {
         httpOnly: true,
         secure: true,
-        sameSite: 'Strict',
+        sameSite: 'strict',
         expires: new Date(Date.now() + refreshTokenExpiryMs),
     });
 }
 
-export function clearRefreshCookie() {
-    cookies().delete(refreshTokenCookieName);
+export async function clearRefreshCookie() {
+    const cookieStore = await cookies();
+    cookieStore.delete(refreshTokenCookieName);
 }
