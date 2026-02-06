@@ -1,3 +1,4 @@
+import { client } from '@gredice/client';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Approved, CompanyFacebook, Empty, Security } from '@signalco/ui-icons';
 import { Button, type ButtonProps } from '@signalco/ui-primitives/Button';
@@ -12,7 +13,7 @@ import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
@@ -138,6 +139,24 @@ export function OverviewModal() {
     const facebookConnected = userLogins?.methods?.some(
         (login) => login.provider === 'facebook',
     );
+
+    const [changePasswordPending, setChangePasswordPending] = useState(false);
+    const [changePasswordSent, setChangePasswordSent] = useState(false);
+    const handleSendChangePassword = useCallback(async () => {
+        const userName = currentUser.data?.userName;
+        if (!userName) return;
+        setChangePasswordPending(true);
+        try {
+            await client().api.auth['send-change-password-email'].$post({
+                json: { email: userName },
+            });
+            setChangePasswordSent(true);
+        } catch (error) {
+            console.error('Failed to send change password email', error);
+        } finally {
+            setChangePasswordPending(false);
+        }
+    }, [currentUser.data?.userName]);
 
     const handleMarkAllNotificationsRead = () => {
         markAllNotificationsRead.mutate({ readWhere: 'game' });
@@ -372,15 +391,27 @@ export function OverviewModal() {
                                                 )}
                                             </Stack>
                                             <Stack spacing={1}>
-                                                <Button
-                                                    variant="outlined"
-                                                    href={`https://vrt.gredice.com/prijava/promjena-zaporke?token=${token}`}
-                                                    fullWidth
-                                                >
-                                                    {passwordLoginConnected
-                                                        ? 'Promijeni zaporku'
-                                                        : 'Postavi zaporku'}
-                                                </Button>
+                                                {changePasswordSent ? (
+                                                    <Typography level="body2">
+                                                        Link za promjenu zaporke
+                                                        je poslan na tvoj email.
+                                                    </Typography>
+                                                ) : (
+                                                    <Button
+                                                        variant="outlined"
+                                                        onClick={
+                                                            handleSendChangePassword
+                                                        }
+                                                        loading={
+                                                            changePasswordPending
+                                                        }
+                                                        fullWidth
+                                                    >
+                                                        {passwordLoginConnected
+                                                            ? 'Promijeni zaporku'
+                                                            : 'Postavi zaporku'}
+                                                    </Button>
+                                                )}
                                             </Stack>
                                         </Stack>
                                     </CardContent>
@@ -435,12 +466,12 @@ export function OverviewModal() {
                                                 <Stack spacing={1}>
                                                     {!facebookConnected && (
                                                         <FacebookLoginButton
-                                                            href={`https://api.gredice.com/api/auth/facebook?state=${token}&timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`}
+                                                            href={`https://api.gredice.com/api/auth/facebook?timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`}
                                                         />
                                                     )}
                                                     {!googleConnected && (
                                                         <GoogleLoginButton
-                                                            href={`https://api.gredice.com/api/auth/google?state=${token}&timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`}
+                                                            href={`https://api.gredice.com/api/auth/google?timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`}
                                                         />
                                                     )}
                                                 </Stack>

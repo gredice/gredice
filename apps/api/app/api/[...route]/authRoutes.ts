@@ -23,7 +23,12 @@ import {
 } from 'hono/cookie';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
-import { clearCookie, setCookie, verifyJwt } from '../../../lib/auth/auth';
+import {
+    clearCookie,
+    createJwt,
+    setCookie,
+    verifyJwt,
+} from '../../../lib/auth/auth';
 import {
     sendChangePassword,
     sendEmailVerification,
@@ -47,6 +52,26 @@ import { sendWelcome } from '../../../lib/email/transactional';
 const failedAttemptClearTime = 1000 * 60; // 1 minute
 const failedAttemptsBlock = 5;
 const failedAttemptsBlockTime = 1000 * 60 * 60; // 1 hour
+
+/**
+ * Reads the session cookie and, if valid, creates a short-lived JWT
+ * to use as the OAuth state so the callback can link the provider
+ * to the current user.
+ */
+async function createOAuthStateFromSession(context: Context): Promise<string> {
+    const sessionCookie = getCookie(context, 'gredice_session');
+    if (sessionCookie) {
+        try {
+            const { result, error } = await verifyJwt(sessionCookie);
+            if (!error && result?.payload.sub) {
+                return createJwt(result.payload.sub, '10m');
+            }
+        } catch {
+            // Not authenticated – fall through to random UUID
+        }
+    }
+    return randomUUID().toString().replace('-', '');
+}
 
 const defaultWebAppOrigin = 'https://vrt.gredice.com';
 const oauthRedirectCookieName = 'oauth_redirect';
@@ -304,15 +329,13 @@ const app = new Hono()
         zValidator(
             'query',
             z.object({
-                state: z.string().optional(),
                 redirect: z.string().optional(),
                 timeZone: z.string().optional(),
             }),
         ),
         async (context) => {
             const query = context.req.valid('query');
-            const state =
-                query?.state ?? randomUUID().toString().replace('-', '');
+            const state = await createOAuthStateFromSession(context);
             storeRedirectCookie(context, query?.redirect);
             storeTimeZoneCookie(context, query?.timeZone);
             const authUrl = generateAuthUrl('google', state);
@@ -421,15 +444,13 @@ const app = new Hono()
         zValidator(
             'query',
             z.object({
-                state: z.string().optional(),
                 redirect: z.string().optional(),
                 timeZone: z.string().optional(),
             }),
         ),
         async (context) => {
             const query = context.req.valid('query');
-            const state =
-                query?.state ?? randomUUID().toString().replace('-', '');
+            const state = await createOAuthStateFromSession(context);
             const authUrl = generateAuthUrl('facebook', state);
 
             // Store state in cookie for verification
