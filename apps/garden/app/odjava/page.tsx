@@ -1,6 +1,6 @@
 'use client';
 
-import { clearStoredTokens, client } from '@gredice/client';
+import { client } from '@gredice/client';
 import { useTimeout } from '@signalco/hooks/useTimeout';
 import {
     Card,
@@ -19,7 +19,6 @@ export default function LogoutPage() {
     const queryClient = useQueryClient();
 
     useTimeout(async () => {
-        clearStoredTokens();
         await queryClient.invalidateQueries();
         await client().api.auth.logout.$post();
         window.location.href = 'https://www.gredice.com';

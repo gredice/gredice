@@ -7,6 +7,7 @@ import {
     createOrUpdateUserWithOauth,
     createUserPasswordLogin,
     createUserWithPassword,
+    doUseRefreshToken,
     getLastUserLogin,
     getUser,
     getUserWithLogins,
@@ -39,7 +40,6 @@ import {
 import { refreshTokenCookieName } from '../../../lib/auth/sessionConfig';
 import {
     issueSessionTokens,
-    refreshSessionTokens,
     revokeSessionToken,
 } from '../../../lib/auth/sessionTokens';
 import { sendWelcome } from '../../../lib/email/transactional';
@@ -533,84 +533,23 @@ const app = new Hono()
     .get(
         '/last-login',
         describeRoute({
-            description: 'Get last login for provided token',
+            description: 'Get last login for the current user',
         }),
-        zValidator(
-            'query',
-            z.object({
-                token: z.string(),
-            }),
-        ),
         async (context) => {
-            const { token } = context.req.valid('query');
-
-            const { result } = await verifyJwt(token);
-            const payloadSub = result?.payload.sub;
-            let userId =
-                typeof payloadSub === 'string' ? payloadSub : undefined;
-            if (!userId) {
-                try {
-                    const payload = JSON.parse(
-                        Buffer.from(
-                            token.split('.')[1],
-                            'base64url',
-                        ).toString(),
-                    );
-                    userId =
-                        typeof payload.sub === 'string'
-                            ? payload.sub
-                            : undefined;
-                } catch {
-                    /* ignore */
-                }
-            }
-            if (!userId) {
-                return context.json(
-                    { error: 'Invalid token' },
-                    { status: 400 },
-                );
+            const refreshToken = getCookie(context, refreshTokenCookieName);
+            if (!refreshToken) {
+                return context.json({ provider: null });
             }
 
-            const login = await getLastUserLogin(userId);
-            if (!login) {
-                return context.json({ provider: null, lastLogin: null });
-            }
-
-            return context.json({
-                provider: login.loginType,
-            });
-        },
-    )
-    .post(
-        '/refresh',
-        describeRoute({
-            description: 'Refresh access token using refresh token',
-        }),
-        zValidator(
-            'json',
-            z.object({
-                refreshToken: z.string(),
-            }),
-        ),
-        async (context) => {
-            const { refreshToken } = context.req.valid('json');
-            const refreshed = await refreshSessionTokens(refreshToken);
+            const refreshed = await doUseRefreshToken(refreshToken);
             if (!refreshed) {
                 await clearRefreshCookie(context);
-                return context.json(
-                    { error: 'Invalid refresh token' },
-                    { status: 401 },
-                );
+                return context.json({ provider: null });
             }
 
-            await Promise.all([
-                setCookie(context, refreshed.accessToken),
-                setRefreshCookie(context, refreshed.refreshToken),
-            ]);
-
+            const login = await getLastUserLogin(refreshed.userId);
             return context.json({
-                token: refreshed.accessToken,
-                refreshToken: refreshed.refreshToken,
+                provider: login?.loginType ?? null,
             });
         },
     )

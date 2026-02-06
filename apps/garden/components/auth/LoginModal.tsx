@@ -1,6 +1,6 @@
 'use client';
 
-import { client, getStoredAccessToken, setStoredTokens } from '@gredice/client';
+import { client } from '@gredice/client';
 import { FacebookLoginButton, GoogleLoginButton } from '@gredice/ui/auth';
 import { Alert } from '@signalco/ui/Alert';
 import { Divider } from '@signalco/ui-primitives/Divider';
@@ -25,18 +25,39 @@ export default function LoginModal() {
     const [lastLoginProvider, setLastLoginProvider] = useState<string>();
 
     useEffect(() => {
-        const token = getStoredAccessToken();
-        if (!token) return;
-        client()
-            .api.auth['last-login'].$get({ query: { token } })
-            .then(async (response) => {
-                if (response.status !== 200) return;
-                const data = await response.json();
-                if (data?.provider) setLastLoginProvider(data.provider);
-            })
-            .catch(() => {
-                /* ignore */
-            });
+        let isMounted = true;
+
+        const fetchLastLogin = async () => {
+            const delaysMs = [0, 250, 750];
+            for (const delayMs of delaysMs) {
+                if (delayMs > 0) {
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, delayMs),
+                    );
+                }
+
+                try {
+                    const response =
+                        await client().api.auth['last-login'].$get();
+                    if (!response.ok) {
+                        continue;
+                    }
+                    const data = await response.json();
+                    if (isMounted && data?.provider) {
+                        setLastLoginProvider(data.provider);
+                    }
+                    return;
+                } catch {
+                    // retry
+                }
+            }
+        };
+
+        void fetchLastLogin();
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     const handleLogin = async (email: string, password: string) => {
@@ -49,16 +70,7 @@ export default function LoginModal() {
         });
 
         if (response.status === 200) {
-            const data = await response.json();
-            if (data?.token && typeof data.token === 'string') {
-                setStoredTokens({
-                    accessToken: data.token,
-                    refreshToken:
-                        typeof data.refreshToken === 'string'
-                            ? data.refreshToken
-                            : null,
-                });
-            }
+            await response.json();
             await queryClient.invalidateQueries();
             return;
         } else {

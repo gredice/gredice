@@ -1,4 +1,3 @@
-import { getAuthToken } from '@gredice/client';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Approved, CompanyFacebook, Empty, Security } from '@signalco/ui-icons';
 import { Button, type ButtonProps } from '@signalco/ui-primitives/Button';
@@ -130,7 +129,6 @@ export function OverviewModal() {
     const { data: userLogins, isLoading: userLoginsLoading } = useUserLogins(
         currentUser.data?.id,
     );
-    const token = getAuthToken();
     const passwordLoginConnected = userLogins?.methods?.some(
         (login) => login.provider === 'password',
     );

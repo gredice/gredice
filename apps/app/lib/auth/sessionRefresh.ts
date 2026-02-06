@@ -34,7 +34,11 @@ export async function refreshSessionIfNeeded() {
     }
 
     const newAccessToken = await createJwt(refreshed.userId, accessTokenExpiry);
-    setCookie(newAccessToken);
-    await setRefreshCookie(refreshToken);
+    try {
+        await setCookie(newAccessToken);
+        await setRefreshCookie(refreshToken);
+    } catch {
+        // Cookies are read-only in some server render paths; ignore and rely on access token.
+    }
     return newAccessToken;
 }

@@ -1,6 +1,5 @@
 'use client';
 
-import { setStoredTokens } from '@gredice/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
@@ -20,17 +19,8 @@ export function UrlAuthForward() {
                 return;
             }
 
-            const token = searchParams.get('session');
-            const refreshToken = searchParams.get('refreshToken');
-            if (token) {
-                setStoredTokens({
-                    accessToken: token,
-                    refreshToken,
-                });
-                await queryClient.invalidateQueries();
-                router.push('/');
-                return;
-            }
+            await queryClient.invalidateQueries();
+            router.push('/');
         };
 
         handleGoogleCallback();

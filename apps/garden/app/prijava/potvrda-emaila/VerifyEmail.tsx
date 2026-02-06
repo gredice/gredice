@@ -1,6 +1,6 @@
 'use client';
 
-import { client, setStoredTokens } from '@gredice/client';
+import { client } from '@gredice/client';
 import { Warning } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -34,16 +34,7 @@ export function VerifyEmail() {
             // Handle successful verification by storing the token and redirecting
             // to the home page (user is logged in)
             if (response.status === 200) {
-                const data = await response.json();
-                if (data?.token && typeof data.token === 'string') {
-                    setStoredTokens({
-                        accessToken: data.token,
-                        refreshToken:
-                            typeof data.refreshToken === 'string'
-                                ? data.refreshToken
-                                : null,
-                    });
-                }
+                await response.json();
                 await queryClient.invalidateQueries();
                 router.push('/');
                 return;

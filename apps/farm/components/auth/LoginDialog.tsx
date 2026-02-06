@@ -1,6 +1,5 @@
 'use client';
 
-import { clearStoredTokens, getStoredAccessToken } from '@gredice/client';
 import { FacebookLoginButton, GoogleLoginButton } from '@gredice/ui/auth';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { Alert } from '@signalco/ui/Alert';
@@ -52,7 +51,6 @@ export function LoginDialog() {
 
             const currentUserResponse = await fetch('/api/users/current');
             if (!currentUserResponse.ok) {
-                clearStoredTokens();
                 return 'Tvoj korisnički račun nema pristup Gredice farmi.';
             }
 
@@ -66,42 +64,44 @@ export function LoginDialog() {
             return 'Dogodila se neočekivana greška. Pokušaj ponovno kasnije.';
         }
     }, null);
-
     useEffect(() => {
-        const token = getStoredAccessToken();
-        if (!token) {
-            return;
-        }
-
         let isMounted = true;
-        // Use proxy path instead of direct API URL
-        fetch(
-            `/api/gredice/api/auth/last-login?token=${encodeURIComponent(token)}`,
-        )
-            .then((response) => {
-                if (!response.ok) {
-                    return null;
+
+        const fetchLastLogin = async () => {
+            const delaysMs = [0, 250, 750];
+            for (const delayMs of delaysMs) {
+                if (delayMs > 0) {
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, delayMs),
+                    );
                 }
 
-                return response.json();
-            })
-            .then((data) => {
-                if (!isMounted || !data) {
+                try {
+                    const response = await fetch(
+                        '/api/gredice/api/auth/last-login',
+                    );
+                    if (!response.ok) {
+                        continue;
+                    }
+                    const data = await response.json();
+                    if (
+                        isMounted &&
+                        data &&
+                        typeof data === 'object' &&
+                        'provider' in data &&
+                        (data.provider === 'google' ||
+                            data.provider === 'facebook')
+                    ) {
+                        setLastLoginProvider(data.provider);
+                    }
                     return;
+                } catch {
+                    // retry
                 }
+            }
+        };
 
-                if (
-                    typeof data === 'object' &&
-                    data !== null &&
-                    'provider' in data &&
-                    (data.provider === 'google' || data.provider === 'facebook')
-                ) {
-                    setLastLoginProvider(data.provider);
-                }
-            })
-            .catch(() => {
-                /* ignore */
-            });
+        void fetchLastLogin();
 
         return () => {
             isMounted = false;

@@ -1,6 +1,5 @@
 'use client';
 
-import { clearStoredTokens } from '@gredice/client';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { Alert } from '@signalco/ui/Alert';
 import { Warning } from '@signalco/ui-icons';
@@ -41,7 +40,6 @@ export function LoginDialog() {
             }
 
             await response.json();
-            clearStoredTokens();
 
             await queryClient.invalidateQueries({
                 queryKey: authCurrentUserQueryKeys,

@@ -1,8 +1,6 @@
 import { getEntityTypesOrganizedByCategories } from '@gredice/storage';
-import {
-    AuthProtectedSection,
-    SignedOut,
-} from '@signalco/auth-server/components';
+import { SignedOut } from '@signalco/auth-client/components';
+import { AuthProtectedSection } from '@signalco/auth-server/components';
 import { type PropsWithChildren, Suspense } from 'react';
 import {
     LoginDialog,
@@ -44,7 +42,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                                 </div>
                             </div>
                         </div>
-                        <SignedOut auth={authAdmin}>
+                        <SignedOut>
                             <LoginDialog />
                         </SignedOut>
                     </main>

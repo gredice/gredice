@@ -1,5 +1,3 @@
-import { getStoredAccessToken } from './auth/tokenStore';
-
 export function getAppUrl() {
     // Check if we're in a browser environment
     const isBrowser = typeof window !== 'undefined';
@@ -15,18 +13,6 @@ export function getAppUrl() {
         return 'https://api.gredice.test';
     }
     return 'https://api.gredice.com';
-}
-
-export function getAuthToken() {
-    return getStoredAccessToken();
-}
-
-export function getAuthHeaders() {
-    if (typeof localStorage === 'undefined') {
-        return null;
-    }
-
-    return `Bearer ${getAuthToken()}`;
 }
 
 /**

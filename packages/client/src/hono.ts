@@ -1,18 +1,14 @@
 import type { AppType } from 'api/routes';
 import { hc, type InferResponseType } from 'hono/client';
-import { createAuthFetch } from './auth/authFetch';
-import { getStoredAccessToken } from './auth/tokenStore';
 import { createDevSafeFetch, getAppUrl } from './shared';
 
 export function client(authRequired = false) {
-    const accessToken = getStoredAccessToken();
-    if (authRequired && !accessToken) {
-        throw new Error(
-            'Authentication is required but no auth data available',
-        );
-    }
+    void authRequired;
+    const baseFetch = createDevSafeFetch();
+    const fetchWithCredentials: typeof fetch = (input, init) =>
+        baseFetch(input, { ...init, credentials: 'include' });
     return hc<AppType>(getAppUrl(), {
-        fetch: createAuthFetch(createDevSafeFetch()),
+        fetch: fetchWithCredentials,
     });
 }
 
