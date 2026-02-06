@@ -30,11 +30,16 @@ export function GameSceneWrapper({
     // Sync winterMode prop changes to the store
     useEffect(() => {
         if (storeRef.current) {
-            storeRef.current
-                .getState()
-                .setWinterMode(winterMode ?? 'summer');
+            storeRef.current.getState().setWinterMode(winterMode ?? 'summer');
         }
     }, [winterMode]);
+
+    // Sync freezeTime prop changes to the store
+    useEffect(() => {
+        if (storeRef.current) {
+            storeRef.current.getState().setFreezeTime(freezeTime ?? null);
+        }
+    }, [freezeTime]);
 
     useGLTF.preload((appBaseUrl ?? '') + models.GameAssets.url);
 
