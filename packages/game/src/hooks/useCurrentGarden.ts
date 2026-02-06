@@ -5,13 +5,22 @@ import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { useGardens, useGardensKeys } from './useGardens';
 
-export const currentGardenKeys = (isWinterMode: boolean) => [
+export const currentGardenKeys = (
+    isWinterMode: boolean,
+    isHolidayMode?: boolean,
+) => [
     ...useGardensKeys,
     'current',
     isWinterMode,
+    isHolidayMode ?? null,
 ];
 
-function mockGarden(isWinterMode: boolean) {
+function mockGarden(isWinterMode: boolean, isHolidayMode: boolean) {
+    const treeName = isHolidayMode
+        ? 'PineAdvent'
+        : isWinterMode
+          ? 'Pine'
+          : 'Tree';
     return {
         id: 99999,
         name: 'Moj vrt',
@@ -41,9 +50,9 @@ function mockGarden(isWinterMode: boolean) {
                     },
                     {
                         id: '12',
-                        name: isWinterMode ? 'PineAdvent' : 'Tree',
+                        name: treeName,
                         rotation: 0,
-                        variant: isWinterMode ? 100 : undefined,
+                        variant: isHolidayMode ? 100 : undefined,
                     },
                 ],
             },
@@ -65,7 +74,7 @@ function mockGarden(isWinterMode: boolean) {
                         name: 'Block_Grass',
                         rotation: 0,
                     },
-                    ...(isWinterMode
+                    ...(isHolidayMode
                         ? [
                               {
                                   id: '16',
@@ -206,13 +215,14 @@ type useCurrentGardenResponse = Omit<
 export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | null> {
     const isMock = useGameState((state) => state.isMock);
     const isWinterMode = useGameState((state) => state.isWinterMode);
+    const isHolidayMode = useGameState((state) => state.isHolidayMode);
     const { data: gardens } = useGardens(isMock);
     return useQuery({
-        queryKey: currentGardenKeys(isWinterMode),
+        queryKey: currentGardenKeys(isWinterMode, isHolidayMode),
         queryFn: async () => {
             if (isMock) {
                 console.debug('Using mock garden data');
-                return mockGarden(isWinterMode);
+                return mockGarden(isWinterMode, isHolidayMode);
             }
 
             if (!gardens) {

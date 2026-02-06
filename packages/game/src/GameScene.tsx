@@ -36,6 +36,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     noSound?: boolean;
     mockGarden?: boolean;
     isWinterMode?: boolean;
+    isHolidayMode?: boolean;
     weather?: Partial<GameState['weather']>;
 
     // Development purposes

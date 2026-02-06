@@ -31,6 +31,20 @@ export function isWinterSeason(): boolean {
     return false;
 }
 
+// Check if current date is within Christmas holidays (Dec 1 - Jan 10)
+export function isChristmasHolidaySeason(): boolean {
+    const now = new Date();
+    const month = now.getMonth(); // 0-indexed (0 = January, 11 = December)
+    const day = now.getDate();
+
+    // December (month 11): from day 1
+    if (month === 11 && day >= 1) return true;
+    // January (month 0): until day 10
+    if (month === 0 && day <= 10) return true;
+
+    return false;
+}
+
 type WinterModeContextType = {
     isWinter: boolean | null;
     toggle: () => void;

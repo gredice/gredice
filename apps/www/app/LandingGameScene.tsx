@@ -2,10 +2,14 @@
 
 import { GameScene } from '@gredice/game';
 import { useEffect, useState } from 'react';
-import { useWinterMode } from '../components/providers/WinterModeProvider';
+import {
+    isChristmasHolidaySeason,
+    useWinterMode,
+} from '../components/providers/WinterModeProvider';
 
 export function LandingGameScene() {
     const { isWinter } = useWinterMode();
+    const isHolidayMode = isWinter ? isChristmasHolidaySeason() : false;
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
@@ -56,6 +60,7 @@ export function LandingGameScene() {
             noSound
             mockGarden
             isWinterMode={isWinter ?? false}
+            isHolidayMode={isHolidayMode}
             weather={isWinter ? winterWeather : summerWeather}
         />
     );
