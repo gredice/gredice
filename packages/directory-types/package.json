@@ -16,7 +16,7 @@
         "regenerate:directories-api": "pnpm dlx openapi-typescript https://api.gredice.com/api/docs/directories -o ./src/v1.d.ts"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.3.11",
+        "@biomejs/biome": "2.3.13",
         "openapi-typescript": "7.10.1",
         "typescript": "5.9.3"
     }

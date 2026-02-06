@@ -35,12 +35,12 @@ jobs:
             - uses: pnpm/action-setup@v3
               name: ✨ Install pnpm
               with:
-                version: 10.27.0
+                version: 10.28.2
 
             - name: ✨ Setup Node
               uses: actions/setup-node@v6
               with:
-                node-version: "24.12.0"
+                node-version: "24.13.0"
       
             - name: ✨ Get pnpm store directory
               shell: bash
@@ -63,7 +63,6 @@ jobs:
     test:
         timeout-minutes: 10
         runs-on: ubuntu-latest
-        needs: lint
         if: github.event_name == 'pull_request'
         steps:
           - uses: actions/checkout@v6
@@ -73,12 +72,12 @@ jobs:
           - uses: pnpm/action-setup@v3
             name: ✨ Install pnpm
             with:
-              version: 10.27.0
+              version: 10.28.2
 
           - name: ✨ Setup Node
             uses: actions/setup-node@v6
             with:
-              node-version: "24.12.0"
+              node-version: "24.13.0"
         
           - name: ✨ Get pnpm store directory
             shell: bash
@@ -103,10 +102,18 @@ jobs:
             run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
             working-directory: ${{ inputs.path }}/
 
+          - name: ✨ Cache Playwright browsers
+            uses: actions/cache@v5
+            id: playwright-cache
+            with:
+              path: ~/.cache/ms-playwright
+              key: ${{ runner.os }}-playwright-${{ hashFiles(format('{0}/pnpm-lock.yaml', inputs.path)) }}
+              restore-keys: |
+                ${{ runner.os }}-playwright-
+
           - name: 📦️ Install playwright browsers
-            run: |
-              pnpm install --global playwright
-              pnpm playwright install --with-deps
+            if: steps.playwright-cache.outputs.cache-hit != 'true'
+            run: pnpm playwright install --with-deps
             working-directory: ${{ inputs.path }}/
 
           - name: ⚒️ Test app
