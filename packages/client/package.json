@@ -19,11 +19,11 @@
         "openapi-fetch": "0.15.0"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.3.13",
+        "@biomejs/biome": "2.3.14",
         "@types/node": "24.10.9",
         "api": "workspace:*",
-        "hono": "4.11.7",
-        "tsx": "4.20.3",
+        "hono": "4.11.8",
+        "tsx": "4.21.0",
         "typescript": "5.9.3"
     }
 }

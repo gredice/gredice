@@ -19,7 +19,7 @@
     },
     "dependencies": {
         "@flags-sdk/hypertune": "0.3.2",
-        "@vercel/toolbar": "0.2.1",
+        "@vercel/toolbar": "0.2.2",
         "flags": "4.0.2",
         "hypertune": "2.10.1",
         "next": "16.1.6",
@@ -29,7 +29,7 @@
         "server-only": "0.0.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.3.13",
+        "@biomejs/biome": "2.3.14",
         "@gredice/client": "workspace:*",
         "@gredice/game": "workspace:*",
         "@gredice/ui": "workspace:*",
@@ -48,7 +48,7 @@
         "@tailwindcss/typography": "0.5.19",
         "@tanstack/react-query": "5.90.20",
         "@types/node": "24.10.9",
-        "@types/react": "19.2.10",
+        "@types/react": "19.2.13",
         "@types/react-dom": "19.2.3",
         "@vercel/analytics": "1.6.1",
         "babel-plugin-react-compiler": "19.1.0-rc.3",
