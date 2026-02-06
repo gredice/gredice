@@ -54,7 +54,7 @@
         "@gredice/storage": "workspace:*",
         "@gredice/stripe": "workspace:*",
         "@gredice/transactional": "workspace:*",
-        "@playwright/test": "1.58.1",
+        "@playwright/test": "1.58.2",
         "@sentry/nextjs": "10.38.0",
         "@signalco/auth-server": "0.5.3",
         "@signalco/hooks": "0.2.1",
