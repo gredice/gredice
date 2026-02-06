@@ -136,7 +136,6 @@ export function LoginDialog() {
             <Modal
                 open
                 dismissible={false}
-                hideClose
                 title="Prijava u Gredice farmu"
                 className="md:max-w-md"
             >

@@ -56,7 +56,6 @@ export function LoginDialog() {
             <Modal
                 open
                 dismissible={false}
-                hideClose
                 title="Prijava"
                 className="md:max-w-md"
             >
