@@ -9,7 +9,11 @@ import {
 
 export function LandingGameScene() {
     const { isWinter } = useWinterMode();
-    const isHolidayMode = isWinter ? isChristmasHolidaySeason() : false;
+    const winterMode = isWinter
+        ? isChristmasHolidaySeason()
+            ? 'holiday'
+            : 'winter'
+        : 'summer';
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
@@ -59,8 +63,7 @@ export function LandingGameScene() {
             noControls
             noSound
             mockGarden
-            isWinterMode={isWinter ?? false}
-            isHolidayMode={isHolidayMode}
+            winterMode={winterMode}
             weather={isWinter ? winterWeather : summerWeather}
         />
     );

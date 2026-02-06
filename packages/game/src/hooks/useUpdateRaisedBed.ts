@@ -7,8 +7,8 @@ import { useCurrentUser } from './useCurrentUser';
 export function useUpdateRaisedBed(gardenId: number, raisedBedId: number) {
     const queryClient = useQueryClient();
     const currentUser = useCurrentUser();
-    const isWinterMode = useGameState((state) => state.isWinterMode);
-    const gardenQueryKey = currentGardenKeys(isWinterMode);
+    const winterMode = useGameState((state) => state.winterMode);
+    const gardenQueryKey = currentGardenKeys(winterMode);
 
     return useMutation({
         mutationFn: async ({ name }: { name?: string | null }) => {

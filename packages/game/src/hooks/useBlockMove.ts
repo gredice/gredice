@@ -10,8 +10,8 @@ const mutationKey = ['gardens', 'current', 'blockMove'];
 export function useBlockMove() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
-    const isWinterMode = useGameState((state) => state.isWinterMode);
-    const gardenQueryKey = currentGardenKeys(isWinterMode);
+    const winterMode = useGameState((state) => state.winterMode);
+    const gardenQueryKey = currentGardenKeys(winterMode);
 
     return useMutation({
         mutationKey,

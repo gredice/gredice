@@ -48,7 +48,7 @@ export function EntityViewer({
             appBaseUrl: appBaseUrl || '',
             freezeTime: new Date(2024, 5, 21, 12, 0, 0),
             isMock: true,
-            isWinterMode: false,
+            winterMode: 'summer',
         });
     }
 

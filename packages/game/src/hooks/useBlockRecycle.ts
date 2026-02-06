@@ -39,8 +39,8 @@ export function useBlockRecycle() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
     const { data: shoppingCart } = useShoppingCart();
-    const isWinterMode = useGameState((state) => state.isWinterMode);
-    const gardenQueryKey = currentGardenKeys(isWinterMode);
+    const winterMode = useGameState((state) => state.winterMode);
+    const gardenQueryKey = currentGardenKeys(winterMode);
 
     return useMutation({
         mutationKey,

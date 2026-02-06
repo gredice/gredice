@@ -2,25 +2,23 @@ import { client, type GardenResponse } from '@gredice/client';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { Vector3 } from 'three';
 import type { Stack } from '../types/Stack';
-import { useGameState } from '../useGameState';
+import { useGameState, type WinterMode } from '../useGameState';
 import { useGardens, useGardensKeys } from './useGardens';
 
-export const currentGardenKeys = (
-    isWinterMode: boolean,
-    isHolidayMode?: boolean,
-) => [
+export const currentGardenKeys = (winterMode: WinterMode) => [
     ...useGardensKeys,
     'current',
-    isWinterMode,
-    isHolidayMode ?? null,
+    winterMode,
 ];
 
-function mockGarden(isWinterMode: boolean, isHolidayMode: boolean) {
-    const treeName = isHolidayMode
-        ? 'PineAdvent'
-        : isWinterMode
-          ? 'Pine'
-          : 'Tree';
+function mockGarden(winterMode: WinterMode) {
+    const treeName =
+        winterMode === 'holiday'
+            ? 'PineAdvent'
+            : winterMode === 'winter'
+              ? 'Pine'
+              : 'Tree';
+    const isHolidayMode = winterMode === 'holiday';
     return {
         id: 99999,
         name: 'Moj vrt',
@@ -214,15 +212,14 @@ type useCurrentGardenResponse = Omit<
 
 export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | null> {
     const isMock = useGameState((state) => state.isMock);
-    const isWinterMode = useGameState((state) => state.isWinterMode);
-    const isHolidayMode = useGameState((state) => state.isHolidayMode);
+    const winterMode = useGameState((state) => state.winterMode);
     const { data: gardens } = useGardens(isMock);
     return useQuery({
-        queryKey: currentGardenKeys(isWinterMode, isHolidayMode),
+        queryKey: currentGardenKeys(winterMode),
         queryFn: async () => {
             if (isMock) {
                 console.debug('Using mock garden data');
-                return mockGarden(isWinterMode, isHolidayMode);
+                return mockGarden(winterMode);
             }
 
             if (!gardens) {

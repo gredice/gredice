@@ -20,7 +20,7 @@ import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import { Scene } from './scene/Scene';
-import type { GameState } from './useGameState';
+import type { GameState, WinterMode } from './useGameState';
 import { useRaisedBedCloseup } from './useRaisedBedCloseup';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
@@ -35,8 +35,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     noWeather?: boolean;
     noSound?: boolean;
     mockGarden?: boolean;
-    isWinterMode?: boolean;
-    isHolidayMode?: boolean;
+    winterMode?: WinterMode;
     weather?: Partial<GameState['weather']>;
 
     // Development purposes

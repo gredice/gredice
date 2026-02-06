@@ -8,8 +8,8 @@ import { inventoryQueryKey } from './useInventory';
 
 export function useOpenAdventDay() {
     const queryClient = useQueryClient();
-    const isWinterMode = useGameState((state) => state.isWinterMode);
-    const gardenQueryKey = currentGardenKeys(isWinterMode);
+    const winterMode = useGameState((state) => state.winterMode);
+    const gardenQueryKey = currentGardenKeys(winterMode);
 
     return useMutation({
         mutationFn: async (day: number) => {

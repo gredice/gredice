@@ -63,14 +63,13 @@ function getTimeOfDay(
 }
 
 type GameMode = 'normal' | 'edit';
+export type WinterMode = 'summer' | 'winter' | 'holiday';
 
 export type GameState = {
     // General
     isMock: boolean;
-    isWinterMode: boolean;
-    setIsWinterMode: (isWinterMode: boolean) => void;
-    isHolidayMode: boolean;
-    setIsHolidayMode: (isHolidayMode: boolean) => void;
+    winterMode: WinterMode;
+    setWinterMode: (winterMode: WinterMode) => void;
     appBaseUrl: string;
     audio: {
         ambient: ReturnType<typeof audioMixer>;
@@ -141,23 +140,19 @@ export function createGameState({
     appBaseUrl,
     freezeTime,
     isMock,
-    isWinterMode,
-    isHolidayMode,
+    winterMode,
 }: {
     appBaseUrl: string;
     freezeTime: Date | null;
     isMock: boolean;
-    isWinterMode: boolean;
-    isHolidayMode?: boolean;
+    winterMode?: WinterMode;
 }) {
     const now = freezeTime ?? new Date();
     const timeOfDay = getTimeOfDay(defaultLocation, now);
     return createStore<GameState>((set, get) => ({
         isMock: isMock,
-        isWinterMode: isWinterMode,
-        setIsWinterMode: (isWinterMode) => set({ isWinterMode }),
-        isHolidayMode: isHolidayMode ?? false,
-        setIsHolidayMode: (isHolidayMode) => set({ isHolidayMode }),
+        winterMode: winterMode ?? 'summer',
+        setWinterMode: (winterMode) => set({ winterMode }),
         appBaseUrl: appBaseUrl,
         audio: {
             ambient: audioMixer(
