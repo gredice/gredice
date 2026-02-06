@@ -37,7 +37,7 @@ export function GameSceneWrapper({
     // Sync freezeTime prop changes to the store
     useEffect(() => {
         if (storeRef.current) {
-            storeRef.current.getState().setFreezeTime(freezeTime || null);
+            storeRef.current.getState().setFreezeTime(freezeTime ?? null);
         }
     }, [freezeTime]);
 
