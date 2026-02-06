@@ -229,7 +229,6 @@ export function AdventModal() {
             open={isOpen}
             onOpenChange={(open) => !open && handleClose()}
             className="md:max-w-sm border-tertiary border-b-4 p-0 overflow-hidden"
-            hideClose
         >
             <div className="bg-background">{renderContent()}</div>
         </Modal>

@@ -19,13 +19,8 @@ export function UrlAuthForward() {
                 return;
             }
 
-            const token = searchParams.get('session');
-            if (token) {
-                localStorage.setItem('gredice-token', token);
-                await queryClient.invalidateQueries();
-                router.push('/');
-                return;
-            }
+            await queryClient.invalidateQueries();
+            router.push('/');
         };
 
         handleGoogleCallback();

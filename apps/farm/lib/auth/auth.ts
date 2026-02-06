@@ -1,48 +1,84 @@
 import 'server-only';
 
 import { getUser as storageGetUser } from '@gredice/storage';
-import { initAuth, initRbac } from '@signalco/auth-server';
+import {
+    baseAuth,
+    baseWithAuth,
+    clearCookie,
+    createJwt,
+    setCookie,
+    verifyJwt,
+} from './baseAuth';
+import { refreshSessionIfNeeded } from './sessionRefresh';
 
-function jwtSecretFactory() {
-    const signSecret = process.env.GREDICE_JWT_SIGN_SECRET as string;
-    return Buffer.from(signSecret, 'base64');
-}
+export { clearCookie, createJwt, setCookie, verifyJwt };
 
-type User = {
+type AuthUser = {
     id: string;
     userName: string;
     accountIds: string[];
     role: string;
 };
 
-async function getUser(id: string): Promise<User | null> {
-    const user = await storageGetUser(id);
-    if (!user) {
-        return null;
+async function authFromToken(token: string, roles: string[]) {
+    const { result, error } = await verifyJwt(token);
+    const userId = result?.payload?.sub;
+    if (error || typeof userId !== 'string' || userId.length === 0) {
+        throw new Error('Unauthorized: Invalid user ID');
     }
 
-    return {
+    const user = await storageGetUser(userId);
+    if (!user) {
+        throw new Error('User not found');
+    }
+
+    if (!roles.includes(user.role)) {
+        throw new Error('Unauthorized');
+    }
+
+    const accountIds = user.accounts.map(
+        (accountUsers) => accountUsers.accountId,
+    );
+    const accountId = accountIds[0];
+    if (!accountId) {
+        throw new Error('Account not found');
+    }
+
+    const authUser: AuthUser = {
         id: user.id,
         userName: user.userName,
-        accountIds: user.accounts.map((accountUsers) => accountUsers.accountId),
+        accountIds,
         role: user.role,
+    };
+
+    return {
+        userId: user.id,
+        user: authUser,
+        accountId,
     };
 }
 
-export const { withAuth, createJwt, setCookie, auth, clearCookie } = initRbac(
-    initAuth({
-        security: {
-            expiry: 7 * 24 * 60 * 60 * 1000,
-        },
-        jwt: {
-            namespace: 'gredice',
-            issuer: 'api',
-            audience: 'web',
-            jwtSecretFactory,
-        },
-        cookie: {
-            name: 'gredice_session',
-        },
-        getUser,
-    }),
-);
+export async function auth(...args: Parameters<typeof baseAuth>) {
+    const [roles] = args;
+    const accessToken = await refreshSessionIfNeeded();
+    if (accessToken) {
+        return await authFromToken(accessToken, roles);
+    }
+
+    return await baseAuth(...args);
+}
+
+export async function withAuth(...args: Parameters<typeof baseWithAuth>) {
+    const [roles, handler] = args;
+    const accessToken = await refreshSessionIfNeeded();
+    if (accessToken) {
+        try {
+            const authContext = await authFromToken(accessToken, roles);
+            return await handler(authContext);
+        } catch {
+            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+    }
+
+    return await baseWithAuth(...args);
+}

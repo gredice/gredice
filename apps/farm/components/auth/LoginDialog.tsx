@@ -45,14 +45,12 @@ export function LoginDialog() {
                 return 'Prijava nije uspjela. Provjeri podatke i pokušaj ponovno.';
             }
 
-            const { token } = (await response.json()) as { token?: string };
-            if (token) {
-                localStorage.setItem('gredice-token', token);
-            }
+            // Tokens are now in httpOnly cookies set by the API
+            // No need to store them in localStorage
+            await response.json();
 
             const currentUserResponse = await fetch('/api/users/current');
             if (!currentUserResponse.ok) {
-                localStorage.removeItem('gredice-token');
                 return 'Tvoj korisnički račun nema pristup Gredice farmi.';
             }
 
@@ -66,40 +64,44 @@ export function LoginDialog() {
             return 'Dogodila se neočekivana greška. Pokušaj ponovno kasnije.';
         }
     }, null);
-
     useEffect(() => {
-        const token = localStorage.getItem('gredice-token');
-        if (!token) {
-            return;
-        }
-
         let isMounted = true;
 
-        fetch(
-            `https://api.gredice.com/api/auth/last-login?token=${encodeURIComponent(token)}`,
-        )
-            .then((response) => {
-                if (!response.ok) {
-                    return null;
+        const fetchLastLogin = async () => {
+            const delaysMs = [0, 250, 750];
+            for (const delayMs of delaysMs) {
+                if (delayMs > 0) {
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, delayMs),
+                    );
                 }
 
-                return response.json() as Promise<{ provider?: string }>;
-            })
-            .then((data) => {
-                if (!isMounted || !data) {
+                try {
+                    const response = await fetch(
+                        '/api/gredice/api/auth/last-login',
+                    );
+                    if (!response.ok) {
+                        continue;
+                    }
+                    const data = await response.json();
+                    if (
+                        isMounted &&
+                        data &&
+                        typeof data === 'object' &&
+                        'provider' in data &&
+                        (data.provider === 'google' ||
+                            data.provider === 'facebook')
+                    ) {
+                        setLastLoginProvider(data.provider);
+                    }
                     return;
+                } catch {
+                    // retry
                 }
+            }
+        };
 
-                if (
-                    data.provider === 'google' ||
-                    data.provider === 'facebook'
-                ) {
-                    setLastLoginProvider(data.provider);
-                }
-            })
-            .catch(() => {
-                /* ignore */
-            });
+        void fetchLastLogin();
 
         return () => {
             isMounted = false;
@@ -112,7 +114,11 @@ export function LoginDialog() {
                 ? '/prijava/google-prijava/povratak'
                 : '/prijava/facebook-prijava/povratak';
         const redirectUrl = `${window.location.origin}${callbackPath}`;
-        const authUrl = new URL(`https://api.gredice.com/api/auth/${provider}`);
+        // Use proxy path instead of direct API URL
+        const authUrl = new URL(
+            `/api/gredice/api/auth/${provider}`,
+            window.location.origin,
+        );
         authUrl.searchParams.set('redirect', redirectUrl);
         window.location.href = authUrl.toString();
     };
@@ -130,7 +136,6 @@ export function LoginDialog() {
             <Modal
                 open
                 dismissible={false}
-                hideClose
                 title="Prijava u Gredice farmu"
                 className="md:max-w-md"
             >

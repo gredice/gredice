@@ -15,8 +15,16 @@ import { queryClient } from '../../providers/ClientAppProvider';
 export function LoginDialog() {
     const [error, submitAction, isPending] = useActionState(
         async (_previousState: unknown, formData: FormData) => {
-            const email = formData.get('email') as string;
-            const password = formData.get('password') as string;
+            const emailValue = formData.get('email');
+            const passwordValue = formData.get('password');
+            if (
+                typeof emailValue !== 'string' ||
+                typeof passwordValue !== 'string'
+            ) {
+                return { error: true };
+            }
+            const email = emailValue;
+            const password = passwordValue;
 
             // Send the form data to the server
             const response = await fetch('/api/login', {
@@ -31,8 +39,7 @@ export function LoginDialog() {
                 return { error: true };
             }
 
-            const { token } = await response.json();
-            localStorage.setItem('gredice-token', token);
+            await response.json();
 
             await queryClient.invalidateQueries({
                 queryKey: authCurrentUserQueryKeys,
@@ -47,7 +54,6 @@ export function LoginDialog() {
             <Modal
                 open
                 dismissible={false}
-                hideClose
                 title="Prijava"
                 className="md:max-w-md"
             >

@@ -47,6 +47,7 @@ jobs:
               - turbo.json
             app_farm:
               - apps/farm/**
+              - packages/client/**
               - packages/storage/**
               - packages/ui/**
               - .github/workflows/**
@@ -222,7 +223,17 @@ jobs:
 
   ci_ok:
     name: "[CI] OK"
-    needs: [changes, ci_www, ci_garden, ci_farm, ci_app, ci_api, test_packages, ci_filter_check]
+    needs:
+      [
+        changes,
+        ci_www,
+        ci_garden,
+        ci_farm,
+        ci_app,
+        ci_api,
+        test_packages,
+        ci_filter_check,
+      ]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:

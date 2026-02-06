@@ -1,25 +1,18 @@
 export function getAppUrl() {
+    // Check if we're in a browser environment
+    const isBrowser = typeof window !== 'undefined';
+
+    if (isBrowser) {
+        // Client-side: use relative path to proxy through Next.js app
+        // This enables cookie-based auth and prevents tokens in URLs
+        return '/api/gredice';
+    }
+
+    // Server-side: use direct API URL
     if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'development') {
-        return `https://api.gredice.test`;
-    } else {
-        return `https://api.gredice.com`;
+        return 'https://api.gredice.test';
     }
-}
-
-export function getAuthToken() {
-    if (typeof localStorage === 'undefined') {
-        return null;
-    }
-
-    return localStorage.getItem('gredice-token');
-}
-
-export function getAuthHeaders() {
-    if (typeof localStorage === 'undefined') {
-        return null;
-    }
-
-    return `Bearer ${getAuthToken()}`;
+    return 'https://api.gredice.com';
 }
 
 /**

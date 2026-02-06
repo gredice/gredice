@@ -19,7 +19,6 @@ export default function LogoutPage() {
     const queryClient = useQueryClient();
 
     useTimeout(async () => {
-        localStorage.removeItem('gredice-token');
         await queryClient.invalidateQueries();
         await client().api.auth.logout.$post();
         window.location.href = 'https://www.gredice.com';

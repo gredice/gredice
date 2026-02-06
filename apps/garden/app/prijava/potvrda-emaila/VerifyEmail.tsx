@@ -34,8 +34,7 @@ export function VerifyEmail() {
             // Handle successful verification by storing the token and redirecting
             // to the home page (user is logged in)
             if (response.status === 200) {
-                const { token: jwtToken } = await response.json();
-                localStorage.setItem('gredice-token', jwtToken);
+                await response.json();
                 await queryClient.invalidateQueries();
                 router.push('/');
                 return;

@@ -19,13 +19,8 @@ export function UrlAuthForward() {
                 return;
             }
 
-            const token = searchParams.get('session');
-            if (!token) {
-                router.replace('/');
-                return;
-            }
-
-            localStorage.setItem('gredice-token', token);
+            // Tokens are now in httpOnly cookies, no need to read from URL
+            // Just invalidate queries to fetch the user with the new session
             await queryClient.invalidateQueries({
                 queryKey: authCurrentUserQueryKeys,
             });

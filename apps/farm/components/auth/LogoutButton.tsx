@@ -20,7 +20,6 @@ export function LogoutButton() {
                 return;
             }
 
-            localStorage.removeItem('gredice-token');
             await queryClient.invalidateQueries({
                 queryKey: authCurrentUserQueryKeys,
             });

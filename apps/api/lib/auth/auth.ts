@@ -3,9 +3,13 @@ import { getUser as storageGetUser } from '@gredice/storage';
 import { initAuth, initRbac } from '@signalco/auth-server';
 import type { Context } from 'hono';
 import { deleteCookie, setCookie as honoSetCookie } from 'hono/cookie';
+import { accessTokenExpiryMs } from './sessionConfig';
 
 export function jwtSecretFactory() {
-    const signSecret = process.env.GREDICE_JWT_SIGN_SECRET as string;
+    const signSecret = process.env.GREDICE_JWT_SIGN_SECRET;
+    if (!signSecret) {
+        throw new Error('Missing GREDICE_JWT_SIGN_SECRET');
+    }
     return Buffer.from(signSecret, 'base64');
 }
 
@@ -37,7 +41,7 @@ export async function setCookie(
         secure: true,
         httpOnly: true,
         sameSite: 'Strict',
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        expires: new Date(Date.now() + accessTokenExpiryMs),
     });
 }
 
@@ -49,7 +53,7 @@ export async function clearCookie(context: Context) {
 export const { withAuth, createJwt, verifyJwt, auth } = initRbac(
     initAuth({
         security: {
-            expiry: 7 * 24 * 60 * 60 * 1000,
+            expiry: accessTokenExpiryMs,
         },
         jwt: {
             namespace: 'gredice',

@@ -1,22 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 
 import { Logotype } from '../Logotype';
 
 export default function LoginBanner() {
-    const [hasToken, setHasToken] = useState(false);
-
-    useEffect(() => {
-        const token = localStorage.getItem('gredice-token');
-        setHasToken(!!token);
-    }, []);
-
-    if (hasToken) {
-        return null;
-    }
-
     return (
         <div className="flex fixed top-4 left-0 w-full justify-center px-4 sm:px-6 z-[51] pointer-events-none">
             <Link

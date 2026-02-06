@@ -16,6 +16,13 @@ export type User = {
 async function currentUserFactory() {
     const response = await client().api.users.current.$get();
     if (response.status < 200 || response.status > 299) {
+        if (response.status === 401) {
+            // Refresh token flow sets the session cookie on 401; retry once.
+            const retryResponse = await client().api.users.current.$get();
+            if (retryResponse.ok) {
+                return (await retryResponse.json()) as User;
+            }
+        }
         console.warn('Failed to fetch current user:', response.statusText);
         return null;
     }
