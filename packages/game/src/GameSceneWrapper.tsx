@@ -14,7 +14,7 @@ export function GameSceneWrapper({
     appBaseUrl,
     freezeTime,
     mockGarden,
-    isWinterMode,
+    winterMode,
     ...rest
 }: GameSceneProps) {
     const storeRef = useRef<GameStateStore>(null);
@@ -23,16 +23,23 @@ export function GameSceneWrapper({
             appBaseUrl: appBaseUrl || '',
             freezeTime: freezeTime || null,
             isMock: mockGarden || false,
-            isWinterMode: isWinterMode || false,
+            winterMode: winterMode ?? 'summer',
         });
     }
 
-    // Sync isWinterMode prop changes to the store
+    // Sync winterMode prop changes to the store
     useEffect(() => {
         if (storeRef.current) {
-            storeRef.current.getState().setIsWinterMode(isWinterMode || false);
+            storeRef.current.getState().setWinterMode(winterMode ?? 'summer');
         }
-    }, [isWinterMode]);
+    }, [winterMode]);
+
+    // Sync freezeTime prop changes to the store
+    useEffect(() => {
+        if (storeRef.current) {
+            storeRef.current.getState().setFreezeTime(freezeTime ?? null);
+        }
+    }, [freezeTime]);
 
     useGLTF.preload((appBaseUrl ?? '') + models.GameAssets.url);
 

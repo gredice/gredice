@@ -2,16 +2,23 @@ import { client, type GardenResponse } from '@gredice/client';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { Vector3 } from 'three';
 import type { Stack } from '../types/Stack';
-import { useGameState } from '../useGameState';
+import { useGameState, type WinterMode } from '../useGameState';
 import { useGardens, useGardensKeys } from './useGardens';
 
-export const currentGardenKeys = (isWinterMode: boolean) => [
+export const currentGardenKeys = (winterMode: WinterMode) => [
     ...useGardensKeys,
     'current',
-    isWinterMode,
+    winterMode,
 ];
 
-function mockGarden(isWinterMode: boolean) {
+function mockGarden(winterMode: WinterMode) {
+    const treeName =
+        winterMode === 'holiday'
+            ? 'PineAdvent'
+            : winterMode === 'winter'
+              ? 'Pine'
+              : 'Tree';
+    const isHolidayMode = winterMode === 'holiday';
     return {
         id: 99999,
         name: 'Moj vrt',
@@ -41,9 +48,9 @@ function mockGarden(isWinterMode: boolean) {
                     },
                     {
                         id: '12',
-                        name: isWinterMode ? 'PineAdvent' : 'Tree',
+                        name: treeName,
                         rotation: 0,
-                        variant: isWinterMode ? 100 : undefined,
+                        variant: isHolidayMode ? 100 : undefined,
                     },
                 ],
             },
@@ -65,7 +72,7 @@ function mockGarden(isWinterMode: boolean) {
                         name: 'Block_Grass',
                         rotation: 0,
                     },
-                    ...(isWinterMode
+                    ...(isHolidayMode
                         ? [
                               {
                                   id: '16',
@@ -205,14 +212,14 @@ type useCurrentGardenResponse = Omit<
 
 export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | null> {
     const isMock = useGameState((state) => state.isMock);
-    const isWinterMode = useGameState((state) => state.isWinterMode);
+    const winterMode = useGameState((state) => state.winterMode);
     const { data: gardens } = useGardens(isMock);
     return useQuery({
-        queryKey: currentGardenKeys(isWinterMode),
+        queryKey: currentGardenKeys(winterMode),
         queryFn: async () => {
             if (isMock) {
                 console.debug('Using mock garden data');
-                return mockGarden(isWinterMode);
+                return mockGarden(winterMode);
             }
 
             if (!gardens) {

@@ -14,10 +14,9 @@ const WINTER_HUE = 202;
 const STORAGE_KEY = 'gredice-winter-mode';
 
 // Check if current date is within winter season (Dec 1 - Mar 20)
-export function isWinterSeason(): boolean {
-    const now = new Date();
-    const month = now.getMonth(); // 0-indexed (0 = January, 11 = December)
-    const day = now.getDate();
+export function isWinterSeason(date: Date = new Date()): boolean {
+    const month = date.getMonth(); // 0-indexed (0 = January, 11 = December)
+    const day = date.getDate();
 
     // December (month 11): from day 1
     if (month === 11 && day >= 1) return true;
@@ -27,6 +26,19 @@ export function isWinterSeason(): boolean {
     if (month === 1) return true;
     // March (month 2): until day 20
     if (month === 2 && day <= 20) return true;
+
+    return false;
+}
+
+// Check if current date is within Christmas holidays (Dec 1 - Jan 10)
+export function isChristmasHolidaySeason(date: Date = new Date()): boolean {
+    const month = date.getMonth(); // 0-indexed (0 = January, 11 = December)
+    const day = date.getDate();
+
+    // December (month 11): from day 1
+    if (month === 11 && day >= 1) return true;
+    // January (month 0): until day 10
+    if (month === 0 && day <= 10) return true;
 
     return false;
 }
