@@ -1,6 +1,11 @@
 import { setCookie } from '../../../lib/auth/auth';
 import { setRefreshCookie } from '../../../lib/auth/refreshCookies';
 
+const API_BASE_URL =
+    process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
+        ? 'https://api.gredice.com'
+        : 'http://localhost:3005';
+
 export async function POST(request: Request) {
     const body = await request.json();
     const { email, password } = body;
@@ -10,7 +15,7 @@ export async function POST(request: Request) {
         });
     }
 
-    const response = await fetch('https://api.gredice.com/api/auth/login', {
+    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -20,9 +25,9 @@ export async function POST(request: Request) {
     const data = await response.json();
 
     if (data?.refreshToken) {
-        setRefreshCookie(data.refreshToken);
+        await setRefreshCookie(data.refreshToken);
     }
     await setCookie(data.token);
 
-    return Response.json(data);
+    return Response.json({ success: true });
 }

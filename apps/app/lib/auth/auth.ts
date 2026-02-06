@@ -11,10 +11,12 @@ import { refreshSessionIfNeeded } from './sessionRefresh';
 
 export { clearCookie, createJwt, setCookie, verifyJwt };
 
-export function auth(...args: Parameters<typeof baseAuth>) {
-    return refreshSessionIfNeeded().then(() => baseAuth(...args));
+export async function auth(...args: Parameters<typeof baseAuth>) {
+    await refreshSessionIfNeeded();
+    return await baseAuth(...args);
 }
 
-export function withAuth(...args: Parameters<typeof baseWithAuth>) {
-    return refreshSessionIfNeeded().then(() => baseWithAuth(...args));
+export async function withAuth(...args: Parameters<typeof baseWithAuth>) {
+    await refreshSessionIfNeeded();
+    return await baseWithAuth(...args);
 }

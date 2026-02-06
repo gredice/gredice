@@ -1,6 +1,6 @@
 'use client';
 
-import { setStoredTokens } from '@gredice/client';
+import { clearStoredTokens } from '@gredice/client';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { Alert } from '@signalco/ui/Alert';
 import { Warning } from '@signalco/ui-icons';
@@ -40,21 +40,8 @@ export function LoginDialog() {
                 return { error: true };
             }
 
-            const data: unknown = await response.json();
-            if (typeof data === 'object' && data !== null) {
-                const tokenValue = 'token' in data ? data.token : null;
-                const refreshValue =
-                    'refreshToken' in data ? data.refreshToken : null;
-                if (typeof tokenValue === 'string') {
-                    setStoredTokens({
-                        accessToken: tokenValue,
-                        refreshToken:
-                            typeof refreshValue === 'string'
-                                ? refreshValue
-                                : null,
-                    });
-                }
-            }
+            await response.json();
+            clearStoredTokens();
 
             await queryClient.invalidateQueries({
                 queryKey: authCurrentUserQueryKeys,

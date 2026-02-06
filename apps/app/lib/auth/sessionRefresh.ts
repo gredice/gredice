@@ -22,19 +22,19 @@ export async function refreshSessionIfNeeded() {
         return accessToken;
     }
 
-    const refreshToken = getRefreshTokenCookie();
+    const refreshToken = await getRefreshTokenCookie();
     if (!refreshToken) {
         return null;
     }
 
     const refreshed = await doUseRefreshToken(refreshToken);
     if (!refreshed) {
-        clearRefreshCookie();
+        await clearRefreshCookie();
         return null;
     }
 
     const newAccessToken = await createJwt(refreshed.userId, accessTokenExpiry);
     setCookie(newAccessToken);
-    setRefreshCookie(refreshToken);
+    await setRefreshCookie(refreshToken);
     return newAccessToken;
 }
