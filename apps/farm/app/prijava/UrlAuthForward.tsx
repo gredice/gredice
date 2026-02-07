@@ -19,8 +19,46 @@ export function UrlAuthForward() {
                 return;
             }
 
-            // Tokens are now in httpOnly cookies, no need to read from URL
-            // Just invalidate queries to fetch the user with the new session
+            // Read tokens from URL fragment (hash) to avoid server logs/referrer leakage
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            const token = params.get('token');
+            const refreshToken = params.get('refreshToken');
+
+            // Clear tokens from URL immediately to minimize exposure
+            if (hash) {
+                window.history.replaceState(
+                    null,
+                    '',
+                    window.location.pathname + window.location.search,
+                );
+            }
+
+            if (token) {
+                // Exchange tokens for httpOnly cookies via local route handler
+                try {
+                    const response = await fetch('/api/oauth-callback', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token, refreshToken }),
+                    });
+
+                    if (!response.ok) {
+                        console.error(
+                            'OAuth callback failed:',
+                            response.status,
+                            response.statusText,
+                        );
+                        router.replace('/');
+                        return;
+                    }
+                } catch (fetchError) {
+                    console.error('OAuth callback request error:', fetchError);
+                    router.replace('/');
+                    return;
+                }
+            }
+
             await queryClient.invalidateQueries({
                 queryKey: authCurrentUserQueryKeys,
             });

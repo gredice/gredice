@@ -161,4 +161,111 @@ test.describe('Authentication Flow', () => {
             expect(sessionCookie?.value).toBe('test-session-token');
         });
     });
+
+    test.describe('OAuth Callback Flow', () => {
+        test('should POST tokens to /api/oauth-callback endpoint', async ({
+            page,
+        }) => {
+            // Track requests to the oauth-callback endpoint
+            let callbackRequest: {
+                method: string;
+                body: { token?: string; refreshToken?: string };
+                headers: Record<string, string>;
+            } | null = null;
+
+            await page.route('**/api/oauth-callback', async (route) => {
+                callbackRequest = {
+                    method: route.request().method(),
+                    body: route.request().postDataJSON(),
+                    headers: route.request().headers(),
+                };
+
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ success: true }),
+                });
+            });
+
+            // Navigate to callback page with tokens in hash
+            // Wait for the response (not just the request) to ensure route handler has completed
+            const responsePromise = page.waitForResponse(
+                (response) =>
+                    response.url().includes('/api/oauth-callback') &&
+                    response.request().method() === 'POST',
+            );
+            await page.goto(
+                '/prijava/google-prijava/povratak#token=test-access-token&refreshToken=test-refresh-token',
+            );
+            await responsePromise;
+
+            // Verify that the POST request was made with correct data
+            expect(callbackRequest).toBeDefined();
+            expect(callbackRequest?.method).toBe('POST');
+            expect(callbackRequest?.body?.token).toBe('test-access-token');
+            expect(callbackRequest?.body?.refreshToken).toBe(
+                'test-refresh-token',
+            );
+            expect(callbackRequest?.headers['content-type']).toContain(
+                'application/json',
+            );
+        });
+
+        test('should clear tokens from URL after processing', async ({
+            page,
+        }) => {
+            // Navigate to callback page with tokens in hash and wait for redirect
+            await page.goto(
+                '/prijava/google-prijava/povratak#token=test-token&refreshToken=test-refresh',
+            );
+
+            // Wait for URL to change (redirect to home)
+            await page.waitForURL((url) => !url.hash && url.pathname === '/');
+
+            // Verify URL no longer contains the tokens in hash
+            const currentUrl = page.url();
+            expect(currentUrl).not.toContain('token=');
+            expect(currentUrl).not.toContain('refreshToken=');
+            expect(currentUrl).not.toContain('#');
+        });
+
+        test('should handle missing token gracefully', async ({ page }) => {
+            // Navigate to callback page without tokens and wait for redirect
+            await page.goto('/prijava/google-prijava/povratak');
+            await page.waitForURL((url) => url.pathname === '/');
+
+            // Should redirect to home without errors
+            const currentUrl = page.url();
+            expect(currentUrl).toContain('/');
+            expect(currentUrl).not.toContain('/prijava/');
+        });
+
+        test('should handle callback endpoint errors', async ({ page }) => {
+            // Mock the callback endpoint to return an error
+            await page.route('/api/oauth-callback', (route) => {
+                route.fulfill({
+                    status: 500,
+                    body: JSON.stringify({ error: 'Internal server error' }),
+                });
+            });
+
+            // Navigate to callback page with tokens and wait for redirect
+            await page.goto(
+                '/prijava/google-prijava/povratak#token=test-token&refreshToken=test-refresh',
+            );
+            await page.waitForURL((url) => url.pathname === '/');
+
+            // Should redirect to home despite error
+            const currentUrl = page.url();
+            expect(currentUrl).toContain('/');
+            expect(currentUrl).not.toContain('/prijava/');
+
+            // Cookie should either not exist or not have the test token value
+            const cookies = await page.context().cookies();
+            const sessionCookie = cookies.find(
+                (c) => c.name === 'gredice_session',
+            );
+            expect(sessionCookie?.value).not.toBe('test-token');
+        });
+    });
 });
