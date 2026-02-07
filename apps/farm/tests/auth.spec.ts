@@ -184,12 +184,12 @@ test.describe('Authentication Flow', () => {
             });
 
             // Navigate to callback page with tokens in hash
+            // Wait for the request to the oauth-callback endpoint
+            const requestPromise = page.waitForRequest('/api/oauth-callback');
             await page.goto(
                 '/prijava/google-prijava/povratak#token=test-access-token&refreshToken=test-refresh-token',
             );
-
-            // Wait for the frontend to process tokens and make the POST request
-            await page.waitForTimeout(1000);
+            await requestPromise;
 
             // Verify that the POST request was made with correct data
             expect(callbackRequest).toBeDefined();
@@ -206,13 +206,13 @@ test.describe('Authentication Flow', () => {
         test('should clear tokens from URL after processing', async ({
             page,
         }) => {
-            // Navigate to callback page with tokens in hash
+            // Navigate to callback page with tokens in hash and wait for redirect
             await page.goto(
                 '/prijava/google-prijava/povratak#token=test-token&refreshToken=test-refresh',
             );
 
-            // Wait for processing
-            await page.waitForTimeout(500);
+            // Wait for URL to change (redirect to home)
+            await page.waitForURL((url) => !url.hash && url.pathname === '/');
 
             // Verify URL no longer contains the tokens in hash
             const currentUrl = page.url();
@@ -222,11 +222,9 @@ test.describe('Authentication Flow', () => {
         });
 
         test('should handle missing token gracefully', async ({ page }) => {
-            // Navigate to callback page without tokens
+            // Navigate to callback page without tokens and wait for redirect
             await page.goto('/prijava/google-prijava/povratak');
-
-            // Wait for processing
-            await page.waitForTimeout(500);
+            await page.waitForURL((url) => url.pathname === '/');
 
             // Should redirect to home without errors
             const currentUrl = page.url();
@@ -243,13 +241,11 @@ test.describe('Authentication Flow', () => {
                 });
             });
 
-            // Navigate to callback page with tokens
+            // Navigate to callback page with tokens and wait for redirect
             await page.goto(
                 '/prijava/google-prijava/povratak#token=test-token&refreshToken=test-refresh',
             );
-
-            // Wait for processing
-            await page.waitForTimeout(500);
+            await page.waitForURL((url) => url.pathname === '/');
 
             // Should redirect to home despite error
             const currentUrl = page.url();

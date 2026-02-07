@@ -25,7 +25,7 @@ export function UrlAuthForward() {
             const token = params.get('token');
             const refreshToken = params.get('refreshToken');
 
-            // Clear tokens from URL immediately after reading
+            // Clear tokens from URL immediately to minimize exposure
             if (hash) {
                 window.history.replaceState(
                     null,
