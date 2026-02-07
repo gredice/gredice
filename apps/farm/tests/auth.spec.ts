@@ -256,12 +256,11 @@ test.describe('Authentication Flow', () => {
             expect(currentUrl).toContain('/');
             expect(currentUrl).not.toContain('/prijava/');
 
-            // Cookies should not be set (session cookie should be undefined or not contain test token)
+            // Cookie should either not exist or not have the test token value
             const cookies = await page.context().cookies();
             const sessionCookie = cookies.find(
                 (c) => c.name === 'gredice_session',
             );
-            // Cookie should either not exist or not have the test token value
             expect(sessionCookie?.value).not.toBe('test-token');
         });
     });

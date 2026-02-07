@@ -26,10 +26,7 @@ export async function POST(request: Request) {
     if (origin) {
         // Treat explicit "null" origin as forbidden (e.g., some sandboxed contexts)
         if (origin === 'null') {
-            console.error(
-                'CSRF check failed: forbidden null Origin header',
-                origin,
-            );
+            console.error('CSRF check failed: forbidden null Origin header');
             return new Response('Forbidden', { status: 403 });
         }
 
