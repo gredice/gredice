@@ -2,12 +2,12 @@
 
 import { GameScene } from '@gredice/game';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import {
     isChristmasHolidaySeason,
     useWinterMode,
 } from '../components/providers/WinterModeProvider';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 import { KnownPages } from '../src/KnownPages';
 
 export function LandingGameScene() {
@@ -19,13 +19,7 @@ export function LandingGameScene() {
         : 'summer';
     const [isMobile, setIsMobile] = useState(false);
 
-    const { data: user } = useQuery<{
-        id: string;
-        userName: string;
-    } | null>({
-        queryKey: ['currentUser'],
-        staleTime: 5 * 60 * 1000,
-    });
+    const { data: user } = useCurrentUser();
     const isLoggedIn = Boolean(user);
 
     useEffect(() => {

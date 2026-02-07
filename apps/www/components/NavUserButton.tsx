@@ -3,42 +3,7 @@
 import { initials } from '@signalco/js';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
 import { Avatar } from '@signalco/ui-primitives/Avatar';
-import { useQuery } from '@tanstack/react-query';
-
-type CurrentUser = {
-    id: string;
-    userName: string;
-    displayName?: string;
-    avatarUrl?: string | null;
-};
-
-async function fetchCurrentUser(): Promise<CurrentUser | null> {
-    try {
-        const response = await fetch('/api/gredice/api/users/current', {
-            cache: 'no-store',
-        });
-        if (response.ok) {
-            return (await response.json()) as CurrentUser;
-        }
-
-        if (response.status === 401) {
-            // Refresh token flow sets the session cookie on 401; retry once.
-            const retryResponse = await fetch(
-                '/api/gredice/api/users/current',
-                {
-                    cache: 'no-store',
-                },
-            );
-            if (retryResponse.ok) {
-                return (await retryResponse.json()) as CurrentUser;
-            }
-        }
-
-        return null;
-    } catch {
-        return null;
-    }
-}
+import { type CurrentUser, useCurrentUser } from '../hooks/useCurrentUser';
 
 function UserAvatar({ user }: { user: CurrentUser }) {
     const displayName = user.displayName ?? user.userName;
@@ -61,12 +26,7 @@ function UserAvatar({ user }: { user: CurrentUser }) {
 }
 
 export function NavUserButton({ href }: { href: string }) {
-    const { data: user } = useQuery({
-        queryKey: ['currentUser'],
-        queryFn: fetchCurrentUser,
-        retry: false,
-        staleTime: 5 * 60 * 1000,
-    });
+    const { data: user } = useCurrentUser();
 
     return (
         <NavigatingButton
