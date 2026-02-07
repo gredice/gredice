@@ -1,4 +1,12 @@
-import { Hammer } from '@signalco/ui-icons';
+import {
+    Droplet,
+    Hammer,
+    Leaf,
+    Sprout,
+    Store,
+    Tally3,
+    Upload,
+} from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import Image from 'next/image';
 
@@ -12,16 +20,64 @@ export type OperationImageProps = {
         information?: {
             label?: string | null;
         } | null;
+        attributes?: {
+            category?: {
+                information?: {
+                    name?: string | null;
+                } | null;
+            } | null;
+            stage?: {
+                information?: {
+                    name?: string | null;
+                } | null;
+            } | null;
+        } | null;
     };
     size?: number;
     className?: string;
 };
+
+type OperationCategoryIconProps = {
+    className?: string;
+    style?: React.CSSProperties;
+};
+
+const categoryIcons: Record<string, React.ComponentType<OperationCategoryIconProps>> = {
+    soilpreparation: function SoilPreparationIcon({
+        className,
+        style,
+    }: {
+        className?: string;
+        style?: React.CSSProperties;
+    }) {
+        return (
+            <Tally3 style={style} className={cx('rotate-90 mt-1', className)} />
+        );
+    },
+    sowing: Sprout,
+    planting: Sprout,
+    growth: Leaf,
+    maintenance: Leaf,
+    watering: Droplet,
+    flowering: Leaf,
+    harvest: Upload,
+    storage: Store,
+};
+
+function normalizeCategoryName(name: string | null | undefined) {
+    return name?.toLowerCase().replace(/[\s_-]/g, '') ?? '';
+}
 
 export function OperationImage({
     operation,
     size,
     className,
 }: OperationImageProps) {
+    const categoryName =
+        operation.attributes?.category?.information?.name ??
+        operation.attributes?.stage?.information?.name;
+    const Icon = categoryIcons[normalizeCategoryName(categoryName)] ?? Hammer;
+
     if (!operation.image?.cover?.url) {
         return (
             <div
@@ -34,7 +90,7 @@ export function OperationImage({
                     className,
                 )}
             >
-                <Hammer
+                <Icon
                     style={
                         {
                             '--imageSize': size ? `${size / 2}px` : '24px',
