@@ -5,6 +5,9 @@ import type { Stack } from '../types/Stack';
 import { useGameState, type WinterMode } from '../useGameState';
 import { useGardens, useGardensKeys } from './useGardens';
 
+const GARDEN_POSITION_X_OFFSET = -1;
+const GARDEN_POSITION_Z_OFFSET = -1;
+
 export const currentGardenKeys = (winterMode: WinterMode) => [
     ...useGardensKeys,
     'current',
@@ -24,7 +27,11 @@ function mockGarden(winterMode: WinterMode) {
         name: 'Moj vrt',
         stacks: [
             {
-                position: new Vector3(0, 0, 0),
+                position: new Vector3(
+                    0 + GARDEN_POSITION_X_OFFSET,
+                    0,
+                    0 + GARDEN_POSITION_Z_OFFSET,
+                ),
                 blocks: [
                     {
                         id: '1',
@@ -39,7 +46,11 @@ function mockGarden(winterMode: WinterMode) {
                 ],
             },
             {
-                position: new Vector3(-1, 0, 2),
+                position: new Vector3(
+                    -1 + GARDEN_POSITION_X_OFFSET,
+                    0,
+                    2 + GARDEN_POSITION_Z_OFFSET,
+                ),
                 blocks: [
                     {
                         id: '2',
@@ -55,7 +66,11 @@ function mockGarden(winterMode: WinterMode) {
                 ],
             },
             {
-                position: new Vector3(1, 0, 2),
+                position: new Vector3(
+                    1 + GARDEN_POSITION_X_OFFSET,
+                    0,
+                    2 + GARDEN_POSITION_Z_OFFSET,
+                ),
                 blocks: [
                     {
                         id: '4',
@@ -65,7 +80,11 @@ function mockGarden(winterMode: WinterMode) {
                 ],
             },
             {
-                position: new Vector3(0, 0, 2),
+                position: new Vector3(
+                    0 + GARDEN_POSITION_X_OFFSET,
+                    0,
+                    2 + GARDEN_POSITION_Z_OFFSET,
+                ),
                 blocks: [
                     {
                         id: '5',
@@ -84,7 +103,11 @@ function mockGarden(winterMode: WinterMode) {
                 ],
             },
             {
-                position: new Vector3(1, 0, 0),
+                position: new Vector3(
+                    1 + GARDEN_POSITION_X_OFFSET,
+                    0,
+                    0 + GARDEN_POSITION_Z_OFFSET,
+                ),
                 blocks: [
                     {
                         id: '6',
@@ -94,7 +117,11 @@ function mockGarden(winterMode: WinterMode) {
                 ],
             },
             {
-                position: new Vector3(0, 0, 1),
+                position: new Vector3(
+                    0 + GARDEN_POSITION_X_OFFSET,
+                    0,
+                    1 + GARDEN_POSITION_Z_OFFSET,
+                ),
                 blocks: [
                     {
                         id: '7',
@@ -109,7 +136,11 @@ function mockGarden(winterMode: WinterMode) {
                 ],
             },
             {
-                position: new Vector3(1, 0, 1),
+                position: new Vector3(
+                    1 + GARDEN_POSITION_X_OFFSET,
+                    0,
+                    1 + GARDEN_POSITION_Z_OFFSET,
+                ),
                 blocks: [
                     {
                         id: '9',
@@ -119,7 +150,11 @@ function mockGarden(winterMode: WinterMode) {
                 ],
             },
             {
-                position: new Vector3(-1, 0, 1),
+                position: new Vector3(
+                    -1 + GARDEN_POSITION_X_OFFSET,
+                    0,
+                    1 + GARDEN_POSITION_Z_OFFSET,
+                ),
                 blocks: [
                     {
                         id: '10',
@@ -129,7 +164,11 @@ function mockGarden(winterMode: WinterMode) {
                 ],
             },
             {
-                position: new Vector3(1, 0, -1),
+                position: new Vector3(
+                    1 + GARDEN_POSITION_X_OFFSET,
+                    0,
+                    -1 + GARDEN_POSITION_Z_OFFSET,
+                ),
                 blocks: [
                     {
                         id: '11',
@@ -139,7 +178,11 @@ function mockGarden(winterMode: WinterMode) {
                 ],
             },
             {
-                position: new Vector3(-1, 0, 0),
+                position: new Vector3(
+                    -1 + GARDEN_POSITION_X_OFFSET,
+                    0,
+                    0 + GARDEN_POSITION_Z_OFFSET,
+                ),
                 blocks: [
                     {
                         id: '13',
@@ -149,7 +192,11 @@ function mockGarden(winterMode: WinterMode) {
                 ],
             },
             {
-                position: new Vector3(0, 0, -1),
+                position: new Vector3(
+                    0 + GARDEN_POSITION_X_OFFSET,
+                    0,
+                    -1 + GARDEN_POSITION_Z_OFFSET,
+                ),
                 blocks: [
                     {
                         id: '14',
@@ -159,7 +206,11 @@ function mockGarden(winterMode: WinterMode) {
                 ],
             },
             {
-                position: new Vector3(-1, 0, -1),
+                position: new Vector3(
+                    -1 + GARDEN_POSITION_X_OFFSET,
+                    0,
+                    -1 + GARDEN_POSITION_Z_OFFSET,
+                ),
                 blocks: [
                     {
                         id: '15',
@@ -265,7 +316,11 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 for (const y of yPositions) {
                     const blocks = rootStacks[x][y];
                     stacks.push({
-                        position: new Vector3(Number(x), 0, Number(y)),
+                        position: new Vector3(
+                            Number(x) + GARDEN_POSITION_X_OFFSET,
+                            0,
+                            Number(y) + GARDEN_POSITION_Z_OFFSET,
+                        ),
                         blocks: blocks
                             ? blocks.map((block) => {
                                   return {

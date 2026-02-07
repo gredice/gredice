@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import './globals.css';
 import * as Sentry from '@sentry/nextjs';
 import { PageNav } from '@signalco/ui/Nav';
-import { Container } from '@signalco/ui-primitives/Container';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { VercelToolbar } from '@vercel/toolbar/next';
@@ -15,6 +14,7 @@ import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
 import { Footer } from './Footer';
+import { LayoutContainer } from './LayoutContainer';
 
 export function generateMetadata(): Metadata {
     return {
@@ -81,29 +81,37 @@ export default async function RootLayout({
             <ClientAppProvider>
                 <body className="antialiased">
                     <Stack>
-                        <PageNav
-                            logo={
-                                <Logotype
-                                    className="w-[140px] h-[38px]"
-                                    aria-label="Gredice"
-                                />
-                            }
-                            links={[
-                                {
-                                    href: KnownPages.RaisedBeds,
-                                    text: 'Podignuta gredica',
-                                },
-                                { href: KnownPages.Plants, text: 'Biljke' },
-                                { href: KnownPages.FAQ, text: 'Česta pitanja' },
-                            ]}
-                        >
-                            <Row spacing={1}>
-                                <WinterModeToggle />
-                                <NavUserButton href={KnownPages.GardenApp} />
-                            </Row>
-                        </PageNav>
+                        <div className="z-20">
+                            <PageNav
+                                logo={
+                                    <Logotype
+                                        className="w-[140px] h-[38px]"
+                                        aria-label="Gredice"
+                                    />
+                                }
+                                links={[
+                                    {
+                                        href: KnownPages.RaisedBeds,
+                                        text: 'Podignuta gredica',
+                                    },
+                                    { href: KnownPages.Plants, text: 'Biljke' },
+                                    {
+                                        href: KnownPages.FAQ,
+                                        text: 'Česta pitanja',
+                                    },
+                                ]}
+                            >
+                                <div className="absolute bg-background/80 w-full inset-0 -z-10" />
+                                <Row spacing={1}>
+                                    <WinterModeToggle />
+                                    <NavUserButton
+                                        href={KnownPages.GardenApp}
+                                    />
+                                </Row>
+                            </PageNav>
+                        </div>
                         <main className="mt-16 relative">
-                            <Container>{children}</Container>
+                            <LayoutContainer>{children}</LayoutContainer>
                         </main>
                         <Footer />
                     </Stack>
