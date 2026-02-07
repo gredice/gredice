@@ -19,8 +19,18 @@ export function UrlAuthForward() {
                 return;
             }
 
-            // Tokens are now in httpOnly cookies, no need to read from URL
-            // Just invalidate queries to fetch the user with the new session
+            const token = searchParams.get('token');
+            const refreshToken = searchParams.get('refreshToken');
+
+            if (token) {
+                // Exchange tokens for httpOnly cookies via local route handler
+                await fetch('/api/oauth-callback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, refreshToken }),
+                });
+            }
+
             await queryClient.invalidateQueries({
                 queryKey: authCurrentUserQueryKeys,
             });
