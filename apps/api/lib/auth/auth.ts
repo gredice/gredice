@@ -3,7 +3,11 @@ import { getUser as storageGetUser } from '@gredice/storage';
 import { initAuth, initRbac } from '@signalco/auth-server';
 import type { Context } from 'hono';
 import { deleteCookie, setCookie as honoSetCookie } from 'hono/cookie';
-import { accessTokenExpiryMs } from './sessionConfig';
+import {
+    accessTokenExpiryMs,
+    cookieDomain,
+    sessionCookieName,
+} from './sessionConfig';
 
 export function jwtSecretFactory() {
     const signSecret = process.env.GREDICE_JWT_SIGN_SECRET;
@@ -37,17 +41,20 @@ export async function setCookie(
     context: Context,
     value: Promise<string> | string,
 ) {
-    honoSetCookie(context, 'gredice_session', await value, {
+    honoSetCookie(context, sessionCookieName, await value, {
         secure: true,
         httpOnly: true,
-        sameSite: 'Strict',
+        sameSite: 'Lax',
+        domain: cookieDomain,
         expires: new Date(Date.now() + accessTokenExpiryMs),
     });
 }
 
 // TODO: Move to signalco/auth-server/hono
 export async function clearCookie(context: Context) {
-    deleteCookie(context, 'gredice_session');
+    deleteCookie(context, sessionCookieName, {
+        domain: cookieDomain,
+    });
 }
 
 export const { withAuth, createJwt, verifyJwt, auth } = initRbac(
@@ -62,7 +69,7 @@ export const { withAuth, createJwt, verifyJwt, auth } = initRbac(
             jwtSecretFactory,
         },
         cookie: {
-            name: 'gredice_session',
+            name: sessionCookieName,
         },
         getUser,
     }),

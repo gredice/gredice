@@ -1,7 +1,12 @@
 import 'server-only';
 import { getUser as storageGetUser } from '@gredice/storage';
 import { initAuth, initRbac } from '@signalco/auth-server';
-import { accessTokenExpiryMs } from './sessionConfig';
+import { cookies } from 'next/headers';
+import {
+    accessTokenExpiryMs,
+    cookieDomain,
+    sessionCookieName,
+} from './sessionConfig';
 
 function jwtSecretFactory() {
     const signSecret = process.env.GREDICE_JWT_SIGN_SECRET;
@@ -35,9 +40,7 @@ async function getUser(id: string): Promise<User | null> {
 export const {
     withAuth: baseWithAuth,
     createJwt,
-    setCookie,
     auth: baseAuth,
-    clearCookie,
     verifyJwt,
 } = initRbac(
     initAuth({
@@ -51,8 +54,38 @@ export const {
             jwtSecretFactory,
         },
         cookie: {
-            name: 'gredice_session',
+            name: sessionCookieName,
         },
         getUser,
     }),
 );
+
+/**
+ * Set the session cookie with domain scoping for cross-subdomain SSO.
+ * Overrides @signalco/auth-server's built-in setCookie which doesn't support domain.
+ */
+export async function setCookie(value: Promise<string> | string) {
+    const cookieStore = await cookies();
+    cookieStore.set(sessionCookieName, await value, {
+        secure: true,
+        httpOnly: true,
+        sameSite: 'lax',
+        domain: cookieDomain,
+        expires: new Date(Date.now() + accessTokenExpiryMs),
+    });
+}
+
+/**
+ * Clear the session cookie (including domain-scoped cookie for SSO).
+ * Overrides @signalco/auth-server's built-in clearCookie which doesn't support domain.
+ */
+export async function clearCookie() {
+    const cookieStore = await cookies();
+    cookieStore.set(sessionCookieName, '', {
+        secure: true,
+        httpOnly: true,
+        sameSite: 'lax',
+        domain: cookieDomain,
+        maxAge: 0,
+    });
+}
