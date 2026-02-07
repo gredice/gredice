@@ -6,6 +6,21 @@ const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
     reactCompiler: true,
+    async rewrites() {
+        const isDev =
+            process.env.NODE_ENV === 'development' ||
+            process.env.NEXT_PUBLIC_VERCEL_ENV === 'development';
+        const apiHost = isDev
+            ? 'http://localhost:3005'
+            : 'https://api.gredice.com';
+
+        return [
+            {
+                source: '/api/gredice/:path*',
+                destination: `${apiHost}/:path*`,
+            },
+        ];
+    },
     experimental: {
         turbopackFileSystemCacheForDev: true,
         typedEnv: true,
