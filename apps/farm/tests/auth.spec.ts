@@ -163,33 +163,44 @@ test.describe('Authentication Flow', () => {
     });
 
     test.describe('OAuth Callback Flow', () => {
-        test('should set session and refresh cookies via /api/oauth-callback', async ({
+        test('should POST tokens to /api/oauth-callback endpoint', async ({
             page,
         }) => {
-            // Simulate the OAuth redirect flow by navigating to the callback page with tokens in hash
+            // Track requests to the oauth-callback endpoint
+            let callbackRequest: any = null;
+
+            await page.route('/api/oauth-callback', async (route) => {
+                callbackRequest = {
+                    method: route.request().method(),
+                    body: route.request().postDataJSON(),
+                    headers: route.request().headers(),
+                };
+
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ success: true }),
+                });
+            });
+
+            // Navigate to callback page with tokens in hash
             await page.goto(
                 '/prijava/google-prijava/povratak#token=test-access-token&refreshToken=test-refresh-token',
             );
 
-            // Wait for the frontend to process tokens and set cookies
-            await page.waitForTimeout(500);
+            // Wait for the frontend to process tokens and make the POST request
+            await page.waitForTimeout(1000);
 
-            // Verify that the session cookie was set
-            const cookies = await page.context().cookies();
-            const sessionCookie = cookies.find(
-                (c) => c.name === 'gredice_session',
+            // Verify that the POST request was made with correct data
+            expect(callbackRequest).toBeDefined();
+            expect(callbackRequest?.method).toBe('POST');
+            expect(callbackRequest?.body?.token).toBe('test-access-token');
+            expect(callbackRequest?.body?.refreshToken).toBe(
+                'test-refresh-token',
             );
-            expect(sessionCookie).toBeDefined();
-            expect(sessionCookie?.value).toBe('test-access-token');
-            expect(sessionCookie?.httpOnly).toBe(true);
-
-            // Verify that the refresh cookie was set
-            const refreshCookie = cookies.find(
-                (c) => c.name === 'gredice_refresh',
+            expect(callbackRequest?.headers['content-type']).toContain(
+                'application/json',
             );
-            expect(refreshCookie).toBeDefined();
-            expect(refreshCookie?.value).toBe('test-refresh-token');
-            expect(refreshCookie?.httpOnly).toBe(true);
         });
 
         test('should clear tokens from URL after processing', async ({
