@@ -14,7 +14,7 @@ type CurrentUser = {
 
 async function fetchCurrentUser(): Promise<CurrentUser | null> {
     try {
-        const response = await fetch('/api/users/current', {
+        const response = await fetch('/api/gredice/api/users/current', {
             cache: 'no-store',
         });
         if (response.ok) {
@@ -23,9 +23,12 @@ async function fetchCurrentUser(): Promise<CurrentUser | null> {
 
         if (response.status === 401) {
             // Refresh token flow sets the session cookie on 401; retry once.
-            const retryResponse = await fetch('/api/users/current', {
-                cache: 'no-store',
-            });
+            const retryResponse = await fetch(
+                '/api/gredice/api/users/current',
+                {
+                    cache: 'no-store',
+                },
+            );
             if (retryResponse.ok) {
                 return (await retryResponse.json()) as CurrentUser;
             }
@@ -45,8 +48,7 @@ function UserAvatar({ user }: { user: CurrentUser }) {
             <Avatar
                 src={user.avatarUrl}
                 alt={displayName}
-                size="sm"
-                className="-ml-1"
+                className="-ml-3.5 mr-1"
             />
         );
     }
