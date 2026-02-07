@@ -48,13 +48,13 @@ function UserAvatar({ user }: { user: CurrentUser }) {
             <Avatar
                 src={user.avatarUrl}
                 alt={displayName}
-                className="-ml-3.5 mr-1"
+                className="-ml-3.5 mr-1 animate-[avatar-in_300ms_ease-out]"
             />
         );
     }
 
     return (
-        <Avatar size="sm" className="-ml-1">
+        <Avatar size="sm" className="-ml-1 animate-[avatar-in_300ms_ease-out]">
             {initials(displayName)}
         </Avatar>
     );
