@@ -24,7 +24,27 @@ export async function POST(request: Request) {
 
     // Additional origin validation if Origin header is present
     if (origin) {
-        const originUrl = new URL(origin);
+        // Treat explicit "null" origin as forbidden (e.g., some sandboxed contexts)
+        if (origin === 'null') {
+            console.error(
+                'CSRF check failed: forbidden null Origin header',
+                origin,
+            );
+            return new Response('Forbidden', { status: 403 });
+        }
+
+        let originUrl: URL;
+        try {
+            originUrl = new URL(origin);
+        } catch (error) {
+            console.error(
+                'CSRF check failed: invalid Origin header',
+                origin,
+                error,
+            );
+            return new Response('Forbidden', { status: 403 });
+        }
+
         const requestOrigin = requestUrl.origin;
 
         // Check if origins match, treating localhost and 127.0.0.1 as equivalent
