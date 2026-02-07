@@ -421,11 +421,10 @@ const app = new Hono()
                     context,
                     '/prijava/google-prijava/povratak',
                 );
-                // Pass tokens to frontend so it can set httpOnly cookies on its own domain
-                redirectUrl.searchParams.set('token', accessToken);
-                redirectUrl.searchParams.set('refreshToken', refreshToken);
+                // Pass tokens to frontend via URL fragment (hash) so they don't appear in logs/referrer
+                const urlWithFragment = `${redirectUrl.toString()}#token=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(refreshToken)}`;
 
-                return context.redirect(redirectUrl.toString());
+                return context.redirect(urlWithFragment);
             } catch (error) {
                 console.error('Google OAuth error:', error);
                 const redirectUrl = resolveRedirectUrl(
@@ -538,11 +537,10 @@ const app = new Hono()
                     context,
                     '/prijava/facebook-prijava/povratak',
                 );
-                // Pass tokens to frontend so it can set httpOnly cookies on its own domain
-                redirectUrl.searchParams.set('token', accessToken);
-                redirectUrl.searchParams.set('refreshToken', refreshToken);
+                // Pass tokens to frontend via URL fragment (hash) so they don't appear in logs/referrer
+                const urlWithFragment = `${redirectUrl.toString()}#token=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(refreshToken)}`;
 
-                return context.redirect(redirectUrl.toString());
+                return context.redirect(urlWithFragment);
             } catch (error) {
                 console.error('Facebook OAuth error:', error);
                 const redirectUrl = resolveRedirectUrl(

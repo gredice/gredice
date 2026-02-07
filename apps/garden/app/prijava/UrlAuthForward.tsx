@@ -15,24 +15,56 @@ export function UrlAuthForward() {
             if (error) {
                 // TODO: Display notification
                 console.error('Authentication error:', error);
-                router.push('/');
+                router.replace('/');
                 return;
             }
 
-            const token = searchParams.get('token');
-            const refreshToken = searchParams.get('refreshToken');
+            // Read tokens from URL fragment (hash) to avoid server logs/referrer leakage
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            const token = params.get('token');
+            const refreshToken = params.get('refreshToken');
+
+            // Clear tokens from URL immediately after reading
+            if (hash) {
+                window.history.replaceState(
+                    null,
+                    '',
+                    window.location.pathname + window.location.search,
+                );
+            }
 
             if (token) {
                 // Exchange tokens for httpOnly cookies via local route handler
-                await fetch('/api/oauth-callback', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token, refreshToken }),
-                });
+                try {
+                    const response = await fetch('/api/oauth-callback', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token, refreshToken }),
+                    });
+
+                    if (!response.ok) {
+                        // TODO: Display notification
+                        console.error(
+                            'Authentication callback failed with status:',
+                            response.status,
+                        );
+                        router.replace('/');
+                        return;
+                    }
+                } catch (err) {
+                    // TODO: Display notification
+                    console.error(
+                        'Network error during authentication callback:',
+                        err,
+                    );
+                    router.replace('/');
+                    return;
+                }
             }
 
             await queryClient.invalidateQueries();
-            router.push('/');
+            router.replace('/');
         };
 
         handleGoogleCallback();

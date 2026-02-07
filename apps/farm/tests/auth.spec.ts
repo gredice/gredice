@@ -161,4 +161,96 @@ test.describe('Authentication Flow', () => {
             expect(sessionCookie?.value).toBe('test-session-token');
         });
     });
+
+    test.describe('OAuth Callback Flow', () => {
+        test('should set session and refresh cookies via /api/oauth-callback', async ({
+            page,
+        }) => {
+            // Simulate the OAuth redirect flow by navigating to the callback page with tokens in hash
+            await page.goto(
+                '/prijava/google-prijava/povratak#token=test-access-token&refreshToken=test-refresh-token',
+            );
+
+            // Wait for the frontend to process tokens and set cookies
+            await page.waitForTimeout(500);
+
+            // Verify that the session cookie was set
+            const cookies = await page.context().cookies();
+            const sessionCookie = cookies.find(
+                (c) => c.name === 'gredice_session',
+            );
+            expect(sessionCookie).toBeDefined();
+            expect(sessionCookie?.value).toBe('test-access-token');
+            expect(sessionCookie?.httpOnly).toBe(true);
+
+            // Verify that the refresh cookie was set
+            const refreshCookie = cookies.find(
+                (c) => c.name === 'gredice_refresh',
+            );
+            expect(refreshCookie).toBeDefined();
+            expect(refreshCookie?.value).toBe('test-refresh-token');
+            expect(refreshCookie?.httpOnly).toBe(true);
+        });
+
+        test('should clear tokens from URL after processing', async ({
+            page,
+        }) => {
+            // Navigate to callback page with tokens in hash
+            await page.goto(
+                '/prijava/google-prijava/povratak#token=test-token&refreshToken=test-refresh',
+            );
+
+            // Wait for processing
+            await page.waitForTimeout(500);
+
+            // Verify URL no longer contains the tokens in hash
+            const currentUrl = page.url();
+            expect(currentUrl).not.toContain('token=');
+            expect(currentUrl).not.toContain('refreshToken=');
+            expect(currentUrl).not.toContain('#');
+        });
+
+        test('should handle missing token gracefully', async ({ page }) => {
+            // Navigate to callback page without tokens
+            await page.goto('/prijava/google-prijava/povratak');
+
+            // Wait for processing
+            await page.waitForTimeout(500);
+
+            // Should redirect to home without errors
+            const currentUrl = page.url();
+            expect(currentUrl).toContain('/');
+            expect(currentUrl).not.toContain('/prijava/');
+        });
+
+        test('should handle callback endpoint errors', async ({ page }) => {
+            // Mock the callback endpoint to return an error
+            await page.route('/api/oauth-callback', (route) => {
+                route.fulfill({
+                    status: 500,
+                    body: JSON.stringify({ error: 'Internal server error' }),
+                });
+            });
+
+            // Navigate to callback page with tokens
+            await page.goto(
+                '/prijava/google-prijava/povratak#token=test-token&refreshToken=test-refresh',
+            );
+
+            // Wait for processing
+            await page.waitForTimeout(500);
+
+            // Should redirect to home despite error
+            const currentUrl = page.url();
+            expect(currentUrl).toContain('/');
+            expect(currentUrl).not.toContain('/prijava/');
+
+            // Cookies should not be set
+            const cookies = await page.context().cookies();
+            const sessionCookie = cookies.find(
+                (c) => c.name === 'gredice_session',
+            );
+            expect(sessionCookie?.value).not.toBe('test-token');
+        });
+    });
 });
