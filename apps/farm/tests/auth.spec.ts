@@ -167,7 +167,11 @@ test.describe('Authentication Flow', () => {
             page,
         }) => {
             // Track requests to the oauth-callback endpoint
-            let callbackRequest: any = null;
+            let callbackRequest: {
+                method: string;
+                body: { token?: string; refreshToken?: string };
+                headers: Record<string, string>;
+            } | null = null;
 
             await page.route('/api/oauth-callback', async (route) => {
                 callbackRequest = {
