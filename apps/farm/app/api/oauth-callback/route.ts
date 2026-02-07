@@ -25,11 +25,21 @@ export async function POST(request: Request) {
     // Additional origin validation if Origin header is present
     if (origin) {
         const originUrl = new URL(origin);
-        if (originUrl.origin !== requestUrl.origin) {
+        const requestOrigin = requestUrl.origin;
+
+        // Check if origins match, treating localhost and 127.0.0.1 as equivalent
+        const isSameOrigin =
+            originUrl.origin === requestOrigin ||
+            (isLocalhost(originUrl.hostname) &&
+                isLocalhost(requestUrl.hostname) &&
+                originUrl.port === requestUrl.port &&
+                originUrl.protocol === requestUrl.protocol);
+
+        if (!isSameOrigin) {
             console.error(
                 'CSRF check failed: origin mismatch',
                 origin,
-                requestUrl.origin,
+                requestOrigin,
             );
             return new Response('Forbidden', { status: 403 });
         }
@@ -47,4 +57,12 @@ export async function POST(request: Request) {
     await setCookie(token);
 
     return Response.json({ success: true });
+}
+
+function isLocalhost(hostname: string): boolean {
+    return (
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname === '[::1]'
+    );
 }
