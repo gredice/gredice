@@ -7,6 +7,7 @@ import { Container } from '@signalco/ui-primitives/Container';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { VercelToolbar } from '@vercel/toolbar/next';
+import { Inter } from 'next/font/google';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { Logotype } from '../components/Logotype';
@@ -15,6 +16,11 @@ import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
 import { Footer } from './Footer';
+
+const inter = Inter({
+    subsets: ['latin', 'latin-ext'],
+    variable: '--font-inter',
+});
 
 export function generateMetadata(): Metadata {
     return {
@@ -72,7 +78,7 @@ export default async function RootLayout({
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
 
     return (
-        <html lang="hr" translate="no">
+        <html lang="hr" translate="no" className={inter.variable}>
             <Head>
                 <title>Gredice</title>
                 <meta name="apple-mobile-web-app-title" content="Gredice" />

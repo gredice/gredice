@@ -3,9 +3,15 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import * as Sentry from '@sentry/nextjs';
 import { VercelToolbar } from '@vercel/toolbar/next';
+import { Inter } from 'next/font/google';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
+
+const inter = Inter({
+    subsets: ['latin', 'latin-ext'],
+    variable: '--font-inter',
+});
 
 export function generateMetadata(): Metadata {
     return {
@@ -32,7 +38,12 @@ export default function RootLayout({
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
 
     return (
-        <html lang="hr" translate="no" suppressHydrationWarning={true}>
+        <html
+            lang="hr"
+            translate="no"
+            className={inter.variable}
+            suppressHydrationWarning={true}
+        >
             <Head>
                 <meta name="theme-color" content="#2e6f40" />
                 <meta name="apple-mobile-web-app-title" content="Gredice" />

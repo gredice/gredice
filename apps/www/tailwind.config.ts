@@ -17,5 +17,12 @@ const tailwindConfig: Config = {
     ],
     presets: [config],
     plugins: [tailwindcssAnimate, tailwindcssTypography],
+    theme: {
+        extend: {
+            fontFamily: {
+                sans: ['var(--font-inter)', 'sans-serif'],
+            },
+        },
+    },
 };
 export default tailwindConfig;

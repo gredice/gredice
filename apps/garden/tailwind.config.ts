@@ -17,6 +17,9 @@ const tailwindConfig: Config = {
     plugins: [tailwindcssAnimate, tailwindcssTypography],
     theme: {
         extend: {
+            fontFamily: {
+                sans: ['var(--font-inter)', 'sans-serif'],
+            },
             keyframes: {
                 progress: {
                     '0%': { transform: 'translateX(0) scaleX(0)' },

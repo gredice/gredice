@@ -10,5 +10,12 @@ const tailwindConfig: Config = {
         './node_modules/@signalco/ui-primitives/**/*.{js,ts,jsx,tsx,mdx}',
     ],
     presets: [config],
+    theme: {
+        extend: {
+            fontFamily: {
+                sans: ['var(--font-inter)', 'sans-serif'],
+            },
+        },
+    },
 };
 export default tailwindConfig;

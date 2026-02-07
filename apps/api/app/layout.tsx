@@ -3,10 +3,16 @@ import type { Metadata } from 'next';
 import './globals.css';
 import * as Sentry from '@sentry/nextjs';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import { Inter } from 'next/font/google';
 import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+
+const inter = Inter({
+    subsets: ['latin', 'latin-ext'],
+    variable: '--font-inter',
+});
 
 export function generateMetadata(): Metadata {
     return {
@@ -24,7 +30,7 @@ export default function RootLayout({
     children: ReactNode;
 }>) {
     return (
-        <html lang="en" className="dark">
+        <html lang="en" className={`dark ${inter.variable}`}>
             <Head>
                 <meta name="apple-mobile-web-app-title" content="Gredice" />
                 <meta name="theme-color" content="#2e6f40" />
