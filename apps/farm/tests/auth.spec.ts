@@ -173,7 +173,7 @@ test.describe('Authentication Flow', () => {
                 headers: Record<string, string>;
             } | null = null;
 
-            await page.route('/api/oauth-callback', async (route) => {
+            await page.route('**/api/oauth-callback', async (route) => {
                 callbackRequest = {
                     method: route.request().method(),
                     body: route.request().postDataJSON(),
@@ -188,12 +188,16 @@ test.describe('Authentication Flow', () => {
             });
 
             // Navigate to callback page with tokens in hash
-            // Wait for the request to the oauth-callback endpoint
-            const requestPromise = page.waitForRequest('/api/oauth-callback');
+            // Wait for the response (not just the request) to ensure route handler has completed
+            const responsePromise = page.waitForResponse(
+                (response) =>
+                    response.url().includes('/api/oauth-callback') &&
+                    response.request().method() === 'POST',
+            );
             await page.goto(
                 '/prijava/google-prijava/povratak#token=test-access-token&refreshToken=test-refresh-token',
             );
-            await requestPromise;
+            await responsePromise;
 
             // Verify that the POST request was made with correct data
             expect(callbackRequest).toBeDefined();
