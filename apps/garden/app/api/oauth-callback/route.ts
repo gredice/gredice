@@ -2,6 +2,7 @@ import { cookies, headers } from 'next/headers';
 
 const accessTokenExpiryMs = 15 * 60 * 1000;
 const refreshTokenExpiryMs = 30 * 24 * 60 * 60 * 1000;
+const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
 
 export async function POST(request: Request) {
     // CSRF protection: validate Origin and Sec-Fetch-Site headers
@@ -76,7 +77,8 @@ export async function POST(request: Request) {
     cookieStore.set('gredice_session', token, {
         httpOnly: true,
         secure: true,
-        sameSite: 'strict',
+        sameSite: 'lax',
+        domain: cookieDomain,
         expires: new Date(Date.now() + accessTokenExpiryMs),
     });
 
@@ -84,7 +86,8 @@ export async function POST(request: Request) {
         cookieStore.set('gredice_refresh', refreshToken, {
             httpOnly: true,
             secure: true,
-            sameSite: 'strict',
+            sameSite: 'lax',
+            domain: cookieDomain,
             expires: new Date(Date.now() + refreshTokenExpiryMs),
         });
     }

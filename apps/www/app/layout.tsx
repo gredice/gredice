@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import './globals.css';
 import * as Sentry from '@sentry/nextjs';
 import { PageNav } from '@signalco/ui/Nav';
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
 import { Container } from '@signalco/ui-primitives/Container';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -11,6 +10,7 @@ import { VercelToolbar } from '@vercel/toolbar/next';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { Logotype } from '../components/Logotype';
+import { NavUserButton } from '../components/NavUserButton';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
@@ -99,12 +99,7 @@ export default async function RootLayout({
                         >
                             <Row spacing={1}>
                                 <WinterModeToggle />
-                                <NavigatingButton
-                                    href={KnownPages.GardenApp}
-                                    className="bg-green-800 hover:bg-green-700 rounded-full"
-                                >
-                                    Moj vrt
-                                </NavigatingButton>
+                                <NavUserButton href={KnownPages.GardenApp} />
                             </Row>
                         </PageNav>
                         <main className="mt-16 relative">
