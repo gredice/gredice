@@ -1,11 +1,14 @@
 'use client';
 
 import { GameScene } from '@gredice/game';
+import { NavigatingButton } from '@signalco/ui/NavigatingButton';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import {
     isChristmasHolidaySeason,
     useWinterMode,
 } from '../components/providers/WinterModeProvider';
+import { KnownPages } from '../src/KnownPages';
 
 export function LandingGameScene() {
     const { isWinter } = useWinterMode();
@@ -15,6 +18,15 @@ export function LandingGameScene() {
             : 'winter'
         : 'summer';
     const [isMobile, setIsMobile] = useState(false);
+
+    const { data: user } = useQuery<{
+        id: string;
+        userName: string;
+    } | null>({
+        queryKey: ['currentUser'],
+        staleTime: 5 * 60 * 1000,
+    });
+    const isLoggedIn = Boolean(user);
 
     useEffect(() => {
         const mediaQuery = window.matchMedia('(max-width: 768px)');
@@ -54,17 +66,35 @@ export function LandingGameScene() {
         : new Date(2025, 5, 21, 11, 30); // June 21st (summer)
 
     return (
-        <GameScene
-            appBaseUrl="https://vrt.gredice.com"
-            freezeTime={freezeTime}
-            zoom={isMobile ? 'far' : 'normal'}
-            noBackground
-            hideHud
-            noControls
-            noSound
-            mockGarden
-            winterMode={winterMode}
-            weather={isWinter ? winterWeather : summerWeather}
-        />
+        <>
+            <GameScene
+                appBaseUrl="https://vrt.gredice.com"
+                freezeTime={isLoggedIn ? undefined : freezeTime}
+                zoom={isMobile ? 'far' : 'normal'}
+                noBackground
+                hideHud
+                noControls
+                noSound
+                mockGarden={!isLoggedIn}
+                winterMode={winterMode}
+                weather={
+                    isLoggedIn
+                        ? undefined
+                        : isWinter
+                          ? winterWeather
+                          : summerWeather
+                }
+            />
+            {isLoggedIn && (
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
+                    <NavigatingButton
+                        href={KnownPages.GardenApp}
+                        className="bg-green-800 hover:bg-green-700 rounded-full shadow-lg"
+                    >
+                        Otvori moj vrt 🌱
+                    </NavigatingButton>
+                </div>
+            )}
+        </>
     );
 }
