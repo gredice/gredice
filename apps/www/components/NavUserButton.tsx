@@ -34,7 +34,7 @@ export function NavUserButton({ href }: { href: string }) {
             className="bg-green-800 hover:bg-green-700 rounded-full"
             startDecorator={user ? <UserAvatar user={user} /> : undefined}
         >
-            Moj vrt
+            {user ? 'Moj vrt' : 'Moj novi vrt'}
         </NavigatingButton>
     );
 }

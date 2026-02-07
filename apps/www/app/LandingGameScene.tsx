@@ -10,6 +10,28 @@ import {
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { KnownPages } from '../src/KnownPages';
 
+// Summer weather - warm and sunny
+const summerWeather = {
+    cloudy: 0,
+    foggy: 0,
+    rainy: 0,
+    snowy: 0,
+    windDirection: 0,
+    windSpeed: 0,
+    snowAccumulation: 0,
+};
+
+// Winter weather - snowy
+const winterWeather = {
+    cloudy: 0.2,
+    foggy: 0,
+    rainy: 0,
+    snowy: 0.3,
+    windDirection: 0,
+    windSpeed: 0.3,
+    snowAccumulation: 8,
+};
+
 export function LandingGameScene() {
     const { isWinter } = useWinterMode();
     const winterMode = isWinter
@@ -18,9 +40,7 @@ export function LandingGameScene() {
             : 'winter'
         : 'summer';
     const [isMobile, setIsMobile] = useState(false);
-
-    const { data: user } = useCurrentUser();
-    const isLoggedIn = Boolean(user);
+    const { data: user, isLoading } = useCurrentUser();
 
     useEffect(() => {
         const mediaQuery = window.matchMedia('(max-width: 768px)');
@@ -32,40 +52,17 @@ export function LandingGameScene() {
         return () => mediaQuery.removeEventListener('change', handleChange);
     }, []);
 
-    // Summer weather - warm and sunny
-    const summerWeather = {
-        cloudy: 0,
-        foggy: 0,
-        rainy: 0,
-        snowy: 0,
-        windDirection: 0,
-        windSpeed: 0,
-        snowAccumulation: 0,
-    };
+    if (isLoading) {
+        return null;
+    }
 
-    // Winter weather - snowy
-    const winterWeather = {
-        cloudy: 0.2,
-        foggy: 0,
-        rainy: 0,
-        snowy: 0.3,
-        windDirection: 0,
-        windSpeed: 0.3,
-        snowAccumulation: 8,
-    };
-
-    // Use winter date for winter mode, summer date for summer mode
-    const freezeTime = isWinter
-        ? new Date(2025, 11, 21, 11, 30) // December 21st (winter)
-        : new Date(2025, 5, 21, 11, 30); // June 21st (summer)
+    const isLoggedIn = Boolean(user);
 
     return (
         <>
             <GameScene
                 appBaseUrl="https://vrt.gredice.com"
-                freezeTime={isLoggedIn ? undefined : freezeTime}
                 zoom={isMobile ? 'far' : 'normal'}
-                noBackground
                 hideHud
                 noControls
                 noSound
@@ -83,9 +80,10 @@ export function LandingGameScene() {
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
                     <NavigatingButton
                         href={KnownPages.GardenApp}
-                        className="bg-green-800 hover:bg-green-700 rounded-full shadow-lg"
+                        variant="solid"
+                        className="rounded-full shadow-lg"
                     >
-                        Otvori moj vrt 🌱
+                        Otvori moj vrt
                     </NavigatingButton>
                 </div>
             )}
