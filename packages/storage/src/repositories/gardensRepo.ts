@@ -5,7 +5,6 @@ import { v4 as uuidV4 } from 'uuid';
 import { getEntitiesFormatted, getOperations, storage } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
 import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
-import { getFarms } from './farmsRepo';
 import {
     gardenBlocks,
     gardenStacks,
@@ -32,6 +31,7 @@ import {
     knownEvents,
     knownEventTypes,
 } from './eventsRepo';
+import { getFarms } from './farmsRepo';
 
 export async function createGarden(garden: InsertGarden) {
     const createdGarden = (
@@ -64,7 +64,8 @@ export async function createDefaultGardenForAccount({
     accountId,
     name,
 }: CreateDefaultGardenOptions) {
-    const farm = (await getFarms())[0];
+    const farms = await getFarms();
+    const farm = farms.find((f) => !f.isDeleted);
     if (!farm) {
         throw new Error('No farm found');
     }
