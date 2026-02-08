@@ -46,7 +46,10 @@ export async function PlantsShowcase() {
                     href={KnownPages.Plants}
                     className="relative flex flex-col justify-center items-center overflow-hidden hover:border-muted-foreground/50 hover:bg-card/30 bg-card/70 rounded-lg border border-tertiary border-dashed p-4 transition-all"
                 >
-                    <div className="absolute inset-0 grid grid-cols-4 gap-2 p-2 opacity-50">
+                    <div
+                        className="absolute inset-0 grid grid-cols-4 gap-2 p-2 opacity-50"
+                        aria-hidden="true"
+                    >
                         {extraPlants?.map((plant) => (
                             <div
                                 key={plant.id}
@@ -54,6 +57,7 @@ export async function PlantsShowcase() {
                             >
                                 <PlantOrSortImage
                                     plant={plant}
+                                    alt=""
                                     fill
                                     className="object-contain"
                                     sizes="60px"
