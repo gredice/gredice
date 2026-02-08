@@ -1,3 +1,4 @@
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Navigate } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -15,6 +16,9 @@ export async function PlantsShowcase() {
                 Number(second.isRecommended) - Number(first.isRecommended),
         )
         ?.slice(0, 4);
+    const extraPlants = entities
+        ?.filter((plant) => !plants?.some((entry) => entry.id === plant.id))
+        ?.slice(0, 8);
 
     return (
         <div>
@@ -39,9 +43,25 @@ export async function PlantsShowcase() {
                 ))}
                 <Link
                     href={KnownPages.Plants}
-                    className="flex flex-col justify-center items-center hover:border-muted-foreground/50 hover:bg-white/30 bg-white/70 rounded-lg border border-tertiary border-dashed p-4 transition-all"
+                    className="relative flex flex-col justify-center items-center overflow-hidden hover:border-muted-foreground/50 hover:bg-white/30 bg-white/70 rounded-lg border border-tertiary border-dashed p-4 transition-all"
                 >
-                    <Row spacing={1}>
+                    <div className="absolute inset-0 grid grid-cols-4 gap-2 p-2 opacity-50">
+                        {extraPlants?.map((plant) => (
+                            <div
+                                key={plant.id}
+                                className="relative aspect-square"
+                            >
+                                <PlantOrSortImage
+                                    plant={plant}
+                                    fill
+                                    className="object-contain"
+                                    sizes="60px"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                    <div className="absolute inset-0 bg-white/60" />
+                    <Row spacing={1} className="relative z-10">
                         <span>Sve biljke</span>
                         <Navigate className="size-5 shrink-0" />
                     </Row>
