@@ -19,7 +19,9 @@ function UserAvatar({ user }: { user: CurrentUser }) {
     }
 
     return (
-        <Avatar size="sm" className="-ml-1 animate-[avatar-in_300ms_ease-out]">
+        <Avatar
+            className="-ml-3.5 mr-1 animate-[avatar-in_300ms_ease-out]"
+        >
             {initials(displayName)}
         </Avatar>
     );
