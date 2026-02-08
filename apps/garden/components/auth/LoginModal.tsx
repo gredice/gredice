@@ -1,7 +1,11 @@
 'use client';
 
 import { client } from '@gredice/client';
-import { FacebookLoginButton, GoogleLoginButton } from '@gredice/ui/auth';
+import {
+    FacebookLoginButton,
+    GoogleLoginButton,
+    useLastLoginProvider,
+} from '@gredice/ui/auth';
 import { Alert } from '@signalco/ui/Alert';
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { Modal } from '@signalco/ui-primitives/Modal';
@@ -14,7 +18,7 @@ import {
 } from '@signalco/ui-primitives/Tabs';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { EmailPasswordForm } from './EmailPasswordForm';
 import LoginBanner from './LoginBanner';
 
@@ -22,43 +26,11 @@ export default function LoginModal() {
     const router = useRouter();
     const queryClient = useQueryClient();
     const [error, setError] = useState<string>();
-    const [lastLoginProvider, setLastLoginProvider] = useState<string>();
-
-    useEffect(() => {
-        let isMounted = true;
-
-        const fetchLastLogin = async () => {
-            const delaysMs = [0, 250, 750];
-            for (const delayMs of delaysMs) {
-                if (delayMs > 0) {
-                    await new Promise((resolve) =>
-                        setTimeout(resolve, delayMs),
-                    );
-                }
-
-                try {
-                    const response =
-                        await client().api.auth['last-login'].$get();
-                    if (!response.ok) {
-                        continue;
-                    }
-                    const data = await response.json();
-                    if (isMounted && data?.provider) {
-                        setLastLoginProvider(data.provider);
-                    }
-                    return;
-                } catch {
-                    // retry
-                }
-            }
-        };
-
-        void fetchLastLogin();
-
-        return () => {
-            isMounted = false;
-        };
-    }, []);
+    const fetchLastLogin = useCallback(
+        () => client().api.auth['last-login'].$get(),
+        [],
+    );
+    const lastLoginProvider = useLastLoginProvider(fetchLastLogin);
 
     const handleLogin = async (email: string, password: string) => {
         setError(undefined);
