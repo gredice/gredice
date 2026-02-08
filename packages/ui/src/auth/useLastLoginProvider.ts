@@ -10,8 +10,7 @@ export function useLastLoginProvider(
     fetchLastLogin: () => Promise<Response>,
     delaysMs: number[] = defaultDelaysMs,
 ) {
-    const [lastLoginProvider, setLastLoginProvider] =
-        useState<OAuthProvider>();
+    const [lastLoginProvider, setLastLoginProvider] = useState<OAuthProvider>();
 
     useEffect(() => {
         let isMounted = true;
@@ -23,7 +22,12 @@ export function useLastLoginProvider(
                 }
 
                 if (delayMs > 0) {
-                    await new Promise((resolve) => setTimeout(resolve, delayMs));
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, delayMs),
+                    );
+                    if (!isMounted) {
+                        return;
+                    }
                 }
 
                 try {
@@ -33,11 +37,16 @@ export function useLastLoginProvider(
                     }
 
                     const data: unknown = await response.json();
-                    if (data && typeof data === 'object' && 'provider' in data) {
+                    if (
+                        data &&
+                        typeof data === 'object' &&
+                        'provider' in data
+                    ) {
                         const provider = data.provider;
                         if (
-                            provider === 'google' ||
-                            provider === 'facebook'
+                            (provider === 'google' ||
+                                provider === 'facebook') &&
+                            isMounted
                         ) {
                             setLastLoginProvider(provider);
                         }
