@@ -20,9 +20,9 @@ export function useCreateGarden() {
                 json: trimmedName ? { name: trimmedName } : {},
             });
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: useGardensKeys });
-            queryClient.invalidateQueries({ queryKey: gardenQueryKey });
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: useGardensKeys });
+            await queryClient.invalidateQueries({ queryKey: gardenQueryKey });
         },
         onError: (error) => {
             console.error('Failed to create garden:', error);
