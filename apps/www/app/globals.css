@@ -157,6 +157,11 @@
     }
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .animate-scale-in {
+        animation: none;
+    }
+}
 svg.lucide {
     stroke-width: 1.75px;
 }
