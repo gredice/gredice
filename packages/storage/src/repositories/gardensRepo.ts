@@ -111,6 +111,62 @@ export async function createDefaultGardenForAccount({
     return gardenId;
 }
 
+type CreateDefaultGardenOptions = {
+    accountId: string;
+    name?: string;
+};
+
+export async function createDefaultGardenForAccount({
+    accountId,
+    name,
+}: CreateDefaultGardenOptions) {
+    const farms = await getFarms();
+    const farm = farms.find((f) => !f.isDeleted);
+    if (!farm) {
+        throw new Error('No farm found');
+    }
+
+    const trimmedName = name?.trim();
+    const gardenId = await createGarden({
+        farmId: farm.id,
+        accountId,
+        name: trimmedName || 'Moj vrt',
+    });
+
+    // Assign 4x3 grid of grass blocks with origin-centered coordinates and two raised beds near the center
+    // Grid: x = -1..2, y = -1..1
+    // Raised beds are placed at coordinates (0,0) and (1,0)
+    for (let x = -1; x < 3; x++) {
+        for (let y = -1; y < 2; y++) {
+            // Create base block
+            const blockId = await createGardenBlock(gardenId, 'Block_Grass');
+
+            // Create stack if not exists
+            await createGardenStack(gardenId, { x, y });
+
+            const blockIds = [blockId];
+            if ((x === 0 && y === 0) || (x === 1 && y === 0)) {
+                const raisedBedBlockId = await createGardenBlock(
+                    gardenId,
+                    'Raised_Bed',
+                );
+                await createRaisedBed({
+                    accountId,
+                    gardenId,
+                    blockId: raisedBedBlockId,
+                    status: 'new',
+                });
+                blockIds.push(raisedBedBlockId);
+            }
+
+            // Assign block to stack
+            await updateGardenStack(gardenId, { x, y, blocks: blockIds });
+        }
+    }
+
+    return gardenId;
+}
+
 export async function getGardens() {
     return storage().query.gardens.findMany({
         orderBy: desc(gardens.createdAt),

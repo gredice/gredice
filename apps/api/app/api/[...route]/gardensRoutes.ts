@@ -83,6 +83,28 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json({ id: gardenId }, 201);
         },
     )
+    .post(
+        '/',
+        describeRoute({
+            description: 'Create a new garden for current account',
+        }),
+        zValidator(
+            'json',
+            z.object({
+                name: z.string().trim().min(1).optional(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const { name } = context.req.valid('json');
+            const gardenId = await createDefaultGardenForAccount({
+                accountId,
+                name,
+            });
+            return context.json({ id: gardenId }, 201);
+        },
+    )
     .get(
         '/:gardenId',
         describeRoute({
