@@ -49,51 +49,49 @@
         --text-selection: #fff;
     }
 
-    @media (prefers-color-scheme: dark) {
-        :root {
-            --baseHue: 212;
+    .dark {
+        --baseHue: 212;
 
-            --background: var(--baseHue) 16% 19%;
-            --foreground: var(--baseHue) 47% 92%;
+        --background: var(--baseHue) 16% 19%;
+        --foreground: var(--baseHue) 47% 92%;
 
-            --muted: var(--baseHue) 16% 10%;
-            --muted-foreground: var(--baseHue) 16% 98%;
+        --muted: var(--baseHue) 16% 10%;
+        --muted-foreground: var(--baseHue) 16% 98%;
 
-            --popover: var(--baseHue) 16% 19%;
-            --popover-foreground: var(--baseHue) 47% 89%;
+        --popover: var(--baseHue) 16% 19%;
+        --popover-foreground: var(--baseHue) 47% 89%;
 
-            --card: var(--baseHue) 16% 10%;
-            --card-transparent: var(--baseHue) 0% 0%;
-            --card-foreground: var(--baseHue) 17% 92%;
+        --card: var(--baseHue) 16% 10%;
+        --card-transparent: var(--baseHue) 0% 0%;
+        --card-foreground: var(--baseHue) 17% 92%;
 
-            --border: var(--baseHue) 16% 25%;
-            --input: var(--baseHue) 31% 9%;
+        --border: var(--baseHue) 16% 25%;
+        --input: var(--baseHue) 31% 9%;
 
-            --primary: var(--baseHue) 16% 98%;
-            --primary-foreground: var(--baseHue) 40% 20%;
+        --primary: var(--baseHue) 16% 98%;
+        --primary-foreground: var(--baseHue) 40% 20%;
 
-            --secondary: var(--baseHue) 47% 25%;
-            --secondary-foreground: var(--baseHue) 10% 70%;
+        --secondary: var(--baseHue) 47% 25%;
+        --secondary-foreground: var(--baseHue) 10% 70%;
 
-            --tertiary: var(--baseHue) 16% 10%;
-            --tertiary-foreground: var(--baseHue) 10% 65%;
+        --tertiary: var(--baseHue) 16% 10%;
+        --tertiary-foreground: var(--baseHue) 10% 65%;
 
-            --accent: var(--baseHue) 20% 25%;
-            --accent-foreground: var(--baseHue) 47% 92%;
+        --accent: var(--baseHue) 20% 25%;
+        --accent-foreground: var(--baseHue) 47% 92%;
 
-            --destructive: 0 100% 50%;
-            --destructive-foreground: 210 40% 98%;
+        --destructive: 0 100% 50%;
+        --destructive-foreground: 210 40% 98%;
 
-            --ring: var(--baseHue) 20% 65%;
+        --ring: var(--baseHue) 20% 65%;
 
-            --radius: 0.5rem;
+        --radius: 0.5rem;
 
-            --light-display: none;
-            --dark-display: visible;
+        --light-display: none;
+        --dark-display: visible;
 
-            --bg-selection: hsl(137, 40%, 90%);
-            --text-selection: #000;
-        }
+        --bg-selection: hsl(137, 40%, 90%);
+        --text-selection: #000;
     }
 
     * {

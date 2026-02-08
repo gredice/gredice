@@ -41,7 +41,7 @@ function PlantsStatisticsCard({
     value: string;
 }) {
     return (
-        <div className="rounded-2xl border border-tertiary border-b-4 bg-white p-6 grid grid-rows-[auto_auto_1fr] h-full">
+        <div className="rounded-2xl border border-tertiary border-b-4 bg-card p-6 grid grid-rows-[auto_auto_1fr] h-full">
             <CountingNumber
                 className="mb-4 text-5xl font-mono"
                 number={parseInt(value, 10)}
@@ -60,9 +60,9 @@ function PlantsStatisticsCard({
 function PlantsStatisticsLoading() {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="rounded-2xl border border-tertiary border-b-4 bg-white p-6 h-[182px] animate-pulse" />
-            <div className="rounded-2xl border border-tertiary border-b-4 bg-white p-6 h-[182px] animate-pulse" />
-            <div className="rounded-2xl border border-tertiary border-b-4 bg-white p-6 h-[182px] animate-pulse" />
+            <div className="rounded-2xl border border-tertiary border-b-4 bg-card p-6 h-[182px] animate-pulse" />
+            <div className="rounded-2xl border border-tertiary border-b-4 bg-card p-6 h-[182px] animate-pulse" />
+            <div className="rounded-2xl border border-tertiary border-b-4 bg-card p-6 h-[182px] animate-pulse" />
         </div>
     );
 }
@@ -299,7 +299,7 @@ export default function Home() {
                         <WhatsAppCard />
                         <InstagramCard />
                         <FacebookCard />
-                        <div className="bg-white border border-tertiary border-b-4 shadow p-6 rounded-xl lg:col-start-2 lg:row-start-1 lg:row-span-3">
+                        <div className="bg-card border border-tertiary border-b-4 shadow p-6 rounded-xl lg:col-start-2 lg:row-start-1 lg:row-span-3">
                             <NewsletterSignUp />
                         </div>
                     </div>
