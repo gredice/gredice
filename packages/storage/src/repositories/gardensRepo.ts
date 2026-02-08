@@ -76,9 +76,9 @@ export async function createDefaultGardenForAccount({
         name: trimmedName || 'Moj vrt',
     });
 
-    // Assign 4x3 grid of grass blocks and two raised beds at center
-    // Grid: x = 0..3, y = 0..2
-    // Center positions for raised beds: (1,1) and (2,1)
+    // Assign 4x3 grid of grass blocks with origin-centered coordinates and two raised beds near the center
+    // Grid: x = -1..2, y = -1..1
+    // Raised beds are placed at coordinates (0,0) and (1,0)
     for (let x = -1; x < 3; x++) {
         for (let y = -1; y < 2; y++) {
             // Create base block
