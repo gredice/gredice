@@ -1,6 +1,8 @@
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Navigate } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Row } from '@signalco/ui-primitives/Row';
+import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { getPlantsData } from '../lib/plants/getPlantsData';
 import { KnownPages } from '../src/KnownPages';
@@ -15,6 +17,9 @@ export async function PlantsShowcase() {
                 Number(second.isRecommended) - Number(first.isRecommended),
         )
         ?.slice(0, 4);
+    const extraPlants = entities
+        ?.filter((plant) => !plants?.some((entry) => entry.id === plant.id))
+        ?.slice(0, 24);
 
     return (
         <div>
@@ -39,10 +44,30 @@ export async function PlantsShowcase() {
                 ))}
                 <Link
                     href={KnownPages.Plants}
-                    className="flex flex-col justify-center items-center hover:border-muted-foreground/50 hover:bg-white/30 bg-white/70 rounded-lg border border-tertiary border-dashed p-4 transition-all"
+                    className="relative flex flex-col justify-center items-center overflow-hidden hover:border-muted-foreground/50 hover:bg-card/30 bg-card/70 rounded-lg border border-tertiary border-dashed p-4 transition-all"
                 >
-                    <Row spacing={1}>
-                        <span>Sve biljke</span>
+                    <div
+                        className="absolute inset-0 grid grid-cols-4 gap-2 p-2 opacity-50"
+                        aria-hidden="true"
+                    >
+                        {extraPlants?.map((plant) => (
+                            <div
+                                key={plant.id}
+                                className="relative aspect-square"
+                            >
+                                <PlantOrSortImage
+                                    plant={plant}
+                                    alt=""
+                                    fill
+                                    className="object-contain"
+                                    sizes="60px"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                    <div className="absolute inset-0 bg-card/60" />
+                    <Row spacing={1} className="relative z-10">
+                        <Typography level="body1">Sve biljke</Typography>
                         <Navigate className="size-5 shrink-0" />
                     </Row>
                 </Link>
