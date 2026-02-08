@@ -1,9 +1,9 @@
 import { signalcoClient } from '@gredice/signalco';
 import {
+    createDefaultGardenForAccount,
     createEvent,
     createGardenBlock,
     createGardenStack,
-    createDefaultGardenForAccount,
     createRaisedBed,
     deleteGardenStack,
     getAccount,
@@ -69,7 +69,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         zValidator(
             'json',
             z.object({
-                name: z.string().optional(),
+                name: z.string().trim().min(1).optional(),
             }),
         ),
         authValidator(['user', 'admin']),
