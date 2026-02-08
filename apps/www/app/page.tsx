@@ -243,7 +243,30 @@ export default function Home() {
                         width={1920}
                     />
                     <LandingGameScene />
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-background" />
+                    <div
+                        className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
+                        style={{
+                            background: `linear-gradient(
+                                to bottom,
+                                hsl(var(--background) / 0) 0%,
+                                hsl(var(--background) / 0.013) 8.1%,
+                                hsl(var(--background) / 0.049) 15.5%,
+                                hsl(var(--background) / 0.104) 22.5%,
+                                hsl(var(--background) / 0.175) 29%,
+                                hsl(var(--background) / 0.259) 35.3%,
+                                hsl(var(--background) / 0.352) 41.2%,
+                                hsl(var(--background) / 0.45) 47.1%,
+                                hsl(var(--background) / 0.55) 52.9%,
+                                hsl(var(--background) / 0.648) 58.8%,
+                                hsl(var(--background) / 0.741) 64.7%,
+                                hsl(var(--background) / 0.825) 71%,
+                                hsl(var(--background) / 0.896) 77.5%,
+                                hsl(var(--background) / 0.951) 84.5%,
+                                hsl(var(--background) / 0.987) 91.9%,
+                                hsl(var(--background)) 100%
+                            )`,
+                        }}
+                    />
                 </div>
                 <Container className="absolute top-0 left-0 right-0">
                     <Card className="w-fit mt-4 border-tertiary border-b-4">

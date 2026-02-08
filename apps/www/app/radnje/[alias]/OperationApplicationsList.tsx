@@ -33,7 +33,7 @@ export async function OperationApplicationsList({
                             <Typography>Dostupno u tvom vrtu</Typography>
                             <NavigatingButton
                                 href={KnownPages.GardenApp}
-                                className="bg-green-800 hover:bg-green-700"
+                                className="bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white"
                             >
                                 Moj vrt
                             </NavigatingButton>

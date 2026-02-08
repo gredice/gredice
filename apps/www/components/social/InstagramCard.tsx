@@ -15,7 +15,7 @@ export function InstagramCard() {
             <Card
                 className={cx(
                     'h-full flex flex-row rounded-xl items-center justify-between max-w-md shadow hover:shadow-xl transition-all duration-300',
-                    'bg-gradient-to-br from-red-50 to-orange-50 border-red-200',
+                    'bg-gradient-to-br from-red-50 to-orange-50 border-red-200 dark:from-red-200 dark:to-orange-200 dark:border-red-700',
                 )}
             >
                 <CardHeader className={cx('flex flex-row gap-4 items-center')}>

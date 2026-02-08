@@ -88,7 +88,7 @@ export function AttributeCard({
                         {navigateHref && navigateLabel && (
                             <NavigatingButton
                                 href={navigateHref}
-                                className="bg-green-800 hover:bg-green-700 self-end"
+                                className="bg-green-800 hover:bg-green-700 self-end dark:bg-green-700 dark:hover:bg-green-600 text-white"
                             >
                                 {navigateLabel}
                             </NavigatingButton>
