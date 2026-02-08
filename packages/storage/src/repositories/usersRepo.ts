@@ -5,7 +5,7 @@ import {
     randomUUID,
 } from 'node:crypto';
 import { and, desc, eq, sql } from 'drizzle-orm';
-import { createAccount, getFarms, storage } from '..';
+import { createAccount, storage } from '..';
 import {
     accountUsers,
     type UpdateUserInfo,
@@ -13,7 +13,7 @@ import {
     users,
 } from '../schema';
 import { createEvent, knownEvents } from './eventsRepo';
-import { createGarden } from './gardensRepo';
+import { createDefaultGardenForAccount } from './gardensRepo';
 
 export interface OAuthUserData {
     name: string;
@@ -118,65 +118,6 @@ async function ensureUserNameIsUnique(userName: string) {
     }
 }
 
-async function getDefaultFarm() {
-    const farm = (await getFarms())[0];
-    if (!farm) {
-        throw new Error('No farm found');
-    }
-    return farm;
-}
-
-async function createDefaultGarden(accountId: string) {
-    const farm = await getDefaultFarm();
-
-    // Create garden and get its ID
-    const gardenId = await createGarden({
-        farmId: farm.id,
-        accountId,
-        name: 'Moj vrt',
-    });
-
-    // Assign 4x3 grid of grass blocks and two raised beds at center
-    // Grid: x = 0..3, y = 0..2
-    // Center positions for raised beds: (1,1) and (2,1)
-    const {
-        createGardenBlock,
-        createGardenStack,
-        updateGardenStack,
-        createRaisedBed,
-    } = await import('./gardensRepo');
-    const grassBlockIds: string[][] = [];
-    for (let x = -1; x < 3; x++) {
-        grassBlockIds[x] = [];
-        for (let y = -1; y < 2; y++) {
-            // Create base block
-            const blockId = await createGardenBlock(gardenId, 'Block_Grass');
-            grassBlockIds[x][y] = blockId;
-
-            // Create stack if not exists
-            await createGardenStack(gardenId, { x, y });
-
-            const blockIds = [blockId];
-            if ((x === 0 && y === 0) || (x === 1 && y === 0)) {
-                const raisedBedBlockId = await createGardenBlock(
-                    gardenId,
-                    'Raised_Bed',
-                );
-                await createRaisedBed({
-                    accountId,
-                    gardenId,
-                    blockId: raisedBedBlockId,
-                    status: 'new',
-                });
-                blockIds.push(raisedBedBlockId);
-            }
-
-            // Assign block to stack
-            await updateGardenStack(gardenId, { x, y, blocks: blockIds });
-        }
-    }
-}
-
 async function createUserAndAccount(
     userName: string,
     displayName?: string,
@@ -184,7 +125,7 @@ async function createUserAndAccount(
 ) {
     const userId = await createUser(userName, displayName);
     const accountId = await createAccount(timeZone);
-    await createDefaultGarden(accountId);
+    await createDefaultGardenForAccount({ accountId });
 
     // Link user to account
     await storage().insert(accountUsers).values({

@@ -17,6 +17,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { useCreateGarden } from '../hooks/useCreateGarden';
 import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRead';
 import { useRenameGarden } from '../hooks/useRenameGarden';
 import { useUserLogins } from '../hooks/useUserLogins';
@@ -94,7 +95,9 @@ export function OverviewModal() {
     const [notificationsFilter, setNotificationsFilter] = useState('unread');
     const markAllNotificationsRead = useMarkAllNotificationsRead();
     const renameGarden = useRenameGarden(currentGarden?.id);
+    const createGarden = useCreateGarden();
     const [gardenName, setGardenName] = useState('');
+    const [newGardenName, setNewGardenName] = useState('');
 
     useEffect(() => {
         setGardenName(currentGarden?.name ?? '');
@@ -107,6 +110,8 @@ export function OverviewModal() {
         !trimmedGardenName ||
         trimmedGardenName === currentGardenName.trim() ||
         renameGarden.isPending;
+    const trimmedNewGardenName = newGardenName.trim();
+    const isCreateDisabled = !trimmedNewGardenName || createGarden.isPending;
 
     const handleRenameGarden = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -123,6 +128,21 @@ export function OverviewModal() {
             await renameGarden.mutateAsync({ name: nextName });
         } catch (error) {
             console.error('Failed to rename garden', error);
+        }
+    };
+
+    const handleCreateGarden = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const nextName = newGardenName.trim();
+        if (!nextName) {
+            return;
+        }
+
+        try {
+            await createGarden.mutateAsync({ name: nextName });
+            setNewGardenName('');
+        } catch (error) {
+            console.error('Failed to create garden', error);
         }
     };
 
@@ -288,28 +308,23 @@ export function OverviewModal() {
                             </Typography>
                             {!currentGarden ? (
                                 <Card>
-                                    <CardContent noHeader>
-                                        <Typography level="body2">
-                                            Trenutno nemaš svoj vrt za
-                                            uređivanje.
-                                        </Typography>
-                                    </CardContent>
-                                </Card>
-                            ) : (
-                                <Card>
-                                    <form onSubmit={handleRenameGarden}>
+                                    <form onSubmit={handleCreateGarden}>
                                         <CardContent noHeader>
                                             <Stack spacing={3}>
+                                                <Typography level="body2">
+                                                    Trenutno nemaš svoj vrt za
+                                                    uređivanje.
+                                                </Typography>
                                                 <Stack spacing={1}>
                                                     <Typography level="body2">
-                                                        Promijeni ime svog vrta.
+                                                        Kreiraj novi vrt.
                                                     </Typography>
                                                     <Input
-                                                        name="gardenName"
-                                                        label="Naziv vrta"
-                                                        value={gardenName}
+                                                        name="newGardenName"
+                                                        label="Naziv novog vrta"
+                                                        value={newGardenName}
                                                         onChange={(event) =>
-                                                            setGardenName(
+                                                            setNewGardenName(
                                                                 event.target
                                                                     .value,
                                                             )
@@ -317,36 +332,138 @@ export function OverviewModal() {
                                                         placeholder="Unesite naziv vrta..."
                                                         required
                                                         disabled={
-                                                            renameGarden.isPending
+                                                            createGarden.isPending
                                                         }
                                                     />
                                                     <Typography level="body3">
-                                                        Ovo ime će biti
-                                                        prikazano u Gredici i
-                                                        podijeljeno s drugim
-                                                        igračima kada posjete
-                                                        tvoj vrt.
+                                                        Možeš napraviti više
+                                                        vrtova i prebacivati se
+                                                        između njih kada to bude
+                                                        podržano.
                                                     </Typography>
                                                 </Stack>
-                                                <CardActions className="justify-end">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="solid"
-                                                        type="submit"
-                                                        loading={
-                                                            renameGarden.isPending
-                                                        }
-                                                        disabled={
-                                                            isRenameDisabled
-                                                        }
-                                                    >
-                                                        Spremi
-                                                    </Button>
-                                                </CardActions>
                                             </Stack>
                                         </CardContent>
+                                        <CardActions className="justify-end">
+                                            <Button
+                                                size="sm"
+                                                variant="solid"
+                                                type="submit"
+                                                loading={
+                                                    createGarden.isPending
+                                                }
+                                                disabled={isCreateDisabled}
+                                            >
+                                                Kreiraj vrt
+                                            </Button>
+                                        </CardActions>
                                     </form>
                                 </Card>
+                            ) : (
+                                <Stack spacing={3}>
+                                    <Card>
+                                        <form onSubmit={handleRenameGarden}>
+                                            <CardContent noHeader>
+                                                <Stack spacing={3}>
+                                                    <Stack spacing={1}>
+                                                        <Typography level="body2">
+                                                            Promijeni ime svog
+                                                            vrta.
+                                                        </Typography>
+                                                        <Input
+                                                            name="gardenName"
+                                                            label="Naziv vrta"
+                                                            value={gardenName}
+                                                            onChange={(event) =>
+                                                                setGardenName(
+                                                                    event.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            placeholder="Unesite naziv vrta..."
+                                                            required
+                                                            disabled={
+                                                                renameGarden.isPending
+                                                            }
+                                                        />
+                                                        <Typography level="body3">
+                                                            Ovo ime će biti
+                                                            prikazano u Gredici
+                                                            i podijeljeno s
+                                                            drugim igračima
+                                                            kada posjete tvoj
+                                                            vrt.
+                                                        </Typography>
+                                                    </Stack>
+                                                    <CardActions className="justify-end">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="solid"
+                                                            type="submit"
+                                                            loading={
+                                                                renameGarden.isPending
+                                                            }
+                                                            disabled={
+                                                                isRenameDisabled
+                                                            }
+                                                        >
+                                                            Spremi
+                                                        </Button>
+                                                    </CardActions>
+                                                </Stack>
+                                            </CardContent>
+                                        </form>
+                                    </Card>
+                                    <Card>
+                                        <form onSubmit={handleCreateGarden}>
+                                            <CardContent noHeader>
+                                                <Stack spacing={3}>
+                                                    <Stack spacing={1}>
+                                                        <Typography level="body2">
+                                                            Kreiraj novi vrt.
+                                                        </Typography>
+                                                        <Input
+                                                            name="newGardenName"
+                                                            label="Naziv novog vrta"
+                                                            value={newGardenName}
+                                                            onChange={(event) =>
+                                                                setNewGardenName(
+                                                                    event.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            placeholder="Unesite naziv vrta..."
+                                                            required
+                                                            disabled={
+                                                                createGarden.isPending
+                                                            }
+                                                        />
+                                                        <Typography level="body3">
+                                                            Novi vrt će dobiti
+                                                            početni raspored
+                                                            blokova.
+                                                        </Typography>
+                                                    </Stack>
+                                                    <CardActions className="justify-end">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="solid"
+                                                            type="submit"
+                                                            loading={
+                                                                createGarden.isPending
+                                                            }
+                                                            disabled={
+                                                                isCreateDisabled
+                                                            }
+                                                        >
+                                                            Kreiraj vrt
+                                                        </Button>
+                                                    </CardActions>
+                                                </Stack>
+                                            </CardContent>
+                                        </form>
+                                    </Card>
+                                </Stack>
                             )}
                         </Stack>
                     )}
