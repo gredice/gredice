@@ -16,6 +16,7 @@ import { sectionsComponentRegistry } from '../components/shared/sectionsComponen
 import { FacebookCard } from '../components/social/FacebookCard';
 import { InstagramCard } from '../components/social/InstagramCard';
 import { WhatsAppCard } from '../components/social/WhatsAppCard';
+import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
 import { LandingGameScene } from './LandingGameScene';
 import { NewsletterSignUp } from './NewsletterSignUp';
@@ -269,19 +270,22 @@ export default function Home() {
                     />
                 </div>
                 <Container className="absolute top-0 left-0 right-0">
-                    <Card className="w-fit mt-4 border-tertiary border-b-4">
-                        <CardContent noHeader className="p-6 lg:pr-10">
-                            <Stack spacing={2}>
-                                <Typography level="h2">
-                                    Vrt po tvom 🌱
-                                </Typography>
-                                <Typography level="body1">
-                                    Dobiješ povrće iz svojih gredica - nit oro,
-                                    nit kopo!
-                                </Typography>
-                            </Stack>
-                        </CardContent>
-                    </Card>
+                    <div className="flex flex-col items-end sm:flex-row sm:items-start sm:justify-between gap-4 mt-4">
+                        <Card className="w-fit border-tertiary border-b-4">
+                            <CardContent noHeader className="p-6 lg:pr-10">
+                                <Stack spacing={2}>
+                                    <Typography level="h2">
+                                        Vrt po tvom 🌱
+                                    </Typography>
+                                    <Typography level="body1">
+                                        Dobiješ povrće iz svojih gredica - nit
+                                        oro, nit kopo!
+                                    </Typography>
+                                </Stack>
+                            </CardContent>
+                        </Card>
+                        <WinterModeToggle />
+                    </div>
                 </Container>
             </div>
             <Container>

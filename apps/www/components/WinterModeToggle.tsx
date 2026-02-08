@@ -1,9 +1,16 @@
 'use client';
 
+import { useCurrentUser } from '../hooks/useCurrentUser';
 import { isWinterSeason, useWinterMode } from './providers/WinterModeProvider';
 
 export function WinterModeToggle() {
     const { isWinter, toggle } = useWinterMode();
+    const { data: user, isLoading } = useCurrentUser();
+
+    // Only show in demo mode (not logged in)
+    if (isLoading || user) {
+        return null;
+    }
 
     // Only render during winter season (Dec 1 - Mar 20)
     if (!isWinterSeason()) {
@@ -16,7 +23,7 @@ export function WinterModeToggle() {
             <button
                 type="button"
                 disabled
-                className="relative inline-flex h-7 w-14 items-center rounded-full bg-gray-200 cursor-not-allowed opacity-50"
+                className="relative inline-flex h-7 w-14 items-center rounded-full bg-gray-200 cursor-not-allowed opacity-50 animate-scale-in"
                 role="switch"
                 aria-checked={false}
             >
@@ -31,7 +38,7 @@ export function WinterModeToggle() {
         <button
             type="button"
             onClick={toggle}
-            className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-1 focus:outline-primary focus:outline-offset-2 ${
+            className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-1 focus:outline-primary focus:outline-offset-2 animate-scale-in ${
                 isWinter
                     ? 'bg-blue-200 dark:bg-blue-400'
                     : 'bg-amber-200 dark:bg-amber-400'

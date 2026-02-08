@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import './globals.css';
 import * as Sentry from '@sentry/nextjs';
 import { PageNav } from '@signalco/ui/Nav';
-import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import Head from 'next/head';
@@ -11,7 +10,6 @@ import type { ReactNode } from 'react';
 import { Logotype } from '../components/Logotype';
 import { NavUserButton } from '../components/NavUserButton';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
-import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
 import { Footer } from './Footer';
 import { LayoutContainer } from './LayoutContainer';
@@ -102,12 +100,7 @@ export default async function RootLayout({
                                 ]}
                             >
                                 <div className="absolute bg-background/80 w-full inset-0 -z-10" />
-                                <Row spacing={1}>
-                                    <WinterModeToggle />
-                                    <NavUserButton
-                                        href={KnownPages.GardenApp}
-                                    />
-                                </Row>
+                                <NavUserButton href={KnownPages.GardenApp} />
                             </PageNav>
                         </div>
                         <main className="mt-16 relative">
