@@ -264,14 +264,21 @@ test('createDefaultGardenForAccount creates garden with default layout', async (
 
     // Verify blocks were created
     const blocks = await getGardenBlocks(gardenId);
-    assert.ok(blocks.length > 0, `Should have blocks created (found ${blocks.length})`);
-    
+    assert.ok(
+        blocks.length > 0,
+        `Should have blocks created (found ${blocks.length})`,
+    );
+
     const grassBlocks = blocks.filter((b) => b.name === 'Block_Grass');
     const raisedBedBlocks = blocks.filter((b) => b.name === 'Raised_Bed');
-    
+
     // 12 grass blocks + 2 raised beds = 14 total blocks
     assert.strictEqual(grassBlocks.length, 12, 'Should have 12 grass blocks');
-    assert.strictEqual(raisedBedBlocks.length, 2, 'Should have 2 raised bed blocks');
+    assert.strictEqual(
+        raisedBedBlocks.length,
+        2,
+        'Should have 2 raised bed blocks',
+    );
 
     // Verify raised beds were created at (0,0) and (1,0)
     const raisedBeds = await getRaisedBeds(gardenId);
@@ -282,8 +289,16 @@ test('createDefaultGardenForAccount creates garden with default layout', async (
     const stack10 = await getGardenStack(gardenId, { x: 1, y: 0 });
     assert.ok(stack00, 'Stack at (0,0) should exist');
     assert.ok(stack10, 'Stack at (1,0) should exist');
-    assert.strictEqual(stack00?.blocks.length, 2, 'Stack (0,0) should have 2 blocks (grass + raised bed)');
-    assert.strictEqual(stack10?.blocks.length, 2, 'Stack (1,0) should have 2 blocks (grass + raised bed)');
+    assert.strictEqual(
+        stack00?.blocks.length,
+        2,
+        'Stack (0,0) should have 2 blocks (grass + raised bed)',
+    );
+    assert.strictEqual(
+        stack10?.blocks.length,
+        2,
+        'Stack (1,0) should have 2 blocks (grass + raised bed)',
+    );
 });
 
 test('createDefaultGardenForAccount uses default name when not provided', async () => {
@@ -295,7 +310,11 @@ test('createDefaultGardenForAccount uses default name when not provided', async 
 
     const garden = await getGarden(gardenId);
     assert.ok(garden);
-    assert.strictEqual(garden?.name, 'Moj vrt', 'Should use default name "Moj vrt"');
+    assert.strictEqual(
+        garden?.name,
+        'Moj vrt',
+        'Should use default name "Moj vrt"',
+    );
 });
 
 test('createDefaultGardenForAccount trims whitespace from name', async () => {
@@ -310,5 +329,9 @@ test('createDefaultGardenForAccount trims whitespace from name', async () => {
 
     const garden = await getGarden(gardenId);
     assert.ok(garden);
-    assert.strictEqual(garden?.name, 'My Garden', 'Should trim whitespace from name');
+    assert.strictEqual(
+        garden?.name,
+        'My Garden',
+        'Should trim whitespace from name',
+    );
 });
