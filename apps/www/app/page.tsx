@@ -41,7 +41,7 @@ function PlantsStatisticsCard({
     value: string;
 }) {
     return (
-        <div className="rounded-2xl border border-tertiary border-b-4 bg-white p-6 grid grid-rows-[auto_auto_1fr] h-full">
+        <div className="rounded-2xl border border-tertiary border-b-4 bg-card p-6 grid grid-rows-[auto_auto_1fr] h-full">
             <CountingNumber
                 className="mb-4 text-5xl font-mono"
                 number={parseInt(value, 10)}
@@ -60,9 +60,9 @@ function PlantsStatisticsCard({
 function PlantsStatisticsLoading() {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="rounded-2xl border border-tertiary border-b-4 bg-white p-6 h-[182px] animate-pulse" />
-            <div className="rounded-2xl border border-tertiary border-b-4 bg-white p-6 h-[182px] animate-pulse" />
-            <div className="rounded-2xl border border-tertiary border-b-4 bg-white p-6 h-[182px] animate-pulse" />
+            <div className="rounded-2xl border border-tertiary border-b-4 bg-card p-6 h-[182px] animate-pulse" />
+            <div className="rounded-2xl border border-tertiary border-b-4 bg-card p-6 h-[182px] animate-pulse" />
+            <div className="rounded-2xl border border-tertiary border-b-4 bg-card p-6 h-[182px] animate-pulse" />
         </div>
     );
 }
@@ -243,7 +243,30 @@ export default function Home() {
                         width={1920}
                     />
                     <LandingGameScene />
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-background" />
+                    <div
+                        className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
+                        style={{
+                            background: `linear-gradient(
+                                to bottom,
+                                hsl(var(--background) / 0) 0%,
+                                hsl(var(--background) / 0.013) 8.1%,
+                                hsl(var(--background) / 0.049) 15.5%,
+                                hsl(var(--background) / 0.104) 22.5%,
+                                hsl(var(--background) / 0.175) 29%,
+                                hsl(var(--background) / 0.259) 35.3%,
+                                hsl(var(--background) / 0.352) 41.2%,
+                                hsl(var(--background) / 0.45) 47.1%,
+                                hsl(var(--background) / 0.55) 52.9%,
+                                hsl(var(--background) / 0.648) 58.8%,
+                                hsl(var(--background) / 0.741) 64.7%,
+                                hsl(var(--background) / 0.825) 71%,
+                                hsl(var(--background) / 0.896) 77.5%,
+                                hsl(var(--background) / 0.951) 84.5%,
+                                hsl(var(--background) / 0.987) 91.9%,
+                                hsl(var(--background)) 100%
+                            )`,
+                        }}
+                    />
                 </div>
                 <Container className="absolute top-0 left-0 right-0">
                     <Card className="w-fit mt-4 border-tertiary border-b-4">
@@ -299,7 +322,7 @@ export default function Home() {
                         <WhatsAppCard />
                         <InstagramCard />
                         <FacebookCard />
-                        <div className="bg-white border border-tertiary border-b-4 shadow p-6 rounded-xl lg:col-start-2 lg:row-start-1 lg:row-span-3">
+                        <div className="bg-card border border-tertiary border-b-4 shadow p-6 rounded-xl lg:col-start-2 lg:row-start-1 lg:row-span-3">
                             <NewsletterSignUp />
                         </div>
                     </div>

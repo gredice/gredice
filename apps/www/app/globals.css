@@ -49,6 +49,51 @@
         --text-selection: #fff;
     }
 
+    .dark {
+        --hue: 212;
+
+        --background: var(--hue) 16% 19%;
+        --foreground: var(--hue) 47% 92%;
+
+        --muted: var(--hue) 16% 10%;
+        --muted-foreground: var(--hue) 16% 98%;
+
+        --popover: var(--hue) 16% 19%;
+        --popover-foreground: var(--hue) 47% 89%;
+
+        --card: var(--hue) 16% 10%;
+        --card-transparent: var(--hue) 0% 0%;
+        --card-foreground: var(--hue) 17% 92%;
+
+        --border: var(--hue) 16% 25%;
+        --input: var(--hue) 31% 9%;
+
+        --primary: var(--hue) 16% 98%;
+        --primary-foreground: var(--hue) 40% 20%;
+
+        --secondary: var(--hue) 47% 25%;
+        --secondary-foreground: var(--hue) 10% 70%;
+
+        --tertiary: var(--hue) 16% 10%;
+        --tertiary-foreground: var(--hue) 10% 65%;
+
+        --accent: var(--hue) 20% 25%;
+        --accent-foreground: var(--hue) 47% 92%;
+
+        --destructive: 0 100% 50%;
+        --destructive-foreground: 210 40% 98%;
+
+        --ring: var(--hue) 20% 65%;
+
+        --radius: 0.5rem;
+
+        --light-display: none;
+        --dark-display: visible;
+
+        --bg-selection: hsl(137, 40%, 90%);
+        --text-selection: #000;
+    }
+
     * {
         @apply border-border;
     }

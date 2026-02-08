@@ -13,6 +13,7 @@ export function StyledHtml({
                 'max-w-none',
                 'prose prose-p:my-2 prose-sm prose-headings:font-normal prose-hr:my-6',
                 'text-primary prose-headings:text-primary',
+                'prose-a:text-primary',
                 className,
             )}
             {...rest}
