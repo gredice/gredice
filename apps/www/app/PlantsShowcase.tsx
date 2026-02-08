@@ -2,6 +2,7 @@ import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Navigate } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Row } from '@signalco/ui-primitives/Row';
+import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { getPlantsData } from '../lib/plants/getPlantsData';
 import { KnownPages } from '../src/KnownPages';
@@ -18,7 +19,7 @@ export async function PlantsShowcase() {
         ?.slice(0, 4);
     const extraPlants = entities
         ?.filter((plant) => !plants?.some((entry) => entry.id === plant.id))
-        ?.slice(0, 8);
+        ?.slice(0, 24);
 
     return (
         <div>
@@ -43,7 +44,7 @@ export async function PlantsShowcase() {
                 ))}
                 <Link
                     href={KnownPages.Plants}
-                    className="relative flex flex-col justify-center items-center overflow-hidden hover:border-muted-foreground/50 hover:bg-white/30 bg-white/70 rounded-lg border border-tertiary border-dashed p-4 transition-all"
+                    className="relative flex flex-col justify-center items-center overflow-hidden hover:border-muted-foreground/50 hover:bg-card/30 bg-card/70 rounded-lg border border-tertiary border-dashed p-4 transition-all"
                 >
                     <div className="absolute inset-0 grid grid-cols-4 gap-2 p-2 opacity-50">
                         {extraPlants?.map((plant) => (
@@ -60,9 +61,9 @@ export async function PlantsShowcase() {
                             </div>
                         ))}
                     </div>
-                    <div className="absolute inset-0 bg-white/60" />
+                    <div className="absolute inset-0 bg-card/60" />
                     <Row spacing={1} className="relative z-10">
-                        <span>Sve biljke</span>
+                        <Typography level="body1">Sve biljke</Typography>
                         <Navigate className="size-5 shrink-0" />
                     </Row>
                 </Link>
