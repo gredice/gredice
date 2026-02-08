@@ -107,6 +107,7 @@ export function GameScene({
                                     rotation={block.rotation}
                                     variant={block.variant}
                                     noRenderInView={instancedBlockNames}
+                                    noControl={noControls}
                                 />
                             )),
                         )}

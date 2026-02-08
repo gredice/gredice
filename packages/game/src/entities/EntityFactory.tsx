@@ -38,6 +38,10 @@ export function EntityFactory({
             return null;
         }
 
+        if (noControl) {
+            return <EntityComponent stack={stack} block={block} {...rest} />;
+        }
+
         const SelectableGroupWrapper =
             view !== 'closeup'
                 ? SelectableGroup
