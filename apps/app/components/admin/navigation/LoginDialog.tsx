@@ -1,18 +1,29 @@
 'use client';
 
+import {
+    FacebookLoginButton,
+    GoogleLoginButton,
+    useLastLoginProvider,
+} from '@gredice/ui/auth';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { Alert } from '@signalco/ui/Alert';
 import { Warning } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { Divider } from '@signalco/ui-primitives/Divider';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { useActionState } from 'react';
+import { useActionState, useCallback } from 'react';
 import { invalidatePage } from '../../../app/(actions)/sharedActions';
 import { queryClient } from '../../providers/ClientAppProvider';
 
 export function LoginDialog() {
+    const fetchLastLogin = useCallback(
+        () => fetch('/api/gredice/api/auth/last-login'),
+        [],
+    );
+    const lastLoginProvider = useLastLoginProvider(fetchLastLogin);
     const [error, submitAction, isPending] = useActionState(
         async (_previousState: unknown, formData: FormData) => {
             const emailValue = formData.get('email');
@@ -48,6 +59,20 @@ export function LoginDialog() {
         },
         null,
     );
+
+    const handleOAuthLogin = (provider: 'google' | 'facebook') => {
+        const callbackPath =
+            provider === 'google'
+                ? '/prijava/google-prijava/povratak'
+                : '/prijava/facebook-prijava/povratak';
+        const redirectUrl = `${window.location.origin}${callbackPath}`;
+        const authUrl = new URL(
+            `/api/gredice/api/auth/${provider}`,
+            window.location.origin,
+        );
+        authUrl.searchParams.set('redirect', redirectUrl);
+        window.location.href = authUrl.toString();
+    };
 
     return (
         <div className="h-[100vh] flex items-center justify-center">
@@ -95,6 +120,28 @@ export function LoginDialog() {
                             )}
                         </Stack>
                     </form>
+                    <Stack spacing={2}>
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <Divider />
+                            </div>
+                            <div className="relative flex justify-center">
+                                <span className="bg-background px-2 text-xs rounded-sm">
+                                    ili nastavi sa
+                                </span>
+                            </div>
+                        </div>
+                        <Stack spacing={1}>
+                            <FacebookLoginButton
+                                onClick={() => handleOAuthLogin('facebook')}
+                                lastUsed={lastLoginProvider === 'facebook'}
+                            />
+                            <GoogleLoginButton
+                                onClick={() => handleOAuthLogin('google')}
+                                lastUsed={lastLoginProvider === 'google'}
+                            />
+                        </Stack>
+                    </Stack>
                 </Stack>
             </Modal>
         </div>

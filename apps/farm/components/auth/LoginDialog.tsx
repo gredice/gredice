@@ -1,6 +1,10 @@
 'use client';
 
-import { FacebookLoginButton, GoogleLoginButton } from '@gredice/ui/auth';
+import {
+    FacebookLoginButton,
+    GoogleLoginButton,
+    useLastLoginProvider,
+} from '@gredice/ui/auth';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { Alert } from '@signalco/ui/Alert';
 import { Warning } from '@signalco/ui-icons';
@@ -12,14 +16,18 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useCallback } from 'react';
 import { queryClient } from '../providers/ClientAppProvider';
 
 type OAuthProvider = 'google' | 'facebook';
 
 export function LoginDialog() {
     const router = useRouter();
-    const [lastLoginProvider, setLastLoginProvider] = useState<OAuthProvider>();
+    const fetchLastLogin = useCallback(
+        () => fetch('/api/gredice/api/auth/last-login'),
+        [],
+    );
+    const lastLoginProvider = useLastLoginProvider(fetchLastLogin);
     const [error, submitAction, isPending] = useActionState<
         string | null,
         FormData
@@ -64,50 +72,6 @@ export function LoginDialog() {
             return 'Dogodila se neočekivana greška. Pokušaj ponovno kasnije.';
         }
     }, null);
-    useEffect(() => {
-        let isMounted = true;
-
-        const fetchLastLogin = async () => {
-            const delaysMs = [0, 250, 750];
-            for (const delayMs of delaysMs) {
-                if (delayMs > 0) {
-                    await new Promise((resolve) =>
-                        setTimeout(resolve, delayMs),
-                    );
-                }
-
-                try {
-                    const response = await fetch(
-                        '/api/gredice/api/auth/last-login',
-                    );
-                    if (!response.ok) {
-                        continue;
-                    }
-                    const data = await response.json();
-                    if (
-                        isMounted &&
-                        data &&
-                        typeof data === 'object' &&
-                        'provider' in data &&
-                        (data.provider === 'google' ||
-                            data.provider === 'facebook')
-                    ) {
-                        setLastLoginProvider(data.provider);
-                    }
-                    return;
-                } catch {
-                    // retry
-                }
-            }
-        };
-
-        void fetchLastLogin();
-
-        return () => {
-            isMounted = false;
-        };
-    }, []);
-
     const handleOAuthLogin = (provider: OAuthProvider) => {
         const callbackPath =
             provider === 'google'
