@@ -5,6 +5,7 @@ import { v4 as uuidV4 } from 'uuid';
 import { getEntitiesFormatted, getOperations, storage } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
 import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
+import { getFarms } from './farmsRepo';
 import {
     gardenBlocks,
     gardenStacks,
@@ -52,6 +53,61 @@ export async function createGarden(garden: InsertGarden) {
     );
 
     return createdGarden.id;
+}
+
+type CreateDefaultGardenOptions = {
+    accountId: string;
+    name?: string;
+};
+
+export async function createDefaultGardenForAccount({
+    accountId,
+    name,
+}: CreateDefaultGardenOptions) {
+    const farm = (await getFarms())[0];
+    if (!farm) {
+        throw new Error('No farm found');
+    }
+
+    const trimmedName = name?.trim();
+    const gardenId = await createGarden({
+        farmId: farm.id,
+        accountId,
+        name: trimmedName || 'Moj vrt',
+    });
+
+    // Assign 4x3 grid of grass blocks and two raised beds at center
+    // Grid: x = 0..3, y = 0..2
+    // Center positions for raised beds: (1,1) and (2,1)
+    for (let x = -1; x < 3; x++) {
+        for (let y = -1; y < 2; y++) {
+            // Create base block
+            const blockId = await createGardenBlock(gardenId, 'Block_Grass');
+
+            // Create stack if not exists
+            await createGardenStack(gardenId, { x, y });
+
+            const blockIds = [blockId];
+            if ((x === 0 && y === 0) || (x === 1 && y === 0)) {
+                const raisedBedBlockId = await createGardenBlock(
+                    gardenId,
+                    'Raised_Bed',
+                );
+                await createRaisedBed({
+                    accountId,
+                    gardenId,
+                    blockId: raisedBedBlockId,
+                    status: 'new',
+                });
+                blockIds.push(raisedBedBlockId);
+            }
+
+            // Assign block to stack
+            await updateGardenStack(gardenId, { x, y, blocks: blockIds });
+        }
+    }
+
+    return gardenId;
 }
 
 export async function getGardens() {

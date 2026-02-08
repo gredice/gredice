@@ -3,6 +3,7 @@ import {
     createEvent,
     createGardenBlock,
     createGardenStack,
+    createDefaultGardenForAccount,
     createRaisedBed,
     deleteGardenStack,
     getAccount,
@@ -58,6 +59,28 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     createdAt: garden.createdAt,
                 })),
             );
+        },
+    )
+    .post(
+        '/',
+        describeRoute({
+            description: 'Create a new garden for current account',
+        }),
+        zValidator(
+            'json',
+            z.object({
+                name: z.string().optional(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const { name } = context.req.valid('json');
+            const gardenId = await createDefaultGardenForAccount({
+                accountId,
+                name,
+            });
+            return context.json({ id: gardenId }, 201);
         },
     )
     .get(
