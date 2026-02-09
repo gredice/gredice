@@ -40,13 +40,13 @@ export default function MarkdownEmailTemplate({
                     <Divider className="my-[26px]" />
                     <Disclaimer>
                         Ovaj email je poslan pretplatniku na newsletter Gredice.
-                        Ukoliko ne želiš primati ovakve emailove, ukoliko se
-                        želiš odjaviti možeš to učiniti tako da nas kontaktiraš
-                        na{' '}
+                        Ukoliko se želiš odjaviti, kontaktiraj nas na{' '}
                         <Link href="mailto:info@gredice.com">
                             info@gredice.com
                         </Link>
-                        .
+                        , <Link href="https://gredice.link/wa">WhatsApp</Link>
+                        {' ili '}
+                        <Link href="https://gredice.link/ig">Instagram</Link>.
                     </Disclaimer>
                 </ContentCard>
             </Tailwind>

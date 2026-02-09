@@ -11,6 +11,7 @@ import { GrediceLogotype } from '../../components/GrediceLogotype';
 import { Header } from '../../components/Header';
 import { Paragraph } from '../../components/Paragraph';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { GrediceContactChannels } from '../../components/shared/GrediceContactChannels';
 import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 
 export interface DeliveryReadyEmailTemplateProps {
@@ -58,10 +59,7 @@ export default function DeliveryReadyEmailTemplate({
                             <strong>📍 Adresa:</strong> {addressLine}
                         </Paragraph>
                     ) : null}
-                    <Paragraph>
-                        Ako ti nešto iskrsne ili trebaš dodatne upute, javi nam
-                        se da na vrijeme prilagodimo dostavu.
-                    </Paragraph>
+                    <GrediceContactChannels />
                     <Section className="my-[32px] text-center">
                         <PrimaryButton href={manageUrl}>
                             Prikaži detalje

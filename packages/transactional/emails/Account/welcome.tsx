@@ -10,6 +10,7 @@ import { Divider } from '../../components/Divider';
 import { GrediceLogotype } from '../../components/GrediceLogotype';
 import { Paragraph } from '../../components/Paragraph';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { GrediceContactChannels } from '../../components/shared/GrediceContactChannels';
 import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 
 export interface WelcomeEmailTemplateProps {
@@ -62,19 +63,12 @@ export default function WelcomeEmailTemplate({
                             Posjeti svoj vrt
                         </PrimaryButton>
                     </Section>
-                    <Paragraph>
-                        Ako imaš pitanja ili trebaš pomoć, slobodno nam se javi
-                        - ovdje smo za tebe!
-                    </Paragraph>
+                    <GrediceContactChannels />
                     <Paragraph>Sretno vrtlarenje! 🌻</Paragraph>
                     <Paragraph>
                         Zeleni pozdrav,
                         <br />
                         Gredice tim
-                    </Paragraph>
-                    <Paragraph>
-                        P.S. Pratite nas i na društvenim mrežama za savjete,
-                        trikove i priče iz vrtova. 🌍
                     </Paragraph>
                     <Divider className="my-[26px]" />
                     <GrediceDisclaimer email={email} appDomain={appDomain} />

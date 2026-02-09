@@ -11,6 +11,7 @@ import { GrediceLogotype } from '../../components/GrediceLogotype';
 import { Header } from '../../components/Header';
 import { Paragraph } from '../../components/Paragraph';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { GrediceContactChannels } from '../../components/shared/GrediceContactChannels';
 import { GrediceDisclaimer } from '../../components/shared/GrediceDisclaimer';
 
 export interface DeliveryCancelledEmailTemplateProps {
@@ -67,10 +68,7 @@ export default function DeliveryCancelledEmailTemplate({
                             Upravljaj dostavama
                         </PrimaryButton>
                     </Section>
-                    <Paragraph>
-                        Ako trebaš pomoć ili želiš dodatne informacije, javi nam
-                        se iz aplikacije i rado ćemo pomoći.
-                    </Paragraph>
+                    <GrediceContactChannels />
                     <Paragraph>{appName} tim</Paragraph>
                     <Divider className="my-[26px]" />
                     <GrediceDisclaimer email={email} appDomain={appDomain} />

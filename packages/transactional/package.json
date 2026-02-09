@@ -9,6 +9,7 @@
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
+        "postinstall": "node ../../scripts/fix-preview-server-esbuild.mjs",
         "dev": "email dev -p 4001"
     },
     "devDependencies": {
