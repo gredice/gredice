@@ -11,6 +11,7 @@ import {
     User,
 } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { cx } from '@signalco/ui-primitives/cx';
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
@@ -30,6 +31,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { useGardens } from '../hooks/useGardens';
 import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRead';
 import { useNotifications } from '../hooks/useNotifications';
 import { KnownPages } from '../knownPages';
@@ -88,6 +90,7 @@ function ProfileCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
     const { data: currentUser } = useCurrentUser();
     const { data: currentGarden } = useCurrentGarden();
+    const { data: gardens, isLoading: gardensLoading } = useGardens();
     const { data: notifications } = useNotifications(currentUser?.id, false);
     const hasUnreadNotifications = notifications?.some(
         (notification) => !notification.readAt,
@@ -97,12 +100,24 @@ function ProfileCard() {
         <DropdownMenuContent className="w-80 p-4" align="end" sideOffset={12}>
             <ProfileInfo />
             <DropdownMenuSeparator className="my-4" />
-            {currentGarden ? (
-                <DropdownMenuItem className="gap-3 bg-muted">
-                    <Check className="size-4 shrink-0" />
-                    <Typography noWrap>{currentGarden.name}</Typography>
+            {gardensLoading && (
+                <DropdownMenuLabel>
+                    <Skeleton className="h-5 w-32 ml-6" />
+                </DropdownMenuLabel>
+            )}
+            {gardens?.map((garden) => (
+                <DropdownMenuItem key={garden.id} className="gap-3">
+                    <Check
+                        aria-hidden={garden.id !== currentGarden?.id}
+                        className={cx(
+                            'size-4 shrink-0 opacity-0',
+                            garden.id === currentGarden?.id && 'opacity-100',
+                        )}
+                    />
+                    <Typography noWrap>{garden.name}</Typography>
                 </DropdownMenuItem>
-            ) : (
+            ))}
+            {!gardensLoading && (gardens?.length ?? 0) <= 0 && (
                 <DropdownMenuLabel className="bg-muted">
                     Još nemaš svoj vrt
                 </DropdownMenuLabel>
@@ -165,6 +180,7 @@ function ProfileCard() {
 export function AccountHud() {
     const { data: currentUser } = useCurrentUser();
     const { data: currentGarden, isLoading } = useCurrentGarden();
+    const { data: gardens } = useGardens();
     const { data: notifications } = useNotifications(currentUser?.id, false);
     const hasUnreadNotifications = notifications?.some(
         (notification) => !notification.readAt,
@@ -194,17 +210,16 @@ export function AccountHud() {
                     {isLoading ? (
                         <Skeleton className="w-32 h-7" />
                     ) : (
+                        gardens &&
                         currentGarden && (
                             <SelectItems
                                 className="w-32"
                                 variant="plain"
                                 value={currentGarden.id.toString()}
-                                items={[
-                                    {
-                                        value: currentGarden.id.toString(),
-                                        label: currentGarden.name,
-                                    },
-                                ]}
+                                items={gardens?.map((garden) => ({
+                                    label: garden.name,
+                                    value: garden.id.toString(),
+                                }))}
                             />
                         )
                     )}
