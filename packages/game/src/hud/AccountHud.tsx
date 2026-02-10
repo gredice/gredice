@@ -37,6 +37,7 @@ import { useNotifications } from '../hooks/useNotifications';
 import { KnownPages } from '../knownPages';
 import { ProfileAvatar } from '../shared-ui/ProfileAvatar';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
+import { useCurrentGardenIdParam } from '../useUrlState';
 import { HudCard } from './components/HudCard';
 import { NotificationList } from './NotificationList';
 
@@ -181,6 +182,7 @@ export function AccountHud() {
     const { data: currentUser } = useCurrentUser();
     const { data: currentGarden, isLoading } = useCurrentGarden();
     const { data: gardens } = useGardens();
+    const [, setSelectedGardenId] = useCurrentGardenIdParam();
     const { data: notifications } = useNotifications(currentUser?.id, false);
     const hasUnreadNotifications = notifications?.some(
         (notification) => !notification.readAt,
@@ -216,6 +218,12 @@ export function AccountHud() {
                                 className="w-32"
                                 variant="plain"
                                 value={currentGarden.id.toString()}
+                                onValueChange={(value) => {
+                                    const gardenId = Number.parseInt(value, 10);
+                                    // Set to null when selecting the first garden (default)
+                                    const isDefault = gardens?.[0]?.id === gardenId;
+                                    setSelectedGardenId(isDefault ? null : gardenId);
+                                }}
                                 items={gardens?.map((garden) => ({
                                     label: garden.name,
                                     value: garden.id.toString(),
