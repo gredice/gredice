@@ -3,15 +3,20 @@ import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { Vector3 } from 'three';
 import type { Stack } from '../types/Stack';
 import { useGameState, type WinterMode } from '../useGameState';
+import { useCurrentGardenIdParam } from '../useUrlState';
 import { useGardens, useGardensKeys } from './useGardens';
 
 const GARDEN_POSITION_X_OFFSET = -1;
 const GARDEN_POSITION_Z_OFFSET = -1;
 
-export const currentGardenKeys = (winterMode: WinterMode) => [
+export const currentGardenKeys = (
+    winterMode: WinterMode,
+    gardenId?: number | null,
+) => [
     ...useGardensKeys,
     'current',
     winterMode,
+    ...(gardenId != null ? [gardenId] : []),
 ];
 
 function mockGarden(winterMode: WinterMode) {
@@ -265,8 +270,15 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
     const isMock = useGameState((state) => state.isMock);
     const winterMode = useGameState((state) => state.winterMode);
     const { data: gardens } = useGardens(isMock);
+    const [selectedGardenId] = useCurrentGardenIdParam();
+
+    // Use the selected garden ID from URL, or default to the first garden
+    const currentGardenId =
+        selectedGardenId ??
+        (gardens && gardens.length > 0 ? gardens[0].id : null);
+
     return useQuery({
-        queryKey: currentGardenKeys(winterMode),
+        queryKey: currentGardenKeys(winterMode, currentGardenId),
         queryFn: async () => {
             if (isMock) {
                 console.debug('Using mock garden data');
@@ -286,9 +298,11 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 return null;
             }
 
-            // Make first garden the current one
-            // TODO: Change this to use stored garden ID when multiple gardens are supported
-            const currentGardenId = gardens[0].id;
+            if (currentGardenId == null) {
+                console.error('No garden ID available.');
+                return null;
+            }
+
             const currentGardenResponse = await client().api.gardens[
                 ':gardenId'
             ].$get({
