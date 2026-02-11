@@ -27,14 +27,14 @@ export function authValidator(roles: string[]) {
 
             const refreshed = await doUseRefreshToken(refreshToken);
             if (!refreshed) {
-                await clearRefreshCookie(context);
+                clearRefreshCookie(context);
                 console.warn('Unauthorized: invalid refresh token');
                 return context.newResponse('Unauthorized', { status: 401 });
             }
 
             const dbUser = await getUser(refreshed.userId);
             if (!dbUser) {
-                await clearRefreshCookie(context);
+                clearRefreshCookie(context);
                 console.warn('Unauthorized: user not found for refresh token');
                 return context.newResponse('Unauthorized', { status: 401 });
             }

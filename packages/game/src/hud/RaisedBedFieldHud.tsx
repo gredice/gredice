@@ -8,6 +8,7 @@ import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import { useGameState } from '../useGameState';
 import { useRemoveRaisedBedCloseupParam } from '../useRaisedBedCloseup';
+import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
 import { RaisedBedIdentifierIcon } from './components/RaisedBedIdentifierIcon';
 import { RaisedBedField } from './raisedBed/RaisedBedField';
 import { RaisedBedFieldSuggestions } from './raisedBed/RaisedBedFieldSuggestions';
@@ -31,9 +32,9 @@ export function RaisedBedFieldHud(_props: {
     const { mutate: removeRaisedBedCloseupParam } =
         useRemoveRaisedBedCloseupParam();
     const closeupBlock = useGameState((state) => state.closeupBlock);
-    const raisedBed = currentGarden?.raisedBeds.find(
-        (bed) => bed.blockId === closeupBlock?.id,
-    );
+    const raisedBed = closeupBlock
+        ? findRaisedBedByBlockId(currentGarden, closeupBlock.id)
+        : null;
 
     return (
         <div

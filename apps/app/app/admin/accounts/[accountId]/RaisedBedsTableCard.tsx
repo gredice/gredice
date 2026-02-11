@@ -147,7 +147,11 @@ export async function RaisedBedsTableCard({
                                                                 field.plantStatus ===
                                                                 'sprouted',
                                                         ).length /
-                                                            9) *
+                                                            Math.max(
+                                                                bed.fields
+                                                                    .length,
+                                                                9,
+                                                            )) *
                                                         100,
                                                 },
                                             ]}

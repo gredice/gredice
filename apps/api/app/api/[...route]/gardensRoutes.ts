@@ -4,7 +4,6 @@ import {
     createEvent,
     createGardenBlock,
     createGardenStack,
-    createRaisedBed,
     deleteGardenStack,
     getAccount,
     getAccountGardens,
@@ -30,10 +29,8 @@ import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
-import {
-    calculateRaisedBedsValidity,
-    updateRaisedBedsOrientation,
-} from '../../../lib/garden/raisedBedsService';
+import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
+import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
     type AuthVariables,
     authValidator,
@@ -143,43 +140,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // }));
 
             // Stacks: group by x then by y
-            const raisedBedsToCreate: string[] = [];
-            const stacksToClean: {
-                x: number;
-                y: number;
-                validBlocks: string[];
-            }[] = [];
             const stacks = garden.stacks.reduce(
                 (acc, stack) => {
                     if (!acc[stack.positionX]) {
                         acc[stack.positionX] = {};
                     }
-                    const invalidBlockIds: string[] = [];
                     acc[stack.positionX][stack.positionY] = stack.blocks
                         .map((blockId) => {
                             const block = blocks.find(
                                 (block) => block.id === blockId,
                             );
-                            if (!block) {
-                                console.warn(
-                                    'Block not found - removing from stack',
-                                    { blockId, stack },
-                                );
-                                invalidBlockIds.push(blockId);
-                                return null;
-                            }
-
-                            // Verify block has raised bed attached to it if it's type is raised bed
-                            if (block.name === 'Raised_Bed') {
-                                const assignedRaisedBed =
-                                    garden.raisedBeds.find(
-                                        (raisedBed) =>
-                                            raisedBed.blockId === blockId,
-                                    );
-                                if (!assignedRaisedBed) {
-                                    raisedBedsToCreate.push(blockId);
-                                }
-                            }
+                            if (!block) return null;
 
                             return {
                                 id: blockId,
@@ -194,15 +165,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         rotation?: number | null;
                         variant?: number | null;
                     }[];
-                    if (invalidBlockIds.length > 0) {
-                        stacksToClean.push({
-                            x: stack.positionX,
-                            y: stack.positionY,
-                            validBlocks: stack.blocks.filter(
-                                (id) => !invalidBlockIds.includes(id),
-                            ),
-                        });
-                    }
                     return acc;
                 },
                 {} as Record<
@@ -219,68 +181,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 >,
             );
 
-            // Remove invalid blocks from stacks
-            if (stacksToClean.length > 0) {
-                for (const { x, y, validBlocks } of stacksToClean) {
-                    try {
-                        await updateGardenStack(gardenIdNumber, {
-                            x,
-                            y,
-                            blocks: validBlocks,
-                        });
-                        console.info('Removed invalid blocks from stack', {
-                            gardenId: garden.id,
-                            x,
-                            y,
-                        });
-                    } catch (error) {
-                        console.error('Error cleaning stack', {
-                            gardenId: garden.id,
-                            x,
-                            y,
-                            error,
-                        });
-                    }
-                }
-            }
-
-            // Create missing raised beds
-            let freshGarden: NonNullable<
-                Awaited<ReturnType<typeof getGarden>>
-            > = garden;
-            if (raisedBedsToCreate.length > 0) {
-                for (const blockId of raisedBedsToCreate) {
-                    await createRaisedBed({
-                        blockId,
-                        gardenId: garden.id,
-                        accountId: garden.accountId,
-                    });
-                    console.info('Created missing raised bed', {
-                        gardenId: garden.id,
-                        blockId,
-                    });
-                }
-                const refreshed = await getGarden(gardenIdNumber); // Refresh garden to include new raised beds
-                if (!refreshed) {
-                    throw new Error(
-                        `Garden ${gardenIdNumber} not found after creating raised beds`,
-                    );
-                }
-                freshGarden = refreshed;
-            }
-
             return context.json({
-                id: freshGarden.id,
-                name: freshGarden.name,
-                latitude: freshGarden.farm.latitude,
-                longitude: freshGarden.farm.longitude,
+                id: garden.id,
+                name: garden.name,
+                latitude: garden.farm.latitude,
+                longitude: garden.farm.longitude,
                 stacks,
                 raisedBeds: (() => {
                     const validityMap = calculateRaisedBedsValidity(
-                        freshGarden.raisedBeds,
-                        freshGarden.stacks,
+                        garden.raisedBeds,
+                        garden.stacks,
                     );
-                    return freshGarden.raisedBeds.map((raisedBed) => ({
+                    return garden.raisedBeds.map((raisedBed) => ({
                         id: raisedBed.id,
                         name: raisedBed.name,
                         physicalId: raisedBed.physicalId,
@@ -293,7 +205,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         isValid: validityMap.get(raisedBed.id) ?? false,
                     }));
                 })(),
-                createdAt: freshGarden.createdAt,
+                createdAt: garden.createdAt,
             });
         },
     )
@@ -800,11 +712,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
             }
 
-            // Update raised beds orientation after stack changes
-            const updatedGarden = await getGarden(gardenIdNumber);
-            if (updatedGarden) {
-                await updateRaisedBedsOrientation(updatedGarden);
-            }
+            await synchronizeGardenStacksAndRaisedBeds(gardenIdNumber);
 
             return context.json(null, 200);
         },
@@ -846,6 +754,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     result.errorStatus as ContentfulStatusCode,
                 );
             }
+
+            await synchronizeGardenStacksAndRaisedBeds(gardenIdNumber);
 
             return context.json({ reward: result.reward }, 200);
         },
@@ -1014,11 +924,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            // Update raised beds orientation after stack changes
-            const updatedGarden = await getGarden(gardenIdNumber);
-            if (updatedGarden) {
-                await updateRaisedBedsOrientation(updatedGarden);
-            }
+            await synchronizeGardenStacksAndRaisedBeds(gardenIdNumber);
 
             return context.json(null, 200);
         },

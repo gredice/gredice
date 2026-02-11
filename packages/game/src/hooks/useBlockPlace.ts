@@ -9,6 +9,12 @@ import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'blockPlace'];
 
+function getSecondaryRaisedBedPosition(
+    position: [x: number, y: number],
+): [x: number, y: number] {
+    return [position[0] + 1, position[1]];
+}
+
 export function useBlockPlace() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
@@ -28,77 +34,111 @@ export function useBlockPlace() {
                 throw new Error('No garden selected');
             }
 
-            // Generate block
-            const response = await client().api.gardens[
-                ':gardenId'
-            ].blocks.$post({
-                param: {
-                    gardenId: garden?.id.toString(),
-                },
-                json: {
-                    blockName: blockName,
-                },
-            });
-            if (response.status !== 200) {
-                const body = await response.text();
-                // TODO: Display error message (insuficient funds, etc)
-                throw new Error(`Failed to create block: ${body}`);
-            }
-            const { id } = await response.json();
+            const createBlock = async () => {
+                const response = await client().api.gardens[
+                    ':gardenId'
+                ].blocks.$post({
+                    param: {
+                        gardenId: garden.id.toString(),
+                    },
+                    json: {
+                        blockName: blockName,
+                    },
+                });
+                if (response.status !== 200) {
+                    const body = await response.text();
+                    throw new Error(`Failed to create block: ${body}`);
+                }
+                const { id } = await response.json();
+                return id;
+            };
 
-            // Place block
+            const primaryBlockId = await createBlock();
+
+            if (blockName !== 'Raised_Bed') {
+                await client().api.gardens[':gardenId'].stacks.$patch({
+                    param: {
+                        gardenId: garden.id.toString(),
+                    },
+                    json: [
+                        {
+                            op: 'add',
+                            path: `/${position[0]}/${position[1]}/-`,
+                            value: primaryBlockId,
+                        },
+                    ],
+                });
+
+                return [primaryBlockId];
+            }
+
+            const secondaryBlockId = await createBlock();
+            const secondaryPosition = getSecondaryRaisedBedPosition(position);
+
             await client().api.gardens[':gardenId'].stacks.$patch({
                 param: {
-                    gardenId: garden?.id.toString(),
+                    gardenId: garden.id.toString(),
                 },
                 json: [
                     {
                         op: 'add',
                         path: `/${position[0]}/${position[1]}/-`,
-                        value: id,
+                        value: primaryBlockId,
+                    },
+                    {
+                        op: 'add',
+                        path: `/${secondaryPosition[0]}/${secondaryPosition[1]}/-`,
+                        value: secondaryBlockId,
                     },
                 ],
             });
 
-            return id;
+            return [primaryBlockId, secondaryBlockId];
         },
         onMutate: async ({ blockName, position }) => {
             if (!garden) {
                 return;
             }
 
-            const newBlock = { id: uuidv4(), name: blockName, rotation: 0 };
-            const stack = garden.stacks.find(
-                (stack) =>
-                    stack.position.x === position[0] &&
-                    stack.position.z === position[1],
-            );
-            const updatedStacks = stack
-                ? garden.stacks.map((stack) => {
-                      if (
-                          stack.position.x === position[0] &&
-                          stack.position.z === position[1]
-                      ) {
-                          return {
-                              ...stack,
-                              blocks: [...stack.blocks, newBlock],
-                          };
-                      }
-                      return stack;
-                  })
-                : [
-                      ...garden.stacks,
-                      {
-                          position: new Vector3(position[0], 0, position[1]),
-                          blocks: [newBlock],
-                      },
-                  ];
+            const primaryBlock = { id: uuidv4(), name: blockName, rotation: 0 };
+            const nextStacks = [...garden.stacks];
+
+            const ensureStack = (coordinates: [number, number]) => {
+                const existingStack = nextStacks.find(
+                    (candidate) =>
+                        candidate.position.x === coordinates[0] &&
+                        candidate.position.z === coordinates[1],
+                );
+                if (existingStack) {
+                    return existingStack;
+                }
+
+                const createdStack = {
+                    position: new Vector3(coordinates[0], 0, coordinates[1]),
+                    blocks: [] as (typeof primaryBlock)[],
+                };
+                nextStacks.push(createdStack);
+                return createdStack;
+            };
+
+            ensureStack(position).blocks.push(primaryBlock);
+
+            if (blockName === 'Raised_Bed') {
+                const secondaryBlock = {
+                    id: uuidv4(),
+                    name: blockName,
+                    rotation: 0,
+                };
+                const secondaryPosition =
+                    getSecondaryRaisedBedPosition(position);
+                ensureStack(secondaryPosition).blocks.push(secondaryBlock);
+            }
 
             const previousItem = await handleOptimisticUpdate(
                 queryClient,
                 gardenQueryKey,
                 {
-                    stacks: [...updatedStacks],
+                    stacks: [...nextStacks],
                 },
             );
 
@@ -113,7 +153,6 @@ export function useBlockPlace() {
             }
         },
         onSettled: async () => {
-            // Invalidate queries
             await queryClient.invalidateQueries({
                 queryKey: currentAccountKeys,
             });
