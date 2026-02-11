@@ -6,13 +6,17 @@ import { getEntitiesFormatted, getOperations, storage } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
 import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
 import {
+    events,
     gardenBlocks,
     gardenStacks,
     gardens,
     type InsertGarden,
     type InsertRaisedBed,
+    notifications,
+    operations,
     type RaisedBedOrientation,
     raisedBeds,
+    shoppingCartItems,
     type UpdateGarden,
     type UpdateGardenBlock,
     type UpdateGardenStack,
@@ -620,6 +624,161 @@ export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
         .update(raisedBeds)
         .set(raisedBed)
         .where(eq(raisedBeds.id, raisedBed.id));
+}
+
+export async function mergeRaisedBeds(
+    targetRaisedBedId: number,
+    sourceRaisedBedId: number,
+) {
+    if (targetRaisedBedId === sourceRaisedBedId) {
+        throw new Error('Cannot merge the same raised bed');
+    }
+
+    const db = storage();
+
+    await db.transaction(async (tx) => {
+        const [targetRaisedBed, sourceRaisedBed] = await Promise.all([
+            tx.query.raisedBeds.findFirst({
+                where: and(
+                    eq(raisedBeds.id, targetRaisedBedId),
+                    eq(raisedBeds.isDeleted, false),
+                ),
+            }),
+            tx.query.raisedBeds.findFirst({
+                where: and(
+                    eq(raisedBeds.id, sourceRaisedBedId),
+                    eq(raisedBeds.isDeleted, false),
+                ),
+            }),
+        ]);
+
+        if (!targetRaisedBed) {
+            throw new Error(`Target raised bed ${targetRaisedBedId} not found`);
+        }
+        if (!sourceRaisedBed) {
+            throw new Error(`Source raised bed ${sourceRaisedBedId} not found`);
+        }
+
+        if (targetRaisedBed.gardenId !== sourceRaisedBed.gardenId) {
+            throw new Error('Raised beds must belong to the same garden');
+        }
+
+        const [targetFields, sourceFields] = await Promise.all([
+            tx.query.raisedBedFields.findMany({
+                where: and(
+                    eq(raisedBedFields.raisedBedId, targetRaisedBedId),
+                    eq(raisedBedFields.isDeleted, false),
+                ),
+            }),
+            tx.query.raisedBedFields.findMany({
+                where: and(
+                    eq(raisedBedFields.raisedBedId, sourceRaisedBedId),
+                    eq(raisedBedFields.isDeleted, false),
+                ),
+            }),
+        ]);
+
+        const nextPositionIndex =
+            targetFields.reduce(
+                (max, field) => Math.max(max, field.positionIndex),
+                -1,
+            ) + 1;
+
+        const sourceFieldMappings = sourceFields
+            .sort((a, b) => a.positionIndex - b.positionIndex)
+            .map((field, index) => ({
+                fieldId: field.id,
+                previousPositionIndex: field.positionIndex,
+                nextPositionIndex: nextPositionIndex + index,
+            }));
+
+        for (const mapping of sourceFieldMappings) {
+            await tx
+                .update(raisedBedFields)
+                .set({
+                    raisedBedId: targetRaisedBedId,
+                    positionIndex: mapping.nextPositionIndex,
+                })
+                .where(eq(raisedBedFields.id, mapping.fieldId));
+        }
+
+        await Promise.all([
+            tx
+                .update(operations)
+                .set({ raisedBedId: targetRaisedBedId })
+                .where(eq(operations.raisedBedId, sourceRaisedBedId)),
+            tx
+                .update(notifications)
+                .set({ raisedBedId: targetRaisedBedId })
+                .where(eq(notifications.raisedBedId, sourceRaisedBedId)),
+            tx
+                .update(shoppingCartItems)
+                .set({ raisedBedId: targetRaisedBedId })
+                .where(eq(shoppingCartItems.raisedBedId, sourceRaisedBedId)),
+            tx
+                .update(raisedBedSensors)
+                .set({ raisedBedId: targetRaisedBedId })
+                .where(eq(raisedBedSensors.raisedBedId, sourceRaisedBedId)),
+            tx
+                .update(events)
+                .set({ aggregateId: targetRaisedBedId.toString() })
+                .where(
+                    and(
+                        eq(events.aggregateId, sourceRaisedBedId.toString()),
+                        inArray(events.type, [
+                            knownEventTypes.raisedBeds.create,
+                            knownEventTypes.raisedBeds.place,
+                            knownEventTypes.raisedBeds.delete,
+                            knownEventTypes.raisedBeds.abandon,
+                        ]),
+                    ),
+                ),
+        ]);
+
+        for (const mapping of sourceFieldMappings) {
+            await tx
+                .update(events)
+                .set({
+                    aggregateId: `${targetRaisedBedId.toString()}|${mapping.nextPositionIndex.toString()}`,
+                })
+                .where(
+                    and(
+                        eq(
+                            events.aggregateId,
+                            `${sourceRaisedBedId.toString()}|${mapping.previousPositionIndex.toString()}`,
+                        ),
+                        inArray(events.type, [
+                            knownEventTypes.raisedBedFields.create,
+                            knownEventTypes.raisedBedFields.delete,
+                            knownEventTypes.raisedBedFields.plantPlace,
+                            knownEventTypes.raisedBedFields.plantSchedule,
+                            knownEventTypes.raisedBedFields.plantUpdate,
+                            knownEventTypes.raisedBedFields.plantReplaceSort,
+                        ]),
+                    ),
+                );
+        }
+
+        await tx
+            .update(raisedBeds)
+            .set({
+                isDeleted: true,
+                physicalId: null,
+                gardenId: null,
+                accountId: null,
+                blockId: null,
+            })
+            .where(eq(raisedBeds.id, sourceRaisedBedId));
+
+        if (!targetRaisedBed.physicalId && sourceRaisedBed.physicalId) {
+            await tx
+                .update(raisedBeds)
+                .set({
+                    physicalId: sourceRaisedBed.physicalId,
+                })
+                .where(eq(raisedBeds.id, targetRaisedBedId));
+        }
+    });
 }
 
 export async function deleteRaisedBed(raisedBedId: number) {

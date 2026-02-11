@@ -85,7 +85,7 @@ export function calculateRaisedBedsValidity(
                 }
             }
         }
-        const isValid = component.length === 2;
+        const isValid = component.length <= 2;
         for (const id of component) {
             validity.set(id, isValid);
         }

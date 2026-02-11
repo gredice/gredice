@@ -2,6 +2,7 @@ import { BlockImage } from '@gredice/ui/BlockImage';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
+import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { getPositionIndexFromGrid } from '../../utils/raisedBedOrientation';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { RaisedBedFieldItemEmpty } from './RaisedBedFieldItemEmpty';
@@ -27,7 +28,6 @@ function RaisedBedFieldItem({
     );
     const hasField = Boolean(field);
 
-    // Loading state
     if (isGardenLoading) {
         return (
             <RaisedBedFieldItemButton
@@ -37,7 +37,6 @@ function RaisedBedFieldItem({
         );
     }
 
-    // Empty/in-cart state
     if (!hasField) {
         return (
             <RaisedBedFieldItemEmpty
@@ -48,7 +47,6 @@ function RaisedBedFieldItem({
         );
     }
 
-    // Planted state
     return (
         <RaisedBedFieldItemPlanted
             raisedBedId={raisedBedId}
@@ -60,31 +58,59 @@ function RaisedBedFieldItem({
 export function useNeighboringRaisedBeds(raisedBedId: number) {
     const { data: garden } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    const raisedBedBlockId = raisedBed?.blockId;
-    const raisedBedStack = garden?.stacks.find((stack) =>
-        stack.blocks.some((block) => block.id === raisedBedBlockId),
-    );
-    const raisedBedPosition = raisedBedStack?.position;
-    const raisedBedIndex = raisedBedStack?.blocks.findIndex(
-        (block) => block.id === raisedBedBlockId,
-    );
-    return garden?.raisedBeds.filter((bed) => {
-        const stack = garden?.stacks.find((stack) =>
-            stack.blocks.some((block) => block.id === bed.blockId),
-        );
-        if (!stack) return false;
-        const position = stack.position;
-        const index = stack.blocks.findIndex(
-            (block) => block.id === bed.blockId,
-        );
-        if (raisedBedIndex !== index) return false;
-        // Check if the position is adjacent (left, right, above, below)
-        return (
-            (position.x === raisedBedPosition?.x &&
-                Math.abs(position.z - raisedBedPosition?.z) === 1) || // Above or below
-            (position.z === raisedBedPosition?.z &&
-                Math.abs(position.x - raisedBedPosition?.x) === 1) // Left or right
-        );
+    if (!garden || !raisedBed?.blockId) {
+        return [];
+    }
+
+    const blockIds = getRaisedBedBlockIds(garden, raisedBedId);
+    const neighboringBlockIds = blockIds
+        .map((blockId) =>
+            garden.stacks
+                .flatMap((stack) =>
+                    stack.blocks.map((block, index) => ({
+                        block,
+                        index,
+                        x: stack.position.x,
+                        z: stack.position.z,
+                    })),
+                )
+                .find((candidate) => candidate.block.id === blockId),
+        )
+        .filter(Boolean);
+
+    return garden.raisedBeds.filter((bed) => {
+        if (!bed.blockId || bed.id === raisedBedId) {
+            return false;
+        }
+
+        const bedPlacement = garden.stacks
+            .flatMap((stack) =>
+                stack.blocks.map((block, index) => ({
+                    block,
+                    index,
+                    x: stack.position.x,
+                    z: stack.position.z,
+                })),
+            )
+            .find((candidate) => candidate.block.id === bed.blockId);
+
+        if (!bedPlacement) {
+            return false;
+        }
+
+        return neighboringBlockIds.some((placement) => {
+            if (!placement) {
+                return false;
+            }
+
+            return (
+                placement.index === bedPlacement.index &&
+                ((placement.x === bedPlacement.x &&
+                    Math.abs(placement.z - bedPlacement.z) === 1) ||
+                    (placement.z === bedPlacement.z &&
+                        Math.abs(placement.x - bedPlacement.x) === 1))
+            );
+        });
     });
 }
 
@@ -136,33 +162,57 @@ export function RaisedBedField({
         );
     }
 
+    const blockCount =
+        garden && raisedBed
+            ? Math.max(getRaisedBedBlockIds(garden, raisedBed.id).length, 1)
+            : 1;
+    const totalColumns = blockCount * 3;
+    const rows = Array.from({ length: 3 }, (_, index) => ({
+        id: `row-${index.toString()}`,
+        index,
+    }));
+    const columns = Array.from({ length: totalColumns }, (_, index) => ({
+        id: `col-${index.toString()}`,
+        index,
+    }));
+
     return (
         <>
             <div></div>
             <div className="size-full grid grid-rows-3">
-                {[...Array(3)].map((_, rowIndex) => (
+                {rows.map((row) => (
                     <div
-                        // biome-ignore lint/suspicious/noArrayIndexKey: Allowed, matrix
-                        key={`${rowIndex}`}
-                        className="size-full grid grid-cols-3"
+                        key={row.id}
+                        className="size-full"
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: `repeat(${totalColumns}, minmax(0, 1fr))`,
+                        }}
                     >
-                        {[...Array(3)].map((_, colIndex) => (
-                            <div
-                                // biome-ignore lint/suspicious/noArrayIndexKey: Allowed, matrix
-                                key={`${rowIndex}-${colIndex}`}
-                                className="size-full p-0.5"
-                            >
-                                <RaisedBedFieldItem
-                                    gardenId={gardenId}
-                                    raisedBedId={raisedBedId}
-                                    positionIndex={getPositionIndexFromGrid(
-                                        rowIndex,
-                                        colIndex,
-                                        orientation,
-                                    )}
-                                />
-                            </div>
-                        ))}
+                        {columns.map((column) => {
+                            const blockIndex = Math.floor(column.index / 3);
+                            const columnWithinBlock = column.index % 3;
+                            const positionIndex =
+                                getPositionIndexFromGrid(
+                                    row.index,
+                                    columnWithinBlock,
+                                    orientation,
+                                ) +
+                                blockIndex * 9;
+
+                            return (
+                                <div
+                                    key={`${row.id}-${column.id}`}
+                                    className="size-full p-0.5"
+                                >
+                                    <RaisedBedFieldItem
+                                        gardenId={gardenId}
+                                        raisedBedId={raisedBedId}
+                                        positionIndex={positionIndex}
+                                    />
+                                </div>
+                            );
+                        })}
                     </div>
                 ))}
             </div>

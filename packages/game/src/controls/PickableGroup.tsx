@@ -28,6 +28,10 @@ import {
     getStackHeight,
     useStackHeight,
 } from '../utils/getStackHeight';
+import {
+    findAttachedRaisedBedBlockId,
+    findRaisedBedByBlockId,
+} from '../utils/raisedBedBlocks';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 
@@ -108,7 +112,7 @@ export function PickableGroup({
     // Recycle block functionality
     const [isOverRecycler, setIsOverRecycler] = useState(false);
     const recycleBlock = useBlockRecycle();
-    const raisedBed = garden?.raisedBeds.find((rb) => rb.blockId === block.id);
+    const raisedBed = findRaisedBedByBlockId(garden, block.id);
     const canRecycleRaisedBed = (raisedBed?.status ?? 'new') === 'new';
     const canRecycle = canRecycleRaisedBed;
 
@@ -117,7 +121,7 @@ export function PickableGroup({
         dragSpringsApi.set({ internalPosition: [0, 0, 0] });
         setIsBlocked(false);
         setIsOverRecycler(false);
-    }, [dragSpringsApi.set]);
+    }, [dragSpringsApi]);
 
     const isDraggingWorld = useGameState((state) => state.isDragging);
     useEffect(() => {
@@ -131,10 +135,10 @@ export function PickableGroup({
         }
     }, [
         isDraggingWorld,
-        dragSpringsApi.start,
         block.id,
         pickupBlock?.id,
         setPickupBlock,
+        dragSpringsApi,
     ]);
 
     const rect = domElement.getClientRects()[0];
@@ -241,10 +245,63 @@ export function PickableGroup({
                         .setY(hoveredStackHeight + currentStackHeight),
                     12,
                 );
+                const sourcePosition = {
+                    x: stack.position.x,
+                    z: stack.position.z,
+                };
+                const destinationPosition = {
+                    x: stack.position.x + relative.x,
+                    z: stack.position.z + relative.z,
+                };
+
+                const attachedRaisedBedBlockId =
+                    block.name === 'Raised_Bed' && garden
+                        ? findAttachedRaisedBedBlockId(garden.stacks, block.id)
+                        : null;
+                const attachedPlacement = attachedRaisedBedBlockId
+                    ? garden?.stacks
+                          .flatMap((candidateStack) =>
+                              candidateStack.blocks.map(
+                                  (candidateBlock, candidateBlockIndex) => ({
+                                      candidateStack,
+                                      candidateBlock,
+                                      candidateBlockIndex,
+                                  }),
+                              ),
+                          )
+                          .find(
+                              (candidate) =>
+                                  candidate.candidateBlock.id ===
+                                  attachedRaisedBedBlockId,
+                          )
+                    : null;
+
                 await moveBlock.mutateAsync({
-                    sourcePosition: stack.position,
-                    destinationPosition: stack.position.clone().add(relative),
+                    sourcePosition,
+                    destinationPosition,
                     blockIndex: stack.blocks.indexOf(block),
+                    sourceBlockId: block.id,
+                    attached: attachedPlacement
+                        ? {
+                              sourcePosition: {
+                                  x: attachedPlacement.candidateStack.position
+                                      .x,
+                                  z: attachedPlacement.candidateStack.position
+                                      .z,
+                              },
+                              destinationPosition: {
+                                  x:
+                                      attachedPlacement.candidateStack.position
+                                          .x + relative.x,
+                                  z:
+                                      attachedPlacement.candidateStack.position
+                                          .z + relative.z,
+                              },
+                              blockIndex: attachedPlacement.candidateBlockIndex,
+                              sourceBlockId:
+                                  attachedPlacement.candidateBlock.id,
+                          }
+                        : undefined,
                 });
                 if (pickupBlock?.id === block.id) {
                     setPickupBlock(null);

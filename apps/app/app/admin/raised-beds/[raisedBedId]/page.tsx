@@ -17,6 +17,7 @@ import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
+import { MergeRaisedBedsForm } from './MergeRaisedBedsForm';
 import { OperationsTableCard } from './OperationsTableCard';
 import { RaisedBedPhysicalIdInput } from './RaisedBedPhysicalIdInput';
 import { RaisedBedStatusSelect } from './RaisedBedStatusSelect';
@@ -78,6 +79,14 @@ export default async function RaisedBedPage({
                         <Field
                             name="Datum kreiranja"
                             value={raisedBed?.createdAt}
+                        />
+                        <Field
+                            name="Spajanje gredica"
+                            value={
+                                <MergeRaisedBedsForm
+                                    targetRaisedBedId={raisedBed.id}
+                                />
+                            }
                         />
                     </FieldSet>
                 </Stack>
