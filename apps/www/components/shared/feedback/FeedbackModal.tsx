@@ -45,7 +45,7 @@ export function FeedbackModal({
                 topic,
                 data: user
                     ? {
-                          ...data,
+                          ...(data ?? {}),
                           userId: user.id,
                       }
                     : data,
