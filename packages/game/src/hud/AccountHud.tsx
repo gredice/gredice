@@ -221,8 +221,11 @@ export function AccountHud() {
                                 onValueChange={(value) => {
                                     const gardenId = Number.parseInt(value, 10);
                                     // Set to null when selecting the first garden (default)
-                                    const isDefault = gardens?.[0]?.id === gardenId;
-                                    setSelectedGardenId(isDefault ? null : gardenId);
+                                    const isDefault =
+                                        gardens?.[0]?.id === gardenId;
+                                    setSelectedGardenId(
+                                        isDefault ? null : gardenId,
+                                    );
                                 }}
                                 items={gardens?.map((garden) => ({
                                     label: garden.name,

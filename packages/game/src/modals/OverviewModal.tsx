@@ -2,8 +2,7 @@ import { client } from '@gredice/client';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Approved, CompanyFacebook, Empty, Security } from '@signalco/ui-icons';
 import { Button, type ButtonProps } from '@signalco/ui-primitives/Button';
-import { Card, CardActions, CardContent } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
+import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { List } from '@signalco/ui-primitives/List';
 import { ListItem } from '@signalco/ui-primitives/ListItem';
 import { Modal } from '@signalco/ui-primitives/Modal';
@@ -13,13 +12,11 @@ import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
-import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
-import { useCreateGarden } from '../hooks/useCreateGarden';
+import { useGardens } from '../hooks/useGardens';
 import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRead';
-import { useRenameGarden } from '../hooks/useRenameGarden';
 import { useUserLogins } from '../hooks/useUserLogins';
 import { NotificationList } from '../hud/NotificationList';
 import { AchievementsOverview } from '../shared-ui/achievements/AchievementsOverview';
@@ -28,6 +25,8 @@ import { DeliveryRequestsSection } from '../shared-ui/delivery/DeliveryRequestsS
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
 import { DailyRewardOverview } from '../shared-ui/sunflowers/DailyRewardOverview';
 import { SunflowersList } from '../shared-ui/sunflowers/SunflowersList';
+import { CreateGardenModal } from './components/CreateGardenModal';
+import { GardenNameCard } from './components/GardenNameCard';
 import { SoundSettingsCard } from './components/SoundSettingsCard';
 import { TimeZoneSettingsCard } from './components/TimeZoneSettingsCard';
 import { UserBirthdayCard } from './components/UserBirthdayCard';
@@ -91,60 +90,24 @@ export function OverviewModal() {
     const [settingsMode, setProfileModalOpen] = useSearchParam('pregled');
     const currentUser = useCurrentUser();
     const { data: currentAccount } = useCurrentAccount();
-    const { data: currentGarden } = useCurrentGarden();
+    const { data: gardens } = useGardens();
     const [notificationsFilter, setNotificationsFilter] = useState('unread');
     const markAllNotificationsRead = useMarkAllNotificationsRead();
-    const renameGarden = useRenameGarden(currentGarden?.id);
-    const createGarden = useCreateGarden();
-    const [gardenName, setGardenName] = useState('');
-    const [newGardenName, setNewGardenName] = useState('');
+    const [selectedGardenId, setSelectedGardenId] = useState<
+        string | undefined
+    >(undefined);
+    const [createGardenModalOpen, setCreateGardenModalOpen] = useState(false);
+
+    // Select current garden by default when gardens load
+    const selectedGarden =
+        gardens?.find((g) => g.id.toString() === selectedGardenId) ??
+        gardens?.[0];
 
     useEffect(() => {
-        setGardenName(currentGarden?.name ?? '');
-    }, [currentGarden?.name]);
-
-    const currentGardenName = currentGarden?.name ?? '';
-    const trimmedGardenName = gardenName.trim();
-    const isRenameDisabled =
-        !currentGarden?.id ||
-        !trimmedGardenName ||
-        trimmedGardenName === currentGardenName.trim() ||
-        renameGarden.isPending;
-    const trimmedNewGardenName = newGardenName.trim();
-    const isCreateDisabled = !trimmedNewGardenName || createGarden.isPending;
-
-    const handleRenameGarden = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (!currentGarden?.id) {
-            return;
+        if (!selectedGardenId && gardens && gardens.length > 0) {
+            setSelectedGardenId(gardens[0].id.toString());
         }
-
-        const nextName = gardenName.trim();
-        if (!nextName) {
-            return;
-        }
-
-        try {
-            await renameGarden.mutateAsync({ name: nextName });
-        } catch (error) {
-            console.error('Failed to rename garden', error);
-        }
-    };
-
-    const handleCreateGarden = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        const nextName = newGardenName.trim();
-        if (!nextName) {
-            return;
-        }
-
-        try {
-            await createGarden.mutateAsync({ name: nextName });
-            setNewGardenName('');
-        } catch (error) {
-            console.error('Failed to create garden', error);
-        }
-    };
+    }, [gardens, selectedGardenId]);
 
     // Security
     const { data: userLogins, isLoading: userLoginsLoading } = useUserLogins(
@@ -303,168 +266,63 @@ export function OverviewModal() {
                     )}
                     {settingsMode === 'vrt' && (
                         <Stack spacing={4}>
-                            <Typography level="h4" className="hidden md:block">
-                                🏡 Vrt
-                            </Typography>
-                            {!currentGarden ? (
-                                <Card>
-                                    <form onSubmit={handleCreateGarden}>
-                                        <CardContent noHeader>
-                                            <Stack spacing={3}>
-                                                <Typography level="body2">
-                                                    Trenutno nemaš svoj vrt za
-                                                    uređivanje.
-                                                </Typography>
-                                                <Stack spacing={1}>
-                                                    <Typography level="body2">
-                                                        Kreiraj novi vrt.
-                                                    </Typography>
-                                                    <Input
-                                                        name="newGardenName"
-                                                        label="Naziv novog vrta"
-                                                        value={newGardenName}
-                                                        onChange={(event) =>
-                                                            setNewGardenName(
-                                                                event.target
-                                                                    .value,
-                                                            )
-                                                        }
-                                                        placeholder="Unesite naziv vrta..."
-                                                        required
-                                                        disabled={
-                                                            createGarden.isPending
-                                                        }
-                                                    />
-                                                    <Typography level="body3">
-                                                        Možeš napraviti više
-                                                        vrtova i prebacivati se
-                                                        između njih kada to bude
-                                                        podržano.
-                                                    </Typography>
-                                                </Stack>
-                                            </Stack>
-                                        </CardContent>
-                                        <CardActions className="justify-end">
-                                            <Button
-                                                size="sm"
-                                                variant="solid"
-                                                type="submit"
-                                                loading={
-                                                    createGarden.isPending
-                                                }
-                                                disabled={isCreateDisabled}
-                                            >
-                                                Kreiraj vrt
-                                            </Button>
-                                        </CardActions>
-                                    </form>
-                                </Card>
-                            ) : (
+                            <Row justifyContent="space-between">
+                                <Typography
+                                    level="h4"
+                                    className="hidden md:block"
+                                >
+                                    🏡 Vrt
+                                </Typography>
+                                <Button
+                                    size="sm"
+                                    variant="solid"
+                                    onClick={() =>
+                                        setCreateGardenModalOpen(true)
+                                    }
+                                >
+                                    + Kreiraj vrt
+                                </Button>
+                            </Row>
+                            {gardens && gardens.length > 0 ? (
                                 <Stack spacing={3}>
-                                    <Card>
-                                        <form onSubmit={handleRenameGarden}>
-                                            <CardContent noHeader>
-                                                <Stack spacing={3}>
-                                                    <Stack spacing={1}>
-                                                        <Typography level="body2">
-                                                            Promijeni ime svog
-                                                            vrta.
-                                                        </Typography>
-                                                        <Input
-                                                            name="gardenName"
-                                                            label="Naziv vrta"
-                                                            value={gardenName}
-                                                            onChange={(event) =>
-                                                                setGardenName(
-                                                                    event.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            placeholder="Unesite naziv vrta..."
-                                                            required
-                                                            disabled={
-                                                                renameGarden.isPending
-                                                            }
-                                                        />
-                                                        <Typography level="body3">
-                                                            Ovo ime će biti
-                                                            prikazano u Gredici
-                                                            i podijeljeno s
-                                                            drugim igračima
-                                                            kada posjete tvoj
-                                                            vrt.
-                                                        </Typography>
-                                                    </Stack>
-                                                    <CardActions className="justify-end">
-                                                        <Button
-                                                            size="sm"
-                                                            variant="solid"
-                                                            type="submit"
-                                                            loading={
-                                                                renameGarden.isPending
-                                                            }
-                                                            disabled={
-                                                                isRenameDisabled
-                                                            }
-                                                        >
-                                                            Spremi
-                                                        </Button>
-                                                    </CardActions>
-                                                </Stack>
-                                            </CardContent>
-                                        </form>
-                                    </Card>
-                                    <Card>
-                                        <form onSubmit={handleCreateGarden}>
-                                            <CardContent noHeader>
-                                                <Stack spacing={3}>
-                                                    <Stack spacing={1}>
-                                                        <Typography level="body2">
-                                                            Kreiraj novi vrt.
-                                                        </Typography>
-                                                        <Input
-                                                            name="newGardenName"
-                                                            label="Naziv novog vrta"
-                                                            value={newGardenName}
-                                                            onChange={(event) =>
-                                                                setNewGardenName(
-                                                                    event.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            placeholder="Unesite naziv vrta..."
-                                                            required
-                                                            disabled={
-                                                                createGarden.isPending
-                                                            }
-                                                        />
-                                                        <Typography level="body3">
-                                                            Novi vrt će dobiti
-                                                            početni raspored
-                                                            blokova.
-                                                        </Typography>
-                                                    </Stack>
-                                                    <CardActions className="justify-end">
-                                                        <Button
-                                                            size="sm"
-                                                            variant="solid"
-                                                            type="submit"
-                                                            loading={
-                                                                createGarden.isPending
-                                                            }
-                                                            disabled={
-                                                                isCreateDisabled
-                                                            }
-                                                        >
-                                                            Kreiraj vrt
-                                                        </Button>
-                                                    </CardActions>
-                                                </Stack>
-                                            </CardContent>
-                                        </form>
-                                    </Card>
+                                    {gardens.length > 1 && (
+                                        <SelectItems
+                                            value={
+                                                selectedGardenId ??
+                                                gardens[0]?.id.toString()
+                                            }
+                                            onValueChange={setSelectedGardenId}
+                                            items={gardens.map((g) => ({
+                                                label: g.name,
+                                                value: g.id.toString(),
+                                            }))}
+                                        />
+                                    )}
+                                    {selectedGarden && (
+                                        <GardenNameCard
+                                            gardenId={selectedGarden.id}
+                                            gardenName={selectedGarden.name}
+                                            gardenCreatedAt={
+                                                selectedGarden.createdAt
+                                            }
+                                        />
+                                    )}
                                 </Stack>
+                            ) : (
+                                <Card>
+                                    <CardContent noHeader>
+                                        <Typography level="body2">
+                                            Trenutno nemaš svoj vrt za
+                                            uređivanje. Kreiraj novi vrt
+                                            koristeći gumb iznad.
+                                        </Typography>
+                                    </CardContent>
+                                </Card>
                             )}
+                            <CreateGardenModal
+                                open={createGardenModalOpen}
+                                onOpenChange={setCreateGardenModalOpen}
+                            />
                         </Stack>
                     )}
                     {settingsMode === 'sigurnost' && (
