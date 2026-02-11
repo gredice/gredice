@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { Block } from '../types/Block';
+import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
 import { GiftBoxSelectableGroup } from './GiftBoxSelectableGroup';
 import { RaisedBedSelectableGroup } from './RaisedBedSelectableGroup';
 
@@ -22,9 +23,7 @@ export function SelectableGroup({
         return <>{children}</>;
     }
 
-    const raisedBed = garden?.raisedBeds.find(
-        (bed) => bed.blockId === block.id,
-    );
+    const raisedBed = findRaisedBedByBlockId(garden, block.id);
     if (!raisedBed) {
         return <>{children}</>;
     }

@@ -98,7 +98,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // }));
 
             // Stacks: group by x then by y
-            const raisedBedsToCreate: string[] = [];
             const stacks = garden.stacks.reduce(
                 (acc, stack) => {
                     if (!acc[stack.positionX]) {
@@ -109,26 +108,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             const block = blocks.find(
                                 (block) => block.id === blockId,
                             );
-                            // const blockPlaceEvent = blockPlaceEvents.find(event => event.data.id === blockId)?.data.name;
-                            // if (!blockPlaceEvent) {
-                            //     console.warn('Block place event not found', { blockId });
-                            //     return null;
-                            // }
                             if (!block) {
                                 console.warn('Block not found', { blockId });
                                 return null;
-                            }
-
-                            // Verify block has raised bed attached to it if it's type is raised bed
-                            if (block.name === 'Raised_Bed') {
-                                const assignedRaisedBed =
-                                    garden.raisedBeds.find(
-                                        (raisedBed) =>
-                                            raisedBed.blockId === blockId,
-                                    );
-                                if (!assignedRaisedBed) {
-                                    raisedBedsToCreate.push(blockId);
-                                }
                             }
 
                             return {
@@ -160,11 +142,68 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 >,
             );
 
+            const existingRaisedBedBlockIds = new Set(
+                garden.raisedBeds
+                    .map((raisedBed) => raisedBed.blockId)
+                    .filter((blockId): blockId is string => Boolean(blockId)),
+            );
+
+            const raisedBedPlacements = Object.entries(stacks).flatMap(
+                ([x, stackRows]) =>
+                    Object.entries(stackRows).flatMap(([y, stackBlocks]) =>
+                        stackBlocks
+                            .map((block, index) => ({
+                                block,
+                                index,
+                                x: Number(x),
+                                y: Number(y),
+                            }))
+                            .filter(({ block }) => block.name === 'Raised_Bed'),
+                    ),
+            );
+
+            const raisedBedsToCreate = new Set<string>();
+            for (const placement of raisedBedPlacements) {
+                if (existingRaisedBedBlockIds.has(placement.block.id)) {
+                    continue;
+                }
+
+                const adjacentRaisedBed = raisedBedPlacements.find(
+                    (candidate) =>
+                        candidate.block.id !== placement.block.id &&
+                        candidate.index === placement.index &&
+                        ((candidate.x === placement.x &&
+                            Math.abs(candidate.y - placement.y) === 1) ||
+                            (candidate.y === placement.y &&
+                                Math.abs(candidate.x - placement.x) === 1)),
+                );
+
+                if (adjacentRaisedBed) {
+                    if (
+                        existingRaisedBedBlockIds.has(
+                            adjacentRaisedBed.block.id,
+                        )
+                    ) {
+                        continue;
+                    }
+
+                    const canonicalBlockId = [
+                        placement.block.id,
+                        adjacentRaisedBed.block.id,
+                    ].sort((left, right) => left.localeCompare(right))[0];
+                    if (canonicalBlockId !== placement.block.id) {
+                        continue;
+                    }
+                }
+
+                raisedBedsToCreate.add(placement.block.id);
+            }
+
             // Create missing raised beds
             let freshGarden: NonNullable<
                 Awaited<ReturnType<typeof getGarden>>
             > = garden;
-            if (raisedBedsToCreate.length > 0) {
+            if (raisedBedsToCreate.size > 0) {
                 for (const blockId of raisedBedsToCreate) {
                     await createRaisedBed({
                         blockId,
