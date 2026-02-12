@@ -70,10 +70,10 @@ export function GameScene({
     useRaisedBedCloseup();
 
     // Prelaod all required data
-    const { isLoading: blockDataPending } = useBlockData();
-    const { data: garden, isLoading: gardenPending } = useCurrentGarden();
-    const { isLoading: weatherPending } = useWeatherNow(!noWeather);
-    const isLoading = gardenPending || blockDataPending || weatherPending;
+    const { isLoading: blockDataLoading } = useBlockData();
+    const { data: garden, isLoading: gardenLoading } = useCurrentGarden();
+    const { isLoading: weatherLoading } = useWeatherNow(!noWeather);
+    const isLoading = gardenLoading || blockDataLoading || weatherLoading;
     if (isLoading) {
         return <GardenLoadingIndicator />;
     }

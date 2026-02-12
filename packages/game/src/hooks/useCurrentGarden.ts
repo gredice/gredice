@@ -291,7 +291,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
             }
 
             if (gardens.length <= 0) {
-                console.error(
+                console.warn(
                     'No gardens found. Number of available gardens:',
                     gardens?.length,
                 );

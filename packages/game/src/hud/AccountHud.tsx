@@ -7,6 +7,7 @@ import {
     ExternalLink,
     Inbox,
     LogOut,
+    MapPinHouse,
     Sprout,
     User,
 } from '@signalco/ui-icons';
@@ -119,9 +120,18 @@ function ProfileCard() {
                 </DropdownMenuItem>
             ))}
             {!gardensLoading && (gardens?.length ?? 0) <= 0 && (
-                <DropdownMenuLabel className="bg-muted">
-                    Još nemaš svoj vrt
-                </DropdownMenuLabel>
+                <>
+                    <DropdownMenuLabel className="text-muted-foreground text-center">
+                        Još nemaš svoj vrt
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem
+                        className="gap-3"
+                        onClick={() => setProfileModalOpen('vrt')}
+                    >
+                        <MapPinHouse className="size-4" />
+                        <span>Pregled tvojih vrtovima</span>
+                    </DropdownMenuItem>
+                </>
             )}
             <DropdownMenuSeparator className="my-4" />
             <DropdownMenuItem
@@ -187,6 +197,13 @@ export function AccountHud() {
     const hasUnreadNotifications = notifications?.some(
         (notification) => !notification.readAt,
     );
+
+    console.log('AccountHud render', {
+        currentUser,
+        currentGarden,
+        gardens,
+        notifications,
+    });
 
     return (
         <HudCard open position="floating" className="p-0.5 md:px-2 static">
