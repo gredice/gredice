@@ -90,6 +90,7 @@ function NotificationsCard() {
 
 function ProfileCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
+    const [, setSelectedGardenId] = useCurrentGardenIdParam();
     const { data: currentUser } = useCurrentUser();
     const { data: currentGarden } = useCurrentGarden();
     const { data: gardens, isLoading: gardensLoading } = useGardens();
@@ -108,7 +109,11 @@ function ProfileCard() {
                 </DropdownMenuLabel>
             )}
             {gardens?.map((garden) => (
-                <DropdownMenuItem key={garden.id} className="gap-3">
+                <DropdownMenuItem
+                    key={garden.id}
+                    className="gap-3"
+                    onClick={() => setSelectedGardenId(garden.id)}
+                >
                     <Check
                         aria-hidden={garden.id !== currentGarden?.id}
                         className={cx(
