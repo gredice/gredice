@@ -75,15 +75,27 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
         });
     }
 
+    function handleNotificationSelected() {
+        if (!readAt) {
+            setNotificationRead.mutate({
+                id,
+                read: true,
+                readWhere: 'game',
+            });
+        }
+
+        if (computedLinkUrl !== '#') {
+            router.push(computedLinkUrl as Route);
+        }
+    }
+
     const isRead = Boolean(readAt);
 
     return (
         <div className="relative">
             <ListItem
                 nodeId={id}
-                onSelected={() => {
-                    router.push(computedLinkUrl as Route);
-                }}
+                onSelected={handleNotificationSelected}
                 className="rounded-none p-4"
                 label={
                     <Row spacing={2}>
