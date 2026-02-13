@@ -1,6 +1,7 @@
 import {
     createSerializer,
     parseAsBoolean,
+    parseAsInteger,
     parseAsString,
     useQueryState,
 } from 'nuqs';
@@ -31,6 +32,11 @@ export function useGiftBoxParam() {
     return useQueryState('poklon-kutija', parseAsString);
 }
 
+// Current garden ID parameter (Croatian: "vrt" = garden)
+export function useCurrentGardenIdParam() {
+    return useQueryState('vrt', parseAsInteger);
+}
+
 // Serializer for building URLs with query params
 export const urlStateSerializer = createSerializer({
     uredivanje: parseAsBoolean,
@@ -38,4 +44,5 @@ export const urlStateSerializer = createSerializer({
     ruksak: parseAsBoolean,
     gredica: parseAsString,
     'poklon-kutija': parseAsString,
+    vrt: parseAsInteger,
 });

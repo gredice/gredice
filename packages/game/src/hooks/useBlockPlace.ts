@@ -13,7 +13,7 @@ export function useBlockPlace() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
     const winterMode = useGameState((state) => state.winterMode);
-    const gardenQueryKey = currentGardenKeys(winterMode);
+    const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
 
     return useMutation({
         mutationKey,
