@@ -316,11 +316,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 for (const y of yPositions) {
                     const blocks = rootStacks[x][y];
                     stacks.push({
-                        position: new Vector3(
-                            Number(x) + GARDEN_POSITION_X_OFFSET,
-                            0,
-                            Number(y) + GARDEN_POSITION_Z_OFFSET,
-                        ),
+                        position: new Vector3(Number(x), 0, Number(y)),
                         blocks: blocks
                             ? blocks.map((block) => {
                                   return {
