@@ -40,42 +40,31 @@ export function CreateGardenModal({
 
     return (
         <Modal open={open} onOpenChange={onOpenChange} title="Kreiraj novi vrt">
-            <Card>
-                <form onSubmit={handleCreateGarden}>
-                    <CardContent noHeader>
-                        <Stack spacing={3}>
-                            <Stack spacing={1}>
-                                <Typography level="body2">
-                                    Kreiraj novi vrt. Novi vrt će dobiti početni
-                                    raspored blokova.
-                                </Typography>
-                                <Input
-                                    name="newGardenName"
-                                    label="Naziv novog vrta"
-                                    value={newGardenName}
-                                    onChange={(event) =>
-                                        setNewGardenName(event.target.value)
-                                    }
-                                    placeholder="Unesite naziv vrta..."
-                                    required
-                                    disabled={createGarden.isPending}
-                                />
-                            </Stack>
-                        </Stack>
-                    </CardContent>
-                    <CardActions className="justify-end">
-                        <Button
-                            size="sm"
-                            variant="solid"
-                            type="submit"
-                            loading={createGarden.isPending}
-                            disabled={isCreateDisabled}
-                        >
-                            Kreiraj vrt
-                        </Button>
-                    </CardActions>
-                </form>
-            </Card>
+            <form onSubmit={handleCreateGarden}>
+                <Stack spacing={2}>
+                    <Input
+                        name="newGardenName"
+                        label="Naziv novog vrta"
+                        className="bg-card"
+                        value={newGardenName}
+                        onChange={(event) =>
+                            setNewGardenName(event.target.value)
+                        }
+                        placeholder="Unesite naziv vrta..."
+                        required
+                        disabled={createGarden.isPending}
+                    />
+                    <Button
+                        size="sm"
+                        variant="solid"
+                        type="submit"
+                        loading={createGarden.isPending}
+                        disabled={isCreateDisabled}
+                    >
+                        Kreiraj vrt
+                    </Button>
+                </Stack>
+            </form>
         </Modal>
     );
 }
