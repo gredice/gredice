@@ -29,6 +29,7 @@ export function useTimeSlots(params?: {
             }
             return await response.json();
         },
+        staleTime: 1000 * 60 * 60, // 1 hour
     });
 }
 

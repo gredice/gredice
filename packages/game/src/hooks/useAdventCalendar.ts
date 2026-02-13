@@ -13,7 +13,7 @@ export function useAdventCalendar(enabled?: boolean) {
                 await client().api.occasions.advent['calendar-2025'].$get();
             return res.json();
         },
-        staleTime: 1000 * 60 * 5,
+        staleTime: 1000 * 60 * 5, // 5 minutes
         enabled: Boolean(currentUser) && enabled !== false,
     });
 }

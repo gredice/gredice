@@ -11,6 +11,6 @@ export function useDailyReward() {
                 await client().api.accounts.current.sunflowers.daily.$get();
             return res.json();
         },
-        staleTime: 1000 * 60 * 5,
+        staleTime: 1000 * 60 * 5, // 5 minutes
     });
 }

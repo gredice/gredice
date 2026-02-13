@@ -342,7 +342,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 raisedBeds: garden.raisedBeds,
             };
         },
-        enabled: isMock || Boolean(gardens),
         staleTime: 1000 * 60, // 1m
+        enabled: isMock || Boolean(gardens),
     });
 }
