@@ -99,23 +99,28 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Stacks: group by x then by y
             const raisedBedsToCreate: string[] = [];
+            const stacksToClean: {
+                x: number;
+                y: number;
+                validBlocks: string[];
+            }[] = [];
             const stacks = garden.stacks.reduce(
                 (acc, stack) => {
                     if (!acc[stack.positionX]) {
                         acc[stack.positionX] = {};
                     }
+                    const invalidBlockIds: string[] = [];
                     acc[stack.positionX][stack.positionY] = stack.blocks
                         .map((blockId) => {
                             const block = blocks.find(
                                 (block) => block.id === blockId,
                             );
-                            // const blockPlaceEvent = blockPlaceEvents.find(event => event.data.id === blockId)?.data.name;
-                            // if (!blockPlaceEvent) {
-                            //     console.warn('Block place event not found', { blockId });
-                            //     return null;
-                            // }
                             if (!block) {
-                                console.warn('Block not found', { blockId });
+                                console.warn(
+                                    'Block not found - removing from stack',
+                                    { blockId, stack },
+                                );
+                                invalidBlockIds.push(blockId);
                                 return null;
                             }
 
@@ -144,6 +149,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         rotation?: number | null;
                         variant?: number | null;
                     }[];
+                    if (invalidBlockIds.length > 0) {
+                        stacksToClean.push({
+                            x: stack.positionX,
+                            y: stack.positionY,
+                            validBlocks: stack.blocks.filter(
+                                (id) => !invalidBlockIds.includes(id),
+                            ),
+                        });
+                    }
                     return acc;
                 },
                 {} as Record<
@@ -159,6 +173,31 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     >
                 >,
             );
+
+            // Remove invalid blocks from stacks
+            if (stacksToClean.length > 0) {
+                for (const { x, y, validBlocks } of stacksToClean) {
+                    try {
+                        await updateGardenStack(gardenIdNumber, {
+                            x,
+                            y,
+                            blocks: validBlocks,
+                        });
+                        console.info('Removed invalid blocks from stack', {
+                            gardenId: garden.id,
+                            x,
+                            y,
+                        });
+                    } catch (error) {
+                        console.error('Error cleaning stack', {
+                            gardenId: garden.id,
+                            x,
+                            y,
+                            error,
+                        });
+                    }
+                }
+            }
 
             // Create missing raised beds
             let freshGarden: NonNullable<
@@ -464,6 +503,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
             async function addStack(path: string, value: string | string[]) {
                 const stackPosition = parsePath(path);
 
+                console.debug(
+                    `Adding stack at position x:${stackPosition.x} y:${stackPosition.y} index:${stackPosition.index} append:${stackPosition.append} with value:`,
+                    value,
+                );
+
                 // Create stack if doesn't exist
                 const existing = await getGardenStack(
                     gardenIdNumber,
@@ -671,7 +715,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     const fromStack = await getStack(from);
                     if (!fromStack) {
                         return context.json(
-                            { error: `Stack ${from} not found` },
+                            { error: `Stack from:${from} not found` },
                             400,
                         );
                     }
@@ -693,7 +737,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     const fromStack = await getStack(from);
                     if (!fromStack) {
                         return context.json(
-                            { error: `Stack ${from} not found` },
+                            { error: `Stack from:${from} not found` },
                             400,
                         );
                     }

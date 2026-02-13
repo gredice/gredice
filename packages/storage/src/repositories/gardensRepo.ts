@@ -262,11 +262,13 @@ export async function updateGardenStack(
                 eq(gardenStacks.gardenId, gardenId),
                 eq(gardenStacks.positionX, stacks.x),
                 eq(gardenStacks.positionY, stacks.y),
-                eq(gardenStacks.isDeleted, false),
             ),
         })
     )?.id;
     if (!stackId) {
+        console.warn(
+            `Stack not found for gardenId:${gardenId} at position x:${stacks.x} y:${stacks.y}`,
+        );
         throw new Error('Stack not found');
     }
 
