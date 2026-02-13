@@ -15,7 +15,7 @@ export function useInventory() {
             }
             return response.json();
         },
+        staleTime: 1000 * 60 * 5, // 5 minutes
         enabled: Boolean(user),
-        staleTime: 1000 * 60 * 5,
     });
 }

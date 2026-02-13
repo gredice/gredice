@@ -12,6 +12,6 @@ export function useAccountAchievements() {
             const data = await response.json();
             return data.achievements ?? [];
         },
-        staleTime: 1000 * 60 * 5,
+        staleTime: 1000 * 60 * 5, // 5 minutes
     });
 }

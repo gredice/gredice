@@ -18,6 +18,7 @@ export function useShoppingCart() {
             }
             return await response.json();
         },
+        staleTime: 1000 * 60 * 5, // 5 minutes
         enabled: !!currentUser,
     });
 }

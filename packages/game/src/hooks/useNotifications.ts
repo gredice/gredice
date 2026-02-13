@@ -12,7 +12,7 @@ export function useNotifications(
     return useQuery({
         queryKey:
             read || page || limit
-                ? [...notificationsQueryKey, { read, page, limit }]
+                ? [...notificationsQueryKey, { read, page, limit, userId }]
                 : notificationsQueryKey,
         queryFn: async () => {
             if (!userId) return [];
@@ -36,6 +36,7 @@ export function useNotifications(
                     : null,
             }));
         },
+        staleTime: 1000 * 60 * 5, // 5 minutes
         enabled: Boolean(userId),
     });
 }
