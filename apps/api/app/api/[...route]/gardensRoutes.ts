@@ -133,11 +133,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            // TODO: Implement validation of block place events
-            // const blockPlaceEvents = blockPlaceEventsRaw.map(event => ({
-            //     ...event,
-            //     data: event.data as { id: string, name: string }
-            // }));
+            const blocksById = new Map(
+                blocks.map((block) => [block.id, block]),
+            );
 
             // Stacks: group by x then by y
             const stacks = garden.stacks.reduce(
@@ -147,9 +145,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     }
                     acc[stack.positionX][stack.positionY] = stack.blocks
                         .map((blockId) => {
-                            const block = blocks.find(
-                                (block) => block.id === blockId,
-                            );
+                            const block = blocksById.get(blockId);
                             if (!block) return null;
 
                             return {
@@ -248,6 +244,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 ...event,
                 data: event.data as { id: string; name: string },
             }));
+            const blockNamesById = new Map(
+                blockPlaceEvents.map((event) => [
+                    event.data.id,
+                    event.data.name,
+                ]),
+            );
+            const blocksById = new Map(
+                blocks.map((block) => [block.id, block]),
+            );
 
             // Stacks: group by x then by y
             const stacks = garden.stacks.reduce(
@@ -258,16 +263,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     acc[stack.positionX][stack.positionY] = stack.blocks.map(
                         (blockId) => ({
                             id: blockId,
-                            name:
-                                blockPlaceEvents.find(
-                                    (event) => event.data.id === blockId,
-                                )?.data.name ?? 'unknown',
-                            rotation:
-                                blocks.find((block) => block.id === blockId)
-                                    ?.rotation ?? 0,
-                            variant: blocks.find(
-                                (block) => block.id === blockId,
-                            )?.variant,
+                            name: blockNamesById.get(blockId) ?? 'unknown',
+                            rotation: blocksById.get(blockId)?.rotation ?? 0,
+                            variant: blocksById.get(blockId)?.variant,
                         }),
                     );
                     return acc;
@@ -412,6 +410,42 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
+            const [gardenBlocks, blockData] = await Promise.all([
+                getGardenBlocks(gardenIdNumber),
+                getBlockData(),
+            ]);
+            const blockNameById = new Map(
+                gardenBlocks.map((block) => [block.id, block.name]),
+            );
+            const blockDataByName = new Map(
+                blockData.map((block) => [block.information.name, block]),
+            );
+
+            function validateStackPlacement(blockIds: string[]) {
+                for (let index = 1; index < blockIds.length; index++) {
+                    const belowBlockId = blockIds[index - 1];
+                    const aboveBlockId = blockIds[index];
+
+                    const belowBlockName = blockNameById.get(belowBlockId);
+                    if (!belowBlockName) {
+                        return {
+                            valid: false,
+                            error: `Invalid stack placement: unknown block ${belowBlockId} below ${aboveBlockId}`,
+                        };
+                    }
+
+                    const belowBlockData = blockDataByName.get(belowBlockName);
+                    if (!belowBlockData?.attributes.stackable) {
+                        return {
+                            valid: false,
+                            error: `Invalid stack placement: block ${belowBlockId} cannot support block ${aboveBlockId}`,
+                        };
+                    }
+                }
+
+                return { valid: true as const };
+            }
+
             const operations = context.req.valid('json');
             if (operations.length === 0) {
                 return context.json({ error: 'No operations provided' }, 400);
@@ -475,21 +509,30 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
 
                 if (stackPosition.index === undefined) {
+                    const nextBlocks = Array.isArray(value)
+                        ? stackPosition.append
+                            ? [...(existing?.blocks ?? []), ...value]
+                            : value
+                        : stackPosition.append
+                          ? [...(existing?.blocks ?? []), value]
+                          : [value];
+
+                    const validation = validateStackPlacement(nextBlocks);
+                    if (!validation.valid) {
+                        return context.json({ error: validation.error }, 400);
+                    }
+
                     if (Array.isArray(value)) {
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: stackPosition.append
-                                ? [...(existing?.blocks ?? []), ...value]
-                                : value,
+                            blocks: nextBlocks,
                         });
                     } else {
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: stackPosition.append
-                                ? [...(existing?.blocks ?? []), value]
-                                : [value],
+                            blocks: nextBlocks,
                         });
                     }
                 } else {
@@ -507,30 +550,44 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     }
 
                     if (Array.isArray(value)) {
+                        const nextBlocks = [
+                            ...existing.blocks.slice(0, stackPosition.index),
+                            ...value,
+                            ...existing.blocks.slice(stackPosition.index),
+                        ];
+
+                        const validation = validateStackPlacement(nextBlocks);
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
+
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: [
-                                ...existing.blocks.slice(
-                                    0,
-                                    stackPosition.index,
-                                ),
-                                ...value,
-                                ...existing.blocks.slice(stackPosition.index),
-                            ],
+                            blocks: nextBlocks,
                         });
                     } else {
+                        const nextBlocks = [
+                            ...existing.blocks.slice(0, stackPosition.index),
+                            value,
+                            ...existing.blocks.slice(stackPosition.index),
+                        ];
+
+                        const validation = validateStackPlacement(nextBlocks);
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
+
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: [
-                                ...existing.blocks.slice(
-                                    0,
-                                    stackPosition.index,
-                                ),
-                                value,
-                                ...existing.blocks.slice(stackPosition.index),
-                            ],
+                            blocks: nextBlocks,
                         });
                     }
                 }
@@ -638,6 +695,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 400,
                             );
                         }
+
+                        const validation = validateStackPlacement(value);
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
@@ -659,11 +724,22 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             );
                         }
 
-                        stack.blocks[stackPosition.index] = value;
+                        const nextBlocks = stack.blocks.map((blockId, index) =>
+                            index === stackPosition.index ? value : blockId,
+                        );
+
+                        const validation = validateStackPlacement(nextBlocks);
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
+
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: stack.blocks,
+                            blocks: nextBlocks,
                         });
                     }
                 } else if (operation.op === 'move') {
