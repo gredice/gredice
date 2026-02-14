@@ -6,12 +6,12 @@ import {
 } from '../../../lib/auth/refreshCookies';
 
 export async function POST() {
-    const refreshToken = getRefreshTokenCookie();
+    const refreshToken = await getRefreshTokenCookie();
     if (refreshToken) {
         await revokeRefreshToken(refreshToken);
     }
     await clearCookie();
-    clearRefreshCookie();
+    await clearRefreshCookie();
 
     return new Response(null, { status: 200 });
 }
