@@ -1,4 +1,5 @@
 import {
+    deleteRaisedBed,
     earnSunflowers,
     getGarden,
     getGardenBlock,
@@ -57,14 +58,76 @@ export async function deleteGardenBlock(
         };
     }
 
+    let relatedRaisedBed:
+        | Awaited<ReturnType<typeof getRaisedBeds>>[number]
+        | undefined;
+
     // Don't allow deletion of active raised beds
     if (blockData.functions?.raisedBed) {
         const raisedBeds = await getRaisedBeds(gardenId);
-        const raisedBed = raisedBeds.find((rb) => rb.blockId === blockId);
-        if (raisedBed && raisedBed.status !== 'new') {
+        relatedRaisedBed = raisedBeds.find((candidateRaisedBed) => {
+            if (!candidateRaisedBed.blockId) {
+                return false;
+            }
+
+            if (candidateRaisedBed.blockId === blockId) {
+                return true;
+            }
+
+            const primaryStack = stacks.find((candidateStack) =>
+                candidateStack.blocks.includes(
+                    candidateRaisedBed.blockId ?? '',
+                ),
+            );
+            if (!primaryStack) {
+                return false;
+            }
+
+            const primaryIndex = primaryStack.blocks.indexOf(
+                candidateRaisedBed.blockId,
+            );
+            if (primaryIndex < 0) {
+                return false;
+            }
+
+            const attachedBlockId = stacks
+                .map((candidateStack) => ({
+                    candidateStack,
+                    candidateBlockId: candidateStack.blocks[primaryIndex],
+                }))
+                .find(({ candidateStack, candidateBlockId }) => {
+                    if (
+                        !candidateBlockId ||
+                        candidateBlockId === candidateRaisedBed.blockId
+                    ) {
+                        return false;
+                    }
+
+                    const sameX =
+                        candidateStack.positionX === primaryStack.positionX;
+                    const sameY =
+                        candidateStack.positionY === primaryStack.positionY;
+
+                    return (
+                        (sameX &&
+                            Math.abs(
+                                candidateStack.positionY -
+                                    primaryStack.positionY,
+                            ) === 1) ||
+                        (sameY &&
+                            Math.abs(
+                                candidateStack.positionX -
+                                    primaryStack.positionX,
+                            ) === 1)
+                    );
+                })?.candidateBlockId;
+
+            return attachedBlockId === blockId;
+        });
+        if (relatedRaisedBed && relatedRaisedBed.status !== 'new') {
             console.warn('Cannot delete active raised bed', {
                 blockId,
-                raisedBed,
+                raisedBed: relatedRaisedBed,
             });
             return {
                 errorMessage: 'Cannot delete active raised bed',
@@ -104,6 +167,7 @@ export async function deleteGardenBlock(
 
     await Promise.all([
         storageDeleteGardenBlock(gardenId, blockId),
+        ...(relatedRaisedBed ? [deleteRaisedBed(relatedRaisedBed.id)] : []),
         refundBlockPromise,
         stackRemovePromise,
     ]);

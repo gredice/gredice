@@ -68,15 +68,15 @@ export function RaisedBedFieldItemEmpty({
                     positionIndex={positionIndex}
                 >
                     {(isLoading || !cartPlantItem) && (
-                        <PlantingSeed className="size-10 stroke-green-800" />
+                        <PlantingSeed className="size-8 stroke-green-800" />
                     )}
                     {!isLoading && cartPlantItem && (
                         <>
                             <PlantOrSortImage
                                 coverUrl={cartPlantItem.shopData.image}
                                 alt={cartPlantItem.shopData.name ?? 'Nepoznato'}
-                                width={60}
-                                height={60}
+                                width={50}
+                                height={50}
                             />
                             <div className="absolute right-1.5 top-1.5">
                                 <div className="rounded-full border-2 p-1 bg-yellow-600 border-white shadow-lg">

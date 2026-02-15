@@ -7,6 +7,132 @@ import {
 
 type BlockPosition = { x: number; y: number; index: number };
 
+type RaisedBedInput = Pick<SelectRaisedBed, 'id' | 'blockId'>;
+
+type AdjacentBlockAtSameIndex = {
+    blockId: string;
+    x: number;
+    y: number;
+};
+
+function getAdjacentBlocksAtSameIndex(
+    stacks: Pick<SelectGardenStack, 'positionX' | 'positionY' | 'blocks'>[],
+    position: BlockPosition,
+): AdjacentBlockAtSameIndex[] {
+    const neighborPositions = [
+        { x: position.x - 1, y: position.y },
+        { x: position.x + 1, y: position.y },
+        { x: position.x, y: position.y - 1 },
+        { x: position.x, y: position.y + 1 },
+    ];
+
+    return neighborPositions
+        .map(({ x, y }) => {
+            const stack = stacks.find(
+                (candidate) =>
+                    candidate.positionX === x && candidate.positionY === y,
+            );
+            const blockId = stack?.blocks[position.index];
+            if (!blockId) {
+                return null;
+            }
+            return { blockId, x, y };
+        })
+        .filter((candidate): candidate is AdjacentBlockAtSameIndex =>
+            Boolean(candidate),
+        );
+}
+
+function getAdjacentBlockIdsAtSameIndex(
+    stacks: Pick<SelectGardenStack, 'positionX' | 'positionY' | 'blocks'>[],
+    position: BlockPosition,
+): string[] {
+    return getAdjacentBlocksAtSameIndex(stacks, position).map(
+        (candidate) => candidate.blockId,
+    );
+}
+
+function buildRaisedBedAdjacencyByRecord(
+    raisedBeds: RaisedBedInput[],
+    blockPositions: Map<string, BlockPosition>,
+): Map<number, number[]> {
+    const adjacency = new Map<number, number[]>();
+    for (const bed of raisedBeds) {
+        adjacency.set(bed.id, []);
+    }
+
+    for (let i = 0; i < raisedBeds.length; i++) {
+        const bedA = raisedBeds[i];
+        if (!bedA?.blockId) {
+            continue;
+        }
+        const posA = blockPositions.get(bedA.blockId);
+        if (!posA) {
+            continue;
+        }
+
+        for (let j = i + 1; j < raisedBeds.length; j++) {
+            const bedB = raisedBeds[j];
+            if (!bedB?.blockId) {
+                continue;
+            }
+            const posB = blockPositions.get(bedB.blockId);
+            if (!posB || posA.index !== posB.index) {
+                continue;
+            }
+
+            const adjacent =
+                (posA.x === posB.x && Math.abs(posA.y - posB.y) === 1) ||
+                (posA.y === posB.y && Math.abs(posA.x - posB.x) === 1);
+            if (adjacent) {
+                adjacency.get(bedA.id)?.push(bedB.id);
+                adjacency.get(bedB.id)?.push(bedA.id);
+            }
+        }
+    }
+
+    return adjacency;
+}
+
+function buildComponentSizeByRaisedBedId(
+    raisedBeds: RaisedBedInput[],
+    adjacency: Map<number, number[]>,
+): Map<number, number> {
+    const visited = new Set<number>();
+    const componentSizeByRaisedBedId = new Map<number, number>();
+
+    for (const bed of raisedBeds) {
+        if (visited.has(bed.id)) {
+            continue;
+        }
+
+        const queue = [bed.id];
+        const component: number[] = [];
+        while (queue.length > 0) {
+            const current = queue.pop();
+            if (current === undefined || visited.has(current)) {
+                continue;
+            }
+
+            visited.add(current);
+            component.push(current);
+
+            const neighbors = adjacency.get(current) ?? [];
+            for (const neighbor of neighbors) {
+                if (!visited.has(neighbor)) {
+                    queue.push(neighbor);
+                }
+            }
+        }
+
+        for (const raisedBedId of component) {
+            componentSizeByRaisedBedId.set(raisedBedId, component.length);
+        }
+    }
+
+    return componentSizeByRaisedBedId;
+}
+
 function buildBlockPositionMap(
     stacks: Pick<SelectGardenStack, 'positionX' | 'positionY' | 'blocks'>[],
 ) {
@@ -34,61 +160,59 @@ export function calculateRaisedBedsValidity(
     raisedBeds: Pick<SelectRaisedBed, 'id' | 'blockId'>[],
     stacks: Pick<SelectGardenStack, 'positionX' | 'positionY' | 'blocks'>[],
 ): Map<number, boolean> {
-    // Map blockId -> position and index
     const blockPositions = buildBlockPositionMap(stacks);
+    const adjacency = buildRaisedBedAdjacencyByRecord(
+        raisedBeds,
+        blockPositions,
+    );
+    const componentSizeByRaisedBedId = buildComponentSizeByRaisedBedId(
+        raisedBeds,
+        adjacency,
+    );
+    const raisedBedBlockIds = new Set(
+        raisedBeds
+            .map((raisedBed) => raisedBed.blockId)
+            .filter((blockId): blockId is string => Boolean(blockId)),
+    );
 
-    // Build adjacency list of raised beds
-    const adjacency = new Map<number, number[]>();
-    for (const bed of raisedBeds) {
-        adjacency.set(bed.id, []);
-    }
-
-    for (let i = 0; i < raisedBeds.length; i++) {
-        const bedA = raisedBeds[i];
-        if (!bedA.blockId) continue;
-        const posA = blockPositions.get(bedA.blockId);
-        if (!posA) continue;
-        for (let j = i + 1; j < raisedBeds.length; j++) {
-            const bedB = raisedBeds[j];
-            if (!bedB.blockId) continue;
-            const posB = blockPositions.get(bedB.blockId);
-            if (!posB) continue;
-            if (posA.index !== posB.index) continue;
-            const adjacent =
-                (posA.x === posB.x && Math.abs(posA.y - posB.y) === 1) ||
-                (posA.y === posB.y && Math.abs(posA.x - posB.x) === 1);
-            if (adjacent) {
-                adjacency.get(bedA.id)?.push(bedB.id);
-                adjacency.get(bedB.id)?.push(bedA.id);
-            }
-        }
-    }
-
-    // Traverse connected components and determine validity
-    const visited = new Set<number>();
     const validity = new Map<number, boolean>();
-
     for (const bed of raisedBeds) {
-        if (visited.has(bed.id)) continue;
-        const stack: number[] = [bed.id];
-        const component: number[] = [];
-        while (stack.length > 0) {
-            const current = stack.pop();
-            if (current === undefined) continue;
-            if (visited.has(current)) continue;
-            visited.add(current);
-            component.push(current);
-            const neighbors = adjacency.get(current) ?? [];
-            for (const neighbor of neighbors) {
-                if (!visited.has(neighbor)) {
-                    stack.push(neighbor);
-                }
-            }
+        if (!bed.blockId) {
+            validity.set(bed.id, false);
+            continue;
         }
-        const isValid = component.length <= 2;
-        for (const id of component) {
-            validity.set(id, isValid);
+
+        const position = blockPositions.get(bed.blockId);
+        if (!position) {
+            validity.set(bed.id, false);
+            continue;
         }
+
+        const adjacentBlockIds = getAdjacentBlockIdsAtSameIndex(
+            stacks,
+            position,
+        );
+        const adjacentRaisedBedRecordBlockIds = adjacentBlockIds.filter(
+            (blockId) => raisedBedBlockIds.has(blockId),
+        );
+        const adjacentOrphanBlockIds = adjacentBlockIds.filter(
+            (blockId) => !raisedBedBlockIds.has(blockId),
+        );
+        const totalAdjacentCount =
+            adjacentRaisedBedRecordBlockIds.length +
+            adjacentOrphanBlockIds.length;
+        if (totalAdjacentCount !== 1) {
+            validity.set(bed.id, false);
+            continue;
+        }
+
+        const componentSize = componentSizeByRaisedBedId.get(bed.id) ?? 1;
+        const isValidSingleRecordPair =
+            componentSize === 1 && adjacentOrphanBlockIds.length === 1;
+        const isValidTwoRecordPair =
+            componentSize === 2 && adjacentRaisedBedRecordBlockIds.length === 1;
+
+        validity.set(bed.id, isValidSingleRecordPair || isValidTwoRecordPair);
     }
 
     return validity;
@@ -106,37 +230,24 @@ export function calculateRaisedBedsOrientation(
         if (bed.blockId) {
             const position = blockPositions.get(bed.blockId);
             if (position) {
-                const hasVerticalNeighbor = raisedBeds.some((other) => {
-                    if (other.id === bed.id || !other.blockId) {
-                        return false;
-                    }
-                    const neighborPosition = blockPositions.get(other.blockId);
-                    if (!neighborPosition) {
-                        return false;
-                    }
-                    return (
-                        neighborPosition.index === position.index &&
-                        neighborPosition.y === position.y &&
-                        Math.abs(neighborPosition.x - position.x) === 1
-                    );
-                });
-                const hasHorizontalNeighbor = raisedBeds.some((other) => {
-                    if (other.id === bed.id || !other.blockId) {
-                        return false;
-                    }
-                    const neighborPosition = blockPositions.get(other.blockId);
-                    if (!neighborPosition) {
-                        return false;
-                    }
-                    return (
-                        neighborPosition.index === position.index &&
-                        neighborPosition.x === position.x &&
-                        Math.abs(neighborPosition.y - position.y) === 1
-                    );
-                });
-                if (hasHorizontalNeighbor) {
+                const adjacentBlocks = getAdjacentBlocksAtSameIndex(
+                    stacks,
+                    position,
+                );
+                const hasHorizontalNeighbor = adjacentBlocks.some(
+                    (neighbor) =>
+                        neighbor.x === position.x &&
+                        Math.abs(neighbor.y - position.y) === 1,
+                );
+                const hasVerticalNeighbor = adjacentBlocks.some(
+                    (neighbor) =>
+                        neighbor.y === position.y &&
+                        Math.abs(neighbor.x - position.x) === 1,
+                );
+
+                if (hasHorizontalNeighbor && !hasVerticalNeighbor) {
                     orientation = 'horizontal';
-                } else if (hasVerticalNeighbor) {
+                } else if (hasVerticalNeighbor && !hasHorizontalNeighbor) {
                     orientation = 'vertical';
                 } else {
                     orientation = 'vertical';

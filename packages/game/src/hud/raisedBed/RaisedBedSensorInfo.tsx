@@ -34,7 +34,7 @@ import { useRaisedBedSensors } from '../../hooks/useRaisedBedSensors';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
-import { useNeighboringRaisedBeds } from './RaisedBedField';
+import { useNeighboringRaisedBeds } from './useNeighboringRaisedBeds';
 
 interface TooltipPayload {
     value?: number | string;

@@ -9,12 +9,6 @@ import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'blockPlace'];
 
-function getSecondaryRaisedBedPosition(
-    position: [x: number, y: number],
-): [x: number, y: number] {
-    return [position[0] + 1, position[1]];
-}
-
 export function useBlockPlace() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
@@ -55,26 +49,6 @@ export function useBlockPlace() {
 
             const primaryBlockId = await createBlock();
 
-            if (blockName !== 'Raised_Bed') {
-                await client().api.gardens[':gardenId'].stacks.$patch({
-                    param: {
-                        gardenId: garden.id.toString(),
-                    },
-                    json: [
-                        {
-                            op: 'add',
-                            path: `/${position[0]}/${position[1]}/-`,
-                            value: primaryBlockId,
-                        },
-                    ],
-                });
-
-                return [primaryBlockId];
-            }
-
-            const secondaryBlockId = await createBlock();
-            const secondaryPosition = getSecondaryRaisedBedPosition(position);
-
             await client().api.gardens[':gardenId'].stacks.$patch({
                 param: {
                     gardenId: garden.id.toString(),
@@ -85,15 +59,10 @@ export function useBlockPlace() {
                         path: `/${position[0]}/${position[1]}/-`,
                         value: primaryBlockId,
                     },
-                    {
-                        op: 'add',
-                        path: `/${secondaryPosition[0]}/${secondaryPosition[1]}/-`,
-                        value: secondaryBlockId,
-                    },
                 ],
             });
 
-            return [primaryBlockId, secondaryBlockId];
+            return [primaryBlockId];
         },
         onMutate: async ({ blockName, position }) => {
             if (!garden) {
@@ -122,17 +91,6 @@ export function useBlockPlace() {
             };
 
             ensureStack(position).blocks.push(primaryBlock);
-
-            if (blockName === 'Raised_Bed') {
-                const secondaryBlock = {
-                    id: uuidv4(),
-                    name: blockName,
-                    rotation: 0,
-                };
-                const secondaryPosition =
-                    getSecondaryRaisedBedPosition(position);
-                ensureStack(secondaryPosition).blocks.push(secondaryBlock);
-            }
 
             const previousItem = await handleOptimisticUpdate(
                 queryClient,

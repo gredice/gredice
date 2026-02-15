@@ -39,16 +39,12 @@ function getBlockPlacement(
     return null;
 }
 
-export function findAttachedRaisedBedBlockId(
+function getAdjacentRaisedBedIds(
     stacks: Stack[],
     blockId: string,
-): string | null {
-    const placement = getBlockPlacement(stacks, blockId);
-    if (!placement || placement.block.name !== 'Raised_Bed') {
-        return null;
-    }
-
-    const candidates = stacks
+    placement: BlockPlacement,
+): string[] {
+    return stacks
         .flatMap((stack) =>
             stack.blocks
                 .map((block, index) => ({ stack, block, index }))
@@ -73,9 +69,85 @@ export function findAttachedRaisedBedBlockId(
                         1)
             );
         })
-        .sort((a, b) => a.block.id.localeCompare(b.block.id));
+        .map(({ block }) => block.id);
+}
 
-    return candidates[0]?.block.id ?? null;
+function sortBlockIdsByOrientation(
+    stacks: Stack[],
+    blockIds: string[],
+    orientation: 'vertical' | 'horizontal' = 'vertical',
+): string[] {
+    return [...blockIds].sort((left, right) => {
+        const leftPlacement = getBlockPlacement(stacks, left);
+        const rightPlacement = getBlockPlacement(stacks, right);
+        if (!leftPlacement || !rightPlacement) {
+            return left.localeCompare(right);
+        }
+
+        if (orientation === 'horizontal') {
+            return (
+                leftPlacement.stack.position.z - rightPlacement.stack.position.z
+            );
+        }
+
+        return leftPlacement.stack.position.x - rightPlacement.stack.position.x;
+    });
+}
+
+function getConnectedRaisedBedBlockIds(
+    stacks: Stack[],
+    blockId: string,
+): string[] {
+    const startPlacement = getBlockPlacement(stacks, blockId);
+    if (!startPlacement || startPlacement.block.name !== 'Raised_Bed') {
+        return [];
+    }
+
+    const visited = new Set<string>();
+    const queue = [blockId];
+
+    while (queue.length > 0) {
+        const currentId = queue.shift();
+        if (!currentId || visited.has(currentId)) {
+            continue;
+        }
+
+        const currentPlacement = getBlockPlacement(stacks, currentId);
+        if (!currentPlacement || currentPlacement.block.name !== 'Raised_Bed') {
+            continue;
+        }
+
+        visited.add(currentId);
+
+        const adjacentIds = getAdjacentRaisedBedIds(
+            stacks,
+            currentId,
+            currentPlacement,
+        );
+        for (const adjacentId of adjacentIds) {
+            if (!visited.has(adjacentId)) {
+                queue.push(adjacentId);
+            }
+        }
+    }
+
+    return Array.from(visited);
+}
+
+export function findAttachedRaisedBedBlockId(
+    stacks: Stack[],
+    blockId: string,
+): string | null {
+    const placement = getBlockPlacement(stacks, blockId);
+    if (!placement || placement.block.name !== 'Raised_Bed') {
+        return null;
+    }
+
+    return (
+        getAdjacentRaisedBedIds(stacks, blockId, placement).sort((a, b) =>
+            a.localeCompare(b),
+        )[0] ?? null
+    );
 }
 
 export function getRaisedBedBlockIds<TRaisedBed extends RaisedBedWithBlockId>(
@@ -89,35 +161,26 @@ export function getRaisedBedBlockIds<TRaisedBed extends RaisedBedWithBlockId>(
         return [];
     }
 
-    const attachedBlockId = findAttachedRaisedBedBlockId(
+    const connectedBlockIds = getConnectedRaisedBedBlockIds(
         garden.stacks,
         raisedBed.blockId,
     );
-    if (!attachedBlockId) {
+    if (connectedBlockIds.length === 0) {
         return [raisedBed.blockId];
     }
 
-    if (raisedBed.orientation === 'horizontal') {
-        return [raisedBed.blockId, attachedBlockId].sort((left, right) => {
-            const leftPlacement = getBlockPlacement(garden.stacks, left);
-            const rightPlacement = getBlockPlacement(garden.stacks, right);
-            if (!leftPlacement || !rightPlacement) {
-                return left.localeCompare(right);
-            }
-            return (
-                leftPlacement.stack.position.z - rightPlacement.stack.position.z
-            );
-        });
-    }
+    return sortBlockIdsByOrientation(
+        garden.stacks,
+        connectedBlockIds,
+        raisedBed.orientation,
+    );
+}
 
-    return [raisedBed.blockId, attachedBlockId].sort((left, right) => {
-        const leftPlacement = getBlockPlacement(garden.stacks, left);
-        const rightPlacement = getBlockPlacement(garden.stacks, right);
-        if (!leftPlacement || !rightPlacement) {
-            return left.localeCompare(right);
-        }
-        return leftPlacement.stack.position.x - rightPlacement.stack.position.x;
-    });
+export function isRaisedBedShapeValid<TRaisedBed extends RaisedBedWithBlockId>(
+    garden: GardenLike<TRaisedBed>,
+    raisedBedId: number,
+): boolean {
+    return getRaisedBedBlockIds(garden, raisedBedId).length === 2;
 }
 
 export function findRaisedBedByBlockId<TRaisedBed extends RaisedBedWithBlockId>(

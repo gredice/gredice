@@ -8,7 +8,10 @@ import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import { useGameState } from '../useGameState';
 import { useRemoveRaisedBedCloseupParam } from '../useRaisedBedCloseup';
-import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
+import {
+    findRaisedBedByBlockId,
+    getRaisedBedBlockIds,
+} from '../utils/raisedBedBlocks';
 import { RaisedBedIdentifierIcon } from './components/RaisedBedIdentifierIcon';
 import { RaisedBedField } from './raisedBed/RaisedBedField';
 import { RaisedBedFieldSuggestions } from './raisedBed/RaisedBedFieldSuggestions';
@@ -35,6 +38,11 @@ export function RaisedBedFieldHud(_props: {
     const raisedBed = closeupBlock
         ? findRaisedBedByBlockId(currentGarden, closeupBlock.id)
         : null;
+    const raisedBedBlockCount =
+        currentGarden && raisedBed
+            ? getRaisedBedBlockIds(currentGarden, raisedBed.id).length
+            : 1;
+    const isDoubleRaisedBed = raisedBedBlockCount === 2;
 
     return (
         <div
@@ -70,7 +78,13 @@ export function RaisedBedFieldHud(_props: {
                     </Modal>
                 </div>
             )}
-            <div className="absolute top-[calc(50%-3px)] left-1/2 size-[316px] -translate-x-1/2 -translate-y-1/2">
+            <div
+                className="absolute top-[calc(50%-3px)] left-1/2 -translate-x-1/2 -translate-y-1/2"
+                style={{
+                    width: 240,
+                    height: isDoubleRaisedBed ? 520 : 240,
+                }}
+            >
                 {view === 'closeup' && currentGarden && raisedBed && (
                     <RaisedBedField
                         gardenId={currentGarden.id}

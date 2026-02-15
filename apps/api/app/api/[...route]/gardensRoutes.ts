@@ -32,6 +32,11 @@ import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
+    validateConnectedRaisedBedMove,
+    validateRaisedBedPlacement,
+    validateStackPlacement,
+} from '../../../lib/garden/stacksPatchValidation';
+import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
@@ -421,35 +426,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 blockData.map((block) => [block.information.name, block]),
             );
 
-            function validateStackPlacement(blockIds: string[]) {
-                for (let index = 1; index < blockIds.length; index++) {
-                    const belowBlockId = blockIds[index - 1];
-                    const aboveBlockId = blockIds[index];
-
-                    const belowBlockName = blockNameById.get(belowBlockId);
-                    if (!belowBlockName) {
-                        return {
-                            valid: false,
-                            error: `Invalid stack placement: unknown block ${belowBlockId} below ${aboveBlockId}`,
-                        };
-                    }
-
-                    const belowBlockData = blockDataByName.get(belowBlockName);
-                    if (!belowBlockData?.attributes.stackable) {
-                        return {
-                            valid: false,
-                            error: `Invalid stack placement: block ${belowBlockId} cannot support block ${aboveBlockId}`,
-                        };
-                    }
-                }
-
-                return { valid: true as const };
-            }
+            const validateStackPlacementForGarden = (blockIds: string[]) =>
+                validateStackPlacement({
+                    blockIds,
+                    blockNameById,
+                    blockDataByName,
+                });
 
             const operations = context.req.valid('json');
             if (operations.length === 0) {
                 return context.json({ error: 'No operations provided' }, 400);
             }
+            const initialGardenState = garden;
 
             /**
              * Parses a path string into an object with x, y, and index properties.
@@ -491,7 +479,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return await getGardenStack(gardenIdNumber, parsePath(path));
             }
 
-            async function addStack(path: string, value: string | string[]) {
+            async function addStack(
+                path: string,
+                value: string | string[],
+                options?: { skipRaisedBedPlacementValidation?: boolean },
+            ) {
                 const stackPosition = parsePath(path);
 
                 console.debug(
@@ -509,6 +501,40 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
 
                 if (stackPosition.index === undefined) {
+                    if (
+                        typeof value === 'string' &&
+                        !options?.skipRaisedBedPlacementValidation
+                    ) {
+                        const blockName = blockNameById.get(value);
+                        if (blockName === 'Raised_Bed') {
+                            const gardenState = await getGarden(gardenIdNumber);
+                            if (!gardenState) {
+                                return context.json(
+                                    { error: 'Garden not found' },
+                                    404,
+                                );
+                            }
+
+                            const targetIndex = stackPosition.append
+                                ? (existing?.blocks.length ?? 0)
+                                : 0;
+                            const placementValidation =
+                                validateRaisedBedPlacement({
+                                    stacks: gardenState.stacks,
+                                    x: stackPosition.x,
+                                    y: stackPosition.y,
+                                    index: targetIndex,
+                                    blockNameById,
+                                });
+                            if (!placementValidation.valid) {
+                                return context.json(
+                                    { error: placementValidation.error },
+                                    400,
+                                );
+                            }
+                        }
+                    }
+
                     const nextBlocks = Array.isArray(value)
                         ? stackPosition.append
                             ? [...(existing?.blocks ?? []), ...value]
@@ -517,7 +543,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                           ? [...(existing?.blocks ?? []), value]
                           : [value];
 
-                    const validation = validateStackPlacement(nextBlocks);
+                    const validation =
+                        validateStackPlacementForGarden(nextBlocks);
                     if (!validation.valid) {
                         return context.json({ error: validation.error }, 400);
                     }
@@ -536,6 +563,37 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         });
                     }
                 } else {
+                    if (
+                        typeof value === 'string' &&
+                        !options?.skipRaisedBedPlacementValidation
+                    ) {
+                        const blockName = blockNameById.get(value);
+                        if (blockName === 'Raised_Bed') {
+                            const gardenState = await getGarden(gardenIdNumber);
+                            if (!gardenState) {
+                                return context.json(
+                                    { error: 'Garden not found' },
+                                    404,
+                                );
+                            }
+
+                            const placementValidation =
+                                validateRaisedBedPlacement({
+                                    stacks: gardenState.stacks,
+                                    x: stackPosition.x,
+                                    y: stackPosition.y,
+                                    index: stackPosition.index,
+                                    blockNameById,
+                                });
+                            if (!placementValidation.valid) {
+                                return context.json(
+                                    { error: placementValidation.error },
+                                    400,
+                                );
+                            }
+                        }
+                    }
+
                     if (
                         !existing ||
                         (existing?.blocks.length ?? 0) < stackPosition.index ||
@@ -556,7 +614,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             ...existing.blocks.slice(stackPosition.index),
                         ];
 
-                        const validation = validateStackPlacement(nextBlocks);
+                        const validation =
+                            validateStackPlacementForGarden(nextBlocks);
                         if (!validation.valid) {
                             return context.json(
                                 { error: validation.error },
@@ -576,7 +635,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             ...existing.blocks.slice(stackPosition.index),
                         ];
 
-                        const validation = validateStackPlacement(nextBlocks);
+                        const validation =
+                            validateStackPlacementForGarden(nextBlocks);
                         if (!validation.valid) {
                             return context.json(
                                 { error: validation.error },
@@ -696,7 +756,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             );
                         }
 
-                        const validation = validateStackPlacement(value);
+                        const validation =
+                            validateStackPlacementForGarden(value);
                         if (!validation.valid) {
                             return context.json(
                                 { error: validation.error },
@@ -728,7 +789,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             index === stackPosition.index ? value : blockId,
                         );
 
-                        const validation = validateStackPlacement(nextBlocks);
+                        const validation =
+                            validateStackPlacementForGarden(nextBlocks);
                         if (!validation.valid) {
                             return context.json(
                                 { error: validation.error },
@@ -757,7 +819,27 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             ? fromStack.blocks
                             : fromStack.blocks[fromPosition.index];
 
-                    let resp = await addStack(path, fromValue);
+                    if (typeof fromValue === 'string') {
+                        const validation = validateConnectedRaisedBedMove({
+                            stacks: initialGardenState.stacks,
+                            fromPath: from,
+                            toPath: path,
+                            movedBlockId: fromValue,
+                            blockNameById,
+                            blockDataByName,
+                            parsePath,
+                        });
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
+                    }
+
+                    let resp = await addStack(path, fromValue, {
+                        skipRaisedBedPlacementValidation: true,
+                    });
                     if (resp) {
                         return resp;
                     }

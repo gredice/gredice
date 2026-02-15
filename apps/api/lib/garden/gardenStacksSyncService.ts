@@ -2,6 +2,7 @@ import {
     createRaisedBed,
     getGarden,
     getGardenBlocks,
+    mergeRaisedBeds,
     updateGardenStack,
 } from '@gredice/storage';
 import { updateRaisedBedsOrientation } from './raisedBedsService';
@@ -76,6 +77,85 @@ function getMissingRaisedBedBlockIds(
     return raisedBedsToCreate;
 }
 
+function getRaisedBedMergeCandidates(params: {
+    placements: RaisedBedPlacement[];
+    raisedBeds: { id: number; blockId: string | null; status: string }[];
+}) {
+    const { placements, raisedBeds } = params;
+    const placementByBlockId = new Map(
+        placements.map((placement) => [placement.blockId, placement] as const),
+    );
+    const raisedBedByBlockId = new Map(
+        raisedBeds
+            .filter((raisedBed) => Boolean(raisedBed.blockId))
+            .map(
+                (raisedBed) =>
+                    [raisedBed.blockId as string, raisedBed] as const,
+            ),
+    );
+
+    const merges = new Map<number, number>();
+
+    for (const placement of placements) {
+        const adjacentPlacement = placements.find(
+            (candidate) =>
+                candidate.blockId !== placement.blockId &&
+                candidate.index === placement.index &&
+                ((candidate.x === placement.x &&
+                    Math.abs(candidate.y - placement.y) === 1) ||
+                    (candidate.y === placement.y &&
+                        Math.abs(candidate.x - placement.x) === 1)),
+        );
+        if (!adjacentPlacement) {
+            continue;
+        }
+
+        const leftBlockId =
+            placement.blockId.localeCompare(adjacentPlacement.blockId) <= 0
+                ? placement.blockId
+                : adjacentPlacement.blockId;
+        const rightBlockId =
+            leftBlockId === placement.blockId
+                ? adjacentPlacement.blockId
+                : placement.blockId;
+
+        const leftRaisedBed = raisedBedByBlockId.get(leftBlockId);
+        const rightRaisedBed = raisedBedByBlockId.get(rightBlockId);
+        if (!leftRaisedBed || !rightRaisedBed) {
+            continue;
+        }
+
+        if (leftRaisedBed.id === rightRaisedBed.id) {
+            continue;
+        }
+
+        if (leftRaisedBed.status !== 'new' || rightRaisedBed.status !== 'new') {
+            continue;
+        }
+
+        const leftPlacement = placementByBlockId.get(leftBlockId);
+        const rightPlacement = placementByBlockId.get(rightBlockId);
+        if (!leftPlacement || !rightPlacement) {
+            continue;
+        }
+
+        if (leftPlacement.index !== rightPlacement.index) {
+            continue;
+        }
+
+        const targetRaisedBedId = leftRaisedBed.id;
+        const sourceRaisedBedId = rightRaisedBed.id;
+        if (!merges.has(targetRaisedBedId)) {
+            merges.set(targetRaisedBedId, sourceRaisedBedId);
+        }
+    }
+
+    return Array.from(merges.entries()).map(([targetId, sourceId]) => ({
+        targetRaisedBedId: targetId,
+        sourceRaisedBedId: sourceId,
+    }));
+}
+
 export async function synchronizeGardenStacksAndRaisedBeds(gardenId: number) {
     const [garden, blocks] = await Promise.all([
         getGarden(gardenId),
@@ -116,8 +196,37 @@ export async function synchronizeGardenStacksAndRaisedBeds(gardenId: number) {
         return;
     }
 
+    const blockNameByIdInitial = new Map(
+        blocks.map((block) => [block.id, block.name] as const),
+    );
+    const raisedBedPlacementsInitial = getRaisedBedPlacements(
+        gardenAfterStackCleanup.stacks,
+        blockNameByIdInitial,
+    );
+    const mergeCandidates = getRaisedBedMergeCandidates({
+        placements: raisedBedPlacementsInitial,
+        raisedBeds: gardenAfterStackCleanup.raisedBeds,
+    });
+
+    if (mergeCandidates.length > 0) {
+        for (const mergeCandidate of mergeCandidates) {
+            await mergeRaisedBeds(
+                mergeCandidate.targetRaisedBedId,
+                mergeCandidate.sourceRaisedBedId,
+            );
+        }
+    }
+
+    const gardenAfterMerge =
+        mergeCandidates.length > 0
+            ? await getGarden(gardenId)
+            : gardenAfterStackCleanup;
+    if (!gardenAfterMerge) {
+        return;
+    }
+
     const existingRaisedBedBlockIds = new Set(
-        gardenAfterStackCleanup.raisedBeds
+        gardenAfterMerge.raisedBeds
             .map((raisedBed) => raisedBed.blockId)
             .filter((blockId): blockId is string => Boolean(blockId)),
     );
@@ -127,7 +236,7 @@ export async function synchronizeGardenStacksAndRaisedBeds(gardenId: number) {
     );
 
     const raisedBedPlacements = getRaisedBedPlacements(
-        gardenAfterStackCleanup.stacks,
+        gardenAfterMerge.stacks,
         blockNameById,
     );
 
@@ -140,16 +249,16 @@ export async function synchronizeGardenStacksAndRaisedBeds(gardenId: number) {
         for (const blockId of missingRaisedBedBlockIds) {
             await createRaisedBed({
                 blockId,
-                gardenId: gardenAfterStackCleanup.id,
-                accountId: gardenAfterStackCleanup.accountId,
+                gardenId: gardenAfterMerge.id,
+                accountId: gardenAfterMerge.accountId,
             });
         }
     }
 
     const gardenForOrientationUpdate =
-        missingRaisedBedBlockIds.size > 0
+        missingRaisedBedBlockIds.size > 0 || mergeCandidates.length > 0
             ? await getGarden(gardenId)
-            : gardenAfterStackCleanup;
+            : gardenAfterMerge;
 
     if (!gardenForOrientationUpdate) {
         return;

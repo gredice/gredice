@@ -66,6 +66,19 @@ function getTimeOfDay(
 type GameMode = 'normal' | 'edit';
 export type WinterMode = 'summer' | 'winter' | 'holiday';
 
+export type ActiveDragPreview = {
+    sourceBlockId: string;
+    attachedBlockId: string | null;
+    relative: {
+        x: number;
+        z: number;
+    };
+    sourceHoverHeight: number;
+    attachedHoverHeight: number;
+    isBlocked: boolean;
+    isOverRecycler: boolean;
+};
+
 export type GameState = {
     // General
     isMock: boolean;
@@ -91,6 +104,8 @@ export type GameState = {
     // Pickup system
     pickupBlock: Block | null;
     setPickupBlock: (block: Block | null) => void;
+    activeDragPreview: ActiveDragPreview | null;
+    setActiveDragPreview: (dragPreview: ActiveDragPreview | null) => void;
 
     // Camera
     view: 'normal' | 'closeup';
@@ -190,6 +205,8 @@ export function createGameState({
         // Pickaup system
         pickupBlock: null,
         setPickupBlock: (block: Block | null) => set({ pickupBlock: block }),
+        activeDragPreview: null,
+        setActiveDragPreview: (activeDragPreview) => set({ activeDragPreview }),
 
         // Camera
         view: 'normal',
