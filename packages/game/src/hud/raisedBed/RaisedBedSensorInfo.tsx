@@ -548,7 +548,7 @@ function SensorInfoModal({
                                     }
                                     onClick={handleBuySensor}
                                 >
-                                    Postavi senzor
+                                    Postavi
                                 </Button>
                             </div>
                         )}
@@ -575,28 +575,21 @@ function SensorInfoModal({
                                 <Typography level="body1">
                                     Senzor je već u tvojoj košarici.
                                 </Typography>
-                                <Stack>
-                                    <Typography
-                                        level="body2"
-                                        className="max-w-md text-balance"
-                                        center
-                                    >
-                                        Senzor za praćenje vlažnosti i
-                                        temperature tla je već dodan u tvoju
-                                        košaricu.
-                                    </Typography>
-                                </Stack>
-                                <div className="relative flex flex-col gap-2 items-center justify-center">
+                                <Typography
+                                    level="body2"
+                                    className="max-w-md text-balance"
+                                    center
+                                >
+                                    Senzor za praćenje vlažnosti i temperature
+                                    tla te čekaju u košarici. Dovrši kupovinu i
+                                    uskoro možeš početi pratiti uvjete u tlu
+                                    svoje gredice!
+                                </Typography>
+                                <div className="relative flex flex-col items-center justify-center">
                                     <Row spacing={1}>
-                                        <Check className="size-7 shrink-0 rounded-full bg-green-500" />
+                                        <Check className="absolute -right-1 -top-1 size-5 shrink-0 rounded-full bg-green-500" />
                                         <ShoppingCart className="size-8 shrink-0" />
                                     </Row>
-                                    <Typography
-                                        level="body2"
-                                        className="text-green-500 font-semibold"
-                                    >
-                                        Senzor je u košarici
-                                    </Typography>
                                 </div>
                             </div>
                         )}
@@ -712,7 +705,11 @@ export function RaisedBedSensorInfo({
                         },
                     ]}
                     trigger={
-                        <ButtonGreen size="sm" className="rounded-full">
+                        <ButtonGreen
+                            size="sm"
+                            className="rounded-full"
+                            fullWidth
+                        >
                             <Row spacing={0.5}>
                                 <Droplet
                                     className={cx(
@@ -748,7 +745,11 @@ export function RaisedBedSensorInfo({
                         areaGradientEnd: '#fca5a5',
                     }}
                     trigger={
-                        <ButtonGreen size="sm" className="rounded-full">
+                        <ButtonGreen
+                            size="sm"
+                            className="rounded-full"
+                            fullWidth
+                        >
                             <Row spacing={0.5}>
                                 <Thermometer
                                     className={cx(
