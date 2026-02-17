@@ -177,16 +177,15 @@ export function RaisedBedFieldSuggestions({
     }
 
     return (
-        <RaisedBedCard className="flex items-center flex-col gap-1 px-4 py-2 md:gap-2 md:px-4 md:pb-4 md:pt-3">
+        <RaisedBedCard className="flex items-center w-fit md:w-auto md:self-stretch flex-col gap-1 px-2 rounded-full py-2 md:gap-2 md:px-2 md:pb-4 md:pt-3">
             <Typography
-                level="body1"
-                bold
-                className="dark:text-primary-foreground"
+                level="body2"
+                className="dark:text-primary-foreground hidden md:block"
                 noWrap
             >
                 Brzo sijanje
             </Typography>
-            <div className="flex flex-row md:flex-col gap-2">
+            <div className="flex flex-col gap-2">
                 {/* Seasonal option */}
                 {seasonalOption && (
                     <ButtonGreen

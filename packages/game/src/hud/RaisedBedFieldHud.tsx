@@ -26,9 +26,7 @@ const GRID_HEIGHT_ADDITIONAL = 30;
 const BUTTON_HEIGHT = 40;
 const GRID_TOP_ANCHOR_OFFSET = 10;
 const SIDE_PANEL_MD_LEFT_OFFSET = GRID_SIZE / 2 + 4;
-const MOBILE_CLOSE_BUTTON_LEFT_OFFSET = GRID_SIZE / 2;
-const RIGHT_ACTIONS_TOP_INSET = 46;
-const SUGGESTIONS_LEFT_OFFSET = GRID_SIZE / 2 + 4;
+const MOBILE_CLOSE_BUTTON_LEFT_OFFSET = GRID_SIZE / 2 + 2;
 
 function centerOffset(offset: number) {
     const operator = offset >= 0 ? '+' : '-';
@@ -67,14 +65,11 @@ export function RaisedBedFieldHud(_props: {
     const hudStyles: CSSProperties & Record<string, string> = {
         '--raised-bed-side-panel-left': `${SIDE_PANEL_MD_LEFT_OFFSET}px`,
         '--raised-bed-ui-top': centerOffset(uiTopAnchor),
+        '--raised-bed-ui-top-mobile': `calc(${centerOffset(uiTopAnchor)} + 48px)`,
         '--raised-bed-title-left': centerOffset(-(GRID_SIZE / 2)),
         '--raised-bed-close-button-left': centerOffset(
             MOBILE_CLOSE_BUTTON_LEFT_OFFSET,
         ),
-        '--raised-bed-suggestions-top': centerOffset(
-            uiTopAnchor + RIGHT_ACTIONS_TOP_INSET,
-        ),
-        '--raised-bed-suggestions-left': centerOffset(SUGGESTIONS_LEFT_OFFSET),
         '--raised-bed-grid-size': `${GRID_SIZE}px`,
         '--raised-bed-grid-height': `${gridHeight}px`,
     };
@@ -122,40 +117,41 @@ export function RaisedBedFieldHud(_props: {
                     />
                 )}
             </div>
-            <ButtonGreen
-                variant="plain"
-                className={cx(
-                    'absolute md:left-[calc(50%+var(--raised-bed-side-panel-left))] md:size-auto',
-                    'rounded-full size-10 top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-close-button-left)]',
-                )}
-                onClick={removeRaisedBedCloseupParam}
-                startDecorator={<Check className="size-5 shrink-0" />}
+            <Stack
+                className="absolute md:left-[calc(50%+var(--raised-bed-side-panel-left))] top-[var(--raised-bed-ui-top-mobile)] md:top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-close-button-left)]"
+                spacing={1}
+                alignItems="center"
             >
-                <span className="hidden md:block">Završi uređivanje</span>
-            </ButtonGreen>
-            {currentGarden && raisedBed && raisedBed.isValid && (
-                <Stack
-                    className="absolute md:left-[calc(50%+var(--raised-bed-side-panel-left))] top-[var(--raised-bed-suggestions-top)] left-[var(--raised-bed-suggestions-left)]"
-                    spacing={0.5}
+                <ButtonGreen
+                    variant="plain"
+                    className="rounded-full size-10 md:size-auto"
+                    onClick={removeRaisedBedCloseupParam}
+                    startDecorator={<Check className="size-5 shrink-0" />}
+                    fullWidth
                 >
-                    <RaisedBedFieldSuggestions
-                        gardenId={currentGarden.id}
-                        raisedBedId={raisedBed.id}
-                    />
-                    <RaisedBedGreenhouseSuggestion
-                        gardenId={currentGarden.id}
-                        raisedBedId={raisedBed.id}
-                    />
-                    <RaisedBedWatering
-                        gardenId={currentGarden.id}
-                        raisedBedId={raisedBed.id}
-                    />
-                    <RaisedBedSensorInfo
-                        gardenId={currentGarden.id}
-                        raisedBedId={raisedBed.id}
-                    />
-                </Stack>
-            )}
+                    <span className="hidden md:block">Završi uređivanje</span>
+                </ButtonGreen>
+                {currentGarden && raisedBed && raisedBed.isValid && (
+                    <>
+                        <RaisedBedFieldSuggestions
+                            gardenId={currentGarden.id}
+                            raisedBedId={raisedBed.id}
+                        />
+                        <RaisedBedGreenhouseSuggestion
+                            gardenId={currentGarden.id}
+                            raisedBedId={raisedBed.id}
+                        />
+                        <RaisedBedWatering
+                            gardenId={currentGarden.id}
+                            raisedBedId={raisedBed.id}
+                        />
+                        <RaisedBedSensorInfo
+                            gardenId={currentGarden.id}
+                            raisedBedId={raisedBed.id}
+                        />
+                    </>
+                )}
+            </Stack>
         </div>
     );
 }

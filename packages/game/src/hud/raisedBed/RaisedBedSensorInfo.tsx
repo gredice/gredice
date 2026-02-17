@@ -655,7 +655,7 @@ export function RaisedBedSensorInfo({
 
     if (sensorGroups.length === 0) {
         return (
-            <Row spacing={0.5}>
+            <div className="flex flex-col w-full md:flex-row gap-2 md:gap-1">
                 <SensorInfoModal
                     icon={
                         <Droplets className="size-7 shrink-0 stroke-blue-500" />
@@ -707,7 +707,7 @@ export function RaisedBedSensorInfo({
                     trigger={
                         <ButtonGreen
                             size="sm"
-                            className="rounded-full"
+                            className="rounded-full px-2"
                             fullWidth
                         >
                             <Row spacing={0.5}>
@@ -721,7 +721,11 @@ export function RaisedBedSensorInfo({
                                 {!isLoading && error && (
                                     <Warning className="size-5 shrink-0 text-red-500" />
                                 )}
-                                {!isLoading && !error && <span>-</span>}
+                                {!isLoading && !error && (
+                                    <span className="whitespace-nowrap">
+                                        -%
+                                    </span>
+                                )}
                             </Row>
                         </ButtonGreen>
                     }
@@ -747,7 +751,7 @@ export function RaisedBedSensorInfo({
                     trigger={
                         <ButtonGreen
                             size="sm"
-                            className="rounded-full"
+                            className="rounded-full px-2"
                             fullWidth
                         >
                             <Row spacing={0.5}>
@@ -761,7 +765,11 @@ export function RaisedBedSensorInfo({
                                 {!isLoading && error && (
                                     <Warning className="size-5 shrink-0 text-red-500" />
                                 )}
-                                {!isLoading && !error && <span>-°C</span>}
+                                {!isLoading && !error && (
+                                    <span className="whitespace-nowrap">
+                                        -°C
+                                    </span>
+                                )}
                             </Row>
                         </ButtonGreen>
                     }
@@ -771,7 +779,7 @@ export function RaisedBedSensorInfo({
                     sensorId={undefined}
                     type="soil_temperature"
                 />
-            </Row>
+            </div>
         );
     }
 
@@ -783,7 +791,10 @@ export function RaisedBedSensorInfo({
                 const temperatureStatus =
                     group.soilTemperature?.status ?? group.status;
                 return (
-                    <Row spacing={0.5} key={`sensor-${group.id}`}>
+                    <div
+                        className="flex flex-col md:flex-row gap-2 md:gap-0.5"
+                        key={`sensor-${group.id}`}
+                    >
                         <SensorInfoModal
                             icon={
                                 <Droplets className="size-7 shrink-0 stroke-blue-500" />
@@ -913,7 +924,7 @@ export function RaisedBedSensorInfo({
                             sensorId={group.soilTemperature?.id ?? group.id}
                             type="soil_temperature"
                         />
-                    </Row>
+                    </div>
                 );
             })}
         </Stack>
