@@ -115,7 +115,10 @@ export function Controls() {
             return undefined;
         }
 
-        const raisedBed = findRaisedBedByBlockId(currentGarden, closeupBlock.id);
+        const raisedBed = findRaisedBedByBlockId(
+            currentGarden,
+            closeupBlock.id,
+        );
         return raisedBed?.orientation;
     }, [closeupBlock, garden.data]);
 

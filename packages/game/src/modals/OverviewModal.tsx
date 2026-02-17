@@ -123,7 +123,9 @@ export function OverviewModal() {
                                         key={item.nodeId}
                                         nodeId={item.nodeId}
                                         label={item.label}
-                                        startDecorator={<>{item.icon}</>}
+                                        startDecorator={
+                                            <span>{item.icon}</span>
+                                        }
                                         selected={settingsMode === item.value}
                                         onSelected={() =>
                                             setProfileModalOpen(item.value)

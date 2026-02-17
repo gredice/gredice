@@ -42,7 +42,10 @@ type OperationCategoryIconProps = {
     style?: React.CSSProperties;
 };
 
-const categoryIcons: Record<string, React.ComponentType<OperationCategoryIconProps>> = {
+const categoryIcons: Record<
+    string,
+    React.ComponentType<OperationCategoryIconProps>
+> = {
     soilpreparation: function SoilPreparationIcon({
         className,
         style,
