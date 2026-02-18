@@ -68,7 +68,8 @@ export async function InformationSection({
     ];
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 group">
+        <div className="relative grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 group">
+            <div className="absolute -inset-4 border border-transparent rounded-2xl group-hover:border-border"></div>
             <Typography
                 id={slug(header)}
                 level="h2"
@@ -87,7 +88,7 @@ export async function InformationSection({
                                 splitContentForExpansion(sortContent);
                             if (shouldMakeExpandable(sortContent)) {
                                 return (
-                                    <ExpandableText maxHeight={150}>
+                                    <ExpandableText maxHeight={240}>
                                         <Markdown>{mainContent}</Markdown>
                                         {additionalContent && (
                                             <Markdown>
@@ -112,7 +113,7 @@ export async function InformationSection({
                             splitContentForExpansion(content);
                         if (shouldMakeExpandable(content)) {
                             return (
-                                <ExpandableText maxHeight={150}>
+                                <ExpandableText maxHeight={240}>
                                     <Markdown>{mainContent}</Markdown>
                                     {additionalContent && (
                                         <Markdown>{additionalContent}</Markdown>
