@@ -24,7 +24,7 @@
         "axios": "1.13.5",
         "node-forge": "1.3.3",
         "qrcode": "1.5.4",
-        "soap": "1.6.4",
+        "soap": "1.6.5",
         "undici": "7.21.0",
         "xml-crypto": "6.1.2",
         "xml2js": "0.6.2"
