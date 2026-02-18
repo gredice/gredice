@@ -69,7 +69,7 @@ export async function InformationSection({
 
     return (
         <div className="relative grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 group">
-            <div className="absolute -inset-4 border border-transparent rounded-2xl group-hover:border-border"></div>
+            <div className="absolute -inset-4 border border-transparent rounded-2xl group-hover:border-border pointer-events-none"></div>
             <Typography
                 id={slug(header)}
                 level="h2"
