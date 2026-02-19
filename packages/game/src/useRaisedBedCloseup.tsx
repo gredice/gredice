@@ -16,7 +16,7 @@ export function useSetRaisedBedCloseupParam() {
 
 export function useRaisedBedCloseup() {
     const { data: garden } = useCurrentGarden();
-    const [raisedBedParam] = useRaisedBedCloseupParam();
+    const [raisedBedParam, setRaisedBedParam] = useRaisedBedCloseupParam();
     const setView = useGameState((state) => state.setView);
     const closeupBlock = useGameState((state) => state.closeupBlock);
     const view = useGameState((state) => state.view);
@@ -49,6 +49,10 @@ export function useRaisedBedCloseup() {
                 decodedRaisedBedName.toLowerCase(),
         );
         if (!raisedBed) {
+            if (view === 'closeup') {
+                setView({ view: 'normal' });
+            }
+            setRaisedBedParam(null);
             return;
         }
 
@@ -57,6 +61,10 @@ export function useRaisedBedCloseup() {
             (candidate) => String(candidate.id) === String(raisedBed.blockId),
         );
         if (!block) {
+            if (view === 'closeup') {
+                setView({ view: 'normal' });
+            }
+            setRaisedBedParam(null);
             return;
         }
 
@@ -67,5 +75,13 @@ export function useRaisedBedCloseup() {
 
         console.debug('Navigating to raised bed closeup for', raisedBed, block);
         setView({ view: 'closeup', block });
-    }, [blocks, closeupBlock?.id, garden, raisedBedParam, setView, view]);
+    }, [
+        blocks,
+        closeupBlock?.id,
+        garden,
+        raisedBedParam,
+        setRaisedBedParam,
+        setView,
+        view,
+    ]);
 }
