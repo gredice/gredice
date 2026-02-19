@@ -24,6 +24,7 @@ import {
     DeliveryStep,
 } from '../shared-ui/delivery/DeliveryStep';
 import { useShoppingCartOpenParam } from '../useUrlState';
+import { calculateSunflowerAmountFromPrices } from '../utils/sunflowerPricing';
 import { HudCard } from './components/HudCard';
 import { ShoppingCartItem } from './components/shopping-cart/ShoppingCartItem';
 
@@ -43,7 +44,10 @@ export function ShoppingCart() {
         cart?.items.some(
             (item) =>
                 (account?.sunflowers.amount ?? 0) >=
-                (item.shopData.price ?? 0) * 1000,
+                calculateSunflowerAmountFromPrices({
+                    price: item.shopData.price,
+                    discountPrice: item.shopData.discountPrice,
+                }),
         );
 
     function handleCheckout() {

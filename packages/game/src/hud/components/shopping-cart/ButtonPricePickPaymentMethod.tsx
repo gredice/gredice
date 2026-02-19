@@ -1,17 +1,23 @@
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import {
+    calculateSunflowerAmountFromPrices,
+    getEffectiveEurPrice,
+} from '../../../utils/sunflowerPricing';
 
 export function ButtonPricePickPaymentMethod({
     price,
     isSunflower,
     onChange,
     availableSunflowers,
+    discountPrice,
     disabled = false,
 }: {
     price: number | null | undefined;
     isSunflower: boolean;
     onChange?: (isSunflower: boolean) => void;
     availableSunflowers?: number;
+    discountPrice?: number | null;
     disabled?: boolean;
 }) {
     function handleToggle() {
@@ -23,8 +29,12 @@ export function ButtonPricePickPaymentMethod({
         return <Typography level="body1">Nevaljan iznos</Typography>;
     }
 
-    const displayPrice = isSunflower ? price * 1000 : price;
-    const requiredSunflowers = price ? price * 1000 : 0;
+    const effectivePrice = getEffectiveEurPrice({ price, discountPrice });
+    const requiredSunflowers = calculateSunflowerAmountFromPrices({
+        price,
+        discountPrice,
+    });
+    const displayPrice = isSunflower ? requiredSunflowers : effectivePrice;
     const canAffordSunflowers =
         availableSunflowers !== undefined
             ? availableSunflowers >= requiredSunflowers
