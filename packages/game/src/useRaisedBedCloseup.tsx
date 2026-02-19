@@ -36,8 +36,9 @@ export function useRaisedBedCloseup() {
             return;
         }
 
-        const decodedRaisedBedName =
-            decodeUriComponentSafe(raisedBedParam).trim();
+        const decodedRaisedBedName = decodeUriComponentSafe(
+            raisedBedParam.replaceAll('+', ' '),
+        ).trim();
         if (!decodedRaisedBedName) {
             return;
         }
