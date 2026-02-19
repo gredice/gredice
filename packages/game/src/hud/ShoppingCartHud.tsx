@@ -42,8 +42,8 @@ export function ShoppingCart() {
         !cart?.items.some((item) => item.currency === 'sunflower') &&
         cart?.items.some(
             (item) =>
-                (account?.sunflowers.amount ?? 0) >
-                (item.shopData.price ?? 0) * 100,
+                (account?.sunflowers.amount ?? 0) >=
+                (item.shopData.price ?? 0) * 1000,
         );
 
     function handleCheckout() {
