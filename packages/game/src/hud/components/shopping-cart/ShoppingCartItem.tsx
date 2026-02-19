@@ -144,6 +144,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 availableSunflowers={
                                     account?.sunflowers.amount ?? 0
                                 }
+                                discountPrice={item.shopData.discountPrice}
                             />
                         </Row>
                     )}
