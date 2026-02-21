@@ -13,7 +13,7 @@
         "dev": "email dev -p 4001"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.0",
+        "@biomejs/biome": "2.4.1",
         "@react-email/preview-server": "5.2.8",
         "@signalco/ui-themes-minimal": "0.1.3",
         "@types/node": "24.10.13",
