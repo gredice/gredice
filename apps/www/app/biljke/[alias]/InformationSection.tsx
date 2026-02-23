@@ -34,7 +34,11 @@ export async function InformationSection({
     operations,
     attributeCards,
 }: InformationSectionProps) {
-    if (!content) {
+    const hasContent = Boolean(content?.trim());
+    const hasSortContent = Boolean(sortContent?.trim());
+    const hasTextContent = hasContent || hasSortContent;
+
+    if (!hasTextContent && !attributeCards) {
         return null;
     }
 
@@ -78,52 +82,70 @@ export async function InformationSection({
                 {header}
             </Typography>
             <Stack spacing={1}>
-                {sortContent && (
-                    <Stack>
-                        <Typography level="body2" className="-mb-2">
-                            Specifično za ovu sortu:
-                        </Typography>
-                        {(() => {
-                            const { mainContent, additionalContent } =
-                                splitContentForExpansion(sortContent);
-                            if (shouldMakeExpandable(sortContent)) {
-                                return (
-                                    <ExpandableText maxHeight={240}>
-                                        <Markdown>{mainContent}</Markdown>
-                                        {additionalContent && (
-                                            <Markdown>
-                                                {additionalContent}
-                                            </Markdown>
-                                        )}
-                                    </ExpandableText>
-                                );
-                            }
-                            return <Markdown>{sortContent}</Markdown>;
-                        })()}
-                    </Stack>
+                {hasTextContent ? (
+                    <>
+                        {hasSortContent && sortContent && (
+                            <Stack>
+                                <Typography level="body2" className="-mb-2">
+                                    Specifično za ovu sortu:
+                                </Typography>
+                                {(() => {
+                                    const { mainContent, additionalContent } =
+                                        splitContentForExpansion(sortContent);
+                                    if (shouldMakeExpandable(sortContent)) {
+                                        return (
+                                            <ExpandableText maxHeight={240}>
+                                                <Markdown>
+                                                    {mainContent}
+                                                </Markdown>
+                                                {additionalContent && (
+                                                    <Markdown>
+                                                        {additionalContent}
+                                                    </Markdown>
+                                                )}
+                                            </ExpandableText>
+                                        );
+                                    }
+                                    return <Markdown>{sortContent}</Markdown>;
+                                })()}
+                            </Stack>
+                        )}
+                        {hasContent && content && (
+                            <Stack>
+                                {hasSortContent && (
+                                    <Typography level="body2" className="-mb-2">
+                                        Za biljku:
+                                    </Typography>
+                                )}
+                                {(() => {
+                                    const { mainContent, additionalContent } =
+                                        splitContentForExpansion(content);
+                                    if (shouldMakeExpandable(content)) {
+                                        return (
+                                            <ExpandableText maxHeight={240}>
+                                                <Markdown>
+                                                    {mainContent}
+                                                </Markdown>
+                                                {additionalContent && (
+                                                    <Markdown>
+                                                        {additionalContent}
+                                                    </Markdown>
+                                                )}
+                                            </ExpandableText>
+                                        );
+                                    }
+                                    return <Markdown>{content}</Markdown>;
+                                })()}
+                            </Stack>
+                        )}
+                    </>
+                ) : (
+                    <div className="py-4">
+                        <NoDataPlaceholder>
+                            Tekst za ovu sekciju trenutno nije dostupan
+                        </NoDataPlaceholder>
+                    </div>
                 )}
-                <Stack>
-                    {sortContent && (
-                        <Typography level="body2" className="-mb-2">
-                            Za biljku:
-                        </Typography>
-                    )}
-                    {(() => {
-                        const { mainContent, additionalContent } =
-                            splitContentForExpansion(content);
-                        if (shouldMakeExpandable(content)) {
-                            return (
-                                <ExpandableText maxHeight={240}>
-                                    <Markdown>{mainContent}</Markdown>
-                                    {additionalContent && (
-                                        <Markdown>{additionalContent}</Markdown>
-                                    )}
-                                </ExpandableText>
-                            );
-                        }
-                        return <Markdown>{content}</Markdown>;
-                    })()}
-                </Stack>
             </Stack>
             <Stack spacing={1}>
                 {attributeCards}
