@@ -18,6 +18,7 @@ import { PageHeader } from '../../components/shared/PageHeader';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { PlantsCalendar } from './PlantsCalendar';
 import { PlantsGallery } from './PlantsGallery';
+import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
 
 export const metadata: Metadata = {
     title: 'Biljke',
@@ -32,6 +33,10 @@ export default async function PlantsPage({
     const viewParam = params.pregled;
     const view = Array.isArray(viewParam) ? viewParam[0] : viewParam;
     const search = params.pretraga;
+    const seedTimeFilter = params.vrijemeZaSijanje;
+    const isSeedTimeFilterEnabled =
+        (Array.isArray(seedTimeFilter) ? seedTimeFilter[0] : seedTimeFilter) ===
+        '1';
     const entities = await getPlantsData();
     return (
         <Stack>
@@ -40,19 +45,24 @@ export default async function PlantsPage({
                 header="Biljke"
                 subHeader="Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu."
             >
-                <Suspense>
-                    <FilterInput
-                        searchParamName="pretraga"
-                        fieldName="plant-search"
-                        className="lg:flex items-start justify-end"
-                    />
-                </Suspense>
+                <div className="flex flex-col md:flex-row md:justify-end gap-2">
+                    <Suspense>
+                        <PlantsSeedTimeFilterToggle />
+                    </Suspense>
+                    <Suspense>
+                        <FilterInput
+                            searchParamName="pretraga"
+                            fieldName="plant-search"
+                            className="lg:flex items-start justify-end"
+                        />
+                    </Suspense>
+                </div>
             </PageHeader>
             <Suspense>
                 <Tabs value={view} defaultValue="popis" className="w-full">
                     <TabsList className="grid grid-cols-2 w-fit border">
                         <Link
-                            href={`?pregled=popis${search ? `&pretraga=${search}` : ''}`}
+                            href={`?pregled=popis${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
                             prefetch
                         >
                             <TabsTrigger value="popis" className="w-full">
@@ -63,7 +73,7 @@ export default async function PlantsPage({
                             </TabsTrigger>
                         </Link>
                         <Link
-                            href={`?pregled=kalendar${search ? `&pretraga=${search}` : ''}`}
+                            href={`?pregled=kalendar${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
                             prefetch
                         >
                             <TabsTrigger value="kalendar" className="w-full">
