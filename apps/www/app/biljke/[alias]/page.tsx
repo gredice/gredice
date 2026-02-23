@@ -115,10 +115,10 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                             )}
                         />
                     ))}
-                <PlantSortsList basePlantName={plant.information.name} />
                 {(plant.information.tip?.length ?? 0) > 0 && (
                     <PlantTips plant={plant} />
                 )}
+                <PlantSortsList basePlantName={plant.information.name} />
                 {recipes.length > 0 && (
                     <Stack spacing={2}>
                         <Typography level="h2">
