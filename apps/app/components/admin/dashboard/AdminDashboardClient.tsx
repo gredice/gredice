@@ -3,6 +3,7 @@
 import type { getAnalyticsTotals } from '@gredice/storage';
 import { Calendar, Tally3 } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -15,6 +16,10 @@ import {
     OperationsDurationCard,
     type OperationsDurationData,
 } from './OperationsDurationCard';
+import {
+    UsersRegistrationWeekdayCard,
+    type WeekdayRegistrationData,
+} from './UsersRegistrationWeekdayCard';
 
 type EntityData = {
     entityTypeName: string;
@@ -22,31 +27,50 @@ type EntityData = {
     count: number;
 };
 
+function getTodayDateValue() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = `${now.getMonth() + 1}`.padStart(2, '0');
+    const day = `${now.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 export function AdminDashboardClient({
     initialAnalyticsData,
     initialEntitiesData,
     initialPeriod = '7',
     initialOperationsDurationData,
+    initialWeekdayRegistrations,
+    initialFrom,
+    initialTo,
 }: {
     initialAnalyticsData: Awaited<ReturnType<typeof getAnalyticsTotals>>;
     initialEntitiesData: EntityData[];
     initialPeriod?: string;
     initialOperationsDurationData: OperationsDurationData;
+    initialWeekdayRegistrations: WeekdayRegistrationData[];
+    initialFrom?: string;
+    initialTo?: string;
 }) {
     const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
+    const [customFrom, setCustomFrom] = useState(initialFrom ?? '');
+    const [customTo, setCustomTo] = useState(initialTo ?? '');
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    // Sync with URL parameter changes
     useEffect(() => {
         setSelectedPeriod(initialPeriod);
-    }, [initialPeriod]);
+        setCustomFrom(initialFrom ?? '');
+        setCustomTo(initialTo ?? '');
+    }, [initialFrom, initialPeriod, initialTo]);
 
     const baseSearchParams = useMemo(() => {
         const params = new URLSearchParams(searchParams?.toString() ?? '');
         params.delete('period');
+        params.delete('from');
+        params.delete('to');
         return params;
     }, [searchParams]);
 
@@ -54,13 +78,47 @@ export function AdminDashboardClient({
         { value: '1', label: '24h' },
         { value: '7', label: '7 dana' },
         { value: '30', label: '30 dana' },
+        { value: 'custom', label: 'Custom' },
     ];
 
     const handlePeriodChange = (value: string) => {
         setSelectedPeriod(value);
+
+        if (value === 'custom') {
+            const today = getTodayDateValue();
+            const nextFrom = customFrom || today;
+            const nextTo = customTo || today;
+            setCustomFrom(nextFrom);
+            setCustomTo(nextTo);
+            startTransition(() => {
+                const params = new URLSearchParams(baseSearchParams);
+                params.set('period', 'custom');
+                params.set('from', nextFrom);
+                params.set('to', nextTo);
+                const nextUrl = `${pathname}?${params.toString()}`;
+                router.replace(nextUrl);
+            });
+            return;
+        }
+
         startTransition(() => {
             const params = new URLSearchParams(baseSearchParams);
             params.set('period', value);
+            const nextUrl = `${pathname}?${params.toString()}`;
+            router.replace(nextUrl);
+        });
+    };
+
+    const handleCustomRangeApply = () => {
+        if (!customFrom || !customTo) {
+            return;
+        }
+
+        startTransition(() => {
+            const params = new URLSearchParams(baseSearchParams);
+            params.set('period', 'custom');
+            params.set('from', customFrom);
+            params.set('to', customTo);
             const nextUrl = `${pathname}?${params.toString()}`;
             router.replace(nextUrl);
         });
@@ -126,6 +184,37 @@ export function AdminDashboardClient({
                         disabled={isPending}
                     />
                 </Row>
+                {selectedPeriod === 'custom' ? (
+                    <Row spacing={1} className="items-end">
+                        <Input
+                            type="date"
+                            value={customFrom}
+                            onChange={(event) =>
+                                setCustomFrom(event.target.value)
+                            }
+                            label="Od"
+                            className="max-w-48"
+                            disabled={isPending}
+                        />
+                        <Input
+                            type="date"
+                            value={customTo}
+                            onChange={(event) =>
+                                setCustomTo(event.target.value)
+                            }
+                            label="Do"
+                            className="max-w-48"
+                            disabled={isPending}
+                        />
+                        <Button
+                            size="sm"
+                            onClick={handleCustomRangeApply}
+                            disabled={!customFrom || !customTo || isPending}
+                        >
+                            Primijeni
+                        </Button>
+                    </Row>
+                ) : null}
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
                     <FactCard
                         header="Računi"
@@ -189,6 +278,12 @@ export function AdminDashboardClient({
                         beforeValue={deliveryRequestsBeforeCount}
                     />
                 </div>
+            </Stack>
+            <Stack spacing={1}>
+                <DashboardDivider>Registracije</DashboardDivider>
+                <UsersRegistrationWeekdayCard
+                    data={initialWeekdayRegistrations}
+                />
             </Stack>
             <Stack spacing={1}>
                 <DashboardDivider>Radnje</DashboardDivider>
