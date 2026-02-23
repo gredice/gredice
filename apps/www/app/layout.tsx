@@ -76,8 +76,8 @@ export default async function RootLayout({
                 <meta name="apple-mobile-web-app-title" content="Gredice" />
                 <meta name="theme-color" content="#2e6f40" />
             </Head>
-            <ClientAppProvider>
-                <body className="antialiased">
+            <body className="antialiased">
+                <ClientAppProvider>
                     <Stack>
                         <div className="z-20">
                             <PageNav
@@ -110,8 +110,8 @@ export default async function RootLayout({
                     </Stack>
                     <Analytics />
                     {shouldInjectToolbar && <VercelToolbar />}
-                </body>
-            </ClientAppProvider>
+                </ClientAppProvider>
+            </body>
         </html>
     );
 }
