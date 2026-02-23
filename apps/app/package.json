@@ -23,7 +23,7 @@
         "@dnd-kit/sortable": "10.0.0",
         "@dnd-kit/utilities": "3.2.2",
         "@gredice/transactional": "workspace:*",
-        "@react-email/components": "1.0.7",
+        "@react-email/components": "1.0.8",
         "@vercel/blob": "2.2.0",
         "@vvo/tzdb": "6.198.0",
         "hypertune": "2.10.1",
