@@ -142,7 +142,7 @@ export async function InformationSection({
                 ) : (
                     <div className="py-4">
                         <NoDataPlaceholder>
-                            Tekst za ovu sekciju trenutno nije dostupan
+                            Trenutno nema dodatnih savjeta
                         </NoDataPlaceholder>
                     </div>
                 )}
