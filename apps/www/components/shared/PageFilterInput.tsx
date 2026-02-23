@@ -1,10 +1,10 @@
 'use client';
 
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Close, Search } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Input } from '@signalco/ui-primitives/Input';
+import { useQueryState } from 'nuqs';
 import type { HTMLAttributes } from 'react';
 
 export type PageFilterInputProps = HTMLAttributes<HTMLFormElement> & {
@@ -17,31 +17,17 @@ export function PageFilterInput({
     fieldName,
     ...rest
 }: PageFilterInputProps) {
-    const [search, setSearch] = useSearchParam(searchParamName);
-    const handleSubmit = (data: FormData) => {
-        const searchInput = data.get(fieldName);
-        if (typeof searchInput === 'string') {
-            setSearch(searchInput);
-        }
-    };
+    const [search, setSearch] = useQueryState(searchParamName);
+    const updateSearch = (value: string) => setSearch(value || null);
 
     return (
-        <form action={handleSubmit} {...rest}>
+        <form onSubmit={(event) => event.preventDefault()} {...rest}>
             <Input
                 name={fieldName}
-                defaultValue={search}
+                value={search ?? ''}
+                onChange={(event) => updateSearch(event.target.value)}
                 placeholder="Pretraži..."
-                startDecorator={
-                    <IconButton
-                        className="hover:bg-neutral-300 ml-1 rounded-full aspect-square"
-                        title="Pretraga"
-                        type="submit"
-                        size="sm"
-                        variant="plain"
-                    >
-                        <Search className="size-5" />
-                    </IconButton>
-                }
+                startDecorator={<Search className="size-5 shrink-0 ml-3" />}
                 // Clear search
                 endDecorator={
                     <IconButton
@@ -50,7 +36,7 @@ export function PageFilterInput({
                             search ? 'visible' : 'invisible',
                         )}
                         title="Očisti pretragu"
-                        onClick={() => setSearch('')}
+                        onClick={() => updateSearch('')}
                         size="sm"
                         variant="plain"
                     >
