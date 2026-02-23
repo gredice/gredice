@@ -109,6 +109,7 @@ async function FarmerDashboard() {
                                 size="lg"
                                 className="justify-start"
                                 startDecorator={<Calendar className="size-4" />}
+                                href="/schedule"
                             >
                                 Pregled dnevnih zadataka
                             </Button>
