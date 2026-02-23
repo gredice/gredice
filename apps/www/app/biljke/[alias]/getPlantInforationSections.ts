@@ -24,6 +24,10 @@ function hasValue(value: unknown): boolean {
     return true;
 }
 
+function hasInformationText(value: unknown): boolean {
+    return typeof value === 'string' ? value.trim().length > 0 : Boolean(value);
+}
+
 function hasSectionAttributes(
     plant: PlantData,
     section: PlantStageName,
@@ -72,7 +76,7 @@ export function getPlantInforationSections(
         header: stage.label,
         id: stage.name,
         avaialble:
-            Boolean(plant.information[stage.name]) ||
+            hasInformationText(plant.information[stage.name]) ||
             hasSectionAttributes(plant, stage.name),
     }));
 }
