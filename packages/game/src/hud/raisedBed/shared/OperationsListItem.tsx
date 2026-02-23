@@ -64,7 +64,7 @@ export function OperationsListItem({
     const operationButton = (
         <Button
             variant="plain"
-            className="justify-start text-start p-0 h-auto py-2 gap-3 px-4 rounded-none font-normal"
+            className="justify-start text-start p-0 h-auto py-1 gap-3 px-4 rounded-none font-normal"
             onClick={() => handleOperationPicked(operation)}
         >
             <AnimateFlyToItem {...animateFlyToShoppingCart.props}>
