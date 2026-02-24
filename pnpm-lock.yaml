@@ -29,13 +29,13 @@ importers:
         version: 1.4.1
       '@hono/mcp':
         specifier: 0.2.3
-        version: 0.2.3(@modelcontextprotocol/sdk@1.26.0(zod@4.3.6))(hono-rate-limiter@0.4.2(hono@4.11.10))(hono@4.11.10)(zod@4.3.6)
+        version: 0.2.3(@modelcontextprotocol/sdk@1.27.0(zod@4.3.6))(hono-rate-limiter@0.4.2(hono@4.11.10))(hono@4.11.10)(zod@4.3.6)
       '@hono/standard-validator':
         specifier: 0.2.2
         version: 0.2.2(@standard-schema/spec@1.1.0)(hono@4.11.10)
       '@modelcontextprotocol/sdk':
-        specifier: 1.26.0
-        version: 1.26.0(zod@4.3.6)
+        specifier: 1.27.0
+        version: 1.27.0(zod@4.3.6)
       '@scalar/api-reference-react':
         specifier: 0.8.60
         version: 0.8.60(axios@1.13.5)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.2.4)(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)
@@ -2844,8 +2844,8 @@ packages:
   '@microsoft/tsdoc@0.16.0':
     resolution: {integrity: sha512-xgAyonlVVS+q7Vc7qLW0UrJU7rSFcETRWsqdXZtjzRU8dF+6CkozTK4V4y1LwOX7j8r/vHphjDeMeGI4tNGeGA==}
 
-  '@modelcontextprotocol/sdk@1.26.0':
-    resolution: {integrity: sha512-Y5RmPncpiDtTXDbLKswIJzTqu2hyBKxTNsgKqKclDbhIgg1wgtf1fRuvxgTnRfcnxtvvgbIEcqUOzZrJ6iSReg==}
+  '@modelcontextprotocol/sdk@1.27.0':
+    resolution: {integrity: sha512-qOdO524oPMkUsOJTrsH9vz/HN3B5pKyW+9zIW51A9kDMVe7ON70drz1ouoyoyOcfzc+oxhkQ6jWmbyKnlWmYqA==}
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
@@ -10767,9 +10767,9 @@ snapshots:
       '@tanstack/vue-virtual': 3.13.18(vue@3.5.27(typescript@5.9.3))
       vue: 3.5.27(typescript@5.9.3)
 
-  '@hono/mcp@0.2.3(@modelcontextprotocol/sdk@1.26.0(zod@4.3.6))(hono-rate-limiter@0.4.2(hono@4.11.10))(hono@4.11.10)(zod@4.3.6)':
+  '@hono/mcp@0.2.3(@modelcontextprotocol/sdk@1.27.0(zod@4.3.6))(hono-rate-limiter@0.4.2(hono@4.11.10))(hono@4.11.10)(zod@4.3.6)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.26.0(zod@4.3.6)
+      '@modelcontextprotocol/sdk': 1.27.0(zod@4.3.6)
       hono: 4.11.10
       hono-rate-limiter: 0.4.2(hono@4.11.10)
       pkce-challenge: 5.0.1
@@ -11282,7 +11282,7 @@ snapshots:
 
   '@microsoft/tsdoc@0.16.0': {}
 
-  '@modelcontextprotocol/sdk@1.26.0(zod@4.3.6)':
+  '@modelcontextprotocol/sdk@1.27.0(zod@4.3.6)':
     dependencies:
       '@hono/node-server': 1.19.9(hono@4.11.10)
       ajv: 8.17.1
