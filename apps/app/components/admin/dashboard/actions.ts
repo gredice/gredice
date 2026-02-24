@@ -128,6 +128,14 @@ function parseDateInput(value?: string) {
         return null;
     }
 
+    if (
+        date.getFullYear() !== year ||
+        date.getMonth() !== month - 1 ||
+        date.getDate() !== day
+    ) {
+        return null;
+    }
+
     return date;
 }
 
@@ -165,7 +173,7 @@ function getRangeDays(startDate: Date, endDate: Date) {
 }
 
 export async function getAnalyticsData(
-    days: number,
+    days: number | undefined,
     from?: string,
     to?: string,
 ) {

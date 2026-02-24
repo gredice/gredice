@@ -3,8 +3,8 @@
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
-import { invalidatePage } from '../(actions)/sharedActions';
 import { queryClient } from '../../components/providers/ClientAppProvider';
+import { invalidatePage } from '../(actions)/sharedActions';
 
 export function UrlAuthForward() {
     const router = useRouter();
