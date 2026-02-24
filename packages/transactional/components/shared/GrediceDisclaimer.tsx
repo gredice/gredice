@@ -16,6 +16,9 @@ export function GrediceDisclaimer({
             <Link href={`mailto:sigurnost@${appDomain}`}>
                 sigurnost@{appDomain}
             </Link>
+            . Ova poruka poslana je automatski. Na ovu adresu nije moguće
+            zaprimati odgovore. Ako imaš pitanja, molimo kontaktiraj nas drugim
+            kanalima.
         </Disclaimer>
     );
 }
