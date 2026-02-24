@@ -12,6 +12,8 @@ import { LogoutButton } from '../../components/auth/LogoutButton';
 import { auth } from '../../lib/auth/auth';
 import { FarmScheduleDay } from './FarmScheduleDay';
 
+export const dynamic = 'force-dynamic';
+
 export default function FarmSchedulePage() {
     const authFarmer = auth.bind(null, ['farmer', 'admin']);
 
