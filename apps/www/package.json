@@ -32,7 +32,7 @@
         "server-only": "0.0.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.2",
+        "@biomejs/biome": "2.4.3",
         "@gredice/client": "workspace:*",
         "@gredice/game": "workspace:*",
         "@gredice/js": "workspace:*",
