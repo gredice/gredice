@@ -7,7 +7,6 @@ const nextConfig: NextConfig = {
     reactCompiler: true,
     experimental: {
         turbopackFileSystemCacheForDev: true,
-        turbopackFileSystemCacheForBuild: true,
         typedEnv: true,
         optimizePackageImports: [
             '@signalco/ui-primitives',
