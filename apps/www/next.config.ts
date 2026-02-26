@@ -22,7 +22,6 @@ const nextConfig: NextConfig = {
     },
     experimental: {
         turbopackFileSystemCacheForDev: true,
-        turbopackFileSystemCacheForBuild: true,
         typedEnv: true,
         optimizePackageImports: [
             '@signalco/ui-primitives',
