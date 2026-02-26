@@ -69,33 +69,38 @@ function PlantsStatisticsLoading() {
 }
 
 async function PlantsStatistics() {
-    const response = await client().api.data.statistics.plants.$get();
-    if (!response || response.status !== 200) {
+    try {
+        const response = await client().api.data.statistics.plants.$get();
+        if (!response || response.status !== 200) {
+            return null;
+        }
+
+        const { totalPlants, totalPlantSorts, totalPlantedPlants } =
+            await response.json();
+
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <PlantsStatisticsCard
+                    header="Dostupnih biljaka"
+                    subheader="Informacije o biljkama, sve na jednom mjestu"
+                    value={totalPlants.toString()}
+                />
+                <PlantsStatisticsCard
+                    header="Dostupnih sorti"
+                    subheader="Sorte biljaka koje možeš posaditi u svoje gredice"
+                    value={totalPlantSorts.toString()}
+                />
+                <PlantsStatisticsCard
+                    header="Posađenih biljaka"
+                    subheader="Do sada posađenih biljaka u svim vrtovima naših korisnika"
+                    value={totalPlantedPlants.toString()}
+                />
+            </div>
+        );
+    } catch (error) {
+        console.error('Failed to fetch plants statistics', error);
         return null;
     }
-
-    const { totalPlants, totalPlantSorts, totalPlantedPlants } =
-        await response.json();
-
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <PlantsStatisticsCard
-                header="Dostupnih biljaka"
-                subheader="Informacije o biljkama, sve na jednom mjestu"
-                value={totalPlants.toString()}
-            />
-            <PlantsStatisticsCard
-                header="Dostupnih sorti"
-                subheader="Sorte biljaka koje možeš posaditi u svoje gredice"
-                value={totalPlantSorts.toString()}
-            />
-            <PlantsStatisticsCard
-                header="Posađenih biljaka"
-                subheader="Do sada posađenih biljaka u svim vrtovima naših korisnika"
-                value={totalPlantedPlants.toString()}
-            />
-        </div>
-    );
 }
 
 function StepsSection() {

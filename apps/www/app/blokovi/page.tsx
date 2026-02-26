@@ -1,7 +1,7 @@
 import { directoriesClient } from '@gredice/client';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Suspense } from 'react';
-import { PageFilterInput } from '../../components/shared/PageFilterInput';
+import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { BlockGallery } from './BlockGallery';
 
@@ -11,8 +11,23 @@ export const metadata = {
     description: 'Pregledaj sve blokove koje možeš koristiti u svom vrtu.',
 };
 
+async function getBlocksData() {
+    try {
+        const { data, error } = await directoriesClient().GET('/entities/block');
+        if (error) {
+            console.error('Failed to fetch blocks data', error);
+            return [];
+        }
+
+        return data ?? [];
+    } catch (error) {
+        console.error('Failed to fetch blocks data', error);
+        return [];
+    }
+}
+
 export default async function BlocksPage() {
-    const blocks = (await directoriesClient().GET('/entities/block')).data;
+    const blocks = await getBlocksData();
     return (
         <Stack>
             <PageHeader
@@ -21,7 +36,7 @@ export default async function BlocksPage() {
                 subHeader="Pregledaj sve blokove koje možeš koristiti u svom vrtu."
             >
                 <Suspense>
-                    <PageFilterInput
+                    <PageFilterInputNoSSR
                         searchParamName="pretraga"
                         fieldName="block-search"
                         className="lg:flex items-start justify-end"

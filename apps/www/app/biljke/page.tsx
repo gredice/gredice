@@ -13,7 +13,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
-import { PageFilterInput } from '../../components/shared/PageFilterInput';
+import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { PlantsCalendar } from './PlantsCalendar';
@@ -41,7 +41,7 @@ export default async function PlantsPage({
                 subHeader="Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu."
             >
                 <Suspense>
-                    <PageFilterInput
+                    <PageFilterInputNoSSR
                         searchParamName="pretraga"
                         fieldName="plant-search"
                         className="lg:flex items-start justify-end"

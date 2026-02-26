@@ -3,7 +3,21 @@ import { unstable_cache } from 'next/cache';
 
 export const getOperationsData = unstable_cache(
     async () => {
-        return (await directoriesClient().GET('/entities/operation')).data;
+        try {
+            const { data, error } = await directoriesClient().GET(
+                '/entities/operation',
+            );
+
+            if (error) {
+                console.error('Failed to fetch operations data', error);
+                return [];
+            }
+
+            return data ?? [];
+        } catch (error) {
+            console.error('Failed to fetch operations data', error);
+            return [];
+        }
     },
     ['operationsData'],
     {

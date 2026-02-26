@@ -1,4 +1,3 @@
-import { directoriesClient } from '@gredice/client';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Euro } from '@signalco/ui-icons';
@@ -39,8 +38,7 @@ export async function generateMetadata(
 }
 
 export async function generateStaticParams() {
-    const entities = (await directoriesClient().GET('/entities/operation'))
-        .data;
+    const entities = await getOperationsData();
     return (
         entities?.map((entity) => ({
             alias: String(entity.information.label),

@@ -5,7 +5,21 @@ export type { PlantSortData };
 
 export const getPlantSortsData = unstable_cache(
     async () => {
-        return (await directoriesClient().GET('/entities/plantSort')).data;
+        try {
+            const { data, error } = await directoriesClient().GET(
+                '/entities/plantSort',
+            );
+
+            if (error) {
+                console.error('Failed to fetch plant sorts data', error);
+                return [];
+            }
+
+            return data ?? [];
+        } catch (error) {
+            console.error('Failed to fetch plant sorts data', error);
+            return [];
+        }
     },
     ['plantSortsData'],
     {
