@@ -1,4 +1,4 @@
-import { and, count, gte, isNotNull, lt } from 'drizzle-orm';
+import { and, count, gte, isNotNull, lt, lte, sql } from 'drizzle-orm';
 import {
     accounts,
     deliveryRequests,
@@ -176,4 +176,23 @@ export async function getAnalyticsTotals(days: number = 7) {
         deliveryRequestsBefore: deliveryRequestsBeforeCount[0].count,
         activeUsers,
     };
+}
+
+export async function getUserRegistrationsByWeekday(from: Date, to: Date) {
+    // EXTRACT(DOW) returns 0 for Sunday through 6 for Saturday, matching JS Date.getDay() indexing
+    const rows = await storage()
+        .select({
+            dayOfWeek: sql<number>`EXTRACT(DOW FROM ${users.createdAt})::integer`,
+            registrations: count(),
+        })
+        .from(users)
+        .where(and(gte(users.createdAt, from), lte(users.createdAt, to)))
+        .groupBy(sql`EXTRACT(DOW FROM ${users.createdAt})`);
+
+    const weekdayCounts = [0, 0, 0, 0, 0, 0, 0];
+    for (const row of rows) {
+        weekdayCounts[row.dayOfWeek] = row.registrations;
+    }
+
+    return weekdayCounts;
 }

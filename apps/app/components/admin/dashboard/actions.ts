@@ -7,6 +7,7 @@ import {
     getEntitiesRaw,
     getEntityTypes,
     getPlantUpdateEvents,
+    getUserRegistrationsByWeekday,
 } from '@gredice/storage';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 
@@ -24,6 +25,21 @@ type OperationsDurationData = {
     daily: OperationsDurationPoint[];
 };
 
+type DateRange = {
+    startDate: Date;
+    endDate: Date;
+};
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const WEEKDAY_LABELS = [
+    'Nedjelja',
+    'Ponedjeljak',
+    'Utorak',
+    'Srijeda',
+    'Četvrtak',
+    'Petak',
+    'Subota',
+];
 const PLANT_SOWING_DURATION_MINUTES = 5;
 
 function toDateKey(date: Date) {
@@ -96,25 +112,90 @@ function formatOperationsDurationData(
     };
 }
 
-export async function getAnalyticsData(days: number) {
-    const safeDays = Number.isFinite(days) && days > 0 ? days : 1;
-    const today = new Date();
-    const startDate = new Date(today);
-    startDate.setHours(0, 0, 0, 0);
-    startDate.setDate(startDate.getDate() - (safeDays - 1));
-    const endDate = new Date(today);
-    endDate.setHours(23, 59, 59, 999);
+function parseDateInput(value?: string) {
+    if (!value) {
+        return null;
+    }
 
-    const [analyticsResult, entityTypes, operationsList, operationsData] =
-        await Promise.all([
-            getAnalyticsTotals(safeDays),
-            getEntityTypes(),
-            getAllOperations({
-                completedFrom: startDate,
-                completedTo: endDate,
-            }),
-            getEntitiesFormatted<EntityStandardized>('operation'),
-        ]);
+    const parts = value.split('-').map((part) => Number.parseInt(part, 10));
+    if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
+        return null;
+    }
+
+    const [year, month, day] = parts;
+    const date = new Date(year, month - 1, day);
+    if (Number.isNaN(date.getTime())) {
+        return null;
+    }
+
+    if (
+        date.getFullYear() !== year ||
+        date.getMonth() !== month - 1 ||
+        date.getDate() !== day
+    ) {
+        return null;
+    }
+
+    return date;
+}
+
+function createDateRange(days: number, from?: string, to?: string): DateRange {
+    const now = new Date();
+    const defaultDays = Number.isFinite(days) && days > 0 ? days : 1;
+    const defaultStartDate = new Date(now);
+    defaultStartDate.setHours(0, 0, 0, 0);
+    defaultStartDate.setDate(defaultStartDate.getDate() - (defaultDays - 1));
+    const defaultEndDate = new Date(now);
+    defaultEndDate.setHours(23, 59, 59, 999);
+
+    const parsedFrom = parseDateInput(from);
+    const parsedTo = parseDateInput(to);
+
+    if (!parsedFrom || !parsedTo) {
+        return { startDate: defaultStartDate, endDate: defaultEndDate };
+    }
+
+    const customStartDate = new Date(parsedFrom);
+    customStartDate.setHours(0, 0, 0, 0);
+    const customEndDate = new Date(parsedTo);
+    customEndDate.setHours(23, 59, 59, 999);
+
+    if (customStartDate > customEndDate) {
+        return { startDate: defaultStartDate, endDate: defaultEndDate };
+    }
+
+    return { startDate: customStartDate, endDate: customEndDate };
+}
+
+function getRangeDays(startDate: Date, endDate: Date) {
+    const timeDiff = Math.abs(endDate.getTime() - startDate.getTime());
+    return Math.floor(timeDiff / ONE_DAY_MS) + 1;
+}
+
+export async function getAnalyticsData(
+    days: number | undefined,
+    from?: string,
+    to?: string,
+) {
+    const { startDate, endDate } = createDateRange(days, from, to);
+    const rangeDays = getRangeDays(startDate, endDate);
+
+    const [
+        analyticsResult,
+        entityTypes,
+        operationsList,
+        operationsData,
+        weekdayRegistrationsRaw,
+    ] = await Promise.all([
+        getAnalyticsTotals(rangeDays),
+        getEntityTypes(),
+        getAllOperations({
+            completedFrom: startDate,
+            completedTo: endDate,
+        }),
+        getEntitiesFormatted<EntityStandardized>('operation'),
+        getUserRegistrationsByWeekday(startDate, endDate),
+    ]);
 
     const entitiesCounts = await Promise.all(
         entityTypes.map(async (entityType) => {
@@ -129,7 +210,7 @@ export async function getAnalyticsData(days: number) {
 
     const { dateKeys, operationsTotals, sowingTotals } = createDurationBuckets(
         startDate,
-        safeDays,
+        rangeDays,
     );
 
     const operationDurations = new Map<number, number>();
@@ -142,8 +223,6 @@ export async function getAnalyticsData(days: number) {
     }
 
     for (const operation of operationsList) {
-        // Operations are already filtered by completion date and status,
-        // but double-check for safety
         if (operation.status !== 'completed' || !operation.completedAt) {
             continue;
         }
@@ -188,9 +267,15 @@ export async function getAnalyticsData(days: number) {
         sowingTotals,
     );
 
+    const weekdayRegistrations = WEEKDAY_LABELS.map((label, index) => ({
+        label,
+        count: weekdayRegistrationsRaw[index] ?? 0,
+    }));
+
     return {
         analytics: analyticsResult,
         entities: entitiesCounts,
         operationsDuration,
+        weekdayRegistrations,
     };
 }
