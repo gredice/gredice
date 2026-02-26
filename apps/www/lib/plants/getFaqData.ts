@@ -3,7 +3,21 @@ import { unstable_cache } from 'next/cache';
 
 export const getFaqData = unstable_cache(
     async () => {
-        return (await directoriesClient().GET('/entities/faq')).data;
+        try {
+            const { data, error } = await directoriesClient().GET(
+                '/entities/faq',
+            );
+
+            if (error) {
+                console.error('Failed to fetch faq data', error);
+                return [];
+            }
+
+            return data ?? [];
+        } catch (error) {
+            console.error('Failed to fetch faq data', error);
+            return [];
+        }
     },
     ['faqData'],
     {

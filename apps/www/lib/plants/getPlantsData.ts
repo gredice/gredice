@@ -4,12 +4,26 @@ import { isPlantRecommended } from '../../../../packages/js/src/plants/isPlantRe
 
 export const getPlantsData = unstable_cache(
     async () => {
-        return (await directoriesClient().GET('/entities/plant')).data?.map(
-            (plant) => ({
-                ...plant,
-                isRecommended: isPlantRecommended(plant),
-            }),
-        );
+        try {
+            const { data, error } = await directoriesClient().GET(
+                '/entities/plant',
+            );
+
+            if (error) {
+                console.error('Failed to fetch plants data', error);
+                return [];
+            }
+
+            return (
+                data?.map((plant) => ({
+                    ...plant,
+                    isRecommended: isPlantRecommended(plant),
+                })) ?? []
+            );
+        } catch (error) {
+            console.error('Failed to fetch plants data', error);
+            return [];
+        }
     },
     ['plantsData'],
     {

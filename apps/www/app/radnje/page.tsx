@@ -1,6 +1,5 @@
 import type { PlantStageName } from '@gredice/game';
 import { PLANT_STAGES } from '@gredice/game';
-import { FilterInput } from '@gredice/ui/FilterInput';
 import { slug } from '@signalco/js';
 import {
     Droplet,
@@ -18,6 +17,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { ShovelIcon } from '../../../../packages/game/src/icons/Shovel';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
+import { PageFilterInput } from '../../components/shared/PageFilterInput';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { NoDataPlaceholder } from '../../components/shared/placeholders/NoDataPlaceholder';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
@@ -73,7 +73,7 @@ export default async function OperationsPage({
         <Stack spacing={4}>
             <PageHeader header="Radnje" subHeader={pageDescription} padded>
                 <Suspense>
-                    <FilterInput
+                    <PageFilterInput
                         searchParamName="pretraga"
                         fieldName="operation-search"
                         className="lg:flex items-start justify-end w-full"

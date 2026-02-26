@@ -78,38 +78,43 @@ export default async function RootLayout({
             </Head>
             <body className="antialiased">
                 <ClientAppProvider>
-                    <Stack>
-                        <div className="z-20">
-                            <PageNav
-                                logo={
-                                    <Logotype
-                                        className="w-[140px] h-[38px]"
-                                        aria-label="Gredice"
+                        <Stack>
+                            <div className="z-20">
+                                <PageNav
+                                    logo={
+                                        <Logotype
+                                            className="w-[140px] h-[38px]"
+                                            aria-label="Gredice"
+                                        />
+                                    }
+                                    links={[
+                                        {
+                                            href: KnownPages.RaisedBeds,
+                                            text: 'Podignuta gredica',
+                                        },
+                                        {
+                                            href: KnownPages.Plants,
+                                            text: 'Biljke',
+                                        },
+                                        {
+                                            href: KnownPages.FAQ,
+                                            text: 'Česta pitanja',
+                                        },
+                                    ]}
+                                >
+                                    <div className="absolute bg-background/80 w-full inset-0 -z-10" />
+                                    <NavUserButton
+                                        href={KnownPages.GardenApp}
                                     />
-                                }
-                                links={[
-                                    {
-                                        href: KnownPages.RaisedBeds,
-                                        text: 'Podignuta gredica',
-                                    },
-                                    { href: KnownPages.Plants, text: 'Biljke' },
-                                    {
-                                        href: KnownPages.FAQ,
-                                        text: 'Česta pitanja',
-                                    },
-                                ]}
-                            >
-                                <div className="absolute bg-background/80 w-full inset-0 -z-10" />
-                                <NavUserButton href={KnownPages.GardenApp} />
-                            </PageNav>
-                        </div>
-                        <main className="mt-16 relative">
-                            <LayoutContainer>{children}</LayoutContainer>
-                        </main>
-                        <Footer />
-                    </Stack>
-                    <Analytics />
-                    {shouldInjectToolbar && <VercelToolbar />}
+                                </PageNav>
+                            </div>
+                            <main className="mt-16 relative">
+                                <LayoutContainer>{children}</LayoutContainer>
+                            </main>
+                            <Footer />
+                        </Stack>
+                        <Analytics />
+                        {shouldInjectToolbar && <VercelToolbar />}
                 </ClientAppProvider>
             </body>
         </html>

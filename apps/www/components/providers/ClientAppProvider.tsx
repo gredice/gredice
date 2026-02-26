@@ -10,12 +10,12 @@ export const queryClient = new QueryClient();
 
 export function ClientAppProvider({ children }: PropsWithChildren) {
     return (
-        <NuqsAdapter>
-            <QueryClientProvider client={queryClient}>
-                <ThemeProvider attribute="class">
+        <QueryClientProvider client={queryClient}>
+            <ThemeProvider attribute="class">
+                <NuqsAdapter>
                     <WinterModeProvider>{children}</WinterModeProvider>
-                </ThemeProvider>
-            </QueryClientProvider>
-        </NuqsAdapter>
+                </NuqsAdapter>
+            </ThemeProvider>
+        </QueryClientProvider>
     );
 }
