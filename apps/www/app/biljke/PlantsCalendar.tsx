@@ -51,12 +51,15 @@ const calendarActivityTypes = {
 export function PlantsCalendar({
     plants,
 }: {
-    plants: PlantData[] | undefined;
+    plants: (PlantData & { isRecommended?: boolean })[] | undefined;
 }) {
     const [search] = useSearchParam('pretraga');
+    const [seedTimeFilter] = useSearchParam('vrijemeZaSijanje');
+    const onlySeedTimePlants = seedTimeFilter === '1';
     const filteredPlants = orderBy(plants ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.name),
     )
+        .filter((plant) => !onlySeedTimePlants || plant.isRecommended)
         .filter(
             (plant) =>
                 !search ||

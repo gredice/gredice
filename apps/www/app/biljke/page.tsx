@@ -18,6 +18,7 @@ import { PageHeader } from '../../components/shared/PageHeader';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { PlantsCalendar } from './PlantsCalendar';
 import { PlantsGallery } from './PlantsGallery';
+import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
 
 export const metadata: Metadata = {
     title: 'Biljke',
@@ -32,6 +33,10 @@ export default async function PlantsPage({
     const viewParam = params.pregled;
     const view = Array.isArray(viewParam) ? viewParam[0] : viewParam;
     const search = params.pretraga;
+    const seedTimeFilter = params.vrijemeZaSijanje;
+    const isSeedTimeFilterEnabled =
+        (Array.isArray(seedTimeFilter) ? seedTimeFilter[0] : seedTimeFilter) ===
+        '1';
     const entities = await getPlantsData();
     return (
         <Stack>
@@ -50,30 +55,38 @@ export default async function PlantsPage({
             </PageHeader>
             <Suspense>
                 <Tabs value={view} defaultValue="popis" className="w-full">
-                    <TabsList className="grid grid-cols-2 w-fit border">
-                        <Link
-                            href={`?pregled=popis${search ? `&pretraga=${search}` : ''}`}
-                            prefetch
-                        >
-                            <TabsTrigger value="popis" className="w-full">
-                                <Row spacing={1} className="cursor-default">
-                                    <LayoutGrid className="size-5" />
-                                    <span>Popis</span>
-                                </Row>
-                            </TabsTrigger>
-                        </Link>
-                        <Link
-                            href={`?pregled=kalendar${search ? `&pretraga=${search}` : ''}`}
-                            prefetch
-                        >
-                            <TabsTrigger value="kalendar" className="w-full">
-                                <Row spacing={1} className="cursor-default">
-                                    <Calendar className="size-5" />
-                                    <span>Kalendar</span>
-                                </Row>
-                            </TabsTrigger>
-                        </Link>
-                    </TabsList>
+                    <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <TabsList className="grid grid-cols-2 w-fit border">
+                            <Link
+                                href={`?pregled=popis${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
+                                prefetch
+                            >
+                                <TabsTrigger value="popis" className="w-full">
+                                    <Row spacing={1} className="cursor-default">
+                                        <LayoutGrid className="size-5" />
+                                        <span>Popis</span>
+                                    </Row>
+                                </TabsTrigger>
+                            </Link>
+                            <Link
+                                href={`?pregled=kalendar${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
+                                prefetch
+                            >
+                                <TabsTrigger
+                                    value="kalendar"
+                                    className="w-full"
+                                >
+                                    <Row spacing={1} className="cursor-default">
+                                        <Calendar className="size-5" />
+                                        <span>Kalendar</span>
+                                    </Row>
+                                </TabsTrigger>
+                            </Link>
+                        </TabsList>
+                        <Suspense>
+                            <PlantsSeedTimeFilterToggle />
+                        </Suspense>
+                    </div>
                     <TabsContent value="popis" className="mt-2">
                         <PlantsGallery plants={entities} />
                     </TabsContent>
