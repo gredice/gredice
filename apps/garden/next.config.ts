@@ -23,10 +23,18 @@ const nextConfig: NextConfig = {
     },
     experimental: {
         turbopackFileSystemCacheForDev: true,
+        turbopackFileSystemCacheForBuild: true,
         typedEnv: true,
+        optimizePackageImports: [
+            '@signalco/ui-primitives',
+            '@signalco/ui-icons',
+            '@sentry/nextjs',
+            'three',
+            '@react-three/drei',
+            '@react-three/fiber',
+        ],
     },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
-    productionBrowserSourceMaps: true,
     images: {
         remotePatterns: [
             {
@@ -74,6 +82,11 @@ export default withSentryConfig(withVercelToolbar(nextConfig), {
 
     // Upload a larger set of source maps for prettier stack traces (increases build time)
     widenClientFileUpload: true,
+
+    // Automatically delete source maps after uploading to Sentry
+    sourcemaps: {
+        deleteSourcemapsAfterUpload: true,
+    },
 
     // Uncomment to route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
     // This can increase your server load as well as your hosting bill.

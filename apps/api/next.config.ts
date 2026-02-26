@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
     experimental: {
         typedEnv: true,
         turbopackFileSystemCacheForDev: true,
+        turbopackFileSystemCacheForBuild: true,
+        optimizePackageImports: [
+            '@sentry/nextjs',
+        ],
     },
     images: {
         remotePatterns: [
@@ -20,7 +24,6 @@ const nextConfig: NextConfig = {
         ],
         qualities: [80, 100],
     },
-    productionBrowserSourceMaps: true,
     allowedDevOrigins: ['api.gredice.test'],
 };
 
@@ -40,6 +43,11 @@ export default withSentryConfig(nextConfig, {
 
     // Upload a larger set of source maps for prettier stack traces (increases build time)
     widenClientFileUpload: true,
+
+    // Automatically delete source maps after uploading to Sentry
+    sourcemaps: {
+        deleteSourcemapsAfterUpload: true,
+    },
 
     // Uncomment to route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
     // This can increase your server load as well as your hosting bill.
