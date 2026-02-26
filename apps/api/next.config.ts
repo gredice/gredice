@@ -7,9 +7,7 @@ const nextConfig: NextConfig = {
         typedEnv: true,
         turbopackFileSystemCacheForDev: true,
         turbopackFileSystemCacheForBuild: true,
-        optimizePackageImports: [
-            '@sentry/nextjs',
-        ],
+        optimizePackageImports: ['@sentry/nextjs'],
     },
     images: {
         remotePatterns: [
