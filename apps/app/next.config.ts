@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
     experimental: {
         typedEnv: true,
         turbopackFileSystemCacheForDev: true,
+        turbopackFileSystemCacheForBuild: true,
+        optimizePackageImports: [
+            '@signalco/ui-primitives',
+            '@signalco/ui-icons',
+            'three',
+            '@react-three/drei',
+            '@react-three/fiber',
+        ],
         serverActions: {
             bodySizeLimit: '10mb',
         },

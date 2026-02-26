@@ -22,7 +22,15 @@ const nextConfig: NextConfig = {
     },
     experimental: {
         turbopackFileSystemCacheForDev: true,
+        turbopackFileSystemCacheForBuild: true,
         typedEnv: true,
+        optimizePackageImports: [
+            '@signalco/ui-primitives',
+            '@signalco/ui-icons',
+            'three',
+            '@react-three/drei',
+            '@react-three/fiber',
+        ],
     },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
     productionBrowserSourceMaps: !process.env.CI,

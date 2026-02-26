@@ -6,7 +6,12 @@ const nextConfig: NextConfig = {
     reactCompiler: true,
     experimental: {
         turbopackFileSystemCacheForDev: true,
+        turbopackFileSystemCacheForBuild: true,
         typedEnv: true,
+        optimizePackageImports: [
+            '@signalco/ui-primitives',
+            '@signalco/ui-icons',
+        ],
     },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
     productionBrowserSourceMaps: !process.env.CI,

@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     experimental: {
         typedEnv: true,
         turbopackFileSystemCacheForDev: true,
+        turbopackFileSystemCacheForBuild: true,
     },
     images: {
         remotePatterns: [
