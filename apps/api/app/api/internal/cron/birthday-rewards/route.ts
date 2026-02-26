@@ -25,14 +25,46 @@ export async function GET(request: NextRequest) {
     }
 
     const now = new Date();
-    const currentYear = now.getUTCFullYear();
-    const month = now.getUTCMonth() + 1;
-    const day = now.getUTCDate();
+    const referenceDate = startOfUtcDay(now);
+    const lookbackDays = 30;
+    const usersWithRewardDates: {
+        user: Awaited<ReturnType<typeof getUsersWithBirthdayOn>>[number];
+        rewardDate: Date;
+    }[] = [];
+    const seenUsers = new Set<string>();
 
-    let users = await getUsersWithBirthdayOn(month, day);
-    if (month === 2 && day === 28 && !isLeapYear(currentYear)) {
-        const feb29Users = await getUsersWithBirthdayOn(2, 29);
-        users = [...users, ...feb29Users];
+    const candidates: { month: number; day: number; year: number }[] = [];
+    for (let offset = 0; offset <= lookbackDays; offset += 1) {
+        const candidateDate = new Date(referenceDate);
+        candidateDate.setUTCDate(candidateDate.getUTCDate() - offset);
+        const candidateMonth = candidateDate.getUTCMonth() + 1;
+        const candidateDay = candidateDate.getUTCDate();
+        const candidateYear = candidateDate.getUTCFullYear();
+        candidates.push({ month: candidateMonth, day: candidateDay, year: candidateYear });
+        if (
+            candidateMonth === 2 &&
+            candidateDay === 28 &&
+            !isLeapYear(candidateYear)
+        ) {
+            candidates.push({ month: 2, day: 29, year: candidateYear });
+        }
+    }
+
+    const queryResults = await Promise.all(
+        candidates.map(async ({ month, day, year }) => ({
+            users: await getUsersWithBirthdayOn(month, day),
+            rewardDate: getBirthdayDateForYear(month, day, year),
+        })),
+    );
+
+    for (const { users, rewardDate } of queryResults) {
+        for (const user of users) {
+            if (seenUsers.has(user.id)) {
+                continue;
+            }
+            usersWithRewardDates.push({ user, rewardDate });
+            seenUsers.add(user.id);
+        }
     }
 
     const rewarded: {
@@ -45,19 +77,7 @@ export async function GET(request: NextRequest) {
         reason: string;
     }[] = [];
 
-    for (const user of users) {
-        if (!user.birthdayMonth || !user.birthdayDay) {
-            skipped.push({ userId: user.id, reason: 'missing_birthday' });
-            continue;
-        }
-
-        const rewardDate = startOfUtcDay(
-            getBirthdayDateForYear(
-                user.birthdayMonth,
-                user.birthdayDay,
-                currentYear,
-            ),
-        );
+    for (const { user, rewardDate } of usersWithRewardDates) {
         const lastRewardEvent = await getLastBirthdayRewardEvent(user.id);
         const lastReward = lastRewardEvent
             ? startOfUtcDay(new Date(lastRewardEvent.data.rewardDate))
