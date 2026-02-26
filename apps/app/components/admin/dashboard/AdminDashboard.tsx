@@ -12,7 +12,7 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
     const selectedPeriod = params?.period || '7';
 
     const data = await getAnalyticsData(
-        Number(selectedPeriod),
+        selectedPeriod === 'custom' ? undefined : Number(selectedPeriod),
         params?.from,
         params?.to,
     );

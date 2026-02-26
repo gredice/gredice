@@ -7,6 +7,7 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { KnownPages } from '../../../src/KnownPages';
@@ -109,8 +110,14 @@ export function AdminDashboardClient({
         });
     };
 
+    const isCustomRangeInvalid =
+        selectedPeriod === 'custom' &&
+        !!customFrom &&
+        !!customTo &&
+        customFrom > customTo;
+
     const handleCustomRangeApply = () => {
-        if (!customFrom || !customTo) {
+        if (!customFrom || !customTo || isCustomRangeInvalid) {
             return;
         }
 
@@ -185,35 +192,50 @@ export function AdminDashboardClient({
                     />
                 </Row>
                 {selectedPeriod === 'custom' ? (
-                    <Row spacing={1} className="items-end">
-                        <Input
-                            type="date"
-                            value={customFrom}
-                            onChange={(event) =>
-                                setCustomFrom(event.target.value)
-                            }
-                            label="Od"
-                            className="max-w-48"
-                            disabled={isPending}
-                        />
-                        <Input
-                            type="date"
-                            value={customTo}
-                            onChange={(event) =>
-                                setCustomTo(event.target.value)
-                            }
-                            label="Do"
-                            className="max-w-48"
-                            disabled={isPending}
-                        />
-                        <Button
-                            size="sm"
-                            onClick={handleCustomRangeApply}
-                            disabled={!customFrom || !customTo || isPending}
-                        >
-                            Primijeni
-                        </Button>
-                    </Row>
+                    <Stack spacing={0.5}>
+                        <Row spacing={1} className="items-end">
+                            <Input
+                                type="date"
+                                value={customFrom}
+                                onChange={(event) =>
+                                    setCustomFrom(event.target.value)
+                                }
+                                label="Od"
+                                className="max-w-48"
+                                disabled={isPending}
+                            />
+                            <Input
+                                type="date"
+                                value={customTo}
+                                onChange={(event) =>
+                                    setCustomTo(event.target.value)
+                                }
+                                label="Do"
+                                className="max-w-48"
+                                disabled={isPending}
+                            />
+                            <Button
+                                size="sm"
+                                onClick={handleCustomRangeApply}
+                                disabled={
+                                    !customFrom ||
+                                    !customTo ||
+                                    isCustomRangeInvalid ||
+                                    isPending
+                                }
+                            >
+                                Primijeni
+                            </Button>
+                        </Row>
+                        {isCustomRangeInvalid ? (
+                            <Typography
+                                level="body3"
+                                className="text-destructive"
+                            >
+                                Datum početka mora biti prije datuma kraja.
+                            </Typography>
+                        ) : null}
+                    </Stack>
                 ) : null}
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
                     <FactCard

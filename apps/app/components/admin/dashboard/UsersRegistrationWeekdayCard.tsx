@@ -59,7 +59,11 @@ export function UsersRegistrationWeekdayCard({
                                             {item.count}
                                         </Typography>
                                     </Row>
-                                    <div className="h-2 w-full rounded-full bg-primary/10">
+                                    <div
+                                        className="h-2 w-full rounded-full bg-primary/10"
+                                        role="img"
+                                        aria-label={`${item.label}: ${item.count}`}
+                                    >
                                         <div
                                             className="h-2 rounded-full bg-primary/60"
                                             style={{
