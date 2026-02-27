@@ -1,10 +1,10 @@
 'use client';
 
+import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Close, Search } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Input } from '@signalco/ui-primitives/Input';
-import { useQueryState } from 'nuqs';
 import type { HTMLAttributes } from 'react';
 
 export type PageFilterInputProps = HTMLAttributes<HTMLFormElement> & {
@@ -17,8 +17,8 @@ export function PageFilterInput({
     fieldName,
     ...rest
 }: PageFilterInputProps) {
-    const [search, setSearch] = useQueryState(searchParamName);
-    const updateSearch = (value: string) => setSearch(value || null);
+    const [search, setSearch] = useSearchParam(searchParamName);
+    const updateSearch = (value: string) => setSearch(value);
 
     return (
         <form onSubmit={(event) => event.preventDefault()} {...rest}>
