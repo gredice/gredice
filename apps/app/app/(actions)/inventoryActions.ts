@@ -1,0 +1,205 @@
+'use server';
+
+import {
+    createInventoryConfig,
+    createInventoryItem,
+    createInventoryItemFieldDefinition,
+    deleteInventoryConfig,
+    deleteInventoryItem,
+    deleteInventoryItemFieldDefinition,
+    updateInventoryConfig,
+    updateInventoryItem,
+} from '@gredice/storage';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { auth } from '../../lib/auth/auth';
+import { KnownPages } from '../../src/KnownPages';
+
+export async function createInventoryConfigAction(formData: FormData) {
+    await auth(['admin']);
+
+    const entityTypeName = formData.get('entityTypeName') as string;
+    const label = formData.get('label') as string;
+    const defaultTrackingType =
+        (formData.get('defaultTrackingType') as string) || 'pieces';
+    const statusAttributeName =
+        (formData.get('statusAttributeName') as string) || null;
+    const emptyStatusValue =
+        (formData.get('emptyStatusValue') as string) || null;
+    const amountAttributeName =
+        (formData.get('amountAttributeName') as string) || null;
+
+    const id = await createInventoryConfig({
+        entityTypeName,
+        label,
+        defaultTrackingType,
+        statusAttributeName: statusAttributeName || undefined,
+        emptyStatusValue: emptyStatusValue || undefined,
+        amountAttributeName: amountAttributeName || undefined,
+    });
+
+    revalidatePath(KnownPages.Inventory);
+    redirect(KnownPages.InventoryConfig(id));
+}
+
+export async function updateInventoryConfigAction(
+    id: number,
+    formData: FormData,
+) {
+    await auth(['admin']);
+
+    const label = formData.get('label') as string;
+    const defaultTrackingType =
+        (formData.get('defaultTrackingType') as string) || 'pieces';
+    const statusAttributeName =
+        (formData.get('statusAttributeName') as string) || null;
+    const emptyStatusValue =
+        (formData.get('emptyStatusValue') as string) || null;
+    const amountAttributeName =
+        (formData.get('amountAttributeName') as string) || null;
+
+    await updateInventoryConfig({
+        id,
+        label,
+        defaultTrackingType,
+        statusAttributeName: statusAttributeName || undefined,
+        emptyStatusValue: emptyStatusValue || undefined,
+        amountAttributeName: amountAttributeName || undefined,
+    });
+
+    revalidatePath(KnownPages.InventoryConfig(id));
+    revalidatePath(KnownPages.Inventory);
+    redirect(KnownPages.InventoryConfig(id));
+}
+
+export async function deleteInventoryConfigAction(id: number) {
+    await auth(['admin']);
+
+    await deleteInventoryConfig(id);
+    revalidatePath(KnownPages.Inventory);
+    redirect(KnownPages.Inventory);
+}
+
+export async function createInventoryItemFieldDefinitionAction(
+    inventoryConfigId: number,
+    formData: FormData,
+) {
+    await auth(['admin']);
+
+    const name = formData.get('name') as string;
+    const label = formData.get('label') as string;
+    const dataType = (formData.get('dataType') as string) || 'text';
+    const required = formData.get('required') === 'true';
+
+    await createInventoryItemFieldDefinition({
+        inventoryConfigId,
+        name,
+        label,
+        dataType,
+        required,
+    });
+
+    revalidatePath(KnownPages.InventoryConfigEdit(inventoryConfigId));
+}
+
+export async function deleteInventoryItemFieldDefinitionAction(
+    inventoryConfigId: number,
+    fieldId: number,
+) {
+    await auth(['admin']);
+
+    await deleteInventoryItemFieldDefinition(fieldId);
+    revalidatePath(KnownPages.InventoryConfigEdit(inventoryConfigId));
+}
+
+export async function createInventoryItemAction(
+    inventoryConfigId: number,
+    formData: FormData,
+) {
+    await auth(['admin']);
+
+    const entityIdRaw = formData.get('entityId') as string;
+    const entityId = entityIdRaw ? parseInt(entityIdRaw, 10) : undefined;
+    const trackingType = (formData.get('trackingType') as string) || 'pieces';
+    const serialNumber = (formData.get('serialNumber') as string) || null;
+    const quantityRaw = formData.get('quantity') as string;
+    const quantity = quantityRaw ? parseInt(quantityRaw, 10) : 1;
+    const notes = (formData.get('notes') as string) || null;
+
+    // Collect additional fields as JSON
+    const additionalFieldsEntries: Record<string, string> = {};
+    for (const [key, value] of formData.entries()) {
+        if (key.startsWith('field_')) {
+            const fieldName = key.slice('field_'.length);
+            additionalFieldsEntries[fieldName] = value as string;
+        }
+    }
+    const additionalFields =
+        Object.keys(additionalFieldsEntries).length > 0
+            ? JSON.stringify(additionalFieldsEntries)
+            : null;
+
+    await createInventoryItem({
+        inventoryConfigId,
+        entityId,
+        trackingType,
+        serialNumber: serialNumber || undefined,
+        quantity,
+        notes: notes || undefined,
+        additionalFields,
+    });
+
+    revalidatePath(KnownPages.InventoryConfig(inventoryConfigId));
+    redirect(KnownPages.InventoryConfig(inventoryConfigId));
+}
+
+export async function updateInventoryItemAction(
+    inventoryConfigId: number,
+    itemId: number,
+    formData: FormData,
+) {
+    await auth(['admin']);
+
+    const entityIdRaw = formData.get('entityId') as string;
+    const entityId = entityIdRaw ? parseInt(entityIdRaw, 10) : undefined;
+    const trackingType = (formData.get('trackingType') as string) || 'pieces';
+    const serialNumber = (formData.get('serialNumber') as string) || null;
+    const quantityRaw = formData.get('quantity') as string;
+    const quantity = quantityRaw ? parseInt(quantityRaw, 10) : 1;
+    const notes = (formData.get('notes') as string) || null;
+
+    const additionalFieldsEntries: Record<string, string> = {};
+    for (const [key, value] of formData.entries()) {
+        if (key.startsWith('field_')) {
+            const fieldName = key.slice('field_'.length);
+            additionalFieldsEntries[fieldName] = value as string;
+        }
+    }
+    const additionalFields =
+        Object.keys(additionalFieldsEntries).length > 0
+            ? JSON.stringify(additionalFieldsEntries)
+            : null;
+
+    await updateInventoryItem({
+        id: itemId,
+        entityId,
+        trackingType,
+        serialNumber: serialNumber || undefined,
+        quantity,
+        notes: notes || undefined,
+        additionalFields,
+    });
+
+    revalidatePath(KnownPages.InventoryConfig(inventoryConfigId));
+    redirect(KnownPages.InventoryConfig(inventoryConfigId));
+}
+
+export async function deleteInventoryItemAction(
+    inventoryConfigId: number,
+    itemId: number,
+) {
+    await auth(['admin']);
+
+    await deleteInventoryItem(itemId);
+    revalidatePath(KnownPages.InventoryConfig(inventoryConfigId));
+}

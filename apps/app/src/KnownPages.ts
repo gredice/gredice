@@ -66,6 +66,18 @@ export const KnownPages = {
     Cache: '/admin/cache',
     Occasions: '/admin/occasions',
 
+    // Inventory management
+    Inventory: '/admin/inventory',
+    InventoryCreate: '/admin/inventory/create',
+    InventoryConfig: (inventoryId: number) =>
+        `/admin/inventory/${inventoryId}` as Route,
+    InventoryConfigEdit: (inventoryId: number) =>
+        `/admin/inventory/${inventoryId}/edit` as Route,
+    InventoryItemCreate: (inventoryId: number) =>
+        `/admin/inventory/${inventoryId}/items/create` as Route,
+    InventoryItem: (inventoryId: number, itemId: number) =>
+        `/admin/inventory/${inventoryId}/items/${itemId}` as Route,
+
     // Delivery management
     DeliverySlots: '/admin/delivery/slots',
     DeliveryRequests: '/admin/delivery/requests',
