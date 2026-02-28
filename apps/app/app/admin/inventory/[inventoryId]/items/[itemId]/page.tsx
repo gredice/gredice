@@ -47,9 +47,7 @@ export default async function InventoryItemPage({
         }),
     ];
 
-    const additionalFields = item.additionalFields
-        ? (JSON.parse(item.additionalFields) as Record<string, string>)
-        : {};
+    const additionalFields = item.additionalFields ?? {};
 
     const updateItemBound = updateInventoryItemAction.bind(
         null,

@@ -107,7 +107,7 @@ export default async function CreateInventoryItemPage({
                                     label="Količina"
                                     type="number"
                                     defaultValue="1"
-                                    min={0}
+                                    min={1}
                                 />
                                 <Input
                                     name="notes"

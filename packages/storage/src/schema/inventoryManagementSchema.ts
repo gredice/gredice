@@ -3,6 +3,7 @@ import {
     boolean,
     index,
     integer,
+    jsonb,
     pgTable,
     serial,
     text,
@@ -121,7 +122,8 @@ export const inventoryItems = pgTable(
         trackingType: text('tracking_type').notNull().default('pieces'), // 'pieces' | 'serialNumber'
         serialNumber: text('serial_number'),
         quantity: integer('quantity').notNull().default(1),
-        additionalFields: text('additional_fields'), // JSON string for custom fields
+        additionalFields:
+            jsonb('additional_fields').$type<Record<string, string>>(), // configurable extra fields (e.g., expiry date)
         notes: text('notes'),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')

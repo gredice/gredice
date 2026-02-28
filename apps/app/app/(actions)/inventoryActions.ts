@@ -126,7 +126,7 @@ export async function createInventoryItemAction(
     const quantity = quantityRaw ? parseInt(quantityRaw, 10) : 1;
     const notes = (formData.get('notes') as string) || null;
 
-    // Collect additional fields as JSON
+    // Collect additional fields
     const additionalFieldsEntries: Record<string, string> = {};
     for (const [key, value] of formData.entries()) {
         if (key.startsWith('field_')) {
@@ -136,7 +136,7 @@ export async function createInventoryItemAction(
     }
     const additionalFields =
         Object.keys(additionalFieldsEntries).length > 0
-            ? JSON.stringify(additionalFieldsEntries)
+            ? additionalFieldsEntries
             : null;
 
     await createInventoryItem({
@@ -177,7 +177,7 @@ export async function updateInventoryItemAction(
     }
     const additionalFields =
         Object.keys(additionalFieldsEntries).length > 0
-            ? JSON.stringify(additionalFieldsEntries)
+            ? additionalFieldsEntries
             : null;
 
     await updateInventoryItem({
