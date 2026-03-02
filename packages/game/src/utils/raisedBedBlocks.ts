@@ -90,7 +90,7 @@ function sortBlockIdsByOrientation(
             );
         }
 
-        return leftPlacement.stack.position.x - rightPlacement.stack.position.x;
+        return rightPlacement.stack.position.x - leftPlacement.stack.position.x;
     });
 }
 

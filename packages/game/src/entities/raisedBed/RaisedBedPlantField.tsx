@@ -10,6 +10,7 @@ import { useGameGLTF } from '../../utils/useGameGLTF';
 export function RaisedBedPlantField({
     field,
     orientation,
+    blockIndex,
 }: {
     field: {
         positionIndex: number;
@@ -17,13 +18,16 @@ export function RaisedBedPlantField({
         plantSowDate?: string | null;
     };
     orientation: RaisedBedOrientation;
+    blockIndex: number;
 }) {
     const { positionIndex, plantSortId, plantSowDate } = field;
     const { data: sortData } = usePlantSort(plantSortId);
-    const offsetX = 0.28;
-    const offsetY = 0.28;
-    const multiplierX = 0.27;
-    const multiplierY = 0.27;
+    const offsetX =
+        orientation === 'vertical' ? 0.31 - blockIndex * 0.05 : 0.27;
+    const offsetY =
+        orientation === 'vertical' ? 0.27 : 0.27 + blockIndex * 0.05; // 0.285 is the distance between rows of blocks
+    const multiplierX = orientation === 'vertical' ? 0.285 : 0.27;
+    const multiplierY = orientation === 'vertical' ? 0.27 : 0.285;
 
     const { plantsPerRow, totalPlants } = calculatePlantsPerField(
         sortData?.information?.plant.attributes?.seedingDistance,

@@ -16,7 +16,11 @@ export function RiasedBedFields({ blockId }: { blockId: string }) {
         raisedBed && currentGarden
             ? getRaisedBedBlockIds(currentGarden, raisedBed.id)
             : [];
-    const blockOffset = Math.max(blockIds.indexOf(blockId), 0) * 9;
+
+    // Bottom-right most block (last in position-sorted list) is offset 0;
+    // other blocks get increasing offsets based on distance from bottom-right
+    const blockIndex = blockIds.indexOf(blockId);
+    const blockOffset = Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
 
     const cartItems = cart?.items.filter(
         (item) =>
@@ -57,6 +61,7 @@ export function RiasedBedFields({ blockId }: { blockId: string }) {
                             ...field,
                             positionIndex: field.positionIndex - blockOffset,
                         }}
+                        blockIndex={blockIndex}
                         orientation={orientation}
                     />
                 );
