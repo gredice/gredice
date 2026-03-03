@@ -19,7 +19,7 @@ import { KnownPages } from '../../src/KnownPages';
 function parseQuantity(raw: string | null): number {
     if (!raw) return 1;
     const parsed = Number.parseInt(raw, 10);
-    if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1) {
+    if (!Number.isFinite(parsed) || parsed < 1) {
         return 1;
     }
     return parsed;
