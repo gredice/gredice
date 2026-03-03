@@ -7,6 +7,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
+import { PageViewTracker } from '../components/analytics/PageViewTracker';
 import { Logotype } from '../components/Logotype';
 import { NavUserButton } from '../components/NavUserButton';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
@@ -78,43 +79,42 @@ export default async function RootLayout({
             </Head>
             <body className="antialiased">
                 <ClientAppProvider>
-                        <Stack>
-                            <div className="z-20">
-                                <PageNav
-                                    logo={
-                                        <Logotype
-                                            className="w-[140px] h-[38px]"
-                                            aria-label="Gredice"
-                                        />
-                                    }
-                                    links={[
-                                        {
-                                            href: KnownPages.RaisedBeds,
-                                            text: 'Podignuta gredica',
-                                        },
-                                        {
-                                            href: KnownPages.Plants,
-                                            text: 'Biljke',
-                                        },
-                                        {
-                                            href: KnownPages.FAQ,
-                                            text: 'Česta pitanja',
-                                        },
-                                    ]}
-                                >
-                                    <div className="absolute bg-background/80 w-full inset-0 -z-10" />
-                                    <NavUserButton
-                                        href={KnownPages.GardenApp}
+                    <Stack>
+                        <div className="z-20">
+                            <PageNav
+                                logo={
+                                    <Logotype
+                                        className="w-[140px] h-[38px]"
+                                        aria-label="Gredice"
                                     />
-                                </PageNav>
-                            </div>
-                            <main className="mt-16 relative">
-                                <LayoutContainer>{children}</LayoutContainer>
-                            </main>
-                            <Footer />
-                        </Stack>
-                        <Analytics />
-                        {shouldInjectToolbar && <VercelToolbar />}
+                                }
+                                links={[
+                                    {
+                                        href: KnownPages.RaisedBeds,
+                                        text: 'Podignuta gredica',
+                                    },
+                                    {
+                                        href: KnownPages.Plants,
+                                        text: 'Biljke',
+                                    },
+                                    {
+                                        href: KnownPages.FAQ,
+                                        text: 'Česta pitanja',
+                                    },
+                                ]}
+                            >
+                                <div className="absolute bg-background/80 w-full inset-0 -z-10" />
+                                <NavUserButton href={KnownPages.GardenApp} />
+                            </PageNav>
+                        </div>
+                        <main className="mt-16 relative">
+                            <LayoutContainer>{children}</LayoutContainer>
+                        </main>
+                        <Footer />
+                    </Stack>
+                    <Analytics />
+                    <PageViewTracker />
+                    {shouldInjectToolbar && <VercelToolbar />}
                 </ClientAppProvider>
             </body>
         </html>
