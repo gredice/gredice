@@ -6,6 +6,9 @@
             "env": [
                 "BLOB_READ_WRITE_TOKEN",
                 "ENABLE_EXPERIMENTAL_COREPACK",
+                "FACEBOOK_CAPI_API_VERSION",
+                "FACEBOOK_CAPI_PIXEL_ID",
+                "FACEBOOK_CAPI_TOKEN",
                 "FLAGS_SECRET",
                 "GREDICE_JWT_SIGN_SECRET",
                 "HYPERTUNE_FRAMEWORK",

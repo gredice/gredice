@@ -5,9 +5,8 @@ import { isPlantRecommended } from '../../../../packages/js/src/plants/isPlantRe
 export const getPlantsData = unstable_cache(
     async () => {
         try {
-            const { data, error } = await directoriesClient().GET(
-                '/entities/plant',
-            );
+            const { data, error } =
+                await directoriesClient().GET('/entities/plant');
 
             if (error) {
                 console.error('Failed to fetch plants data', error);

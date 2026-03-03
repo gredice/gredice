@@ -18,7 +18,8 @@ export const revalidate = 3600; // 1 hour
 
 async function getBlocksData() {
     try {
-        const { data, error } = await directoriesClient().GET('/entities/block');
+        const { data, error } =
+            await directoriesClient().GET('/entities/block');
         if (error) {
             console.error('Failed to fetch blocks data', error);
             return [];
