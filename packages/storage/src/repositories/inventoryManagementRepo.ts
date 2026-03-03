@@ -74,10 +74,11 @@ export async function createInventoryConfig(
 }
 
 export async function updateInventoryConfig(data: UpdateInventoryConfig) {
+    const { id, ...updates } = data;
     await storage()
         .update(inventoryConfigs)
-        .set(data)
-        .where(eq(inventoryConfigs.id, data.id));
+        .set(updates)
+        .where(eq(inventoryConfigs.id, id));
 }
 
 export async function deleteInventoryConfig(id: number) {
@@ -120,10 +121,11 @@ export async function createInventoryItemFieldDefinition(
 export async function updateInventoryItemFieldDefinition(
     data: UpdateInventoryItemFieldDefinition,
 ) {
+    const { id, ...updates } = data;
     await storage()
         .update(inventoryItemFieldDefinitions)
-        .set(data)
-        .where(eq(inventoryItemFieldDefinitions.id, data.id));
+        .set(updates)
+        .where(eq(inventoryItemFieldDefinitions.id, id));
 }
 
 export async function deleteInventoryItemFieldDefinition(id: number) {
@@ -185,17 +187,26 @@ export async function createInventoryItem(
 }
 
 export async function updateInventoryItem(data: UpdateInventoryItem) {
+    const { id, ...updates } = data;
     await storage()
         .update(inventoryItems)
-        .set(data)
-        .where(eq(inventoryItems.id, data.id));
+        .set(updates)
+        .where(eq(inventoryItems.id, id));
 }
 
-export async function deleteInventoryItem(id: number) {
+export async function deleteInventoryItem(
+    id: number,
+    inventoryConfigId: number,
+) {
     await storage()
         .update(inventoryItems)
         .set({ isDeleted: true })
-        .where(eq(inventoryItems.id, id));
+        .where(
+            and(
+                eq(inventoryItems.id, id),
+                eq(inventoryItems.inventoryConfigId, inventoryConfigId),
+            ),
+        );
 }
 
 // ==================== Summary ====================

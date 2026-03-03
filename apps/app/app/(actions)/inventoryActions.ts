@@ -7,6 +7,7 @@ import {
     deleteInventoryConfig,
     deleteInventoryItem,
     deleteInventoryItemFieldDefinition,
+    getInventoryItem,
     getInventoryItemFieldDefinitions,
     updateInventoryConfig,
     updateInventoryItem,
@@ -40,10 +41,12 @@ async function collectAdditionalFields(
         const def = fieldDefMap.get(fieldName);
         const rawValue = value as string;
 
-        if (def?.dataType === 'number') {
+        // Skip fields that don't match any configured field definition
+        if (!def) continue;
+        if (def.dataType === 'number') {
             const num = Number(rawValue);
             entries[fieldName] = Number.isFinite(num) ? num : rawValue;
-        } else if (def?.dataType === 'boolean') {
+        } else if (def.dataType === 'boolean') {
             entries[fieldName] = rawValue === 'true';
         } else {
             entries[fieldName] = rawValue;
@@ -145,6 +148,15 @@ export async function deleteInventoryItemFieldDefinitionAction(
 ) {
     await auth(['admin']);
 
+    const fieldDefinitions =
+        await getInventoryItemFieldDefinitions(inventoryConfigId);
+    const fieldDefinition = fieldDefinitions.find((d) => d.id === fieldId);
+    if (!fieldDefinition) {
+        throw new Error(
+            'Field definition does not belong to the specified inventory configuration.',
+        );
+    }
+
     await deleteInventoryItemFieldDefinition(fieldId);
     revalidatePath(KnownPages.InventoryConfigEdit(inventoryConfigId));
 }
@@ -188,6 +200,16 @@ export async function updateInventoryItemAction(
 ) {
     await auth(['admin']);
 
+    const existingItem = await getInventoryItem(itemId);
+    if (!existingItem) {
+        throw new Error('Item not found.');
+    }
+    if (existingItem.inventoryConfigId !== inventoryConfigId) {
+        throw new Error(
+            'Item does not belong to the specified inventory configuration.',
+        );
+    }
+
     const entityIdRaw = formData.get('entityId') as string;
     const entityId = entityIdRaw ? parseInt(entityIdRaw, 10) : undefined;
     const trackingType = (formData.get('trackingType') as string) || 'pieces';
@@ -220,6 +242,6 @@ export async function deleteInventoryItemAction(
 ) {
     await auth(['admin']);
 
-    await deleteInventoryItem(itemId);
+    await deleteInventoryItem(itemId, inventoryConfigId);
     revalidatePath(KnownPages.InventoryConfig(inventoryConfigId));
 }
