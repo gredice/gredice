@@ -311,6 +311,12 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                 <ListHeader header="Upravljanje" />
                 <List>
                     <NavItem
+                        href={KnownPages.Inventory}
+                        label="Zalihe"
+                        icon={<Tally3 className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                    <NavItem
                         href={KnownPages.Occasions}
                         label="Prigode"
                         icon={<Calendar className="size-5" />}
