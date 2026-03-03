@@ -7,8 +7,8 @@ export function PageViewTracker() {
     const pathname = usePathname();
 
     useEffect(() => {
-        // Use pathname directly to satisfy exhaustive-deps rule (re-triggers on route change)
-        const eventSourceUrl = `${window.location.origin}${pathname}${window.location.search}${window.location.hash}`;
+        // Avoid including search/hash to prevent leaking potentially sensitive data in analytics
+        const eventSourceUrl = `${window.location.origin}${pathname}`;
         void fetch('/api/tracking', {
             method: 'POST',
             headers: {
