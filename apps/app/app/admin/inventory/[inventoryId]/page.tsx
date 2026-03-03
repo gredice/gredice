@@ -1,7 +1,7 @@
 import {
+    computeInventoryItemsSummary,
     getInventoryConfig,
     getInventoryItemsByConfig,
-    getInventoryItemsSummary,
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
@@ -38,15 +38,16 @@ export default async function InventoryConfigPage({
     const { inventoryId } = await params;
     const id = parseInt(inventoryId, 10);
 
-    const [config, items, summary] = await Promise.all([
+    const [config, items] = await Promise.all([
         getInventoryConfig(id),
         getInventoryItemsByConfig(id),
-        getInventoryItemsSummary(id),
     ]);
 
     if (!config) {
         notFound();
     }
+
+    const summary = computeInventoryItemsSummary(items);
 
     return (
         <Stack spacing={2}>

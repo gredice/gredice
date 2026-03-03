@@ -123,7 +123,7 @@ export const inventoryItems = pgTable(
         serialNumber: text('serial_number'),
         quantity: integer('quantity').notNull().default(1),
         additionalFields:
-            jsonb('additional_fields').$type<Record<string, string>>(), // configurable extra fields (e.g., expiry date)
+            jsonb('additional_fields').$type<Record<string, unknown>>(), // configurable extra fields (e.g., expiry date)
         notes: text('notes'),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')

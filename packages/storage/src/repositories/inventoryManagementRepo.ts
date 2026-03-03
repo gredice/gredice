@@ -209,11 +209,9 @@ export type InventoryItemsSummary = {
     };
 };
 
-export async function getInventoryItemsSummary(
-    inventoryConfigId: number,
-): Promise<InventoryItemsSummary> {
-    const items = await getInventoryItemsByConfig(inventoryConfigId);
-
+export function computeInventoryItemsSummary(
+    items: { quantity: number; trackingType: string }[],
+): InventoryItemsSummary {
     const totalQuantity = items.reduce(
         (sum, item) => sum + (item.quantity ?? 0),
         0,

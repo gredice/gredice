@@ -120,8 +120,26 @@ export default async function CreateInventoryItemPage({
                                         <Typography level="body1" semiBold>
                                             Dodatna polja
                                         </Typography>
-                                        {config.fieldDefinitions.map(
-                                            (field) => (
+                                        {config.fieldDefinitions.map((field) =>
+                                            field.dataType === 'boolean' ? (
+                                                <SelectItems
+                                                    key={field.id}
+                                                    name={`field_${field.name}`}
+                                                    label={field.label}
+                                                    items={[
+                                                        {
+                                                            value: 'true',
+                                                            label: 'Da',
+                                                        },
+                                                        {
+                                                            value: 'false',
+                                                            label: 'Ne',
+                                                        },
+                                                    ]}
+                                                    defaultValue="false"
+                                                    required={field.required}
+                                                />
+                                            ) : (
                                                 <Input
                                                     key={field.id}
                                                     name={`field_${field.name}`}

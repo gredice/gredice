@@ -110,7 +110,7 @@ export default async function InventoryItemPage({
                                     label="Količina"
                                     type="number"
                                     defaultValue={item.quantity.toString()}
-                                    min={0}
+                                    min={1}
                                 />
                                 <Input
                                     name="notes"
@@ -124,28 +124,70 @@ export default async function InventoryItemPage({
                                             Dodatna polja
                                         </Typography>
                                         {config.fieldDefinitions.map(
-                                            (field) => (
-                                                <Input
-                                                    key={field.id}
-                                                    name={`field_${field.name}`}
-                                                    label={field.label}
-                                                    type={
-                                                        field.dataType ===
-                                                        'number'
-                                                            ? 'number'
-                                                            : field.dataType ===
-                                                                'date'
-                                                              ? 'date'
-                                                              : 'text'
-                                                    }
-                                                    defaultValue={
-                                                        additionalFields[
-                                                            field.name
-                                                        ] ?? ''
-                                                    }
-                                                    required={field.required}
-                                                />
-                                            ),
+                                            (field) => {
+                                                const fieldValue =
+                                                    additionalFields[
+                                                        field.name
+                                                    ];
+
+                                                if (
+                                                    field.dataType === 'boolean'
+                                                ) {
+                                                    return (
+                                                        <SelectItems
+                                                            key={field.id}
+                                                            name={`field_${field.name}`}
+                                                            label={field.label}
+                                                            items={[
+                                                                {
+                                                                    value: 'true',
+                                                                    label: 'Da',
+                                                                },
+                                                                {
+                                                                    value: 'false',
+                                                                    label: 'Ne',
+                                                                },
+                                                            ]}
+                                                            defaultValue={
+                                                                typeof fieldValue ===
+                                                                'boolean'
+                                                                    ? String(
+                                                                          fieldValue,
+                                                                      )
+                                                                    : ((fieldValue as string) ??
+                                                                      'false')
+                                                            }
+                                                            required={
+                                                                field.required
+                                                            }
+                                                        />
+                                                    );
+                                                }
+
+                                                return (
+                                                    <Input
+                                                        key={field.id}
+                                                        name={`field_${field.name}`}
+                                                        label={field.label}
+                                                        type={
+                                                            field.dataType ===
+                                                            'number'
+                                                                ? 'number'
+                                                                : field.dataType ===
+                                                                    'date'
+                                                                  ? 'date'
+                                                                  : 'text'
+                                                        }
+                                                        defaultValue={
+                                                            (fieldValue as string) ??
+                                                            ''
+                                                        }
+                                                        required={
+                                                            field.required
+                                                        }
+                                                    />
+                                                );
+                                            },
                                         )}
                                     </Stack>
                                 )}

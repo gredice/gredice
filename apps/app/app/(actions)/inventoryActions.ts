@@ -7,6 +7,7 @@ import {
     deleteInventoryConfig,
     deleteInventoryItem,
     deleteInventoryItemFieldDefinition,
+    getInventoryItemFieldDefinitions,
     updateInventoryConfig,
     updateInventoryItem,
 } from '@gredice/storage';
@@ -14,6 +15,42 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+
+function parseQuantity(raw: string | null): number {
+    if (!raw) return 1;
+    const parsed = Number.parseInt(raw, 10);
+    if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1) {
+        return 1;
+    }
+    return parsed;
+}
+
+async function collectAdditionalFields(
+    inventoryConfigId: number,
+    formData: FormData,
+): Promise<Record<string, unknown> | null> {
+    const fieldDefinitions =
+        await getInventoryItemFieldDefinitions(inventoryConfigId);
+    const fieldDefMap = new Map(fieldDefinitions.map((f) => [f.name, f]));
+
+    const entries: Record<string, unknown> = {};
+    for (const [key, value] of formData.entries()) {
+        if (!key.startsWith('field_')) continue;
+        const fieldName = key.slice('field_'.length);
+        const def = fieldDefMap.get(fieldName);
+        const rawValue = value as string;
+
+        if (def?.dataType === 'number') {
+            const num = Number(rawValue);
+            entries[fieldName] = Number.isFinite(num) ? num : rawValue;
+        } else if (def?.dataType === 'boolean') {
+            entries[fieldName] = rawValue === 'true';
+        } else {
+            entries[fieldName] = rawValue;
+        }
+    }
+    return Object.keys(entries).length > 0 ? entries : null;
+}
 
 export async function createInventoryConfigAction(formData: FormData) {
     await auth(['admin']);
@@ -122,22 +159,13 @@ export async function createInventoryItemAction(
     const entityId = entityIdRaw ? parseInt(entityIdRaw, 10) : undefined;
     const trackingType = (formData.get('trackingType') as string) || 'pieces';
     const serialNumber = (formData.get('serialNumber') as string) || null;
-    const quantityRaw = formData.get('quantity') as string;
-    const quantity = quantityRaw ? parseInt(quantityRaw, 10) : 1;
+    const quantity = parseQuantity(formData.get('quantity') as string);
     const notes = (formData.get('notes') as string) || null;
 
-    // Collect additional fields
-    const additionalFieldsEntries: Record<string, string> = {};
-    for (const [key, value] of formData.entries()) {
-        if (key.startsWith('field_')) {
-            const fieldName = key.slice('field_'.length);
-            additionalFieldsEntries[fieldName] = value as string;
-        }
-    }
-    const additionalFields =
-        Object.keys(additionalFieldsEntries).length > 0
-            ? additionalFieldsEntries
-            : null;
+    const additionalFields = await collectAdditionalFields(
+        inventoryConfigId,
+        formData,
+    );
 
     await createInventoryItem({
         inventoryConfigId,
@@ -164,21 +192,13 @@ export async function updateInventoryItemAction(
     const entityId = entityIdRaw ? parseInt(entityIdRaw, 10) : undefined;
     const trackingType = (formData.get('trackingType') as string) || 'pieces';
     const serialNumber = (formData.get('serialNumber') as string) || null;
-    const quantityRaw = formData.get('quantity') as string;
-    const quantity = quantityRaw ? parseInt(quantityRaw, 10) : 1;
+    const quantity = parseQuantity(formData.get('quantity') as string);
     const notes = (formData.get('notes') as string) || null;
 
-    const additionalFieldsEntries: Record<string, string> = {};
-    for (const [key, value] of formData.entries()) {
-        if (key.startsWith('field_')) {
-            const fieldName = key.slice('field_'.length);
-            additionalFieldsEntries[fieldName] = value as string;
-        }
-    }
-    const additionalFields =
-        Object.keys(additionalFieldsEntries).length > 0
-            ? additionalFieldsEntries
-            : null;
+    const additionalFields = await collectAdditionalFields(
+        inventoryConfigId,
+        formData,
+    );
 
     await updateInventoryItem({
         id: itemId,
