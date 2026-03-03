@@ -35,6 +35,12 @@ export function AccountUsersCard() {
                                 Trenutno nema pridruženih korisnika.
                             </Typography>
                         )}
+                    {accountUsers.isError && (
+                        <Typography level="body3">
+                            Došlo je do greške pri učitavanju korisnika. Pokušaj
+                            ponovno kasnije.
+                        </Typography>
+                    )}
                     {accountUsers.isSuccess && accountUsers.data.length > 0 && (
                         <Stack spacing={1}>
                             {accountUsers.data.map((user) => (
