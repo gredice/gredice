@@ -4,9 +4,8 @@ import { unstable_cache } from 'next/cache';
 export const getFaqData = unstable_cache(
     async () => {
         try {
-            const { data, error } = await directoriesClient().GET(
-                '/entities/faq',
-            );
+            const { data, error } =
+                await directoriesClient().GET('/entities/faq');
 
             if (error) {
                 console.error('Failed to fetch faq data', error);
