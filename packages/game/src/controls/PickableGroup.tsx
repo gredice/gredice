@@ -28,6 +28,7 @@ import {
     getStackHeight,
     useStackHeight,
 } from '../utils/getStackHeight';
+import { triggerPickHaptic, triggerPlaceHaptic } from '../utils/haptics';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 
@@ -219,6 +220,7 @@ export function PickableGroup({
                     internalPosition: [relative.x, -1.5, relative.z],
                     scale: 0.1,
                 });
+                triggerPlaceHaptic();
                 await recycleBlock.mutateAsync({
                     position: stack.position,
                     blockIndex: stack.blocks.indexOf(block),
@@ -233,6 +235,7 @@ export function PickableGroup({
                     ],
                 });
                 dropSound.play();
+                triggerPlaceHaptic();
                 spawn(
                     resolveBlockParticleType(block.name),
                     stack.position
@@ -253,6 +256,7 @@ export function PickableGroup({
         } else {
             if (!didDrag.current) {
                 pickupSound.play();
+                triggerPickHaptic();
                 if (newIsBlocked !== isBlocked) {
                     setIsBlocked(newIsBlocked);
                 }
