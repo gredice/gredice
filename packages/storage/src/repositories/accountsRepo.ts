@@ -1,6 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { desc, eq } from 'drizzle-orm';
+import { asc, desc, eq } from 'drizzle-orm';
 import { accounts, accountUsers, ensureAccountAchievement, storage } from '..';
 import {
     createEvent,
@@ -70,6 +70,7 @@ export function getAccountUsers(accountId: string) {
         with: {
             user: true,
         },
+        orderBy: asc(accountUsers.createdAt),
     });
 }
 
