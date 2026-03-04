@@ -1,10 +1,10 @@
 import { sendEmail } from '@gredice/email/acs';
-import AccountInvitationEmailTemplate, {
-    type AccountInvitationEmailTemplateProps,
-} from '@gredice/transactional/emails/Account/invitation';
 import EmailVerifyEmailTemplate, {
     type EmailVerifyEmailTemplateProps,
 } from '@gredice/transactional/emails/Account/email-verify';
+import AccountInvitationEmailTemplate, {
+    type AccountInvitationEmailTemplateProps,
+} from '@gredice/transactional/emails/Account/invitation';
 import ResetPasswordEmailTemplate, {
     type ResetPasswordEmailTemplateProps,
 } from '@gredice/transactional/emails/Account/reset-password';

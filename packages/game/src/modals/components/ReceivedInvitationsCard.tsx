@@ -21,10 +21,7 @@ export function ReceivedInvitationsCard() {
         );
     }
 
-    if (
-        !pendingInvitations.data ||
-        pendingInvitations.data.length === 0
-    ) {
+    if (!pendingInvitations.data || pendingInvitations.data.length === 0) {
         return null;
     }
 

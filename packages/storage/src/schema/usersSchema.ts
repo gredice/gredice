@@ -185,10 +185,11 @@ export const userLoginsRelations = relations(userLogins, ({ one }) => ({
 export type InsertUserLogin = typeof userLogins.$inferInsert;
 export type SelectUserLogin = typeof userLogins.$inferSelect;
 
-export const accountInvitationStatusEnum = pgEnum(
-    'account_invitation_status',
-    ['pending', 'accepted', 'cancelled'],
-);
+export const accountInvitationStatusEnum = pgEnum('account_invitation_status', [
+    'pending',
+    'accepted',
+    'cancelled',
+]);
 
 export const accountInvitations = pgTable(
     'account_invitations',

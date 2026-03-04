@@ -47,16 +47,12 @@ export function PendingInvitationsList() {
                         <Typography level="body2">
                             {invitation.email}
                         </Typography>
-                        <Typography level="body3">
-                            Na čekanju
-                        </Typography>
+                        <Typography level="body3">Na čekanju</Typography>
                     </Stack>
                     <Button
                         variant="plain"
                         size="sm"
-                        onClick={() =>
-                            cancelInvitation.mutate(invitation.id)
-                        }
+                        onClick={() => cancelInvitation.mutate(invitation.id)}
                         loading={cancelInvitation.isPending}
                     >
                         Otkaži

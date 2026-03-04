@@ -22,10 +22,9 @@ export function AcceptInvitationCard() {
 
         setLoading(true);
         try {
-            const res =
-                await client().api.accounts.invitations.accept.$post({
-                    json: { token },
-                });
+            const res = await client().api.accounts.invitations.accept.$post({
+                json: { token },
+            });
 
             if (res.ok) {
                 setResult(
@@ -63,9 +62,7 @@ export function AcceptInvitationCard() {
                             disabled={loading || !token}
                             loading={loading}
                         >
-                            {loading
-                                ? 'Prihvaćanje...'
-                                : 'Prihvati pozivnicu'}
+                            {loading ? 'Prihvaćanje...' : 'Prihvati pozivnicu'}
                         </Button>
                     </>
                 )}

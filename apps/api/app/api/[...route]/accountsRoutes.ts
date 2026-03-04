@@ -10,9 +10,9 @@ import {
     getAccountInvitations,
     getAccountInvitationsByEmail,
     getAccountUsers,
-    getUser,
     getSunflowers,
     getSunflowersHistory,
+    getUser,
     knownEventTypes,
     updateAccountTimeZone,
 } from '@gredice/storage';
@@ -324,8 +324,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/current/invitations',
         describeRoute({
-            description:
-                'Get pending invitations for the current account',
+            description: 'Get pending invitations for the current account',
         }),
         authValidator(['user', 'admin']),
         async (context) => {
@@ -351,8 +350,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .post(
         '/current/invitations',
         describeRoute({
-            description:
-                'Send an invitation to join the current account',
+            description: 'Send an invitation to join the current account',
         }),
         zValidator(
             'json',
@@ -378,14 +376,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Check if there is already a pending invitation for this email
-            const existingInvitations =
-                await getAccountInvitations(accountId);
+            const existingInvitations = await getAccountInvitations(accountId);
             const alreadyInvited = existingInvitations.some(
                 (i) => i.email === email,
             );
             if (alreadyInvited) {
                 return context.json(
-                    { error: 'An invitation has already been sent to this email' },
+                    {
+                        error: 'An invitation has already been sent to this email',
+                    },
                     400,
                 );
             }
@@ -445,10 +444,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { invitationId } = context.req.valid('param');
             const invitationIdNumber = Number.parseInt(invitationId, 10);
             if (Number.isNaN(invitationIdNumber)) {
-                return context.json(
-                    { error: 'Invalid invitation ID' },
-                    400,
-                );
+                return context.json({ error: 'Invalid invitation ID' }, 400);
             }
 
             const result = await cancelAccountInvitation(
@@ -456,10 +452,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 accountId,
             );
             if (!result) {
-                return context.json(
-                    { error: 'Invitation not found' },
-                    404,
-                );
+                return context.json({ error: 'Invitation not found' }, 404);
             }
 
             return context.json({ success: true });
