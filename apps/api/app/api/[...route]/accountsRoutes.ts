@@ -178,6 +178,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
             });
         },
     )
+    .get(
+        '/current/users',
+        describeRoute({
+            description: 'Get users assigned to the current account',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const users = await getAccountUsers(accountId);
+
+            return context.json(
+                users.map((accountUser) => ({
+                    id: accountUser.user.id,
+                    userName: accountUser.user.userName,
+                    displayName:
+                        accountUser.user.displayName ??
+                        accountUser.user.userName,
+                    avatarUrl: accountUser.user.avatarUrl,
+                    assignedAt: accountUser.createdAt.toISOString(),
+                })),
+            );
+        },
+    )
     .patch(
         '/current',
         describeRoute({
