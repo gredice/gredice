@@ -34,8 +34,10 @@ export function createSoapRequest(agent: Agent) {
                 ? { url: urlOrConfig }
                 : urlOrConfig;
 
+        const method = (config.method ?? 'GET').toUpperCase();
+
         const response = await undiciRequest(config.url, {
-            method: (config.method ?? 'GET') as 'GET' | 'POST',
+            method,
             headers: config.headers,
             body: config.data ?? undefined,
             dispatcher: agent,
