@@ -5,6 +5,7 @@ import { createStore, useStore } from 'zustand';
 import { audioMixer } from './audio/audioMixer';
 import type { Block } from './types/Block';
 import { audioConfig } from './utils/audioConfig';
+import { triggerSelectionHaptic } from './utils/haptics';
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
@@ -194,8 +195,13 @@ export function createGameState({
         view: 'normal',
         closeupBlock: null,
         setView: ({ view, block }) => {
+            const currentView = get().view;
             if (get().mode === 'edit') {
                 get().setMode('normal');
+            }
+
+            if (currentView !== view) {
+                triggerSelectionHaptic();
             }
 
             if (view === 'closeup') {
