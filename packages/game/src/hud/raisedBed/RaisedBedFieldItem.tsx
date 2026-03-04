@@ -7,10 +7,12 @@ export function RaisedBedFieldItem({
     gardenId,
     raisedBedId,
     positionIndex,
+    isDragging,
 }: {
     raisedBedId: number;
     gardenId: number;
     positionIndex: number;
+    isDragging?: boolean;
 }) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
@@ -38,6 +40,7 @@ export function RaisedBedFieldItem({
                 gardenId={gardenId}
                 raisedBedId={raisedBedId}
                 positionIndex={positionIndex}
+                isDragging={isDragging}
             />
         );
     }

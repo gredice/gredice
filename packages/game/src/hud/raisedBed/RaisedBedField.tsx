@@ -1,8 +1,22 @@
+import {
+    closestCenter,
+    DndContext,
+    type DragEndEvent,
+    KeyboardSensor,
+    PointerSensor,
+    TouchSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import { rectSwappingStrategy, SortableContext } from '@dnd-kit/sortable';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
+import { useShoppingCart } from '../../hooks/useShoppingCart';
+import { useSwapShoppingCartPositions } from '../../hooks/useSwapShoppingCartPositions';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { getPositionIndexFromGrid } from '../../utils/raisedBedOrientation';
 import { RaisedBedFieldInvalidShape } from './RaisedBedFieldInvalidShape';
 import { RaisedBedFieldItem } from './RaisedBedFieldItem';
+import { SortableFieldItem } from './SortableFieldItem';
 
 export function RaisedBedField({
     gardenId,
@@ -12,7 +26,25 @@ export function RaisedBedField({
     raisedBedId: number;
 }) {
     const { data: garden } = useCurrentGarden();
+    const { data: cart } = useShoppingCart();
+    const swapPositions = useSwapShoppingCartPositions();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5,
+            },
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: {
+                delay: 200,
+                tolerance: 5,
+            },
+        }),
+        useSensor(KeyboardSensor),
+    );
+
     if (!raisedBed?.isValid) {
         return <RaisedBedFieldInvalidShape />;
     }
@@ -33,53 +65,152 @@ export function RaisedBedField({
         index,
     }));
 
+    // Build position index array for sortable context
+    const allPositionIndices: number[] = [];
+    for (const row of rows) {
+        for (const column of columns) {
+            const visualBlockIndex = Math.floor(row.index / 3);
+            const blockIndex = blockCount - 1 - visualBlockIndex;
+            const rowWithinBlock = row.index % 3;
+            const columnWithinBlock = column.index;
+            const positionIndex =
+                getPositionIndexFromGrid(
+                    rowWithinBlock,
+                    columnWithinBlock,
+                    'vertical',
+                ) +
+                blockIndex * 9;
+            allPositionIndices.push(positionIndex);
+        }
+    }
+
+    // Determine which positions have cart items (draggable)
+    const cartItemsByPosition = new Map(
+        cart?.items
+            .filter(
+                (item) =>
+                    item.gardenId === gardenId &&
+                    item.raisedBedId === raisedBedId &&
+                    item.entityTypeName === 'plantSort' &&
+                    item.status === 'new' &&
+                    item.positionIndex !== null &&
+                    item.positionIndex !== undefined,
+            )
+            .map((item) => [item.positionIndex as number, item]) ?? [],
+    );
+
+    // Determine which positions have planted fields (not draggable)
+    const plantedPositions = new Set(
+        raisedBed.fields
+            .filter((field) => field.active)
+            .map((field) => field.positionIndex),
+    );
+
+    function handleDragEnd(event: DragEndEvent) {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const activePos = Number(active.id);
+        const overPos = Number(over.id);
+
+        const activeCartItem = cartItemsByPosition.get(activePos);
+        const overCartItem = cartItemsByPosition.get(overPos);
+
+        // Active item must be a cart item
+        if (!activeCartItem) return;
+
+        // Don't allow moving to a planted position
+        if (plantedPositions.has(overPos)) return;
+
+        swapPositions.mutate({
+            itemA: activeCartItem,
+            itemB: overCartItem,
+            targetPositionIndex: overPos,
+        });
+    }
+
+    const sortableItems = allPositionIndices.map((pos) => pos.toString());
+
     return (
         <>
             <div></div>
-            <div
-                className="size-full grid"
-                style={{
-                    gridTemplateRows: `repeat(${totalRows}, minmax(0, 1fr))`,
-                }}
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
             >
-                {rows.map((row) => (
+                <SortableContext
+                    items={sortableItems}
+                    strategy={rectSwappingStrategy}
+                >
                     <div
-                        key={row.id}
                         className="size-full grid"
                         style={{
-                            gridTemplateColumns: `repeat(${totalColumns}, minmax(0, 1fr))`,
+                            gridTemplateRows: `repeat(${totalRows}, minmax(0, 1fr))`,
                         }}
                     >
-                        {columns.map((column) => {
-                            const visualBlockIndex = Math.floor(row.index / 3);
-                            const blockIndex =
-                                blockCount - 1 - visualBlockIndex;
-                            const rowWithinBlock = row.index % 3;
-                            const columnWithinBlock = column.index;
-                            const positionIndex =
-                                getPositionIndexFromGrid(
-                                    rowWithinBlock,
-                                    columnWithinBlock,
-                                    'vertical',
-                                ) +
-                                blockIndex * 9;
+                        {rows.map((row) => (
+                            <div
+                                key={row.id}
+                                className="size-full grid"
+                                style={{
+                                    gridTemplateColumns: `repeat(${totalColumns}, minmax(0, 1fr))`,
+                                }}
+                            >
+                                {columns.map((column) => {
+                                    const visualBlockIndex = Math.floor(
+                                        row.index / 3,
+                                    );
+                                    const blockIndex =
+                                        blockCount - 1 - visualBlockIndex;
+                                    const rowWithinBlock = row.index % 3;
+                                    const columnWithinBlock = column.index;
+                                    const positionIndex =
+                                        getPositionIndexFromGrid(
+                                            rowWithinBlock,
+                                            columnWithinBlock,
+                                            'vertical',
+                                        ) +
+                                        blockIndex * 9;
 
-                            return (
-                                <div
-                                    key={`${row.id}-${column.id}`}
-                                    className="size-full p-0.5"
-                                >
-                                    <RaisedBedFieldItem
-                                        gardenId={gardenId}
-                                        raisedBedId={raisedBedId}
-                                        positionIndex={positionIndex}
-                                    />
-                                </div>
-                            );
-                        })}
+                                    const isInCart =
+                                        cartItemsByPosition.has(positionIndex);
+                                    const isPlanted =
+                                        plantedPositions.has(positionIndex);
+                                    const isDragDisabled =
+                                        !isInCart || isPlanted;
+
+                                    return (
+                                        <div
+                                            key={`${row.id}-${column.id}`}
+                                            className="size-full p-0.5"
+                                        >
+                                            <SortableFieldItem
+                                                id={positionIndex.toString()}
+                                                disabled={isDragDisabled}
+                                                showHandle={isInCart}
+                                            >
+                                                {({ isDragging }) => (
+                                                    <RaisedBedFieldItem
+                                                        gardenId={gardenId}
+                                                        raisedBedId={
+                                                            raisedBedId
+                                                        }
+                                                        positionIndex={
+                                                            positionIndex
+                                                        }
+                                                        isDragging={isDragging}
+                                                    />
+                                                )}
+                                            </SortableFieldItem>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
                     </div>
-                ))}
-            </div>
+                </SortableContext>
+            </DndContext>
         </>
     );
 }

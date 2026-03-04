@@ -154,6 +154,10 @@ export async function upsertOrRemoveCartItem(
                     amount,
                     additionalData,
                     currency: currency ? currency : undefined, // Update only if provided
+                    positionIndex:
+                        typeof positionIndex === 'number'
+                            ? positionIndex
+                            : undefined,
                 })
                 .where(eq(shoppingCartItems.id, existingItem.id))
                 .returning({
