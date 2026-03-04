@@ -1,20 +1,27 @@
 import { tz } from '@date-fns/tz';
 import {
+    acceptAccountInvitation,
+    cancelAccountInvitation,
+    createAccountInvitation,
     deleteAccountWithDependencies,
     earnSunflowers,
     getAccount,
     getAccountAchievements,
+    getAccountInvitations,
+    getAccountInvitationsByEmail,
     getAccountUsers,
+    getUser,
     getSunflowers,
     getSunflowersHistory,
-    getUser,
     knownEventTypes,
     updateAccountTimeZone,
 } from '@gredice/storage';
 import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { Hono } from 'hono';
-import { describeRoute } from 'hono-openapi';
+import { describeRoute, validator as zValidator } from 'hono-openapi';
+import { z } from 'zod';
 import { verifyJwt } from '../../../lib/auth/auth';
+import { sendAccountInvitation } from '../../../lib/email/transactional';
 import {
     type AuthVariables,
     authValidator,
@@ -312,6 +319,212 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
             const newState = await getDailyRewardState(accountId);
             return context.json(newState);
+        },
+    )
+    .get(
+        '/current/invitations',
+        describeRoute({
+            description:
+                'Get pending invitations for the current account',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const invitations = await getAccountInvitations(accountId);
+            return context.json(
+                invitations.map((invitation) => ({
+                    id: invitation.id,
+                    email: invitation.email,
+                    status: invitation.status,
+                    invitedBy: {
+                        id: invitation.invitedByUser.id,
+                        displayName:
+                            invitation.invitedByUser.displayName ??
+                            invitation.invitedByUser.userName,
+                    },
+                    expiresAt: invitation.expiresAt.toISOString(),
+                    createdAt: invitation.createdAt.toISOString(),
+                })),
+            );
+        },
+    )
+    .post(
+        '/current/invitations',
+        describeRoute({
+            description:
+                'Send an invitation to join the current account',
+        }),
+        zValidator(
+            'json',
+            z.object({
+                email: z.string().email(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId, userId } = context.get('authContext');
+            const { email } = context.req.valid('json');
+
+            // Check if user is already a member
+            const existingUsers = await getAccountUsers(accountId);
+            const alreadyMember = existingUsers.some(
+                (u) => u.user.userName === email,
+            );
+            if (alreadyMember) {
+                return context.json(
+                    { error: 'User is already a member of this account' },
+                    400,
+                );
+            }
+
+            // Check if there is already a pending invitation for this email
+            const existingInvitations =
+                await getAccountInvitations(accountId);
+            const alreadyInvited = existingInvitations.some(
+                (i) => i.email === email,
+            );
+            if (alreadyInvited) {
+                return context.json(
+                    { error: 'An invitation has already been sent to this email' },
+                    400,
+                );
+            }
+
+            const invitation = await createAccountInvitation(
+                accountId,
+                email,
+                userId,
+            );
+
+            if (!invitation) {
+                return context.json(
+                    { error: 'Failed to create invitation' },
+                    500,
+                );
+            }
+
+            // Get inviter info for the email
+            const inviter = await getUser(userId);
+            const inviterName =
+                inviter?.displayName ?? inviter?.userName ?? 'Korisnik';
+
+            const acceptUrl = `https://vrt.gredice.com/pozivnica?token=${invitation.token}`;
+
+            await sendAccountInvitation(email, {
+                email,
+                invitedByName: inviterName,
+                acceptUrl,
+            });
+
+            return context.json(
+                {
+                    id: invitation.id,
+                    email: invitation.email,
+                    status: invitation.status,
+                    expiresAt: invitation.expiresAt.toISOString(),
+                    createdAt: invitation.createdAt.toISOString(),
+                },
+                201,
+            );
+        },
+    )
+    .delete(
+        '/current/invitations/:invitationId',
+        describeRoute({
+            description: 'Cancel a pending invitation',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                invitationId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const { invitationId } = context.req.valid('param');
+            const invitationIdNumber = Number.parseInt(invitationId, 10);
+            if (Number.isNaN(invitationIdNumber)) {
+                return context.json(
+                    { error: 'Invalid invitation ID' },
+                    400,
+                );
+            }
+
+            const result = await cancelAccountInvitation(
+                invitationIdNumber,
+                accountId,
+            );
+            if (!result) {
+                return context.json(
+                    { error: 'Invitation not found' },
+                    404,
+                );
+            }
+
+            return context.json({ success: true });
+        },
+    )
+    .post(
+        '/invitations/accept',
+        describeRoute({
+            description: 'Accept an account invitation',
+        }),
+        zValidator(
+            'json',
+            z.object({
+                token: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { userId } = context.get('authContext');
+            const { token } = context.req.valid('json');
+
+            const result = await acceptAccountInvitation(token, userId);
+            if (!result) {
+                return context.json(
+                    { error: 'Invalid or expired invitation' },
+                    400,
+                );
+            }
+
+            return context.json({ success: true });
+        },
+    )
+    .get(
+        '/invitations/pending',
+        describeRoute({
+            description:
+                'Get pending invitations for the current user by email',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { userId } = context.get('authContext');
+            const user = await getUser(userId);
+            if (!user) {
+                return context.json({ error: 'User not found' }, 404);
+            }
+
+            const invitations = await getAccountInvitationsByEmail(
+                user.userName,
+            );
+            return context.json(
+                invitations
+                    .filter((i) => i.expiresAt > new Date())
+                    .map((invitation) => ({
+                        id: invitation.id,
+                        token: invitation.token,
+                        invitedBy: {
+                            id: invitation.invitedByUser.id,
+                            displayName:
+                                invitation.invitedByUser.displayName ??
+                                invitation.invitedByUser.userName,
+                        },
+                        expiresAt: invitation.expiresAt.toISOString(),
+                        createdAt: invitation.createdAt.toISOString(),
+                    })),
+            );
         },
     )
     .delete(

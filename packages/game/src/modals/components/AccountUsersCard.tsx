@@ -5,6 +5,8 @@ import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useCurrentAccountUsers } from '../../hooks/useCurrentAccountUsers';
+import { InviteUserForm } from './InviteUserForm';
+import { PendingInvitationsList } from './PendingInvitationsList';
 
 export function AccountUsersCard() {
     const accountUsers = useCurrentAccountUsers();
@@ -18,8 +20,8 @@ export function AccountUsersCard() {
                             Korisnici na računu
                         </Typography>
                         <Typography level="body3">
-                            Ovdje ćeš uskoro moći upravljati korisnicima na
-                            računu.
+                            Upravljaj korisnicima na računu i pozovi nove
+                            korisnike.
                         </Typography>
                     </Stack>
                     {accountUsers.isLoading && (
@@ -66,6 +68,13 @@ export function AccountUsersCard() {
                             ))}
                         </Stack>
                     )}
+                    <PendingInvitationsList />
+                    <Stack spacing={0.5}>
+                        <Typography level="body2" semiBold>
+                            Pozovi korisnika
+                        </Typography>
+                        <InviteUserForm />
+                    </Stack>
                 </Stack>
             </CardContent>
         </Card>
