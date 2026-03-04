@@ -1,6 +1,6 @@
+import { DailySchedule } from '@gredice/ui/DailySchedule';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { DailySchedule } from '@gredice/ui/DailySchedule';
 import { Suspense } from 'react';
 import { auth } from '../../../lib/auth/auth';
 import { ScheduleDay } from './ScheduleDay';
