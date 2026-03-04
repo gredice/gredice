@@ -34,10 +34,11 @@ export function InviteUserForm() {
                 <Input
                     name="email"
                     type="email"
+                    label="Email korisnika"
                     placeholder="email@primjer.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="grow"
+                    className="bg-card"
                 />
                 <Button
                     type="submit"

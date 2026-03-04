@@ -11,7 +11,6 @@ import { useGardens } from '../../hooks/useGardens';
 import { useCurrentGardenIdParam } from '../../useUrlState';
 import { CreateGardenModal } from './CreateGardenModal';
 import { GardenNameCard } from './GardenNameCard';
-import { ReceivedInvitationsCard } from './ReceivedInvitationsCard';
 
 function NoGardensCard() {
     const [createGardenModalOpen, setCreateGardenModalOpen] = useState(false);
@@ -104,7 +103,6 @@ export function GardenTab() {
                 🏡 Vrt
             </Typography>
             <Stack spacing={1}>
-                <ReceivedInvitationsCard />
                 {gardens && gardens.length > 0 ? (
                     <>
                         <GardensSelector />

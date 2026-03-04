@@ -1,5 +1,8 @@
 import { UserAvatar } from '@gredice/ui/UserAvatar';
+import { Add } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
+import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -15,15 +18,44 @@ export function AccountUsersCard() {
         <Card>
             <CardContent noHeader>
                 <Stack spacing={2}>
-                    <Stack spacing={0.5}>
-                        <Typography level="body1" semiBold>
-                            Korisnici na računu
-                        </Typography>
-                        <Typography level="body3">
-                            Upravljaj korisnicima na računu i pozovi nove
-                            korisnike.
-                        </Typography>
-                    </Stack>
+                    <Row
+                        spacing={1}
+                        justifyContent="space-between"
+                        alignItems="start"
+                    >
+                        <Stack spacing={0.5}>
+                            <Typography level="body1" semiBold>
+                                Korisnici na računu
+                            </Typography>
+                            <Typography level="body3">
+                                Upravljaj korisnicima na računu i pozovi nove
+                                korisnike.
+                            </Typography>
+                        </Stack>
+                        <Modal
+                            trigger={
+                                <Button
+                                    variant="solid"
+                                    size="sm"
+                                    startDecorator={<Add className="size-4" />}
+                                >
+                                    Pozovi
+                                </Button>
+                            }
+                            title="Pozovi korisnika"
+                        >
+                            <Stack spacing={2}>
+                                <Typography level="h5">
+                                    Pozovi novog korisnika
+                                </Typography>
+                                <Typography level="body2">
+                                    Unesite email adresu korisnika kojeg želite
+                                    pozvati na račun.
+                                </Typography>
+                                <InviteUserForm />
+                            </Stack>
+                        </Modal>
+                    </Row>
                     {accountUsers.isLoading && (
                         <Spinner
                             loading
@@ -69,12 +101,6 @@ export function AccountUsersCard() {
                         </Stack>
                     )}
                     <PendingInvitationsList />
-                    <Stack spacing={0.5}>
-                        <Typography level="body2" semiBold>
-                            Pozovi korisnika
-                        </Typography>
-                        <InviteUserForm />
-                    </Stack>
                 </Stack>
             </CardContent>
         </Card>
