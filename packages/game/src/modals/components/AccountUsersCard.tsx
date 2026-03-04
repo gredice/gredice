@@ -1,4 +1,4 @@
-import { Avatar } from '@signalco/ui-primitives/Avatar';
+import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Spinner } from '@signalco/ui-primitives/Spinner';
@@ -49,12 +49,11 @@ export function AccountUsersCard() {
                                     spacing={2}
                                     className="items-center"
                                 >
-                                    <Avatar
-                                        src={user.avatarUrl ?? undefined}
+                                    <UserAvatar
+                                        avatarUrl={user.avatarUrl}
+                                        displayName={user.displayName}
                                         className="size-8"
-                                    >
-                                        {user.displayName.slice(0, 1)}
-                                    </Avatar>
+                                    />
                                     <Stack spacing={0}>
                                         <Typography level="body2" semiBold>
                                             {user.displayName}
