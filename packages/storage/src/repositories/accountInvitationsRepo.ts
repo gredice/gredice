@@ -1,6 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, gt } from 'drizzle-orm';
 import { accountInvitations, accountUsers, storage } from '..';
 
 const INVITATION_EXPIRY_DAYS = 7;
@@ -10,6 +10,7 @@ export function getAccountInvitations(accountId: string) {
         where: and(
             eq(accountInvitations.accountId, accountId),
             eq(accountInvitations.status, 'pending'),
+            gt(accountInvitations.expiresAt, new Date()),
         ),
         with: {
             invitedByUser: true,
@@ -22,6 +23,7 @@ export function getAccountInvitationByToken(token: string) {
         where: and(
             eq(accountInvitations.token, token),
             eq(accountInvitations.status, 'pending'),
+            gt(accountInvitations.expiresAt, new Date()),
         ),
         with: {
             account: true,
@@ -34,6 +36,7 @@ export function getAccountInvitationsByEmail(email: string) {
         where: and(
             eq(accountInvitations.email, email),
             eq(accountInvitations.status, 'pending'),
+            gt(accountInvitations.expiresAt, new Date()),
         ),
         with: {
             account: true,
@@ -85,10 +88,6 @@ export async function cancelAccountInvitation(
 export async function acceptAccountInvitation(token: string, userId: string) {
     const invitation = await getAccountInvitationByToken(token);
     if (!invitation) {
-        return null;
-    }
-
-    if (invitation.expiresAt < new Date()) {
         return null;
     }
 

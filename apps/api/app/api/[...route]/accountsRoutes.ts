@@ -503,20 +503,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 user.userName,
             );
             return context.json(
-                invitations
-                    .filter((i) => i.expiresAt > new Date())
-                    .map((invitation) => ({
-                        id: invitation.id,
-                        token: invitation.token,
-                        invitedBy: {
-                            id: invitation.invitedByUser.id,
-                            displayName:
-                                invitation.invitedByUser.displayName ??
-                                invitation.invitedByUser.userName,
-                        },
-                        expiresAt: invitation.expiresAt.toISOString(),
-                        createdAt: invitation.createdAt.toISOString(),
-                    })),
+                invitations.map((invitation) => ({
+                    id: invitation.id,
+                    token: invitation.token,
+                    invitedBy: {
+                        id: invitation.invitedByUser.id,
+                        displayName:
+                            invitation.invitedByUser.displayName ??
+                            invitation.invitedByUser.userName,
+                    },
+                    expiresAt: invitation.expiresAt.toISOString(),
+                    createdAt: invitation.createdAt.toISOString(),
+                })),
             );
         },
     )

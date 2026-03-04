@@ -14,11 +14,21 @@ export function useSendInvitation() {
                     json: { email },
                 });
             if (!response.ok) {
-                const data = await response.json();
-                throw new Error(
-                    (data as { error?: string }).error ??
-                        'Failed to send invitation',
-                );
+                const text = await response.text();
+                let errorMessage = 'Failed to send invitation';
+                try {
+                    const data = JSON.parse(text);
+                    if (
+                        typeof data === 'object' &&
+                        data !== null &&
+                        typeof data.error === 'string'
+                    ) {
+                        errorMessage = data.error;
+                    }
+                } catch {
+                    // ignore parse error
+                }
+                throw new Error(errorMessage);
             }
             return response.json();
         },
