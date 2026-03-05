@@ -20,7 +20,7 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.4.4",
-        "@types/node": "24.10.15",
+        "@types/node": "24.11.0",
         "api": "workspace:*",
         "hono": "4.12.4",
         "tsx": "4.21.0",
