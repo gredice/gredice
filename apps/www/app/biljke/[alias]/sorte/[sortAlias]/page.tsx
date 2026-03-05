@@ -1,3 +1,4 @@
+import { decodeRouteParam } from '@gredice/js/uri';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -18,14 +19,15 @@ import { SowingAttributeCards } from '../../SowingAttributeCards';
 import { WateringAttributeCards } from '../../WateringAttributeCards';
 
 export const revalidate = 3600; // 1 hour
+
 export async function generateMetadata(
     props: PageProps<'/biljke/[alias]/sorte/[sortAlias]'>,
 ): Promise<Metadata> {
     const { alias: aliasUnescaped, sortAlias: sortAliasUnescaped } =
         await props.params;
-    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     const sortAlias = sortAliasUnescaped
-        ? decodeURIComponent(sortAliasUnescaped)
+        ? decodeRouteParam(sortAliasUnescaped)
         : null;
     const sort = (await getPlantSortsData())?.find(
         (sort) =>
@@ -63,9 +65,9 @@ export default async function PlantSortPage(
 ) {
     const { alias: aliasUnescaped, sortAlias: sortAliasUnescaped } =
         await props.params;
-    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     const sort = sortAliasUnescaped
-        ? decodeURIComponent(sortAliasUnescaped)
+        ? decodeRouteParam(sortAliasUnescaped)
         : null;
     if (!alias || !sort) {
         console.warn(

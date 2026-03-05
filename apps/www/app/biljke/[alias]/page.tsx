@@ -1,3 +1,4 @@
+import { decodeRouteParam } from '@gredice/js/uri';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -26,7 +27,7 @@ export async function generateMetadata(
     props: PageProps<'/biljke/[alias]'>,
 ): Promise<Metadata> {
     const { alias: aliasUnescaped } = await props.params;
-    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     const plant = (await getPlantsData())?.find(
         (plant) =>
             plant.information.name.toLowerCase() === alias?.toLowerCase(),
@@ -54,7 +55,7 @@ export async function generateStaticParams() {
 
 export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
     const { alias: aliasUnescaped } = await props.params;
-    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     if (!alias) {
         notFound();
     }
