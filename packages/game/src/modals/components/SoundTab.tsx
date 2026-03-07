@@ -1,5 +1,6 @@
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { HapticSettingsCard } from './HapticSettingsCard';
 import { SoundSettingsCard } from './SoundSettingsCard';
 
 export function SoundTab() {
@@ -9,6 +10,7 @@ export function SoundTab() {
                 🔊 Zvuk
             </Typography>
             <SoundSettingsCard />
+            <HapticSettingsCard />
         </Stack>
     );
 }

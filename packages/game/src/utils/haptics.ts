@@ -1,4 +1,6 @@
-function canVibrate() {
+const HAPTIC_STORAGE_KEY = 'hapticDisabled';
+
+export function canVibrate() {
     return (
         typeof window !== 'undefined' &&
         typeof navigator !== 'undefined' &&
@@ -6,8 +8,18 @@ function canVibrate() {
     );
 }
 
+export function isHapticDisabled(): boolean {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(HAPTIC_STORAGE_KEY) === 'true';
+}
+
+export function setHapticDisabled(disabled: boolean): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(HAPTIC_STORAGE_KEY, String(disabled));
+}
+
 function vibrate(pattern: number | number[]) {
-    if (!canVibrate()) {
+    if (!canVibrate() || isHapticDisabled()) {
         return;
     }
 
