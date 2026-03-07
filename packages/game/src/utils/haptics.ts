@@ -1,6 +1,6 @@
 const HAPTIC_STORAGE_KEY = 'hapticDisabled';
 
-function canVibrate() {
+export function canVibrate() {
     return (
         typeof window !== 'undefined' &&
         typeof navigator !== 'undefined' &&
