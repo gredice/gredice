@@ -1108,8 +1108,8 @@ importers:
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@stripe/stripe-js':
-        specifier: 8.8.0
-        version: 8.8.0
+        specifier: 8.9.0
+        version: 8.9.0
       react:
         specifier: 19.2.4
         version: 19.2.4
@@ -4836,8 +4836,8 @@ packages:
   '@stitches/core@1.2.8':
     resolution: {integrity: sha512-Gfkvwk9o9kE9r9XNBmJRfV8zONvXThnm1tcuojL04Uy5uRyqg93DC83lDebl0rocZCfKSjUv+fWYtMQmEDJldg==}
 
-  '@stripe/stripe-js@8.8.0':
-    resolution: {integrity: sha512-NNYuyW8qmLjyHnpyFgs/23wUrjB8k0xN9YIZFOMLewCa/pIkIji9e9aY/EgdNryEDDRptc6TcPIHRvG1R0ClFw==}
+  '@stripe/stripe-js@8.9.0':
+    resolution: {integrity: sha512-OJkXvUI5GAc56QdiSRimQDvWYEqn475J+oj8RzRtFTCPtkJNO2TWW619oDY+nn1ExR+2tCVTQuRQBbR4dRugww==}
     engines: {node: '>=12.16'}
 
   '@swc/helpers@0.5.15':
@@ -13474,7 +13474,7 @@ snapshots:
 
   '@stitches/core@1.2.8': {}
 
-  '@stripe/stripe-js@8.8.0': {}
+  '@stripe/stripe-js@8.9.0': {}
 
   '@swc/helpers@0.5.15':
     dependencies:
