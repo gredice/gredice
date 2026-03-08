@@ -37,8 +37,8 @@ importers:
         specifier: 1.27.1
         version: 1.27.1(zod@4.3.6)
       '@scalar/api-reference-react':
-        specifier: 0.8.69
-        version: 0.8.69(axios@1.13.6)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.2.4)(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)
+        specifier: 0.8.70
+        version: 0.8.70(axios@1.13.6)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.2.4)(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)
       '@standard-community/standard-json':
         specifier: 0.3.5
         version: 0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.5.0(valibot@1.2.0(typescript@5.9.3)))(quansync@0.2.11)(valibot@1.2.0(typescript@5.9.3))(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)
@@ -4158,14 +4158,14 @@ packages:
     resolution: {integrity: sha512-Qyy7C6Vt+9GHA4hOSdn2E0DkXB/6EjyCuqW9Vn063Wg8PIlkNAyOkszZtDtDUc0KI+c4J1iwCUVelrZr5lrnwQ==}
     engines: {node: '>=20'}
 
-  '@scalar/api-reference-react@0.8.69':
-    resolution: {integrity: sha512-IQ8cCp6TkDkDyurWfIc3Nd4OCYEHn7VgRAXOC7STaoEOTBYWeffLxiP/knIaZepLVlpgcyULDQLU/AMNU/IcsQ==}
+  '@scalar/api-reference-react@0.8.70':
+    resolution: {integrity: sha512-J65Qfb6/rSPGQ5JlVRPXR5JKdb4SE3tHTne4SoUaIbXooFIQnHxMO7TIEzEZl8PZecmZ7WZbQvDwuXydZccgKA==}
     engines: {node: '>=20'}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
 
-  '@scalar/api-reference@1.46.3':
-    resolution: {integrity: sha512-cM/HWNiaSXxFom43GjUtKEvCz5DzA9MSO3RsUTAZYcOCXgqjIDryaNz1RW+pn6y7CufRY0MZBzmM1djpqLBRKQ==}
+  '@scalar/api-reference@1.46.4':
+    resolution: {integrity: sha512-EpCcOG15Ry8DKNs/f5AdRA97s1B5kGPekzANpnK0j1IpyU4Sb/mfdyfB00WC+vUo7hfc4BFRSkkiPa5SSM7fng==}
     engines: {node: '>=20'}
 
   '@scalar/code-highlight@0.2.4':
@@ -12480,9 +12480,9 @@ snapshots:
       - typescript
       - universal-cookie
 
-  '@scalar/api-reference-react@0.8.69(axios@1.13.6)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.2.4)(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)':
+  '@scalar/api-reference-react@0.8.70(axios@1.13.6)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.2.4)(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)':
     dependencies:
-      '@scalar/api-reference': 1.46.3(axios@1.13.6)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)
+      '@scalar/api-reference': 1.46.4(axios@1.13.6)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)
       '@scalar/types': 0.6.10
       react: 19.2.4
     transitivePeerDependencies:
@@ -12501,7 +12501,7 @@ snapshots:
       - typescript
       - universal-cookie
 
-  '@scalar/api-reference@1.46.3(axios@1.13.6)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)':
+  '@scalar/api-reference@1.46.4(axios@1.13.6)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)':
     dependencies:
       '@headlessui/vue': 1.7.23(vue@3.5.27(typescript@5.9.3))
       '@scalar/agent-chat': 0.7.3(axios@1.13.6)(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)
