@@ -33,7 +33,7 @@
         "@mdxeditor/editor": "3.52.4",
         "@playwright/experimental-ct-react": "1.58.2",
         "@playwright/test": "1.58.2",
-        "@sentry/nextjs": "10.41.0",
+        "@sentry/nextjs": "10.42.0",
         "@signalco/auth-client": "0.3.0",
         "@signalco/auth-server": "0.5.3",
         "@signalco/hooks": "0.2.1",
