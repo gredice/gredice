@@ -29,7 +29,7 @@
         "@signalco/ui": "0.2.10",
         "@signalco/ui-icons": "0.2.2",
         "@signalco/ui-primitives": "0.6.5",
-        "motion": "12.34.4",
+        "motion": "12.34.5",
         "next": "16.1.6",
         "nuqs": "2.8.9",
         "react": "19.2.4",
