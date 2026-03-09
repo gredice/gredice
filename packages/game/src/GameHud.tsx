@@ -26,19 +26,34 @@ export function GameHud({ flags }: { flags: GameSceneProps['flags'] }) {
 
     return (
         <>
-            <div className="absolute top-2 left-2 flex flex-col items-start gap-2">
+            <div
+                className="absolute flex flex-col items-start gap-2"
+                style={{
+                    top: 'calc(0.5rem + env(safe-area-inset-top, 0px))',
+                    left: 'calc(0.5rem + env(safe-area-inset-left, 0px))',
+                }}
+            >
                 <AccountHud />
                 {!isCloseup && <GameModeHud />}
                 {!isCloseup && <AdventHud />}
                 {!isCloseup && <InventoryHud />}
                 <ShoppingCartHud />
             </div>
-            <div className="absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2">
+            <div
+                className="absolute flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2"
+                style={{
+                    top: 'calc(0.5rem + env(safe-area-inset-top, 0px))',
+                    right: 'calc(0.5rem + env(safe-area-inset-right, 0px))',
+                }}
+            >
                 <WeatherHud />
                 <SunflowersHud />
             </div>
             {!isCloseup && <DayNightCycleHud />}
-            <div className="absolute bottom-0 flex flex-col left-0 right-0 md:flex-row md:justify-between md:items-end pointer-events-none">
+            <div
+                className="absolute flex flex-col left-0 right-0 md:flex-row md:justify-between md:items-end pointer-events-none"
+                style={{ bottom: 'env(safe-area-inset-bottom, 0px)' }}
+            >
                 <div className="p-2 flex flex-row">
                     <CameraHud />
                     <AudioHud />

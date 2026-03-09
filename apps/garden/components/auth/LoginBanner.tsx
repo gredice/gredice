@@ -6,7 +6,10 @@ import { Logotype } from '../Logotype';
 
 export default function LoginBanner() {
     return (
-        <div className="flex fixed top-4 left-0 w-full justify-center px-4 sm:px-6 z-[51] pointer-events-none">
+        <div
+            className="flex fixed left-0 w-full justify-center px-4 sm:px-6 z-[51] pointer-events-none"
+            style={{ top: 'calc(1rem + env(safe-area-inset-top, 0px))' }}
+        >
             <Link
                 href="https://www.gredice.com"
                 className="pointer-events-auto inline-flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 rounded-2xl dark:bg-card/90 px-4 sm:px-5 py-3 shadow-xl ring-1 ring-primary/10 backdrop-blur supports-[backdrop-filter]:bg-white/75 transition hover:-translate-y-0.5 hover:shadow-2xl"

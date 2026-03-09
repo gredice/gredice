@@ -22,6 +22,7 @@ export const viewport: Viewport = {
     initialScale: 1,
     userScalable: false,
     width: 'device-width',
+    viewportFit: 'cover',
 };
 
 export default function RootLayout({

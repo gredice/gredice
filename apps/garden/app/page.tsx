@@ -26,7 +26,7 @@ export default async function Home() {
     };
 
     return (
-        <div className="grid grid-cols-1 h-[100dvh] relative overflow-hidden">
+        <div className="grid grid-cols-1 h-[100dvh] w-screen relative overflow-hidden">
             <GameScene flags={flags} />
             <SignedOut>
                 <div className="relative h-full">
