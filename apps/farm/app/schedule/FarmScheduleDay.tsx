@@ -16,13 +16,14 @@ interface FarmScheduleDayProps {
 
 export function FarmScheduleDay({ date, isToday }: FarmScheduleDayProps) {
     const isCurrentDay = new Date().toDateString() === date.toDateString();
-    const dayLabel = isToday && isCurrentDay
-        ? 'Danas'
-        : new Intl.DateTimeFormat('hr-HR', {
-              weekday: 'long',
-          })
-              .format(date)
-              .substring(0, 3);
+    const dayLabel =
+        isToday && isCurrentDay
+            ? 'Danas'
+            : new Intl.DateTimeFormat('hr-HR', {
+                  weekday: 'long',
+              })
+                  .format(date)
+                  .substring(0, 3);
 
     return (
         <Card>
@@ -32,7 +33,9 @@ export function FarmScheduleDay({ date, isToday }: FarmScheduleDayProps) {
                         <Calendar className="size-4 shrink-0 text-muted-foreground" />
                         <Stack spacing={0.5}>
                             <Typography level="body2">
-                                <LocalDateTime time={false}>{date}</LocalDateTime>
+                                <LocalDateTime time={false}>
+                                    {date}
+                                </LocalDateTime>
                             </Typography>
                             <CardTitle>{dayLabel}</CardTitle>
                         </Stack>

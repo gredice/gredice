@@ -22,7 +22,11 @@ export default function FarmSchedulePage() {
                 <div className="max-w-5xl mx-auto w-full px-4 py-10 space-y-6">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                         <Stack spacing={1}>
-                            <Typography level="h1" className="text-3xl" semiBold>
+                            <Typography
+                                level="h1"
+                                className="text-3xl"
+                                semiBold
+                            >
                                 Raspored
                             </Typography>
                             <Typography className="text-muted-foreground">
@@ -35,7 +39,9 @@ export default function FarmSchedulePage() {
                                 variant="outlined"
                                 size="sm"
                                 href="/"
-                                startDecorator={<ArrowLeft className="size-4" />}
+                                startDecorator={
+                                    <ArrowLeft className="size-4" />
+                                }
                             >
                                 Povratak na početnu
                             </Button>

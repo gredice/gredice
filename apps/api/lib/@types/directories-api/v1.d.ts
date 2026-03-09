@@ -763,15 +763,15 @@ export interface components {
                 harvest?: string;
                 shortDescription: string;
             };
-            image: {
-                cover?: components["schemas"]["image"];
-            };
             store: {
                 availableInStore: boolean;
             };
             attributes: {
                 /** @description (vrsta reprodukcije sorte dostupne u Gredicama; "seed" ili "bulb") */
                 reproductionType: string;
+            };
+            image: {
+                cover: components["schemas"]["image"];
             };
             /** Format: date-time */
             createdAt: string;
@@ -1119,15 +1119,15 @@ export interface components {
                         harvest?: string;
                         shortDescription: string;
                     };
-                    image?: {
-                        cover?: components["schemas"]["image"];
-                    };
                     store?: {
                         availableInStore: boolean;
                     };
                     attributes?: {
                         /** @description (vrsta reprodukcije sorte dostupne u Gredicama; "seed" ili "bulb") */
                         reproductionType: string;
+                    };
+                    image?: {
+                        cover: components["schemas"]["image"];
                     };
                 };
                 countryOfOrigin?: string;
