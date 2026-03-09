@@ -71,8 +71,7 @@ export async function RaisedBedFieldsTable({
         return <NoDataPlaceholder />;
     }
 
-    // Currently fixed to 9 positions (0-8)
-    const highestPositionIndex = 8;
+    const highestPositionIndex = Math.max(8, ...fields.map((f) => f.positionIndex));
     const orderedPositions = Array.from(
         { length: highestPositionIndex + 1 },
         (_, index) => index,
