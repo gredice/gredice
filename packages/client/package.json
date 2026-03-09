@@ -22,7 +22,7 @@
         "@biomejs/biome": "2.4.5",
         "@types/node": "24.11.0",
         "api": "workspace:*",
-        "hono": "4.12.4",
+        "hono": "4.12.5",
         "tsx": "4.21.0",
         "typescript": "5.9.3"
     }
