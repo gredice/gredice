@@ -1,4 +1,7 @@
-import { plantFieldStatusLabel } from '@gredice/js/plants';
+import {
+    plantFieldStatusLabel,
+    userAllowedPlantStatusTransitions,
+} from '@gredice/js/plants';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -7,11 +10,6 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
 import { useRaisedBedFieldUpdateStatus } from '../../hooks/useRaisedBedFieldUpdateStatus';
 import { formatLocalDate } from './RaisedBedPlantPicker';
-
-const userAllowedTransitions: Record<string, string[]> = {
-    sowed: ['sprouted'],
-    sprouted: ['notSprouted', 'died', 'ready'],
-};
 
 export function RaisedBedFieldStatusChange({
     raisedBedId,
@@ -28,14 +26,16 @@ export function RaisedBedFieldStatusChange({
     );
 
     const allowedNextStatuses = currentStatus
-        ? userAllowedTransitions[currentStatus]
+        ? userAllowedPlantStatusTransitions[currentStatus]
         : undefined;
     if (!allowedNextStatuses || allowedNextStatuses.length === 0) {
         return null;
     }
 
     const handleStatusChange = async (newStatus: string) => {
-        const timestamp = new Date(selectedDate).toISOString();
+        const [year, month, day] = selectedDate.split('-').map(Number);
+        const localDate = new Date(year, month - 1, day, 12, 0, 0);
+        const timestamp = localDate.toISOString();
         await updateStatusMutation.mutateAsync({
             raisedBedId,
             positionIndex,

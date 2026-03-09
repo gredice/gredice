@@ -1,3 +1,4 @@
+import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
 import { signalcoClient } from '@gredice/signalco';
 import {
     createDefaultGardenForAccount,
@@ -1396,16 +1397,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 context.req.valid('param');
             const { status, timestamp } = context.req.valid('json');
 
-            // Allowed statuses users can set and their valid source states
-            const userAllowedTransitions: Record<string, string[]> = {
-                sprouted: ['sowed'],
-                notSprouted: ['sprouted'],
-                died: ['sprouted'],
-                ready: ['sprouted'],
-                removed: [],
-            };
+            // Build reverse lookup: target status → allowed source statuses
+            const allowedTargetStatuses = new Set([
+                ...Object.values(userAllowedPlantStatusTransitions).flat(),
+                'removed',
+            ]);
 
-            if (!(status in userAllowedTransitions)) {
+            if (!allowedTargetStatuses.has(status)) {
                 return context.json({ error: 'Invalid status' }, 400);
             }
 
@@ -1458,9 +1456,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Validate state transition for user-allowed statuses
-            const allowedFromStates = userAllowedTransitions[status];
+            // Find allowed source states by looking up which current statuses can transition to the target
+            const allowedFromStates = Object.entries(
+                userAllowedPlantStatusTransitions,
+            )
+                .filter(([, targets]) => targets.includes(status))
+                .map(([source]) => source);
             if (
-                allowedFromStates &&
                 allowedFromStates.length > 0 &&
                 (!field.plantStatus ||
                     !allowedFromStates.includes(field.plantStatus))
@@ -1473,6 +1475,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            // Validate timestamp if provided
+            let createdAt: Date | undefined;
+            if (timestamp) {
+                createdAt = new Date(timestamp);
+                if (Number.isNaN(createdAt.getTime())) {
+                    return context.json({ error: 'Invalid timestamp' }, 400);
+                }
+            }
+
             // Call the storage function to create the event and update the plant status
             try {
                 const event = knownEvents.raisedBedFields.plantUpdateV1(
@@ -1482,7 +1493,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
                 await createEvent({
                     ...event,
-                    ...(timestamp && { createdAt: new Date(timestamp) }),
+                    ...(createdAt && { createdAt }),
                 });
 
                 return context.json({ success: true }, 200);
