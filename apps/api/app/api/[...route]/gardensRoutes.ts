@@ -1387,16 +1387,25 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 status: z.string(),
+                timestamp: z.string().datetime().optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId, positionIndex } =
                 context.req.valid('param');
-            const { status } = context.req.valid('json');
+            const { status, timestamp } = context.req.valid('json');
 
-            // For now, we only support 'remove' status update this way
-            if (status !== 'removed') {
+            // Allowed statuses users can set and their valid source states
+            const userAllowedTransitions: Record<string, string[]> = {
+                sprouted: ['sowed'],
+                notSprouted: ['sprouted'],
+                died: ['sprouted'],
+                ready: ['sprouted'],
+                removed: [],
+            };
+
+            if (!(status in userAllowedTransitions)) {
                 return context.json({ error: 'Invalid status' }, 400);
             }
 
@@ -1448,14 +1457,33 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            // Validate state transition for user-allowed statuses
+            const allowedFromStates = userAllowedTransitions[status];
+            if (
+                allowedFromStates &&
+                allowedFromStates.length > 0 &&
+                (!field.plantStatus ||
+                    !allowedFromStates.includes(field.plantStatus))
+            ) {
+                return context.json(
+                    {
+                        error: `Cannot change from '${field.plantStatus}' to '${status}'. Allowed source states: ${allowedFromStates.join(', ')}`,
+                    },
+                    400,
+                );
+            }
+
             // Call the storage function to create the event and update the plant status
             try {
-                await createEvent(
-                    knownEvents.raisedBedFields.plantUpdateV1(
-                        `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
-                        { status: status },
-                    ),
+                const event = knownEvents.raisedBedFields.plantUpdateV1(
+                    `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
+                    { status: status },
                 );
+
+                await createEvent({
+                    ...event,
+                    ...(timestamp && { createdAt: new Date(timestamp) }),
+                });
 
                 return context.json({ success: true }, 200);
             } catch (error) {

@@ -59,7 +59,7 @@ export async function getPlantPlaceEventsCount() {
 }
 
 export function createEvent(
-    { type, version, aggregateId, data }: Event,
+    { type, version, aggregateId, data, createdAt }: Event,
     db: DatabaseClient = storage(),
 ) {
     return db.insert(events).values({
@@ -67,6 +67,7 @@ export function createEvent(
         version,
         aggregateId,
         data,
+        ...(createdAt && { createdAt }),
     });
 }
 

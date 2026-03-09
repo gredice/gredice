@@ -12,7 +12,9 @@ export function useCurrentAccountUsers() {
                 return [];
             }
             if (!response.ok) {
-                throw new Error(`Failed to fetch current account users: ${response.status} ${response.statusText}`);
+                throw new Error(
+                    `Failed to fetch current account users: ${response.status} ${response.statusText}`,
+                );
             }
             return response.json();
         },

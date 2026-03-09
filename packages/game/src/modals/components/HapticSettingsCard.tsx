@@ -1,7 +1,11 @@
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { useState } from 'react';
-import { canVibrate, isHapticDisabled, setHapticDisabled } from '../../utils/haptics';
+import {
+    canVibrate,
+    isHapticDisabled,
+    setHapticDisabled,
+} from '../../utils/haptics';
 
 export function HapticSettingsCard() {
     const [disabled, setDisabled] = useState(isHapticDisabled);
