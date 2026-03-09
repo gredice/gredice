@@ -20,18 +20,22 @@ export function RaisedBedWatering({
             className="border border-tertiary border-b-4"
             title="Zalijevanje"
             open={open}
-            modal={false}
             onOpenChange={setOpen}
             trigger={
-                <ButtonGreen className="rounded-full p-0 pr-4 gap-0">
-                    <BlockImage
-                        width={56}
-                        height={56}
-                        alt="Zalijevanje"
-                        blockName="Bucket"
-                        className="size-14 -mt-3"
-                    />
-                    <span className="-ml-2">Zalijevanje</span>
+                <ButtonGreen
+                    className="rounded-full size-10 md:w-full p-0 md:pr-4 gap-0"
+                    fullWidth
+                    startDecorator={
+                        <BlockImage
+                            width={56}
+                            height={56}
+                            alt="Zalijevanje"
+                            blockName="Bucket"
+                            className="size-10 md:size-14 md:-mt-3"
+                        />
+                    }
+                >
+                    <span className="hidden md:block -ml-2">Zalijevanje</span>
                 </ButtonGreen>
             }
         >

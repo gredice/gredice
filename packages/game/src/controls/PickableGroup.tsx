@@ -29,6 +29,10 @@ import {
     useStackHeight,
 } from '../utils/getStackHeight';
 import { triggerPickHaptic, triggerPlaceHaptic } from '../utils/haptics';
+import {
+    findAttachedRaisedBedBlockId,
+    findRaisedBedByBlockId,
+} from '../utils/raisedBedBlocks';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 
@@ -101,6 +105,12 @@ export function PickableGroup({
     // Pickup system
     const pickupBlock = useGameState((state) => state.pickupBlock);
     const setPickupBlock = useGameState((state) => state.setPickupBlock);
+    const activeDragPreview = useGameState(
+        (state) => state.activeDragPreview ?? null,
+    );
+    const setActiveDragPreview = useGameState(
+        (state) => state.setActiveDragPreview ?? (() => {}),
+    );
 
     // Block mechanic
     const [isBlocked, setIsBlocked] = useState(false);
@@ -109,16 +119,64 @@ export function PickableGroup({
     // Recycle block functionality
     const [isOverRecycler, setIsOverRecycler] = useState(false);
     const recycleBlock = useBlockRecycle();
-    const raisedBed = garden?.raisedBeds.find((rb) => rb.blockId === block.id);
+    const raisedBed = findRaisedBedByBlockId(garden, block.id);
     const canRecycleRaisedBed = (raisedBed?.status ?? 'new') === 'new';
     const canRecycle = canRecycleRaisedBed;
 
-    // Reset position animation when block is moved
+    const attachedRaisedBedBlockId =
+        block.name === 'Raised_Bed' && garden
+            ? findAttachedRaisedBedBlockId(garden.stacks, block.id)
+            : null;
+    const attachedPlacement = attachedRaisedBedBlockId
+        ? garden?.stacks
+              .flatMap((candidateStack) =>
+                  candidateStack.blocks.map(
+                      (candidateBlock, candidateBlockIndex) => ({
+                          candidateStack,
+                          candidateBlock,
+                          candidateBlockIndex,
+                      }),
+                  ),
+              )
+              .find(
+                  (candidate) =>
+                      candidate.candidateBlock.id === attachedRaisedBedBlockId,
+              )
+        : null;
+    const attachedCurrentStackHeight = attachedPlacement
+        ? getStackHeight(
+              blocksData,
+              attachedPlacement.candidateStack,
+              attachedPlacement.candidateBlock,
+          )
+        : 0;
+
+    const isPreviewSource = activeDragPreview?.sourceBlockId === block.id;
+    const isPreviewAttached = activeDragPreview?.attachedBlockId === block.id;
+    const wasPreviewAttached = useRef(false);
+    const shouldResetAttachedOnPreviewEnd = useRef(false);
+    const previousStackPosition = useRef({
+        x: stack.position.x,
+        z: stack.position.z,
+    });
+
+    // Reset visual state after authoritative stack position changes
     useEffect(() => {
-        dragSpringsApi.set({ internalPosition: [0, 0, 0] });
-        setIsBlocked(false);
-        setIsOverRecycler(false);
-    }, [dragSpringsApi.set]);
+        const hasStackPositionChanged =
+            previousStackPosition.current.x !== stack.position.x ||
+            previousStackPosition.current.z !== stack.position.z;
+
+        if (hasStackPositionChanged) {
+            dragSpringsApi.set({ internalPosition: [0, 0, 0], scale: 1 });
+            setIsBlocked(false);
+            setIsOverRecycler(false);
+        }
+
+        previousStackPosition.current = {
+            x: stack.position.x,
+            z: stack.position.z,
+        };
+    }, [dragSpringsApi, stack.position.x, stack.position.z]);
 
     const isDraggingWorld = useGameState((state) => state.isDragging);
     useEffect(() => {
@@ -126,17 +184,47 @@ export function PickableGroup({
             dragSpringsApi.start({ internalPosition: [0, 0, 0] });
             setIsBlocked(false);
             setIsOverRecycler(false);
+            setActiveDragPreview(null);
             if (pickupBlock?.id === block.id) {
                 setPickupBlock(null);
             }
         }
     }, [
         isDraggingWorld,
-        dragSpringsApi.start,
         block.id,
         pickupBlock?.id,
         setPickupBlock,
+        setActiveDragPreview,
+        dragSpringsApi,
     ]);
+
+    useEffect(() => {
+        if (isPreviewSource) {
+            return;
+        }
+
+        if (isPreviewAttached && activeDragPreview) {
+            wasPreviewAttached.current = true;
+            shouldResetAttachedOnPreviewEnd.current =
+                activeDragPreview.isBlocked;
+            dragSpringsApi.start({
+                internalPosition: [
+                    activeDragPreview.relative.x,
+                    activeDragPreview.attachedHoverHeight + 0.1,
+                    activeDragPreview.relative.z,
+                ],
+            });
+            return;
+        }
+
+        if (!activeDragPreview && wasPreviewAttached.current) {
+            wasPreviewAttached.current = false;
+            if (shouldResetAttachedOnPreviewEnd.current) {
+                dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
+            }
+            shouldResetAttachedOnPreviewEnd.current = false;
+        }
+    }, [activeDragPreview, isPreviewAttached, isPreviewSource, dragSpringsApi]);
 
     const rect = domElement.getClientRects()[0];
 
@@ -175,32 +263,223 @@ export function PickableGroup({
         dest.set(pt.x, 0, pt.z).round();
         relative.set(dest.x - stack.position.x, 0, dest.z - stack.position.z);
 
-        const hoveredStack = getStack(dest);
-        const hoveredStackHeight =
-            hoveredStack === stack
-                ? 0
-                : getStackHeight(blocksData, hoveredStack) -
-                  (currentStackHeight ?? 0);
+        const movingPlacements = [
+            {
+                blockId: block.id,
+                blockName: block.name,
+                sourceStack: stack,
+                currentHeight: currentStackHeight ?? 0,
+                canRecycle,
+            },
+            ...(attachedPlacement
+                ? [
+                      {
+                          blockId: attachedPlacement.candidateBlock.id,
+                          blockName: attachedPlacement.candidateBlock.name,
+                          sourceStack: attachedPlacement.candidateStack,
+                          currentHeight: attachedCurrentStackHeight,
+                          canRecycle: false,
+                      },
+                  ]
+                : []),
+        ];
+        const movingBlockIds = new Set(
+            movingPlacements.map((placement) => placement.blockId),
+        );
 
-        // Check if under current hovered stack is stackable and mark as blocked or not
-        // Ignore starting position stack (since that's where the block is picked up from and is valid location)
-        const blockUnder =
-            hoveredStack?.position === stack.position
-                ? null
-                : hoveredStack?.blocks.at(-1);
-        const blockUnderData = blockUnder
-            ? getBlockDataByName(blocksData, blockUnder.name)
-            : null;
-        const blockUnderRecycler =
-            canRecycle && (blockUnderData?.functions?.recycler ?? false);
-        const blockUnderStackable =
-            blockUnderData?.attributes?.stackable ?? true;
-        const newIsBlocked = !blockUnderStackable && !blockUnderRecycler;
-        if (isOverRecycler !== blockUnderRecycler) {
-            setIsOverRecycler(blockUnderRecycler);
+        const placementPreviews = movingPlacements.map((placement) => {
+            const destination = {
+                x: placement.sourceStack.position.x + relative.x,
+                z: placement.sourceStack.position.z + relative.z,
+            };
+            const destinationStack = getStack(destination);
+            const destinationBlocks =
+                destinationStack?.blocks.filter(
+                    (candidate) => !movingBlockIds.has(candidate.id),
+                ) ?? [];
+            const destinationWithoutMoving = destinationStack
+                ? {
+                      ...destinationStack,
+                      blocks: destinationBlocks,
+                  }
+                : undefined;
+            const blockUnder = destinationBlocks.at(-1);
+            const blockUnderData = blockUnder
+                ? getBlockDataByName(blocksData, blockUnder.name)
+                : null;
+            const isRecycler =
+                placement.canRecycle &&
+                (blockUnderData?.functions?.recycler ?? false);
+            const isStackable = blockUnderData?.attributes?.stackable ?? true;
+            const hoverHeight =
+                getStackHeight(blocksData, destinationWithoutMoving) -
+                placement.currentHeight;
+
+            return {
+                blockId: placement.blockId,
+                blockName: placement.blockName,
+                destination,
+                destinationIndex: destinationBlocks.length,
+                hoverHeight,
+                isRecycler,
+                isBlocked: !isStackable && !isRecycler,
+            };
+        });
+
+        const movedPreviewByPosition = new Map(
+            placementPreviews.map((preview) => [
+                `${preview.destination.x}|${preview.destination.z}|${preview.destinationIndex}`,
+                preview,
+            ]),
+        );
+
+        function getExternalRaisedBedBlockAtIndex(
+            x: number,
+            z: number,
+            index: number,
+        ) {
+            const stackAtPosition = getStack({ x, z });
+            const candidateBlock = stackAtPosition?.blocks.filter(
+                (candidate) => !movingBlockIds.has(candidate.id),
+            )[index];
+            if (!candidateBlock || candidateBlock.name !== 'Raised_Bed') {
+                return null;
+            }
+            return candidateBlock;
         }
-        if (newIsBlocked !== isBlocked) {
-            setIsBlocked(newIsBlocked);
+
+        function hasExternalRaisedBedNeighbor(
+            x: number,
+            z: number,
+            index: number,
+            excludedPositions: Set<string>,
+        ) {
+            const neighbors = [
+                { x: x - 1, z },
+                { x: x + 1, z },
+                { x, z: z - 1 },
+                { x, z: z + 1 },
+            ];
+
+            return neighbors.some((neighbor) => {
+                if (excludedPositions.has(`${neighbor.x}|${neighbor.z}`)) {
+                    return false;
+                }
+
+                return Boolean(
+                    getExternalRaisedBedBlockAtIndex(
+                        neighbor.x,
+                        neighbor.z,
+                        index,
+                    ),
+                );
+            });
+        }
+
+        const raisedBedPlacementBlocked = placementPreviews
+            .filter((preview) => preview.blockName === 'Raised_Bed')
+            .some((preview) => {
+                const neighbors = [
+                    { x: preview.destination.x - 1, z: preview.destination.z },
+                    { x: preview.destination.x + 1, z: preview.destination.z },
+                    { x: preview.destination.x, z: preview.destination.z - 1 },
+                    { x: preview.destination.x, z: preview.destination.z + 1 },
+                ];
+
+                let raisedBedNeighborCount = 0;
+                let externalNeighbor:
+                    | {
+                          blockId: string;
+                          x: number;
+                          z: number;
+                      }
+                    | undefined;
+
+                for (const neighbor of neighbors) {
+                    const movedNeighbor = movedPreviewByPosition.get(
+                        `${neighbor.x}|${neighbor.z}|${preview.destinationIndex}`,
+                    );
+                    if (
+                        movedNeighbor &&
+                        movedNeighbor.blockName === 'Raised_Bed'
+                    ) {
+                        raisedBedNeighborCount += 1;
+                        continue;
+                    }
+
+                    const externalNeighborBlock =
+                        getExternalRaisedBedBlockAtIndex(
+                            neighbor.x,
+                            neighbor.z,
+                            preview.destinationIndex,
+                        );
+                    if (externalNeighborBlock) {
+                        raisedBedNeighborCount += 1;
+                        externalNeighbor = {
+                            blockId: externalNeighborBlock.id,
+                            x: neighbor.x,
+                            z: neighbor.z,
+                        };
+                    }
+                }
+
+                if (raisedBedNeighborCount > 1) {
+                    return true;
+                }
+
+                if (!externalNeighbor) {
+                    return false;
+                }
+
+                const excludedPositions = new Set<string>([
+                    `${preview.destination.x}|${preview.destination.z}`,
+                    ...placementPreviews
+                        .filter(
+                            (candidatePreview) =>
+                                candidatePreview.blockName === 'Raised_Bed',
+                        )
+                        .map(
+                            (candidatePreview) =>
+                                `${candidatePreview.destination.x}|${candidatePreview.destination.z}`,
+                        ),
+                ]);
+
+                return hasExternalRaisedBedNeighbor(
+                    externalNeighbor.x,
+                    externalNeighbor.z,
+                    preview.destinationIndex,
+                    excludedPositions,
+                );
+            });
+
+        const sourcePreview = placementPreviews[0];
+        const attachedPreview = attachedPlacement
+            ? placementPreviews.find(
+                  (preview) =>
+                      preview.blockId === attachedPlacement.candidateBlock.id,
+              )
+            : null;
+        const sourceHoverHeight = sourcePreview?.hoverHeight ?? 0;
+        const attachedHoverHeight = attachedPreview?.hoverHeight ?? 0;
+        const previewHoverHeight = Math.max(
+            sourceHoverHeight,
+            attachedHoverHeight,
+        );
+        const heightsMismatch =
+            attachedPlacement !== null &&
+            Math.abs(sourceHoverHeight - attachedHoverHeight) > 0.0001;
+        const nextIsOverRecycler = sourcePreview?.isRecycler ?? false;
+        const nextIsBlocked = nextIsOverRecycler
+            ? false
+            : placementPreviews.some((preview) => preview.isBlocked) ||
+              heightsMismatch ||
+              raisedBedPlacementBlocked;
+
+        if (isOverRecycler !== nextIsOverRecycler) {
+            setIsOverRecycler(nextIsOverRecycler);
+        }
+        if (nextIsBlocked !== isBlocked) {
+            setIsBlocked(nextIsBlocked);
         }
 
         if (!pressed) {
@@ -208,14 +487,18 @@ export function PickableGroup({
                 return;
             }
             didDrag.current = false;
+            setActiveDragPreview(null);
             setIsBlocked(false);
             setIsOverRecycler(false);
 
-            if (isBlocked) {
+            if (pickupBlock?.id === block.id) {
+                setPickupBlock(null);
+            }
+
+            if (nextIsBlocked) {
                 // Revert to start position if released above blocked stack
                 dragSpringsApi.start({ internalPosition: [0, 0, 0] });
-            } else if (isOverRecycler) {
-                console.debug('Recycling block', isOverRecycler);
+            } else if (nextIsOverRecycler) {
                 dragSpringsApi.start({
                     internalPosition: [relative.x, -1.5, relative.z],
                     scale: 0.1,
@@ -225,12 +508,23 @@ export function PickableGroup({
                     position: stack.position,
                     blockIndex: stack.blocks.indexOf(block),
                     raisedBedId: raisedBed?.id,
+                    attached: attachedPlacement
+                        ? {
+                              position: {
+                                  x: attachedPlacement.candidateStack.position
+                                      .x,
+                                  z: attachedPlacement.candidateStack.position
+                                      .z,
+                              },
+                              blockIndex: attachedPlacement.candidateBlockIndex,
+                          }
+                        : undefined,
                 });
             } else {
                 dragSpringsApi.start({
                     internalPosition: [
                         relative.x,
-                        hoveredStackHeight,
+                        previewHoverHeight,
                         relative.z,
                     ],
                 });
@@ -241,27 +535,55 @@ export function PickableGroup({
                     stack.position
                         .clone()
                         .add(relative)
-                        .setY(hoveredStackHeight + currentStackHeight),
+                        .setY(previewHoverHeight + currentStackHeight),
                     12,
                 );
+                const sourcePosition = {
+                    x: stack.position.x,
+                    z: stack.position.z,
+                };
+                const destinationPosition = {
+                    x: stack.position.x + relative.x,
+                    z: stack.position.z + relative.z,
+                };
+
                 await moveBlock.mutateAsync({
-                    sourcePosition: stack.position,
-                    destinationPosition: stack.position.clone().add(relative),
+                    sourcePosition,
+                    destinationPosition,
                     blockIndex: stack.blocks.indexOf(block),
+                    sourceBlockId: block.id,
+                    attached: attachedPlacement
+                        ? {
+                              sourcePosition: {
+                                  x: attachedPlacement.candidateStack.position
+                                      .x,
+                                  z: attachedPlacement.candidateStack.position
+                                      .z,
+                              },
+                              destinationPosition: {
+                                  x:
+                                      attachedPlacement.candidateStack.position
+                                          .x + relative.x,
+                                  z:
+                                      attachedPlacement.candidateStack.position
+                                          .z + relative.z,
+                              },
+                              blockIndex: attachedPlacement.candidateBlockIndex,
+                              sourceBlockId:
+                                  attachedPlacement.candidateBlock.id,
+                          }
+                        : undefined,
                 });
-                if (pickupBlock?.id === block.id) {
-                    setPickupBlock(null);
-                }
             }
         } else {
             if (!didDrag.current) {
                 pickupSound.play();
                 triggerPickHaptic();
-                if (newIsBlocked !== isBlocked) {
-                    setIsBlocked(newIsBlocked);
+                if (nextIsBlocked !== isBlocked) {
+                    setIsBlocked(nextIsBlocked);
                 }
-                if (blockUnderRecycler !== isOverRecycler) {
-                    setIsOverRecycler(blockUnderRecycler);
+                if (nextIsOverRecycler !== isOverRecycler) {
+                    setIsOverRecycler(nextIsOverRecycler);
                 }
 
                 spawn(
@@ -272,10 +594,22 @@ export function PickableGroup({
             }
             setPickupBlock(block);
             didDrag.current = true;
+            setActiveDragPreview({
+                sourceBlockId: block.id,
+                attachedBlockId: attachedPlacement?.candidateBlock.id ?? null,
+                relative: {
+                    x: relative.x,
+                    z: relative.z,
+                },
+                sourceHoverHeight,
+                attachedHoverHeight: previewHoverHeight,
+                isBlocked: nextIsBlocked,
+                isOverRecycler: nextIsOverRecycler,
+            });
             dragSpringsApi.start({
                 internalPosition: [
                     relative.x,
-                    hoveredStackHeight + 0.1,
+                    previewHoverHeight + 0.1,
                     relative.z,
                 ],
             });
@@ -284,7 +618,7 @@ export function PickableGroup({
 
     const bindProps = useDrag(dragHandler, {
         filterTaps: true,
-        enabled: !isDraggingWorld,
+        enabled: !isDraggingWorld && !isPreviewAttached,
     })();
 
     const customBindProps = {
@@ -296,9 +630,13 @@ export function PickableGroup({
     };
 
     // Handle blocking drop when stack is not stackable
+    const isGroupedPreviewBlocked =
+        (isPreviewSource || isPreviewAttached) &&
+        (activeDragPreview?.isBlocked ?? false);
+    const showBlockedIndicator = isBlocked || isGroupedPreviewBlocked;
     const blockedScaleSprings = useSpring({
-        scale: isBlocked ? 1 : 0,
-        opacity: isBlocked ? 1 : 0,
+        scale: showBlockedIndicator ? 1 : 0,
+        opacity: showBlockedIndicator ? 1 : 0,
         config: {
             tension: 350,
         },

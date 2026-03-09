@@ -34,7 +34,7 @@ import { useRaisedBedSensors } from '../../hooks/useRaisedBedSensors';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
-import { useNeighboringRaisedBeds } from './RaisedBedField';
+import { useNeighboringRaisedBeds } from './useNeighboringRaisedBeds';
 
 interface TooltipPayload {
     value?: number | string;
@@ -548,7 +548,7 @@ function SensorInfoModal({
                                     }
                                     onClick={handleBuySensor}
                                 >
-                                    Postavi senzor
+                                    Postavi
                                 </Button>
                             </div>
                         )}
@@ -575,28 +575,21 @@ function SensorInfoModal({
                                 <Typography level="body1">
                                     Senzor je već u tvojoj košarici.
                                 </Typography>
-                                <Stack>
-                                    <Typography
-                                        level="body2"
-                                        className="max-w-md text-balance"
-                                        center
-                                    >
-                                        Senzor za praćenje vlažnosti i
-                                        temperature tla je već dodan u tvoju
-                                        košaricu.
-                                    </Typography>
-                                </Stack>
-                                <div className="relative flex flex-col gap-2 items-center justify-center">
+                                <Typography
+                                    level="body2"
+                                    className="max-w-md text-balance"
+                                    center
+                                >
+                                    Senzor za praćenje vlažnosti i temperature
+                                    tla te čekaju u košarici. Dovrši kupovinu i
+                                    uskoro možeš početi pratiti uvjete u tlu
+                                    svoje gredice!
+                                </Typography>
+                                <div className="relative flex flex-col items-center justify-center">
                                     <Row spacing={1}>
-                                        <Check className="size-7 shrink-0 rounded-full bg-green-500" />
+                                        <Check className="absolute -right-1 -top-1 size-5 shrink-0 rounded-full bg-green-500" />
                                         <ShoppingCart className="size-8 shrink-0" />
                                     </Row>
-                                    <Typography
-                                        level="body2"
-                                        className="text-green-500 font-semibold"
-                                    >
-                                        Senzor je u košarici
-                                    </Typography>
                                 </div>
                             </div>
                         )}
@@ -605,6 +598,14 @@ function SensorInfoModal({
             </div>
         </Modal>
     );
+}
+
+const STALE_THRESHOLD_MS = 48 * 60 * 60 * 1000; // 48 hours
+
+function isSensorDataStale(updatedAt: string | null | undefined): boolean {
+    if (!updatedAt) return true;
+    const updatedTime = new Date(updatedAt).getTime();
+    return Date.now() - updatedTime > STALE_THRESHOLD_MS;
 }
 
 export function RaisedBedSensorInfo({
@@ -662,7 +663,7 @@ export function RaisedBedSensorInfo({
 
     if (sensorGroups.length === 0) {
         return (
-            <Row spacing={0.5}>
+            <div className="flex flex-col w-full md:flex-row gap-2 md:gap-1">
                 <SensorInfoModal
                     icon={
                         <Droplets className="size-7 shrink-0 stroke-blue-500" />
@@ -712,7 +713,11 @@ export function RaisedBedSensorInfo({
                         },
                     ]}
                     trigger={
-                        <ButtonGreen size="sm" className="rounded-full">
+                        <ButtonGreen
+                            size="sm"
+                            className="rounded-full px-2"
+                            fullWidth
+                        >
                             <Row spacing={0.5}>
                                 <Droplet
                                     className={cx(
@@ -724,7 +729,11 @@ export function RaisedBedSensorInfo({
                                 {!isLoading && error && (
                                     <Warning className="size-5 shrink-0 text-red-500" />
                                 )}
-                                {!isLoading && !error && <span>-</span>}
+                                {!isLoading && !error && (
+                                    <span className="whitespace-nowrap">
+                                        -%
+                                    </span>
+                                )}
                             </Row>
                         </ButtonGreen>
                     }
@@ -748,7 +757,11 @@ export function RaisedBedSensorInfo({
                         areaGradientEnd: '#fca5a5',
                     }}
                     trigger={
-                        <ButtonGreen size="sm" className="rounded-full">
+                        <ButtonGreen
+                            size="sm"
+                            className="rounded-full px-2"
+                            fullWidth
+                        >
                             <Row spacing={0.5}>
                                 <Thermometer
                                     className={cx(
@@ -760,7 +773,11 @@ export function RaisedBedSensorInfo({
                                 {!isLoading && error && (
                                     <Warning className="size-5 shrink-0 text-red-500" />
                                 )}
-                                {!isLoading && !error && <span>-°C</span>}
+                                {!isLoading && !error && (
+                                    <span className="whitespace-nowrap">
+                                        -°C
+                                    </span>
+                                )}
                             </Row>
                         </ButtonGreen>
                     }
@@ -770,7 +787,7 @@ export function RaisedBedSensorInfo({
                     sensorId={undefined}
                     type="soil_temperature"
                 />
-            </Row>
+            </div>
         );
     }
 
@@ -782,7 +799,10 @@ export function RaisedBedSensorInfo({
                 const temperatureStatus =
                     group.soilTemperature?.status ?? group.status;
                 return (
-                    <Row spacing={0.5} key={`sensor-${group.id}`}>
+                    <div
+                        className="flex flex-col md:flex-row gap-2 md:gap-0.5"
+                        key={`sensor-${group.id}`}
+                    >
                         <SensorInfoModal
                             icon={
                                 <Droplets className="size-7 shrink-0 stroke-blue-500" />
@@ -837,6 +857,7 @@ export function RaisedBedSensorInfo({
                                         <Droplet
                                             className={cx(
                                                 'size-5 shrink-0 stroke-blue-400',
+                                                !isSensorDataStale(group.soilMoisture?.updatedAt) &&
                                                 Number(
                                                     group.soilMoisture?.value ??
                                                         '0',
@@ -851,8 +872,9 @@ export function RaisedBedSensorInfo({
                                         )}
                                         {!isLoading && !error && (
                                             <span>
-                                                {group.soilMoisture?.value ??
-                                                    '-'}
+                                                {isSensorDataStale(group.soilMoisture?.updatedAt)
+                                                    ? '-'
+                                                    : group.soilMoisture?.value ?? '-'}
                                                 %
                                             </span>
                                         )}
@@ -884,6 +906,7 @@ export function RaisedBedSensorInfo({
                                         <Thermometer
                                             className={cx(
                                                 'size-5 shrink-0 stroke-red-400',
+                                                !isSensorDataStale(group.soilTemperature?.updatedAt) &&
                                                 Number(
                                                     group.soilTemperature
                                                         ?.value ?? '0',
@@ -898,8 +921,9 @@ export function RaisedBedSensorInfo({
                                         )}
                                         {!isLoading && !error && (
                                             <span>
-                                                {group.soilTemperature?.value ??
-                                                    '-'}
+                                                {isSensorDataStale(group.soilTemperature?.updatedAt)
+                                                    ? '-'
+                                                    : group.soilTemperature?.value ?? '-'}
                                                 °C
                                             </span>
                                         )}
@@ -912,7 +936,7 @@ export function RaisedBedSensorInfo({
                             sensorId={group.soilTemperature?.id ?? group.id}
                             type="soil_temperature"
                         />
-                    </Row>
+                    </div>
                 );
             })}
         </Stack>

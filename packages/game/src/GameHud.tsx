@@ -1,5 +1,6 @@
 'use client';
 
+import { cx } from '@signalco/ui-primitives/cx';
 import type { GameSceneProps } from './GameScene';
 import { AccountHud } from './hud/AccountHud';
 import { AdventHud } from './hud/AdventHud';
@@ -31,10 +32,12 @@ export function GameHud({ flags }: { flags: GameSceneProps['flags'] }) {
                 {!isCloseup && <GameModeHud />}
                 {!isCloseup && <AdventHud />}
                 {!isCloseup && <InventoryHud />}
-                <ShoppingCartHud />
+                {!isCloseup && <ShoppingCartHud />}
             </div>
             <div className="absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2">
-                <WeatherHud />
+                <div className={cx(isCloseup && 'hidden md:block')}>
+                    <WeatherHud />
+                </div>
                 <SunflowersHud />
             </div>
             {!isCloseup && <DayNightCycleHud />}

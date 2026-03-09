@@ -144,15 +144,15 @@ export function RaisedBedFieldItemPlanted({
             trigger={
                 <RaisedBedFieldItemButton positionIndex={positionIndex}>
                     <SegmentedCircularProgress
-                        size={80}
+                        size={70}
                         strokeWidth={4}
                         segments={segments}
                     >
                         <PlantOrSortImage
                             plantSort={plantSort}
                             className="absolute top-1/2 start-1/2 transform -translate-y-1/2 -translate-x-1/2"
-                            width={60}
-                            height={60}
+                            width={52}
+                            height={52}
                         />
                         {harvestValue && !isHarvested && (
                             <div className="absolute -top-1 -end-1">

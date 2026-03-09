@@ -48,10 +48,15 @@ export function useBlockRecycle() {
             position,
             blockIndex,
             raisedBedId,
+            attached,
         }: {
             position: { x: number; z: number };
             blockIndex: number;
             raisedBedId?: number;
+            attached?: {
+                position: { x: number; z: number };
+                blockIndex: number;
+            };
         }) => {
             console.debug('Recycling block', position, blockIndex);
             if (!garden) {
@@ -67,6 +72,14 @@ export function useBlockRecycle() {
                         op: 'remove',
                         path: `/${position.x}/${position.z}/${blockIndex}`,
                     },
+                    ...(attached
+                        ? [
+                              {
+                                  op: 'remove' as const,
+                                  path: `/${attached.position.x}/${attached.position.z}/${attached.blockIndex}`,
+                              },
+                          ]
+                        : []),
                 ],
             });
 
@@ -74,32 +87,37 @@ export function useBlockRecycle() {
                 await removeShoppingCartItems(shoppingCart, raisedBedId);
             }
         },
-        onMutate: async ({ position, blockIndex, raisedBedId }) => {
+        onMutate: async ({ position, blockIndex, raisedBedId, attached }) => {
             if (!garden) {
-                return;
-            }
-
-            // Finds the source stack based on position
-            const sourceStack = garden.stacks.find(
-                (stack) =>
-                    stack.position.x === position.x &&
-                    stack.position.z === position.z,
-            );
-            if (!sourceStack) {
                 return;
             }
 
             // Optimistically remove from source stack
             const updatedStacks = garden.stacks.map((stack) => {
-                if (
-                    stack.position.x === sourceStack.position.x &&
-                    stack.position.z === sourceStack.position.z
-                ) {
+                const isSourceStack =
+                    stack.position.x === position.x &&
+                    stack.position.z === position.z;
+                const isAttachedStack =
+                    attached !== undefined &&
+                    stack.position.x === attached.position.x &&
+                    stack.position.z === attached.position.z;
+
+                if (isSourceStack || isAttachedStack) {
                     return {
                         ...stack,
-                        blocks: stack.blocks.filter(
-                            (_, index) => index !== blockIndex,
-                        ),
+                        blocks: stack.blocks.filter((_, index) => {
+                            if (isSourceStack && index === blockIndex) {
+                                return false;
+                            }
+                            if (
+                                isAttachedStack &&
+                                attached &&
+                                index === attached.blockIndex
+                            ) {
+                                return false;
+                            }
+                            return true;
+                        }),
                     };
                 }
                 return stack;

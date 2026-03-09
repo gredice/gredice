@@ -5,9 +5,12 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { useGameState } from '../useGameState';
 
+const closeupZoom = 300;
+
 interface CameraControllerProps {
     isCloseUp: boolean;
     targetPosition?: [number, number, number];
+    closeupOrientation?: 'vertical' | 'horizontal';
     onAnimationStart?: () => void;
     onAnimationComplete?: () => void;
 }
@@ -20,11 +23,10 @@ function easeInOutCubic(x: number): number {
 export function CameraController({
     isCloseUp,
     targetPosition,
+    closeupOrientation,
     onAnimationStart,
     onAnimationComplete,
 }: CameraControllerProps) {
-    const endZoom = 400;
-
     const { camera } = useThree();
     const controlsRef = useGameState((state) => state.orbitControls);
 
@@ -36,6 +38,9 @@ export function CameraController({
     const previousTargetPosition = useRef<[number, number, number] | undefined>(
         undefined,
     );
+    const previousCloseupOrientation = useRef<
+        'vertical' | 'horizontal' | undefined
+    >(undefined);
 
     // Store the original isometric view position (when first entering closeup)
     const isometricPosition = useRef(new THREE.Vector3());
@@ -91,8 +96,15 @@ export function CameraController({
             (previousTargetPosition.current[0] !== targetPosition[0] ||
                 previousTargetPosition.current[1] !== targetPosition[1] ||
                 previousTargetPosition.current[2] !== targetPosition[2]);
+        const closeupOrientationChanged =
+            isCloseUp &&
+            previousCloseupOrientation.current !== closeupOrientation;
 
-        if (previousCloseUp.current !== isCloseUp || targetPositionChanged) {
+        if (
+            previousCloseUp.current !== isCloseUp ||
+            targetPositionChanged ||
+            closeupOrientationChanged
+        ) {
             if (!controlsRef) {
                 console.error('No controls ref provided for camera controller');
                 return;
@@ -109,17 +121,21 @@ export function CameraController({
                     isometricZoom.current = camera.zoom;
                 }
 
+                const isHorizontalCloseup = closeupOrientation === 'horizontal';
+                const closeupX = isHorizontalCloseup
+                    ? targetPosition[0]
+                    : targetPosition[0] - 1;
+                const closeupZ = isHorizontalCloseup
+                    ? targetPosition[2] + 1
+                    : targetPosition[2];
+
                 animationEndPosition.current.copy(
-                    new THREE.Vector3(
-                        targetPosition[0] - 1,
-                        camera.position.y,
-                        targetPosition[2],
-                    ),
+                    new THREE.Vector3(closeupX, camera.position.y, closeupZ),
                 );
                 animationEndTarget.current.copy(
                     new THREE.Vector3(...targetPosition),
                 );
-                animationEndZoom.current = endZoom;
+                animationEndZoom.current = closeupZoom;
             } else {
                 console.debug('Returning to isometric view');
                 animationEndPosition.current.copy(isometricPosition.current);
@@ -137,6 +153,7 @@ export function CameraController({
             isAnimating.current = true;
             previousCloseUp.current = isCloseUp;
             previousTargetPosition.current = targetPosition;
+            previousCloseupOrientation.current = closeupOrientation;
             onAnimationStart?.();
         }
 

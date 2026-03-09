@@ -196,7 +196,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         <Row spacing={1}>
                             <Row spacing={0.5} className="flex-wrap gap-y-0">
                                 {hasRaisedBed && (
-                                    <Typography level="body3" secondary>
+                                    <Typography level="body3" secondary component="span">
                                         {raisedBed?.physicalId ? (
                                             <Row spacing={1}>
                                                 <RaisedBedIdentifierIcon

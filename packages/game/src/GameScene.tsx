@@ -100,6 +100,7 @@ export function GameScene({
                         {garden?.stacks.map((stack) =>
                             stack.blocks?.map((block, i) => (
                                 <EntityFactory
+                                    // biome-ignore lint/suspicious/noArrayIndexKey: Using array index as key is acceptable here because block IDs are unique within a stack, and the order of blocks within a stack is unlikely to change. Using block.id alone is not sufficient as it may not be unique across different stacks.
                                     key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
                                     name={block.name}
                                     stack={stack}

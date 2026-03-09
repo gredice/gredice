@@ -4,7 +4,6 @@ import {
     createEvent,
     createGardenBlock,
     createGardenStack,
-    createRaisedBed,
     deleteGardenStack,
     getAccount,
     getAccountGardens,
@@ -30,10 +29,13 @@ import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
+import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
+import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
-    calculateRaisedBedsValidity,
-    updateRaisedBedsOrientation,
-} from '../../../lib/garden/raisedBedsService';
+    validateConnectedRaisedBedMove,
+    validateRaisedBedPlacement,
+    validateStackPlacement,
+} from '../../../lib/garden/stacksPatchValidation';
 import {
     type AuthVariables,
     authValidator,
@@ -136,50 +138,20 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            // TODO: Implement validation of block place events
-            // const blockPlaceEvents = blockPlaceEventsRaw.map(event => ({
-            //     ...event,
-            //     data: event.data as { id: string, name: string }
-            // }));
+            const blocksById = new Map(
+                blocks.map((block) => [block.id, block]),
+            );
 
             // Stacks: group by x then by y
-            const raisedBedsToCreate: string[] = [];
-            const stacksToClean: {
-                x: number;
-                y: number;
-                validBlocks: string[];
-            }[] = [];
             const stacks = garden.stacks.reduce(
                 (acc, stack) => {
                     if (!acc[stack.positionX]) {
                         acc[stack.positionX] = {};
                     }
-                    const invalidBlockIds: string[] = [];
                     acc[stack.positionX][stack.positionY] = stack.blocks
                         .map((blockId) => {
-                            const block = blocks.find(
-                                (block) => block.id === blockId,
-                            );
-                            if (!block) {
-                                console.warn(
-                                    'Block not found - removing from stack',
-                                    { blockId, stack },
-                                );
-                                invalidBlockIds.push(blockId);
-                                return null;
-                            }
-
-                            // Verify block has raised bed attached to it if it's type is raised bed
-                            if (block.name === 'Raised_Bed') {
-                                const assignedRaisedBed =
-                                    garden.raisedBeds.find(
-                                        (raisedBed) =>
-                                            raisedBed.blockId === blockId,
-                                    );
-                                if (!assignedRaisedBed) {
-                                    raisedBedsToCreate.push(blockId);
-                                }
-                            }
+                            const block = blocksById.get(blockId);
+                            if (!block) return null;
 
                             return {
                                 id: blockId,
@@ -194,15 +166,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         rotation?: number | null;
                         variant?: number | null;
                     }[];
-                    if (invalidBlockIds.length > 0) {
-                        stacksToClean.push({
-                            x: stack.positionX,
-                            y: stack.positionY,
-                            validBlocks: stack.blocks.filter(
-                                (id) => !invalidBlockIds.includes(id),
-                            ),
-                        });
-                    }
                     return acc;
                 },
                 {} as Record<
@@ -219,68 +182,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 >,
             );
 
-            // Remove invalid blocks from stacks
-            if (stacksToClean.length > 0) {
-                for (const { x, y, validBlocks } of stacksToClean) {
-                    try {
-                        await updateGardenStack(gardenIdNumber, {
-                            x,
-                            y,
-                            blocks: validBlocks,
-                        });
-                        console.info('Removed invalid blocks from stack', {
-                            gardenId: garden.id,
-                            x,
-                            y,
-                        });
-                    } catch (error) {
-                        console.error('Error cleaning stack', {
-                            gardenId: garden.id,
-                            x,
-                            y,
-                            error,
-                        });
-                    }
-                }
-            }
-
-            // Create missing raised beds
-            let freshGarden: NonNullable<
-                Awaited<ReturnType<typeof getGarden>>
-            > = garden;
-            if (raisedBedsToCreate.length > 0) {
-                for (const blockId of raisedBedsToCreate) {
-                    await createRaisedBed({
-                        blockId,
-                        gardenId: garden.id,
-                        accountId: garden.accountId,
-                    });
-                    console.info('Created missing raised bed', {
-                        gardenId: garden.id,
-                        blockId,
-                    });
-                }
-                const refreshed = await getGarden(gardenIdNumber); // Refresh garden to include new raised beds
-                if (!refreshed) {
-                    throw new Error(
-                        `Garden ${gardenIdNumber} not found after creating raised beds`,
-                    );
-                }
-                freshGarden = refreshed;
-            }
-
             return context.json({
-                id: freshGarden.id,
-                name: freshGarden.name,
-                latitude: freshGarden.farm.latitude,
-                longitude: freshGarden.farm.longitude,
+                id: garden.id,
+                name: garden.name,
+                latitude: garden.farm.latitude,
+                longitude: garden.farm.longitude,
                 stacks,
                 raisedBeds: (() => {
                     const validityMap = calculateRaisedBedsValidity(
-                        freshGarden.raisedBeds,
-                        freshGarden.stacks,
+                        garden.raisedBeds,
+                        garden.stacks,
                     );
-                    return freshGarden.raisedBeds.map((raisedBed) => ({
+                    return garden.raisedBeds.map((raisedBed) => ({
                         id: raisedBed.id,
                         name: raisedBed.name,
                         physicalId: raisedBed.physicalId,
@@ -293,7 +206,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         isValid: validityMap.get(raisedBed.id) ?? false,
                     }));
                 })(),
-                createdAt: freshGarden.createdAt,
+                createdAt: garden.createdAt,
             });
         },
     )
@@ -336,6 +249,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 ...event,
                 data: event.data as { id: string; name: string },
             }));
+            const blockNamesById = new Map(
+                blockPlaceEvents.map((event) => [
+                    event.data.id,
+                    event.data.name,
+                ]),
+            );
+            const blocksById = new Map(
+                blocks.map((block) => [block.id, block]),
+            );
 
             // Stacks: group by x then by y
             const stacks = garden.stacks.reduce(
@@ -346,16 +268,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     acc[stack.positionX][stack.positionY] = stack.blocks.map(
                         (blockId) => ({
                             id: blockId,
-                            name:
-                                blockPlaceEvents.find(
-                                    (event) => event.data.id === blockId,
-                                )?.data.name ?? 'unknown',
-                            rotation:
-                                blocks.find((block) => block.id === blockId)
-                                    ?.rotation ?? 0,
-                            variant: blocks.find(
-                                (block) => block.id === blockId,
-                            )?.variant,
+                            name: blockNamesById.get(blockId) ?? 'unknown',
+                            rotation: blocksById.get(blockId)?.rotation ?? 0,
+                            variant: blocksById.get(blockId)?.variant,
                         }),
                     );
                     return acc;
@@ -500,10 +415,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
+            const [gardenBlocks, blockData] = await Promise.all([
+                getGardenBlocks(gardenIdNumber),
+                getBlockData(),
+            ]);
+            const blockNameById = new Map(
+                gardenBlocks.map((block) => [block.id, block.name]),
+            );
+            const blockDataByName = new Map(
+                blockData.map((block) => [block.information.name, block]),
+            );
+
+            const validateStackPlacementForGarden = (blockIds: string[]) =>
+                validateStackPlacement({
+                    blockIds,
+                    blockNameById,
+                    blockDataByName,
+                });
+
             const operations = context.req.valid('json');
             if (operations.length === 0) {
                 return context.json({ error: 'No operations provided' }, 400);
             }
+            const initialGardenState = garden;
 
             /**
              * Parses a path string into an object with x, y, and index properties.
@@ -545,7 +479,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return await getGardenStack(gardenIdNumber, parsePath(path));
             }
 
-            async function addStack(path: string, value: string | string[]) {
+            async function addStack(
+                path: string,
+                value: string | string[],
+                options?: { skipRaisedBedPlacementValidation?: boolean },
+            ) {
                 const stackPosition = parsePath(path);
 
                 console.debug(
@@ -563,24 +501,99 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
 
                 if (stackPosition.index === undefined) {
+                    if (
+                        typeof value === 'string' &&
+                        !options?.skipRaisedBedPlacementValidation
+                    ) {
+                        const blockName = blockNameById.get(value);
+                        if (blockName === 'Raised_Bed') {
+                            const gardenState = await getGarden(gardenIdNumber);
+                            if (!gardenState) {
+                                return context.json(
+                                    { error: 'Garden not found' },
+                                    404,
+                                );
+                            }
+
+                            const targetIndex = stackPosition.append
+                                ? (existing?.blocks.length ?? 0)
+                                : 0;
+                            const placementValidation =
+                                validateRaisedBedPlacement({
+                                    stacks: gardenState.stacks,
+                                    x: stackPosition.x,
+                                    y: stackPosition.y,
+                                    index: targetIndex,
+                                    blockNameById,
+                                });
+                            if (!placementValidation.valid) {
+                                return context.json(
+                                    { error: placementValidation.error },
+                                    400,
+                                );
+                            }
+                        }
+                    }
+
+                    const nextBlocks = Array.isArray(value)
+                        ? stackPosition.append
+                            ? [...(existing?.blocks ?? []), ...value]
+                            : value
+                        : stackPosition.append
+                          ? [...(existing?.blocks ?? []), value]
+                          : [value];
+
+                    const validation =
+                        validateStackPlacementForGarden(nextBlocks);
+                    if (!validation.valid) {
+                        return context.json({ error: validation.error }, 400);
+                    }
+
                     if (Array.isArray(value)) {
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: stackPosition.append
-                                ? [...(existing?.blocks ?? []), ...value]
-                                : value,
+                            blocks: nextBlocks,
                         });
                     } else {
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: stackPosition.append
-                                ? [...(existing?.blocks ?? []), value]
-                                : [value],
+                            blocks: nextBlocks,
                         });
                     }
                 } else {
+                    if (
+                        typeof value === 'string' &&
+                        !options?.skipRaisedBedPlacementValidation
+                    ) {
+                        const blockName = blockNameById.get(value);
+                        if (blockName === 'Raised_Bed') {
+                            const gardenState = await getGarden(gardenIdNumber);
+                            if (!gardenState) {
+                                return context.json(
+                                    { error: 'Garden not found' },
+                                    404,
+                                );
+                            }
+
+                            const placementValidation =
+                                validateRaisedBedPlacement({
+                                    stacks: gardenState.stacks,
+                                    x: stackPosition.x,
+                                    y: stackPosition.y,
+                                    index: stackPosition.index,
+                                    blockNameById,
+                                });
+                            if (!placementValidation.valid) {
+                                return context.json(
+                                    { error: placementValidation.error },
+                                    400,
+                                );
+                            }
+                        }
+                    }
+
                     if (
                         !existing ||
                         (existing?.blocks.length ?? 0) < stackPosition.index ||
@@ -595,30 +608,46 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     }
 
                     if (Array.isArray(value)) {
+                        const nextBlocks = [
+                            ...existing.blocks.slice(0, stackPosition.index),
+                            ...value,
+                            ...existing.blocks.slice(stackPosition.index),
+                        ];
+
+                        const validation =
+                            validateStackPlacementForGarden(nextBlocks);
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
+
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: [
-                                ...existing.blocks.slice(
-                                    0,
-                                    stackPosition.index,
-                                ),
-                                ...value,
-                                ...existing.blocks.slice(stackPosition.index),
-                            ],
+                            blocks: nextBlocks,
                         });
                     } else {
+                        const nextBlocks = [
+                            ...existing.blocks.slice(0, stackPosition.index),
+                            value,
+                            ...existing.blocks.slice(stackPosition.index),
+                        ];
+
+                        const validation =
+                            validateStackPlacementForGarden(nextBlocks);
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
+
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: [
-                                ...existing.blocks.slice(
-                                    0,
-                                    stackPosition.index,
-                                ),
-                                value,
-                                ...existing.blocks.slice(stackPosition.index),
-                            ],
+                            blocks: nextBlocks,
                         });
                     }
                 }
@@ -726,6 +755,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 400,
                             );
                         }
+
+                        const validation =
+                            validateStackPlacementForGarden(value);
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
@@ -747,11 +785,23 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             );
                         }
 
-                        stack.blocks[stackPosition.index] = value;
+                        const nextBlocks = stack.blocks.map((blockId, index) =>
+                            index === stackPosition.index ? value : blockId,
+                        );
+
+                        const validation =
+                            validateStackPlacementForGarden(nextBlocks);
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
+
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: stack.blocks,
+                            blocks: nextBlocks,
                         });
                     }
                 } else if (operation.op === 'move') {
@@ -769,7 +819,27 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             ? fromStack.blocks
                             : fromStack.blocks[fromPosition.index];
 
-                    let resp = await addStack(path, fromValue);
+                    if (typeof fromValue === 'string') {
+                        const validation = validateConnectedRaisedBedMove({
+                            stacks: initialGardenState.stacks,
+                            fromPath: from,
+                            toPath: path,
+                            movedBlockId: fromValue,
+                            blockNameById,
+                            blockDataByName,
+                            parsePath,
+                        });
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
+                    }
+
+                    let resp = await addStack(path, fromValue, {
+                        skipRaisedBedPlacementValidation: true,
+                    });
                     if (resp) {
                         return resp;
                     }
@@ -800,11 +870,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
             }
 
-            // Update raised beds orientation after stack changes
-            const updatedGarden = await getGarden(gardenIdNumber);
-            if (updatedGarden) {
-                await updateRaisedBedsOrientation(updatedGarden);
-            }
+            await synchronizeGardenStacksAndRaisedBeds(gardenIdNumber);
 
             return context.json(null, 200);
         },
@@ -846,6 +912,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     result.errorStatus as ContentfulStatusCode,
                 );
             }
+
+            await synchronizeGardenStacksAndRaisedBeds(gardenIdNumber);
 
             return context.json({ reward: result.reward }, 200);
         },
@@ -1014,11 +1082,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            // Update raised beds orientation after stack changes
-            const updatedGarden = await getGarden(gardenIdNumber);
-            if (updatedGarden) {
-                await updateRaisedBedsOrientation(updatedGarden);
-            }
+            await synchronizeGardenStacksAndRaisedBeds(gardenIdNumber);
 
             return context.json(null, 200);
         },

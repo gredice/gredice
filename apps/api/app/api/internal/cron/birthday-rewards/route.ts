@@ -40,7 +40,11 @@ export async function GET(request: NextRequest) {
         const candidateMonth = candidateDate.getUTCMonth() + 1;
         const candidateDay = candidateDate.getUTCDate();
         const candidateYear = candidateDate.getUTCFullYear();
-        candidates.push({ month: candidateMonth, day: candidateDay, year: candidateYear });
+        candidates.push({
+            month: candidateMonth,
+            day: candidateDay,
+            year: candidateYear,
+        });
         if (
             candidateMonth === 2 &&
             candidateDay === 28 &&

@@ -1,11 +1,15 @@
 import { OrbitControls } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MOUSE, TOUCH, Vector3 } from 'three';
 import { CameraController } from '../controllers/CameraController';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useIsEditMode } from '../hooks/useIsEditMode';
 import { useGameState } from '../useGameState';
+import {
+    findRaisedBedByBlockId,
+    getRaisedBedBlockIds,
+} from '../utils/raisedBedBlocks';
 
 function useCameraRotate() {
     const orbitControls = useGameState((state) => state.orbitControls);
@@ -105,21 +109,84 @@ export function Controls() {
     // Closeup
     const isCloseUp = useGameState((state) => state.view) === 'closeup';
     const closeupBlock = useGameState((state) => state.closeupBlock);
+    const closeupOrientation = useMemo(() => {
+        const currentGarden = garden.data;
+        if (!closeupBlock || !currentGarden) {
+            return undefined;
+        }
 
-    // Find stack position containing the closeup block
-    const targetPosition: [number, number, number] = closeupBlock
-        ? (garden.data?.stacks
-              .find((stack) =>
-                  stack.blocks.some((block) => block.id === closeupBlock.id),
-              )
-              ?.position.toArray() as [number, number, number])
-        : [0, 0, 0];
+        const raisedBed = findRaisedBedByBlockId(
+            currentGarden,
+            closeupBlock.id,
+        );
+        return raisedBed?.orientation;
+    }, [closeupBlock, garden.data]);
+
+    const targetPosition: [number, number, number] = useMemo(() => {
+        const currentGarden = garden.data;
+        if (!closeupBlock || !currentGarden) {
+            return [0, 0, 0];
+        }
+
+        const getStackPositionByBlockId = (blockId: string) =>
+            currentGarden.stacks.find((stack) =>
+                stack.blocks.some((block) => block.id === blockId),
+            )?.position;
+
+        const closeupBlockPosition = getStackPositionByBlockId(closeupBlock.id);
+        if (!closeupBlockPosition) {
+            return [0, 0, 0];
+        }
+
+        const raisedBed = findRaisedBedByBlockId(
+            currentGarden,
+            closeupBlock.id,
+        );
+        if (!raisedBed) {
+            return [
+                closeupBlockPosition.x,
+                closeupBlockPosition.y,
+                closeupBlockPosition.z,
+            ];
+        }
+
+        const raisedBedBlockIds = getRaisedBedBlockIds(
+            currentGarden,
+            raisedBed.id,
+        );
+        if (raisedBedBlockIds.length !== 2) {
+            return [
+                closeupBlockPosition.x,
+                closeupBlockPosition.y,
+                closeupBlockPosition.z,
+            ];
+        }
+
+        const connectedBlockPositions = raisedBedBlockIds
+            .map((blockId) => getStackPositionByBlockId(blockId))
+            .filter((position): position is Vector3 => Boolean(position));
+
+        if (connectedBlockPositions.length !== 2) {
+            return [
+                closeupBlockPosition.x,
+                closeupBlockPosition.y,
+                closeupBlockPosition.z,
+            ];
+        }
+
+        return [
+            (connectedBlockPositions[0].x + connectedBlockPositions[1].x) / 2,
+            (connectedBlockPositions[0].y + connectedBlockPositions[1].y) / 2,
+            (connectedBlockPositions[0].z + connectedBlockPositions[1].z) / 2,
+        ];
+    }, [closeupBlock, garden.data]);
 
     return (
         <>
             <CameraController
                 isCloseUp={isCloseUp}
                 targetPosition={targetPosition}
+                closeupOrientation={closeupOrientation}
                 onAnimationStart={() => setIsAnimating(true)}
                 onAnimationComplete={() => setIsAnimating(false)}
             />

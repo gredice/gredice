@@ -16,41 +16,54 @@ export function useBlockRotate() {
         mutationFn: async ({
             blockId,
             rotation,
+            blockIds,
         }: {
             blockId: string;
             rotation: number;
+            blockIds?: string[];
         }) => {
             if (!garden) {
                 throw new Error('No garden selected');
             }
             const gardenId = garden.id;
-            await client().api.gardens[':gardenId'].blocks[':blockId'].$put({
-                param: {
-                    gardenId: gardenId.toString(),
-                    blockId: blockId,
-                },
-                json: {
-                    rotation: rotation,
-                },
-            });
+            const targetBlockIds = Array.from(
+                new Set(blockIds?.length ? blockIds : [blockId]),
+            );
+            await Promise.all(
+                targetBlockIds.map(async (targetBlockId) => {
+                    await client().api.gardens[':gardenId'].blocks[
+                        ':blockId'
+                    ].$put({
+                        param: {
+                            gardenId: gardenId.toString(),
+                            blockId: targetBlockId,
+                        },
+                        json: {
+                            rotation: rotation,
+                        },
+                    });
+                }),
+            );
         },
-        onMutate: async ({ blockId, rotation }) => {
-            // Get fresh garden data from query cache, not from closure
+        onMutate: async ({ blockId, rotation, blockIds }) => {
             const currentGarden =
                 queryClient.getQueryData<typeof garden>(gardenQueryKey);
             if (!currentGarden) {
                 return;
             }
 
+            const targetBlockIds = new Set(
+                blockIds?.length ? blockIds : [blockId],
+            );
             const updatedStacks = currentGarden.stacks.map((stack) => {
-                const updatedBlocks = stack.blocks.map((block) => {
-                    if (block.id === blockId) {
+                const updatedBlocks = stack.blocks.map((candidate) => {
+                    if (targetBlockIds.has(candidate.id)) {
                         return {
-                            ...block,
+                            ...candidate,
                             rotation: rotation,
                         };
                     }
-                    return block;
+                    return candidate;
                 });
                 return {
                     ...stack,
@@ -77,7 +90,6 @@ export function useBlockRotate() {
             }
         },
         onSettled: async () => {
-            // Invalidate queries
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
                     queryKey: gardenQueryKey,
