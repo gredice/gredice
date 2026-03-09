@@ -5,6 +5,7 @@ import * as Sentry from '@sentry/nextjs';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
+import { ImpersonationBanner } from '../components/ImpersonationBanner';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 
 export function generateMetadata(): Metadata {
@@ -38,7 +39,10 @@ export default function RootLayout({
                 <meta name="apple-mobile-web-app-title" content="Gredice" />
             </Head>
             <body className="antialiased bg-muted">
-                <ClientAppProvider>{children}</ClientAppProvider>
+                <ClientAppProvider>
+                    <ImpersonationBanner />
+                    {children}
+                </ClientAppProvider>
                 <Analytics />
                 {shouldInjectToolbar && <VercelToolbar />}
             </body>

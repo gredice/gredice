@@ -7,6 +7,7 @@ import {
     earnSunflowers,
     getAccount,
     getAccountAchievements,
+    getAccountInvitationByToken,
     getAccountInvitations,
     getAccountInvitationsByEmail,
     getAccountUsers,
@@ -370,7 +371,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
             if (alreadyMember) {
                 return context.json(
-                    { error: 'User is already a member of this account', code: 'already_member' },
+                    {
+                        error: 'User is already a member of this account',
+                        code: 'already_member',
+                    },
                     400,
                 );
             }
@@ -398,7 +402,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             if (!invitation) {
                 return context.json(
-                    { error: 'Failed to create invitation', code: 'invitation_creation_failed' },
+                    {
+                        error: 'Failed to create invitation',
+                        code: 'invitation_creation_failed',
+                    },
                     500,
                 );
             }
@@ -420,7 +427,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 // Roll back the invitation so the user can retry
                 await cancelAccountInvitation(invitation.id, accountId);
                 return context.json(
-                    { error: 'Failed to send invitation email', code: 'email_send_failed' },
+                    {
+                        error: 'Failed to send invitation email',
+                        code: 'email_send_failed',
+                    },
                     500,
                 );
             }
@@ -484,10 +494,36 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { userId } = context.get('authContext');
             const { token } = context.req.valid('json');
 
+            // Verify the accepting user's email matches the invitation
+            const invitation = await getAccountInvitationByToken(token);
+            if (!invitation) {
+                return context.json(
+                    {
+                        error: 'Invalid or expired invitation',
+                        code: 'invalid_invitation',
+                    },
+                    400,
+                );
+            }
+
+            const user = await getUser(userId);
+            if (!user || user.userName !== invitation.email) {
+                return context.json(
+                    {
+                        error: 'Invitation was sent to a different email address',
+                        code: 'email_mismatch',
+                    },
+                    403,
+                );
+            }
+
             const result = await acceptAccountInvitation(token, userId);
             if (!result) {
                 return context.json(
-                    { error: 'Invalid or expired invitation' },
+                    {
+                        error: 'Invalid or expired invitation',
+                        code: 'invalid_invitation',
+                    },
                     400,
                 );
             }
