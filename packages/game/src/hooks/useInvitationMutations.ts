@@ -4,6 +4,17 @@ import { accountInvitationsKeys } from './useAccountInvitations';
 import { currentAccountUsersKeys } from './useCurrentAccountUsers';
 import { pendingInvitationsKeys } from './usePendingInvitations';
 
+export class InvitationError extends Error {
+    code: string;
+    status: number;
+
+    constructor(message: string, code: string, status: number) {
+        super(message);
+        this.code = code;
+        this.status = status;
+    }
+}
+
 export function useSendInvitation() {
     const queryClient = useQueryClient();
 
@@ -15,20 +26,24 @@ export function useSendInvitation() {
                 });
             if (!response.ok) {
                 const text = await response.text();
-                let errorMessage = 'Failed to send invitation';
+                let errorCode = 'unknown';
                 try {
                     const data = JSON.parse(text);
                     if (
                         typeof data === 'object' &&
                         data !== null &&
-                        typeof data.error === 'string'
+                        typeof data.code === 'string'
                     ) {
-                        errorMessage = data.error;
+                        errorCode = data.code;
                     }
                 } catch {
                     // ignore parse error
                 }
-                throw new Error(errorMessage);
+                throw new InvitationError(
+                    errorCode,
+                    errorCode,
+                    response.status,
+                );
             }
             return response.json();
         },

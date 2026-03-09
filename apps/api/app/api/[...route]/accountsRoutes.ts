@@ -370,7 +370,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
             if (alreadyMember) {
                 return context.json(
-                    { error: 'User is already a member of this account' },
+                    { error: 'User is already a member of this account', code: 'already_member' },
                     400,
                 );
             }
@@ -384,6 +384,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json(
                     {
                         error: 'An invitation has already been sent to this email',
+                        code: 'already_invited',
                     },
                     400,
                 );
@@ -397,7 +398,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             if (!invitation) {
                 return context.json(
-                    { error: 'Failed to create invitation' },
+                    { error: 'Failed to create invitation', code: 'invitation_creation_failed' },
                     500,
                 );
             }
@@ -409,11 +410,20 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             const acceptUrl = `https://vrt.gredice.com/pozivnica?token=${invitation.token}`;
 
-            await sendAccountInvitation(email, {
-                email,
-                invitedByName: inviterName,
-                acceptUrl,
-            });
+            try {
+                await sendAccountInvitation(email, {
+                    email,
+                    invitedByName: inviterName,
+                    acceptUrl,
+                });
+            } catch {
+                // Roll back the invitation so the user can retry
+                await cancelAccountInvitation(invitation.id, accountId);
+                return context.json(
+                    { error: 'Failed to send invitation email', code: 'email_send_failed' },
+                    500,
+                );
+            }
 
             return context.json(
                 {

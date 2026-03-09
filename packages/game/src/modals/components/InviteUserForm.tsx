@@ -3,7 +3,22 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { type FormEvent, useState } from 'react';
-import { useSendInvitation } from '../../hooks/useInvitationMutations';
+import { InvitationError, useSendInvitation } from '../../hooks/useInvitationMutations';
+
+const invitationErrorMessages: Record<string, string> = {
+    already_member: 'Korisnik je već član ovog računa.',
+    already_invited: 'Pozivnica je već poslana na ovu email adresu.',
+    invitation_creation_failed: 'Nismo uspjeli stvoriti pozivnicu. Pokušaj ponovo za nekoliko minuta.',
+    email_send_failed: 'Pozivnica je stvorena, ali email nije poslan. Pokušaj ponovo za nekoliko minuta.',
+};
+
+function getInvitationErrorMessage(err: unknown): string {
+    if (err instanceof InvitationError) {
+        return invitationErrorMessages[err.code]
+            ?? 'Došlo je do neočekivane greške. Pokušaj ponovo za nekoliko minuta.';
+    }
+    return 'Došlo je do neočekivane greške. Pokušaj ponovo za nekoliko minuta.';
+}
 
 export function InviteUserForm() {
     const [email, setEmail] = useState('');
@@ -20,11 +35,7 @@ export function InviteUserForm() {
             await sendInvitation.mutateAsync(email.trim());
             setEmail('');
         } catch (err) {
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : 'Došlo je do greške pri slanju pozivnice.',
-            );
+            setError(getInvitationErrorMessage(err));
         }
     };
 
