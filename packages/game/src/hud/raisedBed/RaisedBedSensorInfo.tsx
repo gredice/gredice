@@ -600,6 +600,14 @@ function SensorInfoModal({
     );
 }
 
+const STALE_THRESHOLD_MS = 48 * 60 * 60 * 1000; // 48 hours
+
+function isSensorDataStale(updatedAt: string | null | undefined): boolean {
+    if (!updatedAt) return true;
+    const updatedTime = new Date(updatedAt).getTime();
+    return Date.now() - updatedTime > STALE_THRESHOLD_MS;
+}
+
 export function RaisedBedSensorInfo({
     gardenId,
     raisedBedId,
@@ -849,6 +857,7 @@ export function RaisedBedSensorInfo({
                                         <Droplet
                                             className={cx(
                                                 'size-5 shrink-0 stroke-blue-400',
+                                                !isSensorDataStale(group.soilMoisture?.updatedAt) &&
                                                 Number(
                                                     group.soilMoisture?.value ??
                                                         '0',
@@ -863,8 +872,9 @@ export function RaisedBedSensorInfo({
                                         )}
                                         {!isLoading && !error && (
                                             <span>
-                                                {group.soilMoisture?.value ??
-                                                    '-'}
+                                                {isSensorDataStale(group.soilMoisture?.updatedAt)
+                                                    ? '-'
+                                                    : group.soilMoisture?.value ?? '-'}
                                                 %
                                             </span>
                                         )}
@@ -896,6 +906,7 @@ export function RaisedBedSensorInfo({
                                         <Thermometer
                                             className={cx(
                                                 'size-5 shrink-0 stroke-red-400',
+                                                !isSensorDataStale(group.soilTemperature?.updatedAt) &&
                                                 Number(
                                                     group.soilTemperature
                                                         ?.value ?? '0',
@@ -910,8 +921,9 @@ export function RaisedBedSensorInfo({
                                         )}
                                         {!isLoading && !error && (
                                             <span>
-                                                {group.soilTemperature?.value ??
-                                                    '-'}
+                                                {isSensorDataStale(group.soilTemperature?.updatedAt)
+                                                    ? '-'
+                                                    : group.soilTemperature?.value ?? '-'}
                                                 °C
                                             </span>
                                         )}
