@@ -112,40 +112,14 @@ export function BarcodeScanButton({
         }
     }, []);
 
-    // Check if camera is supported
+    // Check if camera is supported (without activating camera)
     useEffect(() => {
-        const checkSupport = async () => {
-            const hasCamera = !!navigator.mediaDevices?.getUserMedia;
-            setIsSupported(hasCamera);
-
-            if (hasCamera) {
-                try {
-                    // Request permission to enumerate devices
-                    await navigator.mediaDevices.getUserMedia({ video: true });
-                    const cameras = await enumerateCameras();
-                    setAvailableCameras(cameras);
-
-                    // Load saved camera preference
-                    const savedIndex = loadSavedCameraIndex(cameras.length);
-                    setSelectedCameraIndex(savedIndex);
-
-                    if (cameras.length > 0) {
-                        const preferredCamera =
-                            cameras[savedIndex] || cameras[0];
-                        setActiveCameraLabel(
-                            getCameraLabel(preferredCamera, savedIndex),
-                        );
-                    }
-                } catch (err) {
-                    console.error('Failed to get camera list:', err);
-                }
-            } else {
-                setError('Camera not supported on this device');
-            }
-        };
-
-        checkSupport();
-    }, [enumerateCameras, getCameraLabel, loadSavedCameraIndex]);
+        const hasCamera = !!navigator.mediaDevices?.getUserMedia;
+        setIsSupported(hasCamera);
+        if (!hasCamera) {
+            setError('Camera not supported on this device');
+        }
+    }, []);
 
     // Save camera preference to localStorage
     const saveCameraIndex = (index: number) => {
@@ -296,9 +270,28 @@ export function BarcodeScanButton({
     }
 
     // Open camera modal
-    function openCamera() {
+    async function openCamera() {
         setIsCameraOpen(true);
         setLastScannedCode(''); // Reset last scanned code
+
+        // Enumerate cameras on first open
+        if (availableCameras.length === 0) {
+            try {
+                await navigator.mediaDevices.getUserMedia({ video: true });
+                const cameras = await enumerateCameras();
+                setAvailableCameras(cameras);
+
+                const savedIndex = loadSavedCameraIndex(cameras.length);
+                setSelectedCameraIndex(savedIndex);
+
+                if (cameras.length > 0) {
+                    const preferredCamera = cameras[savedIndex] || cameras[0];
+                    setActiveCameraLabel(getCameraLabel(preferredCamera, savedIndex));
+                }
+            } catch (err) {
+                console.error('Failed to get camera list:', err);
+            }
+        }
 
         // Start camera when modal opens
         setTimeout(() => {
