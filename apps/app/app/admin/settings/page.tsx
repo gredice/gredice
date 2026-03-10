@@ -1,17 +1,22 @@
 import {
+    getEntityTypeCategories,
     getNotificationSetting,
     IntegrationTypes,
     NotificationSettingKeys,
     type SelectNotificationSetting,
     type SlackConfig,
 } from '@gredice/storage';
+import { Add, Edit } from '@signalco/ui-icons';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
@@ -22,6 +27,10 @@ import { SlackChannelSettingForm } from '../communication/slack/SlackChannelSett
 export const dynamic = 'force-dynamic';
 
 const SETTINGS_SECTIONS = [
+    {
+        id: 'directory-settings',
+        title: 'Zapisi',
+    },
     {
         id: 'notification-settings',
         title: 'Obavijesti',
@@ -47,10 +56,11 @@ function getSlackChannelId(
 export default async function SettingsPage() {
     await auth(['admin']);
 
-    const [delivery, newUsers, shopping] = await Promise.all([
+    const [delivery, newUsers, shopping, categories] = await Promise.all([
         getNotificationSetting(NotificationSettingKeys.SlackDeliveryChannel),
         getNotificationSetting(NotificationSettingKeys.SlackNewUsersChannel),
         getNotificationSetting(NotificationSettingKeys.SlackShoppingChannel),
+        getEntityTypeCategories(),
     ]);
 
     return (
@@ -88,6 +98,67 @@ export default async function SettingsPage() {
                 </nav>
 
                 <div className="space-y-16">
+                    <section
+                        id="directory-settings"
+                        className="scroll-mt-28"
+                        aria-labelledby="directory-settings-heading"
+                    >
+                        <Stack spacing={3}>
+                            <Stack spacing={1}>
+                                <Typography
+                                    id="directory-settings-heading"
+                                    level="h2"
+                                    semiBold
+                                >
+                                    Zapisi
+                                </Typography>
+                                <Typography level="body1">
+                                    Upravljaj kategorijama i tipovima zapisa u
+                                    direktoriju.
+                                </Typography>
+                            </Stack>
+                            <Row spacing={2}>
+                                <Link href={KnownPages.DirectoryEntityTypeCreate}>
+                                    <Button variant="solid">
+                                        <Add className="size-4" />
+                                        Novi tip zapisa
+                                    </Button>
+                                </Link>
+                                <Link href={KnownPages.DirectoryCategoryCreate}>
+                                    <Button variant="outlined">
+                                        <Add className="size-4" />
+                                        Nova kategorija
+                                    </Button>
+                                </Link>
+                            </Row>
+                            {categories.length > 0 && (
+                                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                                    {categories.map((category) => (
+                                        <Card key={category.id}>
+                                            <CardHeader>
+                                                <Row justifyContent="space-between" alignItems="center">
+                                                    <CardTitle>{category.label}</CardTitle>
+                                                    <Link href={KnownPages.DirectoryCategoryEdit(category.id)}>
+                                                        <IconButton
+                                                            title="Uredi kategoriju"
+                                                            variant="plain"
+                                                        >
+                                                            <Edit className="size-4" />
+                                                        </IconButton>
+                                                    </Link>
+                                                </Row>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <Typography level="body2" secondary>
+                                                    {category.name}
+                                                </Typography>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            )}
+                        </Stack>
+                    </section>
                     <section
                         id="notification-settings"
                         className="scroll-mt-28"
