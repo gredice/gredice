@@ -128,9 +128,11 @@ function EntityTypeList({
 }
 
 export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
-    const categorizedTypes = useContext(NavContext)?.categorizedTypes || [];
-    const uncategorizedTypes = useContext(NavContext)?.uncategorizedTypes || [];
-    const shadowTypes = useContext(NavContext)?.shadowTypes || [];
+    const navContext = useContext(NavContext);
+    const categorizedTypes = navContext?.categorizedTypes || [];
+    const uncategorizedTypes = navContext?.uncategorizedTypes || [];
+    const shadowTypes = navContext?.shadowTypes || [];
+    const pendingAchievementsCount = navContext?.pendingAchievementsCount ?? 0;
 
     return (
         <Stack spacing={2}>
@@ -204,6 +206,7 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         label="Postignuća"
                         icon={<Success className="size-5" />}
                         onClick={onItemClick}
+                        badge={pendingAchievementsCount}
                     />
                     <NavItem
                         href={KnownPages.ShoppingCarts}
