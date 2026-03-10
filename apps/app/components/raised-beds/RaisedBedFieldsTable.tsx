@@ -86,7 +86,7 @@ export async function RaisedBedFieldsTable({
 
     return (
         <Stack spacing={3}>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-3 grid-cols-3">
                 {orderedPositions.map((positionIndex) => {
                     const field = fields.find(
                         (item) =>
