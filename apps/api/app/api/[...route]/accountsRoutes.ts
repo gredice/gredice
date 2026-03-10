@@ -372,7 +372,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // Check if user is already a member
             const existingUsers = await getAccountUsers(accountId);
             const alreadyMember = existingUsers.some(
-                (u) => u.user.userName === email,
+                (u) => u.user.userName.toLowerCase() === email.toLowerCase(),
             );
             if (alreadyMember) {
                 return context.json(
@@ -387,7 +387,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // Check if there is already a pending invitation for this email
             const existingInvitations = await getAccountInvitations(accountId);
             const alreadyInvited = existingInvitations.some(
-                (i) => i.email === email,
+                (i) => i.email.toLowerCase() === email.toLowerCase(),
             );
             if (alreadyInvited) {
                 return context.json(
@@ -512,7 +512,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const user = await getUser(userId);
-            if (!user || user.userName !== invitation.email) {
+            if (!user || user.userName.toLowerCase() !== invitation.email.toLowerCase()) {
                 return context.json(
                     {
                         error: 'Invitation was sent to a different email address',

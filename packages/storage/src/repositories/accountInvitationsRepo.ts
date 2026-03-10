@@ -1,6 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, sql } from 'drizzle-orm';
 import { accountInvitations, accountUsers, storage } from '..';
 
 const INVITATION_EXPIRY_DAYS = 7;
@@ -34,7 +34,7 @@ export function getAccountInvitationByToken(token: string) {
 export function getAccountInvitationsByEmail(email: string) {
     return storage().query.accountInvitations.findMany({
         where: and(
-            eq(accountInvitations.email, email),
+            sql`lower(${accountInvitations.email}) = ${email.toLowerCase()}`,
             eq(accountInvitations.status, 'pending'),
             gt(accountInvitations.expiresAt, new Date()),
         ),
@@ -58,7 +58,7 @@ export async function createAccountInvitation(
         .insert(accountInvitations)
         .values({
             accountId,
-            email,
+            email: email.toLowerCase(),
             token,
             invitedByUserId,
             expiresAt,
