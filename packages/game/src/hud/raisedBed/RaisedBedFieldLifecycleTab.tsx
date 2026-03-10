@@ -10,6 +10,7 @@ import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useRaisedBedFieldRemove } from '../../hooks/useRaisedBedFieldRemove';
 import { ShovelIcon } from '../../icons/Shovel';
+import { findRaisedBedOccupiedField } from '../../utils/raisedBedFields';
 import type { PlantFieldStatus } from './featuredOperations';
 import { PlantStageSection } from './PlantStageSection';
 import { RecommendationsCard } from './RecommendationsCard';
@@ -32,9 +33,7 @@ export function useRaisedBedFieldLifecycleData(
     };
     const { data: garden } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    const field = raisedBed?.fields.find(
-        (field) => field.positionIndex === positionIndex && field.active,
-    );
+    const field = findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
     const plantSortId = field?.plantSortId;
     const { data: plantSort } = usePlantSort(plantSortId);
     if (!raisedBed || !field || !plantSort) {
@@ -168,10 +167,7 @@ export function RaisedBedFieldLifecycleTab({
     const removeFieldMutation = useRaisedBedFieldRemove();
 
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    const field = raisedBed?.fields.find(
-        (currentField) =>
-            currentField.positionIndex === positionIndex && currentField.active,
-    );
+    const field = findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
     const { data: plantSort } = usePlantSort(field?.plantSortId);
 
     if (!garden || !plantSort || !field) {

@@ -16,6 +16,7 @@
         "test": "pnpm run /^test:.*/",
         "test:run": "playwright test",
         "test:node": "node --import tsx --test --conditions=react-server ./lib/**/*.node.spec.ts",
+        "merge:raised-beds:all": "node --conditions=react-server --env-file=.env --import tsx ./scripts/mergeAllRaisedBeds.ts",
         "regenerate": "pnpm run /^regenerate:.*/",
         "regenerate:directories-api": "pnpm dlx openapi-typescript https://api.gredice.com/api/docs/directories -o ./lib/@types/directories-api/v1.d.ts"
     },

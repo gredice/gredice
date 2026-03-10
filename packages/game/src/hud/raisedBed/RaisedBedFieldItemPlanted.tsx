@@ -24,6 +24,7 @@ import { useState } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { KnownPages } from '../../knownPages';
+import { findRaisedBedOccupiedField } from '../../utils/raisedBedFields';
 import { RaisedBedFieldDiary } from './RaisedBedDiary';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import {
@@ -43,9 +44,7 @@ export function RaisedBedFieldItemPlanted({
 }) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    const field = raisedBed?.fields.find(
-        (field) => field.positionIndex === positionIndex && field.active,
-    );
+    const field = findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
     const plantSortId = field?.plantSortId;
     const { data: plantSort, isLoading: isPlantSortLoading } =
         usePlantSort(plantSortId);
