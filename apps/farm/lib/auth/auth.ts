@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { getUser as storageGetUser } from '@gredice/storage';
+import { cookies } from 'next/headers';
 import {
     baseAuth,
     baseWithAuth,
@@ -9,6 +10,7 @@ import {
     setCookie,
     verifyJwt,
 } from './baseAuth';
+import { accountCookieName } from './sessionConfig';
 import { refreshSessionIfNeeded } from './sessionRefresh';
 
 export { clearCookie, createJwt, setCookie, verifyJwt };
@@ -19,6 +21,16 @@ type AuthUser = {
     accountIds: string[];
     role: string;
 };
+
+function resolveAccountId(
+    accountIds: string[],
+    selectedAccountId: string | undefined,
+): string | undefined {
+    if (selectedAccountId && accountIds.includes(selectedAccountId)) {
+        return selectedAccountId;
+    }
+    return accountIds[0];
+}
 
 async function authFromToken(token: string, roles: string[]) {
     const { result, error } = await verifyJwt(token);
@@ -39,7 +51,8 @@ async function authFromToken(token: string, roles: string[]) {
     const accountIds = user.accounts.map(
         (accountUsers) => accountUsers.accountId,
     );
-    const accountId = accountIds[0];
+    const selectedAccountId = (await cookies()).get(accountCookieName)?.value;
+    const accountId = resolveAccountId(accountIds, selectedAccountId);
     if (!accountId) {
         throw new Error('Account not found');
     }

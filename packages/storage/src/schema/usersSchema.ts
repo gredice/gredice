@@ -2,6 +2,7 @@ import { relations } from 'drizzle-orm';
 import {
     index,
     integer,
+    pgEnum,
     pgTable,
     serial,
     smallint,
@@ -32,6 +33,9 @@ export const accountsRelations = relations(accounts, ({ many }) => ({
     }),
     raisedBeds: many(raisedBeds, {
         relationName: 'raisedBedsAccount',
+    }),
+    accountInvitations: many(accountInvitations, {
+        relationName: 'accountInvitations',
     }),
 }));
 
@@ -132,6 +136,9 @@ export const usersRelations = relations(users, ({ many }) => ({
     accounts: many(accountUsers, {
         relationName: 'userAccountUsers',
     }),
+    invitations: many(accountInvitations, {
+        relationName: 'userInvitations',
+    }),
 }));
 
 export type InsertUser = typeof users.$inferInsert;
@@ -177,3 +184,56 @@ export const userLoginsRelations = relations(userLogins, ({ one }) => ({
 
 export type InsertUserLogin = typeof userLogins.$inferInsert;
 export type SelectUserLogin = typeof userLogins.$inferSelect;
+
+export const accountInvitationStatusEnum = pgEnum('account_invitation_status', [
+    'pending',
+    'accepted',
+    'cancelled',
+]);
+
+export const accountInvitations = pgTable(
+    'account_invitations',
+    {
+        id: serial('id').primaryKey(),
+        accountId: text('account_id')
+            .notNull()
+            .references(() => accounts.id),
+        email: text('email').notNull(),
+        token: text('token').notNull(),
+        status: accountInvitationStatusEnum('status')
+            .notNull()
+            .default('pending'),
+        invitedByUserId: text('invited_by_user_id')
+            .notNull()
+            .references(() => users.id),
+        expiresAt: timestamp('expires_at').notNull(),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .$onUpdate(() => new Date()),
+    },
+    (table) => [
+        index('account_invitations_account_id_idx').on(table.accountId),
+        index('account_invitations_email_idx').on(table.email),
+        index('account_invitations_token_idx').on(table.token),
+    ],
+);
+
+export const accountInvitationsRelations = relations(
+    accountInvitations,
+    ({ one }) => ({
+        account: one(accounts, {
+            fields: [accountInvitations.accountId],
+            references: [accounts.id],
+            relationName: 'accountInvitations',
+        }),
+        invitedByUser: one(users, {
+            fields: [accountInvitations.invitedByUserId],
+            references: [users.id],
+            relationName: 'userInvitations',
+        }),
+    }),
+);
+
+export type InsertAccountInvitation = typeof accountInvitations.$inferInsert;
+export type SelectAccountInvitation = typeof accountInvitations.$inferSelect;

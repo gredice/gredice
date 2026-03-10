@@ -4,6 +4,7 @@ import './globals.css';
 import * as Sentry from '@sentry/nextjs';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
+import { ImpersonationBanner } from '../components/ImpersonationBanner';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 
 export function generateMetadata(): Metadata {
@@ -34,7 +35,10 @@ export default function RootLayout({
                 <title>Admin | Gredice</title>
             </Head>
             <body className="antialiased min-h-screen flex bg-muted">
-                <ClientAppProvider>{children}</ClientAppProvider>
+                <ClientAppProvider>
+                    <ImpersonationBanner />
+                    {children}
+                </ClientAppProvider>
                 <Analytics />
             </body>
         </html>

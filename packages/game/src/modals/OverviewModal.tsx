@@ -6,6 +6,7 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
+import { AccountUsersTab } from './components/AccountUsersTab';
 import { AchievementsTab } from './components/AchievementsTab';
 import { DeliveryTab } from './components/DeliveryTab';
 import { GardenTab } from './components/GardenTab';
@@ -24,12 +25,6 @@ const navGroups = [
                 icon: '⚙️',
                 label: 'Generalno',
                 value: 'generalno',
-            },
-            {
-                nodeId: 'profile-garden',
-                icon: '🏡',
-                label: 'Vrt',
-                value: 'vrt',
             },
             {
                 nodeId: 'profile-achievements',
@@ -54,6 +49,23 @@ const navGroups = [
                 icon: '🔔',
                 label: 'Obavijesti',
                 value: 'obavijesti',
+            },
+        ],
+    },
+    {
+        label: 'Račun',
+        items: [
+            {
+                nodeId: 'account-garden',
+                icon: '🏡',
+                label: 'Vrt',
+                value: 'vrt',
+            },
+            {
+                nodeId: 'account-users',
+                icon: '👥',
+                label: 'Korisnici',
+                value: 'korisnici',
             },
         ],
     },
@@ -145,6 +157,7 @@ export function OverviewModal() {
                     {settingsMode === 'obavijesti' && <NotificationsTab />}
                     {settingsMode === 'suncokreti' && <SunflowersTab />}
                     {settingsMode === 'postignuca' && <AchievementsTab />}
+                    {settingsMode === 'korisnici' && <AccountUsersTab />}
                 </div>
             </div>
         </Modal>

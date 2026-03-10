@@ -39,7 +39,7 @@ export function TimeZoneSettingsCard() {
                 <Stack spacing={2}>
                     <Typography level="body2">
                         Odaberi vremensku zonu za svoj račun. Ovo će utjecati na
-                        prikaz vremena u igri.
+                        prikaz vremena.
                     </Typography>
                     <SelectItems
                         label="Vremenska zona"

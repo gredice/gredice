@@ -5,6 +5,7 @@ export * from './helpers/deliveryEmail';
 export * from './helpers/timeSlotAutomation';
 export * from './helpers/timezoneUtils';
 export * from './repositories/accountDeletionRepo';
+export * from './repositories/accountInvitationsRepo';
 export * from './repositories/accountsRepo';
 export * from './repositories/achievementsRepo';
 export * from './repositories/analyticsRepo';

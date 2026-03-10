@@ -1,9 +1,15 @@
 import { tz } from '@date-fns/tz';
 import {
+    acceptAccountInvitation,
+    cancelAccountInvitation,
+    createAccountInvitation,
     deleteAccountWithDependencies,
     earnSunflowers,
     getAccount,
     getAccountAchievements,
+    getAccountInvitationByToken,
+    getAccountInvitations,
+    getAccountInvitationsByEmail,
     getAccountUsers,
     getSunflowers,
     getSunflowersHistory,
@@ -13,8 +19,15 @@ import {
 } from '@gredice/storage';
 import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { Hono } from 'hono';
-import { describeRoute } from 'hono-openapi';
+import { getCookie, setCookie as honoSetCookie } from 'hono/cookie';
+import { describeRoute, validator as zValidator } from 'hono-openapi';
+import { z } from 'zod';
 import { verifyJwt } from '../../../lib/auth/auth';
+import {
+    accountCookieName,
+    cookieDomain,
+} from '../../../lib/auth/sessionConfig';
+import { sendAccountInvitation } from '../../../lib/email/transactional';
 import {
     type AuthVariables,
     authValidator,
@@ -314,6 +327,291 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json(newState);
         },
     )
+    .get(
+        '/current/invitations',
+        describeRoute({
+            description: 'Get pending invitations for the current account',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const invitations = await getAccountInvitations(accountId);
+            return context.json(
+                invitations.map((invitation) => ({
+                    id: invitation.id,
+                    email: invitation.email,
+                    status: invitation.status,
+                    invitedBy: {
+                        id: invitation.invitedByUser.id,
+                        displayName:
+                            invitation.invitedByUser.displayName ??
+                            invitation.invitedByUser.userName,
+                    },
+                    expiresAt: invitation.expiresAt.toISOString(),
+                    createdAt: invitation.createdAt.toISOString(),
+                })),
+            );
+        },
+    )
+    .post(
+        '/current/invitations',
+        describeRoute({
+            description: 'Send an invitation to join the current account',
+        }),
+        zValidator(
+            'json',
+            z.object({
+                email: z.string().email(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId, userId } = context.get('authContext');
+            const { email } = context.req.valid('json');
+
+            // Check if user is already a member
+            const existingUsers = await getAccountUsers(accountId);
+            const alreadyMember = existingUsers.some(
+                (u) => u.user.userName.toLowerCase() === email.toLowerCase(),
+            );
+            if (alreadyMember) {
+                return context.json(
+                    {
+                        error: 'User is already a member of this account',
+                        code: 'already_member',
+                    },
+                    400,
+                );
+            }
+
+            // Check if there is already a pending invitation for this email
+            const existingInvitations = await getAccountInvitations(accountId);
+            const alreadyInvited = existingInvitations.some(
+                (i) => i.email.toLowerCase() === email.toLowerCase(),
+            );
+            if (alreadyInvited) {
+                return context.json(
+                    {
+                        error: 'An invitation has already been sent to this email',
+                        code: 'already_invited',
+                    },
+                    400,
+                );
+            }
+
+            const invitation = await createAccountInvitation(
+                accountId,
+                email,
+                userId,
+            );
+
+            if (!invitation) {
+                return context.json(
+                    {
+                        error: 'Failed to create invitation',
+                        code: 'invitation_creation_failed',
+                    },
+                    500,
+                );
+            }
+
+            // Get inviter info for the email
+            const inviter = await getUser(userId);
+            const inviterName =
+                inviter?.displayName ?? inviter?.userName ?? 'Korisnik';
+
+            const acceptUrl = `https://vrt.gredice.com/pozivnica?token=${invitation.token}`;
+
+            try {
+                await sendAccountInvitation(email, {
+                    email,
+                    invitedByName: inviterName,
+                    acceptUrl,
+                });
+            } catch {
+                // Roll back the invitation so the user can retry
+                await cancelAccountInvitation(invitation.id, accountId);
+                return context.json(
+                    {
+                        error: 'Failed to send invitation email',
+                        code: 'email_send_failed',
+                    },
+                    500,
+                );
+            }
+
+            return context.json(
+                {
+                    id: invitation.id,
+                    email: invitation.email,
+                    status: invitation.status,
+                    expiresAt: invitation.expiresAt.toISOString(),
+                    createdAt: invitation.createdAt.toISOString(),
+                },
+                201,
+            );
+        },
+    )
+    .delete(
+        '/current/invitations/:invitationId',
+        describeRoute({
+            description: 'Cancel a pending invitation',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                invitationId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const { invitationId } = context.req.valid('param');
+            const invitationIdNumber = Number.parseInt(invitationId, 10);
+            if (Number.isNaN(invitationIdNumber)) {
+                return context.json({ error: 'Invalid invitation ID' }, 400);
+            }
+
+            const result = await cancelAccountInvitation(
+                invitationIdNumber,
+                accountId,
+            );
+            if (!result) {
+                return context.json({ error: 'Invitation not found' }, 404);
+            }
+
+            return context.json({ success: true });
+        },
+    )
+    .post(
+        '/invitations/accept',
+        describeRoute({
+            description: 'Accept an account invitation',
+        }),
+        zValidator(
+            'json',
+            z.object({
+                token: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { userId } = context.get('authContext');
+            const { token } = context.req.valid('json');
+
+            // Verify the accepting user's email matches the invitation
+            const invitation = await getAccountInvitationByToken(token);
+            if (!invitation) {
+                return context.json(
+                    {
+                        error: 'Invalid or expired invitation',
+                        code: 'invalid_invitation',
+                    },
+                    400,
+                );
+            }
+
+            const user = await getUser(userId);
+            if (!user || user.userName.toLowerCase() !== invitation.email.toLowerCase()) {
+                return context.json(
+                    {
+                        error: 'Invitation was sent to a different email address',
+                        code: 'email_mismatch',
+                    },
+                    403,
+                );
+            }
+
+            const result = await acceptAccountInvitation(token, userId);
+            if (!result) {
+                return context.json(
+                    {
+                        error: 'Invalid or expired invitation',
+                        code: 'invalid_invitation',
+                    },
+                    400,
+                );
+            }
+
+            // Switch the user to the invited account
+            honoSetCookie(context, accountCookieName, result.accountId, {
+                secure: true,
+                httpOnly: true,
+                sameSite: 'Lax',
+                domain: cookieDomain,
+                maxAge: 365 * 24 * 60 * 60, // 1 year
+            });
+
+            return context.json({ success: true, accountId: result.accountId });
+        },
+    )
+    .get(
+        '/invitations/pending',
+        describeRoute({
+            description:
+                'Get pending invitations for the current user by email',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { userId } = context.get('authContext');
+            const user = await getUser(userId);
+            if (!user) {
+                return context.json({ error: 'User not found' }, 404);
+            }
+
+            const invitations = await getAccountInvitationsByEmail(
+                user.userName,
+            );
+            return context.json(
+                invitations.map((invitation) => ({
+                    id: invitation.id,
+                    token: invitation.token,
+                    invitedBy: {
+                        id: invitation.invitedByUser.id,
+                        displayName:
+                            invitation.invitedByUser.displayName ??
+                            invitation.invitedByUser.userName,
+                    },
+                    expiresAt: invitation.expiresAt.toISOString(),
+                    createdAt: invitation.createdAt.toISOString(),
+                })),
+            );
+        },
+    )
+    .post(
+        '/switch',
+        describeRoute({
+            description: 'Switch the active account for the current user',
+        }),
+        zValidator(
+            'json',
+            z.object({
+                accountId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { user } = context.get('authContext');
+            const { accountId } = context.req.valid('json');
+
+            if (!user.accountIds.includes(accountId)) {
+                return context.json(
+                    { error: 'Account not found or not accessible' },
+                    403,
+                );
+            }
+
+            honoSetCookie(context, accountCookieName, accountId, {
+                secure: true,
+                httpOnly: true,
+                sameSite: 'Lax',
+                domain: cookieDomain,
+                maxAge: 365 * 24 * 60 * 60,
+            });
+
+            return context.json({ success: true, accountId });
+        },
+    )
     .delete(
         '/',
         describeRoute({
@@ -345,7 +643,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             try {
                 const user = await getUser(currentUserId);
-                const accountId = user?.accounts?.at(0)?.accountId;
+                const selectedAccountId = getCookie(context, accountCookieName);
+                const accountIds = user?.accounts?.map(a => a.accountId) ?? [];
+                const accountId = (selectedAccountId && accountIds.includes(selectedAccountId))
+                    ? selectedAccountId
+                    : accountIds[0];
                 if (!accountId) {
                     return context.json({ error: 'Account not found.' }, 404);
                 }
