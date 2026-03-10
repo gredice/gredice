@@ -19,9 +19,14 @@ import {
 } from '@gredice/storage';
 import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { Hono } from 'hono';
+import { getCookie, setCookie as honoSetCookie } from 'hono/cookie';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { verifyJwt } from '../../../lib/auth/auth';
+import {
+    accountCookieName,
+    cookieDomain,
+} from '../../../lib/auth/sessionConfig';
 import { sendAccountInvitation } from '../../../lib/email/transactional';
 import {
     type AuthVariables,
@@ -528,7 +533,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            return context.json({ success: true });
+            // Switch the user to the invited account
+            honoSetCookie(context, accountCookieName, result.accountId, {
+                secure: true,
+                httpOnly: true,
+                sameSite: 'Lax',
+                domain: cookieDomain,
+                maxAge: 365 * 24 * 60 * 60, // 1 year
+            });
+
+            return context.json({ success: true, accountId: result.accountId });
         },
     )
     .get(
@@ -564,6 +578,40 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
         },
     )
+    .post(
+        '/switch',
+        describeRoute({
+            description: 'Switch the active account for the current user',
+        }),
+        zValidator(
+            'json',
+            z.object({
+                accountId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { user } = context.get('authContext');
+            const { accountId } = context.req.valid('json');
+
+            if (!user.accountIds.includes(accountId)) {
+                return context.json(
+                    { error: 'Account not found or not accessible' },
+                    403,
+                );
+            }
+
+            honoSetCookie(context, accountCookieName, accountId, {
+                secure: true,
+                httpOnly: true,
+                sameSite: 'Lax',
+                domain: cookieDomain,
+                maxAge: 365 * 24 * 60 * 60,
+            });
+
+            return context.json({ success: true, accountId });
+        },
+    )
     .delete(
         '/',
         describeRoute({
@@ -595,7 +643,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             try {
                 const user = await getUser(currentUserId);
-                const accountId = user?.accounts?.at(0)?.accountId;
+                const selectedAccountId = getCookie(context, accountCookieName);
+                const accountIds = user?.accounts?.map(a => a.accountId) ?? [];
+                const accountId = (selectedAccountId && accountIds.includes(selectedAccountId))
+                    ? selectedAccountId
+                    : accountIds[0];
                 if (!accountId) {
                     return context.json({ error: 'Account not found.' }, 404);
                 }

@@ -5,6 +5,7 @@ import { auth, createJwt, setCookie } from '../auth/auth';
 import { clearRefreshCookie, setRefreshCookie } from '../auth/refreshCookies';
 import {
     accessTokenExpiry,
+    accountCookieName,
     refreshTokenCookieName,
 } from '../auth/sessionConfig';
 
@@ -12,10 +13,25 @@ export type AuthVariables = {
     authContext: Awaited<ReturnType<typeof auth>>;
 };
 
+function resolveAccountId(
+    accountIds: string[],
+    selectedAccountId: string | undefined,
+): string | undefined {
+    if (selectedAccountId && accountIds.includes(selectedAccountId)) {
+        return selectedAccountId;
+    }
+    return accountIds[0];
+}
+
 export function authValidator(roles: string[]) {
     return async (context: Context, next: () => Promise<void>) => {
         try {
             const authContext = await auth(roles);
+            // Override accountId from the account-selection cookie
+            const selectedAccountId = getCookie(context, accountCookieName);
+            if (selectedAccountId && authContext.user.accountIds.includes(selectedAccountId)) {
+                authContext.accountId = selectedAccountId;
+            }
             context.set('authContext', authContext);
             return await next();
         } catch (error) {
@@ -44,7 +60,11 @@ export function authValidator(roles: string[]) {
                 return context.newResponse('Unauthorized', { status: 401 });
             }
 
-            const accountId = dbUser.accounts[0]?.accountId;
+            const accountIds = dbUser.accounts.map(
+                (account) => account.accountId,
+            );
+            const selectedAccountId = getCookie(context, accountCookieName);
+            const accountId = resolveAccountId(accountIds, selectedAccountId);
             if (!accountId) {
                 console.warn('Unauthorized: missing account for user');
                 return context.newResponse('Unauthorized', { status: 401 });
@@ -63,9 +83,7 @@ export function authValidator(roles: string[]) {
                 userId: dbUser.id,
                 user: {
                     id: dbUser.id,
-                    accountIds: dbUser.accounts.map(
-                        (account) => account.accountId,
-                    ),
+                    accountIds,
                     role: dbUser.role,
                 },
                 accountId,

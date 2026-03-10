@@ -71,7 +71,10 @@ export async function RaisedBedFieldsTable({
         return <NoDataPlaceholder />;
     }
 
-    const highestPositionIndex = Math.max(8, ...fields.map((f) => f.positionIndex));
+    const highestPositionIndex = Math.max(
+        8,
+        ...fields.map((f) => f.positionIndex),
+    );
     const orderedPositions = Array.from(
         { length: highestPositionIndex + 1 },
         (_, index) => index,
@@ -227,43 +230,35 @@ function RaisedBedFieldTile({
                                 status={field.plantStatus}
                             />
                         )}
-                        <Stack spacing={1} className="flex-1">
-                            <Typography
-                                level="body2"
-                                className="text-muted-foreground"
-                            >
-                                Datumi
-                            </Typography>
-                            <Stack>
-                                {dateItems.map(({ label, value }) => (
-                                    <Row
-                                        key={label}
-                                        spacing={1}
-                                        alignItems="center"
+                        <Stack>
+                            {dateItems.map(({ label, value }) => (
+                                <Row
+                                    key={label}
+                                    spacing={1}
+                                    alignItems="center"
+                                >
+                                    <Typography
+                                        level="body3"
+                                        className="w-20 text-muted-foreground"
                                     >
+                                        {label}
+                                    </Typography>
+                                    {value ? (
+                                        <Typography level="body3" noWrap>
+                                            <LocalDateTime time={false}>
+                                                {value}
+                                            </LocalDateTime>
+                                        </Typography>
+                                    ) : (
                                         <Typography
                                             level="body3"
-                                            className="w-20 text-muted-foreground"
+                                            className="text-muted-foreground"
                                         >
-                                            {label}
+                                            -
                                         </Typography>
-                                        {value ? (
-                                            <Typography level="body3" noWrap>
-                                                <LocalDateTime time={false}>
-                                                    {value}
-                                                </LocalDateTime>
-                                            </Typography>
-                                        ) : (
-                                            <Typography
-                                                level="body3"
-                                                className="text-muted-foreground"
-                                            >
-                                                -
-                                            </Typography>
-                                        )}
-                                    </Row>
-                                ))}
-                            </Stack>
+                                    )}
+                                </Row>
+                            ))}
                         </Stack>
                     </Stack>
                 )}
