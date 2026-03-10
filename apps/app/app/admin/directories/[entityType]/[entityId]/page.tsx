@@ -110,6 +110,8 @@ export default async function EntityDetailsPage(props: {
                             >
                                 <form
                                     action={importAction}
+                                    method="post"
+                                    encType="multipart/form-data"
                                     className="space-y-3"
                                 >
                                     <Input
