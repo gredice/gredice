@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { SelectEntityType } from '@gredice/storage';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { AuthProtectedSection } from '@signalco/auth-client/components';
 import {
     Add,
@@ -296,7 +297,7 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                     <NavItem
                         href={KnownPages.RaisedBeds}
                         label="Gredice"
-                        icon={<Tally3 className="size-5 rotate-90 mt-1" />}
+                        icon={<RaisedBedIcon className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem

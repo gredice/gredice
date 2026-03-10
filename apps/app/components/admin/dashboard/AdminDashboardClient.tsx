@@ -1,7 +1,8 @@
 'use client';
 
 import type { getAnalyticsTotals } from '@gredice/storage';
-import { Calendar, Tally3 } from '@signalco/ui-icons';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
+import { Calendar } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -170,7 +171,7 @@ export function AdminDashboardClient({
                     size="sm"
                     className="rounded-full"
                     startDecorator={
-                        <Tally3 className="size-4 shrink-0 -rotate-90 -mt-1" />
+                        <RaisedBedIcon className="size-4 shrink-0" />
                     }
                     href={KnownPages.RaisedBeds}
                 >
