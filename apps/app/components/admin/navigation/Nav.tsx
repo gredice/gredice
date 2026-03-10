@@ -18,11 +18,8 @@ import { CSS } from '@dnd-kit/utilities';
 import type { SelectEntityType } from '@gredice/storage';
 import { AuthProtectedSection } from '@signalco/auth-client/components';
 import {
-    Add,
     Bank,
-    Book,
     Calendar,
-    Edit,
     Euro,
     Fence,
     File,
@@ -40,11 +37,9 @@ import {
     Truck,
     User,
 } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { List, ListHeader } from '@signalco/ui-primitives/List';
 import { ListTreeItem } from '@signalco/ui-primitives/ListTreeItem';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { useContext, useState } from 'react';
 import { reorderEntityType } from '../../../app/(actions)/entityActions';
@@ -155,21 +150,6 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         <Stack key={category.id} spacing={1}>
                             <ListHeader
                                 header={category.label}
-                                actions={[
-                                    <Link
-                                        key={`edit-${category.id}`}
-                                        href={KnownPages.DirectoryCategoryEdit(
-                                            category.id,
-                                        )}
-                                    >
-                                        <IconButton
-                                            title="Uredi kategoriju"
-                                            variant="plain"
-                                        >
-                                            <Edit className="size-4" />
-                                        </IconButton>
-                                    </Link>,
-                                ]}
                             />
                             <EntityTypeList
                                 items={category.entityTypes}
@@ -181,33 +161,6 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
 
                 <ListHeader
                     header="Zapisi"
-                    actions={[
-                        <Link
-                            key="category-create"
-                            href={KnownPages.DirectoryCategoryCreate}
-                        >
-                            <IconButton
-                                title="Dodaj novu kategoriju"
-                                variant="plain"
-                            >
-                                <div className="size-4 shrink-0 relative">
-                                    <Book className="size-4 shrink-0 opacity-60" />
-                                    <Add className="absolute inset-0 size-3 left-0.5" />
-                                </div>
-                            </IconButton>
-                        </Link>,
-                        <Link
-                            key="entity-type-create"
-                            href={KnownPages.DirectoryEntityTypeCreate}
-                        >
-                            <IconButton
-                                title="Dodaj novi tip zapisa"
-                                variant="plain"
-                            >
-                                <Add className="size-4 shrink-0" />
-                            </IconButton>
-                        </Link>,
-                    ]}
                 />
                 <AuthProtectedSection>
                     {/* Shadow entity types */}

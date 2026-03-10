@@ -18,6 +18,12 @@ export function getScheduledFieldsForDay(
         .filter((raisedBed) => Boolean(raisedBed.physicalId))
         .flatMap((raisedBed) => raisedBed.fields)
         .filter((field) => {
+            // Placeholder field rows represent empty slots in a merged bed and
+            // should not surface as unknown sowing tasks.
+            if (!field.plantSortId) {
+                return false;
+            }
+
             if (!FIELD_STATUSES_TO_INCLUDE.has(field.plantStatus ?? 'new')) {
                 return false;
             }
