@@ -8,6 +8,13 @@ import {
     impersonationRefreshCookieName,
 } from '../../../../lib/auth/sessionConfig';
 
+const allowedOrigins = [
+    'https://app.gredice.com',
+    'https://app.gredice.test',
+    'https://garden.gredice.com',
+    'https://garden.gredice.test',
+];
+
 function getAdminUrl(request: Request) {
     const url = new URL(request.url);
     if (url.hostname.includes('.test')) {
@@ -16,7 +23,15 @@ function getAdminUrl(request: Request) {
     return 'https://app.gredice.com/admin/users';
 }
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
+    const origin = request.headers.get('Origin');
+    if (!origin || !allowedOrigins.includes(origin)) {
+        return new Response(
+            JSON.stringify({ error: 'Forbidden' }),
+            { status: 403, headers: { 'Content-Type': 'application/json' } },
+        );
+    }
+
     const cookieStore = await cookies();
 
     // Read the admin's backed-up refresh token

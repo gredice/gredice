@@ -35,12 +35,14 @@ export function ImpersonationBanner() {
     return (
         <div className="fixed top-0 left-0 right-0 z-[9999] bg-yellow-500 text-black text-center py-1.5 px-4 text-sm font-medium">
             Prijavljen/a ste kao drugi korisnik (impersonacija).{' '}
-            <a
-                href={getStopImpersonateUrl()}
-                className="underline font-bold hover:text-yellow-900"
-            >
-                Prekini impersonaciju
-            </a>
+            <form method="POST" action={getStopImpersonateUrl()} className="inline">
+                <button
+                    type="submit"
+                    className="underline font-bold hover:text-yellow-900 bg-transparent border-none cursor-pointer p-0 text-sm text-black"
+                >
+                    Prekini impersonaciju
+                </button>
+            </form>
         </div>
     );
 }
