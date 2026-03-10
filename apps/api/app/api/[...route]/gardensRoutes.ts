@@ -141,6 +141,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const blocksById = new Map(
                 blocks.map((block) => [block.id, block]),
             );
+            const blockNameById = new Map(
+                blocks.map((block) => [block.id, block.name] as const),
+            );
 
             // Stacks: group by x then by y
             const stacks = garden.stacks.reduce(
@@ -192,6 +195,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     const validityMap = calculateRaisedBedsValidity(
                         garden.raisedBeds,
                         garden.stacks,
+                        blockNameById,
                     );
                     return garden.raisedBeds.map((raisedBed) => ({
                         id: raisedBed.id,
@@ -1108,7 +1112,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Check garden exists and is owned by user
             const { accountId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
+            const [garden, blocks] = await Promise.all([
+                getGarden(gardenIdNumber),
+                getGardenBlocks(gardenIdNumber),
+            ]);
             if (!garden || garden.accountId !== accountId) {
                 return context.json(
                     {
@@ -1118,9 +1125,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            const blockNameById = new Map(
+                blocks.map((block) => [block.id, block.name] as const),
+            );
             const validityMap = calculateRaisedBedsValidity(
                 garden.raisedBeds,
                 garden.stacks,
+                blockNameById,
             );
             return context.json(
                 garden.raisedBeds.map((raisedBed) => ({
@@ -1159,7 +1170,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const { accountId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
+            const [garden, blocks] = await Promise.all([
+                getGarden(gardenIdNumber),
+                getGardenBlocks(gardenIdNumber),
+            ]);
             if (!garden || garden.accountId !== accountId) {
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
@@ -1169,9 +1183,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!raisedBed) {
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
+            const blockNameById = new Map(
+                blocks.map((block) => [block.id, block.name] as const),
+            );
             const validityMap = calculateRaisedBedsValidity(
                 garden.raisedBeds,
                 garden.stacks,
+                blockNameById,
             );
 
             return context.json({

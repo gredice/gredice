@@ -264,5 +264,8 @@ export async function synchronizeGardenStacksAndRaisedBeds(gardenId: number) {
         return;
     }
 
-    await updateRaisedBedsOrientation(gardenForOrientationUpdate);
+    await updateRaisedBedsOrientation(
+        gardenForOrientationUpdate,
+        blockNameById,
+    );
 }

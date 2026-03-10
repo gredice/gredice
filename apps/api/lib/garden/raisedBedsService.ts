@@ -8,6 +8,7 @@ import {
 type BlockPosition = { x: number; y: number; index: number };
 
 type RaisedBedInput = Pick<SelectRaisedBed, 'id' | 'blockId'>;
+type BlockNameById = ReadonlyMap<string, string>;
 
 type AdjacentBlockAtSameIndex = {
     blockId: string;
@@ -49,6 +50,26 @@ function getAdjacentBlockIdsAtSameIndex(
 ): string[] {
     return getAdjacentBlocksAtSameIndex(stacks, position).map(
         (candidate) => candidate.blockId,
+    );
+}
+
+function getAdjacentRaisedBedBlockIdsAtSameIndex(
+    stacks: Pick<SelectGardenStack, 'positionX' | 'positionY' | 'blocks'>[],
+    position: BlockPosition,
+    blockNameById: BlockNameById,
+): string[] {
+    return getAdjacentBlockIdsAtSameIndex(stacks, position).filter(
+        (blockId) => blockNameById.get(blockId) === 'Raised_Bed',
+    );
+}
+
+function getAdjacentRaisedBedBlocksAtSameIndex(
+    stacks: Pick<SelectGardenStack, 'positionX' | 'positionY' | 'blocks'>[],
+    position: BlockPosition,
+    blockNameById: BlockNameById,
+): AdjacentBlockAtSameIndex[] {
+    return getAdjacentBlocksAtSameIndex(stacks, position).filter(
+        (candidate) => blockNameById.get(candidate.blockId) === 'Raised_Bed',
     );
 }
 
@@ -159,6 +180,7 @@ function buildBlockPositionMap(
 export function calculateRaisedBedsValidity(
     raisedBeds: Pick<SelectRaisedBed, 'id' | 'blockId'>[],
     stacks: Pick<SelectGardenStack, 'positionX' | 'positionY' | 'blocks'>[],
+    blockNameById: BlockNameById,
 ): Map<number, boolean> {
     const blockPositions = buildBlockPositionMap(stacks);
     const adjacency = buildRaisedBedAdjacencyByRecord(
@@ -188,19 +210,20 @@ export function calculateRaisedBedsValidity(
             continue;
         }
 
-        const adjacentBlockIds = getAdjacentBlockIdsAtSameIndex(
-            stacks,
-            position,
-        );
-        const adjacentRaisedBedRecordBlockIds = adjacentBlockIds.filter(
-            (blockId) => raisedBedBlockIds.has(blockId),
-        );
-        const adjacentOrphanBlockIds = adjacentBlockIds.filter(
+        const adjacentRaisedBedBlockIds =
+            getAdjacentRaisedBedBlockIdsAtSameIndex(
+                stacks,
+                position,
+                blockNameById,
+            );
+        const adjacentRaisedBedRecordBlockIds =
+            adjacentRaisedBedBlockIds.filter((blockId) =>
+                raisedBedBlockIds.has(blockId),
+            );
+        const adjacentOrphanBlockIds = adjacentRaisedBedBlockIds.filter(
             (blockId) => !raisedBedBlockIds.has(blockId),
         );
-        const totalAdjacentCount =
-            adjacentRaisedBedRecordBlockIds.length +
-            adjacentOrphanBlockIds.length;
+        const totalAdjacentCount = adjacentRaisedBedBlockIds.length;
         if (totalAdjacentCount !== 1) {
             validity.set(bed.id, false);
             continue;
@@ -221,6 +244,7 @@ export function calculateRaisedBedsValidity(
 export function calculateRaisedBedsOrientation(
     raisedBeds: Pick<SelectRaisedBed, 'id' | 'blockId'>[],
     stacks: Pick<SelectGardenStack, 'positionX' | 'positionY' | 'blocks'>[],
+    blockNameById: BlockNameById,
 ): Map<number, RaisedBedOrientation> {
     const blockPositions = buildBlockPositionMap(stacks);
     const orientations = new Map<number, RaisedBedOrientation>();
@@ -230,9 +254,10 @@ export function calculateRaisedBedsOrientation(
         if (bed.blockId) {
             const position = blockPositions.get(bed.blockId);
             if (position) {
-                const adjacentBlocks = getAdjacentBlocksAtSameIndex(
+                const adjacentBlocks = getAdjacentRaisedBedBlocksAtSameIndex(
                     stacks,
                     position,
+                    blockNameById,
                 );
                 const hasHorizontalNeighbor = adjacentBlocks.some(
                     (neighbor) =>
@@ -260,14 +285,18 @@ export function calculateRaisedBedsOrientation(
     return orientations;
 }
 
-export async function updateRaisedBedsOrientation(garden: {
-    id: number;
-    raisedBeds: Pick<SelectRaisedBed, 'id' | 'blockId' | 'orientation'>[];
-    stacks: Pick<SelectGardenStack, 'positionX' | 'positionY' | 'blocks'>[];
-}) {
+export async function updateRaisedBedsOrientation(
+    garden: {
+        id: number;
+        raisedBeds: Pick<SelectRaisedBed, 'id' | 'blockId' | 'orientation'>[];
+        stacks: Pick<SelectGardenStack, 'positionX' | 'positionY' | 'blocks'>[];
+    },
+    blockNameById: BlockNameById,
+) {
     const orientations = calculateRaisedBedsOrientation(
         garden.raisedBeds,
         garden.stacks,
+        blockNameById,
     );
 
     const updates = garden.raisedBeds
