@@ -17,8 +17,8 @@ import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
-import { MergeRaisedBedsForm } from './MergeRaisedBedsForm';
 import { OperationsTableCard } from './OperationsTableCard';
+import { RaisedBedActionsMenu } from './RaisedBedActionsMenu';
 import { RaisedBedPhysicalIdInput } from './RaisedBedPhysicalIdInput';
 import { RaisedBedStatusSelect } from './RaisedBedStatusSelect';
 
@@ -60,9 +60,14 @@ export default async function RaisedBedPage({
                             { label: raisedBed?.id },
                         ]}
                     />
-                    <Typography level="h1" semiBold>
-                        Gredica
-                    </Typography>
+                    <div className="flex items-start justify-between gap-2">
+                        <Typography level="h1" semiBold>
+                            Gredica
+                        </Typography>
+                        <RaisedBedActionsMenu
+                            targetRaisedBedId={raisedBed.id}
+                        />
+                    </div>
                 </Stack>
                 <Stack spacing={2}>
                     <FieldSet>
@@ -79,14 +84,6 @@ export default async function RaisedBedPage({
                         <Field
                             name="Datum kreiranja"
                             value={raisedBed?.createdAt}
-                        />
-                        <Field
-                            name="Spajanje gredica"
-                            value={
-                                <MergeRaisedBedsForm
-                                    targetRaisedBedId={raisedBed.id}
-                                />
-                            }
                         />
                     </FieldSet>
                 </Stack>

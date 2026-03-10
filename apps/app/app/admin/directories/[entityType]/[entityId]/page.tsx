@@ -5,8 +5,6 @@ import {
 } from '@gredice/storage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Delete } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
@@ -25,6 +23,7 @@ import { entityDisplayName } from '../../../../../src/entities/entityAttributes'
 import { KnownPages } from '../../../../../src/KnownPages';
 import { handleEntityDelete } from '../../../../(actions)/entityActions';
 import { AttributeCategoryDetails } from './AttributeCategoryDetails';
+import { EntityImportMenu } from './EntityImportMenu';
 import { EntityStateSelect } from './EntityStateSelect';
 
 export const dynamic = 'force-dynamic';
@@ -92,6 +91,7 @@ export default async function EntityDetailsPage(props: {
                     </TabsList>
                     <Row className="self-end" spacing={1}>
                         <EntityStateSelect entity={entity} />
+                        <EntityImportMenu importAction={importAction} />
                         <ServerActionIconButton
                             title="Obriši"
                             onClick={entityDeleteBound}
@@ -113,22 +113,6 @@ export default async function EntityDetailsPage(props: {
                         />
                         <Field name="Datum objave" value={entity.publishedAt} />
                     </FieldSet>
-                    {/* Import JSON form */}
-                    <form
-                        action={importAction}
-                        className="flex items-center gap-2"
-                    >
-                        <Input
-                            label="Uvoz podataka"
-                            type="file"
-                            name="entityJson"
-                            accept="application/json"
-                            required
-                        />
-                        <Button type="submit" className="h-full">
-                            Uvezi
-                        </Button>
-                    </form>
                 </Stack>
                 {attributeCategories.map((category) => (
                     <TabsContent value={category.name} key={category.name}>
