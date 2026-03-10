@@ -1,11 +1,18 @@
 import { getRaisedBed } from '@gredice/storage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
+import { MoreHorizontal } from '@signalco/ui-icons';
 import {
     Card,
     CardHeader,
     CardOverflow,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from '@signalco/ui-primitives/Menu';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
@@ -60,9 +67,26 @@ export default async function RaisedBedPage({
                             { label: raisedBed?.id },
                         ]}
                     />
-                    <Typography level="h1" semiBold>
-                        Gredica
-                    </Typography>
+                    <div className="flex items-start justify-between gap-2">
+                        <Typography level="h1" semiBold>
+                            Gredica
+                        </Typography>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <IconButton variant="plain" title="Više opcija">
+                                    <MoreHorizontal className="size-5" />
+                                </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align="end"
+                                className="w-80 p-4"
+                            >
+                                <MergeRaisedBedsForm
+                                    targetRaisedBedId={raisedBed.id}
+                                />
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </Stack>
                 <Stack spacing={2}>
                     <FieldSet>
@@ -79,14 +103,6 @@ export default async function RaisedBedPage({
                         <Field
                             name="Datum kreiranja"
                             value={raisedBed?.createdAt}
-                        />
-                        <Field
-                            name="Spajanje gredica"
-                            value={
-                                <MergeRaisedBedsForm
-                                    targetRaisedBedId={raisedBed.id}
-                                />
-                            }
                         />
                     </FieldSet>
                 </Stack>

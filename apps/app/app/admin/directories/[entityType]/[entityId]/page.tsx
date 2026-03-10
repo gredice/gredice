@@ -4,9 +4,15 @@ import {
     getEntityRaw,
 } from '@gredice/storage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Delete } from '@signalco/ui-icons';
+import { Delete, MoreHorizontal } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Input } from '@signalco/ui-primitives/Input';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from '@signalco/ui-primitives/Menu';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
@@ -92,6 +98,36 @@ export default async function EntityDetailsPage(props: {
                     </TabsList>
                     <Row className="self-end" spacing={1}>
                         <EntityStateSelect entity={entity} />
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <IconButton variant="plain" title="Više opcija">
+                                    <MoreHorizontal className="size-5" />
+                                </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align="end"
+                                className="w-80 p-4"
+                            >
+                                <form
+                                    action={importAction}
+                                    className="space-y-3"
+                                >
+                                    <Input
+                                        label="Uvoz podataka"
+                                        type="file"
+                                        name="entityJson"
+                                        accept="application/json"
+                                        required
+                                    />
+                                    <Button
+                                        type="submit"
+                                        className="w-full justify-center"
+                                    >
+                                        Uvezi
+                                    </Button>
+                                </form>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <ServerActionIconButton
                             title="Obriši"
                             onClick={entityDeleteBound}
@@ -113,22 +149,6 @@ export default async function EntityDetailsPage(props: {
                         />
                         <Field name="Datum objave" value={entity.publishedAt} />
                     </FieldSet>
-                    {/* Import JSON form */}
-                    <form
-                        action={importAction}
-                        className="flex items-center gap-2"
-                    >
-                        <Input
-                            label="Uvoz podataka"
-                            type="file"
-                            name="entityJson"
-                            accept="application/json"
-                            required
-                        />
-                        <Button type="submit" className="h-full">
-                            Uvezi
-                        </Button>
-                    </form>
                 </Stack>
                 {attributeCategories.map((category) => (
                     <TabsContent value={category.name} key={category.name}>
