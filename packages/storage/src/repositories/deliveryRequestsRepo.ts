@@ -1,14 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import type { OperationData, PlantSortData } from '@gredice/directory-types';
-import { and, asc, desc, eq, gte, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 import 'server-only';
 import { AUTO_CLOSE_WINDOW_MS } from '../helpers/timeSlotAutomation';
 import {
     accounts,
     accountUsers,
     DeliveryRequestStates,
+    deliveryAddresses,
     deliveryRequests,
     events,
+    operations,
+    pickupLocations,
     type SelectDeliveryRequest,
     TimeSlotStatuses,
     timeSlots,
@@ -16,18 +19,19 @@ import {
 } from '../schema';
 import { storage } from '../storage';
 import { getDeliveryAddress } from './deliveryAddressesRepo';
-import { getEntityFormatted } from './entitiesRepo';
+import { getEntitiesFormatted, getEntityFormatted } from './entitiesRepo';
 import {
     createEvent,
-    type Event as DbEvent,
     getEvents,
     knownEvents,
     knownEventTypes,
 } from './eventsRepo';
 import { getRaisedBed, getRaisedBedFieldsWithEvents } from './gardensRepo';
-import { getOperationById } from './operationsRepo';
+import { getOperationById, getOperationsByIds } from './operationsRepo';
 import { getPickupLocation } from './pickupLocationsRepo';
 import { closeTimeSlot, getTimeSlot } from './timeSlotsRepo';
+
+type DbEvent = Awaited<ReturnType<typeof getEvents>>[number];
 
 // TODO: Should use types from union of payloads for delivery events
 interface DeliveryEventData {
@@ -81,16 +85,36 @@ function parseDeliveryEventData(value: unknown): DeliveryEventData {
     return data;
 }
 
-// Business state projection interface
-export type DeliveryRequestWithEvents = Awaited<
-    ReturnType<typeof reconstructDeliveryRequestFromEvents>
->;
+const deliveryRequestEventTypes = [
+    knownEventTypes.delivery.requestCreated,
+    knownEventTypes.delivery.requestCancelled,
+    knownEventTypes.delivery.requestAddressChanged,
+    knownEventTypes.delivery.requestConfirmed,
+    knownEventTypes.delivery.requestPreparing,
+    knownEventTypes.delivery.requestReady,
+    knownEventTypes.delivery.requestFulfilled,
+    knownEventTypes.delivery.requestSurveySent,
+    knownEventTypes.delivery.requestSlotChanged,
+    knownEventTypes.delivery.userCancelled,
+];
 
-// Helper function to reconstruct business state from events
-async function reconstructDeliveryRequestFromEvents(
-    request: SelectDeliveryRequest,
-    events: DbEvent[],
-) {
+interface DeliveryRequestStateProjection {
+    state: string;
+    slotId?: number;
+    addressId?: number;
+    locationId?: number;
+    mode?: 'delivery' | 'pickup';
+    cancelReason?: string;
+    requestNotes?: string;
+    deliveryNotes?: string;
+    accountId?: string;
+    surveySent: boolean;
+}
+
+function reconstructDeliveryRequestState(
+    requestCreatedAt: Date,
+    requestEvents: DbEvent[],
+): DeliveryRequestStateProjection {
     let state: string = DeliveryRequestStates.PENDING;
     let slotId: number | undefined;
     let addressId: number | undefined;
@@ -102,40 +126,43 @@ async function reconstructDeliveryRequestFromEvents(
     let accountId: string | undefined;
     let surveySent = false;
 
-    // helpers to safely read typed values from event data
-    const asNumber = (v: unknown): number | undefined => {
-        if (typeof v === 'number') return v;
-        if (typeof v === 'string' && v !== '' && /^-?\d+$/.test(v))
-            return Number(v);
+    const asNumber = (value: unknown): number | undefined => {
+        if (typeof value === 'number') return value;
+        if (typeof value === 'string' && value !== '' && /^-?\d+$/.test(value))
+            return Number(value);
         return undefined;
     };
 
-    const asString = (v: unknown): string | undefined =>
-        typeof v === 'string' ? v : undefined;
+    const asString = (value: unknown): string | undefined =>
+        typeof value === 'string' ? value : undefined;
 
-    const asMode = (v: unknown): 'delivery' | 'pickup' | undefined =>
-        v === 'delivery' || v === 'pickup'
-            ? (v as 'delivery' | 'pickup')
+    const asMode = (value: unknown): 'delivery' | 'pickup' | undefined =>
+        value === 'delivery' || value === 'pickup'
+            ? (value as 'delivery' | 'pickup')
             : undefined;
 
-    for (const event of events) {
+    for (const event of requestEvents) {
+        if (event.createdAt.getTime() < requestCreatedAt.getTime() - 5000) {
+            continue;
+        }
+
         const data = parseDeliveryEventData(event.data);
 
         if (event.type === knownEventTypes.delivery.requestCreated) {
-            slotId = asNumber(data?.slotId);
-            addressId = asNumber(data?.addressId);
-            locationId = asNumber(data?.locationId);
-            mode = asMode(data?.mode);
-            requestNotes = asString(data?.requestNotes);
+            slotId = asNumber(data.slotId);
+            addressId = asNumber(data.addressId);
+            locationId = asNumber(data.locationId);
+            mode = asMode(data.mode);
+            requestNotes = asString(data.requestNotes);
             state = DeliveryRequestStates.PENDING;
-            accountId = asString(data?.accountId);
+            accountId = asString(data.accountId);
         } else if (
             event.type === knownEventTypes.delivery.requestAddressChanged
         ) {
-            addressId = asNumber(data?.addressId);
-            locationId = asNumber(data?.locationId);
-            mode = asMode(data?.mode);
-            requestNotes = asString(data?.requestNotes);
+            addressId = asNumber(data.addressId);
+            locationId = asNumber(data.locationId);
+            mode = asMode(data.mode);
+            requestNotes = asString(data.requestNotes);
         } else if (event.type === knownEventTypes.delivery.requestConfirmed) {
             state = DeliveryRequestStates.CONFIRMED;
         } else if (event.type === knownEventTypes.delivery.requestPreparing) {
@@ -146,16 +173,248 @@ async function reconstructDeliveryRequestFromEvents(
             state = DeliveryRequestStates.FULFILLED;
             deliveryNotes = data.deliveryNotes ?? deliveryNotes;
         } else if (event.type === knownEventTypes.delivery.requestSlotChanged) {
-            slotId = asNumber(data?.newSlotId);
+            slotId = asNumber(data.newSlotId);
         } else if (event.type === knownEventTypes.delivery.userCancelled) {
             state = DeliveryRequestStates.CANCELLED;
         } else if (event.type === knownEventTypes.delivery.requestCancelled) {
             state = DeliveryRequestStates.CANCELLED;
-            cancelReason = asString(data?.cancelReason);
+            cancelReason = asString(data.cancelReason);
         } else if (event.type === knownEventTypes.delivery.requestSurveySent) {
             surveySent = true;
         }
     }
+
+    return {
+        state,
+        slotId,
+        addressId,
+        locationId,
+        mode,
+        cancelReason,
+        requestNotes,
+        deliveryNotes,
+        accountId,
+        surveySent,
+    };
+}
+
+function groupEventsByAggregateId(requestEvents: DbEvent[]) {
+    const eventsByAggregateId = new Map<string, DbEvent[]>();
+
+    for (const event of requestEvents) {
+        const aggregateEvents = eventsByAggregateId.get(event.aggregateId);
+        if (aggregateEvents) {
+            aggregateEvents.push(event);
+        } else {
+            eventsByAggregateId.set(event.aggregateId, [event]);
+        }
+    }
+
+    return eventsByAggregateId;
+}
+
+async function getDeliveryRequestWhereConditions(
+    accountId?: string,
+    fromDate?: Date,
+    toDate?: Date,
+) {
+    const whereConditions = [];
+
+    if (accountId) {
+        const operationRows = await storage().query.operations.findMany({
+            columns: {
+                id: true,
+            },
+            where: and(
+                eq(operations.accountId, accountId),
+                eq(operations.isDeleted, false),
+            ),
+        });
+
+        const operationIds = operationRows.map((operation) => operation.id);
+        if (operationIds.length === 0) {
+            return null;
+        }
+
+        whereConditions.push(
+            inArray(deliveryRequests.operationId, operationIds),
+        );
+    }
+
+    if (fromDate) {
+        whereConditions.push(gte(deliveryRequests.createdAt, fromDate));
+    }
+
+    if (toDate) {
+        whereConditions.push(lte(deliveryRequests.createdAt, toDate));
+    }
+
+    return whereConditions;
+}
+
+async function reconstructDeliveryRequestRows<
+    TRequest extends {
+        id: string;
+        operationId: number;
+        createdAt: Date;
+        updatedAt: Date;
+    },
+>(requests: TRequest[]) {
+    if (requests.length === 0) {
+        return [];
+    }
+
+    const requestEvents = await getEvents(
+        deliveryRequestEventTypes,
+        requests.map((request) => request.id),
+        0,
+        100000,
+    );
+    const eventsByAggregateId = groupEventsByAggregateId(requestEvents);
+    const reconstructedRows = requests.map((request) => {
+        const projection = reconstructDeliveryRequestState(
+            request.createdAt,
+            eventsByAggregateId.get(request.id) ?? [],
+        );
+
+        return {
+            request,
+            projection,
+        };
+    });
+
+    const slotIds = Array.from(
+        new Set(
+            reconstructedRows
+                .map((row) => row.projection.slotId)
+                .filter((id): id is number => id !== undefined),
+        ),
+    );
+    const addressIds = Array.from(
+        new Set(
+            reconstructedRows
+                .map((row) => row.projection.addressId)
+                .filter((id): id is number => id !== undefined),
+        ),
+    );
+    const locationIds = Array.from(
+        new Set(
+            reconstructedRows
+                .map((row) => row.projection.locationId)
+                .filter((id): id is number => id !== undefined),
+        ),
+    );
+
+    const [slots, addresses, locations] = await Promise.all([
+        slotIds.length > 0
+            ? storage().query.timeSlots.findMany({
+                  where: inArray(timeSlots.id, slotIds),
+                  with: {
+                      location: true,
+                  },
+              })
+            : Promise.resolve([]),
+        addressIds.length > 0
+            ? storage().query.deliveryAddresses.findMany({
+                  where: and(
+                      inArray(deliveryAddresses.id, addressIds),
+                      isNull(deliveryAddresses.deletedAt),
+                  ),
+              })
+            : Promise.resolve([]),
+        locationIds.length > 0
+            ? storage().query.pickupLocations.findMany({
+                  where: inArray(pickupLocations.id, locationIds),
+              })
+            : Promise.resolve([]),
+    ]);
+
+    const slotsById = new Map(slots.map((slot) => [slot.id, slot]));
+    const addressesById = new Map(
+        addresses.map((address) => [address.id, address]),
+    );
+    const locationsById = new Map(
+        locations.map((location) => [location.id, location]),
+    );
+
+    return reconstructedRows.map((row) => ({
+        ...row,
+        slot: row.projection.slotId
+            ? slotsById.get(row.projection.slotId)
+            : undefined,
+        address: row.projection.addressId
+            ? addressesById.get(row.projection.addressId)
+            : undefined,
+        location: row.projection.locationId
+            ? locationsById.get(row.projection.locationId)
+            : undefined,
+    }));
+}
+
+function filterDeliveryRequestRows<
+    TRow extends {
+        request: {
+            createdAt: Date;
+        };
+        projection: {
+            state: string;
+        };
+        slot?: {
+            id: number;
+        };
+    },
+>(
+    rows: TRow[],
+    filters: {
+        state?: string;
+        slotId?: number;
+        fromDate?: Date;
+        toDate?: Date;
+    },
+) {
+    return rows.filter((row) => {
+        if (filters.state && row.projection.state !== filters.state) {
+            return false;
+        }
+
+        if (filters.slotId && row.slot?.id !== filters.slotId) {
+            return false;
+        }
+
+        if (filters.fromDate && row.request.createdAt < filters.fromDate) {
+            return false;
+        }
+
+        if (filters.toDate && row.request.createdAt > filters.toDate) {
+            return false;
+        }
+
+        return true;
+    });
+}
+
+// Business state projection interface
+export type DeliveryRequestWithEvents = Awaited<
+    ReturnType<typeof reconstructDeliveryRequestFromEvents>
+>;
+
+// Helper function to reconstruct business state from events
+async function reconstructDeliveryRequestFromEvents(
+    request: SelectDeliveryRequest,
+    events: DbEvent[],
+) {
+    const {
+        state,
+        slotId,
+        addressId,
+        locationId,
+        mode,
+        cancelReason,
+        requestNotes,
+        deliveryNotes,
+        accountId,
+        surveySent,
+    } = reconstructDeliveryRequestState(request.createdAt, events);
 
     // Fetch slot, address, location, and operation in parallel
     const [slot, address, location, operation] = await Promise.all([
@@ -243,6 +502,54 @@ async function reconstructDeliveryRequestFromEvents(
     };
 }
 
+export async function getDeliveryRequestsSummary(
+    accountId?: string,
+    state?: string,
+    slotId?: number,
+    fromDate?: Date,
+    toDate?: Date,
+) {
+    const whereConditions = await getDeliveryRequestWhereConditions(
+        accountId,
+        fromDate,
+        toDate,
+    );
+    if (whereConditions === null) {
+        return [];
+    }
+
+    const requests = await storage().query.deliveryRequests.findMany({
+        where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
+        orderBy: [desc(deliveryRequests.createdAt)],
+    });
+    const reconstructedRows = await reconstructDeliveryRequestRows(requests);
+    const filteredRows = filterDeliveryRequestRows(reconstructedRows, {
+        state,
+        slotId,
+        fromDate,
+        toDate,
+    });
+
+    return filteredRows.map(
+        ({ request, projection, slot, address, location }) => ({
+            id: request.id,
+            operationId: request.operationId,
+            state: projection.state,
+            slot,
+            address,
+            location,
+            mode: projection.mode,
+            cancelReason: projection.cancelReason,
+            requestNotes: projection.requestNotes,
+            deliveryNotes: projection.deliveryNotes,
+            surveySent: projection.surveySent,
+            createdAt: request.createdAt,
+            updatedAt: request.updatedAt,
+            accountId: projection.accountId,
+        }),
+    );
+}
+
 // Get delivery requests with business state reconstructed from events
 export async function getDeliveryRequestsWithEvents(
     accountId?: string,
@@ -251,99 +558,157 @@ export async function getDeliveryRequestsWithEvents(
     fromDate?: Date,
     toDate?: Date,
 ) {
-    // First get the projection records with operation details
+    const whereConditions = await getDeliveryRequestWhereConditions(
+        accountId,
+        fromDate,
+        toDate,
+    );
+    if (whereConditions === null) {
+        return [];
+    }
+
     const requests = await storage().query.deliveryRequests.findMany({
+        where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
         orderBy: [desc(deliveryRequests.createdAt)],
         with: {
             operation: {
                 with: {
                     raisedBed: true,
                     raisedBedField: true,
-                    entity: {
-                        with: {
-                            attributes: {
-                                with: {
-                                    attributeDefinition: true,
-                                },
-                            },
-                        },
-                    },
                 },
             },
         },
     });
+    const reconstructedRows = await reconstructDeliveryRequestRows(requests);
+    const filteredRows = filterDeliveryRequestRows(reconstructedRows, {
+        state,
+        slotId,
+        fromDate,
+        toDate,
+    });
 
-    if (requests.length === 0) return [];
+    if (filteredRows.length === 0) {
+        return [];
+    }
 
-    // Get all events for these requests
-    const aggregateIds = requests.map((r) => r.id);
-    const allEvents = await getEvents(
-        [
-            knownEventTypes.delivery.requestCreated,
-            knownEventTypes.delivery.requestCancelled,
-            knownEventTypes.delivery.requestAddressChanged,
-            knownEventTypes.delivery.requestConfirmed,
-            knownEventTypes.delivery.requestPreparing,
-            knownEventTypes.delivery.requestReady,
-            knownEventTypes.delivery.requestFulfilled,
-            knownEventTypes.delivery.requestSurveySent,
-            knownEventTypes.delivery.requestSlotChanged,
-            knownEventTypes.delivery.userCancelled,
-        ],
-        aggregateIds,
-        0,
-        100000,
+    const filteredOperationIds = filteredRows.map(
+        (row) => row.request.operationId,
+    );
+    const uniqueRaisedBedIds = Array.from(
+        new Set(
+            filteredRows
+                .map((row) => row.request.operation?.raisedBedId)
+                .filter((id): id is number => id !== null && id !== undefined),
+        ),
     );
 
-    // Reconstruct business state for each request
-    const reconstructedRequests = await Promise.all(
-        requests.map((request) => {
-            const events = allEvents.filter(
-                (event) =>
-                    event.aggregateId === request.id &&
-                    request.createdAt <=
-                        new Date(event.createdAt.getTime() + 5000), // 5s offset
-            );
-
-            return reconstructDeliveryRequestFromEvents(request, events);
+    const [operationsWithState, operationEntities, fields] = await Promise.all([
+        getOperationsByIds(filteredOperationIds),
+        getEntitiesFormatted<OperationData>('operation').catch((error) => {
+            console.error('Failed to fetch operation entities:', error);
+            return null;
         }),
+        uniqueRaisedBedIds.length > 0
+            ? Promise.all(
+                  uniqueRaisedBedIds.map(async (raisedBedId) => {
+                      try {
+                          return await getRaisedBedFieldsWithEvents(
+                              raisedBedId,
+                          );
+                      } catch (error) {
+                          console.error(
+                              'Failed to fetch raised bed fields:',
+                              error,
+                          );
+                          return [];
+                      }
+                  }),
+              ).then((fieldGroups) => fieldGroups.flat())
+            : Promise.resolve([]),
+    ]);
+
+    const operationsById = new Map(
+        operationsWithState.map((operation) => [operation.id, operation]),
+    );
+    const operationEntitiesById = new Map(
+        (operationEntities ?? []).map((operationEntity) => [
+            operationEntity.id,
+            operationEntity,
+        ]),
+    );
+    const fieldsById = new Map(fields.map((field) => [field.id, field]));
+    const plantSortIds = Array.from(
+        new Set(
+            filteredRows
+                .map((row) => row.request.operation?.raisedBedFieldId)
+                .filter((id): id is number => id !== null && id !== undefined)
+                .map((id) => fieldsById.get(id)?.plantSortId)
+                .filter(
+                    (plantSortId): plantSortId is number =>
+                        plantSortId !== undefined,
+                ),
+        ),
+    );
+    const plantSorts = plantSortIds.length
+        ? await getEntitiesFormatted<PlantSortData>('plantSort').catch(
+              (error) => {
+                  console.error('Failed to fetch plant sorts:', error);
+                  return null;
+              },
+          )
+        : null;
+    const plantSortsById = new Map(
+        (plantSorts ?? []).map((plantSort) => [plantSort.id, plantSort]),
     );
 
-    // Apply filters on reconstructed state
-    let filteredRequests = reconstructedRequests;
+    return filteredRows.map(
+        ({ request, projection, slot, address, location }) => {
+            const rawOperation = request.operation;
+            const operation =
+                operationsById.get(request.operationId) ??
+                rawOperation ??
+                undefined;
+            const raisedBedFieldId = rawOperation?.raisedBedFieldId;
+            const raisedBedFieldWithEvents =
+                typeof raisedBedFieldId === 'number'
+                    ? fieldsById.get(raisedBedFieldId)
+                    : undefined;
+            const raisedBedField =
+                typeof raisedBedFieldId === 'number'
+                    ? (raisedBedFieldWithEvents ?? rawOperation?.raisedBedField)
+                    : rawOperation?.raisedBedField;
+            const plantSort =
+                typeof raisedBedFieldWithEvents?.plantSortId === 'number'
+                    ? (plantSortsById.get(
+                          raisedBedFieldWithEvents.plantSortId,
+                      ) ?? null)
+                    : null;
 
-    if (accountId) {
-        filteredRequests = filteredRequests.filter(
-            (r) => r.accountId === accountId,
-        );
-    }
-
-    if (state) {
-        filteredRequests = filteredRequests.filter((r) => r.state === state);
-    }
-
-    if (slotId) {
-        filteredRequests = filteredRequests.filter(
-            (r) => r.slot?.id === slotId,
-        );
-    }
-
-    if (fromDate) {
-        filteredRequests = filteredRequests.filter(
-            (r) => r.createdAt >= fromDate,
-        );
-    }
-
-    if (toDate) {
-        filteredRequests = filteredRequests.filter(
-            (r) => r.createdAt <= toDate,
-        );
-    }
-
-    // Note: Date filtering would require joining with slots
-    // This is a simplified implementation
-
-    return filteredRequests;
+            return {
+                id: request.id,
+                operationId: request.operationId,
+                operation,
+                operationData: rawOperation?.entityId
+                    ? (operationEntitiesById.get(rawOperation.entityId) ?? null)
+                    : null,
+                raisedBed: rawOperation?.raisedBed ?? null,
+                raisedBedField: raisedBedField ?? null,
+                plantSort,
+                state: projection.state,
+                slot,
+                address,
+                location,
+                mode: projection.mode,
+                cancelReason: projection.cancelReason,
+                requestNotes: projection.requestNotes,
+                deliveryNotes: projection.deliveryNotes,
+                surveySent: projection.surveySent,
+                createdAt: request.createdAt,
+                updatedAt: request.updatedAt,
+                accountId: projection.accountId,
+            };
+        },
+    );
 }
 
 // Get delivery requests for an account (legacy function signature)

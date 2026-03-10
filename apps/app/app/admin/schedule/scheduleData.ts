@@ -3,11 +3,16 @@ import 'server-only';
 import {
     getAllOperations,
     getAllRaisedBeds,
-    getDeliveryRequests,
+    getDeliveryRequestsSummary,
     getEntitiesFormatted,
 } from '@gredice/storage';
 import { cache } from 'react';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
+import {
+    getDayDeliveryRequests,
+    getScheduledFieldsForDay,
+    getScheduledOperationsForDay,
+} from './scheduleDayFilters';
 
 const operationsBackDays = 90;
 
@@ -53,5 +58,35 @@ export const getScheduleOperations = cache(async () => {
 });
 
 export const getScheduleDeliveryRequests = cache(async () => {
-    return getDeliveryRequests();
+    return getDeliveryRequestsSummary();
 });
+
+export const getScheduleDayData = cache(
+    async (dateKey: string, isToday: boolean) => {
+        const date = new Date(dateKey);
+        const [raisedBeds, operations, deliveryRequests] = await Promise.all([
+            getScheduleRaisedBeds(),
+            getScheduleOperations(),
+            getScheduleDeliveryRequests(),
+        ]);
+
+        return {
+            raisedBeds,
+            scheduledFields: getScheduledFieldsForDay(
+                isToday,
+                date,
+                raisedBeds,
+            ),
+            scheduledOperations: getScheduledOperationsForDay(
+                isToday,
+                date,
+                operations,
+            ),
+            todaysDeliveryRequests: getDayDeliveryRequests(
+                isToday,
+                date,
+                deliveryRequests,
+            ),
+        };
+    },
+);

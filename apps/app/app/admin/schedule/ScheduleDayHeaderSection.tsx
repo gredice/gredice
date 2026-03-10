@@ -1,14 +1,6 @@
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { ScheduleDayHeader } from './ScheduleDayHeader';
-import {
-    getScheduleOperations,
-    getScheduleOperationsData,
-    getScheduleRaisedBeds,
-} from './scheduleData';
-import {
-    getScheduledFieldsForDay,
-    getScheduledOperationsForDay,
-} from './scheduleDayFilters';
+import { getScheduleDayData, getScheduleOperationsData } from './scheduleData';
 import {
     formatMinutes,
     getOperationDurationMinutes,
@@ -28,18 +20,11 @@ export async function ScheduleDayHeaderSection({
     isToday,
     date,
 }: ScheduleDayHeaderSectionProps) {
-    const [raisedBeds, operations, operationsData] = await Promise.all([
-        getScheduleRaisedBeds(),
-        getScheduleOperations(),
-        getScheduleOperationsData(),
-    ]);
-
-    const scheduledFields = getScheduledFieldsForDay(isToday, date, raisedBeds);
-    const scheduledOperations = getScheduledOperationsForDay(
-        isToday,
-        date,
-        operations,
-    );
+    const [{ scheduledFields, scheduledOperations }, operationsData] =
+        await Promise.all([
+            getScheduleDayData(date.toISOString(), isToday),
+            getScheduleOperationsData(),
+        ]);
 
     const operationDataById = new Map<number, EntityStandardized>();
     if (operationsData) {

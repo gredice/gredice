@@ -1,14 +1,5 @@
 import { Typography } from '@signalco/ui-primitives/Typography';
-import {
-    getScheduleDeliveryRequests,
-    getScheduleOperations,
-    getScheduleRaisedBeds,
-} from './scheduleData';
-import {
-    getDayDeliveryRequests,
-    getScheduledFieldsForDay,
-    getScheduledOperationsForDay,
-} from './scheduleDayFilters';
+import { getScheduleDayData } from './scheduleData';
 
 interface ScheduleDayEmptyStateProps {
     isToday: boolean;
@@ -19,23 +10,8 @@ export async function ScheduleDayEmptyState({
     isToday,
     date,
 }: ScheduleDayEmptyStateProps) {
-    const [raisedBeds, operations, deliveryRequests] = await Promise.all([
-        getScheduleRaisedBeds(),
-        getScheduleOperations(),
-        getScheduleDeliveryRequests(),
-    ]);
-
-    const scheduledFields = getScheduledFieldsForDay(isToday, date, raisedBeds);
-    const scheduledOperations = getScheduledOperationsForDay(
-        isToday,
-        date,
-        operations,
-    );
-    const todaysDeliveryRequests = getDayDeliveryRequests(
-        isToday,
-        date,
-        deliveryRequests,
-    );
+    const { scheduledFields, scheduledOperations, todaysDeliveryRequests } =
+        await getScheduleDayData(date.toISOString(), isToday);
 
     if (
         scheduledFields.length +

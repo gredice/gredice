@@ -2,12 +2,10 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { RaisedBedOperationsScheduleSection } from './RaisedBedOperationsScheduleSection';
 import {
-    getScheduleOperations,
+    getScheduleDayData,
     getScheduleOperationsData,
     getSchedulePlantSorts,
-    getScheduleRaisedBeds,
 } from './scheduleData';
-import { getScheduledOperationsForDay } from './scheduleDayFilters';
 
 interface ScheduleDayOperationsSectionProps {
     isToday: boolean;
@@ -20,19 +18,12 @@ export async function ScheduleDayOperationsSection({
     date,
     userId,
 }: ScheduleDayOperationsSectionProps) {
-    const [raisedBeds, operations, plantSorts, operationsData] =
+    const [{ raisedBeds, scheduledOperations }, plantSorts, operationsData] =
         await Promise.all([
-            getScheduleRaisedBeds(),
-            getScheduleOperations(),
+            getScheduleDayData(date.toISOString(), isToday),
             getSchedulePlantSorts(),
             getScheduleOperationsData(),
         ]);
-
-    const scheduledOperations = getScheduledOperationsForDay(
-        isToday,
-        date,
-        operations,
-    );
     if (scheduledOperations.length === 0) {
         return null;
     }
