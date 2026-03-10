@@ -1,4 +1,4 @@
-import { getEntityTypesOrganizedByCategories } from '@gredice/storage';
+import { getEntityTypesOrganizedByCategories, getPendingAchievementsCount } from '@gredice/storage';
 import { SignedOut } from '@signalco/auth-client/components';
 import { AuthProtectedSection } from '@signalco/auth-server/components';
 import { type PropsWithChildren, Suspense } from 'react';
@@ -15,8 +15,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminLayout({ children }: PropsWithChildren) {
     const authAdmin = auth.bind(null, ['admin']);
-    const { categorizedTypes, uncategorizedTypes, shadowTypes } =
-        await getEntityTypesOrganizedByCategories();
+    const isAdmin = await auth(['admin']).then(() => true, () => false);
+    const [{ categorizedTypes, uncategorizedTypes, shadowTypes }, pendingAchievementsCount] =
+        await Promise.all([
+            getEntityTypesOrganizedByCategories(),
+            isAdmin ? getPendingAchievementsCount() : Promise.resolve(0),
+        ]);
 
     return (
         <AuthAppProvider>
@@ -24,6 +28,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                 categorizedTypes={categorizedTypes}
                 uncategorizedTypes={uncategorizedTypes}
                 shadowTypes={shadowTypes}
+                pendingAchievementsCount={pendingAchievementsCount}
             >
                 <div className="grow bg-secondary">
                     <MobileHeader />

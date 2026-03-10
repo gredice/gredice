@@ -44,6 +44,14 @@ export async function getAccountAchievements(accountId: string) {
     });
 }
 
+export async function getPendingAchievementsCount() {
+    const result = await storage()
+        .select({ count: sql<number>`count(*)` })
+        .from(accountAchievements)
+        .where(eq(accountAchievements.status, 'pending'));
+    return result[0]?.count ?? 0;
+}
+
 export async function getAchievements({
     status,
     limit,

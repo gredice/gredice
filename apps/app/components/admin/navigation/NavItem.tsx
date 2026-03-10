@@ -13,6 +13,7 @@ export function NavItem({
     strictMatch,
     onClick,
     isDragging = false,
+    badge,
 }: {
     href: Route;
     label: string;
@@ -20,6 +21,7 @@ export function NavItem({
     strictMatch?: boolean;
     onClick?: () => void;
     isDragging?: boolean;
+    badge?: number;
 }) {
     const pathname = usePathname();
 
@@ -46,6 +48,11 @@ export function NavItem({
                 onSelected={() => {}}
                 label={label}
                 startDecorator={icon}
+                endDecorator={badge != null && badge > 0 ? (
+                    <span className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium min-w-5 h-5 px-1.5">
+                        {badge}
+                    </span>
+                ) : undefined}
             />
         </Link>
     );
