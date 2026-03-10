@@ -13,7 +13,6 @@ import { useBlockData } from './hooks/useBlockData';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
 import { useGameTimeManager } from './hooks/useGameTimeManager';
-import { useThemeManager } from './hooks/useThemeManager';
 import { useWeatherNow } from './hooks/useWeatherNow';
 import { EditModeGrid } from './indicators/EditModeGrid';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
@@ -65,7 +64,6 @@ export function GameScene({
     ...rest
 }: GameSceneProps) {
     useGameTimeManager();
-    useThemeManager();
     useFocusPlacedBlock();
     useRaisedBedCloseup();
 

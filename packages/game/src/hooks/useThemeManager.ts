@@ -1,18 +1,38 @@
 import { useTheme } from 'next-themes';
 import { useEffect } from 'react';
-import { useGameState } from '../useGameState';
+import { getTimes } from 'suncalc';
 
+// Zagreb, Croatia coordinates
+const defaultLocation = { lat: 45.739, lon: 16.572 };
+
+function isDaytime(now: Date): boolean {
+    const { sunrise, sunset } = getTimes(
+        now,
+        defaultLocation.lat,
+        defaultLocation.lon,
+    );
+    return now >= sunrise && now < sunset;
+}
+
+/**
+ * Syncs the next-themes theme based on actual sunrise/sunset times.
+ * Should be mounted once at the app level (inside a ThemeProvider).
+ */
 export function useThemeManager() {
     const { resolvedTheme, setTheme } = useTheme();
 
-    const timeOfDay = useGameState((state) => state.timeOfDay);
-    const isDay = timeOfDay > 0.2 && timeOfDay < 0.8;
-
     useEffect(() => {
-        if (isDay && resolvedTheme !== 'light') {
-            setTheme('light');
-        } else if (!isDay && resolvedTheme !== 'dark') {
-            setTheme('dark');
+        function sync() {
+            const isDay = isDaytime(new Date());
+            if (isDay && resolvedTheme !== 'light') {
+                setTheme('light');
+            } else if (!isDay && resolvedTheme !== 'dark') {
+                setTheme('dark');
+            }
         }
-    }, [isDay, resolvedTheme, setTheme]);
+
+        sync();
+        const interval = setInterval(sync, 60_000);
+        return () => clearInterval(interval);
+    }, [resolvedTheme, setTheme]);
 }

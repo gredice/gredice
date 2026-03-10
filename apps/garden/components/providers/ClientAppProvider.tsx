@@ -1,12 +1,18 @@
 'use client';
 
 import { client } from '@gredice/client';
+import { useThemeManager } from '@gredice/game';
 import { NuqsAdapter } from '@gredice/ui/nuqs';
 import { AuthProvider } from '@signalco/auth-client/components';
 import { NotificationsContainer } from '@signalco/ui-notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import type { PropsWithChildren } from 'react';
+
+function DayNightThemeSync() {
+    useThemeManager();
+    return null;
+}
 
 export type User = {
     id: string;
@@ -37,6 +43,7 @@ export function ClientAppProvider({ children }: PropsWithChildren) {
         <NuqsAdapter>
             <QueryClientProvider client={queryClient}>
                 <ThemeProvider attribute="class" defaultTheme="light">
+                    <DayNightThemeSync />
                     <AuthProvider currentUserFactory={currentUserFactory}>
                         {children}
                         <NotificationsContainer />
