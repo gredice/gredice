@@ -1,18 +1,11 @@
 import { getRaisedBed } from '@gredice/storage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { MoreHorizontal } from '@signalco/ui-icons';
 import {
     Card,
     CardHeader,
     CardOverflow,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
@@ -24,8 +17,8 @@ import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
-import { MergeRaisedBedsForm } from './MergeRaisedBedsForm';
 import { OperationsTableCard } from './OperationsTableCard';
+import { RaisedBedActionsMenu } from './RaisedBedActionsMenu';
 import { RaisedBedPhysicalIdInput } from './RaisedBedPhysicalIdInput';
 import { RaisedBedStatusSelect } from './RaisedBedStatusSelect';
 
@@ -71,21 +64,9 @@ export default async function RaisedBedPage({
                         <Typography level="h1" semiBold>
                             Gredica
                         </Typography>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <IconButton variant="plain" title="Više opcija">
-                                    <MoreHorizontal className="size-5" />
-                                </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                                align="end"
-                                className="w-80 p-4"
-                            >
-                                <MergeRaisedBedsForm
-                                    targetRaisedBedId={raisedBed.id}
-                                />
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <RaisedBedActionsMenu
+                            targetRaisedBedId={raisedBed.id}
+                        />
                     </div>
                 </Stack>
                 <Stack spacing={2}>

@@ -4,15 +4,7 @@ import {
     getEntityRaw,
 } from '@gredice/storage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Delete, MoreHorizontal } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
+import { Delete } from '@signalco/ui-icons';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
@@ -31,6 +23,7 @@ import { entityDisplayName } from '../../../../../src/entities/entityAttributes'
 import { KnownPages } from '../../../../../src/KnownPages';
 import { handleEntityDelete } from '../../../../(actions)/entityActions';
 import { AttributeCategoryDetails } from './AttributeCategoryDetails';
+import { EntityImportMenu } from './EntityImportMenu';
 import { EntityStateSelect } from './EntityStateSelect';
 
 export const dynamic = 'force-dynamic';
@@ -98,38 +91,7 @@ export default async function EntityDetailsPage(props: {
                     </TabsList>
                     <Row className="self-end" spacing={1}>
                         <EntityStateSelect entity={entity} />
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <IconButton variant="plain" title="Više opcija">
-                                    <MoreHorizontal className="size-5" />
-                                </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                                align="end"
-                                className="w-80 p-4"
-                            >
-                                <form
-                                    action={importAction}
-                                    method="post"
-                                    encType="multipart/form-data"
-                                    className="space-y-3"
-                                >
-                                    <Input
-                                        label="Uvoz podataka"
-                                        type="file"
-                                        name="entityJson"
-                                        accept="application/json"
-                                        required
-                                    />
-                                    <Button
-                                        type="submit"
-                                        className="w-full justify-center"
-                                    >
-                                        Uvezi
-                                    </Button>
-                                </form>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <EntityImportMenu importAction={importAction} />
                         <ServerActionIconButton
                             title="Obriši"
                             onClick={entityDeleteBound}
