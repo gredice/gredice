@@ -1,6 +1,5 @@
 import { DeliveryRequestsSection } from './DeliveryRequestsSection';
-import { getScheduleDeliveryRequests } from './scheduleData';
-import { getDayDeliveryRequests } from './scheduleDayFilters';
+import { getScheduleDayData } from './scheduleData';
 
 interface ScheduleDayDeliveriesSectionProps {
     isToday: boolean;
@@ -11,11 +10,9 @@ export async function ScheduleDayDeliveriesSection({
     isToday,
     date,
 }: ScheduleDayDeliveriesSectionProps) {
-    const deliveryRequests = await getScheduleDeliveryRequests();
-    const todaysDeliveryRequests = getDayDeliveryRequests(
+    const { todaysDeliveryRequests } = await getScheduleDayData(
+        date.toISOString(),
         isToday,
-        date,
-        deliveryRequests,
     );
 
     return <DeliveryRequestsSection requests={todaysDeliveryRequests} />;

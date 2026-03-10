@@ -1,4 +1,4 @@
-import { getAllTimeSlots, getDeliveryRequests } from '@gredice/storage';
+import { getAllTimeSlots, getDeliveryRequestsSummary } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -21,7 +21,7 @@ export async function DeliveryRequestsTable({
     searchParams?: { [key: string]: string | string[] | undefined };
 }) {
     const [deliveryRequests, timeSlots] = await Promise.all([
-        getDeliveryRequests(),
+        getDeliveryRequestsSummary(),
         getAllTimeSlots(),
     ]);
 

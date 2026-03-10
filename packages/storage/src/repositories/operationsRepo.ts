@@ -199,6 +199,23 @@ export async function getAllOperations(filter?: {
     return operationsWithAggregates;
 }
 
+export async function getOperationsByIds(ids: number[]) {
+    const uniqueIds = Array.from(new Set(ids));
+    if (uniqueIds.length === 0) {
+        return [];
+    }
+
+    const operationsList = await storage().query.operations.findMany({
+        where: and(
+            inArray(operations.id, uniqueIds),
+            eq(operations.isDeleted, false),
+        ),
+        orderBy: desc(operations.timestamp),
+    });
+
+    return fillOperationAggregates(operationsList);
+}
+
 export async function getOperationById(id: number) {
     const operation = await storage().query.operations.findFirst({
         where: and(eq(operations.id, id), eq(operations.isDeleted, false)),

@@ -1,8 +1,7 @@
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { RaisedBedPlantingScheduleSection } from './RaisedBedPlantingScheduleSection';
-import { getSchedulePlantSorts, getScheduleRaisedBeds } from './scheduleData';
-import { getScheduledFieldsForDay } from './scheduleDayFilters';
+import { getScheduleDayData, getSchedulePlantSorts } from './scheduleData';
 
 interface ScheduleDayPlantingsSectionProps {
     isToday: boolean;
@@ -13,12 +12,10 @@ export async function ScheduleDayPlantingsSection({
     isToday,
     date,
 }: ScheduleDayPlantingsSectionProps) {
-    const [raisedBeds, plantSorts] = await Promise.all([
-        getScheduleRaisedBeds(),
+    const [{ raisedBeds, scheduledFields }, plantSorts] = await Promise.all([
+        getScheduleDayData(date.toISOString(), isToday),
         getSchedulePlantSorts(),
     ]);
-
-    const scheduledFields = getScheduledFieldsForDay(isToday, date, raisedBeds);
     if (scheduledFields.length === 0) {
         return null;
     }
