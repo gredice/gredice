@@ -77,7 +77,7 @@ function getMissingRaisedBedBlockIds(
     return raisedBedsToCreate;
 }
 
-function getRaisedBedMergeCandidates(params: {
+export function getRaisedBedMergeCandidates(params: {
     placements: RaisedBedPlacement[];
     raisedBeds: { id: number; blockId: string | null; status: string }[];
 }) {
@@ -95,9 +95,11 @@ function getRaisedBedMergeCandidates(params: {
     );
 
     const merges = new Map<number, number>();
+    const mergedRaisedBedIds = new Set<number>();
+    const processedPairs = new Set<string>();
 
     for (const placement of placements) {
-        const adjacentPlacement = placements.find(
+        const adjacentPlacements = placements.filter(
             (candidate) =>
                 candidate.blockId !== placement.blockId &&
                 candidate.index === placement.index &&
@@ -106,47 +108,64 @@ function getRaisedBedMergeCandidates(params: {
                     (candidate.y === placement.y &&
                         Math.abs(candidate.x - placement.x) === 1)),
         );
-        if (!adjacentPlacement) {
+        if (adjacentPlacements.length === 0) {
             continue;
         }
 
-        const leftBlockId =
-            placement.blockId.localeCompare(adjacentPlacement.blockId) <= 0
-                ? placement.blockId
-                : adjacentPlacement.blockId;
-        const rightBlockId =
-            leftBlockId === placement.blockId
-                ? adjacentPlacement.blockId
-                : placement.blockId;
+        for (const adjacentPlacement of adjacentPlacements) {
+            const leftBlockId =
+                placement.blockId.localeCompare(adjacentPlacement.blockId) <= 0
+                    ? placement.blockId
+                    : adjacentPlacement.blockId;
+            const rightBlockId =
+                leftBlockId === placement.blockId
+                    ? adjacentPlacement.blockId
+                    : placement.blockId;
+            const pairKey = `${leftBlockId}|${rightBlockId}`;
+            if (processedPairs.has(pairKey)) {
+                continue;
+            }
+            processedPairs.add(pairKey);
 
-        const leftRaisedBed = raisedBedByBlockId.get(leftBlockId);
-        const rightRaisedBed = raisedBedByBlockId.get(rightBlockId);
-        if (!leftRaisedBed || !rightRaisedBed) {
-            continue;
-        }
+            const leftRaisedBed = raisedBedByBlockId.get(leftBlockId);
+            const rightRaisedBed = raisedBedByBlockId.get(rightBlockId);
+            if (!leftRaisedBed || !rightRaisedBed) {
+                continue;
+            }
 
-        if (leftRaisedBed.id === rightRaisedBed.id) {
-            continue;
-        }
+            if (leftRaisedBed.id === rightRaisedBed.id) {
+                continue;
+            }
 
-        if (leftRaisedBed.status !== 'new' || rightRaisedBed.status !== 'new') {
-            continue;
-        }
+            if (
+                leftRaisedBed.status !== 'new' ||
+                rightRaisedBed.status !== 'new'
+            ) {
+                continue;
+            }
 
-        const leftPlacement = placementByBlockId.get(leftBlockId);
-        const rightPlacement = placementByBlockId.get(rightBlockId);
-        if (!leftPlacement || !rightPlacement) {
-            continue;
-        }
+            if (
+                mergedRaisedBedIds.has(leftRaisedBed.id) ||
+                mergedRaisedBedIds.has(rightRaisedBed.id)
+            ) {
+                continue;
+            }
 
-        if (leftPlacement.index !== rightPlacement.index) {
-            continue;
-        }
+            const leftPlacement = placementByBlockId.get(leftBlockId);
+            const rightPlacement = placementByBlockId.get(rightBlockId);
+            if (!leftPlacement || !rightPlacement) {
+                continue;
+            }
 
-        const targetRaisedBedId = leftRaisedBed.id;
-        const sourceRaisedBedId = rightRaisedBed.id;
-        if (!merges.has(targetRaisedBedId)) {
+            if (leftPlacement.index !== rightPlacement.index) {
+                continue;
+            }
+
+            const targetRaisedBedId = leftRaisedBed.id;
+            const sourceRaisedBedId = rightRaisedBed.id;
             merges.set(targetRaisedBedId, sourceRaisedBedId);
+            mergedRaisedBedIds.add(targetRaisedBedId);
+            mergedRaisedBedIds.add(sourceRaisedBedId);
         }
     }
 

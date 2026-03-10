@@ -4,6 +4,7 @@ import {
     findRaisedBedByBlockId,
     getRaisedBedBlockIds,
 } from '../../utils/raisedBedBlocks';
+import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import { RaisedBedPlantField } from './RaisedBedPlantField';
 
 export function RiasedBedFields({ blockId }: { blockId: string }) {
@@ -35,7 +36,7 @@ export function RiasedBedFields({ blockId }: { blockId: string }) {
     const displayedFields = [
         ...(raisedBed?.fields?.filter(
             (field) =>
-                field.active &&
+                isRaisedBedFieldOccupied(field) &&
                 field.positionIndex >= blockOffset &&
                 field.positionIndex < blockOffset + 9,
         ) || []),

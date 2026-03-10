@@ -13,6 +13,7 @@ import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { useSwapShoppingCartPositions } from '../../hooks/useSwapShoppingCartPositions';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
+import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import { getPositionIndexFromGrid } from '../../utils/raisedBedOrientation';
 import { RaisedBedFieldInvalidShape } from './RaisedBedFieldInvalidShape';
 import { RaisedBedFieldItem } from './RaisedBedFieldItem';
@@ -102,7 +103,7 @@ export function RaisedBedField({
     // Determine which positions have planted fields (not draggable)
     const plantedPositions = new Set(
         raisedBed.fields
-            .filter((field) => field.active)
+            .filter((field) => isRaisedBedFieldOccupied(field))
             .map((field) => field.positionIndex),
     );
 

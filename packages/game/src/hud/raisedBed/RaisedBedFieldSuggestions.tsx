@@ -6,6 +6,10 @@ import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 import { useGameState } from '../../useGameState';
+import {
+    countRaisedBedOccupiedFields,
+    findRaisedBedOccupiedField,
+} from '../../utils/raisedBedFields';
 import { RaisedBedCard } from './RaisedBedCard';
 
 type QuickSeedType = 'spring' | 'summer' | 'fall' | 'winter' | 'salad';
@@ -215,9 +219,7 @@ export function RaisedBedFieldSuggestions({
     const cartPlantItems = cartItems?.filter(
         (item) => item.entityTypeName === 'plantSort' && item.status === 'new',
     );
-    const plantedFieldsCount = raisedBed.fields.filter(
-        (field) => field.active,
-    ).length;
+    const plantedFieldsCount = countRaisedBedOccupiedFields(raisedBed.fields);
     if (plantedFieldsCount + (cartPlantItems?.length ?? 0) >= 18) {
         console.debug('Skipping planting suggestions: raised bed is full', {
             plantedFieldsCount,
@@ -250,13 +252,7 @@ export function RaisedBedFieldSuggestions({
                 const sort = allSorts.find((item) => item.id === sortId);
                 if (!sort?.store?.availableInStore) return;
 
-                if (
-                    raisedBed.fields.find(
-                        (field) =>
-                            field.positionIndex === index && field.active,
-                    )
-                )
-                    return;
+                if (findRaisedBedOccupiedField(raisedBed.fields, index)) return;
                 if (
                     shoppingCart.items.find(
                         (item) =>
