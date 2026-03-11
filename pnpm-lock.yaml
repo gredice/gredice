@@ -155,7 +155,7 @@ importers:
         specifier: 24.11.0
         version: 24.11.0
       '@types/pg':
-        specifier: ^8.18.0
+        specifier: 8.18.0
         version: 8.18.0
       '@types/react':
         specifier: 19.2.14
@@ -11181,7 +11181,7 @@ snapshots:
   '@neondatabase/serverless@1.0.2':
     dependencies:
       '@types/node': 22.19.10
-      '@types/pg': 8.15.6
+      '@types/pg': 8.18.0
 
   '@next/env@13.5.11': {}
 
