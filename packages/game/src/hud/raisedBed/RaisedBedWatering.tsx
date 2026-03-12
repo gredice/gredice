@@ -50,7 +50,7 @@ export function RaisedBedWatering({
                     filterFunc={(operation) =>
                         operation.attributes.stage.information?.name ===
                             'watering' &&
-                        operation.attributes.application === 'raisedBed1m'
+                        operation.attributes.application === 'raisedBedFull'
                     }
                 />
             </Stack>
