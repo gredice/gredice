@@ -63,8 +63,6 @@ export function RaisedBedOperationsScheduleSection({
                 ),
         )
         .map((operation) => {
-            const isFirstRaisedBed =
-                operation.raisedBedId === sortedRaisedBeds.at(0)?.id;
             const field = operation.raisedBedFieldId
                 ? sortedRaisedBeds
                       .flatMap((raisedBed) => raisedBed.fields)
@@ -80,13 +78,8 @@ export function RaisedBedOperationsScheduleSection({
                 : null;
 
             const physicalPositionIndex = field
-                ? (isFirstRaisedBed
-                      ? field.positionIndex + 1
-                      : field.positionIndex + 10
-                  ).toString()
-                : isFirstRaisedBed
-                  ? '1-9'
-                  : '10-18';
+                ? (field.positionIndex + 1).toString()
+                : '';
 
             return {
                 ...operation,
@@ -108,7 +101,7 @@ export function RaisedBedOperationsScheduleSection({
         const operationData = operationDataById.get(operation.entityId);
         const isFullRaisedBed =
             operationData?.attributes?.application === 'raisedBedFull';
-        const text = `${isFullRaisedBed ? '' : `${operation.physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${operation.sort ? `: ${operation.sort.information?.name ?? 'Nepoznato'}` : ''}`;
+        const text = `${isFullRaisedBed || !operation.physicalPositionIndex ? '' : `${operation.physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${operation.sort ? `: ${operation.sort.information?.name ?? 'Nepoznato'}` : ''}`;
 
         return {
             id: `operation-${operation.id}`,
@@ -134,7 +127,7 @@ export function RaisedBedOperationsScheduleSection({
             const operationData = operationDataById.get(operation.entityId);
             const isFullRaisedBed =
                 operationData?.attributes?.application === 'raisedBedFull';
-            const label = `${isFullRaisedBed ? '' : `${operation.physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${operation.sort ? `: ${operation.sort.information?.name ?? 'Nepoznato'}` : ''}`;
+            const label = `${isFullRaisedBed || !operation.physicalPositionIndex ? '' : `${operation.physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${operation.sort ? `: ${operation.sort.information?.name ?? 'Nepoznato'}` : ''}`;
 
             return {
                 id: operation.id,
@@ -195,7 +188,7 @@ export function RaisedBedOperationsScheduleSection({
                     const isFullRaisedBed =
                         operationData?.attributes?.application ===
                         'raisedBedFull';
-                    const operationLabel = `${isFullRaisedBed ? '' : `${operation.physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${operation.sort ? `: ${operation.sort.information?.name ?? 'Nepoznato'}` : ''}`;
+                    const operationLabel = `${isFullRaisedBed || !operation.physicalPositionIndex ? '' : `${operation.physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${operation.sort ? `: ${operation.sort.information?.name ?? 'Nepoznato'}` : ''}`;
 
                     const operationInactive =
                         isOperationCancelled(operation.status) ||
