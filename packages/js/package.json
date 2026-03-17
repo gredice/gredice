@@ -12,7 +12,7 @@
         "lint:migrate": "biome migrate --write"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.6",
+        "@biomejs/biome": "2.4.7",
         "@types/node": "24.11.0",
         "typescript": "5.9.3"
     },

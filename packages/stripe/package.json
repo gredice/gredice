@@ -15,14 +15,14 @@
         "lint:migrate": "biome migrate --write"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.6",
+        "@biomejs/biome": "2.4.7",
         "@types/node": "24.11.0",
         "@types/react": "19.2.14",
         "server-only": "0.0.1"
     },
     "dependencies": {
         "@signalco/js": "0.1.0",
-        "@stripe/stripe-js": "8.9.0",
+        "@stripe/stripe-js": "8.10.0",
         "react": "19.2.4",
         "stripe": "20.4.1",
         "typescript": "5.9.3"
