@@ -6,6 +6,7 @@ import {
     bulkGenerateTimeSlots,
     closeTimeSlot,
     createTimeSlot,
+    getTimeSlot,
     TimeSlotStatuses,
     updateTimeSlot,
 } from '@gredice/storage';
@@ -223,6 +224,63 @@ export async function archiveTimeSlotAction(slotId: number) {
                 error instanceof Error
                     ? error.message
                     : 'Greška pri arhiviranju slota',
+        };
+    }
+}
+
+export async function archiveClosedTimeSlotsAction(slotIds: number[]) {
+    try {
+        await auth(['admin']);
+
+        if (slotIds.length === 0) {
+            return {
+                success: false,
+                message: 'Nema zatvorenih slotova za arhiviranje',
+            };
+        }
+
+        const now = new Date();
+        const eligibleSlotIds: number[] = [];
+
+        await Promise.all(
+            slotIds.map(async (slotId) => {
+                const slot = await getTimeSlot(slotId);
+                if (
+                    slot &&
+                    slot.status === TimeSlotStatuses.CLOSED &&
+                    new Date(slot.endAt) < now
+                ) {
+                    eligibleSlotIds.push(slotId);
+                }
+            }),
+        );
+
+        if (eligibleSlotIds.length === 0) {
+            return {
+                success: false,
+                message: 'Nema zatvorenih slotova koji se mogu arhivirati',
+            };
+        }
+
+        await Promise.all(
+            eligibleSlotIds.map(async (slotId) => {
+                await archiveTimeSlot(slotId);
+            }),
+        );
+
+        revalidatePath('/admin/delivery/slots');
+        return {
+            success: true,
+            message: `Arhivirano ${eligibleSlotIds.length} zatvorenih slotova`,
+        };
+    } catch (error) {
+        console.error('Failed to archive closed slots:', error);
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Greška pri arhiviranju zatvorenih slotova',
         };
     }
 }
