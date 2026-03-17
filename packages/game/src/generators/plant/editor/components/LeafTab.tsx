@@ -2,13 +2,13 @@
 
 import { Input } from '@signalco/ui-primitives/Input';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Slider } from '@signalco/ui-primitives/Slider';
 import type { PlantControlsProps } from '../@types/plant-generator';
+import { PlantSlider } from './PlantSlider';
 
 export function LeafTab({ state, onDefinitionChange }: PlantControlsProps) {
     return (
         <div className="space-y-4">
-            <Slider
+            <PlantSlider
                 label={`Max veličina: ${state.definition.leaf.size.toFixed(2)}`}
                 value={[state.definition.leaf.size]}
                 onValueChange={(v) => onDefinitionChange('leaf.size', v[0])}
@@ -16,7 +16,7 @@ export function LeafTab({ state, onDefinitionChange }: PlantControlsProps) {
                 max={1}
                 step={0.01}
             />
-            <Slider
+            <PlantSlider
                 label={`Opadanje veličine: ${state.definition.leaf.sizeDecay.toFixed(2)}`}
                 value={[state.definition.leaf.sizeDecay]}
                 onValueChange={(v) =>
@@ -26,7 +26,7 @@ export function LeafTab({ state, onDefinitionChange }: PlantControlsProps) {
                 max={2}
                 step={0.05}
             />
-            <Slider
+            <PlantSlider
                 label={`Gustoća: ${state.definition.leaf.density}`}
                 value={[state.definition.leaf.density]}
                 onValueChange={(v) => onDefinitionChange('leaf.density', v[0])}
@@ -34,7 +34,7 @@ export function LeafTab({ state, onDefinitionChange }: PlantControlsProps) {
                 max={5}
                 step={1}
             />
-            <Slider
+            <PlantSlider
                 label={`Kut visenja: ${state.definition.leaf.hangAngle}°`}
                 value={[state.definition.leaf.hangAngle]}
                 onValueChange={(v) =>
@@ -44,7 +44,7 @@ export function LeafTab({ state, onDefinitionChange }: PlantControlsProps) {
                 max={90}
                 step={1}
             />
-            <Slider
+            <PlantSlider
                 label={`Nasumičnost visenja: ${state.definition.leaf.hangAngleRandomness}°`}
                 value={[state.definition.leaf.hangAngleRandomness]}
                 onValueChange={(v) =>

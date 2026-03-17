@@ -10,8 +10,8 @@ export function LSystemLegend() {
                 Stabiljka
             </p>
             <p>
-                <strong className="font-mono">L, P</strong>: List / Cvijet /
-                Plod
+                <strong className="font-mono">L, P, T</strong>: List / Cvijet /
+                Plod / Trn
             </p>
             <p>
                 <strong className="font-mono">[,]</strong>: Grananje
@@ -26,6 +26,14 @@ export function LSystemLegend() {
             <p>
                 <strong className="font-mono">\, /</strong>: Okret lijevo /
                 desno
+            </p>
+            <p>
+                <strong className="font-mono">(a,b)</strong>: Opcionalni
+                numericki parametri po simbolu
+            </p>
+            <p>
+                <strong className="font-mono">Lijevo / Desno</strong>:
+                Kontekstualna pravila prema susjednim simbolima
             </p>
         </div>
     );

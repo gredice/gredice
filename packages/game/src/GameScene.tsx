@@ -8,6 +8,7 @@ import {
     EntityInstances,
     instancedBlockNames,
 } from './entities/EntityInstances';
+import type { GameFeatureFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
 import { useBlockData } from './hooks/useBlockData';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
@@ -38,15 +39,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     weather?: Partial<GameState['weather']>;
 
     // Development purposes
-    flags?: {
-        enableDebugHudFlag?: boolean;
-        enableRaisedBedWateringFlag?: boolean;
-        enableRaisedBedDiaryFlag?: boolean;
-        enableRaisedBedOperationsFlag?: boolean;
-        enableRaisedBedFieldOperationsFlag?: boolean;
-        enableRaisedBedFieldWateringFlag?: boolean;
-        enableRaisedBedFieldDiaryFlag?: boolean;
-    };
+    flags?: GameFeatureFlags;
 };
 
 const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];

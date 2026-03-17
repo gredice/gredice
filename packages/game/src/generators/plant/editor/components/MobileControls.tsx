@@ -26,8 +26,11 @@ export function MobileControls({
                     </IconButton>
                 }
             >
-                <Card className="shadow-2xl">
-                    <CardContent noHeader>
+                <Card className="max-h-[calc(100vh-5rem)] w-[min(100vw-1rem,24rem)] overflow-hidden shadow-2xl">
+                    <CardContent
+                        noHeader
+                        className="max-h-[calc(100vh-5rem)] overflow-hidden"
+                    >
                         <PlantControls {...controlProps} />
                     </CardContent>
                 </Card>

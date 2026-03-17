@@ -1,9 +1,12 @@
 'use client';
 
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import * as THREE from 'three';
+import CSM from 'three-custom-shader-material';
+import { plantSwayVertexShader, usePlantSway } from '../hooks/usePlantSway';
 
 interface FlowersProps {
+    seed: string;
     matrices: THREE.Matrix4[];
     color: string;
 }
@@ -22,12 +25,12 @@ const flowerGeometry = (() => {
     return new THREE.ShapeGeometry(shape);
 })();
 
-export function Flowers({ matrices, color }: FlowersProps) {
+export function Flowers({ seed, matrices, color }: FlowersProps) {
     const ref = useRef<THREE.InstancedMesh | null>(null);
-    const material = useMemo(
-        () => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }),
-        [color],
-    );
+    const swayUniforms = usePlantSway(`${seed}-flowers`, {
+        amplitude: 0.14,
+        speed: 1.6,
+    });
 
     useLayoutEffect(() => {
         const mesh = ref.current;
@@ -44,8 +47,16 @@ export function Flowers({ matrices, color }: FlowersProps) {
     return (
         <instancedMesh
             ref={ref}
-            args={[flowerGeometry, material, 5000]}
+            args={[flowerGeometry, undefined, 5000]}
             castShadow
-        />
+        >
+            <CSM
+                baseMaterial={THREE.MeshBasicMaterial}
+                vertexShader={plantSwayVertexShader}
+                uniforms={swayUniforms}
+                color={color}
+                side={THREE.DoubleSide}
+            />
+        </instancedMesh>
     );
 }

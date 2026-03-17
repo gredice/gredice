@@ -2,8 +2,9 @@
 
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Input } from '@signalco/ui-primitives/Input';
-import { Slider } from '@signalco/ui-primitives/Slider';
+import { MAX_PLANT_GENERATION } from '../../lib/plant-definitions';
 import type { PlantControlsProps } from '../@types/plant-generator';
+import { PlantSlider } from './PlantSlider';
 
 export function FlowerTab({
     state,
@@ -21,18 +22,18 @@ export function FlowerTab({
                 }
                 className="h-4 w-4"
             />
-            <Slider
-                label="Početna generacija"
+            <PlantSlider
+                label={`Početna generacija: ${state.definition.flower.ageStart} (oko ${state.definition.flower.ageStart}. tjedan)`}
                 value={[state.definition.flower.ageStart]}
                 onValueChange={(v) =>
                     onDefinitionChange('flower.ageStart', v[0])
                 }
                 min={0}
-                max={10}
+                max={MAX_PLANT_GENERATION}
                 step={1}
                 disabled={!state.definition.flower.enabled}
             />
-            <Slider
+            <PlantSlider
                 label={`Rast cvijetova: ${(state.flowerGrowth * 100).toFixed(0)}%`}
                 min={0}
                 max={1}
@@ -41,7 +42,7 @@ export function FlowerTab({
                 onValueChange={(v) => onStateChange({ flowerGrowth: v[0] })}
                 disabled={!state.definition.flower.enabled}
             />
-            <Slider
+            <PlantSlider
                 label={`Max veličina: ${state.definition.flower.size.toFixed(3)}`}
                 value={[state.definition.flower.size]}
                 onValueChange={(v) => onDefinitionChange('flower.size', v[0])}

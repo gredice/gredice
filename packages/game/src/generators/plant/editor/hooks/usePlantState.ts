@@ -1,11 +1,9 @@
 'use client';
 
-/**
- * Custom hook for managing plant generator state and localStorage persistence
- */
-
 import { useCallback, useEffect, useState } from 'react';
 import {
+    defaultSupportDefinition,
+    defaultThornDefinition,
     type PlantDefinition,
     plantTypeNames,
     plantTypes,
@@ -17,159 +15,280 @@ import type {
 
 const STORAGE_KEY = 'plant-generator-definitions';
 const CUSTOM_PLANTS_KEY = 'plant-generator-custom-plants';
+const HISTORY_LIMIT = 100;
 
-/**
- * Hook for managing plant generator state with localStorage persistence
- */
+const defaultPlantType = plantTypeNames[0];
+const basePlantTypes: Record<string, PlantDefinition> = plantTypes;
+
+interface PlantHistorySnapshot {
+    generation: number;
+    seed: string;
+    plantType: string;
+    definition: PlantDefinition;
+    flowerGrowth: number;
+    fruitGrowth: number;
+    customPlants: Record<string, PlantDefinition>;
+    visibility: VisibilityState;
+}
+
+interface PlantEditorStore {
+    state: PlantGeneratorState;
+    visibility: VisibilityState;
+    history: {
+        past: PlantHistorySnapshot[];
+        future: PlantHistorySnapshot[];
+    };
+}
+
+const initialState: PlantGeneratorState = {
+    generation: 5,
+    seed: 'gredice',
+    plantType: defaultPlantType,
+    definition: basePlantTypes[defaultPlantType],
+    flowerGrowth: 1,
+    fruitGrowth: 1,
+    activeTab: 'settings',
+    isSheetOpen: false,
+    customPlants: {},
+};
+
+const initialVisibility: VisibilityState = {
+    showLeaves: true,
+    showFlowers: true,
+    showProduce: true,
+};
+
+function isBasePlantType(
+    plantType: string,
+): plantType is keyof typeof basePlantTypes {
+    return plantType in basePlantTypes;
+}
+
+function cloneData<T>(value: T): T {
+    return structuredClone(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isPlantDefinitionRecord(
+    value: unknown,
+): value is Record<string, PlantDefinition> {
+    return isRecord(value);
+}
+
+function parseStoredPlantDefinitions(
+    rawValue: string | null,
+): Record<string, PlantDefinition> {
+    if (!rawValue) {
+        return {};
+    }
+
+    const parsedValue: unknown = JSON.parse(rawValue);
+    return isPlantDefinitionRecord(parsedValue) ? parsedValue : {};
+}
+
+function mergePlantDefinition(
+    baseDefinition: PlantDefinition,
+    savedDefinition?: PlantDefinition,
+) {
+    if (!savedDefinition) {
+        return cloneData(baseDefinition);
+    }
+
+    return {
+        ...cloneData(baseDefinition),
+        ...savedDefinition,
+        stem: { ...baseDefinition.stem, ...savedDefinition.stem },
+        leaf: { ...baseDefinition.leaf, ...savedDefinition.leaf },
+        flower: { ...baseDefinition.flower, ...savedDefinition.flower },
+        vegetable: {
+            ...baseDefinition.vegetable,
+            ...savedDefinition.vegetable,
+        },
+        thorn: {
+            ...defaultThornDefinition,
+            ...baseDefinition.thorn,
+            ...savedDefinition.thorn,
+        },
+        support: {
+            ...defaultSupportDefinition,
+            ...baseDefinition.support,
+            ...savedDefinition.support,
+        },
+    };
+}
+
+function loadStoredDefinitions() {
+    if (typeof window === 'undefined') {
+        return {};
+    }
+
+    try {
+        return parseStoredPlantDefinitions(localStorage.getItem(STORAGE_KEY));
+    } catch (e) {
+        console.warn('Failed to load saved definitions from localStorage:', e);
+        return {};
+    }
+}
+
+function loadStoredCustomPlants() {
+    if (typeof window === 'undefined') {
+        return {};
+    }
+
+    try {
+        return parseStoredPlantDefinitions(
+            localStorage.getItem(CUSTOM_PLANTS_KEY),
+        );
+    } catch (e) {
+        console.warn('Failed to load custom plants from localStorage:', e);
+        return {};
+    }
+}
+
+function resolvePlantDefinition(
+    plantType: string,
+    availablePlants: Record<string, PlantDefinition>,
+    savedDefinitions: Record<string, PlantDefinition>,
+) {
+    const fallbackPlant = availablePlants[defaultPlantType];
+    const baseDefinition = availablePlants[plantType] ?? fallbackPlant;
+    return mergePlantDefinition(baseDefinition, savedDefinitions[plantType]);
+}
+
+function createSnapshot(
+    state: PlantGeneratorState,
+    visibility: VisibilityState,
+): PlantHistorySnapshot {
+    return {
+        generation: state.generation,
+        seed: state.seed,
+        plantType: state.plantType,
+        definition: cloneData(state.definition),
+        flowerGrowth: state.flowerGrowth,
+        fruitGrowth: state.fruitGrowth,
+        customPlants: cloneData(state.customPlants),
+        visibility: cloneData(visibility),
+    };
+}
+
+function restoreSnapshot(
+    state: PlantGeneratorState,
+    snapshot: PlantHistorySnapshot,
+): PlantGeneratorState {
+    return {
+        ...state,
+        generation: snapshot.generation,
+        seed: snapshot.seed,
+        plantType: snapshot.plantType,
+        definition: cloneData(snapshot.definition),
+        flowerGrowth: snapshot.flowerGrowth,
+        fruitGrowth: snapshot.fruitGrowth,
+        customPlants: cloneData(snapshot.customPlants),
+    };
+}
+
+function withHistory(
+    editor: PlantEditorStore,
+    nextState: PlantGeneratorState,
+    nextVisibility: VisibilityState,
+) {
+    const currentSnapshot = createSnapshot(editor.state, editor.visibility);
+    const nextSnapshot = createSnapshot(nextState, nextVisibility);
+
+    if (JSON.stringify(currentSnapshot) === JSON.stringify(nextSnapshot)) {
+        return {
+            ...editor,
+            state: nextState,
+            visibility: nextVisibility,
+        };
+    }
+
+    const past =
+        editor.history.past.length >= HISTORY_LIMIT
+            ? editor.history.past.slice(1)
+            : editor.history.past;
+
+    return {
+        state: nextState,
+        visibility: nextVisibility,
+        history: {
+            past: [...past, currentSnapshot],
+            future: [],
+        },
+    };
+}
+
 export function usePlantState() {
-    // Main application state
-    const [state, setState] = useState<PlantGeneratorState>({
-        generation: 5,
-        seed: 'gredice',
-        plantType: plantTypeNames[0],
-        definition: plantTypes[plantTypeNames[0]],
-        flowerGrowth: 1,
-        fruitGrowth: 1,
-        activeTab: 'settings',
-        isSheetOpen: false,
-        customPlants: {},
+    const [editor, setEditor] = useState<PlantEditorStore>({
+        state: initialState,
+        visibility: initialVisibility,
+        history: {
+            past: [],
+            future: [],
+        },
     });
+    const [hasLoadedStorage, setHasLoadedStorage] = useState(false);
 
-    // Visibility toggles
-    const [visibility, setVisibility] = useState<VisibilityState>({
-        showLeaves: true,
-        showFlowers: true,
-        showProduce: true,
-    });
-
-    /**
-     * Load saved plant definitions and custom plants from localStorage on mount
-     */
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            // Load custom plants
-            const savedCustomPlants = localStorage.getItem(CUSTOM_PLANTS_KEY);
-            if (savedCustomPlants) {
-                try {
-                    const customPlants = JSON.parse(
-                        savedCustomPlants,
-                    ) as Record<string, PlantDefinition>;
-                    setState((prev) => ({ ...prev, customPlants }));
-                } catch (e) {
-                    console.warn(
-                        'Failed to load custom plants from localStorage:',
-                        e,
-                    );
-                }
-            }
+        const customPlants = loadStoredCustomPlants();
+        const savedDefinitions = loadStoredDefinitions();
+        const allPlants = { ...basePlantTypes, ...customPlants };
 
-            // Load saved definitions
-            const savedDefinitions = localStorage.getItem(STORAGE_KEY);
-            if (savedDefinitions) {
-                try {
-                    const parsedDefs = JSON.parse(savedDefinitions) as Record<
-                        string,
-                        PlantDefinition
-                    >;
-                    const defaultPlantType = plantTypeNames[0];
-                    if (parsedDefs[defaultPlantType]) {
-                        const baseDef = plantTypes[defaultPlantType];
-                        const savedDef = parsedDefs[defaultPlantType];
-                        const mergedDef = {
-                            ...baseDef,
-                            ...savedDef,
-                            stem: { ...baseDef.stem, ...savedDef.stem },
-                            leaf: { ...baseDef.leaf, ...savedDef.leaf },
-                            flower: { ...baseDef.flower, ...savedDef.flower },
-                            vegetable: {
-                                ...baseDef.vegetable,
-                                ...savedDef.vegetable,
-                            },
-                        };
-                        setState((prev) => ({
-                            ...prev,
-                            definition: mergedDef,
-                        }));
-                    }
-                } catch (e) {
-                    console.warn(
-                        'Failed to load saved definitions from localStorage:',
-                        e,
-                    );
-                }
-            }
-        }
+        setEditor((current) => ({
+            ...current,
+            state: {
+                ...current.state,
+                customPlants,
+                definition: resolvePlantDefinition(
+                    defaultPlantType,
+                    allPlants,
+                    savedDefinitions,
+                ),
+            },
+        }));
+        setHasLoadedStorage(true);
     }, []);
 
-    /**
-     * Get all available plants (base + custom)
-     */
     const getAllPlants = useCallback(() => {
-        return { ...plantTypes, ...state.customPlants };
-    }, [state.customPlants]);
+        return { ...basePlantTypes, ...editor.state.customPlants };
+    }, [editor.state.customPlants]);
 
-    /**
-     * Get all plant names (base + custom)
-     */
     const getAllPlantNames = useCallback(() => {
-        return [...plantTypeNames, ...Object.keys(state.customPlants)];
-    }, [state.customPlants]);
+        return [...plantTypeNames, ...Object.keys(editor.state.customPlants)];
+    }, [editor.state.customPlants]);
 
-    /**
-     * Update definition when plantType changes
-     */
     useEffect(() => {
-        const allPlants = getAllPlants();
-        if (typeof window !== 'undefined') {
-            const savedDefinitions = localStorage.getItem(STORAGE_KEY);
-            if (savedDefinitions) {
-                try {
-                    const parsedDefs = JSON.parse(savedDefinitions) as Record<
-                        string,
-                        PlantDefinition
-                    >;
-                    if (parsedDefs[state.plantType]) {
-                        const baseDef = allPlants[state.plantType];
-                        const savedDef = parsedDefs[state.plantType];
-                        const mergedDef = {
-                            ...baseDef,
-                            ...savedDef,
-                            stem: { ...baseDef.stem, ...savedDef.stem },
-                            leaf: { ...baseDef.leaf, ...savedDef.leaf },
-                            flower: { ...baseDef.flower, ...savedDef.flower },
-                            vegetable: {
-                                ...baseDef.vegetable,
-                                ...savedDef.vegetable,
-                            },
-                        };
-                        setState((prev) => ({
-                            ...prev,
-                            definition: mergedDef,
-                        }));
-                        return;
-                    }
-                } catch (e) {
-                    console.warn('Failed to load saved definitions:', e);
-                }
-            }
+        if (!hasLoadedStorage || typeof window === 'undefined') {
+            return;
         }
-        setState((prev) => ({
-            ...prev,
-            definition: allPlants[state.plantType],
-        }));
-    }, [state.plantType, getAllPlants]);
 
-    /**
-     * Save definition changes to localStorage (debounced via parent component)
-     */
+        try {
+            localStorage.setItem(
+                CUSTOM_PLANTS_KEY,
+                JSON.stringify(editor.state.customPlants),
+            );
+        } catch (e) {
+            console.warn('Failed to save custom plants to localStorage:', e);
+        }
+    }, [editor.state.customPlants, hasLoadedStorage]);
+
     const saveDefinitionToStorage = useCallback(
         (definition: PlantDefinition, plantType: string) => {
             if (typeof window !== 'undefined') {
                 try {
-                    const existingDefs = JSON.parse(
-                        localStorage.getItem(STORAGE_KEY) || '{}',
-                    ) as Record<string, PlantDefinition>;
-                    existingDefs[plantType] = definition;
+                    const existingDefs = loadStoredDefinitions();
+                    if (
+                        isBasePlantType(plantType) &&
+                        JSON.stringify(definition) ===
+                            JSON.stringify(basePlantTypes[plantType])
+                    ) {
+                        delete existingDefs[plantType];
+                    } else {
+                        existingDefs[plantType] = definition;
+                    }
                     localStorage.setItem(
                         STORAGE_KEY,
                         JSON.stringify(existingDefs),
@@ -185,144 +304,288 @@ export function usePlantState() {
         [],
     );
 
-    /**
-     * Save custom plants to localStorage
-     */
-    const saveCustomPlantsToStorage = useCallback(
-        (customPlants: Record<string, PlantDefinition>) => {
-            if (typeof window !== 'undefined') {
-                try {
-                    localStorage.setItem(
-                        CUSTOM_PLANTS_KEY,
-                        JSON.stringify(customPlants),
-                    );
-                } catch (e) {
-                    console.warn(
-                        'Failed to save custom plants to localStorage:',
-                        e,
-                    );
-                }
-            }
-        },
-        [],
-    );
+    const resetDefinition = useCallback(() => {
+        const plantType = editor.state.plantType;
+        if (!isBasePlantType(plantType)) {
+            return;
+        }
 
-    /**
-     * Create a new custom plant from current definition
-     */
-    const createCustomPlant = useCallback(
-        (name: string) => {
-            const newCustomPlants = {
-                ...state.customPlants,
-                [name]: { ...state.definition, name },
+        const nextDefinition = cloneData(basePlantTypes[plantType]);
+        setEditor((current) =>
+            withHistory(
+                current,
+                {
+                    ...current.state,
+                    definition: nextDefinition,
+                },
+                current.visibility,
+            ),
+        );
+        saveDefinitionToStorage(nextDefinition, plantType);
+    }, [editor.state.plantType, saveDefinitionToStorage]);
+
+    const createCustomPlant = useCallback((name: string) => {
+        setEditor((current) => {
+            const nextDefinition = cloneData(current.state.definition);
+            nextDefinition.name = name;
+
+            const nextCustomPlants = {
+                ...current.state.customPlants,
+                [name]: cloneData(nextDefinition),
             };
-            setState((prev) => ({
-                ...prev,
-                customPlants: newCustomPlants,
+
+            const nextState = {
+                ...current.state,
+                customPlants: nextCustomPlants,
                 plantType: name,
-            }));
-            saveCustomPlantsToStorage(newCustomPlants);
-        },
-        [state.customPlants, state.definition, saveCustomPlantsToStorage],
-    );
+                definition: nextDefinition,
+            };
 
-    /**
-     * Delete a custom plant
-     */
-    const deleteCustomPlant = useCallback(
-        (name: string) => {
-            const newCustomPlants = { ...state.customPlants };
-            delete newCustomPlants[name];
-            setState((prev) => ({
-                ...prev,
-                customPlants: newCustomPlants,
-                plantType:
-                    prev.plantType === name
-                        ? plantTypeNames[0]
-                        : prev.plantType,
-            }));
-            saveCustomPlantsToStorage(newCustomPlants);
-
-            // Also remove from saved definitions
-            if (typeof window !== 'undefined') {
-                try {
-                    const existingDefs = JSON.parse(
-                        localStorage.getItem(STORAGE_KEY) || '{}',
-                    ) as Record<string, PlantDefinition>;
-                    delete existingDefs[name];
-                    localStorage.setItem(
-                        STORAGE_KEY,
-                        JSON.stringify(existingDefs),
-                    );
-                } catch (e) {
-                    console.warn(
-                        'Failed to remove custom plant from saved definitions:',
-                        e,
-                    );
-                }
-            }
-        },
-        [state.customPlants, saveCustomPlantsToStorage],
-    );
-
-    /**
-     * Update multiple state properties at once
-     */
-    const updateState = useCallback((updates: Partial<PlantGeneratorState>) => {
-        setState((prev) => ({ ...prev, ...updates }));
-    }, []);
-
-    /**
-     * Update visibility toggles
-     */
-    const updateVisibility = useCallback(
-        (updates: Partial<VisibilityState>) => {
-            setVisibility((prev) => ({ ...prev, ...updates }));
-        },
-        [],
-    );
-
-    /**
-     * Update nested definition properties using dot notation path
-     */
-    const updateDefinition = useCallback((path: string, value: unknown) => {
-        setState((prev) => {
-            const newDef = JSON.parse(
-                JSON.stringify(prev.definition),
-            ) as PlantDefinition;
-            const keys = path.split('.');
-            let current: Record<string, unknown> = newDef as unknown as Record<
-                string,
-                unknown
-            >;
-            for (let i = 0; i < keys.length - 1; i++) {
-                const next = current[keys[i]];
-                if (typeof next !== 'object' || next === null) {
-                    return prev;
-                }
-                current = next as Record<string, unknown>;
-            }
-            // assign the new value
-            current[keys[keys.length - 1]] = value;
-            return { ...prev, definition: newDef };
+            return withHistory(current, nextState, current.visibility);
         });
     }, []);
 
-    /**
-     * Generate a random seed string
-     */
+    const deleteCustomPlant = useCallback((name: string) => {
+        setEditor((current) => {
+            if (!current.state.customPlants[name]) {
+                return current;
+            }
+
+            const nextCustomPlants = { ...current.state.customPlants };
+            delete nextCustomPlants[name];
+
+            const nextPlantType =
+                current.state.plantType === name
+                    ? defaultPlantType
+                    : current.state.plantType;
+            const nextDefinition =
+                current.state.plantType === name
+                    ? resolvePlantDefinition(
+                          nextPlantType,
+                          { ...basePlantTypes, ...nextCustomPlants },
+                          loadStoredDefinitions(),
+                      )
+                    : current.state.definition;
+
+            const nextState = {
+                ...current.state,
+                customPlants: nextCustomPlants,
+                plantType: nextPlantType,
+                definition: nextDefinition,
+            };
+
+            return withHistory(current, nextState, current.visibility);
+        });
+
+        if (typeof window !== 'undefined') {
+            try {
+                const existingDefs = loadStoredDefinitions();
+                delete existingDefs[name];
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(existingDefs));
+            } catch (e) {
+                console.warn(
+                    'Failed to remove custom plant from saved definitions:',
+                    e,
+                );
+            }
+        }
+    }, []);
+
+    const updateState = useCallback((updates: Partial<PlantGeneratorState>) => {
+        setEditor((current) => {
+            const shouldTrackHistory = [
+                'generation',
+                'seed',
+                'plantType',
+                'flowerGrowth',
+                'fruitGrowth',
+                'customPlants',
+            ].some((key) => key in updates);
+
+            let nextState = {
+                ...current.state,
+                ...updates,
+            };
+
+            if (
+                updates.plantType &&
+                updates.plantType !== current.state.plantType
+            ) {
+                nextState = {
+                    ...nextState,
+                    definition: resolvePlantDefinition(
+                        updates.plantType,
+                        { ...basePlantTypes, ...current.state.customPlants },
+                        loadStoredDefinitions(),
+                    ),
+                };
+            }
+
+            if (!shouldTrackHistory) {
+                return {
+                    ...current,
+                    state: nextState,
+                };
+            }
+
+            return withHistory(current, nextState, current.visibility);
+        });
+    }, []);
+
+    const updateVisibility = useCallback(
+        (updates: Partial<VisibilityState>) => {
+            setEditor((current) => {
+                const nextVisibility = {
+                    ...current.visibility,
+                    ...updates,
+                };
+
+                return withHistory(current, current.state, nextVisibility);
+            });
+        },
+        [],
+    );
+
+    const updateDefinition = useCallback((path: string, value: unknown) => {
+        setEditor((current) => {
+            const nextDefinition = cloneData(current.state.definition);
+            const keys = path.split('.');
+            let pointer: unknown = nextDefinition;
+
+            for (let i = 0; i < keys.length - 1; i++) {
+                if (!isRecord(pointer)) {
+                    return current;
+                }
+
+                const next = pointer[keys[i]];
+                if (!isRecord(next)) {
+                    return current;
+                }
+                pointer = next;
+            }
+
+            if (!isRecord(pointer)) {
+                return current;
+            }
+
+            const key = keys[keys.length - 1];
+            if (pointer[key] === value) {
+                return current;
+            }
+
+            pointer[key] = value;
+
+            const nextCustomPlants = plantTypeNames.includes(
+                current.state.plantType,
+            )
+                ? current.state.customPlants
+                : {
+                      ...current.state.customPlants,
+                      [current.state.plantType]: cloneData(nextDefinition),
+                  };
+
+            const nextState = {
+                ...current.state,
+                definition: nextDefinition,
+                customPlants: nextCustomPlants,
+            };
+
+            return withHistory(current, nextState, current.visibility);
+        });
+    }, []);
+
+    const selectPlantType = useCallback((plantType: string) => {
+        setEditor((current) => {
+            if (plantType === current.state.plantType) {
+                return current;
+            }
+
+            const nextState = {
+                ...current.state,
+                plantType,
+                definition: resolvePlantDefinition(
+                    plantType,
+                    { ...basePlantTypes, ...current.state.customPlants },
+                    loadStoredDefinitions(),
+                ),
+            };
+
+            return withHistory(current, nextState, current.visibility);
+        });
+    }, []);
+
     const randomizeSeed = useCallback(() => {
-        const newSeed = Math.random().toString(36).substring(7);
-        setState((prev) => ({ ...prev, seed: newSeed }));
+        const newSeed = Math.random().toString(36).slice(2, 10);
+        setEditor((current) =>
+            withHistory(
+                current,
+                { ...current.state, seed: newSeed },
+                current.visibility,
+            ),
+        );
+    }, []);
+
+    const undo = useCallback(() => {
+        setEditor((current) => {
+            const previous =
+                current.history.past[current.history.past.length - 1];
+            if (!previous) {
+                return current;
+            }
+
+            const currentSnapshot = createSnapshot(
+                current.state,
+                current.visibility,
+            );
+
+            return {
+                state: restoreSnapshot(current.state, previous),
+                visibility: cloneData(previous.visibility),
+                history: {
+                    past: current.history.past.slice(0, -1),
+                    future: [currentSnapshot, ...current.history.future],
+                },
+            };
+        });
+    }, []);
+
+    const redo = useCallback(() => {
+        setEditor((current) => {
+            const [next, ...future] = current.history.future;
+            if (!next) {
+                return current;
+            }
+
+            const currentSnapshot = createSnapshot(
+                current.state,
+                current.visibility,
+            );
+
+            return {
+                state: restoreSnapshot(current.state, next),
+                visibility: cloneData(next.visibility),
+                history: {
+                    past: [...current.history.past, currentSnapshot],
+                    future,
+                },
+            };
+        });
     }, []);
 
     return {
-        state,
-        visibility,
+        state: editor.state,
+        visibility: editor.visibility,
         updateState,
         updateVisibility,
         updateDefinition,
+        selectPlantType,
         randomizeSeed,
+        undo,
+        redo,
+        resetDefinition,
+        canUndo: editor.history.past.length > 0,
+        canRedo: editor.history.future.length > 0,
+        canResetDefinition: isBasePlantType(editor.state.plantType),
         saveDefinitionToStorage,
         createCustomPlant,
         deleteCustomPlant,

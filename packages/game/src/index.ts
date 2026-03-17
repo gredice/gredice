@@ -11,3 +11,5 @@ export type { EntityGridViewerProps } from './viewers/EntityGridViewer';
 export { EntityGridViewer } from './viewers/EntityGridViewer';
 export type { EntityViewerProps } from './viewers/EntityViewer';
 export { EntityViewer } from './viewers/EntityViewer';
+export type { PlantPerformanceViewerProps } from './viewers/PlantPerformanceViewer';
+export { PlantPerformanceViewer } from './viewers/PlantPerformanceViewer';
