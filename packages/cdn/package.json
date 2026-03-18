@@ -16,6 +16,6 @@
         "@aws-sdk/client-s3": "3.1011.0",
         "@biomejs/biome": "2.4.7",
         "@ffmpeg-installer/ffmpeg": "1.1.0",
-        "@types/node": "24.11.0"
+        "@types/node": "24.12.0"
     }
 }
