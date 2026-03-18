@@ -10,7 +10,7 @@ const alliumRules: PlantDefinition['rules'] = {
 };
 
 const alliumBase: Omit<PlantDefinition, 'name' | 'vegetable'> = {
-    axiom: 'R(1.04)[^(72)F(1.18,1.08)]',
+    axiom: 'R(1.04)[^(15)F(1.18,1.08)]',
     rules: alliumRules,
     angle: 15,
     height: 1.02,

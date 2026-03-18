@@ -6,12 +6,14 @@ export function LSystemLegend() {
         <div className="p-3 border rounded-md text-xs space-y-1 bg-background/50">
             <h4 className="font-bold mb-2">Legend</h4>
             <p>
-                <strong className="font-mono">F, S, druga slova</strong>:
-                Stabiljka
+                <strong className="font-mono">F, S, G</strong>: Stabiljka
             </p>
             <p>
-                <strong className="font-mono">L, P, T</strong>: List / Cvijet /
-                Plod / Trn
+                <strong className="font-mono">L, J</strong>: List
+            </p>
+            <p>
+                <strong className="font-mono">P, R, T</strong>: Cvijet / Plod /
+                Korijen / Trn
             </p>
             <p>
                 <strong className="font-mono">[,]</strong>: Grananje

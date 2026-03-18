@@ -26,9 +26,9 @@ export function LSystemTab({
                     title="Kako čitati i pisati pravila"
                 >
                     <Typography level="body3">
-                        Parametri se pišu kao `F(1.2,0.8)` ili `+(35)`. Za `F/S`
-                        prvi broj mijenja duljinu segmenta, drugi debljinu. Za
-                        rotacije prvi broj je kut u stupnjevima.
+                        Parametri se pišu kao `F(1.2,0.8)` ili `+(35)`. Za
+                        `F/S/G` prvi broj mijenja duljinu segmenta, drugi
+                        debljinu. Za rotacije prvi broj je kut u stupnjevima.
                     </Typography>
                     <Typography level="body3">
                         Polja `Lijevo` i `Desno` matchaju najbliži značajni

@@ -123,6 +123,17 @@ export interface PlantDefinition {
     support?: SupportDefinition;
 }
 
+export const TERMINAL_STEM_SYMBOL = 'G';
+export const TERMINAL_LEAF_SYMBOL = 'J';
+
+export function isStemSymbol(char: string) {
+    return char === 'F' || char === 'S' || char === TERMINAL_STEM_SYMBOL;
+}
+
+export function isLeafSymbol(char: string) {
+    return char === 'L' || char === TERMINAL_LEAF_SYMBOL;
+}
+
 export const MAX_PLANT_GENERATION = 12;
 
 export const vegetableTypeOptions: { value: VegetableType; label: string }[] = [

@@ -19,8 +19,10 @@ function getTokenClasses(token: string) {
     switch (token[0]) {
         case 'F':
         case 'S':
+        case 'G':
             return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100';
         case 'L':
+        case 'J':
             return 'border-lime-500/30 bg-lime-500/10 text-lime-900 dark:text-lime-100';
         case 'P':
         case 'R':

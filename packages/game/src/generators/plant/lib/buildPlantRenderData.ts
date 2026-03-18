@@ -9,6 +9,8 @@ import {
     MAX_PLANT_GENERATION,
     type PlantDefinition,
     type SupportDefinition,
+    TERMINAL_LEAF_SYMBOL,
+    TERMINAL_STEM_SYMBOL,
 } from './plant-definitions';
 import { SeededRNG } from './rng';
 
@@ -471,7 +473,8 @@ export function buildPlantRenderData({
 
         switch (symbol.char) {
             case 'F':
-            case 'S': {
+            case 'S':
+            case TERMINAL_STEM_SYMBOL: {
                 const wobble = plantDefinition.directionVariability;
                 const segmentLengthVariability = Math.min(wobble, 0.95);
                 const segmentLengthMultiplier = Math.max(
@@ -564,7 +567,8 @@ export function buildPlantRenderData({
                 currentPosition = endPosition;
                 break;
             }
-            case 'L': {
+            case 'L':
+            case TERMINAL_LEAF_SYMBOL: {
                 if (currentPosition.y < 0 || symbolGrowth <= 0.01) {
                     continue;
                 }

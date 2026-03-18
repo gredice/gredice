@@ -4,37 +4,22 @@ import { createPlant } from './helpers';
 const rootRules: PlantDefinition['rules'] = {
     F: [
         {
-            rule: 'F(1.06,1.02)[+(16)L(1.04)][-(16)L(1.04)][^(10)L(0.96)]',
+            rule: 'F(1.06,1.02)[+(16)J(1.04)][-(16)J(1.04)][^(10)J(0.96)]',
             weight: 3,
         },
         {
-            rule: 'F(1,1)[+(14)L(1.02)][-(14)L(1.02)]',
+            rule: 'F(1,1)[+(14)J(1.02)][-(14)J(1.02)]',
             weight: 2,
         },
         {
-            rule: 'F(0.92,0.98)[^(12)L(0.94)][&(12)L(0.94)]',
-            weight: 1,
-        },
-    ],
-    L: [
-        {
-            left: ['F'],
-            rule: '[+(12)F(0.82,0.86)L(1.02)][-(12)F(0.82,0.86)L(1.02)]F(0.9,0.9)L(1.04)',
-            weight: 2,
-        },
-        {
-            rule: '[+(14)F(0.8,0.84)^(10)L(0.96)][-(14)F(0.8,0.84)&(10)L(0.96)]F(0.9,0.9)L(1)',
-            weight: 2,
-        },
-        {
-            rule: '[+(20)F(0.76,0.8)L(0.94)][-(20)F(0.76,0.8)L(0.94)][^(14)F(0.72,0.78)L(0.92)]F(0.86,0.88)L(0.96)',
+            rule: 'F(0.92,0.98)[^(12)J(0.94)][&(12)J(0.94)]',
             weight: 1,
         },
     ],
 };
 
 const rootBase: Omit<PlantDefinition, 'name' | 'vegetable'> = {
-    axiom: 'R(1.08)[^(72)F(1.08,1.06)][^(54)F(0.96,0.98)]',
+    axiom: 'R(1.08)[^(0)F(1.08,1.06)][^(54)F(0.96,0.98)]',
     rules: rootRules,
     angle: 18,
     height: 0.68,
@@ -86,7 +71,7 @@ export const rootPlants = {
             ageStart: 5,
             type: 'carrot',
             yield: 1,
-            baseSize: 0.32,
+            baseSize: 0.2,
         },
     }),
     beet: createPlant({

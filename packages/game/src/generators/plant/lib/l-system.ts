@@ -1,3 +1,4 @@
+import { isLeafSymbol, isStemSymbol } from './plant-definition-types';
 import type { Rule, RuleOption } from './plant-definitions';
 import type { SeededRNG } from './rng';
 
@@ -102,16 +103,19 @@ function parseSymbolParameters(rawParameters: string) {
 }
 
 function getCarryOverGroup(char: string) {
-    switch (char) {
-        case 'F':
-        case 'S':
-            return 'stem';
-        case 'P':
-        case 'R':
-            return 'produce';
-        default:
-            return char;
+    if (isStemSymbol(char)) {
+        return 'stem';
     }
+
+    if (char === 'P' || char === 'R') {
+        return 'produce';
+    }
+
+    if (isLeafSymbol(char)) {
+        return 'leaf';
+    }
+
+    return char;
 }
 
 function getSymbolSizeWeight(symbol: LSystemSymbol) {

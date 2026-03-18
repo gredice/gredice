@@ -2,7 +2,6 @@
 
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import CSM from 'three-custom-shader-material';
 import { plantSwayVertexShader, usePlantSway } from '../hooks/usePlantSway';
 import type { PlantDefinition } from '../lib/plant-definitions';
@@ -79,76 +78,6 @@ const leafGeometries = {
     })(),
 };
 
-interface VeinStrip {
-    length: number;
-    rotation?: number;
-    width?: number;
-    x?: number;
-    y?: number;
-}
-
-function createVeinGeometry(strips: VeinStrip[]) {
-    const geometries = strips.map((strip) => {
-        const geometry = new THREE.PlaneGeometry(
-            strip.width ?? 0.035,
-            strip.length,
-        );
-        geometry.rotateZ(strip.rotation ?? 0);
-        geometry.translate(strip.x ?? 0, strip.y ?? 0, 0.012);
-        return geometry;
-    });
-
-    const mergedGeometry =
-        mergeGeometries(geometries) ?? new THREE.BufferGeometry();
-    geometries.forEach((geometry) => {
-        geometry.dispose();
-    });
-    return mergedGeometry;
-}
-
-const leafVeinGeometries = {
-    round: createVeinGeometry([
-        { length: 1.25, width: 0.06 },
-        { length: 0.5, x: -0.17, y: 0.16, rotation: 0.92 },
-        { length: 0.5, x: 0.17, y: 0.16, rotation: -0.92 },
-        { length: 0.38, x: -0.15, y: -0.18, rotation: 1.08, width: 0.03 },
-        { length: 0.38, x: 0.15, y: -0.18, rotation: -1.08, width: 0.03 },
-    ]),
-    oval: createVeinGeometry([
-        { length: 1.45, width: 0.06 },
-        { length: 0.58, x: -0.18, y: 0.2, rotation: 0.82 },
-        { length: 0.58, x: 0.18, y: 0.2, rotation: -0.82 },
-        { length: 0.46, x: -0.16, y: -0.1, rotation: 0.96, width: 0.03 },
-        { length: 0.46, x: 0.16, y: -0.1, rotation: -0.96, width: 0.03 },
-        { length: 0.3, x: -0.1, y: -0.38, rotation: 1.12, width: 0.025 },
-        { length: 0.3, x: 0.1, y: -0.38, rotation: -1.12, width: 0.025 },
-    ]),
-    heart: createVeinGeometry([
-        { length: 1.2, y: -0.02, width: 0.06 },
-        { length: 0.62, x: -0.2, y: 0.18, rotation: 0.7, width: 0.032 },
-        { length: 0.62, x: 0.2, y: 0.18, rotation: -0.7, width: 0.032 },
-        { length: 0.44, x: -0.14, y: -0.14, rotation: 1.02, width: 0.03 },
-        { length: 0.44, x: 0.14, y: -0.14, rotation: -1.02, width: 0.03 },
-    ]),
-    serrated: createVeinGeometry([
-        { length: 1.36, width: 0.055 },
-        { length: 0.56, x: -0.22, y: 0.24, rotation: 0.9, width: 0.03 },
-        { length: 0.56, x: 0.22, y: 0.24, rotation: -0.9, width: 0.03 },
-        { length: 0.48, x: -0.18, y: 0, rotation: 1.02, width: 0.028 },
-        { length: 0.48, x: 0.18, y: 0, rotation: -1.02, width: 0.028 },
-        { length: 0.4, x: -0.14, y: -0.24, rotation: 1.14, width: 0.026 },
-        { length: 0.4, x: 0.14, y: -0.24, rotation: -1.14, width: 0.026 },
-    ]),
-    compound: createVeinGeometry([
-        { length: 1.5, y: 0.02, width: 0.05 },
-        { length: 0.34, x: -0.12, y: -0.28, rotation: 0.9, width: 0.028 },
-        { length: 0.34, x: 0.12, y: -0.1, rotation: -0.95, width: 0.028 },
-        { length: 0.34, x: -0.08, y: 0.1, rotation: 0.85, width: 0.028 },
-        { length: 0.32, x: 0.12, y: 0.28, rotation: -0.8, width: 0.028 },
-        { length: 0.28, x: -0.04, y: 0.46, rotation: 0.72, width: 0.024 },
-    ]),
-};
-
 const leafColorVertexShader = /* glsl */ `
     attribute vec3 leafInstanceColor;
     varying vec3 vLeafInstanceColor;
@@ -172,7 +101,6 @@ const leafColorFragmentShader = /* glsl */ `
 
 export function Leaves({ seed, matrices, colors, type }: LeavesProps) {
     const leafRef = useRef<THREE.InstancedMesh | null>(null);
-    const veinRef = useRef<THREE.InstancedMesh | null>(null);
     const swayUniforms = usePlantSway(`${seed}-leaves`, {
         amplitude: 0.11,
         speed: 1.45,
@@ -182,23 +110,7 @@ export function Leaves({ seed, matrices, colors, type }: LeavesProps) {
         () => (leafGeometries[type] || leafGeometries.round).clone(),
         [type],
     );
-    const veinGeometry = useMemo(
-        () => (leafVeinGeometries[type] || leafVeinGeometries.round).clone(),
-        [type],
-    );
-    const veinColors = useMemo(
-        () => colors.map((color) => color.clone().offsetHSL(0, -0.08, -0.2)),
-        [colors],
-    );
     const leafInstanceColor = useMemo(() => {
-        const attribute = new THREE.InstancedBufferAttribute(
-            new Float32Array(MAX_LEAF_INSTANCES * 3),
-            3,
-        );
-        attribute.setUsage(THREE.DynamicDrawUsage);
-        return attribute;
-    }, []);
-    const veinInstanceColor = useMemo(() => {
         const attribute = new THREE.InstancedBufferAttribute(
             new Float32Array(MAX_LEAF_INSTANCES * 3),
             3,
@@ -232,58 +144,29 @@ export function Leaves({ seed, matrices, colors, type }: LeavesProps) {
         };
 
         updateInstances(leafRef.current, colors, leafInstanceColor);
-        updateInstances(veinRef.current, veinColors, veinInstanceColor);
-    }, [
-        colors,
-        fallbackColor,
-        leafInstanceColor,
-        matrices,
-        veinColors,
-        veinInstanceColor,
-    ]);
+    }, [colors, fallbackColor, leafInstanceColor, matrices]);
 
     useLayoutEffect(() => {
         return () => {
             geometry.dispose();
-            veinGeometry.dispose();
         };
-    }, [geometry, veinGeometry]);
+    }, [geometry]);
 
     return (
-        <group>
-            <instancedMesh
-                ref={leafRef}
-                args={[geometry, undefined, MAX_LEAF_INSTANCES]}
-                castShadow
-            >
-                <CSM
-                    baseMaterial={THREE.MeshStandardMaterial}
-                    vertexShader={leafColorVertexShader}
-                    fragmentShader={leafColorFragmentShader}
-                    uniforms={swayUniforms}
-                    color="#ffffff"
-                    side={THREE.DoubleSide}
-                    roughness={0.6}
-                />
-            </instancedMesh>
-            <instancedMesh
-                ref={veinRef}
-                args={[veinGeometry, undefined, MAX_LEAF_INSTANCES]}
-                renderOrder={1}
-            >
-                <CSM
-                    baseMaterial={THREE.MeshStandardMaterial}
-                    vertexShader={leafColorVertexShader}
-                    fragmentShader={leafColorFragmentShader}
-                    uniforms={swayUniforms}
-                    color="#ffffff"
-                    side={THREE.DoubleSide}
-                    roughness={0.75}
-                    polygonOffset
-                    polygonOffsetFactor={-1}
-                    polygonOffsetUnits={-1}
-                />
-            </instancedMesh>
-        </group>
+        <instancedMesh
+            ref={leafRef}
+            args={[geometry, undefined, MAX_LEAF_INSTANCES]}
+            castShadow
+        >
+            <CSM
+                baseMaterial={THREE.MeshStandardMaterial}
+                vertexShader={leafColorVertexShader}
+                fragmentShader={leafColorFragmentShader}
+                uniforms={swayUniforms}
+                color="#ffffff"
+                side={THREE.DoubleSide}
+                roughness={0.6}
+            />
+        </instancedMesh>
     );
 }
