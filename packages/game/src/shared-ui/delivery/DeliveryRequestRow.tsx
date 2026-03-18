@@ -1,13 +1,13 @@
 import { TimeRange } from '@gredice/ui/LocalDateTime';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Close, MapPin, ShoppingCart, Timer, Truck } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { DeliveryRequestData } from '../../hooks/useDeliveryRequests';
-import { RaisedBedIdentifierIcon } from '../../hud/components/RaisedBedIdentifierIcon';
 import {
     CANCEL_REASON_OPTIONS,
     DeliveryCancelRequestModal,
@@ -104,10 +104,11 @@ export function DeliveryRequestRow({
                                             className="items-center"
                                         >
                                             {raisedBedPhysicalId && (
-                                                <RaisedBedIdentifierIcon
+                                                <RaisedBedIcon
                                                     physicalId={
                                                         raisedBedPhysicalId
                                                     }
+                                                    className="size-6"
                                                 />
                                             )}
                                             {raisedBedName && (
