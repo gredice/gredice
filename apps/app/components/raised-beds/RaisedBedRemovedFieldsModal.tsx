@@ -9,10 +9,12 @@ import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { MoveRaisedBedFieldPlantModal } from './MoveRaisedBedFieldPlantModal';
 
 export type RemovedFieldDetails = {
     id: number;
     positionIndex: number;
+    plantPlaceEventId: number;
     plantLabel: string;
     plantStatusLabel: string | null;
     plantStatusIcon: string | null;
@@ -29,7 +31,12 @@ export type RemovedFieldDetails = {
 };
 
 type RaisedBedRemovedFieldsModalProps = {
+    raisedBedId: number;
     fields: RemovedFieldDetails[];
+    targetOptions: Array<{
+        value: string;
+        label: string;
+    }>;
 };
 
 const dateEntries: {
@@ -47,7 +54,9 @@ const dateEntries: {
 ];
 
 export function RaisedBedRemovedFieldsModal({
+    raisedBedId,
     fields,
+    targetOptions,
 }: RaisedBedRemovedFieldsModalProps) {
     if (!fields.length) {
         return null;
@@ -117,6 +126,15 @@ export function RaisedBedRemovedFieldsModal({
                                         </Typography>
                                     )}
                                 </Stack>
+                                <MoveRaisedBedFieldPlantModal
+                                    raisedBedId={raisedBedId}
+                                    sourcePositionIndex={field.positionIndex}
+                                    sourcePlantPlaceEventId={
+                                        field.plantPlaceEventId
+                                    }
+                                    sourcePlantLabel={field.plantLabel}
+                                    targetOptions={targetOptions}
+                                />
                             </Row>
                             <Stack spacing={1.5}>
                                 {dateEntries.map(({ key, label }) => {

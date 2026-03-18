@@ -12,7 +12,9 @@ import {
     getRaisedBed,
     getRaisedBedFieldsWithEvents,
     knownEvents,
+    knownEventTypes,
     mergeRaisedBeds,
+    moveRaisedBedFieldPlantHistory,
     storage,
     upsertOrRemoveCartItem,
     upsertRaisedBedField,
@@ -24,6 +26,22 @@ import {
     ensureFarmId,
 } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
+
+async function getPlantEventsForAggregate(aggregateId: string) {
+    return storage().query.events.findMany({
+        where: (events, { and, eq, inArray }) =>
+            and(
+                eq(events.aggregateId, aggregateId),
+                inArray(events.type, [
+                    knownEventTypes.raisedBedFields.plantPlace,
+                    knownEventTypes.raisedBedFields.plantSchedule,
+                    knownEventTypes.raisedBedFields.plantUpdate,
+                    knownEventTypes.raisedBedFields.plantReplaceSort,
+                ]),
+            ),
+        orderBy: (events, { asc }) => [asc(events.createdAt), asc(events.id)],
+    });
+}
 
 test('upsertRaisedBedField creates field, deleteRaisedBedField deletes the field', async () => {
     createTestDb();
@@ -319,7 +337,7 @@ test('mergeRaisedBeds preserves sparse source positions inside the appended bloc
     assert.ok(movedLastEvent);
 });
 
-test('getRaisedBed returns the latest plant cycle after a field is removed and replanted', async () => {
+test('moveRaisedBedFieldPlantHistory moves the selected active plant cycle to an empty position', async () => {
     createTestDb();
     const accountId = await createAccount();
     const farmId = await ensureFarmId();
@@ -371,6 +389,452 @@ test('getRaisedBed returns the latest plant cycle after a field is removed and r
         ),
     );
 
+    const sourceEventsBeforeMove = await getPlantEventsForAggregate(
+        `${raisedBedId.toString()}|0`,
+    );
+    assert.strictEqual(sourceEventsBeforeMove.length, 4);
+
+    const movedEventIds = sourceEventsBeforeMove
+        .slice(2)
+        .map((event) => event.id);
+    const sourcePlantPlaceEventId = sourceEventsBeforeMove[2]?.id;
+    const movedEventTimestampsById = new Map(
+        sourceEventsBeforeMove
+            .slice(2)
+            .map((event) => [event.id, event.createdAt.getTime()]),
+    );
+    assert.ok(sourcePlantPlaceEventId);
+
+    const result = await moveRaisedBedFieldPlantHistory({
+        raisedBedId,
+        sourcePositionIndex: 0,
+        targetPositionIndex: 2,
+        sourcePlantPlaceEventId,
+    });
+    assert.strictEqual(result.swapped, false);
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    assert.ok(raisedBed);
+
+    const sourceField = raisedBed.fields.find(
+        (candidate) => candidate.positionIndex === 0,
+    );
+    const targetField = raisedBed.fields.find(
+        (candidate) => candidate.positionIndex === 2,
+    );
+
+    assert.ok(sourceField);
+    assert.strictEqual(sourceField?.active, false);
+    assert.strictEqual(sourceField?.plantStatus, 'removed');
+    assert.strictEqual(sourceField?.plantSortId, 101);
+
+    assert.ok(targetField);
+    assert.strictEqual(targetField?.active, true);
+    assert.strictEqual(targetField?.plantStatus, 'sprouted');
+    assert.strictEqual(targetField?.plantSortId, 202);
+
+    const movedEventsAfterMove = await storage().query.events.findMany({
+        where: (events, { inArray }) => inArray(events.id, movedEventIds),
+        orderBy: (events, { asc }) => [asc(events.createdAt), asc(events.id)],
+    });
+    assert.strictEqual(movedEventsAfterMove.length, movedEventIds.length);
+    assert.deepStrictEqual(
+        movedEventsAfterMove.map((event) => event.aggregateId),
+        Array.from(
+            { length: movedEventIds.length },
+            () => `${raisedBedId.toString()}|2`,
+        ),
+    );
+    assert.deepStrictEqual(
+        movedEventsAfterMove.map((event) => event.createdAt.getTime()),
+        movedEventsAfterMove.map(
+            (event) => movedEventTimestampsById.get(event.id) ?? -1,
+        ),
+    );
+});
+
+test('moveRaisedBedFieldPlantHistory moves the selected historical plant cycle to an empty position without touching newer source cycles', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'block-a');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+
+    await upsertRaisedBedField({
+        raisedBedId,
+        positionIndex: 0,
+    });
+
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(
+            `${raisedBedId.toString()}|0`,
+            {
+                plantSortId: '101',
+                scheduledDate: new Date(
+                    '2026-01-01T00:00:00.000Z',
+                ).toISOString(),
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(
+            `${raisedBedId.toString()}|0`,
+            {
+                status: 'removed',
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(
+            `${raisedBedId.toString()}|0`,
+            {
+                plantSortId: '202',
+                scheduledDate: new Date(
+                    '2026-02-01T00:00:00.000Z',
+                ).toISOString(),
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(
+            `${raisedBedId.toString()}|0`,
+            {
+                status: 'sprouted',
+            },
+        ),
+    );
+
+    const sourceEventsBeforeMove = await getPlantEventsForAggregate(
+        `${raisedBedId.toString()}|0`,
+    );
+    assert.strictEqual(sourceEventsBeforeMove.length, 4);
+
+    const movedEventIds = sourceEventsBeforeMove
+        .slice(0, 2)
+        .map((event) => event.id);
+    const sourcePlantPlaceEventId = sourceEventsBeforeMove[0]?.id;
+    const movedEventTimestampsById = new Map(
+        sourceEventsBeforeMove
+            .slice(0, 2)
+            .map((event) => [event.id, event.createdAt.getTime()]),
+    );
+    assert.ok(sourcePlantPlaceEventId);
+
+    const result = await moveRaisedBedFieldPlantHistory({
+        raisedBedId,
+        sourcePositionIndex: 0,
+        targetPositionIndex: 2,
+        sourcePlantPlaceEventId,
+    });
+    assert.strictEqual(result.swapped, false);
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    assert.ok(raisedBed);
+
+    const sourceField = raisedBed.fields.find(
+        (candidate) => candidate.positionIndex === 0,
+    );
+    const targetField = raisedBed.fields.find(
+        (candidate) => candidate.positionIndex === 2,
+    );
+
+    assert.ok(sourceField);
+    assert.strictEqual(sourceField?.active, true);
+    assert.strictEqual(sourceField?.plantStatus, 'sprouted');
+    assert.strictEqual(sourceField?.plantSortId, 202);
+
+    assert.ok(targetField);
+    assert.strictEqual(targetField?.active, false);
+    assert.strictEqual(targetField?.plantStatus, 'removed');
+    assert.strictEqual(targetField?.plantSortId, 101);
+
+    const movedEventsAfterMove = await storage().query.events.findMany({
+        where: (events, { inArray }) => inArray(events.id, movedEventIds),
+        orderBy: (events, { asc }) => [asc(events.createdAt), asc(events.id)],
+    });
+    assert.strictEqual(movedEventsAfterMove.length, movedEventIds.length);
+    assert.deepStrictEqual(
+        movedEventsAfterMove.map((event) => event.aggregateId),
+        Array.from(
+            { length: movedEventIds.length },
+            () => `${raisedBedId.toString()}|2`,
+        ),
+    );
+    assert.deepStrictEqual(
+        movedEventsAfterMove.map((event) => event.createdAt.getTime()),
+        movedEventsAfterMove.map(
+            (event) => movedEventTimestampsById.get(event.id) ?? -1,
+        ),
+    );
+
+    const sourceEventsAfterMove = await getPlantEventsForAggregate(
+        `${raisedBedId.toString()}|0`,
+    );
+    assert.deepStrictEqual(
+        sourceEventsAfterMove.map((event) => event.id),
+        sourceEventsBeforeMove.slice(2).map((event) => event.id),
+    );
+});
+
+test('moveRaisedBedFieldPlantHistory swaps all overlapping target plant cycles and leaves non-overlapping target history in place', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'block-a');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+
+    await Promise.all([
+        upsertRaisedBedField({
+            raisedBedId,
+            positionIndex: 0,
+        }),
+        upsertRaisedBedField({
+            raisedBedId,
+            positionIndex: 1,
+        }),
+    ]);
+
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(
+            `${raisedBedId.toString()}|0`,
+            {
+                plantSortId: '101',
+                scheduledDate: new Date(
+                    '2026-01-01T00:00:00.000Z',
+                ).toISOString(),
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(
+            `${raisedBedId.toString()}|1`,
+            {
+                plantSortId: '303',
+                scheduledDate: new Date(
+                    '2026-01-10T00:00:00.000Z',
+                ).toISOString(),
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(
+            `${raisedBedId.toString()}|1`,
+            {
+                status: 'removed',
+            },
+        ),
+    );
+
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(
+            `${raisedBedId.toString()}|1`,
+            {
+                plantSortId: '404',
+                scheduledDate: new Date(
+                    '2026-01-20T00:00:00.000Z',
+                ).toISOString(),
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(
+            `${raisedBedId.toString()}|0`,
+            {
+                status: 'removed',
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(
+            `${raisedBedId.toString()}|1`,
+            {
+                status: 'removed',
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(
+            `${raisedBedId.toString()}|1`,
+            {
+                plantSortId: '505',
+                scheduledDate: new Date(
+                    '2026-03-01T00:00:00.000Z',
+                ).toISOString(),
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(
+            `${raisedBedId.toString()}|1`,
+            {
+                status: 'planned',
+            },
+        ),
+    );
+
+    const [sourceEventsBeforeSwap, targetEventsBeforeSwap] = await Promise.all([
+        getPlantEventsForAggregate(`${raisedBedId.toString()}|0`),
+        getPlantEventsForAggregate(`${raisedBedId.toString()}|1`),
+    ]);
+    assert.strictEqual(sourceEventsBeforeSwap.length, 2);
+    assert.strictEqual(targetEventsBeforeSwap.length, 6);
+
+    const sourceCycleEventIds = sourceEventsBeforeSwap.map((event) => event.id);
+    const sourcePlantPlaceEventId = sourceEventsBeforeSwap[0]?.id;
+    const targetFirstOverlappingCycleEventIds = targetEventsBeforeSwap
+        .slice(0, 2)
+        .map((event) => event.id);
+    const targetSecondOverlappingCycleEventIds = targetEventsBeforeSwap
+        .slice(2, 4)
+        .map((event) => event.id);
+    const targetNonOverlappingCycleEventIds = targetEventsBeforeSwap
+        .slice(4)
+        .map((event) => event.id);
+    assert.ok(sourcePlantPlaceEventId);
+
+    const timestampsByEventId = new Map(
+        [...sourceEventsBeforeSwap, ...targetEventsBeforeSwap].map((event) => [
+            event.id,
+            event.createdAt.getTime(),
+        ]),
+    );
+
+    const result = await moveRaisedBedFieldPlantHistory({
+        raisedBedId,
+        sourcePositionIndex: 0,
+        targetPositionIndex: 1,
+        sourcePlantPlaceEventId,
+    });
+    assert.strictEqual(result.swapped, true);
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    assert.ok(raisedBed);
+
+    const sourceField = raisedBed.fields.find(
+        (candidate) => candidate.positionIndex === 0,
+    );
+    const targetField = raisedBed.fields.find(
+        (candidate) => candidate.positionIndex === 1,
+    );
+
+    assert.ok(sourceField);
+    assert.strictEqual(sourceField?.active, false);
+    assert.strictEqual(sourceField?.plantStatus, 'removed');
+    assert.strictEqual(sourceField?.plantSortId, 404);
+
+    assert.ok(targetField);
+    assert.strictEqual(targetField?.active, true);
+    assert.strictEqual(targetField?.plantStatus, 'planned');
+    assert.strictEqual(targetField?.plantSortId, 505);
+
+    const movedEventsAfterSwap = await storage().query.events.findMany({
+        where: (events, { inArray }) =>
+            inArray(events.id, [
+                ...sourceCycleEventIds,
+                ...targetFirstOverlappingCycleEventIds,
+                ...targetSecondOverlappingCycleEventIds,
+                ...targetNonOverlappingCycleEventIds,
+            ]),
+        orderBy: (events, { asc }) => [asc(events.createdAt), asc(events.id)],
+    });
+    const aggregateByEventId = new Map(
+        movedEventsAfterSwap.map((event) => [event.id, event.aggregateId]),
+    );
+
+    for (const eventId of sourceCycleEventIds) {
+        assert.strictEqual(
+            aggregateByEventId.get(eventId),
+            `${raisedBedId.toString()}|1`,
+        );
+    }
+    for (const eventId of targetFirstOverlappingCycleEventIds) {
+        assert.strictEqual(
+            aggregateByEventId.get(eventId),
+            `${raisedBedId.toString()}|0`,
+        );
+    }
+    for (const eventId of targetSecondOverlappingCycleEventIds) {
+        assert.strictEqual(
+            aggregateByEventId.get(eventId),
+            `${raisedBedId.toString()}|0`,
+        );
+    }
+    for (const eventId of targetNonOverlappingCycleEventIds) {
+        assert.strictEqual(
+            aggregateByEventId.get(eventId),
+            `${raisedBedId.toString()}|1`,
+        );
+    }
+
+    assert.deepStrictEqual(
+        movedEventsAfterSwap.map((event) => event.createdAt.getTime()),
+        movedEventsAfterSwap.map(
+            (event) => timestampsByEventId.get(event.id) ?? -1,
+        ),
+    );
+});
+
+test('getRaisedBed returns the latest plant cycle after a field is removed and replanted', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'block-a');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+
+    await upsertRaisedBedField({
+        raisedBedId,
+        positionIndex: 0,
+    });
+    const initialRaisedBed = await getRaisedBed(raisedBedId);
+    const initialField = initialRaisedBed?.fields.find(
+        (candidate) => candidate.positionIndex === 0,
+    );
+    assert.ok(initialField);
+
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(
+            `${raisedBedId.toString()}|0`,
+            {
+                plantSortId: '101',
+                scheduledDate: new Date(
+                    '2026-01-01T00:00:00.000Z',
+                ).toISOString(),
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(
+            `${raisedBedId.toString()}|0`,
+            {
+                status: 'removed',
+            },
+        ),
+    );
+    await upsertRaisedBedField({
+        raisedBedId,
+        positionIndex: 0,
+    });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(
+            `${raisedBedId.toString()}|0`,
+            {
+                plantSortId: '202',
+                scheduledDate: null,
+            },
+        ),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(
+            `${raisedBedId.toString()}|0`,
+            {
+                status: 'sprouted',
+            },
+        ),
+    );
+
     const raisedBed = await getRaisedBed(raisedBedId);
     assert.ok(raisedBed);
 
@@ -378,11 +842,73 @@ test('getRaisedBed returns the latest plant cycle after a field is removed and r
         (candidate) => candidate.positionIndex === 0,
     );
     assert.ok(field);
+    assert.strictEqual(raisedBed.fields.length, 1);
+    assert.strictEqual(field?.id, initialField.id);
     assert.strictEqual(field?.active, true);
     assert.strictEqual(field?.plantStatus, 'sprouted');
     assert.strictEqual(field?.plantSortId, 202);
-    assert.strictEqual(
-        field?.plantScheduledDate?.toISOString(),
-        '2026-02-01T00:00:00.000Z',
+    assert.strictEqual(field?.plantScheduledDate, undefined);
+    assert.strictEqual(field?.plantSowDate, undefined);
+    assert.ok(field?.plantGrowthDate instanceof Date);
+    assert.strictEqual(field?.plantDeadDate, undefined);
+    assert.strictEqual(field?.plantHarvestedDate, undefined);
+    assert.strictEqual(field?.plantRemovedDate, undefined);
+    assert.strictEqual(field?.stoppedDate, undefined);
+    assert.strictEqual(field?.toBeRemoved, false);
+});
+
+test('upsertRaisedBedField reuses the same row after a field is deleted and planted again', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'block-a');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+
+    await upsertRaisedBedField({
+        raisedBedId,
+        positionIndex: 0,
+    });
+
+    const initialRaisedBed = await getRaisedBed(raisedBedId);
+    const initialField = initialRaisedBed?.fields.find(
+        (candidate) => candidate.positionIndex === 0,
     );
+    assert.ok(initialField);
+
+    await createEvent(
+        knownEvents.raisedBedFields.deletedV1(`${raisedBedId.toString()}|0`),
+    );
+    await deleteRaisedBedField(raisedBedId, 0);
+
+    const deletedFields = await getRaisedBedFieldsWithEvents(raisedBedId);
+    assert.strictEqual(deletedFields.length, 0);
+
+    await upsertRaisedBedField({
+        raisedBedId,
+        positionIndex: 0,
+    });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(
+            `${raisedBedId.toString()}|0`,
+            {
+                plantSortId: '303',
+                scheduledDate: new Date(
+                    '2026-03-01T00:00:00.000Z',
+                ).toISOString(),
+            },
+        ),
+    );
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    assert.ok(raisedBed);
+    assert.strictEqual(raisedBed.fields.length, 1);
+
+    const field = raisedBed.fields.find(
+        (candidate) => candidate.positionIndex === 0,
+    );
+    assert.ok(field);
+    assert.strictEqual(field?.id, initialField.id);
+    assert.strictEqual(field?.active, true);
+    assert.strictEqual(field?.plantSortId, 303);
 });

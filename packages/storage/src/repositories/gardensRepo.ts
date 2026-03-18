@@ -1,6 +1,6 @@
 import 'server-only';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
-import { and, count, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { getEntitiesFormatted, getOperations, storage } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
@@ -39,10 +39,39 @@ import {
 import { getFarms } from './farmsRepo';
 
 const RAISED_BED_FIELDS_PER_BLOCK = 9;
+const PLANT_CYCLE_EVENT_TYPES = [
+    knownEventTypes.raisedBedFields.plantPlace,
+    knownEventTypes.raisedBedFields.plantSchedule,
+    knownEventTypes.raisedBedFields.plantUpdate,
+    knownEventTypes.raisedBedFields.plantReplaceSort,
+] as const;
 
 type CanonicalRaisedBedField = {
     id: number;
     positionIndex: number;
+};
+
+type RaisedBedFieldPlantCycleEvent = typeof events.$inferSelect;
+
+export type RaisedBedFieldPlantCycle = {
+    aggregateId: string;
+    positionIndex: number;
+    plantPlaceEventId: number;
+    eventIds: number[];
+    startedAt: Date;
+    endedAt: Date;
+    active: boolean;
+    plantStatus?: string;
+    plantSortId?: number;
+    plantScheduledDate?: Date;
+    plantSowDate?: Date;
+    plantGrowthDate?: Date;
+    plantReadyDate?: Date;
+    plantDeadDate?: Date;
+    plantHarvestedDate?: Date;
+    plantRemovedDate?: Date;
+    stoppedDate?: Date;
+    toBeRemoved: boolean;
 };
 
 function fieldRowPriority(
@@ -219,6 +248,313 @@ async function normalizeRaisedBedFieldsForMerge(
     return [...canonicalFields.values()].sort(
         (left, right) => left.positionIndex - right.positionIndex,
     );
+}
+
+async function getRaisedBedFieldRowsAtPosition(
+    tx: ReturnType<typeof storage>,
+    raisedBedId: number,
+    positionIndex: number,
+) {
+    return tx.query.raisedBedFields.findMany({
+        where: and(
+            eq(raisedBedFields.raisedBedId, raisedBedId),
+            eq(raisedBedFields.positionIndex, positionIndex),
+        ),
+        orderBy: [asc(raisedBedFields.createdAt), asc(raisedBedFields.id)],
+    });
+}
+
+async function collapseDuplicateRaisedBedFieldRows(
+    tx: ReturnType<typeof storage>,
+    fieldRows: SelectRaisedBedField[],
+) {
+    const canonicalField = fieldRows[0];
+    if (!canonicalField) {
+        return null;
+    }
+
+    const duplicateFieldIds = fieldRows
+        .slice(1)
+        .map((existingField) => existingField.id);
+    if (duplicateFieldIds.length > 0) {
+        await tx
+            .update(operations)
+            .set({
+                raisedBedFieldId: canonicalField.id,
+            })
+            .where(inArray(operations.raisedBedFieldId, duplicateFieldIds));
+
+        await tx
+            .update(raisedBedFields)
+            .set({
+                isDeleted: true,
+                updatedAt: new Date(),
+            })
+            .where(inArray(raisedBedFields.id, duplicateFieldIds));
+    }
+
+    return canonicalField;
+}
+
+async function syncRaisedBedFieldRow(
+    tx: ReturnType<typeof storage>,
+    field: Omit<
+        InsertRaisedBedField,
+        'id' | 'createdAt' | 'updatedAt' | 'isDeleted'
+    >,
+) {
+    const existingFieldRows = await getRaisedBedFieldRowsAtPosition(
+        tx,
+        field.raisedBedId,
+        field.positionIndex,
+    );
+    const canonicalField = await collapseDuplicateRaisedBedFieldRows(
+        tx,
+        existingFieldRows,
+    );
+
+    if (!canonicalField) {
+        await tx.insert(raisedBedFields).values(field);
+        return;
+    }
+
+    await tx
+        .update(raisedBedFields)
+        .set({
+            ...field,
+            isDeleted: false,
+            updatedAt: new Date(),
+        })
+        .where(eq(raisedBedFields.id, canonicalField.id));
+}
+
+function parsePlantSortId(value: unknown) {
+    if (typeof value === 'number') {
+        return value;
+    }
+
+    if (typeof value === 'string') {
+        const parsedPlantSortId = parseInt(value, 10);
+        return Number.isNaN(parsedPlantSortId) ? undefined : parsedPlantSortId;
+    }
+
+    return undefined;
+}
+
+function splitPlantCycleEvents(
+    plantEvents: RaisedBedFieldPlantCycleEvent[],
+): RaisedBedFieldPlantCycleEvent[][] {
+    const plantCycles: RaisedBedFieldPlantCycleEvent[][] = [];
+    let currentPlantCycle: RaisedBedFieldPlantCycleEvent[] = [];
+
+    for (const plantEvent of plantEvents) {
+        if (plantEvent.type === knownEventTypes.raisedBedFields.plantPlace) {
+            if (currentPlantCycle.length > 0) {
+                plantCycles.push(currentPlantCycle);
+            }
+
+            currentPlantCycle = [plantEvent];
+            continue;
+        }
+
+        if (currentPlantCycle.length > 0) {
+            currentPlantCycle.push(plantEvent);
+        }
+    }
+
+    if (currentPlantCycle.length > 0) {
+        plantCycles.push(currentPlantCycle);
+    }
+
+    return plantCycles;
+}
+
+function summarizePlantCycle(
+    aggregateId: string,
+    positionIndex: number,
+    plantCycleEvents: RaisedBedFieldPlantCycleEvent[],
+): RaisedBedFieldPlantCycle | null {
+    const plantPlaceEvent = plantCycleEvents[0];
+    if (
+        !plantPlaceEvent ||
+        plantPlaceEvent.type !== knownEventTypes.raisedBedFields.plantPlace
+    ) {
+        return null;
+    }
+
+    let plantStatus: string | undefined;
+    let plantSortId: number | undefined;
+    let plantScheduledDate: Date | undefined;
+    let plantSowDate: Date | undefined;
+    let plantGrowthDate: Date | undefined;
+    let plantReadyDate: Date | undefined;
+    let plantDeadDate: Date | undefined;
+    let plantHarvestedDate: Date | undefined;
+    let plantRemovedDate: Date | undefined;
+    let active = false;
+    let toBeRemoved = false;
+    let stoppedDate: Date | undefined;
+
+    for (const plantCycleEvent of plantCycleEvents) {
+        const data = plantCycleEvent.data as
+            | Record<string, unknown>
+            | undefined;
+
+        if (
+            plantCycleEvent.type === knownEventTypes.raisedBedFields.plantPlace
+        ) {
+            active = true;
+            toBeRemoved = false;
+            stoppedDate = undefined;
+            plantStatus = 'new';
+            plantSortId = parsePlantSortId(data?.plantSortId);
+
+            if (data?.scheduledDate && typeof data.scheduledDate === 'string') {
+                plantScheduledDate = new Date(data.scheduledDate);
+            } else if (
+                data?.scheduledDate &&
+                typeof data.scheduledDate === 'object' &&
+                data.scheduledDate instanceof Date
+            ) {
+                plantScheduledDate = data.scheduledDate;
+            } else {
+                plantScheduledDate = undefined;
+            }
+
+            plantSowDate = undefined;
+            plantGrowthDate = undefined;
+            plantReadyDate = undefined;
+            plantDeadDate = undefined;
+            plantHarvestedDate = undefined;
+            plantRemovedDate = undefined;
+            continue;
+        }
+
+        if (
+            plantCycleEvent.type ===
+            knownEventTypes.raisedBedFields.plantSchedule
+        ) {
+            if (data?.scheduledDate && typeof data.scheduledDate === 'string') {
+                plantScheduledDate = new Date(data.scheduledDate);
+            } else if (
+                data?.scheduledDate &&
+                typeof data.scheduledDate === 'object' &&
+                data.scheduledDate instanceof Date
+            ) {
+                plantScheduledDate = data.scheduledDate;
+            } else if (data?.scheduledDate == null) {
+                plantScheduledDate = undefined;
+            }
+            continue;
+        }
+
+        if (
+            plantCycleEvent.type ===
+            knownEventTypes.raisedBedFields.plantReplaceSort
+        ) {
+            const nextPlantSortId = parsePlantSortId(data?.plantSortId);
+            if (typeof nextPlantSortId === 'number') {
+                plantSortId = nextPlantSortId;
+            }
+            continue;
+        }
+
+        if (
+            plantCycleEvent.type === knownEventTypes.raisedBedFields.plantUpdate
+        ) {
+            plantStatus =
+                typeof data?.status === 'string' ? data.status : plantStatus;
+
+            if (plantStatus === 'sowed') {
+                plantSowDate = plantCycleEvent.createdAt;
+            } else if (plantStatus === 'sprouted') {
+                plantGrowthDate = plantCycleEvent.createdAt;
+            } else if (plantStatus === 'notSprouted') {
+                plantDeadDate = plantCycleEvent.createdAt;
+                stoppedDate = plantCycleEvent.createdAt;
+                toBeRemoved = true;
+            } else if (plantStatus === 'died') {
+                plantDeadDate = plantCycleEvent.createdAt;
+                stoppedDate = plantCycleEvent.createdAt;
+            } else if (plantStatus === 'ready') {
+                plantReadyDate = plantCycleEvent.createdAt;
+            } else if (plantStatus === 'harvested') {
+                plantHarvestedDate = plantCycleEvent.createdAt;
+                stoppedDate = plantCycleEvent.createdAt;
+            } else if (plantStatus === 'removed') {
+                plantRemovedDate = plantCycleEvent.createdAt;
+                active = false;
+                stoppedDate = plantCycleEvent.createdAt;
+            }
+        }
+    }
+
+    const lastPlantCycleEvent = plantCycleEvents[plantCycleEvents.length - 1];
+    const endedAt = lastPlantCycleEvent?.createdAt ?? plantPlaceEvent.createdAt;
+
+    return {
+        aggregateId,
+        positionIndex,
+        plantPlaceEventId: plantPlaceEvent.id,
+        eventIds: plantCycleEvents.map((plantCycleEvent) => plantCycleEvent.id),
+        startedAt: plantPlaceEvent.createdAt,
+        endedAt,
+        active,
+        plantStatus,
+        plantSortId,
+        plantScheduledDate,
+        plantSowDate,
+        plantGrowthDate,
+        plantReadyDate,
+        plantDeadDate,
+        plantHarvestedDate,
+        plantRemovedDate,
+        stoppedDate,
+        toBeRemoved,
+    };
+}
+
+function summarizePlantCycles(
+    aggregateId: string,
+    positionIndex: number,
+    plantEvents: RaisedBedFieldPlantCycleEvent[],
+) {
+    return splitPlantCycleEvents(plantEvents)
+        .map((plantCycleEvents) =>
+            summarizePlantCycle(aggregateId, positionIndex, plantCycleEvents),
+        )
+        .filter((plantCycle): plantCycle is RaisedBedFieldPlantCycle =>
+            Boolean(plantCycle),
+        );
+}
+
+function plantCyclesOverlap(
+    sourcePlantCycle: Pick<RaisedBedFieldPlantCycle, 'startedAt' | 'endedAt'>,
+    targetPlantCycle: Pick<RaisedBedFieldPlantCycle, 'startedAt' | 'endedAt'>,
+) {
+    return (
+        sourcePlantCycle.startedAt.getTime() <=
+            targetPlantCycle.endedAt.getTime() &&
+        targetPlantCycle.startedAt.getTime() <=
+            sourcePlantCycle.endedAt.getTime()
+    );
+}
+
+async function getPlantCyclesForPosition(
+    tx: ReturnType<typeof storage>,
+    raisedBedId: number,
+    positionIndex: number,
+) {
+    const aggregateId = `${raisedBedId.toString()}|${positionIndex.toString()}`;
+    const plantEvents = await tx.query.events.findMany({
+        where: and(
+            eq(events.aggregateId, aggregateId),
+            inArray(events.type, [...PLANT_CYCLE_EVENT_TYPES]),
+        ),
+        orderBy: [asc(events.createdAt), asc(events.id)],
+    });
+
+    return summarizePlantCycles(aggregateId, positionIndex, plantEvents);
 }
 
 export async function createGarden(garden: InsertGarden) {
@@ -620,6 +956,57 @@ export async function getRaisedBed(raisedBedId: number) {
     };
 }
 
+export async function getRaisedBedFieldPlantCycles(raisedBedId: number) {
+    const fields = await storage().query.raisedBedFields.findMany({
+        where: and(
+            eq(raisedBedFields.raisedBedId, raisedBedId),
+            eq(raisedBedFields.isDeleted, false),
+        ),
+    });
+
+    const positionIndices = Array.from(
+        new Set(fields.map((field) => field.positionIndex)),
+    ).sort((left, right) => left - right);
+    if (positionIndices.length === 0) {
+        return [];
+    }
+
+    const aggregateIds = positionIndices.map(
+        (positionIndex) =>
+            `${raisedBedId.toString()}|${positionIndex.toString()}`,
+    );
+    const plantEvents = await getEvents(
+        [...PLANT_CYCLE_EVENT_TYPES],
+        aggregateIds,
+        0,
+        100000,
+    );
+
+    const plantEventsByAggregateId = new Map<
+        string,
+        RaisedBedFieldPlantCycleEvent[]
+    >();
+    for (const plantEvent of plantEvents) {
+        const aggregateEvents = plantEventsByAggregateId.get(
+            plantEvent.aggregateId,
+        );
+        if (aggregateEvents) {
+            aggregateEvents.push(plantEvent);
+        } else {
+            plantEventsByAggregateId.set(plantEvent.aggregateId, [plantEvent]);
+        }
+    }
+
+    return positionIndices.flatMap((positionIndex) => {
+        const aggregateId = `${raisedBedId.toString()}|${positionIndex.toString()}`;
+        return summarizePlantCycles(
+            aggregateId,
+            positionIndex,
+            plantEventsByAggregateId.get(aggregateId) ?? [],
+        );
+    });
+}
+
 // New: Retrieve all raised bed fields for a single raised bed, with event-sourced info
 export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
     const fields = await storage().query.raisedBedFields.findMany({
@@ -651,10 +1038,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
     return fields.map((field) => {
         const aggregateId = `${field.raisedBedId}|${field.positionIndex}`;
         const events = fieldsEvents.filter(
-            (event) =>
-                event.aggregateId === aggregateId &&
-                // 5000ms is offset for events - because events and fields are created in parallel
-                field.createdAt <= new Date(event.createdAt.getTime() + 5000),
+            (event) => event.aggregateId === aggregateId,
         );
 
         // Reduce events to get latest status, plant info, etc.
@@ -680,6 +1064,9 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 active = true;
                 toBeRemoved = false;
                 stoppedDate = undefined;
+                plantStatus = 'new';
+                plantSortId = undefined;
+                plantScheduledDate = undefined;
                 plantSowDate = undefined;
                 plantGrowthDate = undefined;
                 plantReadyDate = undefined;
@@ -711,9 +1098,6 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 ) {
                     plantScheduledDate = data?.scheduledDate;
                 }
-
-                // Set status to new when plant is placed
-                plantStatus = 'new';
             }
             // Handle plant schedule update event
             else if (
@@ -1239,29 +1623,98 @@ export async function upsertRaisedBedField(
         'id' | 'createdAt' | 'updatedAt' | 'isDeleted'
     >,
 ) {
-    const existingRaisedBedFields = await getRaisedBedFieldsWithEvents(
-        field.raisedBedId,
-    );
-    const existingField = existingRaisedBedFields.find(
-        (f) => f.positionIndex === field.positionIndex,
-    );
-    if (!existingField || !existingField.active) {
-        await storage()
-            .insert(raisedBedFields)
-            .values(field)
-            .onConflictDoNothing();
-    } else {
-        await storage()
-            .update(raisedBedFields)
-            .set({ ...field, updatedAt: new Date() })
-            .where(
-                and(
-                    eq(raisedBedFields.raisedBedId, field.raisedBedId),
-                    eq(raisedBedFields.positionIndex, field.positionIndex),
-                    eq(raisedBedFields.isDeleted, false),
-                ),
-            );
+    await storage().transaction(async (tx) => {
+        await syncRaisedBedFieldRow(tx, field);
+    });
+}
+
+export async function moveRaisedBedFieldPlantHistory({
+    raisedBedId,
+    sourcePositionIndex,
+    targetPositionIndex,
+    sourcePlantPlaceEventId,
+}: {
+    raisedBedId: number;
+    sourcePositionIndex: number;
+    targetPositionIndex: number;
+    sourcePlantPlaceEventId: number;
+}) {
+    if (sourcePositionIndex === targetPositionIndex) {
+        throw new Error('Source and target field positions must be different');
     }
+
+    if (sourcePositionIndex < 0 || targetPositionIndex < 0) {
+        throw new Error('Field positions must be zero or greater');
+    }
+
+    const sourceAggregateId = `${raisedBedId.toString()}|${sourcePositionIndex.toString()}`;
+    const targetAggregateId = `${raisedBedId.toString()}|${targetPositionIndex.toString()}`;
+
+    return storage().transaction(async (tx) => {
+        const sourceFieldRows = await getRaisedBedFieldRowsAtPosition(
+            tx,
+            raisedBedId,
+            sourcePositionIndex,
+        );
+        if (sourceFieldRows.length === 0) {
+            throw new Error(
+                `Source field ${sourcePositionIndex} not found in raised bed ${raisedBedId}`,
+            );
+        }
+
+        await syncRaisedBedFieldRow(tx, {
+            raisedBedId,
+            positionIndex: sourcePositionIndex,
+        });
+        await syncRaisedBedFieldRow(tx, {
+            raisedBedId,
+            positionIndex: targetPositionIndex,
+        });
+
+        const [sourcePlantCycles, targetPlantCycles] = await Promise.all([
+            getPlantCyclesForPosition(tx, raisedBedId, sourcePositionIndex),
+            getPlantCyclesForPosition(tx, raisedBedId, targetPositionIndex),
+        ]);
+
+        const sourcePlantCycle = sourcePlantCycles.find(
+            (plantCycle) =>
+                plantCycle.plantPlaceEventId === sourcePlantPlaceEventId,
+        );
+        if (!sourcePlantCycle) {
+            throw new Error('Selected source plant history was not found');
+        }
+
+        const overlappingTargetPlantCycles = targetPlantCycles.filter(
+            (targetPlantCycle) =>
+                plantCyclesOverlap(sourcePlantCycle, targetPlantCycle),
+        );
+        const shouldSwap = overlappingTargetPlantCycles.length > 0;
+
+        const sourcePlantCycleEventIds = sourcePlantCycle.eventIds;
+        const targetPlantCycleEventIds = overlappingTargetPlantCycles.flatMap(
+            (targetPlantCycle) => targetPlantCycle.eventIds,
+        );
+
+        await tx
+            .update(events)
+            .set({
+                aggregateId: targetAggregateId,
+            })
+            .where(inArray(events.id, sourcePlantCycleEventIds));
+
+        if (shouldSwap) {
+            await tx
+                .update(events)
+                .set({
+                    aggregateId: sourceAggregateId,
+                })
+                .where(inArray(events.id, targetPlantCycleEventIds));
+        }
+
+        return {
+            swapped: shouldSwap,
+        };
+    });
 }
 
 export async function deleteRaisedBedField(
