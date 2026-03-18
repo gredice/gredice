@@ -70,7 +70,17 @@ export function WinterModeProvider({ children }: { children: ReactNode }) {
         document.documentElement.style.setProperty('--baseHue', String(hue));
     }, []);
 
-    // Initialize from localStorage on mount and keep logged-in users in summer mode
+    // Initialize from localStorage on mount so visuals are applied immediately
+    useEffect(() => {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        // Default to winter mode during winter season
+        const initialValue =
+            stored !== null ? stored === 'true' : isWinterSeason();
+        setIsWinter(initialValue);
+        applyHue(initialValue);
+    }, [applyHue]);
+
+    // Once user data is available, force summer for authenticated users or outside winter season and persist to localStorage
     useEffect(() => {
         if (isLoading) {
             return;
@@ -78,15 +88,9 @@ export function WinterModeProvider({ children }: { children: ReactNode }) {
 
         if (user || !isWinterSeason()) {
             setIsWinter(false);
+            localStorage.setItem(STORAGE_KEY, 'false');
             applyHue(false);
-            return;
         }
-
-        const stored = localStorage.getItem(STORAGE_KEY);
-        // Default to winter mode during winter season
-        const initialValue = stored !== null ? stored === 'true' : true;
-        setIsWinter(initialValue);
-        applyHue(initialValue);
     }, [applyHue, isLoading, user]);
 
     const toggle = useCallback(() => {
