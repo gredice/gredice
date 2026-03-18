@@ -1,5 +1,9 @@
 import type { PlantSortData } from '@gredice/client';
-import { getEntitiesFormatted, getRaisedBed } from '@gredice/storage';
+import {
+    getEntitiesFormatted,
+    getRaisedBed,
+    getRaisedBedFieldPlantCycles,
+} from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -8,6 +12,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { RaisedBedFieldPlantSortSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantSortSelector';
 import { RaisedBedFieldPlantStatusSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantStatusSelector';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
+import { MoveRaisedBedFieldPlantModal } from './MoveRaisedBedFieldPlantModal';
 import {
     RaisedBedRemovedFieldsModal,
     type RemovedFieldDetails,
@@ -16,6 +21,9 @@ import {
 type RaisedBedField = NonNullable<
     Awaited<ReturnType<typeof getRaisedBed>>
 >['fields'][number];
+type RaisedBedFieldPlantCycle = Awaited<
+    ReturnType<typeof getRaisedBedFieldPlantCycles>
+>[number];
 
 const fieldStatusMetadata: Record<string, { label: string; icon: string }> = {
     new: { label: 'Novo', icon: '🆕' },
@@ -63,12 +71,27 @@ interface RaisedBedFieldsTableProps {
 export async function RaisedBedFieldsTable({
     raisedBedId,
 }: RaisedBedFieldsTableProps) {
-    const sortsData = await getEntitiesFormatted<PlantSortData>('plantSort');
-    const raisedBed = await getRaisedBed(raisedBedId);
+    const [sortsData, raisedBed, plantCycles] = await Promise.all([
+        getEntitiesFormatted<PlantSortData>('plantSort'),
+        getRaisedBed(raisedBedId),
+        getRaisedBedFieldPlantCycles(raisedBedId),
+    ]);
     const fields = raisedBed?.fields ?? [];
 
     if (!raisedBed || fields.length === 0) {
         return <NoDataPlaceholder />;
+    }
+
+    const plantCyclesByPosition = new Map<number, RaisedBedFieldPlantCycle[]>();
+    for (const plantCycle of plantCycles) {
+        const positionPlantCycles = plantCyclesByPosition.get(
+            plantCycle.positionIndex,
+        );
+        if (positionPlantCycles) {
+            positionPlantCycles.push(plantCycle);
+        } else {
+            plantCyclesByPosition.set(plantCycle.positionIndex, [plantCycle]);
+        }
     }
 
     const highestPositionIndex = Math.max(
@@ -88,15 +111,100 @@ export async function RaisedBedFieldsTable({
         <Stack spacing={3}>
             <div className="grid gap-3 grid-cols-3">
                 {orderedPositions.map((positionIndex) => {
+                    const positionPlantCycles = [
+                        ...(plantCyclesByPosition.get(positionIndex) ?? []),
+                    ].sort(
+                        (left, right) =>
+                            new Date(right.startedAt).getTime() -
+                            new Date(left.startedAt).getTime(),
+                    );
+                    const activePlantCycle = positionPlantCycles.find(
+                        (plantCycle) => plantCycle.active,
+                    );
                     const field = fields.find(
                         (item) =>
-                            item.positionIndex === positionIndex && item.active,
+                            item.positionIndex === positionIndex &&
+                            item.active &&
+                            typeof item.plantSortId === 'number',
                     );
-                    const removedFieldsAtPosition = fields
+                    const moveTargetOptions = [...orderedPositions]
+                        .sort((a, b) => a - b)
                         .filter(
-                            (f) =>
-                                !f.active && f.positionIndex === positionIndex,
+                            (targetPositionIndex) =>
+                                targetPositionIndex !== positionIndex,
                         )
+                        .map((targetPositionIndex) => {
+                            const targetField = fields.find(
+                                (item) =>
+                                    item.positionIndex ===
+                                        targetPositionIndex &&
+                                    item.active &&
+                                    typeof item.plantSortId === 'number',
+                            );
+                            const targetSort = targetField?.plantSortId
+                                ? sortsData?.find(
+                                      (item) =>
+                                          item.id === targetField.plantSortId,
+                                  )
+                                : undefined;
+
+                            return {
+                                value: targetPositionIndex.toString(),
+                                label: `Polje ${targetPositionIndex + 1} · ${
+                                    targetField
+                                        ? getSortLabel(
+                                              targetSort,
+                                              targetField.plantSortId,
+                                          )
+                                        : 'Prazno'
+                                }`,
+                            };
+                        });
+                    const removedFieldsAtPosition = positionPlantCycles
+                        .filter((plantCycle) => !plantCycle.active)
+                        .map((plantCycle) => {
+                            const sort = sortsData?.find(
+                                (item) => item.id === plantCycle.plantSortId,
+                            );
+                            const statusMeta = getStatusMeta(
+                                plantCycle.plantStatus,
+                            );
+                            return {
+                                id: plantCycle.plantPlaceEventId,
+                                positionIndex: plantCycle.positionIndex,
+                                plantPlaceEventId: plantCycle.plantPlaceEventId,
+                                plantLabel: getSortLabel(
+                                    sort,
+                                    plantCycle.plantSortId,
+                                ),
+                                plantStatusLabel: statusMeta?.label ?? null,
+                                plantStatusIcon: statusMeta?.icon ?? null,
+                                sortData: sort,
+                                createdAt: normalizeDate(plantCycle.startedAt),
+                                plantScheduledDate: normalizeDate(
+                                    plantCycle.plantScheduledDate,
+                                ),
+                                plantSowDate: normalizeDate(
+                                    plantCycle.plantSowDate,
+                                ),
+                                plantGrowthDate: normalizeDate(
+                                    plantCycle.plantGrowthDate,
+                                ),
+                                plantReadyDate: normalizeDate(
+                                    plantCycle.plantReadyDate,
+                                ),
+                                plantHarvestedDate: normalizeDate(
+                                    plantCycle.plantHarvestedDate,
+                                ),
+                                plantDeadDate: normalizeDate(
+                                    plantCycle.plantDeadDate,
+                                ),
+                                plantRemovedDate: normalizeDate(
+                                    plantCycle.plantRemovedDate ??
+                                        plantCycle.endedAt,
+                                ),
+                            } satisfies RemovedFieldDetails;
+                        })
                         .sort((a, b) => {
                             const dateA = a.plantRemovedDate ?? a.createdAt;
                             const dateB = b.plantRemovedDate ?? b.createdAt;
@@ -105,46 +213,18 @@ export async function RaisedBedFieldsTable({
                                 new Date(dateB).getTime() -
                                 new Date(dateA).getTime()
                             );
-                        })
-                        .map((f) => {
-                            const sort = sortsData?.find(
-                                (item) => item.id === f.plantSortId,
-                            );
-                            const statusMeta = getStatusMeta(f.plantStatus);
-                            return {
-                                id: f.id,
-                                positionIndex: f.positionIndex,
-                                plantLabel: getSortLabel(sort, f.plantSortId),
-                                plantStatusLabel: statusMeta?.label ?? null,
-                                plantStatusIcon: statusMeta?.icon ?? null,
-                                sortData: sort,
-                                createdAt: normalizeDate(f.createdAt),
-                                plantScheduledDate: normalizeDate(
-                                    f.plantScheduledDate,
-                                ),
-                                plantSowDate: normalizeDate(f.plantSowDate),
-                                plantGrowthDate: normalizeDate(
-                                    f.plantGrowthDate,
-                                ),
-                                plantReadyDate: normalizeDate(f.plantReadyDate),
-                                plantHarvestedDate: normalizeDate(
-                                    f.plantHarvestedDate,
-                                ),
-                                plantDeadDate: normalizeDate(f.plantDeadDate),
-                                plantRemovedDate: normalizeDate(
-                                    f.plantRemovedDate,
-                                ),
-                            } satisfies RemovedFieldDetails;
                         });
 
                     return (
                         <RaisedBedFieldTile
                             key={positionIndex}
                             field={field}
+                            activePlantCycle={activePlantCycle}
                             positionIndex={positionIndex}
                             plantSorts={sortsData ?? []}
                             raisedBedId={raisedBedId}
                             removedFields={removedFieldsAtPosition}
+                            moveTargetOptions={moveTargetOptions}
                         />
                     );
                 })}
@@ -155,24 +235,31 @@ export async function RaisedBedFieldsTable({
 
 type RaisedBedFieldTileProps = {
     field?: RaisedBedField;
+    activePlantCycle?: RaisedBedFieldPlantCycle;
     positionIndex: number;
     plantSorts: PlantSortData[];
     raisedBedId: number;
     removedFields: RemovedFieldDetails[];
+    moveTargetOptions: Array<{
+        value: string;
+        label: string;
+    }>;
 };
 
 function RaisedBedFieldTile({
     field,
+    activePlantCycle,
     positionIndex,
     plantSorts,
     raisedBedId,
     removedFields,
+    moveTargetOptions,
 }: RaisedBedFieldTileProps) {
     const sort = field?.plantSortId
         ? plantSorts.find((item) => item.id === field.plantSortId)
         : undefined;
-    const plantLabel = field?.active
-        ? getSortLabel(sort, field?.plantSortId)
+    const plantLabel = field
+        ? getSortLabel(sort, field.plantSortId)
         : 'Prazno polje';
     const dateItems: {
         label: string;
@@ -213,7 +300,11 @@ function RaisedBedFieldTile({
                 )}
                 {removedFields.length > 0 && (
                     <div className="absolute bottom-2 left-2">
-                        <RaisedBedRemovedFieldsModal fields={removedFields} />
+                        <RaisedBedRemovedFieldsModal
+                            raisedBedId={raisedBedId}
+                            fields={removedFields}
+                            targetOptions={moveTargetOptions}
+                        />
                     </div>
                 )}
                 <div className="absolute bottom-2 right-2 rounded-full bg-background/90 px-2 py-1 text-xs font-semibold shadow">
@@ -228,6 +319,17 @@ function RaisedBedFieldTile({
                                 raisedBedId={raisedBedId}
                                 positionIndex={positionIndex}
                                 status={field.plantStatus}
+                            />
+                        )}
+                        {activePlantCycle && (
+                            <MoveRaisedBedFieldPlantModal
+                                raisedBedId={raisedBedId}
+                                sourcePositionIndex={positionIndex}
+                                sourcePlantPlaceEventId={
+                                    activePlantCycle.plantPlaceEventId
+                                }
+                                sourcePlantLabel={plantLabel}
+                                targetOptions={moveTargetOptions}
                             />
                         )}
                         <Stack>

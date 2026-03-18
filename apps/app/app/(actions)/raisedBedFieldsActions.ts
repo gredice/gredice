@@ -9,6 +9,7 @@ import {
     getEntityFormatted,
     getRaisedBed,
     knownEvents,
+    moveRaisedBedFieldPlantHistory,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
@@ -135,6 +136,81 @@ export async function raisedBedFieldUpdatePlant({
     }
 
     revalidatePath(KnownPages.RaisedBed(raisedBedId));
+}
+
+export async function moveRaisedBedFieldPlantAction({
+    raisedBedId,
+    sourcePositionIndex,
+    targetPositionIndex,
+    sourcePlantPlaceEventId,
+}: {
+    raisedBedId: number;
+    sourcePositionIndex: number;
+    targetPositionIndex: number;
+    sourcePlantPlaceEventId: number;
+}) {
+    await auth(['admin']);
+
+    if (sourcePositionIndex === targetPositionIndex) {
+        return {
+            success: false,
+            message: 'Izvorišno i ciljno polje moraju biti različiti.',
+        };
+    }
+
+    if (sourcePositionIndex < 0 || targetPositionIndex < 0) {
+        return {
+            success: false,
+            message: 'Pozicije polja moraju biti nula ili veće.',
+        };
+    }
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (!raisedBed) {
+        return {
+            success: false,
+            message: `Gredica s ID-em ${raisedBedId} nije pronađena.`,
+        };
+    }
+
+    const highestPositionIndex = Math.max(
+        8,
+        ...raisedBed.fields.map((field) => field.positionIndex),
+    );
+    if (targetPositionIndex > highestPositionIndex) {
+        return {
+            success: false,
+            message: 'Ciljno polje nije dostupno u ovoj gredici.',
+        };
+    }
+
+    try {
+        await moveRaisedBedFieldPlantHistory({
+            raisedBedId,
+            sourcePositionIndex,
+            targetPositionIndex,
+            sourcePlantPlaceEventId,
+        });
+    } catch (error) {
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Premještanje biljke nije uspjelo.',
+        };
+    }
+
+    revalidatePath(KnownPages.Schedule);
+    if (raisedBed.accountId)
+        revalidatePath(KnownPages.Account(raisedBed.accountId));
+    if (raisedBed.gardenId)
+        revalidatePath(KnownPages.Garden(raisedBed.gardenId));
+    revalidatePath(KnownPages.RaisedBed(raisedBedId));
+
+    return {
+        success: true,
+    };
 }
 
 export async function acceptRaisedBedFieldAction(
