@@ -1,6 +1,7 @@
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { shoppingCartItems, shoppingCarts } from '../schema';
 import { storage } from '../storage';
+import { getInventory } from './inventoryRepo';
 
 export async function getOrCreateShoppingCart(
     accountId: string,
@@ -109,6 +110,9 @@ export async function upsertOrRemoveCartItem(
                     typeof additionalData === 'string'
                         ? eq(shoppingCartItems.additionalData, additionalData)
                         : undefined,
+                    currency
+                        ? eq(shoppingCartItems.currency, currency)
+                        : undefined,
                     eq(shoppingCartItems.isDeleted, false),
                 ),
             })
@@ -200,6 +204,83 @@ export async function deleteShoppingCart(accountId: string) {
                 .where(eq(shoppingCartItems.cartId, cart.id)),
         ]);
     }
+}
+
+export async function normalizeShoppingCartInventoryUsage(cartId: number) {
+    const cart = await getShoppingCart(cartId);
+    if (!cart?.accountId) {
+        return cart;
+    }
+
+    const inventory = await getInventory(cart.accountId);
+    const availableInventory = new Map(
+        inventory.map((item) => [
+            `${item.entityTypeName}-${item.entityId}`,
+            item.amount,
+        ]),
+    );
+
+    await storage().transaction(async (tx) => {
+        const inventoryItems = await tx
+            .select()
+            .from(shoppingCartItems)
+            .where(
+                and(
+                    eq(shoppingCartItems.cartId, cartId),
+                    eq(shoppingCartItems.isDeleted, false),
+                    eq(shoppingCartItems.status, 'new'),
+                    eq(shoppingCartItems.currency, 'inventory'),
+                ),
+            )
+            .orderBy(asc(shoppingCartItems.createdAt), asc(shoppingCartItems.id))
+            .for('update');
+
+        for (const item of inventoryItems) {
+            const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
+            const remainingInventory = availableInventory.get(inventoryKey) ?? 0;
+
+            if (remainingInventory <= 0) {
+                await tx
+                    .update(shoppingCartItems)
+                    .set({ currency: 'eur' })
+                    .where(eq(shoppingCartItems.id, item.id));
+                continue;
+            }
+
+            if (item.amount <= remainingInventory) {
+                availableInventory.set(
+                    inventoryKey,
+                    remainingInventory - item.amount,
+                );
+                continue;
+            }
+
+            const inventoryAmount = remainingInventory;
+            const purchaseAmount = item.amount - inventoryAmount;
+
+            await tx
+                .update(shoppingCartItems)
+                .set({ amount: inventoryAmount })
+                .where(eq(shoppingCartItems.id, item.id));
+
+            await tx.insert(shoppingCartItems).values({
+                cartId: item.cartId,
+                entityId: item.entityId,
+                entityTypeName: item.entityTypeName,
+                gardenId: item.gardenId,
+                raisedBedId: item.raisedBedId,
+                positionIndex: item.positionIndex,
+                additionalData: item.additionalData,
+                amount: purchaseAmount,
+                currency: 'eur',
+                status: item.status,
+            });
+
+            availableInventory.set(inventoryKey, 0);
+        }
+    });
+
+    return getShoppingCart(cartId);
 }
 
 export async function getAllShoppingCarts({
