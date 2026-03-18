@@ -4,22 +4,17 @@
 
 import * as sdk from "hypertune";
 
-export const queryId = "c6423090-78aa-57e0-ae5f-afe6ad3bc456";
+export const queryCode = `query FullQuery{root{lsystemPlants enableDebugCloseup enableDebugHud}}`;
 
-export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"raisedBedFieldWatering":{"fieldArguments":{},"fieldQuery":null},"raisedBedDiary":{"fieldArguments":{},"fieldQuery":null},"raisedBedFieldDiary":{"fieldArguments":{},"fieldQuery":null},"raisedBedFieldOperations":{"fieldArguments":{},"fieldQuery":null},"raisedBedOperations":{"fieldArguments":{},"fieldQuery":null},"raisedBedWatering":{"fieldArguments":{},"fieldQuery":null},"enableDebugCloseup":{"fieldArguments":{},"fieldQuery":null},"enableDebugHud":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
+export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"lsystemPlants":{"fieldArguments":{},"fieldQuery":null},"enableDebugCloseup":{"fieldArguments":{},"fieldQuery":null},"enableDebugHud":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
 
-export const initData = {"commitId":31642,"hash":"6161187454489082","reducedExpression":{"id":"hSzx_K7sNYI77jRriD4U1","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"sAbJTW3LHNEltLHB8AA4n","body":{"id":"8qdt_QWcSqIYYFTe-_aA0","logs":{},"type":"ObjectExpression","fields":{"raisedBedFieldWatering":{"id":"cf9fO3I7fWyzED3SveFe7","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"9MIAOeqKCIcYD2lCiNpbF":1}}},"raisedBedDiary":{"id":"rd5BJYsXeTxE2Nn6iuhM4","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"-4sgSvnjKNvH9oG5f18Z_":1}}},"raisedBedFieldDiary":{"id":"38J0e2G3QculRXp9Hw5OD","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"-I8tt4MRtaoBLXTp_rXHT":1}}},"raisedBedFieldOperations":{"id":"x5UKEyX5M4Yt-1g_iqLQC","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"kUW4GeEVanIkaGrxr8jQ0":1}}},"raisedBedOperations":{"id":"XOVdIFtA99gMzH1j4gbK4","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"G6yYeQn2ZHufeV9bcJrEK":1}}},"raisedBedWatering":{"id":"8B2CgD_jIlSaX_c_am2As","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"f9nkv0-ALCIdEk7FqmLfl":1}}},"enableDebugCloseup":{"id":"1TXYDm782KoLc85_O7sNF","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"J5D2Ud8BFP5uvl2WQp9Ie":1}}},"enableDebugHud":{"id":"eBU-zMgJe6dO6jTG4feRf","type":"BooleanExpression","value":false,"metadata":{"note":""},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"HC9HIJsBk_0LEh72su_AH":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"BZ17_qmFfcyqAuDSTOPbH","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
+export const initData = {"commitId":50194,"hash":"3674549144466306","reducedExpression":{"id":"hSzx_K7sNYI77jRriD4U1","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"sAbJTW3LHNEltLHB8AA4n","body":{"id":"8qdt_QWcSqIYYFTe-_aA0","logs":{},"type":"ObjectExpression","fields":{"lsystemPlants":{"id":"1ozkDzneaGqIpxOrMi9p6","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"JyMWbU0cEArx5XmeQZZ0U":1}}},"enableDebugCloseup":{"id":"1TXYDm782KoLc85_O7sNF","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"J5D2Ud8BFP5uvl2WQp9Ie":1}}},"enableDebugHud":{"id":"eBU-zMgJe6dO6jTG4feRf","type":"BooleanExpression","value":false,"metadata":{"note":""},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"HC9HIJsBk_0LEh72su_AH":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"BZ17_qmFfcyqAuDSTOPbH","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
 
 
-export const vercelFlagDefinitions = {"raisedBedFieldWatering":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedFieldWatering"},"raisedBedDiary":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedDiary"},"raisedBedFieldDiary":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedFieldDiary"},"raisedBedFieldOperations":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedFieldOperations"},"raisedBedOperations":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedOperations"},"raisedBedWatering":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedWatering"},"enableDebugCloseup":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugCloseup"},"enableDebugHud":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugHud"}};
+export const vercelFlagDefinitions = {"lsystemPlants":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3ElsystemPlants","description":"Whether L-System plants are displayed instead of just seeds."},"enableDebugCloseup":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugCloseup"},"enableDebugHud":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugHud"}};
 
 export type FlagValues = {
-  "raisedBedFieldWatering": boolean;
-  "raisedBedDiary": boolean;
-  "raisedBedFieldDiary": boolean;
-  "raisedBedFieldOperations": boolean;
-  "raisedBedOperations": boolean;
-  "raisedBedWatering": boolean;
+  "lsystemPlants": boolean;
   "enableDebugCloseup": boolean;
   "enableDebugHud": boolean;
 }
@@ -27,12 +22,7 @@ export type FlagValues = {
 export type FlagPath = keyof FlagValues & string;
 
 export const flagFallbacks: FlagValues = {
-  "raisedBedFieldWatering": false,
-  "raisedBedDiary": false,
-  "raisedBedFieldDiary": false,
-  "raisedBedFieldOperations": false,
-  "raisedBedOperations": false,
-  "raisedBedWatering": false,
+  "lsystemPlants": false,
   "enableDebugCloseup": false,
   "enableDebugHud": false,
 }
@@ -78,17 +68,15 @@ export type RootArgs = {
 export type EmptyObject = {};
 
 export type Root = {
-  raisedBedFieldWatering: boolean;
-  raisedBedDiary: boolean;
-  raisedBedFieldDiary: boolean;
-  raisedBedFieldOperations: boolean;
-  raisedBedOperations: boolean;
-  raisedBedWatering: boolean;
+  /**
+   * Whether L-System plants are displayed instead of just seeds.
+   */
+  lsystemPlants: boolean;
   enableDebugCloseup: boolean;
   enableDebugHud: boolean;
 }
 
-const rootFallback = {raisedBedFieldWatering:false,raisedBedDiary:false,raisedBedFieldDiary:false,raisedBedFieldOperations:false,raisedBedOperations:false,raisedBedWatering:false,enableDebugCloseup:false,enableDebugHud:false};
+const rootFallback = {lsystemPlants:false,enableDebugCloseup:false,enableDebugHud:false};
 
 export class RootNode extends sdk.Node {
   override typeName = "Root" as const;
@@ -108,110 +96,11 @@ export class RootNode extends sdk.Node {
   }
 
   /**
-   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedFieldWatering})
+   * Whether L-System plants are displayed instead of just seeds.
+   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3ElsystemPlants})
    */
-  raisedBedFieldWatering({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
-    const props0 = this.getFieldNodeProps("raisedBedFieldWatering", { fieldArguments: args });
-    const expression0 = props0.expression;
-
-    if (
-      expression0 &&
-      expression0.type === "BooleanExpression"
-    ) {
-      const node = new sdk.BooleanNode(props0);
-      return node.get({ fallback });
-    }
-
-    const node = new sdk.BooleanNode(props0);
-    node._logUnexpectedTypeError();
-    return node.get({ fallback });
-  }
-
-  /**
-   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedDiary})
-   */
-  raisedBedDiary({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
-    const props0 = this.getFieldNodeProps("raisedBedDiary", { fieldArguments: args });
-    const expression0 = props0.expression;
-
-    if (
-      expression0 &&
-      expression0.type === "BooleanExpression"
-    ) {
-      const node = new sdk.BooleanNode(props0);
-      return node.get({ fallback });
-    }
-
-    const node = new sdk.BooleanNode(props0);
-    node._logUnexpectedTypeError();
-    return node.get({ fallback });
-  }
-
-  /**
-   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedFieldDiary})
-   */
-  raisedBedFieldDiary({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
-    const props0 = this.getFieldNodeProps("raisedBedFieldDiary", { fieldArguments: args });
-    const expression0 = props0.expression;
-
-    if (
-      expression0 &&
-      expression0.type === "BooleanExpression"
-    ) {
-      const node = new sdk.BooleanNode(props0);
-      return node.get({ fallback });
-    }
-
-    const node = new sdk.BooleanNode(props0);
-    node._logUnexpectedTypeError();
-    return node.get({ fallback });
-  }
-
-  /**
-   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedFieldOperations})
-   */
-  raisedBedFieldOperations({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
-    const props0 = this.getFieldNodeProps("raisedBedFieldOperations", { fieldArguments: args });
-    const expression0 = props0.expression;
-
-    if (
-      expression0 &&
-      expression0.type === "BooleanExpression"
-    ) {
-      const node = new sdk.BooleanNode(props0);
-      return node.get({ fallback });
-    }
-
-    const node = new sdk.BooleanNode(props0);
-    node._logUnexpectedTypeError();
-    return node.get({ fallback });
-  }
-
-  /**
-   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedOperations})
-   */
-  raisedBedOperations({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
-    const props0 = this.getFieldNodeProps("raisedBedOperations", { fieldArguments: args });
-    const expression0 = props0.expression;
-
-    if (
-      expression0 &&
-      expression0.type === "BooleanExpression"
-    ) {
-      const node = new sdk.BooleanNode(props0);
-      return node.get({ fallback });
-    }
-
-    const node = new sdk.BooleanNode(props0);
-    node._logUnexpectedTypeError();
-    return node.get({ fallback });
-  }
-
-  /**
-   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedWatering})
-   */
-  raisedBedWatering({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
-    const props0 = this.getFieldNodeProps("raisedBedWatering", { fieldArguments: args });
+  lsystemPlants({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
+    const props0 = this.getFieldNodeProps("lsystemPlants", { fieldArguments: args });
     const expression0 = props0.expression;
 
     if (
@@ -289,7 +178,7 @@ export type Source = {
   root: Root;
 }
 
-const sourceFallback = {root:{raisedBedFieldWatering:false,raisedBedDiary:false,raisedBedFieldDiary:false,raisedBedFieldOperations:false,raisedBedOperations:false,raisedBedWatering:false,enableDebugCloseup:false,enableDebugHud:false}};
+const sourceFallback = {root:{lsystemPlants:false,enableDebugCloseup:false,enableDebugHud:false}};
 
 export type GetQueryRootArgs = {
   args: RootArgs;

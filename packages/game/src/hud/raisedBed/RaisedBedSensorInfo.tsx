@@ -857,11 +857,15 @@ export function RaisedBedSensorInfo({
                                         <Droplet
                                             className={cx(
                                                 'size-5 shrink-0 stroke-blue-400',
-                                                !isSensorDataStale(group.soilMoisture?.updatedAt) &&
-                                                Number(
-                                                    group.soilMoisture?.value ??
-                                                        '0',
-                                                ) >= 20 && 'fill-blue-300',
+                                                !isSensorDataStale(
+                                                    group.soilMoisture
+                                                        ?.updatedAt,
+                                                ) &&
+                                                    Number(
+                                                        group.soilMoisture
+                                                            ?.value ?? '0',
+                                                    ) >= 20 &&
+                                                    'fill-blue-300',
                                             )}
                                         />
                                         {isLoading && (
@@ -872,9 +876,13 @@ export function RaisedBedSensorInfo({
                                         )}
                                         {!isLoading && !error && (
                                             <span>
-                                                {isSensorDataStale(group.soilMoisture?.updatedAt)
+                                                {isSensorDataStale(
+                                                    group.soilMoisture
+                                                        ?.updatedAt,
+                                                )
                                                     ? '-'
-                                                    : group.soilMoisture?.value ?? '-'}
+                                                    : (group.soilMoisture
+                                                          ?.value ?? '-')}
                                                 %
                                             </span>
                                         )}
@@ -906,11 +914,15 @@ export function RaisedBedSensorInfo({
                                         <Thermometer
                                             className={cx(
                                                 'size-5 shrink-0 stroke-red-400',
-                                                !isSensorDataStale(group.soilTemperature?.updatedAt) &&
-                                                Number(
+                                                !isSensorDataStale(
                                                     group.soilTemperature
-                                                        ?.value ?? '0',
-                                                ) >= 20 && 'fill-red-300',
+                                                        ?.updatedAt,
+                                                ) &&
+                                                    Number(
+                                                        group.soilTemperature
+                                                            ?.value ?? '0',
+                                                    ) >= 20 &&
+                                                    'fill-red-300',
                                             )}
                                         />
                                         {isLoading && (
@@ -921,9 +933,13 @@ export function RaisedBedSensorInfo({
                                         )}
                                         {!isLoading && !error && (
                                             <span>
-                                                {isSensorDataStale(group.soilTemperature?.updatedAt)
+                                                {isSensorDataStale(
+                                                    group.soilTemperature
+                                                        ?.updatedAt,
+                                                )
                                                     ? '-'
-                                                    : group.soilTemperature?.value ?? '-'}
+                                                    : (group.soilTemperature
+                                                          ?.value ?? '-')}
                                                 °C
                                             </span>
                                         )}

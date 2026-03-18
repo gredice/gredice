@@ -2,13 +2,18 @@
 
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import CSM from 'three-custom-shader-material';
+import { plantSwayVertexShader, usePlantSway } from '../hooks/usePlantSway';
 import type { PlantDefinition } from '../lib/plant-definitions';
 
 interface LeavesProps {
+    seed: string;
     matrices: THREE.Matrix4[];
-    color: string;
+    colors: THREE.Color[];
     type: PlantDefinition['leaf']['type'];
 }
+
+const MAX_LEAF_INSTANCES = 10000;
 
 const leafGeometries = {
     round: new THREE.CircleGeometry(1, 6),
@@ -73,39 +78,95 @@ const leafGeometries = {
     })(),
 };
 
-export function Leaves({ matrices, color, type }: LeavesProps) {
-    const ref = useRef<THREE.InstancedMesh | null>(null);
-    const material = useMemo(
-        () =>
-            new THREE.MeshStandardMaterial({
-                color,
-                side: THREE.DoubleSide,
-                roughness: 0.6,
-            }),
-        [color],
-    );
+const leafColorVertexShader = /* glsl */ `
+    attribute vec3 leafInstanceColor;
+    varying vec3 vLeafInstanceColor;
+
+    ${plantSwayVertexShader.replace(
+        'void main() {',
+        `
+        void main() {
+            vLeafInstanceColor = leafInstanceColor;
+        `,
+    )}
+`;
+
+const leafColorFragmentShader = /* glsl */ `
+    varying vec3 vLeafInstanceColor;
+
+    void main() {
+        csm_DiffuseColor = vec4(vLeafInstanceColor, 1.0);
+    }
+`;
+
+export function Leaves({ seed, matrices, colors, type }: LeavesProps) {
+    const leafRef = useRef<THREE.InstancedMesh | null>(null);
+    const swayUniforms = usePlantSway(`${seed}-leaves`, {
+        amplitude: 0.11,
+        speed: 1.45,
+    });
+    const fallbackColor = useMemo(() => new THREE.Color('#ffffff'), []);
     const geometry = useMemo(
-        () => leafGeometries[type] || leafGeometries.round,
+        () => (leafGeometries[type] || leafGeometries.round).clone(),
         [type],
     );
+    const leafInstanceColor = useMemo(() => {
+        const attribute = new THREE.InstancedBufferAttribute(
+            new Float32Array(MAX_LEAF_INSTANCES * 3),
+            3,
+        );
+        attribute.setUsage(THREE.DynamicDrawUsage);
+        return attribute;
+    }, []);
 
     useLayoutEffect(() => {
-        const mesh = ref.current;
-        if (!mesh) {
-            return;
-        }
-        matrices.forEach((matrix, i) => {
-            mesh.setMatrixAt(i, matrix);
-        });
-        mesh.instanceMatrix.needsUpdate = true;
-        mesh.count = matrices.length;
-    }, [matrices]);
+        const updateInstances = (
+            mesh: THREE.InstancedMesh | null,
+            instanceColors: THREE.Color[],
+            colorAttribute: THREE.InstancedBufferAttribute,
+        ) => {
+            if (!mesh) {
+                return;
+            }
+
+            mesh.geometry.setAttribute('leafInstanceColor', colorAttribute);
+            matrices.forEach((matrix, i) => {
+                mesh.setMatrixAt(i, matrix);
+                const color = instanceColors[i] ?? fallbackColor;
+                colorAttribute.setXYZ(i, color.r, color.g, color.b);
+            });
+            mesh.instanceMatrix.needsUpdate = true;
+            colorAttribute.needsUpdate = true;
+            if (!Array.isArray(mesh.material)) {
+                mesh.material.needsUpdate = true;
+            }
+            mesh.count = matrices.length;
+        };
+
+        updateInstances(leafRef.current, colors, leafInstanceColor);
+    }, [colors, fallbackColor, leafInstanceColor, matrices]);
+
+    useLayoutEffect(() => {
+        return () => {
+            geometry.dispose();
+        };
+    }, [geometry]);
 
     return (
         <instancedMesh
-            ref={ref}
-            args={[geometry, material, 10000]}
+            ref={leafRef}
+            args={[geometry, undefined, MAX_LEAF_INSTANCES]}
             castShadow
-        />
+        >
+            <CSM
+                baseMaterial={THREE.MeshStandardMaterial}
+                vertexShader={leafColorVertexShader}
+                fragmentShader={leafColorFragmentShader}
+                uniforms={swayUniforms}
+                color="#ffffff"
+                side={THREE.DoubleSide}
+                roughness={0.6}
+            />
+        </instancedMesh>
     );
 }

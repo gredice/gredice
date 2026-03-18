@@ -22,21 +22,6 @@ export const enableDebugHudFlag = flag(
 export const enableDebugCloseupFlag = flag(
     hypertuneAdapter.declarations.enableDebugCloseup,
 );
-export const enableRaisedBedWateringFlag = flag(
-    hypertuneAdapter.declarations.raisedBedWatering,
-);
-export const enableRaisedBedDiaryFlag = flag(
-    hypertuneAdapter.declarations.raisedBedDiary,
-);
-export const enableRaisedBedOperationsFlag = flag(
-    hypertuneAdapter.declarations.raisedBedOperations,
-);
-export const enableRaisedBedFieldOperationsFlag = flag(
-    hypertuneAdapter.declarations.raisedBedFieldOperations,
-);
-export const enableRaisedBedFieldWateringFlag = flag(
-    hypertuneAdapter.declarations.raisedBedFieldWatering,
-);
-export const enableRaisedBedFieldDiaryFlag = flag(
-    hypertuneAdapter.declarations.raisedBedFieldDiary,
+export const enablePlantGeneratorFlag = flag(
+    hypertuneAdapter.declarations.lsystemPlants,
 );

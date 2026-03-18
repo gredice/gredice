@@ -3,6 +3,7 @@
 import { useGLTF } from '@react-three/drei';
 import { useEffect, useRef } from 'react';
 import { models } from './data/models';
+import { GameFlagsContext } from './GameFlagsContext';
 import { GameScene, type GameSceneProps } from './GameScene';
 import {
     createGameState,
@@ -12,6 +13,7 @@ import {
 
 export function GameSceneWrapper({
     appBaseUrl,
+    flags,
     freezeTime,
     mockGarden,
     winterMode,
@@ -45,7 +47,9 @@ export function GameSceneWrapper({
 
     return (
         <GameStateContext.Provider value={storeRef.current}>
-            <GameScene {...rest} />
+            <GameFlagsContext.Provider value={flags ?? {}}>
+                <GameScene flags={flags} {...rest} />
+            </GameFlagsContext.Provider>
         </GameStateContext.Provider>
     );
 }
