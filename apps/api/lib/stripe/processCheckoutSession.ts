@@ -56,9 +56,7 @@ async function processNonStripeCartItems(
     accountId: string,
     deliveryInfo?: unknown,
 ): Promise<ShoppingCartItemWithShopData[]> {
-    const cart =
-        (await normalizeShoppingCartInventoryUsage(cartId)) ??
-        (await getShoppingCart(cartId));
+    const cart = await normalizeShoppingCartInventoryUsage(cartId);
     if (!cart) {
         console.warn(
             `No cart found for ID ${cartId} when processing non-stripe items.`,
