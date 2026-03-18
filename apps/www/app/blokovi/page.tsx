@@ -1,12 +1,13 @@
 import { directoriesClient } from '@gredice/client';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { BlockGallery } from './BlockGallery';
 
 export const revalidate = 3600; // 1 hour
-export const metadata = {
+export const metadata: Metadata = {
     title: 'Blokovi',
     description: 'Pregledaj sve blokove koje možeš koristiti u svom vrtu.',
 };
