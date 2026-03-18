@@ -8,6 +8,7 @@ import {
     useEffect,
     useState,
 } from 'react';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 
 const SUMMER_HUE = 28;
 const WINTER_HUE = 202;
@@ -62,31 +63,39 @@ export function useWinterMode() {
 
 export function WinterModeProvider({ children }: { children: ReactNode }) {
     const [isWinter, setIsWinter] = useState<boolean | null>(null);
+    const { data: user, isLoading } = useCurrentUser();
 
     const applyHue = useCallback((winter: boolean) => {
         const hue = winter ? WINTER_HUE : SUMMER_HUE;
         document.documentElement.style.setProperty('--baseHue', String(hue));
     }, []);
 
-    // Initialize from localStorage on mount
+    // Initialize from localStorage on mount so visuals are applied immediately
     useEffect(() => {
-        // Force summer mode outside winter season
-        if (!isWinterSeason()) {
-            setIsWinter(false);
-            applyHue(false);
-            return;
-        }
-
         const stored = localStorage.getItem(STORAGE_KEY);
         // Default to winter mode during winter season
-        const initialValue = stored !== null ? stored === 'true' : true;
+        const initialValue =
+            stored !== null ? stored === 'true' : isWinterSeason();
         setIsWinter(initialValue);
         applyHue(initialValue);
     }, [applyHue]);
 
+    // Once user data is available, force summer for authenticated users or outside winter season and persist to localStorage
+    useEffect(() => {
+        if (isLoading) {
+            return;
+        }
+
+        if (user || !isWinterSeason()) {
+            setIsWinter(false);
+            localStorage.setItem(STORAGE_KEY, 'false');
+            applyHue(false);
+        }
+    }, [applyHue, isLoading, user]);
+
     const toggle = useCallback(() => {
-        // Don't allow toggling to winter outside winter season
-        if (!isWinterSeason()) {
+        // Logged-in users always stay in summer mode, and winter mode is disabled outside winter season
+        if (user || !isWinterSeason()) {
             return;
         }
 
@@ -96,7 +105,7 @@ export function WinterModeProvider({ children }: { children: ReactNode }) {
             applyHue(newValue);
             return newValue;
         });
-    }, [applyHue]);
+    }, [applyHue, user]);
 
     return (
         <WinterModeContext.Provider value={{ isWinter, toggle }}>
