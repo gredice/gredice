@@ -17,6 +17,7 @@ type DeliveryRequestGroup = {
     key: string;
     requests: DeliveryRequestData[];
     slotStart?: string | null;
+    newestRequestCreatedAt?: string | Date | null;
 };
 
 function getGroupKey(request: DeliveryRequestData): string {
@@ -36,6 +37,14 @@ function getGroupKey(request: DeliveryRequestData): string {
     return `${slotPart}-${request.id}`;
 }
 
+function getTimestamp(value?: string | Date | null): number {
+    if (!value) {
+        return Number.NEGATIVE_INFINITY;
+    }
+
+    return new Date(value).getTime();
+}
+
 function groupRequestsBySlotAndDestination(
     requests: DeliveryRequestData[],
 ): DeliveryRequestGroup[] {
@@ -47,29 +56,34 @@ function groupRequestsBySlotAndDestination(
 
         if (existing) {
             existing.requests.push(request);
+            if (
+                getTimestamp(request.createdAt) >
+                getTimestamp(existing.newestRequestCreatedAt)
+            ) {
+                existing.newestRequestCreatedAt = request.createdAt;
+            }
         } else {
             map.set(key, {
                 key,
                 requests: [request],
                 slotStart: request.slot?.startAt ?? null,
+                newestRequestCreatedAt: request.createdAt,
             });
         }
     }
 
-    // Convert map to array and sort by slot start time
-    const groups = Array.from(map.values()).sort((a, b) => {
-        if (a.slotStart && b.slotStart) {
-            return (
-                new Date(a.slotStart).getTime() -
-                new Date(b.slotStart).getTime()
-            );
+    return Array.from(map.values()).sort((a, b) => {
+        const slotDifference =
+            getTimestamp(b.slotStart) - getTimestamp(a.slotStart);
+        if (slotDifference !== 0) {
+            return slotDifference;
         }
-        if (a.slotStart) return -1;
-        if (b.slotStart) return 1;
-        return 0;
-    });
 
-    return groups;
+        return (
+            getTimestamp(b.newestRequestCreatedAt) -
+            getTimestamp(a.newestRequestCreatedAt)
+        );
+    });
 }
 
 export function DeliveryRequestsSection() {
