@@ -110,6 +110,9 @@ export async function upsertOrRemoveCartItem(
                     typeof additionalData === 'string'
                         ? eq(shoppingCartItems.additionalData, additionalData)
                         : undefined,
+                    currency
+                        ? eq(shoppingCartItems.currency, currency)
+                        : undefined,
                     eq(shoppingCartItems.isDeleted, false),
                 ),
             })
@@ -217,40 +220,44 @@ export async function normalizeShoppingCartInventoryUsage(cartId: number) {
         ]),
     );
 
-    const inventoryItems = await storage().query.shoppingCartItems.findMany({
-        where: and(
-            eq(shoppingCartItems.cartId, cartId),
-            eq(shoppingCartItems.isDeleted, false),
-            eq(shoppingCartItems.status, 'new'),
-            eq(shoppingCartItems.currency, 'inventory'),
-        ),
-        orderBy: [asc(shoppingCartItems.createdAt), asc(shoppingCartItems.id)],
-    });
+    await storage().transaction(async (tx) => {
+        const inventoryItems = await tx
+            .select()
+            .from(shoppingCartItems)
+            .where(
+                and(
+                    eq(shoppingCartItems.cartId, cartId),
+                    eq(shoppingCartItems.isDeleted, false),
+                    eq(shoppingCartItems.status, 'new'),
+                    eq(shoppingCartItems.currency, 'inventory'),
+                ),
+            )
+            .orderBy(asc(shoppingCartItems.createdAt), asc(shoppingCartItems.id))
+            .for('update');
 
-    for (const item of inventoryItems) {
-        const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
-        const remainingInventory = availableInventory.get(inventoryKey) ?? 0;
+        for (const item of inventoryItems) {
+            const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
+            const remainingInventory = availableInventory.get(inventoryKey) ?? 0;
 
-        if (remainingInventory <= 0) {
-            await storage()
-                .update(shoppingCartItems)
-                .set({ currency: 'eur' })
-                .where(eq(shoppingCartItems.id, item.id));
-            continue;
-        }
+            if (remainingInventory <= 0) {
+                await tx
+                    .update(shoppingCartItems)
+                    .set({ currency: 'eur' })
+                    .where(eq(shoppingCartItems.id, item.id));
+                continue;
+            }
 
-        if (item.amount <= remainingInventory) {
-            availableInventory.set(
-                inventoryKey,
-                remainingInventory - item.amount,
-            );
-            continue;
-        }
+            if (item.amount <= remainingInventory) {
+                availableInventory.set(
+                    inventoryKey,
+                    remainingInventory - item.amount,
+                );
+                continue;
+            }
 
-        const inventoryAmount = remainingInventory;
-        const purchaseAmount = item.amount - inventoryAmount;
+            const inventoryAmount = remainingInventory;
+            const purchaseAmount = item.amount - inventoryAmount;
 
-        await storage().transaction(async (tx) => {
             await tx
                 .update(shoppingCartItems)
                 .set({ amount: inventoryAmount })
@@ -268,10 +275,10 @@ export async function normalizeShoppingCartInventoryUsage(cartId: number) {
                 currency: 'eur',
                 status: item.status,
             });
-        });
 
-        availableInventory.set(inventoryKey, 0);
-    }
+            availableInventory.set(inventoryKey, 0);
+        }
+    });
 
     return getShoppingCart(cartId);
 }
