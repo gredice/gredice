@@ -5,6 +5,7 @@ import {
     getShoppingCart,
     getUser,
     markCartPaidIfAllItemsPaid,
+    normalizeShoppingCartInventoryUsage,
     setCartItemPaid,
     spendSunflowers,
 } from '@gredice/storage';
@@ -52,7 +53,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { cartId, deliveryInfo } = context.req.valid('json');
 
             // Retrieve data
-            const [account, user, cart] = await Promise.all([
+            const [account, user, initialCart] = await Promise.all([
                 getAccount(accountId),
                 getUser(userId),
                 getShoppingCart(cartId),
@@ -63,9 +64,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!user) {
                 return context.json({ error: 'User not found' }, 404);
             }
-            if (!cart) {
+            if (!initialCart) {
                 return context.json({ error: 'Cart not found' }, 404);
             }
+            const cart =
+                (await normalizeShoppingCartInventoryUsage(cartId)) ??
+                initialCart;
             if (cart.accountId !== accountId) {
                 console.warn('Account ID mismatch', {
                     accountId,

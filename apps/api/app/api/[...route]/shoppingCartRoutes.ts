@@ -3,6 +3,7 @@ import {
     deleteShoppingCart,
     getOrCreateShoppingCart,
     getSunflowers,
+    normalizeShoppingCartInventoryUsage,
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
 import { Hono } from 'hono';
@@ -35,8 +36,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Cart not found' }, 404);
             }
 
+            const normalizedCart =
+                (await normalizeShoppingCartInventoryUsage(cart.id)) ?? cart;
+
             // Calculate total amount of items in the cart (exclude paid items)
-            const cartInfo = await getCartInfo(cart.items, accountId);
+            const cartInfo = await getCartInfo(normalizedCart.items, accountId);
             const total = cartInfo.items
                 .filter(
                     (item) => item.status !== 'paid' && item.currency === 'eur',
@@ -80,7 +84,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
 
             return context.json({
-                ...cart,
+                ...normalizedCart,
                 items: cartInfo.items,
                 total,
                 totalSunflowers,
