@@ -70,7 +70,7 @@ export function WinterModeProvider({ children }: { children: ReactNode }) {
         document.documentElement.style.setProperty('--baseHue', String(hue));
     }, []);
 
-    // Initialize from localStorage on mount and keep logged-in users in summer mode
+    // Wait for current user query, then force summer for authenticated users or outside winter season; otherwise read localStorage
     useEffect(() => {
         if (isLoading) {
             return;
