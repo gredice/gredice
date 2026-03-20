@@ -1,6 +1,7 @@
 import { TimeRange } from '@gredice/ui/LocalDateTime';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Close, MapPin, ShoppingCart, Timer, Truck } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -50,6 +51,14 @@ export function DeliveryRequestRow({
           plantSort?.information?.plant?.image?.cover?.url)
         : operationData?.image?.cover?.url;
     const hasOperationDetails = displayName;
+    const raisedBedName = request.raisedBed?.name;
+    const raisedBedPhysicalId = request.raisedBed?.physicalId;
+    const fieldPosition = formatFieldPosition(
+        request.raisedBedField?.positionIndex,
+    );
+    const hasRaisedBedDetails = Boolean(
+        raisedBedName || raisedBedPhysicalId || fieldPosition,
+    );
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-2 md:items-center md:justify-between">
@@ -84,20 +93,43 @@ export function DeliveryRequestRow({
                                     </Typography>
                                 </Row>
                             )}
-                            {(request.raisedBed?.name ||
-                                request.raisedBedField?.positionIndex !=
-                                    null) && (
-                                <Typography level="body3">
-                                    {[
-                                        request.raisedBed?.name,
-                                        formatFieldPosition(
-                                            request.raisedBedField
-                                                ?.positionIndex,
-                                        ),
-                                    ]
-                                        .filter(Boolean)
-                                        .join(' • ')}
-                                </Typography>
+                            {hasRaisedBedDetails && (
+                                <Row
+                                    spacing={1}
+                                    className="flex-wrap items-center gap-y-0.5"
+                                >
+                                    {(raisedBedName || raisedBedPhysicalId) && (
+                                        <Row
+                                            spacing={1}
+                                            className="items-center"
+                                        >
+                                            {raisedBedPhysicalId && (
+                                                <RaisedBedIcon
+                                                    physicalId={
+                                                        raisedBedPhysicalId
+                                                    }
+                                                    className="size-6"
+                                                />
+                                            )}
+                                            {raisedBedName && (
+                                                <Typography level="body3">
+                                                    {raisedBedName}
+                                                </Typography>
+                                            )}
+                                        </Row>
+                                    )}
+                                    {(raisedBedName || raisedBedPhysicalId) &&
+                                        fieldPosition && (
+                                            <Typography level="body3">
+                                                •
+                                            </Typography>
+                                        )}
+                                    {fieldPosition && (
+                                        <Typography level="body3">
+                                            {fieldPosition}
+                                        </Typography>
+                                    )}
+                                </Row>
                             )}
                         </Stack>
                     </Row>

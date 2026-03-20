@@ -1,3 +1,4 @@
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Check } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Modal } from '@signalco/ui-primitives/Modal';
@@ -13,7 +14,6 @@ import {
     findRaisedBedByBlockId,
     getRaisedBedBlockIds,
 } from '../utils/raisedBedBlocks';
-import { RaisedBedIdentifierIcon } from './components/RaisedBedIdentifierIcon';
 import { RaisedBedField } from './raisedBed/RaisedBedField';
 import { RaisedBedFieldSuggestions } from './raisedBed/RaisedBedFieldSuggestions';
 import { RaisedBedGreenhouseSuggestion } from './raisedBed/RaisedBedGreenhouseSuggestion';
@@ -92,8 +92,9 @@ export function RaisedBedFieldHud(_props: {
                         trigger={
                             <ButtonGreen fullWidth>
                                 <Row spacing={1}>
-                                    <RaisedBedIdentifierIcon
+                                    <RaisedBedIcon
                                         physicalId={raisedBed.physicalId}
+                                        className="size-6"
                                     />
                                     <Typography semiBold noWrap>
                                         {raisedBed?.name}
@@ -131,7 +132,7 @@ export function RaisedBedFieldHud(_props: {
                 >
                     <span className="hidden md:block">Završi uređivanje</span>
                 </ButtonGreen>
-                {currentGarden && raisedBed && raisedBed.isValid && (
+                {currentGarden && raisedBed?.isValid && (
                     <>
                         <RaisedBedFieldSuggestions
                             gardenId={currentGarden.id}

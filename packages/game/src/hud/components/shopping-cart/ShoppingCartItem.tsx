@@ -1,4 +1,5 @@
 import { PlantOrSortImage } from '@gredice/ui/plants';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import {
     Close,
@@ -20,7 +21,6 @@ import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
 import type { ShoppingCartItemData } from '../../../hooks/useShoppingCart';
 import { BackpackIcon } from '../../../icons/Backpack';
-import { RaisedBedIdentifierIcon } from '../RaisedBedIdentifierIcon';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
 
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
@@ -203,10 +203,11 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                     >
                                         {raisedBed?.physicalId ? (
                                             <Row spacing={1}>
-                                                <RaisedBedIdentifierIcon
+                                                <RaisedBedIcon
                                                     physicalId={
                                                         raisedBed.physicalId
                                                     }
+                                                    className="size-6"
                                                 />
                                                 <span>
                                                     {`${raisedBed?.name}`}
