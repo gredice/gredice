@@ -9,7 +9,10 @@ export function RaisedBedLabel({ physicalId }: { physicalId: string | null }) {
 
     return (
         <Row spacing={1} className="items-center">
-            <RaisedBedIcon className="size-5 shrink-0" />
+            <RaisedBedIcon
+                className="size-6 shrink-0"
+                physicalId={physicalId}
+            />
             <Typography level="h5" component="p">
                 <strong>Gr {physicalId}</strong>
             </Typography>
