@@ -25,7 +25,7 @@ export function InstagramCard() {
                             'bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045]',
                         )}
                     >
-                        <CompanyInstagram className="size-10 fill-white" />
+                        <CompanyInstagram className="size-10 text-white" />
                     </div>
                     <CardTitle className="text-lg leading-tight font-bold text-gray-800 max-w-xs mx-auto">
                         Prati nas na Instagramu
