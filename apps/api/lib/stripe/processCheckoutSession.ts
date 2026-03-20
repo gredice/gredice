@@ -31,6 +31,7 @@ import {
 } from '../checkout/cartInfo';
 import { calculateSunflowerAmount } from '../checkout/sunflowerCalculations';
 import { notifyDeliveryScheduled } from '../delivery/emailNotifications';
+import { notifyScheduledDeliveryEmailOnce } from '../delivery/scheduledEmailDeduper';
 
 /**
  * Recursively sorts object keys for deterministic JSON serialization.
@@ -55,6 +56,7 @@ async function processNonStripeCartItems(
     cartId: number,
     accountId: string,
     deliveryInfo?: unknown,
+    scheduledDeliveryEmailKeys?: Set<string>,
 ): Promise<ShoppingCartItemWithShopData[]> {
     const cart = await normalizeShoppingCartInventoryUsage(cartId);
     if (!cart) {
@@ -132,6 +134,7 @@ async function processNonStripeCartItems(
                     currency: item.currency,
                     amount_total: sunflowerAmount,
                     additionalData,
+                    scheduledDeliveryEmailKeys,
                 }),
             ]);
         }
@@ -212,6 +215,7 @@ async function processNonStripeCartItems(
                     currency: item.currency,
                     amount_total: 0,
                     additionalData,
+                    scheduledDeliveryEmailKeys,
                 }),
             ]);
 
@@ -257,6 +261,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         quantity?: number | null;
         amountSubtotal?: number | null;
     }[] = [];
+    const scheduledDeliveryEmailKeys = new Set<string>();
     let accountId: string | undefined;
     let checkedExistingTransactions = false;
     for (const item of session.lineItems?.data ?? []) {
@@ -423,6 +428,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
                 ...itemData,
                 accountId: resolvedAccountId,
                 amount_total: item.amount_total,
+                scheduledDeliveryEmailKeys,
             });
         } catch (error) {
             console.error(
@@ -475,7 +481,12 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
     const uniqueAffectedCartIds = Array.from(new Set(affectedCartIds));
     if (accountId && uniqueAffectedCartIds.length > 0) {
         for (const cartId of uniqueAffectedCartIds) {
-            await processNonStripeCartItems(cartId, accountId, deliveryInfo);
+            await processNonStripeCartItems(
+                cartId,
+                accountId,
+                deliveryInfo,
+                scheduledDeliveryEmailKeys,
+            );
         }
     }
 
@@ -512,6 +523,7 @@ export async function processItem(itemData: {
     additionalData: unknown | null | undefined;
     currency: string | null;
     amount_total: number; // Amount in cents or sunflowers
+    scheduledDeliveryEmailKeys?: Set<string>;
 }) {
     console.debug(
         `Processing item with entityId ${itemData.entityId} and entityTypeName ${itemData.entityTypeName} for account ${itemData.accountId} in total amount ${itemData.amount_total}`,
@@ -672,7 +684,14 @@ export async function processItem(itemData: {
                                 deliveryRequestId,
                                 'created',
                             );
-                            await notifyDeliveryScheduled(deliveryRequestId);
+                            await notifyScheduledDeliveryEmailOnce({
+                                requestId: deliveryRequestId,
+                                accountId: itemData.accountId,
+                                deliveryInfo,
+                                notifiedKeys:
+                                    itemData.scheduledDeliveryEmailKeys,
+                                notify: notifyDeliveryScheduled,
+                            });
                         } catch (error) {
                             console.error(
                                 `Failed to create delivery request for operation ${operationId}:`,

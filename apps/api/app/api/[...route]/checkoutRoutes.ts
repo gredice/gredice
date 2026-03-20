@@ -95,6 +95,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Handle sunflower items
             if (!requiresStripePayment) {
+                const scheduledDeliveryEmailKeys = new Set<string>();
                 const sunflowerCartItemsWithShopData = cartInfo.items.filter(
                     (item) =>
                         item.status !== 'paid' && item.currency === 'sunflower',
@@ -127,6 +128,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                     accountId,
                                     ...item,
                                     amount_total: sunflowerAmount,
+                                    scheduledDeliveryEmailKeys,
                                     additionalData: {
                                         ...(item.additionalData
                                             ? JSON.parse(item.additionalData)
@@ -172,6 +174,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 accountId,
                                 ...item,
                                 amount_total: 0,
+                                scheduledDeliveryEmailKeys,
                                 additionalData: {
                                     ...(item.additionalData
                                         ? JSON.parse(item.additionalData)
