@@ -17,7 +17,12 @@ export function AdminClientProvider({
 }) {
     return (
         <NavContext.Provider
-            value={{ categorizedTypes, uncategorizedTypes, shadowTypes, pendingAchievementsCount }}
+            value={{
+                categorizedTypes,
+                uncategorizedTypes,
+                shadowTypes,
+                pendingAchievementsCount,
+            }}
         >
             {children}
         </NavContext.Provider>

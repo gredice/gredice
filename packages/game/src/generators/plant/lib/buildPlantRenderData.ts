@@ -4,11 +4,9 @@ import type { VegetableData } from '../parts/vegetables';
 import { vegetableMaterialProps } from '../parts/vegetables';
 import type { LSystemSymbol } from './l-system';
 import {
-    defaultSupportDefinition,
     defaultThornDefinition,
     MAX_PLANT_GENERATION,
     type PlantDefinition,
-    type SupportDefinition,
     TERMINAL_LEAF_SYMBOL,
     TERMINAL_STEM_SYMBOL,
 } from './plant-definitions';
@@ -44,7 +42,6 @@ export interface PlantLodSummary {
 }
 
 export interface PlantRenderData {
-    supportGeometry: THREE.BufferGeometry;
     stemGeometry: THREE.BufferGeometry;
     leaves: THREE.Matrix4[];
     leafColors: THREE.Color[];
@@ -171,133 +168,6 @@ function createStemTubeGeometry(path: StemPathPoint[]): THREE.BufferGeometry {
     return geometry;
 }
 
-function createSupportGeometry(
-    supportDefinition: SupportDefinition,
-): THREE.BufferGeometry {
-    if (!supportDefinition.enabled) {
-        return new THREE.BufferGeometry();
-    }
-
-    if (supportDefinition.mode === 'pole') {
-        const poleGeometry = new THREE.CylinderGeometry(
-            supportDefinition.radius,
-            supportDefinition.radius * 1.08,
-            supportDefinition.height,
-            10,
-        );
-        poleGeometry.translate(0, supportDefinition.height / 2, 0);
-        return poleGeometry;
-    }
-
-    const geometries: THREE.BufferGeometry[] = [];
-    const verticalOffsets = [
-        -supportDefinition.width * 0.44,
-        supportDefinition.width * 0.44,
-    ];
-    const horizontalOffsets = [0.22, 0.46, 0.7, 0.94]
-        .map((offset) => offset * supportDefinition.height)
-        .filter((offset) => offset < supportDefinition.height);
-
-    verticalOffsets.forEach((offsetX) => {
-        const geometry = new THREE.BoxGeometry(
-            supportDefinition.radius * 1.6,
-            supportDefinition.height,
-            supportDefinition.depth,
-        );
-        geometry.translate(offsetX, supportDefinition.height / 2, 0);
-        geometries.push(geometry);
-    });
-
-    horizontalOffsets.forEach((offsetY) => {
-        const geometry = new THREE.BoxGeometry(
-            supportDefinition.width,
-            supportDefinition.radius * 1.4,
-            supportDefinition.depth,
-        );
-        geometry.translate(0, offsetY, 0);
-        geometries.push(geometry);
-    });
-
-    const topBar = new THREE.BoxGeometry(
-        supportDefinition.width * 1.06,
-        supportDefinition.radius * 1.8,
-        supportDefinition.depth * 1.1,
-    );
-    topBar.translate(0, supportDefinition.height, 0);
-    geometries.push(topBar);
-
-    const mergedGeometry =
-        mergeGeometries(geometries) ?? new THREE.BufferGeometry();
-    geometries.forEach((geometry) => {
-        geometry.dispose();
-    });
-    return mergedGeometry;
-}
-
-function applySupportGuidance(
-    startPosition: THREE.Vector3,
-    endPosition: THREE.Vector3,
-    supportDefinition: SupportDefinition,
-) {
-    if (!supportDefinition.enabled) {
-        return endPosition;
-    }
-
-    const supportHeight = Math.max(supportDefinition.height, 0.001);
-    const averageHeight = Math.max(0, (startPosition.y + endPosition.y) / 2);
-    const climbBlend =
-        THREE.MathUtils.smoothstep(averageHeight, 0.04, supportHeight) *
-        THREE.MathUtils.clamp(supportDefinition.climbInfluence, 0, 1);
-
-    if (climbBlend <= 0) {
-        return endPosition;
-    }
-
-    const targetPosition = endPosition.clone();
-    if (supportDefinition.mode === 'pole') {
-        const spiralAngle =
-            (averageHeight / supportHeight) *
-            supportDefinition.spiralTurns *
-            Math.PI *
-            2;
-        const radialOffset = supportDefinition.radius * 1.45;
-        targetPosition.set(
-            Math.cos(spiralAngle) * radialOffset,
-            Math.min(
-                supportHeight,
-                Math.max(endPosition.y, averageHeight + 0.04),
-            ),
-            Math.sin(spiralAngle) * radialOffset,
-        );
-    } else {
-        const weave =
-            Math.sin(
-                (averageHeight / supportHeight) *
-                    supportDefinition.spiralTurns *
-                    Math.PI *
-                    2,
-            ) *
-            supportDefinition.width *
-            0.34;
-        targetPosition.set(
-            THREE.MathUtils.clamp(
-                weave,
-                -supportDefinition.width * 0.44,
-                supportDefinition.width * 0.44,
-            ),
-            Math.min(
-                supportHeight,
-                Math.max(endPosition.y, averageHeight + 0.05),
-            ),
-            -supportDefinition.depth * 0.25,
-        );
-    }
-
-    const guidedPosition = endPosition.clone().lerp(targetPosition, climbBlend);
-    guidedPosition.y = Math.max(guidedPosition.y, startPosition.y + 0.01);
-    return guidedPosition;
-}
-
 function getLifecycleGrowth(
     generation: number,
     ageStart: number,
@@ -365,7 +235,6 @@ export function getApproximatePlantHeight(
         plantDefinition.stem.length * (Math.ceil(generation) + 2) * 1.1,
         plantDefinition.leaf.size * 5,
         plantDefinition.vegetable.baseSize * 3.2,
-        (plantDefinition.support?.height ?? 0) * 1.05,
     );
 }
 
@@ -383,8 +252,6 @@ export function buildPlantRenderData({
 }: BuildPlantRenderDataOptions): PlantRenderData {
     const renderRng = new SeededRNG(seed);
     const thornDefinition = plantDefinition.thorn ?? defaultThornDefinition;
-    const supportDefinition =
-        plantDefinition.support ?? defaultSupportDefinition;
     const turtleStack: {
         position: THREE.Vector3;
         quaternion: THREE.Quaternion;
@@ -508,22 +375,6 @@ export function buildPlantRenderData({
                 let endPosition = currentPosition
                     .clone()
                     .add(direction.clone().multiplyScalar(segmentLength));
-
-                endPosition = applySupportGuidance(
-                    currentPosition,
-                    endPosition,
-                    supportDefinition,
-                );
-                const guidedDirection = endPosition
-                    .clone()
-                    .sub(currentPosition);
-                if (guidedDirection.lengthSq() > 1e-6) {
-                    currentQuaternion =
-                        new THREE.Quaternion().setFromUnitVectors(
-                            STEM_UP,
-                            guidedDirection.normalize(),
-                        );
-                }
 
                 if (endPosition.y < 0 && currentPosition.y > 0) {
                     const interpolation =
@@ -923,10 +774,6 @@ export function buildPlantRenderData({
               return mergedStemGeometry;
           })()
         : new THREE.BufferGeometry();
-    const supportGeometry =
-        renderDetailedGeometry && supportDefinition.enabled
-            ? createSupportGeometry(supportDefinition)
-            : new THREE.BufferGeometry();
 
     if (showLeaves) {
         dominantColor.lerp(baseLeafColor, 0.68);
@@ -949,7 +796,6 @@ export function buildPlantRenderData({
         maxHeight,
         plantDefinition.height * 0.55,
         plantDefinition.vegetable.baseSize * 1.6,
-        supportDefinition.enabled ? supportDefinition.height : 0,
         0.24,
     );
 
@@ -975,7 +821,6 @@ export function buildPlantRenderData({
             stemColor: plantDefinition.stem.color,
             stemWidth: Math.max(maxStemRadius * 4.5, 0.05),
         },
-        supportGeometry,
         stemGeometry,
         thorns: thornsData,
         vegetables: vegetablesData,

@@ -60,17 +60,6 @@ export const cucurbitPlants = {
         ...cucurbitBase,
         name: 'Krastavac',
         height: 0.82,
-        support: {
-            enabled: true,
-            mode: 'trellis',
-            color: '#8f764e',
-            height: 1.18,
-            radius: 0.026,
-            width: 0.62,
-            depth: 0.05,
-            climbInfluence: 0.84,
-            spiralTurns: 3.2,
-        },
         vegetable: {
             enabled: true,
             ageStart: 6,

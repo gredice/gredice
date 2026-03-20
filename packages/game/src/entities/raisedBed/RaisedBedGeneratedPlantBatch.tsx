@@ -78,7 +78,6 @@ export function RaisedBedGeneratedPlantBatch({
         const rootPosition = new THREE.Vector3();
         const rootScale = new THREE.Vector3();
         const rootMatrix = new THREE.Matrix4();
-        const supportGeometries: THREE.BufferGeometry[] = [];
         const stemGeometries: THREE.BufferGeometry[] = [];
         const leaves: THREE.Matrix4[] = [];
         const leafColors: THREE.Color[] = [];
@@ -108,13 +107,6 @@ export function RaisedBedGeneratedPlantBatch({
             rootScale.setScalar(instance.scale);
             rootMatrix.compose(rootPosition, ROOT_QUATERNION, rootScale);
 
-            if (plantData.supportGeometry.getAttribute('position')) {
-                plantData.supportGeometry.applyMatrix4(rootMatrix);
-                supportGeometries.push(plantData.supportGeometry);
-            } else {
-                plantData.supportGeometry.dispose();
-            }
-
             if (plantData.stemGeometry.getAttribute('position')) {
                 plantData.stemGeometry.applyMatrix4(rootMatrix);
                 stemGeometries.push(plantData.stemGeometry);
@@ -141,13 +133,6 @@ export function RaisedBedGeneratedPlantBatch({
                 thorns.push(matrix.clone().premultiply(rootMatrix));
             });
         });
-
-        const supportGeometry = supportGeometries.length
-            ? mergeGeometries(supportGeometries)
-            : new THREE.BufferGeometry();
-        supportGeometries.forEach((geometry) => {
-            geometry.dispose();
-        });
         const stemGeometry = stemGeometries.length
             ? mergeGeometries(stemGeometries)
             : new THREE.BufferGeometry();
@@ -159,7 +144,6 @@ export function RaisedBedGeneratedPlantBatch({
             flowers,
             leafColors,
             leaves,
-            supportGeometry,
             stemGeometry,
             thorns,
             vegetables,
@@ -168,7 +152,6 @@ export function RaisedBedGeneratedPlantBatch({
 
     useLayoutEffect(() => {
         return () => {
-            batchedData?.supportGeometry.dispose();
             batchedData?.stemGeometry.dispose();
         };
     }, [batchedData]);
@@ -199,19 +182,6 @@ export function RaisedBedGeneratedPlantBatch({
 
     return (
         <group>
-            {definition.support?.enabled && (
-                <mesh
-                    geometry={batchedData.supportGeometry}
-                    castShadow
-                    receiveShadow
-                >
-                    <meshStandardMaterial
-                        color={definition.support.color}
-                        roughness={0.92}
-                        metalness={0.08}
-                    />
-                </mesh>
-            )}
             <mesh geometry={batchedData.stemGeometry} castShadow>
                 <CSM
                     baseMaterial={THREE.MeshStandardMaterial}

@@ -12,6 +12,10 @@ export const KnownPages = {
         `/biljke/${encodeURIComponent(alias)}/sorte/${encodeURIComponent(sortName)}` as Route,
     Blocks: '/blokovi',
     Block: (alias: string) => `/blokovi/${encodeURIComponent(alias)}` as Route,
+    BlockPlants: '/blokovi/biljke',
+    BlockPlant: (alias: string) =>
+        `/blokovi/biljke/${encodeURIComponent(alias)}` as Route,
+    BlockPlantGenerator: '/blokovi/biljke/generator' as Route,
     Sunflowers: '/suncokreti',
     RaisedBeds: '/podignuta-gredica',
     Sowing: '/sjetva',

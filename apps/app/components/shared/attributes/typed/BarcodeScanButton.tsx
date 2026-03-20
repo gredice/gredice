@@ -286,7 +286,9 @@ export function BarcodeScanButton({
 
                 if (cameras.length > 0) {
                     const preferredCamera = cameras[savedIndex] || cameras[0];
-                    setActiveCameraLabel(getCameraLabel(preferredCamera, savedIndex));
+                    setActiveCameraLabel(
+                        getCameraLabel(preferredCamera, savedIndex),
+                    );
                 }
             } catch (err) {
                 console.error('Failed to get camera list:', err);

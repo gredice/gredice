@@ -88,19 +88,6 @@ export function PlantGenerator({
         <group ref={groupRef}>
             {lodLevel === 'near' ? (
                 <group>
-                    {plantDefinition.support?.enabled && (
-                        <mesh
-                            geometry={renderData.supportGeometry}
-                            castShadow
-                            receiveShadow
-                        >
-                            <meshStandardMaterial
-                                color={plantDefinition.support.color}
-                                roughness={0.92}
-                                metalness={0.08}
-                            />
-                        </mesh>
-                    )}
                     <mesh geometry={renderData.stemGeometry} castShadow>
                         <CSM
                             baseMaterial={THREE.MeshStandardMaterial}

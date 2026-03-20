@@ -352,6 +352,7 @@ export default function DeliveryPage() {
                             <a
                                 href={KnownPages.GoogleMapsGrediceHQ}
                                 target="_blank"
+                                rel="noopener"
                             >
                                 Ulica Julija Knifera 3, Zagreb
                             </a>

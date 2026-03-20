@@ -4,22 +4,24 @@
 
 import * as sdk from "hypertune";
 
-export const queryCode = `query FullQuery{root{recipes}}`;
+export const queryCode = `query FullQuery{root{lSystemPlants recipes}}`;
 
-export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"recipes":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
+export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"lSystemPlants":{"fieldArguments":{},"fieldQuery":null},"recipes":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
 
-export const initData = {"commitId":42520,"hash":"8618409234674833","reducedExpression":{"id":"aSYD5sRoX5E3yt1VdQu_e","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"mVlU96bBrUq2pFr7LvmL6","body":{"id":"v7OKVmigjMDLFjxa9kFxr","logs":{},"type":"ObjectExpression","fields":{"recipes":{"id":"MFluWsnVvDv5cai3-Barn","type":"SwitchExpression","cases":[{"id":"34sjOUITp_6GcyNXGweyt","when":{"a":{"id":"48tjzu3WPHuktFJ08lI04","type":"GetFieldExpression","object":{"id":"F0x4vN3229ZmziqYrrGQI","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"tvsyZ9Ks8fQ7w0Eze2VXz"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"n7bqb9Guh_YAsZGzgMvrL","type":"ListExpression","items":[{"id":"0a_2Fo8xT4kf2T62AmNlx","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"XSVZWIVU8ayrFkfSc1Eop","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"4PnZcYe-h2VSZuz1XOUSe","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"hOJp_ZCP48Xvuf3EBUlBW","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"hCzhCBgG-NTcz1EiwoCqP","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"HW4lG_DPd1AQp_jOPJ_2Q":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"tvsyZ9Ks8fQ7w0Eze2VXz","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
+export const initData = {"commitId":50805,"hash":"1904007482871921","reducedExpression":{"id":"aSYD5sRoX5E3yt1VdQu_e","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"mVlU96bBrUq2pFr7LvmL6","body":{"id":"v7OKVmigjMDLFjxa9kFxr","logs":{},"type":"ObjectExpression","fields":{"lSystemPlants":{"id":"G59TcpJE4Y_H4rtAG2ncg","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"e8kVN8Eebko3QpZ7-pbJa":1}}},"recipes":{"id":"MFluWsnVvDv5cai3-Barn","type":"SwitchExpression","cases":[{"id":"34sjOUITp_6GcyNXGweyt","when":{"a":{"id":"48tjzu3WPHuktFJ08lI04","type":"GetFieldExpression","object":{"id":"F0x4vN3229ZmziqYrrGQI","type":"VariableExpression","valueType":{"type":"ObjectValueType","objectTypeName":"Query_root_args"},"variableId":"tvsyZ9Ks8fQ7w0Eze2VXz"},"fieldPath":"context > environment","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}},"b":{"id":"n7bqb9Guh_YAsZGzgMvrL","type":"ListExpression","items":[{"id":"0a_2Fo8xT4kf2T62AmNlx","type":"EnumExpression","value":"development","valueType":{"type":"EnumValueType","enumTypeName":"Environment"}}],"valueType":{"type":"ListValueType","itemValueType":{"type":"EnumValueType","enumTypeName":"Environment"}}},"id":"XSVZWIVU8ayrFkfSc1Eop","type":"ComparisonExpression","operator":"in","valueType":{"type":"BooleanValueType"}},"then":{"id":"4PnZcYe-h2VSZuz1XOUSe","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}}}],"control":{"id":"hOJp_ZCP48Xvuf3EBUlBW","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"}},"default":{"id":"hCzhCBgG-NTcz1EiwoCqP","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"}},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"HW4lG_DPd1AQp_jOPJ_2Q":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"tvsyZ9Ks8fQ7w0Eze2VXz","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
 
 
-export const vercelFlagDefinitions = {"recipes":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3Erecipes"}};
+export const vercelFlagDefinitions = {"lSystemPlants":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3ElSystemPlants"},"recipes":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3Erecipes"}};
 
 export type FlagValues = {
+  "lSystemPlants": boolean;
   "recipes": boolean;
 }
 
 export type FlagPath = keyof FlagValues & string;
 
 export const flagFallbacks: FlagValues = {
+  "lSystemPlants": false,
   "recipes": false,
 }
 
@@ -57,10 +59,11 @@ export type RootArgs = {
 export type EmptyObject = {};
 
 export type Root = {
+  lSystemPlants: boolean;
   recipes: boolean;
 }
 
-const rootFallback = {recipes:false};
+const rootFallback = {lSystemPlants:false,recipes:false};
 
 export class RootNode extends sdk.Node {
   override typeName = "Root" as const;
@@ -77,6 +80,26 @@ export class RootNode extends sdk.Node {
       null,
     );
     return this.getValue({ query: getQuery, fallback }) as Root;
+  }
+
+  /**
+   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4084/main/draft/logic?selected_field_path=root%3ElSystemPlants})
+   */
+  lSystemPlants({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
+    const props0 = this.getFieldNodeProps("lSystemPlants", { fieldArguments: args });
+    const expression0 = props0.expression;
+
+    if (
+      expression0 &&
+      expression0.type === "BooleanExpression"
+    ) {
+      const node = new sdk.BooleanNode(props0);
+      return node.get({ fallback });
+    }
+
+    const node = new sdk.BooleanNode(props0);
+    node._logUnexpectedTypeError();
+    return node.get({ fallback });
   }
 
   /**
@@ -121,7 +144,7 @@ export type Source = {
   root: Root;
 }
 
-const sourceFallback = {root:{recipes:false}};
+const sourceFallback = {root:{lSystemPlants:false,recipes:false}};
 
 export type GetQueryRootArgs = {
   args: RootArgs;

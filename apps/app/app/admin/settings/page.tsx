@@ -6,8 +6,8 @@ import {
     type SelectNotificationSetting,
     type SlackConfig,
 } from '@gredice/storage';
-import { Add, Edit } from '@signalco/ui-icons';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
+import { Add, Edit } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
@@ -118,7 +118,9 @@ export default async function SettingsPage() {
                                 </Typography>
                             </Stack>
                             <Row spacing={2}>
-                                <Link href={KnownPages.DirectoryEntityTypeCreate}>
+                                <Link
+                                    href={KnownPages.DirectoryEntityTypeCreate}
+                                >
                                     <Button variant="solid">
                                         <Add className="size-4" />
                                         Novi tip zapisa
@@ -136,9 +138,18 @@ export default async function SettingsPage() {
                                     {categories.map((category) => (
                                         <Card key={category.id}>
                                             <CardHeader>
-                                                <Row justifyContent="space-between" alignItems="center">
-                                                    <CardTitle>{category.label}</CardTitle>
-                                                    <Link href={KnownPages.DirectoryCategoryEdit(category.id)}>
+                                                <Row
+                                                    justifyContent="space-between"
+                                                    alignItems="center"
+                                                >
+                                                    <CardTitle>
+                                                        {category.label}
+                                                    </CardTitle>
+                                                    <Link
+                                                        href={KnownPages.DirectoryCategoryEdit(
+                                                            category.id,
+                                                        )}
+                                                    >
                                                         <IconButton
                                                             title="Uredi kategoriju"
                                                             variant="plain"
@@ -149,7 +160,10 @@ export default async function SettingsPage() {
                                                 </Row>
                                             </CardHeader>
                                             <CardContent>
-                                                <Typography level="body2" secondary>
+                                                <Typography
+                                                    level="body2"
+                                                    secondary
+                                                >
                                                     {category.name}
                                                 </Typography>
                                             </CardContent>

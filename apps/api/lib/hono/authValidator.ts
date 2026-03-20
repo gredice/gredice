@@ -29,7 +29,10 @@ export function authValidator(roles: string[]) {
             const authContext = await auth(roles);
             // Override accountId from the account-selection cookie
             const selectedAccountId = getCookie(context, accountCookieName);
-            if (selectedAccountId && authContext.user.accountIds.includes(selectedAccountId)) {
+            if (
+                selectedAccountId &&
+                authContext.user.accountIds.includes(selectedAccountId)
+            ) {
                 authContext.accountId = selectedAccountId;
             }
             context.set('authContext', authContext);
