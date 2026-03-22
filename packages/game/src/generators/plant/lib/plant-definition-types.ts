@@ -120,7 +120,7 @@ export const vegetableTypeOptions: { value: VegetableType; label: string }[] = [
     { value: 'bellpepper', label: 'Paprika' },
     { value: 'carrot', label: 'Mrkva' },
     { value: 'onion', label: 'Luk' },
-    { value: 'eggplant', label: 'Patliđan' },
+    { value: 'eggplant', label: 'Patlidžan' },
     { value: 'zucchini', label: 'Tikvice' },
     { value: 'pumpkin', label: 'Tikva' },
     { value: 'melon', label: 'Dinja' },

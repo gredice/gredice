@@ -60,7 +60,7 @@ const initialVisibility: VisibilityState = {
 function isBasePlantType(
     plantType: string,
 ): plantType is keyof typeof basePlantTypes {
-    return plantType in basePlantTypes;
+    return Object.hasOwn(basePlantTypes, plantType);
 }
 
 function cloneData<T>(value: T): T {
@@ -217,7 +217,7 @@ function withHistory(
 
 export function usePlantState(initialPlantType?: string) {
     const resolvedInitialType =
-        initialPlantType && initialPlantType in basePlantTypes
+        initialPlantType && isBasePlantType(initialPlantType)
             ? initialPlantType
             : defaultPlantType;
 

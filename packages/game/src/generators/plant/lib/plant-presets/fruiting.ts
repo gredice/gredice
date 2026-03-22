@@ -139,7 +139,7 @@ export const fruitingPlants = {
     }),
     eggplant: createPlant({
         ...fruitingBase,
-        name: 'Patliđan',
+        name: 'Patlidžan',
         angle: 30,
         height: 0.94,
         branching: 0.84,

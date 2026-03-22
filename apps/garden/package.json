@@ -11,8 +11,9 @@
         "build": "next build",
         "start": "next start -p 3001",
         "test": "pnpm run /^test:.*/",
-        "test:run": "playwright test",
-        "test-ui": "playwright test --ui",
+        "test:prepare": "pnpm --dir ../.. exec turbo build --filter=garden",
+        "test:run": "pnpm run test:prepare && playwright test",
+        "test-ui": "pnpm run test:prepare && playwright test --ui",
         "regenerate": "pnpm run /^regenerate:.*/",
         "regenerate:feature-flags": "hypertune",
         "generate:models-types": "pnpm dlx gltfjsx ./public/assets/models/GameAssets.glb --types --typeonly --output ../../packages/game/src/models/GameAssets.tsx && node ../../scripts/fix-gltfjsx-output.mjs"
