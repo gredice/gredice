@@ -47,35 +47,11 @@ export interface ThornDefinition {
     density: number;
 }
 
-export interface SupportDefinition {
-    enabled: boolean;
-    mode: 'pole' | 'trellis';
-    color: string;
-    height: number;
-    radius: number;
-    width: number;
-    depth: number;
-    climbInfluence: number;
-    spiralTurns: number;
-}
-
 export const defaultThornDefinition: ThornDefinition = {
     enabled: false,
     color: '#8c6a3d',
     size: 0.08,
     density: 2,
-};
-
-export const defaultSupportDefinition: SupportDefinition = {
-    enabled: false,
-    mode: 'pole',
-    color: '#8f734f',
-    height: 1.1,
-    radius: 0.028,
-    width: 0.56,
-    depth: 0.04,
-    climbInfluence: 0.7,
-    spiralTurns: 2.4,
 };
 
 export interface PlantDefinition {
@@ -120,7 +96,6 @@ export interface PlantDefinition {
         baseSize: number;
     };
     thorn?: ThornDefinition;
-    support?: SupportDefinition;
 }
 
 export const TERMINAL_STEM_SYMBOL = 'G';
@@ -145,7 +120,7 @@ export const vegetableTypeOptions: { value: VegetableType; label: string }[] = [
     { value: 'bellpepper', label: 'Paprika' },
     { value: 'carrot', label: 'Mrkva' },
     { value: 'onion', label: 'Luk' },
-    { value: 'eggplant', label: 'Patliđan' },
+    { value: 'eggplant', label: 'Patlidžan' },
     { value: 'zucchini', label: 'Tikvice' },
     { value: 'pumpkin', label: 'Tikva' },
     { value: 'melon', label: 'Dinja' },

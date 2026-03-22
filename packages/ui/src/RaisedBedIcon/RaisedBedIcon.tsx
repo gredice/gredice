@@ -2,7 +2,7 @@ import { cx } from '@signalco/ui-primitives/cx';
 import type { SVGProps } from 'react';
 
 export type RaisedBedIconProps = SVGProps<SVGSVGElement> & {
-    physicalId?: string | number | null;
+    physicalId: string | number | null;
     containerClassName?: string;
 };
 
@@ -44,10 +44,17 @@ export function RaisedBedIcon({
             )}
             title="Identifikator gredice"
         >
-            <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap text-[0.625rem] font-bold leading-none">
+            <span className="absolute -top-1 left-1/2 -translate-x-1/2 whitespace-nowrap text-[0.725rem] font-bold leading-none">
                 {physicalId}
             </span>
-            <RaisedBedSvg className={className ?? 'size-6'} {...props} />
+            <RaisedBedSvg
+                className={cx(
+                    'absolute top-1 left-1/2 -translate-x-1/2',
+                    'size-6',
+                    className,
+                )}
+                {...props}
+            />
         </div>
     );
 }

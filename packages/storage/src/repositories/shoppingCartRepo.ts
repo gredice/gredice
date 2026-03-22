@@ -232,12 +232,16 @@ export async function normalizeShoppingCartInventoryUsage(cartId: number) {
                     eq(shoppingCartItems.currency, 'inventory'),
                 ),
             )
-            .orderBy(asc(shoppingCartItems.createdAt), asc(shoppingCartItems.id))
+            .orderBy(
+                asc(shoppingCartItems.createdAt),
+                asc(shoppingCartItems.id),
+            )
             .for('update');
 
         for (const item of inventoryItems) {
             const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
-            const remainingInventory = availableInventory.get(inventoryKey) ?? 0;
+            const remainingInventory =
+                availableInventory.get(inventoryKey) ?? 0;
 
             if (remainingInventory <= 0) {
                 await tx

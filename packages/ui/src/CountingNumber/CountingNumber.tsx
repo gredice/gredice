@@ -96,4 +96,5 @@ function CountingNumber({
         </span>
     );
 }
+
 export { CountingNumber, type CountingNumberProps };

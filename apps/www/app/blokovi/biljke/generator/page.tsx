@@ -14,10 +14,13 @@ export const metadata: Metadata = {
     ],
 };
 
-export default function BlockPlantGeneratorPage() {
+export default async function BlockPlantGeneratorPage(props: {
+    searchParams: Promise<{ plant?: string }>;
+}) {
+    const { plant } = await props.searchParams;
     return (
         <div>
-            <PlantEditorDynamic />
+            <PlantEditorDynamic initialPlantType={plant} />
         </div>
     );
 }

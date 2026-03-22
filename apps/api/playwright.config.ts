@@ -4,6 +4,11 @@ import {
     type PlaywrightTestConfig,
 } from '@playwright/test';
 
+const reporter: PlaywrightTestConfig['reporter'] = [
+    ['list'],
+    ['html', { open: 'never' }],
+];
+
 export const config: PlaywrightTestConfig = {
     testDir: './tests',
     snapshotDir: './__snapshots__',
@@ -12,7 +17,7 @@ export const config: PlaywrightTestConfig = {
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
     workers: process.env.CI ? 1 : undefined,
-    reporter: 'html',
+    reporter,
     use: {
         baseURL: 'http://127.0.0.1:3005',
         trace: 'on-first-retry',

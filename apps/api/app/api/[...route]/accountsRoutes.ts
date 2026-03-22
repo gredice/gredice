@@ -512,7 +512,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const user = await getUser(userId);
-            if (!user || user.userName.toLowerCase() !== invitation.email.toLowerCase()) {
+            if (
+                !user ||
+                user.userName.toLowerCase() !== invitation.email.toLowerCase()
+            ) {
                 return context.json(
                     {
                         error: 'Invitation was sent to a different email address',
@@ -644,10 +647,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
             try {
                 const user = await getUser(currentUserId);
                 const selectedAccountId = getCookie(context, accountCookieName);
-                const accountIds = user?.accounts?.map(a => a.accountId) ?? [];
-                const accountId = (selectedAccountId && accountIds.includes(selectedAccountId))
-                    ? selectedAccountId
-                    : accountIds[0];
+                const accountIds =
+                    user?.accounts?.map((a) => a.accountId) ?? [];
+                const accountId =
+                    selectedAccountId && accountIds.includes(selectedAccountId)
+                        ? selectedAccountId
+                        : accountIds[0];
                 if (!accountId) {
                     return context.json({ error: 'Account not found.' }, 404);
                 }

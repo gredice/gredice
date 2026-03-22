@@ -60,6 +60,7 @@ export type RaisedBedFieldPlantCycle = {
     eventIds: number[];
     startedAt: Date;
     endedAt: Date;
+    endedEventId: number;
     active: boolean;
     plantStatus?: string;
     plantSortId?: number;
@@ -491,6 +492,7 @@ function summarizePlantCycle(
 
     const lastPlantCycleEvent = plantCycleEvents[plantCycleEvents.length - 1];
     const endedAt = lastPlantCycleEvent?.createdAt ?? plantPlaceEvent.createdAt;
+    const endedEventId = lastPlantCycleEvent?.id ?? plantPlaceEvent.id;
 
     return {
         aggregateId,
@@ -499,6 +501,7 @@ function summarizePlantCycle(
         eventIds: plantCycleEvents.map((plantCycleEvent) => plantCycleEvent.id),
         startedAt: plantPlaceEvent.createdAt,
         endedAt,
+        endedEventId,
         active,
         plantStatus,
         plantSortId,
@@ -529,14 +532,49 @@ function summarizePlantCycles(
 }
 
 function plantCyclesOverlap(
-    sourcePlantCycle: Pick<RaisedBedFieldPlantCycle, 'startedAt' | 'endedAt'>,
-    targetPlantCycle: Pick<RaisedBedFieldPlantCycle, 'startedAt' | 'endedAt'>,
+    sourcePlantCycle: Pick<
+        RaisedBedFieldPlantCycle,
+        'startedAt' | 'endedAt' | 'plantPlaceEventId' | 'endedEventId'
+    >,
+    targetPlantCycle: Pick<
+        RaisedBedFieldPlantCycle,
+        'startedAt' | 'endedAt' | 'plantPlaceEventId' | 'endedEventId'
+    >,
 ) {
+    const compareEventBoundaries = (
+        left: { createdAt: Date; eventId: number },
+        right: { createdAt: Date; eventId: number },
+    ) => {
+        const timestampDifference =
+            left.createdAt.getTime() - right.createdAt.getTime();
+        if (timestampDifference !== 0) {
+            return timestampDifference;
+        }
+
+        return left.eventId - right.eventId;
+    };
+
     return (
-        sourcePlantCycle.startedAt.getTime() <=
-            targetPlantCycle.endedAt.getTime() &&
-        targetPlantCycle.startedAt.getTime() <=
-            sourcePlantCycle.endedAt.getTime()
+        compareEventBoundaries(
+            {
+                createdAt: sourcePlantCycle.startedAt,
+                eventId: sourcePlantCycle.plantPlaceEventId,
+            },
+            {
+                createdAt: targetPlantCycle.endedAt,
+                eventId: targetPlantCycle.endedEventId,
+            },
+        ) <= 0 &&
+        compareEventBoundaries(
+            {
+                createdAt: targetPlantCycle.startedAt,
+                eventId: targetPlantCycle.plantPlaceEventId,
+            },
+            {
+                createdAt: sourcePlantCycle.endedAt,
+                eventId: sourcePlantCycle.endedEventId,
+            },
+        ) <= 0
     );
 }
 

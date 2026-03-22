@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-    defaultSupportDefinition,
     defaultThornDefinition,
     type PlantDefinition,
     plantTypeNames,
@@ -61,7 +60,7 @@ const initialVisibility: VisibilityState = {
 function isBasePlantType(
     plantType: string,
 ): plantType is keyof typeof basePlantTypes {
-    return plantType in basePlantTypes;
+    return Object.hasOwn(basePlantTypes, plantType);
 }
 
 function cloneData<T>(value: T): T {
@@ -111,11 +110,6 @@ function mergePlantDefinition(
             ...defaultThornDefinition,
             ...baseDefinition.thorn,
             ...savedDefinition.thorn,
-        },
-        support: {
-            ...defaultSupportDefinition,
-            ...baseDefinition.support,
-            ...savedDefinition.support,
         },
     };
 }
@@ -221,9 +215,14 @@ function withHistory(
     };
 }
 
-export function usePlantState() {
+export function usePlantState(initialPlantType?: string) {
+    const resolvedInitialType =
+        initialPlantType && isBasePlantType(initialPlantType)
+            ? initialPlantType
+            : defaultPlantType;
+
     const [editor, setEditor] = useState<PlantEditorStore>({
-        state: initialState,
+        state: { ...initialState, plantType: resolvedInitialType },
         visibility: initialVisibility,
         history: {
             past: [],
@@ -243,7 +242,7 @@ export function usePlantState() {
                 ...current.state,
                 customPlants,
                 definition: resolvePlantDefinition(
-                    defaultPlantType,
+                    current.state.plantType,
                     allPlants,
                     savedDefinitions,
                 ),

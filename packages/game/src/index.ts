@@ -13,3 +13,9 @@ export type { EntityViewerProps } from './viewers/EntityViewer';
 export { EntityViewer } from './viewers/EntityViewer';
 export type { PlantPerformanceViewerProps } from './viewers/PlantPerformanceViewer';
 export { PlantPerformanceViewer } from './viewers/PlantPerformanceViewer';
+export type { PlantViewerProps } from './viewers/PlantViewer';
+export {
+    MAX_PLANT_GENERATION,
+    PlantViewer,
+    plantTypes,
+} from './viewers/PlantViewer';

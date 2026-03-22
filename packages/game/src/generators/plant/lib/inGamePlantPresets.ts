@@ -50,8 +50,8 @@ const inGamePlantRuntimeConfigs = {
         'slatka paprika',
     ]),
     eggplant: createRuntimeConfig('eggplant', 0.94, 0.34, [
-        'patlidan',
-        'patliđan',
+        'patlidzan',
+        'patlidžan',
         'aubergine',
     ]),
     artichoke: createRuntimeConfig('artichoke', 0.88, 0.36, ['artičoka']),

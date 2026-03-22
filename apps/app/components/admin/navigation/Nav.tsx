@@ -151,9 +151,7 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                     {/* Categories with their entity types */}
                     {categorizedTypes.map((category) => (
                         <Stack key={category.id} spacing={1}>
-                            <ListHeader
-                                header={category.label}
-                            />
+                            <ListHeader header={category.label} />
                             <EntityTypeList
                                 items={category.entityTypes}
                                 onItemClick={onItemClick}
@@ -162,9 +160,7 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                     ))}
                 </AuthProtectedSection>
 
-                <ListHeader
-                    header="Zapisi"
-                />
+                <ListHeader header="Zapisi" />
                 <AuthProtectedSection>
                     {/* Shadow entity types */}
                     {shadowTypes.length > 0 && (
@@ -253,7 +249,12 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                     <NavItem
                         href={KnownPages.RaisedBeds}
                         label="Gredice"
-                        icon={<RaisedBedIcon className="size-5" />}
+                        icon={
+                            <RaisedBedIcon
+                                className="size-5"
+                                physicalId={null}
+                            />
+                        }
                         onClick={onItemClick}
                     />
                     <NavItem

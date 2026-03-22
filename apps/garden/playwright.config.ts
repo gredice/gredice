@@ -7,6 +7,10 @@ import {
 } from '@playwright/experimental-ct-react';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const reporter: PlaywrightTestConfig['reporter'] = [
+    ['list'],
+    ['html', { open: 'never' }],
+];
 
 // Plugin to intercept next/font/google before Vite's resolver
 function nextFontMockPlugin() {
@@ -34,7 +38,7 @@ export const config: PlaywrightTestConfig = {
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
     workers: process.env.CI ? 1 : undefined,
-    reporter: 'html',
+    reporter,
     use: {
         baseURL: 'http://127.0.0.1:3001',
         trace: 'on-first-retry',

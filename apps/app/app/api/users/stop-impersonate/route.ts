@@ -26,10 +26,10 @@ function getAdminUrl(request: Request) {
 export async function POST(request: Request) {
     const origin = request.headers.get('Origin');
     if (!origin || !allowedOrigins.includes(origin)) {
-        return new Response(
-            JSON.stringify({ error: 'Forbidden' }),
-            { status: 403, headers: { 'Content-Type': 'application/json' } },
-        );
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+        });
     }
 
     const cookieStore = await cookies();

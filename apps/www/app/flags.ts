@@ -17,3 +17,6 @@ const hypertuneAdapter = createHypertuneAdapter<FlagValues, Context>({
 });
 
 export const recipesFlag = flag(hypertuneAdapter.declarations.recipes);
+export const lSystemPlantsFlag = flag(
+    hypertuneAdapter.declarations.lSystemPlants,
+);

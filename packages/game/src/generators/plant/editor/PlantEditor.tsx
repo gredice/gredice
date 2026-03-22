@@ -26,7 +26,7 @@ const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
 const desktopEditorTarget: [x: number, y: number, z: number] = [-0.55, 0.9, 0];
 const mobileEditorTarget: [x: number, y: number, z: number] = [0, 0.9, 0];
 
-export function PlantEditor() {
+export function PlantEditor({ initialPlantType }: { initialPlantType?: string } = {}) {
     const [isDesktop, setIsDesktop] = useState(false);
     const {
         state,
@@ -45,7 +45,7 @@ export function PlantEditor() {
         saveDefinitionToStorage,
         createCustomPlant,
         deleteCustomPlant,
-    } = usePlantState();
+    } = usePlantState(initialPlantType);
 
     // Debounce definition changes for localStorage saving (ref-based to avoid re-renders)
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);

@@ -8,7 +8,8 @@ export default function DebugPlantsPage() {
                     Plant Performance Debug View
                 </h1>
                 <p className="text-sm text-neutral-400">
-                    Generated presets rendered in dense batches for rollout validation.
+                    Generated presets rendered in dense batches for rollout
+                    validation.
                 </p>
             </div>
             <div className="flex-1">
