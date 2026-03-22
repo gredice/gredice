@@ -33,11 +33,11 @@ async function getBlocksData() {
 }
 
 export default async function BlocksPage() {
+    const lSystemPlants = await lSystemPlantsFlag();
     const [blocks, plants] = await Promise.all([
         getBlocksData(),
-        getPlantsData(),
+        lSystemPlants ? getPlantsData() : Promise.resolve([]),
     ]);
-    const lSystemPlants = await lSystemPlantsFlag();
     return (
         <Stack>
             <PageHeader
