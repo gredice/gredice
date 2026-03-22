@@ -7,7 +7,7 @@ import { notFound } from 'next/navigation';
 import { ServerActionIconButton } from '../../../../../../components/shared/ServerActionIconButton';
 import { KnownPages } from '../../../../../../src/KnownPages';
 import { deleteAttributeDefinition } from '../../../../../(actions)/definitionActions';
-import { FormCheckbox, FormInput } from './Form';
+import { FormCheckbox, FormDataTypeSelect, FormInput } from './Form';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,10 +103,8 @@ export default async function AttributeDefinitionPage({
                     />
                     <Stack spacing={2}>
                         <Row spacing={2}>
-                            <FormInput
+                            <FormDataTypeSelect
                                 definition={definition}
-                                name="dataType"
-                                label="Tip podatka"
                                 value={dataType}
                             />
                             <FormInput
