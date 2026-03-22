@@ -19,6 +19,8 @@ import {
     upsertOrRemoveCartItem,
     upsertRaisedBedField,
 } from '@gredice/storage';
+import { eq } from 'drizzle-orm';
+import { events } from '../src/schema';
 import {
     createTestBlock,
     createTestGarden,
@@ -674,7 +676,28 @@ test('moveRaisedBedFieldPlantHistory swaps all overlapping target plant cycles a
         ),
     );
 
-    const [sourceEventsBeforeSwap, targetEventsBeforeSwap] = await Promise.all([
+    let [sourceEventsBeforeSwap, targetEventsBeforeSwap] = await Promise.all([
+        getPlantEventsForAggregate(`${raisedBedId.toString()}|0`),
+        getPlantEventsForAggregate(`${raisedBedId.toString()}|1`),
+    ]);
+    assert.strictEqual(sourceEventsBeforeSwap.length, 2);
+    assert.strictEqual(targetEventsBeforeSwap.length, 6);
+
+    const sourceRemovalEventId = sourceEventsBeforeSwap[1]?.id;
+    const firstNonOverlappingTargetEvent = targetEventsBeforeSwap[4];
+    assert.ok(sourceRemovalEventId);
+    assert.ok(firstNonOverlappingTargetEvent);
+
+    // Force an equal-timestamp boundary so overlap detection has to use event
+    // order to keep the next target cycle in place.
+    await storage()
+        .update(events)
+        .set({
+            createdAt: firstNonOverlappingTargetEvent.createdAt,
+        })
+        .where(eq(events.id, sourceRemovalEventId));
+
+    [sourceEventsBeforeSwap, targetEventsBeforeSwap] = await Promise.all([
         getPlantEventsForAggregate(`${raisedBedId.toString()}|0`),
         getPlantEventsForAggregate(`${raisedBedId.toString()}|1`),
     ]);
