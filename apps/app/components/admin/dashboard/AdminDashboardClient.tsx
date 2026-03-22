@@ -171,7 +171,10 @@ export function AdminDashboardClient({
                     size="sm"
                     className="rounded-full"
                     startDecorator={
-                        <RaisedBedIcon className="size-4 shrink-0" />
+                        <RaisedBedIcon
+                            className="size-4 shrink-0"
+                            physicalId={null}
+                        />
                     }
                     href={KnownPages.RaisedBeds}
                 >

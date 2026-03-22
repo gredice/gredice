@@ -249,7 +249,12 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                     <NavItem
                         href={KnownPages.RaisedBeds}
                         label="Gredice"
-                        icon={<RaisedBedIcon className="size-5" />}
+                        icon={
+                            <RaisedBedIcon
+                                className="size-5"
+                                physicalId={null}
+                            />
+                        }
                         onClick={onItemClick}
                     />
                     <NavItem
