@@ -1,4 +1,5 @@
 import { type BlockData, directoriesClient } from '@gredice/client';
+import { decodeRouteParam } from '@gredice/js/uri';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { SplitView } from '@signalco/ui/SplitView';
 import { Layers, Ruler } from '@signalco/ui-icons';
@@ -36,7 +37,7 @@ export async function generateMetadata(
     props: PageProps<'/blokovi/[alias]'>,
 ): Promise<Metadata> {
     const { alias: aliasUnescaped } = await props.params;
-    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     const blockData = await getBlocksData();
     const block = blockData?.find((block) => block.information.label === alias);
     if (!block) {
@@ -88,7 +89,7 @@ function BlockAttributes({ prices, attributes }: BlockData) {
 
 export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
     const { alias: aliasUnescaped } = await props.params;
-    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     if (!alias) {
         notFound();
     }

@@ -1,3 +1,4 @@
+import { decodeRouteParam } from '@gredice/js/uri';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Euro } from '@signalco/ui-icons';
@@ -20,7 +21,7 @@ export async function generateMetadata(
     props: PageProps<'/radnje/[alias]'>,
 ): Promise<Metadata> {
     const { alias: aliasUnescaped } = await props.params;
-    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     const operationData = await getOperationsData();
     const operation = operationData?.find(
         (op) => op.information.label === alias,
@@ -50,7 +51,7 @@ export default async function OperationPage(
     props: PageProps<'/radnje/[alias]'>,
 ) {
     const { alias: aliasUnescaped } = await props.params;
-    const alias = decodeURIComponent(aliasUnescaped);
+    const alias = decodeRouteParam(aliasUnescaped);
     const operationsData = await getOperationsData();
     const operation = operationsData?.find(
         (op) => op.information.label === alias,

@@ -1,4 +1,4 @@
-import { PlantOrSortImage } from '@gredice/ui/plants';
+import { decodeRouteParam } from '@gredice/js/uri';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -6,7 +6,6 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { FeedbackModal } from '../../../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../../../components/shared/PageHeader';
 import { getPlantSortsData } from '../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../lib/plants/getPlantsData';
 import { KnownPages } from '../../../../src/KnownPages';
@@ -19,7 +18,7 @@ export async function generateMetadata(
     props: PageProps<'/blokovi/biljke/[alias]'>,
 ): Promise<Metadata> {
     const { alias: aliasUnescaped } = await props.params;
-    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     const plants = await getPlantsData();
     const plant = plants?.find(
         (p) => p.information.name.toLowerCase() === alias?.toLowerCase(),
@@ -51,7 +50,7 @@ export default async function BlockPlantDetailPage(
     props: PageProps<'/blokovi/biljke/[alias]'>,
 ) {
     const { alias: aliasUnescaped } = await props.params;
-    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     if (!alias) {
         notFound();
     }
