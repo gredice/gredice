@@ -1,5 +1,6 @@
 import {
     Binary,
+    Code,
     File,
     FontType,
     Hash,
@@ -40,6 +41,11 @@ export const attributeDataTypeItems = [
         label: 'Slika',
         icon: <Image className="size-5" />,
     },
+    {
+        value: 'json',
+        label: 'JSON',
+        icon: <Code className="size-5" />,
+    },
 ] as const;
 
 export function AttributeDataTypeIcon({
@@ -48,6 +54,10 @@ export function AttributeDataTypeIcon({
 }: { dataType: string } & HTMLAttributes<SVGElement>) {
     if (dataType.startsWith('ref:')) {
         return <File {...rest} />;
+    }
+
+    if (dataType === 'json' || dataType.startsWith('json|')) {
+        return <Code {...rest} />;
     }
 
     switch (dataType) {
@@ -69,10 +79,22 @@ export function AttributeDataTypeIcon({
 }
 
 export function getAttributeDataTypeLabel(dataType: string) {
-    return (
-        attributeDataTypeItems.find((item) => item.value === dataType)?.label ??
-        dataType
+    const found = attributeDataTypeItems.find(
+        (item) => item.value === dataType,
     );
+    if (found) {
+        return found.label;
+    }
+
+    if (dataType.startsWith('ref:')) {
+        return `Referenca: ${dataType.substring(4)}`;
+    }
+
+    if (dataType.startsWith('json|')) {
+        return 'JSON';
+    }
+
+    return dataType;
 }
 
 function AttributeMarkdownIcon(props: HTMLAttributes<SVGElement>): ReactNode {
