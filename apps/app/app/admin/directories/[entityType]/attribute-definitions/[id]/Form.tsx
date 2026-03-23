@@ -72,13 +72,25 @@ export function FormDataTypeSelect({
         });
     };
 
+    const items = attributeDataTypeItems.some(
+        (item) => item.value === internalValue,
+    )
+        ? attributeDataTypeItems
+        : [
+              ...attributeDataTypeItems,
+              {
+                  value: internalValue,
+                  label: getAttributeDataTypeLabel(internalValue),
+              },
+          ];
+
     return (
         <Stack spacing={0.5}>
             <Typography level="body2">Tip podatka</Typography>
             <SelectItems
                 value={internalValue}
                 onValueChange={handleValueChange}
-                items={attributeDataTypeItems}
+                items={items}
                 placeholder={getAttributeDataTypeLabel(value)}
             />
         </Stack>
