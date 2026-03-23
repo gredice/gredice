@@ -8,6 +8,7 @@ import {
     getShoppingCart,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
+    normalizeShoppingCartScheduledDates,
     setCartItemPaid,
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
@@ -335,4 +336,86 @@ test('normalizeShoppingCartInventoryUsage splits partially covered inventory ite
         eurItems.map((item) => item.amount),
         [1],
     );
+});
+
+test('upsertOrRemoveCartItem normalizes scheduled date to tomorrow', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    if (!cart) throw new Error('Cart not created');
+
+    await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        'entity-1',
+        'operation',
+        1,
+        undefined,
+        undefined,
+        undefined,
+        JSON.stringify({
+            scheduledDate: '2026-03-23T00:00:00.000Z',
+        }),
+    );
+
+    const foundCart = await getShoppingCart(cart.id);
+    if (!foundCart) throw new Error('Cart not found');
+
+    const additionalData = foundCart.items[0]?.additionalData;
+    assert.ok(additionalData, 'Scheduled additional data should be present');
+    assert.strictEqual(
+        JSON.parse(additionalData).scheduledDate,
+        '2026-03-24T00:00:00.000Z',
+    );
+});
+
+test('normalizeShoppingCartScheduledDates updates past scheduled dates in cart', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    if (!cart) throw new Error('Cart not created');
+
+    await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        'entity-1',
+        'operation',
+        1,
+        undefined,
+        undefined,
+        undefined,
+        JSON.stringify({
+            scheduledDate: '2026-03-25T00:00:00.000Z',
+        }),
+    );
+
+    await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        'entity-2',
+        'operation',
+        1,
+        undefined,
+        undefined,
+        undefined,
+        JSON.stringify({
+            scheduledDate: '2026-03-20T00:00:00.000Z',
+        }),
+        undefined,
+        true,
+    );
+
+    const normalizedCart = await normalizeShoppingCartScheduledDates(cart.id);
+    assert.ok(normalizedCart);
+
+    const scheduledDates = normalizedCart.items.map((item) =>
+        item.additionalData
+            ? JSON.parse(item.additionalData).scheduledDate
+            : null,
+    );
+
+    assert.deepStrictEqual(scheduledDates, [
+        '2026-03-25T00:00:00.000Z',
+        '2026-03-24T00:00:00.000Z',
+    ]);
 });

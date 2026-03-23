@@ -3,6 +3,95 @@ import { shoppingCartItems, shoppingCarts } from '../schema';
 import { storage } from '../storage';
 import { getInventory } from './inventoryRepo';
 
+function startOfUtcDay(date: Date) {
+    return new Date(
+        Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+    );
+}
+
+function getMinimumScheduledDate(baseDate = new Date()) {
+    const tomorrow = startOfUtcDay(baseDate);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    return tomorrow;
+}
+
+function normalizeScheduledDateAdditionalData(additionalData?: string | null) {
+    if (!additionalData) {
+        return additionalData ?? null;
+    }
+
+    try {
+        const parsed = JSON.parse(additionalData);
+        if (
+            !parsed ||
+            typeof parsed !== 'object' ||
+            !('scheduledDate' in parsed)
+        ) {
+            return additionalData;
+        }
+
+        const scheduledDate = parsed.scheduledDate;
+        if (typeof scheduledDate !== 'string') {
+            return additionalData;
+        }
+
+        const parsedScheduledDate = new Date(scheduledDate);
+        if (Number.isNaN(parsedScheduledDate.getTime())) {
+            return JSON.stringify({
+                ...parsed,
+                scheduledDate: getMinimumScheduledDate().toISOString(),
+            });
+        }
+
+        const normalizedScheduledDate = startOfUtcDay(parsedScheduledDate);
+        const minimumScheduledDate = getMinimumScheduledDate();
+        if (normalizedScheduledDate < minimumScheduledDate) {
+            return JSON.stringify({
+                ...parsed,
+                scheduledDate: minimumScheduledDate.toISOString(),
+            });
+        }
+
+        return additionalData;
+    } catch {
+        return additionalData;
+    }
+}
+
+export async function normalizeShoppingCartScheduledDates(cartId: number) {
+    const cart = await getShoppingCart(cartId);
+    if (!cart) {
+        return cart;
+    }
+
+    const itemUpdates = cart.items
+        .map((item) => ({
+            id: item.id,
+            originalAdditionalData: item.additionalData,
+            additionalData: normalizeScheduledDateAdditionalData(
+                item.additionalData,
+            ),
+        }))
+        .filter((item) => item.additionalData !== item.originalAdditionalData);
+
+    if (itemUpdates.length === 0) {
+        return cart;
+    }
+
+    await Promise.all(
+        itemUpdates.map((item) =>
+            storage()
+                .update(shoppingCartItems)
+                .set({
+                    additionalData: item.additionalData,
+                })
+                .where(eq(shoppingCartItems.id, item.id)),
+        ),
+    );
+
+    return getShoppingCart(cartId);
+}
+
 export async function getOrCreateShoppingCart(
     accountId: string,
     status: 'new' | 'paid' = 'new',
@@ -81,6 +170,8 @@ export async function upsertOrRemoveCartItem(
     forceCreate?: boolean,
     forceDelete: boolean = false,
 ) {
+    additionalData = normalizeScheduledDateAdditionalData(additionalData);
+
     if (forceCreate && id) {
         throw new Error('Cannot create an item with an existing ID');
     }
