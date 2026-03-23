@@ -4,8 +4,6 @@ import type { getAttributeDefinition } from '@gredice/storage';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Input } from '@signalco/ui-primitives/Input';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { type ChangeEvent, useState } from 'react';
 import { upsertAttributeDefinition } from '../../../../../(actions)/definitionActions';
 import {
@@ -85,15 +83,13 @@ export function FormDataTypeSelect({
           ];
 
     return (
-        <Stack spacing={0.5}>
-            <Typography level="body2">Tip podatka</Typography>
-            <SelectItems
-                value={internalValue}
-                onValueChange={handleValueChange}
-                items={items}
-                placeholder={getAttributeDataTypeLabel(value)}
-            />
-        </Stack>
+        <SelectItems
+            label="Tip podatka"
+            value={internalValue}
+            onValueChange={handleValueChange}
+            items={items}
+            placeholder={getAttributeDataTypeLabel(value)}
+        />
     );
 }
 
