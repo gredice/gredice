@@ -9,6 +9,10 @@ const PlantEditorLazy = dynamic(
     },
 );
 
-export function PlantEditorDynamic({ initialPlantType }: { initialPlantType?: string }) {
+export function PlantEditorDynamic({
+    initialPlantType,
+}: {
+    initialPlantType?: string;
+}) {
     return <PlantEditorLazy initialPlantType={initialPlantType} />;
 }

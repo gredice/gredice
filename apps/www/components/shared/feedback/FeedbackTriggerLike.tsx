@@ -42,7 +42,7 @@ export function FeedbackTrigger({
                 type="button"
                 aria-haspopup={ariaHaspopup}
                 aria-expanded={ariaExpanded}
-                aria-controls={ariaControls}
+                aria-controls={ariaExpanded ? ariaControls : undefined}
                 size="sm"
                 className="p-1 size-6"
                 variant="plain"
@@ -55,7 +55,7 @@ export function FeedbackTrigger({
                 type="button"
                 aria-haspopup={ariaHaspopup}
                 aria-expanded={ariaExpanded}
-                aria-controls={ariaControls}
+                aria-controls={ariaExpanded ? ariaControls : undefined}
                 size="sm"
                 className="p-1 size-6"
                 variant="plain"
