@@ -83,7 +83,7 @@ export default function DeliveryPage() {
                     <p>
                         Za dostavu izvan Zagreba, cijeni dostave dodaje se
                         dodatak za udaljenost -{' '}
-                        <strong>0,10 € po kilometru</strong> od naše najbliže{' '}
+                        <strong>0,20 € po kilometru</strong> od naše najbliže{' '}
                         <a href="#osobno-preuzimanje">
                             lokacije za osobno preuzimanje
                         </a>
@@ -200,7 +200,7 @@ export default function DeliveryPage() {
                                         padding: '8px',
                                     }}
                                 >
-                                    <strong>2,00 €</strong>
+                                    <strong>4,00 €</strong>
                                 </td>
                                 <td
                                     style={{
@@ -208,7 +208,7 @@ export default function DeliveryPage() {
                                         padding: '8px',
                                     }}
                                 >
-                                    <strong>6,99 €</strong>
+                                    <strong>8,99 €</strong>
                                 </td>
                             </tr>
                             <tr>
@@ -226,7 +226,7 @@ export default function DeliveryPage() {
                                         padding: '8px',
                                     }}
                                 >
-                                    <strong>5,00 €</strong>
+                                    <strong>10,00 €</strong>
                                 </td>
                                 <td
                                     style={{
@@ -234,7 +234,7 @@ export default function DeliveryPage() {
                                         padding: '8px',
                                     }}
                                 >
-                                    <strong>9,99 €</strong>
+                                    <strong>14,99 €</strong>
                                 </td>
                             </tr>
                             <tr>
@@ -252,7 +252,7 @@ export default function DeliveryPage() {
                                         padding: '8px',
                                     }}
                                 >
-                                    <strong>6,00 €</strong>
+                                    <strong>12,00 €</strong>
                                 </td>
                                 <td
                                     style={{
@@ -260,7 +260,7 @@ export default function DeliveryPage() {
                                         padding: '8px',
                                     }}
                                 >
-                                    <strong>10,99 €</strong>
+                                    <strong>16,99 €</strong>
                                 </td>
                             </tr>
                             <tr>
@@ -278,7 +278,7 @@ export default function DeliveryPage() {
                                         padding: '8px',
                                     }}
                                 >
-                                    <strong>9,00 €</strong>
+                                    <strong>18,00 €</strong>
                                 </td>
                                 <td
                                     style={{
@@ -286,7 +286,7 @@ export default function DeliveryPage() {
                                         padding: '8px',
                                     }}
                                 >
-                                    <strong>13,99 €</strong>
+                                    <strong>22,99 €</strong>
                                 </td>
                             </tr>
                             <tr>
@@ -310,7 +310,7 @@ export default function DeliveryPage() {
                                         padding: '8px',
                                     }}
                                 >
-                                    <strong>0,10 €/km</strong>
+                                    <strong>0,20 €/km</strong>
                                 </td>
                                 <td
                                     style={{
@@ -319,7 +319,7 @@ export default function DeliveryPage() {
                                     }}
                                 >
                                     <strong>4,99 €</strong> +{' '}
-                                    <strong>0,10 €/km</strong>
+                                    <strong>0,20 €/km</strong>
                                 </td>
                             </tr>
                         </tbody>
