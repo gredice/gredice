@@ -113,7 +113,7 @@ export default function LoginModal() {
             <Modal
                 open
                 title="Prijava"
-                className="bg-card z-[60] border-tertiary border-b-4 rounded-lg shadow-2xl max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem)] overflow-y-auto"
+                className="bg-card z-[60] border-tertiary border-b-4 rounded-lg shadow-2xl max-h-[calc(100dvh_-_env(safe-area-inset-top,0px)_-_env(safe-area-inset-bottom,0px)_-_2rem)] overflow-y-auto"
                 dismissible={false}
             >
                 <Tabs defaultValue="login" className="w-full">
