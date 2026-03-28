@@ -35,24 +35,29 @@ function normalizeScheduledDateAdditionalData(additionalData?: string | null) {
             return additionalData;
         }
 
-        const parsedScheduledDate = new Date(scheduledDate);
-        if (Number.isNaN(parsedScheduledDate.getTime())) {
-            return JSON.stringify({
-                ...parsed,
-                scheduledDate: getMinimumScheduledDate().toISOString(),
-            });
-        }
-
-        const normalizedScheduledDate = startOfUtcDay(parsedScheduledDate);
         const minimumScheduledDate = getMinimumScheduledDate();
-        if (normalizedScheduledDate < minimumScheduledDate) {
-            return JSON.stringify({
-                ...parsed,
-                scheduledDate: minimumScheduledDate.toISOString(),
-            });
+        const parsedScheduledDate = new Date(scheduledDate);
+
+        let finalScheduledDate: Date;
+        if (Number.isNaN(parsedScheduledDate.getTime())) {
+            finalScheduledDate = minimumScheduledDate;
+        } else {
+            const normalizedScheduledDate = startOfUtcDay(parsedScheduledDate);
+            finalScheduledDate =
+                normalizedScheduledDate < minimumScheduledDate
+                    ? minimumScheduledDate
+                    : normalizedScheduledDate;
         }
 
-        return additionalData;
+        const normalizedIso = finalScheduledDate.toISOString();
+        if (normalizedIso === scheduledDate) {
+            return additionalData;
+        }
+
+        return JSON.stringify({
+            ...parsed,
+            scheduledDate: normalizedIso,
+        });
     } catch {
         return additionalData;
     }
@@ -64,7 +69,13 @@ export async function normalizeShoppingCartScheduledDates(cartId: number) {
         return cart;
     }
 
+    // Only normalize open carts; paid/historical carts should not be mutated.
+    if (cart.status !== 'new') {
+        return cart;
+    }
+
     const itemUpdates = cart.items
+        .filter((item) => item.status === 'new')
         .map((item) => ({
             id: item.id,
             originalAdditionalData: item.additionalData,

@@ -338,11 +338,19 @@ test('normalizeShoppingCartInventoryUsage splits partially covered inventory ite
     );
 });
 
-test('upsertOrRemoveCartItem normalizes scheduled date to tomorrow', async () => {
+test('upsertOrRemoveCartItem normalizes scheduled date to tomorrow when date is in the past', async () => {
     createTestDb();
     const accountId = await createTestAccount();
     const cart = await getOrCreateShoppingCart(accountId);
     if (!cart) throw new Error('Cart not created');
+
+    const now = new Date();
+    const yesterday = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1),
+    );
+    const expectedTomorrow = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
+    );
 
     await upsertOrRemoveCartItem(
         null,
@@ -354,7 +362,7 @@ test('upsertOrRemoveCartItem normalizes scheduled date to tomorrow', async () =>
         undefined,
         undefined,
         JSON.stringify({
-            scheduledDate: '2026-03-23T00:00:00.000Z',
+            scheduledDate: yesterday.toISOString(),
         }),
     );
 
@@ -365,15 +373,31 @@ test('upsertOrRemoveCartItem normalizes scheduled date to tomorrow', async () =>
     assert.ok(additionalData, 'Scheduled additional data should be present');
     assert.strictEqual(
         JSON.parse(additionalData).scheduledDate,
-        '2026-03-24T00:00:00.000Z',
+        expectedTomorrow.toISOString(),
     );
 });
 
-test('normalizeShoppingCartScheduledDates updates past scheduled dates in cart', async () => {
+test('upsertOrRemoveCartItem normalizes scheduled date with time component to start-of-day UTC', async () => {
     createTestDb();
     const accountId = await createTestAccount();
     const cart = await getOrCreateShoppingCart(accountId);
     if (!cart) throw new Error('Cart not created');
+
+    const now = new Date();
+    // Use a date 5 days in the future with a non-zero time component
+    const futureWithTime = new Date(
+        Date.UTC(
+            now.getUTCFullYear(),
+            now.getUTCMonth(),
+            now.getUTCDate() + 5,
+            15,
+            30,
+            45,
+        ),
+    );
+    const expectedStartOfDay = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 5),
+    );
 
     await upsertOrRemoveCartItem(
         null,
@@ -385,7 +409,49 @@ test('normalizeShoppingCartScheduledDates updates past scheduled dates in cart',
         undefined,
         undefined,
         JSON.stringify({
-            scheduledDate: '2026-03-25T00:00:00.000Z',
+            scheduledDate: futureWithTime.toISOString(),
+        }),
+    );
+
+    const foundCart = await getShoppingCart(cart.id);
+    if (!foundCart) throw new Error('Cart not found');
+
+    const additionalData = foundCart.items[0]?.additionalData;
+    assert.ok(additionalData, 'Scheduled additional data should be present');
+    assert.strictEqual(
+        JSON.parse(additionalData).scheduledDate,
+        expectedStartOfDay.toISOString(),
+    );
+});
+
+test('normalizeShoppingCartScheduledDates updates past scheduled dates in cart', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    if (!cart) throw new Error('Cart not created');
+
+    const now = new Date();
+    const futureDate = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 7),
+    );
+    const pastDate = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 5),
+    );
+    const expectedTomorrow = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
+    );
+
+    await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        'entity-1',
+        'operation',
+        1,
+        undefined,
+        undefined,
+        undefined,
+        JSON.stringify({
+            scheduledDate: futureDate.toISOString(),
         }),
     );
 
@@ -399,7 +465,7 @@ test('normalizeShoppingCartScheduledDates updates past scheduled dates in cart',
         undefined,
         undefined,
         JSON.stringify({
-            scheduledDate: '2026-03-20T00:00:00.000Z',
+            scheduledDate: pastDate.toISOString(),
         }),
         undefined,
         true,
@@ -415,7 +481,7 @@ test('normalizeShoppingCartScheduledDates updates past scheduled dates in cart',
     );
 
     assert.deepStrictEqual(scheduledDates, [
-        '2026-03-25T00:00:00.000Z',
-        '2026-03-24T00:00:00.000Z',
+        futureDate.toISOString(),
+        expectedTomorrow.toISOString(),
     ]);
 });
