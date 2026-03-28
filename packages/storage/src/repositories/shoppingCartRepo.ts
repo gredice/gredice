@@ -181,7 +181,9 @@ export async function upsertOrRemoveCartItem(
     forceCreate?: boolean,
     forceDelete: boolean = false,
 ) {
-    additionalData = normalizeScheduledDateAdditionalData(additionalData);
+    if (additionalData !== undefined) {
+        additionalData = normalizeScheduledDateAdditionalData(additionalData);
+    }
 
     if (forceCreate && id) {
         throw new Error('Cannot create an item with an existing ID');
