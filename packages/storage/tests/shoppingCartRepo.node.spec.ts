@@ -340,41 +340,55 @@ test('normalizeShoppingCartInventoryUsage splits partially covered inventory ite
 
 test('upsertOrRemoveCartItem normalizes scheduled date to tomorrow when date is in the past', async () => {
     createTestDb();
-    const accountId = await createTestAccount();
-    const cart = await getOrCreateShoppingCart(accountId);
-    if (!cart) throw new Error('Cart not created');
+    const fixedNow = new Date('2024-01-15T12:00:00Z');
+    test.mock.timers.enable({ now: fixedNow });
+    try {
+        const accountId = await createTestAccount();
+        const cart = await getOrCreateShoppingCart(accountId);
+        if (!cart) throw new Error('Cart not created');
 
-    const now = new Date();
-    const yesterday = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1),
-    );
-    const expectedTomorrow = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
-    );
+        const now = new Date();
+        const yesterday = new Date(
+            Date.UTC(
+                now.getUTCFullYear(),
+                now.getUTCMonth(),
+                now.getUTCDate() - 1,
+            ),
+        );
+        const expectedTomorrow = new Date(
+            Date.UTC(
+                now.getUTCFullYear(),
+                now.getUTCMonth(),
+                now.getUTCDate() + 1,
+            ),
+        );
 
-    await upsertOrRemoveCartItem(
-        null,
-        cart.id,
-        'entity-1',
-        'operation',
-        1,
-        undefined,
-        undefined,
-        undefined,
-        JSON.stringify({
-            scheduledDate: yesterday.toISOString(),
-        }),
-    );
+        await upsertOrRemoveCartItem(
+            null,
+            cart.id,
+            'entity-1',
+            'operation',
+            1,
+            undefined,
+            undefined,
+            undefined,
+            JSON.stringify({
+                scheduledDate: yesterday.toISOString(),
+            }),
+        );
 
-    const foundCart = await getShoppingCart(cart.id);
-    if (!foundCart) throw new Error('Cart not found');
+        const foundCart = await getShoppingCart(cart.id);
+        if (!foundCart) throw new Error('Cart not found');
 
-    const additionalData = foundCart.items[0]?.additionalData;
-    assert.ok(additionalData, 'Scheduled additional data should be present');
-    assert.strictEqual(
-        JSON.parse(additionalData).scheduledDate,
-        expectedTomorrow.toISOString(),
-    );
+        const additionalData = foundCart.items[0]?.additionalData;
+        assert.ok(additionalData, 'Scheduled additional data should be present');
+        assert.strictEqual(
+            JSON.parse(additionalData).scheduledDate,
+            expectedTomorrow.toISOString(),
+        );
+    } finally {
+        test.mock.timers.reset();
+    }
 });
 
 test('upsertOrRemoveCartItem normalizes scheduled date with time component to start-of-day UTC', async () => {
