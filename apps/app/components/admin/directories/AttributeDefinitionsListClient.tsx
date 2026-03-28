@@ -36,7 +36,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import type { CSSProperties, HTMLAttributes, MouseEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     reorderAttributeDefinition,
     reorderAttributeDefinitionCategory,
@@ -169,8 +169,10 @@ function AttributeDefinitionCategoryCard({
 
 function SortableCategory({
     category,
+    preventClick,
 }: {
     category: SelectAttributeDefinitionCategory;
+    preventClick: boolean;
 }) {
     const {
         attributes,
@@ -188,7 +190,7 @@ function SortableCategory({
         <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
             <AttributeDefinitionCategoryCard
                 attributeDefinitionCategory={category}
-                isDragging={isDragging}
+                isDragging={isDragging || preventClick}
             />
         </div>
     );
@@ -196,8 +198,10 @@ function SortableCategory({
 
 function SortableAttributeDefinition({
     attribute,
+    preventClick,
 }: {
     attribute: ExtendedAttributeDefinition;
+    preventClick: boolean;
 }) {
     const {
         attributes,
@@ -215,7 +219,7 @@ function SortableAttributeDefinition({
         <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
             <AttributeDefinitionCard
                 attributeDefinition={attribute}
-                isDragging={isDragging}
+                isDragging={isDragging || preventClick}
             />
         </div>
     );
@@ -231,7 +235,16 @@ function CategorySection({
     entityTypeName: string;
 }) {
     const [items, setItems] = useState(initialDefinitions);
+    const [preventClick, setPreventClick] = useState(false);
     const sensors = useSensors(useSensor(PointerSensor));
+
+    useEffect(() => {
+        if (!preventClick) return;
+        const timeout = setTimeout(() => {
+            setPreventClick(false);
+        }, 200);
+        return () => clearTimeout(timeout);
+    }, [preventClick]);
 
     async function handleDragEnd(event: DragEndEvent) {
         const { active, over } = event;
@@ -240,6 +253,7 @@ function CategorySection({
         const newIndex = items.findIndex((i) => i.id.toString() === over.id);
         const newItems = arrayMove(items, oldIndex, newIndex);
         setItems(newItems);
+        setPreventClick(true);
         const prev = newItems[newIndex - 1]?.order ?? null;
         const next = newItems[newIndex + 1]?.order ?? null;
         await reorderAttributeDefinition(
@@ -277,6 +291,7 @@ function CategorySection({
                         <SortableAttributeDefinition
                             key={attribute.id}
                             attribute={attribute}
+                            preventClick={preventClick}
                         />
                     ))}
                 </SortableContext>
@@ -295,7 +310,16 @@ export function AttributeDefinitionsListClient({
     attributeDefinitions: ExtendedAttributeDefinition[];
 }) {
     const [categories, setCategories] = useState(attributeDefinitionCategories);
+    const [preventCategoryClick, setPreventCategoryClick] = useState(false);
     const sensors = useSensors(useSensor(PointerSensor));
+
+    useEffect(() => {
+        if (!preventCategoryClick) return;
+        const timeout = setTimeout(() => {
+            setPreventCategoryClick(false);
+        }, 200);
+        return () => clearTimeout(timeout);
+    }, [preventCategoryClick]);
 
     async function handleCategoryDragEnd(event: DragEndEvent) {
         const { active, over } = event;
@@ -308,6 +332,7 @@ export function AttributeDefinitionsListClient({
         );
         const newItems = arrayMove(categories, oldIndex, newIndex);
         setCategories(newItems);
+        setPreventCategoryClick(true);
         const prev = newItems[newIndex - 1]?.order ?? null;
         const next = newItems[newIndex + 1]?.order ?? null;
         await reorderAttributeDefinitionCategory(
@@ -344,7 +369,11 @@ export function AttributeDefinitionsListClient({
                         <Stack spacing={1}>
                             {categories.length <= 0 && <NoDataPlaceholder />}
                             {categories.map((c) => (
-                                <SortableCategory key={c.id} category={c} />
+                                <SortableCategory
+                                    key={c.id}
+                                    category={c}
+                                    preventClick={preventCategoryClick}
+                                />
                             ))}
                         </Stack>
                     </SortableContext>
