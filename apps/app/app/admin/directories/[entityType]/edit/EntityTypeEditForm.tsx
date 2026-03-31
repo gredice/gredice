@@ -11,6 +11,7 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { IconPicker } from '../../../../../components/admin/directories/IconPicker';
 import {
     deleteEntityTypeFromEditPage,
     updateEntityTypeFromEditPage,
@@ -28,6 +29,7 @@ export function EntityTypeEditForm({
     categories,
 }: EntityTypeEditFormProps) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [selectedIcon, setSelectedIcon] = useState(entityType.icon ?? '');
 
     const categoryItems = [
         { value: 'none', label: 'Bez kategorije' },
@@ -85,13 +87,19 @@ export function EntityTypeEditForm({
                                 helperText="Labela se prikazuje u korisničkom sučelju"
                             />
 
+                            <IconPicker
+                                name="icon"
+                                value={selectedIcon}
+                                onValueChange={setSelectedIcon}
+                            />
+
                             <SelectItems
                                 name="categoryId"
                                 label="Kategorija"
                                 placeholder="Odaberite kategoriju"
                                 items={categoryItems}
                                 defaultValue={
-                                    entityType.categoryId?.toString() || ''
+                                    entityType.categoryId?.toString() || 'none'
                                 }
                                 helperText="Kategorija pomaže u organizaciji tipova zapisa"
                             />

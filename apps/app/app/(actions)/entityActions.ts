@@ -25,12 +25,14 @@ export async function createEntityType(
     label: string,
     categoryId?: number,
     isRoot = true,
+    icon?: string,
 ) {
     await auth(['admin']);
 
     await upsertEntityType({
         name: entityTypeName,
         label: label,
+        icon: icon || null,
         categoryId,
         isRoot,
     });
@@ -46,6 +48,7 @@ export async function updateEntityType(
     label: string,
     categoryId?: number,
     isRoot = true,
+    icon?: string,
 ) {
     await auth(['admin']);
 
@@ -53,6 +56,7 @@ export async function updateEntityType(
         id,
         name: entityTypeName,
         label,
+        icon: icon || null,
         categoryId,
         isRoot,
     });
@@ -77,6 +81,8 @@ export async function updateEntityTypeFromEditPage(formData: FormData) {
     const id = parseInt(formData.get('id') as string, 10);
     const name = formData.get('name') as string;
     const label = formData.get('label') as string;
+    const icon = (formData.get('icon') as string) || undefined;
+    const resolvedIcon = icon === 'none' ? undefined : icon;
     const categoryId =
         (formData.get('categoryId') as string) === 'none'
             ? undefined
@@ -90,6 +96,7 @@ export async function updateEntityTypeFromEditPage(formData: FormData) {
         label,
         categoryId ? parseInt(categoryId, 10) : undefined,
         isRoot,
+        resolvedIcon,
     );
 
     revalidatePath(KnownPages.Directories);
