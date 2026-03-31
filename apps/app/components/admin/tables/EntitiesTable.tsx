@@ -36,12 +36,16 @@ export function EntitiesTable({
     const filteredEntities = entities.filter((entity) =>
         entityDisplayName(entity).toLowerCase().includes(normalized),
     );
+    const displayDefinitions = attributeDefinitions.filter((d) => d.display);
 
     return (
         <Table>
             <Table.Header>
                 <Table.Row>
                     <Table.Head>Naziv</Table.Head>
+                    {displayDefinitions.map((d) => (
+                        <Table.Head key={d.id}>{d.label}</Table.Head>
+                    ))}
                     <Table.Head>Ispunjenost</Table.Head>
                     <Table.Head>Status</Table.Head>
                     <Table.Head>Zadnja izmjena</Table.Head>
@@ -51,7 +55,7 @@ export function EntitiesTable({
             <Table.Body>
                 {!filteredEntities.length && (
                     <Table.Row>
-                        <Table.Cell colSpan={4}>
+                        <Table.Cell colSpan={5 + displayDefinitions.length}>
                             <NoDataPlaceholder />
                         </Table.Cell>
                     </Table.Row>
@@ -70,6 +74,16 @@ export function EntitiesTable({
                                 </Typography>
                             </Link>
                         </Table.Cell>
+                        {displayDefinitions.map((d) => (
+                            <Table.Cell key={d.id}>
+                                <Typography secondary>
+                                    {entityAttributeValueByDefinitionId(
+                                        entity,
+                                        d.id,
+                                    ) ?? '-'}
+                                </Typography>
+                            </Table.Cell>
+                        ))}
                         <Table.Cell>
                             <div className="w-24">
                                 <EntityAttributeProgress
@@ -134,5 +148,14 @@ function entityAttributeValue(
         (a) =>
             a.attributeDefinition.category === categoryName &&
             a.attributeDefinition.name === attributeName,
+    )?.value;
+}
+
+function entityAttributeValueByDefinitionId(
+    entity: Entities[number],
+    definitionId: number,
+) {
+    return entity.attributes.find(
+        (a) => a.attributeDefinitionId === definitionId,
     )?.value;
 }

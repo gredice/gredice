@@ -36,6 +36,7 @@ export default async function AttributeDefinitionPage({
         label,
         multiple,
         required,
+        display,
     } = definition;
 
     const deleteAttributeDefinitionBound = deleteAttributeDefinition.bind(
@@ -127,6 +128,12 @@ export default async function AttributeDefinitionPage({
                         name="required"
                         value={required ? 'true' : 'false'}
                         label="Obavezno"
+                    />
+                    <FormCheckbox
+                        definition={definition}
+                        name="display"
+                        value={display ? 'true' : 'false'}
+                        label="Prikaži u tablici"
                     />
                 </Stack>
             </form>

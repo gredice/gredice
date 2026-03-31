@@ -7,6 +7,7 @@ import {
 import { SplitView } from '@signalco/ui/SplitView';
 import { BookA, Bookmark } from '@signalco/ui-icons';
 import { Card } from '@signalco/ui-primitives/Card';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
@@ -36,12 +37,19 @@ function AttributeDefinitionCard({
                         className="size-5 text-muted-foreground"
                     />
                     <Stack>
-                        <Typography level="body1">
-                            {attributeDefinition.label}
-                            {attributeDefinition.required && (
-                                <span className="text-red-600/60 ml-1">*</span>
+                        <Row spacing={1}>
+                            <Typography level="body1">
+                                {attributeDefinition.label}
+                                {attributeDefinition.required && (
+                                    <span className="text-red-600/60 ml-1">
+                                        *
+                                    </span>
+                                )}
+                            </Typography>
+                            {attributeDefinition.display && (
+                                <Chip color="info">Prikaz</Chip>
                             )}
-                        </Typography>
+                        </Row>
                         <Typography level="body3" className="line-clamp-2">
                             {attributeDefinition.description}
                         </Typography>
