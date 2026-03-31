@@ -64,6 +64,8 @@ export default async function EntityDetailsPage(props: {
         }
     }
 
+    const displayDefinitions = attributeDefinitions.filter((d) => d.display);
+
     return (
         <Tabs defaultValue={attributeCategories.at(0)?.name}>
             <Stack spacing={2}>
@@ -112,6 +114,17 @@ export default async function EntityDetailsPage(props: {
                             value={entity.updatedAt}
                         />
                         <Field name="Datum objave" value={entity.publishedAt} />
+                        {displayDefinitions.map((d) => (
+                            <Field
+                                key={d.id}
+                                name={d.label}
+                                value={
+                                    entity.attributes.find(
+                                        (a) => a.attributeDefinitionId === d.id,
+                                    )?.value ?? '-'
+                                }
+                            />
+                        ))}
                     </FieldSet>
                 </Stack>
                 {attributeCategories.map((category) => (

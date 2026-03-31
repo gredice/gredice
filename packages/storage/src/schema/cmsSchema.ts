@@ -67,6 +67,7 @@ export const attributeDefinitions = pgTable(
         order: text('order'),
         multiple: boolean('multiple').notNull().default(false),
         required: boolean('required').notNull().default(false),
+        display: boolean('display').notNull().default(false),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
