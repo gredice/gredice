@@ -11,10 +11,7 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
-import {
-    availableIcons,
-    EntityTypeIcon,
-} from '../../../../../components/admin/directories/EntityTypeIcon';
+import { IconPicker } from '../../../../../components/admin/directories/IconPicker';
 import {
     deleteEntityTypeFromEditPage,
     updateEntityTypeFromEditPage,
@@ -39,14 +36,6 @@ export function EntityTypeEditForm({
         ...categories.map((category) => ({
             value: category.id.toString(),
             label: category.label,
-        })),
-    ];
-
-    const iconItems = [
-        { value: '', label: 'Zadano (File)' },
-        ...availableIcons.map((name) => ({
-            value: name,
-            label: name,
         })),
     ];
 
@@ -98,23 +87,11 @@ export function EntityTypeEditForm({
                                 helperText="Labela se prikazuje u korisničkom sučelju"
                             />
 
-                            <div className="flex items-end gap-3">
-                                <EntityTypeIcon
-                                    icon={selectedIcon || null}
-                                    className="size-5 mb-2 shrink-0"
-                                />
-                                <div className="flex-1">
-                                    <SelectItems
-                                        name="icon"
-                                        label="Ikona"
-                                        placeholder="Odaberite ikonu"
-                                        items={iconItems}
-                                        defaultValue={entityType.icon ?? ''}
-                                        onValueChange={setSelectedIcon}
-                                        helperText="Ikona se prikazuje u izborniku"
-                                    />
-                                </div>
-                            </div>
+                            <IconPicker
+                                name="icon"
+                                value={selectedIcon}
+                                onValueChange={setSelectedIcon}
+                            />
 
                             <SelectItems
                                 name="categoryId"
@@ -122,7 +99,7 @@ export function EntityTypeEditForm({
                                 placeholder="Odaberite kategoriju"
                                 items={categoryItems}
                                 defaultValue={
-                                    entityType.categoryId?.toString() || ''
+                                    entityType.categoryId?.toString() || 'none'
                                 }
                                 helperText="Kategorija pomaže u organizaciji tipova zapisa"
                             />
