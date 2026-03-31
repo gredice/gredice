@@ -6,6 +6,7 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { availableIcons } from '../../../../../components/admin/directories/EntityTypeIcon';
 import { auth } from '../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../src/KnownPages';
 import { submitCreateForm } from '../../../../(actions)/entityFormActions';
@@ -21,6 +22,14 @@ export default async function CreateEntityTypePage() {
         ...categories.map((category) => ({
             value: category.id.toString(),
             label: category.label,
+        })),
+    ];
+
+    const iconItems = [
+        { value: '', label: 'Zadano (File)' },
+        ...availableIcons.map((name) => ({
+            value: name,
+            label: name,
         })),
     ];
 
@@ -59,6 +68,12 @@ export default async function CreateEntityTypePage() {
                                     label="Labela"
                                     placeholder="npr. Biljka, Alat, Artikl"
                                     required
+                                />
+                                <SelectItems
+                                    name="icon"
+                                    label="Ikona"
+                                    placeholder="Odaberite ikonu"
+                                    items={iconItems}
                                 />
                                 <SelectItems
                                     name="categoryId"

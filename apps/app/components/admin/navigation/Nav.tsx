@@ -45,6 +45,7 @@ import type { CSSProperties } from 'react';
 import { useContext, useState } from 'react';
 import { reorderEntityType } from '../../../app/(actions)/entityActions';
 import { KnownPages } from '../../../src/KnownPages';
+import { EntityTypeIcon } from '../directories/EntityTypeIcon';
 import { NavContext } from './NavContext';
 import { NavItem } from './NavItem';
 import { ProfileNavItem } from './ProfileNavItem';
@@ -73,7 +74,9 @@ function SortableNavItem({
             <NavItem
                 href={KnownPages.DirectoryEntityType(entityType.name)}
                 label={entityType.label}
-                icon={<File className="size-5" />}
+                icon={
+                    <EntityTypeIcon icon={entityType.icon} className="size-5" />
+                }
                 onClick={onClick}
                 isDragging={isDragging}
             />
@@ -172,7 +175,12 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                                         entityType.name,
                                     )}
                                     label={entityType.label}
-                                    icon={<File className="size-5" />}
+                                    icon={
+                                        <EntityTypeIcon
+                                            icon={entityType.icon}
+                                            className="size-5"
+                                        />
+                                    }
                                     onClick={onItemClick}
                                 />
                             ))}

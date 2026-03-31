@@ -381,7 +381,10 @@ test('upsertOrRemoveCartItem normalizes scheduled date to tomorrow when date is 
         if (!foundCart) throw new Error('Cart not found');
 
         const additionalData = foundCart.items[0]?.additionalData;
-        assert.ok(additionalData, 'Scheduled additional data should be present');
+        assert.ok(
+            additionalData,
+            'Scheduled additional data should be present',
+        );
         assert.strictEqual(
             JSON.parse(additionalData).scheduledDate,
             expectedTomorrow.toISOString(),

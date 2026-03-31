@@ -209,6 +209,7 @@ export const entityTypes = pgTable(
         id: serial('id').primaryKey(),
         name: text('name').notNull(),
         label: text('label').notNull(),
+        icon: text('icon'),
         categoryId: integer('category_id').references(
             () => entityTypeCategories.id,
         ),

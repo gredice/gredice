@@ -8,6 +8,7 @@ export async function submitCreateForm(formData: FormData) {
 
     const name = formData.get('name') as string;
     const label = formData.get('label') as string;
+    const icon = (formData.get('icon') as string) || undefined;
     const categoryId =
         (formData.get('categoryId') as string) === 'none'
             ? undefined
@@ -19,5 +20,6 @@ export async function submitCreateForm(formData: FormData) {
         label,
         categoryId ? parseInt(categoryId, 10) : undefined,
         isRoot,
+        icon,
     );
 }
