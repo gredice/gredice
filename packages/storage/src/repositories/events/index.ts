@@ -52,6 +52,7 @@ export type {
     RaisedBedAbandonPayload,
     // Raised bed
     RaisedBedCreatePayload,
+    RaisedBedFieldAiAnalysisPayload,
     // Raised bed field
     RaisedBedFieldCreatePayload,
     RaisedBedFieldPlantEventsAnyPayload,

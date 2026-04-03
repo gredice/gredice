@@ -7,8 +7,11 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import ReactMarkdown from 'react-markdown';
+import { useGameFlags } from '../../GameFlagsContext';
 import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';
 import { useRaisedBedFieldDiaryEntries } from '../../hooks/useRaisedBedFieldDiaryEntries';
+import { RaisedBedFieldAiAnalysis } from './RaisedBedFieldAiAnalysis';
 
 function DiaryEntryImages({
     name,
@@ -52,6 +55,7 @@ function DiaryList({
               status: string | null;
               timestamp: Date;
               imageUrls?: string[] | null;
+              isMarkdown?: boolean;
           }>
         | undefined;
 }) {
@@ -99,9 +103,17 @@ function DiaryList({
                                     <Typography level="body1" semiBold>
                                         {entry.name}
                                     </Typography>
-                                    <Typography level="body2">
-                                        {entry.description}
-                                    </Typography>
+                                    {entry.isMarkdown ? (
+                                        <div className="prose prose-sm dark:prose-invert">
+                                            <ReactMarkdown>
+                                                {entry.description ?? ''}
+                                            </ReactMarkdown>
+                                        </div>
+                                    ) : (
+                                        <Typography level="body2">
+                                            {entry.description}
+                                        </Typography>
+                                    )}
                                 </Stack>
                             </Row>
                             <Stack>
@@ -154,7 +166,20 @@ export function RaisedBedFieldDiary({
         isLoading,
         error,
     } = useRaisedBedFieldDiaryEntries(gardenId, raisedBedId, positionIndex);
-    return <DiaryList error={error} isLoading={isLoading} entries={entries} />;
+    const flags = useGameFlags();
+    return (
+        <Stack spacing={2}>
+            {Boolean(flags.raisedBedImageAI) && (
+                <RaisedBedFieldAiAnalysis
+                    gardenId={gardenId}
+                    raisedBedId={raisedBedId}
+                    positionIndex={positionIndex}
+                    entries={entries}
+                />
+            )}
+            <DiaryList error={error} isLoading={isLoading} entries={entries} />
+        </Stack>
+    );
 }
 
 export function RaisedBedDiary({

@@ -24,6 +24,7 @@ import type {
     OperationSchedulePayload,
     RaisedBedAbandonPayload,
     RaisedBedCreatePayload,
+    RaisedBedFieldAiAnalysisPayload,
     RaisedBedFieldCreatePayload,
     RaisedBedFieldPlantPlacePayload,
     RaisedBedFieldPlantReplaceSortPayload,
@@ -253,6 +254,15 @@ export const knownEvents = {
             data: RaisedBedFieldPlantReplaceSortPayload,
         ) => ({
             type: knownEventTypes.raisedBedFields.plantReplaceSort,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        aiAnalysisV1: (
+            aggregateId: string,
+            data: RaisedBedFieldAiAnalysisPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedFields.aiAnalysis,
             version: 1,
             aggregateId,
             data,

@@ -8,6 +8,7 @@ export default async function Home() {
     const flags: ComponentProps<typeof GameScene>['flags'] = {
         enableDebugHudFlag: await enableDebugHudFlag(),
         enablePlantGeneratorFlag: await enablePlantGeneratorFlag(),
+        raisedBedImageAI: false,
     };
 
     return (

@@ -31,6 +31,7 @@ import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { publicSecurity } from '../../../lib/docs/security';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
+import { analyzeRaisedBedFieldImage } from '../../../lib/garden/raisedBedAiAnalysisService';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
     validateConnectedRaisedBedMove,
@@ -1554,6 +1555,102 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     500,
                 );
             }
+        },
+    )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/analyze-image',
+        describeRoute({
+            description:
+                'Analyze raised bed field image with AI and save response to diary',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                positionIndex: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                imageUrl: z.url(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, positionIndex } =
+                context.req.valid('param');
+            const { imageUrl } = context.req.valid('json');
+
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const positionIndexNumber = parseInt(positionIndex, 10);
+            if (Number.isNaN(positionIndexNumber) || positionIndexNumber < 0) {
+                return context.json({ error: 'Invalid position index' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (
+                !raisedBed ||
+                raisedBed.gardenId !== gardenIdNumber ||
+                raisedBed.accountId !== accountId
+            ) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            const field = raisedBed.fields.find(
+                (value) =>
+                    value.positionIndex === positionIndexNumber &&
+                    value.active &&
+                    value.plantSortId,
+            );
+            if (!field) {
+                return context.json(
+                    {
+                        error: 'Field not found or does not have an active plant',
+                    },
+                    404,
+                );
+            }
+
+            if (!process.env.OPENAI_API_KEY) {
+                return context.json(
+                    { error: 'OPENAI_API_KEY is not configured' },
+                    500,
+                );
+            }
+
+            const analysis = await analyzeRaisedBedFieldImage({
+                accountId,
+                gardenId: gardenIdNumber,
+                raisedBed,
+                positionIndex: positionIndexNumber,
+                imageUrl,
+            });
+
+            await createEvent(
+                knownEvents.raisedBedFields.aiAnalysisV1(
+                    `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
+                    {
+                        markdown: analysis.markdown,
+                        imageUrl,
+                        model: analysis.model,
+                        analyzedAt: analysis.analyzedAt,
+                    },
+                ),
+            );
+
+            return context.json({ markdown: analysis.markdown }, 201);
         },
     )
     .get(

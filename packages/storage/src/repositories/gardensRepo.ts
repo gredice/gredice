@@ -1526,6 +1526,7 @@ export async function getRaisedBedFieldDiaryEntries(
                 knownEventTypes.raisedBedFields.plantSchedule,
                 knownEventTypes.raisedBedFields.plantUpdate,
                 knownEventTypes.raisedBedFields.plantReplaceSort,
+                knownEventTypes.raisedBedFields.aiAnalysis,
                 knownEventTypes.raisedBedFields.delete,
             ],
             [`${raisedBedId.toString()}|${positionIndex.toString()}`],
@@ -1589,6 +1590,14 @@ export async function getRaisedBedFieldDiaryEntries(
                     description = 'Polje je uklonjeno.';
                     break;
                 }
+                case knownEventTypes.raisedBedFields.aiAnalysis: {
+                    name = 'AI analiza vrta';
+                    description =
+                        typeof data?.markdown === 'string'
+                            ? data.markdown
+                            : 'AI analiza je spremljena.';
+                    break;
+                }
                 default:
                     name = 'Nepoznato';
                     description = 'Nepoznata promjena.';
@@ -1607,6 +1616,8 @@ export async function getRaisedBedFieldDiaryEntries(
                     : typeof data?.imageUrl === 'string'
                       ? [data.imageUrl]
                       : undefined,
+                isMarkdown:
+                    event.type === knownEventTypes.raisedBedFields.aiAnalysis,
             };
         })
         .filter((event) => event.name);

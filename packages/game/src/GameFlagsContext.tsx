@@ -11,6 +11,7 @@ export interface GameFeatureFlags {
     enableRaisedBedFieldOperationsFlag?: boolean;
     enableRaisedBedFieldWateringFlag?: boolean;
     enableRaisedBedFieldDiaryFlag?: boolean;
+    raisedBedImageAI?: boolean;
 }
 
 export const GameFlagsContext = createContext<GameFeatureFlags>({});
