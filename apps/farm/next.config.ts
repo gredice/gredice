@@ -1,6 +1,8 @@
 import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
+const shouldSkipSentrySourceMaps = Boolean(process.env.CI);
+
 const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
@@ -10,7 +12,7 @@ const nextConfig: NextConfig = {
         typedEnv: true,
     },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
-    productionBrowserSourceMaps: true,
+    productionBrowserSourceMaps: !shouldSkipSentrySourceMaps,
     allowedDevOrigins: ['farma.gredice.test'],
 };
 
@@ -29,7 +31,10 @@ export default withSentryConfig(nextConfig, {
     // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
 
     // Upload a larger set of source maps for prettier stack traces (increases build time)
-    widenClientFileUpload: true,
+    widenClientFileUpload: !shouldSkipSentrySourceMaps,
+    sourcemaps: {
+        disable: shouldSkipSentrySourceMaps,
+    },
 
     // Uncomment to route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
     // This can increase your server load as well as your hosting bill.
