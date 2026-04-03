@@ -10,7 +10,7 @@ export const newsletterSubscribe = async (
 ) => {
     const email = formData.get('email') as string;
 
-    const response = await client().api.newsletter.subscribe.$post({
+    const response = await client(false).api.newsletter.subscribe.$post({
         json: { email, source: 'www' },
     });
 

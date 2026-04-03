@@ -30,6 +30,25 @@ function docs<E extends Env, S extends Schema, P extends string>(
             info: {
                 title,
                 version: '1.0.0',
+                description:
+                    'Security schemes are defined for authenticated endpoints (cookieAuth and bearerAuth).',
+            },
+            components: {
+                securitySchemes: {
+                    bearerAuth: {
+                        type: 'http',
+                        scheme: 'bearer',
+                        bearerFormat: 'JWT',
+                        description:
+                            'Use access token when calling API directly.',
+                    },
+                    cookieAuth: {
+                        type: 'apiKey',
+                        in: 'cookie',
+                        name: 'gredice_jwt',
+                        description: 'Session cookie used by web clients.',
+                    },
+                },
             },
             servers: [
                 {

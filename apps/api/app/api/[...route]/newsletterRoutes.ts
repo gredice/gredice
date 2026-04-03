@@ -2,11 +2,13 @@ import { subscribeToNewsletter } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { publicSecurity } from '../../../lib/docs/security';
 
 const app = new Hono().post(
     '/subscribe',
     describeRoute({
         description: 'Subscribe to the newsletter',
+        security: publicSecurity,
     }),
     zValidator(
         'json',

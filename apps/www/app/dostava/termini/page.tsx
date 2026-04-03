@@ -50,7 +50,7 @@ async function fetchTimeSlots(
     toDate.setDate(toDate.getDate() + 14);
 
     try {
-        const response = await client().api.delivery.slots.$get({
+        const response = await client(false).api.delivery.slots.$get({
             query: {
                 type,
                 from: fromDate.toISOString(),

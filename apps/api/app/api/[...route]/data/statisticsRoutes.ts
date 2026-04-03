@@ -1,11 +1,13 @@
 import { getEntitiesCount, getPlantPlaceEventsCount } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
+import { publicSecurity } from '../../../../lib/docs/security';
 
 const app = new Hono().get(
     '/plants',
     describeRoute({
         description: 'Get plants statistics',
+        security: publicSecurity,
         responses: {
             200: {
                 description: 'Successful response',

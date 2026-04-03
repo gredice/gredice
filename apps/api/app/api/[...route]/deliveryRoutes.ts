@@ -16,6 +16,7 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { authSecurity, publicSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
     authValidator,
@@ -64,6 +65,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/addresses',
         describeRoute({
             description: 'Get all delivery addresses for the current user',
+            security: authSecurity,
             tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
@@ -78,6 +80,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/addresses',
         describeRoute({
             description: 'Create a new delivery address',
+            security: authSecurity,
             tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
@@ -110,6 +113,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/addresses/:id',
         describeRoute({
             description: 'Update a delivery address',
+            security: authSecurity,
             tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
@@ -144,6 +148,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/addresses/:id',
         describeRoute({
             description: 'Delete a delivery address',
+            security: authSecurity,
             tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
@@ -161,6 +166,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/pickup-locations',
         describeRoute({
             description: 'Get all active pickup locations',
+            security: publicSecurity,
             tags: ['Delivery'],
         }),
         async (context) => {
@@ -173,6 +179,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/slots',
         describeRoute({
             description: 'Get available time slots for delivery or pickup',
+            security: publicSecurity,
             tags: ['Delivery'],
         }),
         zValidator('query', slotsQuerySchema),
@@ -200,6 +207,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/requests',
         describeRoute({
             description: 'Get delivery requests for the current user',
+            security: authSecurity,
             tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
@@ -214,6 +222,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/requests/:id/cancel',
         describeRoute({
             description: 'Cancel a delivery request',
+            security: authSecurity,
             tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),

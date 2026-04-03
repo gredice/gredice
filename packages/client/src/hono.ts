@@ -2,13 +2,24 @@ import type { AppType } from 'api/routes';
 import { hc, type InferResponseType } from 'hono/client';
 import { createDevSafeFetch, getAppUrl } from './shared';
 
-export function client(authRequired = false) {
-    void authRequired;
+export function client(authRequired = true) {
     const baseFetch = createDevSafeFetch();
-    const fetchWithCredentials: typeof fetch = (input, init) =>
-        baseFetch(input, { ...init, credentials: 'include' });
+    const fetchWithAuthControl: typeof fetch = (input, init) => {
+        const headers = new Headers(init?.headers);
+
+        if (!authRequired) {
+            headers.delete('Authorization');
+            headers.delete('authorization');
+        }
+
+        return baseFetch(input, {
+            ...init,
+            headers,
+            credentials: authRequired ? 'include' : 'omit',
+        });
+    };
     return hc<AppType>(getAppUrl(), {
-        fetch: fetchWithCredentials,
+        fetch: fetchWithAuthControl,
     });
 }
 

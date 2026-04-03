@@ -28,6 +28,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
+import { publicSecurity } from '../../../lib/docs/security';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
@@ -218,6 +219,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/public',
         describeRoute({
             description: 'Get public garden information',
+            security: publicSecurity,
         }),
         zValidator(
             'param',

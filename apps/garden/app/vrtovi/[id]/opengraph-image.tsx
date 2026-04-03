@@ -21,7 +21,9 @@ export default async function GardenOgImage({
         return new Response('Garden ID is required', { status: 400 });
     }
 
-    const gardenResponse = await client().api.gardens[':gardenId'].public.$get({
+    const gardenResponse = await client(false).api.gardens[
+        ':gardenId'
+    ].public.$get({
         param: {
             gardenId: gardenId.toString(),
         },
