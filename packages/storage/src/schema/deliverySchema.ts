@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import {
     boolean,
+    decimal,
     index,
     integer,
     pgTable,
@@ -27,6 +28,10 @@ export const deliveryAddresses = pgTable(
         city: text('city').notNull(),
         postalCode: text('postal_code').notNull(),
         countryCode: text('country_code').notNull().default('HR'), // ISO 3166-1 alpha-2
+        latitude: decimal('latitude', { precision: 10, scale: 8 }),
+        longitude: decimal('longitude', { precision: 11, scale: 8 }),
+        roadDistanceKm: decimal('road_distance_km', { precision: 8, scale: 3 }),
+        distanceCalculatedAt: timestamp('distance_calculated_at'),
         isDefault: boolean('is_default').notNull().default(false),
         deletedAt: timestamp('deleted_at'), // Soft delete for historical integrity
         createdAt: timestamp('created_at').notNull().defaultNow(),
