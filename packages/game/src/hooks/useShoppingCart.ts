@@ -19,6 +19,7 @@ export function useShoppingCart() {
             }
             return await response.json();
         },
+        retry: false,
         staleTime: 1000 * 60 * 5, // 5 minutes
         enabled: !!currentUser,
     });

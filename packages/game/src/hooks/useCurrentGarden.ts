@@ -309,6 +309,9 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                         gardenId: currentGardenId.toString(),
                     },
                 });
+            if (currentGardenResponse.status === 401) {
+                return null;
+            }
             if (currentGardenResponse.status !== 200) {
                 console.error(
                     'Failed to fetch current garden',
@@ -355,6 +358,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 raisedBeds: garden.raisedBeds,
             };
         },
+        retry: false,
         staleTime: 1000 * 60, // 1m
         enabled: isMock || Boolean(gardens),
     });
