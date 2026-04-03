@@ -4,16 +4,19 @@
 
 import * as sdk from "hypertune";
 
-export const queryCode = `query FullQuery{root{lsystemPlants enableDebugCloseup enableDebugHud}}`;
+export const queryId = "bb8be9eb-a547-5e72-a035-838339ad78d3";
 
-export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"lsystemPlants":{"fieldArguments":{},"fieldQuery":null},"enableDebugCloseup":{"fieldArguments":{},"fieldQuery":null},"enableDebugHud":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
+export const query: sdk.Query<sdk.ObjectValueWithVariables> = {"variableDefinitions":{},"fragmentDefinitions":{},"fieldQuery":{"Query":{"type":"InlineFragment","objectTypeName":"Query","selection":{"root":{"fieldArguments":{"__isPartialObject__":true},"fieldQuery":{"Root":{"type":"InlineFragment","objectTypeName":"Root","selection":{"deliveryChargeAtCheckout":{"fieldArguments":{},"fieldQuery":null},"addressDistanceVerification":{"fieldArguments":{},"fieldQuery":null},"raisedBedImageAI":{"fieldArguments":{},"fieldQuery":null},"lsystemPlants":{"fieldArguments":{},"fieldQuery":null},"enableDebugCloseup":{"fieldArguments":{},"fieldQuery":null},"enableDebugHud":{"fieldArguments":{},"fieldQuery":null}}}}}}}}};
 
-export const initData = {"commitId":50609,"hash":"4569319095063042","reducedExpression":{"id":"hSzx_K7sNYI77jRriD4U1","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"sAbJTW3LHNEltLHB8AA4n","body":{"id":"8qdt_QWcSqIYYFTe-_aA0","logs":{},"type":"ObjectExpression","fields":{"lsystemPlants":{"id":"1ozkDzneaGqIpxOrMi9p6","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"JyMWbU0cEArx5XmeQZZ0U":1}}},"enableDebugCloseup":{"id":"1TXYDm782KoLc85_O7sNF","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"J5D2Ud8BFP5uvl2WQp9Ie":1}}},"enableDebugHud":{"id":"eBU-zMgJe6dO6jTG4feRf","type":"BooleanExpression","value":false,"metadata":{"note":""},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"HC9HIJsBk_0LEh72su_AH":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"BZ17_qmFfcyqAuDSTOPbH","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
+export const initData = {"commitId":51655,"hash":"4414061869380750","reducedExpression":{"id":"hSzx_K7sNYI77jRriD4U1","logs":{},"type":"ObjectExpression","fields":{"root":{"id":"sAbJTW3LHNEltLHB8AA4n","body":{"id":"8qdt_QWcSqIYYFTe-_aA0","logs":{},"type":"ObjectExpression","fields":{"deliveryChargeAtCheckout":{"id":"XNJ8AFDKiM5y5hQP4mFit","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"4nKBhehAGMh1Mkr7_iqbC":1}}},"addressDistanceVerification":{"id":"tNv5G7psqnYaq9f3S_RIj","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"Vns3OLy5skoQw_Wv1FKeY":1}}},"raisedBedImageAI":{"id":"od_uKjGuEzer6DNalCKly","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"fLqUhaoTr2RSRN_s1E3At":1}}},"lsystemPlants":{"id":"1ozkDzneaGqIpxOrMi9p6","type":"BooleanExpression","value":true,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"JyMWbU0cEArx5XmeQZZ0U":1}}},"enableDebugCloseup":{"id":"1TXYDm782KoLc85_O7sNF","type":"BooleanExpression","value":false,"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"J5D2Ud8BFP5uvl2WQp9Ie":1}}},"enableDebugHud":{"id":"eBU-zMgJe6dO6jTG4feRf","type":"BooleanExpression","value":false,"metadata":{"note":""},"valueType":{"type":"BooleanValueType"},"logs":{"evaluations":{"HC9HIJsBk_0LEh72su_AH":1}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Root"},"objectTypeName":"Root"},"logs":{},"type":"FunctionExpression","valueType":{"type":"FunctionValueType","returnValueType":{"type":"ObjectValueType","objectTypeName":"Root"},"parameterValueTypes":[{"type":"ObjectValueType","objectTypeName":"Query_root_args"}]},"parameters":[{"id":"BZ17_qmFfcyqAuDSTOPbH","name":"rootArgs"}]}},"metadata":{"permissions":{"user":{},"group":{"team":{"write":"allow"}}}},"valueType":{"type":"ObjectValueType","objectTypeName":"Query"},"objectTypeName":"Query"},"splits":{},"commitConfig":{"splitConfig":{}}}
 
 
-export const vercelFlagDefinitions = {"lsystemPlants":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3ElsystemPlants","description":"Whether L-System plants are displayed instead of just seeds."},"enableDebugCloseup":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugCloseup"},"enableDebugHud":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugHud"}};
+export const vercelFlagDefinitions = {"deliveryChargeAtCheckout":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EdeliveryChargeAtCheckout","description":"Whether to enable charging the delivery while doing checkout."},"addressDistanceVerification":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EaddressDistanceVerification","description":"Enable address verification and indicator that the address is outside of delivery location."},"raisedBedImageAI":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedImageAI","description":"Enable AI analysis of the raised bed images."},"lsystemPlants":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3ElsystemPlants","description":"Whether L-System plants are displayed instead of just seeds."},"enableDebugCloseup":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugCloseup"},"enableDebugHud":{"options":[{"label":"Off","value":false},{"label":"On","value":true}],"origin":"https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EenableDebugHud"}};
 
 export type FlagValues = {
+  "deliveryChargeAtCheckout": boolean;
+  "addressDistanceVerification": boolean;
+  "raisedBedImageAI": boolean;
   "lsystemPlants": boolean;
   "enableDebugCloseup": boolean;
   "enableDebugHud": boolean;
@@ -22,6 +25,9 @@ export type FlagValues = {
 export type FlagPath = keyof FlagValues & string;
 
 export const flagFallbacks: FlagValues = {
+  "deliveryChargeAtCheckout": false,
+  "addressDistanceVerification": false,
+  "raisedBedImageAI": false,
   "lsystemPlants": false,
   "enableDebugCloseup": false,
   "enableDebugHud": false,
@@ -69,6 +75,18 @@ export type EmptyObject = {};
 
 export type Root = {
   /**
+   * Whether to enable charging the delivery while doing checkout.
+   */
+  deliveryChargeAtCheckout: boolean;
+  /**
+   * Enable address verification and indicator that the address is outside of delivery location.
+   */
+  addressDistanceVerification: boolean;
+  /**
+   * Enable AI analysis of the raised bed images.
+   */
+  raisedBedImageAI: boolean;
+  /**
    * Whether L-System plants are displayed instead of just seeds.
    */
   lsystemPlants: boolean;
@@ -76,7 +94,7 @@ export type Root = {
   enableDebugHud: boolean;
 }
 
-const rootFallback = {lsystemPlants:false,enableDebugCloseup:false,enableDebugHud:false};
+const rootFallback = {deliveryChargeAtCheckout:false,addressDistanceVerification:false,raisedBedImageAI:false,lsystemPlants:false,enableDebugCloseup:false,enableDebugHud:false};
 
 export class RootNode extends sdk.Node {
   override typeName = "Root" as const;
@@ -93,6 +111,69 @@ export class RootNode extends sdk.Node {
       null,
     );
     return this.getValue({ query: getQuery, fallback }) as Root;
+  }
+
+  /**
+   * Whether to enable charging the delivery while doing checkout.
+   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EdeliveryChargeAtCheckout})
+   */
+  deliveryChargeAtCheckout({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
+    const props0 = this.getFieldNodeProps("deliveryChargeAtCheckout", { fieldArguments: args });
+    const expression0 = props0.expression;
+
+    if (
+      expression0 &&
+      expression0.type === "BooleanExpression"
+    ) {
+      const node = new sdk.BooleanNode(props0);
+      return node.get({ fallback });
+    }
+
+    const node = new sdk.BooleanNode(props0);
+    node._logUnexpectedTypeError();
+    return node.get({ fallback });
+  }
+
+  /**
+   * Enable address verification and indicator that the address is outside of delivery location.
+   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EaddressDistanceVerification})
+   */
+  addressDistanceVerification({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
+    const props0 = this.getFieldNodeProps("addressDistanceVerification", { fieldArguments: args });
+    const expression0 = props0.expression;
+
+    if (
+      expression0 &&
+      expression0.type === "BooleanExpression"
+    ) {
+      const node = new sdk.BooleanNode(props0);
+      return node.get({ fallback });
+    }
+
+    const node = new sdk.BooleanNode(props0);
+    node._logUnexpectedTypeError();
+    return node.get({ fallback });
+  }
+
+  /**
+   * Enable AI analysis of the raised bed images.
+   * [Open in Hypertune UI]({@link https://app.hypertune.com/projects/4087/main/draft/logic?selected_field_path=root%3EraisedBedImageAI})
+   */
+  raisedBedImageAI({ args = {}, fallback }: { args?: EmptyObject; fallback: boolean; }): boolean {
+    const props0 = this.getFieldNodeProps("raisedBedImageAI", { fieldArguments: args });
+    const expression0 = props0.expression;
+
+    if (
+      expression0 &&
+      expression0.type === "BooleanExpression"
+    ) {
+      const node = new sdk.BooleanNode(props0);
+      return node.get({ fallback });
+    }
+
+    const node = new sdk.BooleanNode(props0);
+    node._logUnexpectedTypeError();
+    return node.get({ fallback });
   }
 
   /**
@@ -178,7 +259,7 @@ export type Source = {
   root: Root;
 }
 
-const sourceFallback = {root:{lsystemPlants:false,enableDebugCloseup:false,enableDebugHud:false}};
+const sourceFallback = {root:{deliveryChargeAtCheckout:false,addressDistanceVerification:false,raisedBedImageAI:false,lsystemPlants:false,enableDebugCloseup:false,enableDebugHud:false}};
 
 export type GetQueryRootArgs = {
   args: RootArgs;
