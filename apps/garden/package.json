@@ -15,7 +15,7 @@
         "test:run": "pnpm run test:prepare && playwright test",
         "test-ui": "pnpm run test:prepare && playwright test --ui",
         "regenerate": "pnpm run /^regenerate:.*/",
-        "regenerate:feature-flags": "hypertune",
+        "regenerate:feature-flags": "hypertune && node ../../scripts/sync-flags.mjs apps/garden",
         "generate:models-types": "pnpm dlx gltfjsx ./public/assets/models/GameAssets.glb --types --typeonly --output ../../packages/game/src/models/GameAssets.tsx && node ../../scripts/fix-gltfjsx-output.mjs"
     },
     "dependencies": {

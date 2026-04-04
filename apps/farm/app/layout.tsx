@@ -1,4 +1,5 @@
 import { Analytics } from '@vercel/analytics/react';
+import { VercelToolbar } from '@vercel/toolbar/next';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import * as Sentry from '@sentry/nextjs';
@@ -27,6 +28,8 @@ export default function RootLayout({
 }: Readonly<{
     children: ReactNode;
 }>) {
+    const shouldInjectToolbar = process.env.NODE_ENV === 'development';
+
     return (
         <html lang="hr" translate="no">
             <Head>
@@ -39,6 +42,7 @@ export default function RootLayout({
                     <AuthAppProvider>{children}</AuthAppProvider>
                 </ClientAppProvider>
                 <Analytics />
+                {shouldInjectToolbar && <VercelToolbar />}
             </body>
         </html>
     );

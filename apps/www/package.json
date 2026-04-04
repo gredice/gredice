@@ -16,7 +16,7 @@
         "test:run": "pnpm run test:prepare && playwright test",
         "test-ui": "pnpm run test:prepare && playwright test --ui",
         "regenerate": "pnpm run /^regenerate:.*/",
-        "regenerate:feature-flags": "hypertune",
+        "regenerate:feature-flags": "hypertune && node ../../scripts/sync-flags.mjs apps/www",
         "generate-playwright": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts",
         "generate-playwright:ui": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts --ui"
     },
