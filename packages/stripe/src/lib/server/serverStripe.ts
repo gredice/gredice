@@ -23,6 +23,10 @@ export type CheckoutItem = {
     quantity: number;
 };
 
+type StripeCheckoutSessionCreateParams = NonNullable<
+    Parameters<ReturnType<typeof getStripe>['checkout']['sessions']['create']>[0]
+>;
+
 async function ensureStripeCustomer(account: UserAccount): Promise<string> {
     // Check if the user already has a Stripe customer ID
     // Ensure customer still exists in Stripe and is not deleted
@@ -149,7 +153,7 @@ export async function stripeCheckout(
 ) {
     try {
         const customerId = await ensureStripeCustomer(account);
-        const params: Stripe.Checkout.SessionCreateParams = {
+        const params: StripeCheckoutSessionCreateParams = {
             customer: customerId,
             customer_update: {
                 address: 'auto',
