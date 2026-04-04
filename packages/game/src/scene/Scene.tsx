@@ -2,7 +2,7 @@
 
 import { Canvas, type Vector3 as FiberVector3 } from '@react-three/fiber';
 import type { HTMLAttributes, PropsWithChildren } from 'react';
-import { PCFSoftShadowMap } from 'three';
+import { PCFShadowMap } from 'three';
 
 export type SceneProps = HTMLAttributes<HTMLDivElement> &
     PropsWithChildren<{
@@ -15,7 +15,7 @@ export function Scene({ children, position, zoom, ...rest }: SceneProps) {
         <Canvas
             orthographic
             shadows={{
-                type: PCFSoftShadowMap,
+                type: PCFShadowMap,
                 enabled: true,
             }}
             camera={{
