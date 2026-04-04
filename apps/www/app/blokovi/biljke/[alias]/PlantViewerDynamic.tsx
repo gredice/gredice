@@ -8,8 +8,8 @@ export const PlantViewerDynamic = dynamic(
     {
         ssr: false,
         loading: () => (
-            <div className="flex items-center justify-center h-full bg-muted/30 rounded-lg">
-                <span className="text-muted-foreground">
+            <div className="flex items-center justify-center h-full rounded-lg bg-stone-200 dark:bg-slate-700">
+                <span className="text-stone-900 dark:text-slate-50">
                     Učitavanje 3D prikaza...
                 </span>
             </div>

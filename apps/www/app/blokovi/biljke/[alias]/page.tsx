@@ -9,6 +9,7 @@ import { FeedbackModal } from '../../../../components/shared/feedback/FeedbackMo
 import { getPlantSortsData } from '../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../lib/plants/getPlantsData';
 import { KnownPages } from '../../../../src/KnownPages';
+import { matchesPageAlias, toPageAlias } from '../../../../src/pageAliases';
 import { resolvePlantType } from '../../plantNamesWithLSystem';
 import { PlantGrowthViewer } from './PlantGrowthViewer';
 
@@ -20,8 +21,8 @@ export async function generateMetadata(
     const { alias: aliasUnescaped } = await props.params;
     const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     const plants = await getPlantsData();
-    const plant = plants?.find(
-        (p) => p.information.name.toLowerCase() === alias?.toLowerCase(),
+    const plant = plants?.find((p) =>
+        matchesPageAlias(p.information.name, alias),
     );
     if (!plant) {
         return {
@@ -41,7 +42,7 @@ export async function generateStaticParams() {
         plants
             ?.filter((p) => resolvePlantType(p.information.name) !== null)
             .map((plant) => ({
-                alias: plant.information.name,
+                alias: toPageAlias(plant.information.name),
             })) ?? []
     );
 }
@@ -60,8 +61,8 @@ export default async function BlockPlantDetailPage(
         getPlantSortsData(),
     ]);
 
-    const plant = plants?.find(
-        (p) => p.information.name.toLowerCase() === alias.toLowerCase(),
+    const plant = plants?.find((p) =>
+        matchesPageAlias(p.information.name, alias),
     );
     if (!plant || !resolvePlantType(plant.information.name)) {
         notFound();

@@ -67,6 +67,8 @@ export function PlantGrowthControls({
                         step={0.1}
                         value={generation}
                         onChange={onSliderChange}
+                        aria-label="Odaberi fazu rasta biljke"
+                        aria-valuetext={`${currentWeeks} od ${totalWeeks} tjedana`}
                         className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-green-600 bg-gradient-to-r from-green-100 via-green-300 to-green-600"
                     />
                 </div>

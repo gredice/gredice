@@ -1,3 +1,4 @@
+import { slugify } from '@gredice/js/slug';
 import type { Route } from 'next';
 
 export const KnownPages = {
@@ -87,5 +88,5 @@ export const KnownPages = {
         `https://dashboard.stripe.com/payments/${paymentId}`,
     GrediceOperations: `https://www.gredice.com/radnje`,
     GrediceOperation: (operationAlias: string) =>
-        `https://www.gredice.com/radnje/${encodeURIComponent(operationAlias)}`,
+        `https://www.gredice.com/radnje/${slugify(operationAlias)}`,
 } as const;

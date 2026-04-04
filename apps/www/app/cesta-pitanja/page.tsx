@@ -1,10 +1,10 @@
+import { Markdown } from '@gredice/ui/Markdown';
 import { orderBy } from '@signalco/js';
 import { Accordion } from '@signalco/ui/Accordion';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
-import Markdown from 'react-markdown';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { NoDataPlaceholder } from '../../components/shared/placeholders/NoDataPlaceholder';

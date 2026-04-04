@@ -1,10 +1,10 @@
 import type { PlantData } from '@gredice/client';
+import { Markdown } from '@gredice/ui/Markdown';
 import { slug } from '@signalco/js';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { ReactNode } from 'react';
-import Markdown from 'react-markdown';
 import { ExpandableText } from '../../../components/shared/ExpandableText';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';

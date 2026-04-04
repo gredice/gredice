@@ -146,11 +146,11 @@ const sectionsData: SectionData[] = [
 
 export function Footer() {
     return (
-        <footer>
+        <div className="site-footer">
             <SectionsView
                 sectionsData={sectionsData}
                 componentsRegistry={sectionsComponentRegistry}
             />
-        </footer>
+        </div>
     );
 }

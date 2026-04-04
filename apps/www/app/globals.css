@@ -11,7 +11,7 @@
         --foreground: var(--baseHue) 47.4% 11.2%;
 
         --muted: var(--baseHue) 40% 96.1%;
-        --muted-foreground: var(--baseHue) 16.3% 40%;
+        --muted-foreground: var(--baseHue) 16.3% 34%;
 
         --popover: 0 0% 100%;
         --popover-foreground: var(--baseHue) 47.4% 11.2%;
@@ -30,7 +30,7 @@
         --secondary-foreground: var(--baseHue) 35.4% 30%;
 
         --tertiary: var(--baseHue) 40% 80.1%;
-        --tertiary-foreground: var(--baseHue) 20% 40%;
+        --tertiary-foreground: var(--baseHue) 20% 34%;
 
         --accent: var(--baseHue) 40% 90.1%;
         --accent-foreground: var(--baseHue) 47.4% 11.2%;
@@ -154,6 +154,21 @@
 @layer utilities {
     .animate-scale-in {
         animation: scale-in 0.15s ease-out;
+    }
+
+    .site-footer .text-muted-foreground,
+    .site-footer .text-tertiary-foreground {
+        color: hsl(var(--foreground));
+    }
+
+    .operation-page .text-muted-foreground,
+    .operation-page .text-secondary-foreground,
+    .operation-page .text-tertiary-foreground,
+    .operation-page h1,
+    .operation-page h2,
+    .operation-page h3,
+    .operation-page .whitespace-nowrap {
+        color: hsl(var(--foreground));
     }
 }
 
