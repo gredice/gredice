@@ -944,6 +944,17 @@ export async function createRaisedBed(
     )[0].id;
 }
 
+export async function getRaisedBedIdsByAccount(accountId: string) {
+    const beds = await storage().query.raisedBeds.findMany({
+        columns: { id: true },
+        where: and(
+            eq(raisedBeds.accountId, accountId),
+            eq(raisedBeds.isDeleted, false),
+        ),
+    });
+    return beds.map((b) => b.id);
+}
+
 export async function getRaisedBeds(
     gardenId: number,
     filters?: {
@@ -1235,6 +1246,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
         getEvents(
             [
                 knownEventTypes.raisedBeds.create,
+                knownEventTypes.raisedBeds.aiAnalysis,
                 knownEventTypes.raisedBeds.delete,
             ],
             [raisedBedId.toString()],
@@ -1255,13 +1267,32 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
     const raisedBedsEventDiaryEntries = events
         .map((event) => {
             const data = event.data as Record<string, unknown> | undefined;
+            let name = 'Nepoznato';
+            let description = '';
+
+            switch (event.type) {
+                case knownEventTypes.raisedBeds.create: {
+                    name = 'Gredica stvorena';
+                    break;
+                }
+                case knownEventTypes.raisedBeds.aiAnalysis: {
+                    name = 'AI analiza gredice';
+                    description =
+                        typeof data?.markdown === 'string'
+                            ? data.markdown
+                            : 'AI analiza je spremljena.';
+                    break;
+                }
+                case knownEventTypes.raisedBeds.delete: {
+                    name = 'Gredica obrisana';
+                    break;
+                }
+            }
+
             return {
                 id: event.id,
-                name:
-                    event.type === knownEventTypes.raisedBeds.create
-                        ? 'Gredica stvorena'
-                        : 'Gredica obrisana',
-                description: '',
+                name,
+                description,
                 status: null,
                 timestamp: event.createdAt,
                 imageUrls: Array.isArray(data?.imageUrls)
@@ -1271,6 +1302,8 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                     : typeof data?.imageUrl === 'string'
                       ? [data.imageUrl]
                       : undefined,
+                isMarkdown:
+                    event.type === knownEventTypes.raisedBeds.aiAnalysis,
             };
         })
         .filter((op) => op.name);
@@ -1291,7 +1324,15 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
         .filter((op) => op.name)
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
-    return [...raisedBedsEventDiaryEntries, ...operationsDiaryEntries];
+    return [...raisedBedsEventDiaryEntries, ...operationsDiaryEntries].sort(
+        (a, b) => {
+            const aTime =
+                a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
+            const bTime =
+                b.timestamp instanceof Date ? b.timestamp.getTime() : 0;
+            return bTime - aTime;
+        },
+    );
 }
 
 export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
@@ -1410,6 +1451,7 @@ export async function mergeRaisedBeds(
                         knownEventTypes.raisedBeds.place,
                         knownEventTypes.raisedBeds.delete,
                         knownEventTypes.raisedBeds.abandon,
+                        knownEventTypes.raisedBeds.aiAnalysis,
                     ]),
                 ),
             );

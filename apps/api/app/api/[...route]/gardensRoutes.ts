@@ -1,5 +1,6 @@
 import { signalcoClient } from '@gredice/signalco';
 import {
+    countEventsSince,
     createDefaultGardenForAccount,
     createEvent,
     createGardenBlock,
@@ -14,6 +15,7 @@ import {
     getRaisedBed,
     getRaisedBedDiaryEntries,
     getRaisedBedFieldDiaryEntries,
+    getRaisedBedIdsByAccount,
     getRaisedBedSensors,
     knownEvents,
     knownEventTypes,
@@ -31,7 +33,12 @@ import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { publicSecurity } from '../../../lib/docs/security';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
-import { analyzeRaisedBedFieldImage } from '../../../lib/garden/raisedBedAiAnalysisService';
+import {
+    AI_ANALYSIS_DAILY_LIMIT,
+    analyzeRaisedBedImage,
+    analyzeRaisedBedFieldImage,
+    validateImageUrl,
+} from '../../../lib/garden/raisedBedAiAnalysisService';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
     validateConnectedRaisedBedMove,
@@ -45,6 +52,34 @@ import {
 import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
+
+async function countRecentRaisedBedAiAnalyses(accountId: string) {
+    const accountBedIds = await getRaisedBedIdsByAccount(accountId);
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const raisedBedAggregateIds = accountBedIds.map((bedId) =>
+        bedId.toString(),
+    );
+    const raisedBedFieldAggregateIds = accountBedIds.flatMap((bedId) =>
+        Array.from({ length: 20 }, (_, index) =>
+            `${bedId.toString()}|${index.toString()}`,
+        ),
+    );
+
+    const [raisedBedCount, raisedBedFieldCount] = await Promise.all([
+        countEventsSince(
+            knownEventTypes.raisedBeds.aiAnalysis,
+            since,
+            raisedBedAggregateIds,
+        ),
+        countEventsSince(
+            knownEventTypes.raisedBedFields.aiAnalysis,
+            since,
+            raisedBedFieldAggregateIds,
+        ),
+    ]);
+
+    return raisedBedCount + raisedBedFieldCount;
+}
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -1280,6 +1315,97 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json(diaryEntries);
         },
     )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/analyze-image',
+        describeRoute({
+            description:
+                'Analyze raised bed image with AI and save response to diary',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                imageUrl: z.url(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId } = context.req.valid('param');
+            const { imageUrl } = context.req.valid('json');
+
+            const urlError = validateImageUrl(imageUrl);
+            if (urlError) {
+                return context.json({ error: urlError }, 400);
+            }
+
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (
+                !raisedBed ||
+                raisedBed.gardenId !== gardenIdNumber ||
+                raisedBed.accountId !== accountId
+            ) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            const recentCount = await countRecentRaisedBedAiAnalyses(accountId);
+            if (recentCount >= AI_ANALYSIS_DAILY_LIMIT) {
+                return context.json(
+                    {
+                        error: `Daily AI analysis limit reached (${AI_ANALYSIS_DAILY_LIMIT.toString()}/day). Try again tomorrow.`,
+                    },
+                    429,
+                );
+            }
+
+            if (!process.env.AI_GATEWAY_API_KEY) {
+                return context.json(
+                    { error: 'AI_GATEWAY_API_KEY is not configured' },
+                    500,
+                );
+            }
+
+            const analysis = await analyzeRaisedBedImage({
+                accountId,
+                gardenId: gardenIdNumber,
+                raisedBed,
+                imageUrl,
+            });
+
+            await createEvent(
+                knownEvents.raisedBeds.aiAnalysisV1(
+                    raisedBedIdNumber.toString(),
+                    {
+                        markdown: analysis.markdown,
+                        imageUrl,
+                        model: analysis.model,
+                        analyzedAt: analysis.analyzedAt,
+                        inputTokens: analysis.inputTokens,
+                        outputTokens: analysis.outputTokens,
+                        totalTokens: analysis.totalTokens,
+                    },
+                ),
+            );
+
+            return context.json({ markdown: analysis.markdown }, 201);
+        },
+    )
     .get(
         '/:gardenId/raised-beds/:raisedBedId/sensors',
         describeRoute({
@@ -1583,6 +1709,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 context.req.valid('param');
             const { imageUrl } = context.req.valid('json');
 
+            // Validate image URL against allowed hosts
+            const urlError = validateImageUrl(imageUrl);
+            if (urlError) {
+                return context.json({ error: urlError }, 400);
+            }
+
             const gardenIdNumber = parseInt(gardenId, 10);
             if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
@@ -1623,9 +1755,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            if (!process.env.OPENAI_API_KEY) {
+            const recentCount = await countRecentRaisedBedAiAnalyses(accountId);
+            if (recentCount >= AI_ANALYSIS_DAILY_LIMIT) {
                 return context.json(
-                    { error: 'OPENAI_API_KEY is not configured' },
+                    {
+                        error: `Daily AI analysis limit reached (${AI_ANALYSIS_DAILY_LIMIT.toString()}/day). Try again tomorrow.`,
+                    },
+                    429,
+                );
+            }
+
+            if (!process.env.AI_GATEWAY_API_KEY) {
+                return context.json(
+                    { error: 'AI_GATEWAY_API_KEY is not configured' },
                     500,
                 );
             }
@@ -1646,6 +1788,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         imageUrl,
                         model: analysis.model,
                         analyzedAt: analysis.analyzedAt,
+                        inputTokens: analysis.inputTokens,
+                        outputTokens: analysis.outputTokens,
+                        totalTokens: analysis.totalTokens,
                     },
                 ),
             );

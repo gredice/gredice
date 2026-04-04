@@ -36,6 +36,7 @@ export const knownEventTypes = {
         place: 'raisedBed.place',
         delete: 'raisedBed.delete',
         abandon: 'raisedBed.abandon',
+        aiAnalysis: 'raisedBed.aiAnalysis',
     },
     raisedBedFields: {
         create: 'raisedBedField.create',

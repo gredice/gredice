@@ -79,6 +79,9 @@ export const KnownPages = {
     InventoryItem: (inventoryId: number, itemId: number) =>
         `/admin/inventory/${inventoryId}/items/${itemId}` as Route,
 
+    // AI
+    AiAnalytics: '/admin/ai-analytics',
+
     // Delivery management
     DeliverySlots: '/admin/delivery/slots',
     DeliveryRequests: '/admin/delivery/requests',

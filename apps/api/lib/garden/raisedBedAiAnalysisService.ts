@@ -1,8 +1,35 @@
-import { openai } from '@ai-sdk/openai';
 import { getEntitiesFormatted, getOperations } from '@gredice/storage';
 import { generateText } from 'ai';
 
-const AI_MODEL = 'gpt-5.4';
+const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5';
+
+/** Vercel Blob Storage hostnames that are allowed as image sources. */
+const ALLOWED_IMAGE_HOSTS = new Set([
+    'myegtvromcktt2y7.public.blob.vercel-storage.com',
+    '7ql7fvz1vzzo6adz.public.blob.vercel-storage.com',
+]);
+
+/** Max AI analysis requests per account per day. */
+export const AI_ANALYSIS_DAILY_LIMIT = 10;
+
+export function validateImageUrl(imageUrl: string): string | null {
+    let parsed: URL;
+    try {
+        parsed = new URL(imageUrl);
+    } catch {
+        return 'Invalid image URL';
+    }
+
+    if (parsed.protocol !== 'https:') {
+        return 'Image URL must use HTTPS';
+    }
+
+    if (!ALLOWED_IMAGE_HOSTS.has(parsed.hostname)) {
+        return 'Image URL must be hosted on allowed storage';
+    }
+
+    return null;
+}
 
 function daysSince(date: Date | string | null | undefined) {
     if (!date) {
@@ -21,33 +48,35 @@ function daysSince(date: Date | string | null | undefined) {
     );
 }
 
-export async function analyzeRaisedBedFieldImage({
+type RaisedBedAnalysisTarget = {
+    id: number;
+    fields: Array<{
+        id: number;
+        positionIndex: number;
+        plantSortId?: number | string | null;
+        plantStatus?: string | null;
+        plantSowDate?: Date | string | null;
+        plantGrowthDate?: Date | string | null;
+        plantReadyDate?: Date | string | null;
+        plantHarvestedDate?: Date | string | null;
+        plantDeadDate?: Date | string | null;
+        toBeRemoved?: boolean | null;
+        active?: boolean | null;
+    }>;
+};
+
+export async function analyzeRaisedBedImage({
     accountId,
     gardenId,
     raisedBed,
-    positionIndex,
     imageUrl,
+    positionIndex,
 }: {
     accountId: string;
     gardenId: number;
-    raisedBed: {
-        id: number;
-        fields: Array<{
-            id: number;
-            positionIndex: number;
-            plantSortId?: number | string | null;
-            plantStatus?: string | null;
-            plantSowDate?: Date | string | null;
-            plantGrowthDate?: Date | string | null;
-            plantReadyDate?: Date | string | null;
-            plantHarvestedDate?: Date | string | null;
-            plantDeadDate?: Date | string | null;
-            toBeRemoved?: boolean | null;
-            active?: boolean | null;
-        }>;
-    };
-    positionIndex: number;
+    raisedBed: RaisedBedAnalysisTarget;
     imageUrl: string;
+    positionIndex?: number;
 }) {
     const [plantSorts, operations, operationsData] = await Promise.all([
         getEntitiesFormatted<{
@@ -89,7 +118,9 @@ export async function analyzeRaisedBedFieldImage({
             daysFromHarvest: daysSince(field.plantHarvestedDate),
             daysFromDead: daysSince(field.plantDeadDate),
             needsRemoval: Boolean(field.toBeRemoved),
-            isAnalyzedField: field.positionIndex === positionIndex,
+            isAnalyzedField:
+                typeof positionIndex === 'number' &&
+                field.positionIndex === positionIndex,
         }));
 
     const executedOperations = operations.map((op) => ({
@@ -103,8 +134,8 @@ export async function analyzeRaisedBedFieldImage({
         fieldId: op.raisedBedFieldId,
     }));
 
-    const { text } = await generateText({
-        model: openai(AI_MODEL),
+    const { text, usage } = await generateText({
+        model: AI_MODEL,
         messages: [
             {
                 role: 'system',
@@ -117,7 +148,9 @@ export async function analyzeRaisedBedFieldImage({
                     {
                         type: 'text',
                         text: [
-                            'Analiziraj fotografiju vrta i kontekst te napiši praktične preporuke.',
+                            typeof positionIndex === 'number'
+                                ? 'Analiziraj fotografiju vrta i kontekst te napiši praktične preporuke za označeno polje i ostatak gredice.'
+                                : 'Analiziraj fotografiju gredice i kontekst te napiši praktične preporuke za cijelu gredicu.',
                             'Odgovor MORA imati ove markdown sekcije:',
                             '## Sažetak stanja',
                             '## Globalne preporuke (2-4 stavke)',
@@ -127,7 +160,10 @@ export async function analyzeRaisedBedFieldImage({
                             'Kontekst (JSON):',
                             JSON.stringify(
                                 {
-                                    analyzedField: positionIndex,
+                                    analyzedField:
+                                        typeof positionIndex === 'number'
+                                            ? positionIndex
+                                            : null,
                                     plantedFields,
                                     executedOperations,
                                 },
@@ -149,5 +185,30 @@ export async function analyzeRaisedBedFieldImage({
         markdown: text,
         model: AI_MODEL,
         analyzedAt: new Date().toISOString(),
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        totalTokens: usage.totalTokens,
     };
+}
+
+export async function analyzeRaisedBedFieldImage({
+    accountId,
+    gardenId,
+    raisedBed,
+    positionIndex,
+    imageUrl,
+}: {
+    accountId: string;
+    gardenId: number;
+    raisedBed: RaisedBedAnalysisTarget;
+    positionIndex: number;
+    imageUrl: string;
+}) {
+    return analyzeRaisedBedImage({
+        accountId,
+        gardenId,
+        raisedBed,
+        imageUrl,
+        positionIndex,
+    });
 }

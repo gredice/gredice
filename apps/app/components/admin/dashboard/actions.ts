@@ -1,6 +1,8 @@
 'use server';
 
 import {
+    getAiAnalysisEvents,
+    getAiAnalysisTotals,
     getAllOperations,
     getAnalyticsTotals,
     getEntitiesFormatted,
@@ -186,6 +188,8 @@ export async function getAnalyticsData(
         operationsList,
         operationsData,
         weekdayRegistrationsRaw,
+        aiTotals,
+        aiEvents,
     ] = await Promise.all([
         getAnalyticsTotals(rangeDays),
         getEntityTypes(),
@@ -195,6 +199,8 @@ export async function getAnalyticsData(
         }),
         getEntitiesFormatted<EntityStandardized>('operation'),
         getUserRegistrationsByWeekday(startDate, endDate),
+        getAiAnalysisTotals({ from: startDate, to: endDate }),
+        getAiAnalysisEvents({ from: startDate, to: endDate }),
     ]);
 
     const entitiesCounts = await Promise.all(
@@ -272,10 +278,19 @@ export async function getAnalyticsData(
         count: weekdayRegistrationsRaw[index] ?? 0,
     }));
 
+    const aiTotalTokens = aiEvents.reduce(
+        (sum, e) => sum + (e.data?.totalTokens ?? 0),
+        0,
+    );
+
     return {
         analytics: analyticsResult,
         entities: entitiesCounts,
         operationsDuration,
         weekdayRegistrations,
+        ai: {
+            count: aiTotals.count,
+            totalTokens: aiTotalTokens,
+        },
     };
 }

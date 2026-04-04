@@ -170,6 +170,9 @@ export type RaisedBedFieldAiAnalysisPayload = {
     imageUrl: string;
     model: string;
     analyzedAt: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
 };
 export type RaisedBedFieldPlantEventsPayload =
     | RaisedBedFieldPlantPlacePayload

@@ -7,11 +7,79 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import type { ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';
 import { useRaisedBedFieldDiaryEntries } from '../../hooks/useRaisedBedFieldDiaryEntries';
-import { RaisedBedFieldAiAnalysis } from './RaisedBedFieldAiAnalysis';
+import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
+
+type DiaryEntry = {
+    id: number;
+    name: string;
+    description: string | undefined;
+    status: string | null;
+    timestamp: Date;
+    imageUrls?: string[] | null;
+    isMarkdown?: boolean;
+};
+
+type DiaryEntryAiHistory = {
+    count: number;
+    latestTimestamp: Date;
+    entries: DiaryEntry[];
+};
+
+function relateAiHistory(entries: DiaryEntry[] | undefined) {
+    const aiHistoryByEntryId = new Map<number, DiaryEntryAiHistory>();
+
+    if (!entries?.length) {
+        return aiHistoryByEntryId;
+    }
+
+    const aiEntries = entries.filter(
+        (entry) => entry.isMarkdown && entry.imageUrls?.length,
+    );
+
+    if (!aiEntries.length) {
+        return aiHistoryByEntryId;
+    }
+
+    entries.forEach((entry) => {
+        if (entry.isMarkdown || !entry.imageUrls?.length) {
+            return;
+        }
+
+        const relatedAiEntries = aiEntries.filter((aiEntry) =>
+            aiEntry.timestamp.getTime() >= entry.timestamp.getTime() &&
+            aiEntry.imageUrls?.some((imageUrl) =>
+                entry.imageUrls?.includes(imageUrl),
+            ),
+        );
+
+        if (!relatedAiEntries.length) {
+            return;
+        }
+
+        const latestTimestamp = relatedAiEntries.reduce(
+            (latest, aiEntry) =>
+                aiEntry.timestamp.getTime() > latest.getTime()
+                    ? aiEntry.timestamp
+                    : latest,
+            relatedAiEntries[0].timestamp,
+        );
+
+        aiHistoryByEntryId.set(entry.id, {
+            count: relatedAiEntries.length,
+            latestTimestamp,
+            entries: relatedAiEntries.sort(
+                (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
+            ),
+        });
+    });
+
+    return aiHistoryByEntryId;
+}
 
 function DiaryEntryImages({
     name,
@@ -44,21 +112,18 @@ function DiaryList({
     error,
     isLoading,
     entries,
+    renderEntryAction,
 }: {
     error: Error | null;
     isLoading: boolean;
-    entries:
-        | Array<{
-              id: number;
-              name: string;
-              description: string | undefined;
-              status: string | null;
-              timestamp: Date;
-              imageUrls?: string[] | null;
-              isMarkdown?: boolean;
-          }>
-        | undefined;
+    entries: DiaryEntry[] | undefined;
+    renderEntryAction?: (
+        entry: DiaryEntry,
+        aiHistory?: DiaryEntryAiHistory,
+    ) => ReactNode;
 }) {
+    const aiHistoryByEntryId = relateAiHistory(entries);
+
     return (
         <List>
             {error && (
@@ -86,7 +151,10 @@ function DiaryList({
                     }
                 />
             )}
-            {entries?.map((entry) => (
+            {entries?.map((entry) => {
+                const aiHistory = aiHistoryByEntryId.get(entry.id);
+
+                return (
                 <ListItem
                     key={entry.id}
                     label={
@@ -94,7 +162,10 @@ function DiaryList({
                             spacing={2}
                             className="justify-between font-normal"
                         >
-                            <Row spacing={2} className="items-start flex-1">
+                            <Row
+                                spacing={2}
+                                className="items-start flex-1"
+                            >
                                 <DiaryEntryImages
                                     name={entry.name}
                                     imageUrls={entry.imageUrls}
@@ -116,7 +187,7 @@ function DiaryList({
                                     )}
                                 </Stack>
                             </Row>
-                            <Stack>
+                            <Stack className="items-end">
                                 {entry.status && (
                                     <Chip
                                         color={
@@ -143,11 +214,13 @@ function DiaryList({
                                         'hr-HR',
                                     )}
                                 </Typography>
+                                {renderEntryAction?.(entry, aiHistory)}
                             </Stack>
                         </Row>
                     }
                 />
-            ))}
+                );
+            })}
         </List>
     );
 }
@@ -167,18 +240,32 @@ export function RaisedBedFieldDiary({
         error,
     } = useRaisedBedFieldDiaryEntries(gardenId, raisedBedId, positionIndex);
     const flags = useGameFlags();
+    const renderEntryAction = Boolean(flags.raisedBedImageAI)
+        ? (entry: DiaryEntry, aiHistory?: DiaryEntryAiHistory) => {
+              if (!entry.imageUrls?.length || entry.isMarkdown) {
+                  return null;
+              }
+
+              return (
+                  <RaisedBedDiaryAiAction
+                                            gardenId={gardenId}
+                                            raisedBedId={raisedBedId}
+                                            positionIndex={positionIndex}
+                                            entryName={entry.name}
+                                            imageUrls={entry.imageUrls}
+                                              historyEntries={aiHistory?.entries}
+                                    />
+              );
+          }
+        : undefined;
+
     return (
-        <Stack spacing={2}>
-            {Boolean(flags.raisedBedImageAI) && (
-                <RaisedBedFieldAiAnalysis
-                    gardenId={gardenId}
-                    raisedBedId={raisedBedId}
-                    positionIndex={positionIndex}
-                    entries={entries}
-                />
-            )}
-            <DiaryList error={error} isLoading={isLoading} entries={entries} />
-        </Stack>
+        <DiaryList
+            error={error}
+            isLoading={isLoading}
+            entries={entries}
+            renderEntryAction={renderEntryAction}
+        />
     );
 }
 
@@ -194,5 +281,31 @@ export function RaisedBedDiary({
         isLoading,
         error,
     } = useRaisedBedDiaryEntries(gardenId, raisedBedId);
-    return <DiaryList error={error} isLoading={isLoading} entries={entries} />;
+    const flags = useGameFlags();
+    const renderEntryAction = Boolean(flags.raisedBedImageAI)
+        ? (entry: DiaryEntry, aiHistory?: DiaryEntryAiHistory) => {
+              if (!entry.imageUrls?.length || entry.isMarkdown) {
+                  return null;
+              }
+
+              return (
+                  <RaisedBedDiaryAiAction
+                      gardenId={gardenId}
+                      raisedBedId={raisedBedId}
+                      entryName={entry.name}
+                      imageUrls={entry.imageUrls}
+                      historyEntries={aiHistory?.entries}
+                  />
+              );
+          }
+        : undefined;
+
+    return (
+        <DiaryList
+            error={error}
+            isLoading={isLoading}
+            entries={entries}
+            renderEntryAction={renderEntryAction}
+        />
+    );
 }
