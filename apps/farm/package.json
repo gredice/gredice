@@ -15,10 +15,13 @@
         "test:run": "pnpm run test:prepare && playwright test",
         "test-ui": "pnpm run test:prepare && playwright test --ui",
         "regenerate": "pnpm run /^regenerate:.*/",
-        "regenerate:feature-flags": "hypertune"
+        "regenerate:feature-flags": "hypertune && node ../../scripts/sync-flags.mjs apps/farm"
     },
     "dependencies": {
+        "@flags-sdk/hypertune": "0.3.2",
         "@sentry/cli": "3.3.5",
+        "@vercel/toolbar": "0.2.2",
+        "flags": "4.0.6",
         "hypertune": "2.10.1",
         "next": "16.2.2",
         "pg": "8.20.0",

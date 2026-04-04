@@ -350,9 +350,18 @@ importers:
 
   apps/farm:
     dependencies:
+      '@flags-sdk/hypertune':
+        specifier: 0.3.2
+        version: 0.3.2(@opentelemetry/api@1.9.1)(next@16.2.2(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0))
       '@sentry/cli':
         specifier: 3.3.5
         version: 3.3.5
+      '@vercel/toolbar':
+        specifier: 0.2.2
+        version: 0.2.2(47a304d6921cd8e9a05cc4041c2cf39c)
+      flags:
+        specifier: 4.0.6
+        version: 4.0.6(@opentelemetry/api@1.9.1)(next@16.2.2(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       hypertune:
         specifier: 2.10.1
         version: 2.10.1
