@@ -19,10 +19,10 @@
         "openapi-fetch": "0.17.0"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.8",
+        "@biomejs/biome": "2.4.10",
         "@types/node": "24.12.0",
         "openapi-typescript": "7.13.0",
         "server-only": "0.0.1",
-        "typescript": "5.9.3"
+        "typescript": "6.0.2"
     }
 }
