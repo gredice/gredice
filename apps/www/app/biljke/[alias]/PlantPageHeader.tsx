@@ -87,7 +87,7 @@ export function PlantPageHeader({
                     {sort?.store?.availableInStore === false && (
                         <Typography
                             level="body2"
-                            className="text-amber-600 font-semibold"
+                            className="text-amber-800 dark:text-amber-300 font-semibold"
                         >
                             Trenutno nije dostupna za sjetvu
                         </Typography>

@@ -11,6 +11,7 @@ import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
 import { getRecipesData } from '../../../lib/recipes/getRecipesData';
 import { KnownPages } from '../../../src/KnownPages';
+import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 import { recipesFlag } from '../../flags';
 import { GrowthAttributeCards } from './GrowthAttributeCards';
 import { getPlantInforationSections } from './getPlantInforationSections';
@@ -28,9 +29,8 @@ export async function generateMetadata(
 ): Promise<Metadata> {
     const { alias: aliasUnescaped } = await props.params;
     const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
-    const plant = (await getPlantsData())?.find(
-        (plant) =>
-            plant.information.name.toLowerCase() === alias?.toLowerCase(),
+    const plant = (await getPlantsData())?.find((plant) =>
+        matchesPageAlias(plant.information.name, alias),
     );
     if (!plant) {
         return {
@@ -48,7 +48,7 @@ export async function generateStaticParams() {
     const plants = await getPlantsData();
     return (
         plants?.map((entity) => ({
-            alias: String(entity.information.name),
+            alias: toPageAlias(String(entity.information.name)),
         })) ?? []
     );
 }
@@ -60,8 +60,8 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
         notFound();
     }
 
-    const plant = (await getPlantsData())?.find(
-        (plant) => plant.information.name.toLowerCase() === alias.toLowerCase(),
+    const plant = (await getPlantsData())?.find((plant) =>
+        matchesPageAlias(plant.information.name, alias),
     );
     if (!plant) {
         notFound();

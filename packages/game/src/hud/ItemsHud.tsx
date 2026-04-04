@@ -16,6 +16,7 @@ import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useIsEditMode } from '../hooks/useIsEditMode';
+import { KnownPages } from '../knownPages';
 import type { Stack as GardenStack } from '../types/Stack';
 import { HudCard } from './components/HudCard';
 
@@ -295,7 +296,9 @@ function EntityItem({ name }: HudItemEntity) {
                             </Typography>
                             <PlaceEntityButton name={name} />
                             <Link
-                                href={`https://www.gredice.com/blokovi/${block.information.label}`}
+                                href={KnownPages.GrediceBlock(
+                                    block.information.label,
+                                )}
                                 target="_blank"
                                 className="self-center"
                             >

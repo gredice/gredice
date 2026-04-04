@@ -1,4 +1,5 @@
 import { decodeRouteParam } from '@gredice/js/uri';
+import { Markdown } from '@gredice/ui/Markdown';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Euro } from '@signalco/ui-icons';
@@ -7,24 +8,25 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import Markdown from 'react-markdown';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../../components/shared/PageHeader';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { KnownPages } from '../../../src/KnownPages';
+import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 import { OperationApplicationsList } from './OperationApplicationsList';
 import { OperationAttributesCards } from './OperationAttributesCards';
 
 export const revalidate = 3600; // 1 hour
+
 export async function generateMetadata(
     props: PageProps<'/radnje/[alias]'>,
 ): Promise<Metadata> {
     const { alias: aliasUnescaped } = await props.params;
     const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     const operationData = await getOperationsData();
-    const operation = operationData?.find(
-        (op) => op.information.label === alias,
+    const operation = operationData?.find((op) =>
+        matchesPageAlias(op.information.label, alias),
     );
     if (!operation) {
         return {
@@ -42,7 +44,7 @@ export async function generateStaticParams() {
     const entities = await getOperationsData();
     return (
         entities?.map((entity) => ({
-            alias: String(entity.information.label),
+            alias: toPageAlias(String(entity.information.label)),
         })) ?? []
     );
 }
@@ -53,15 +55,15 @@ export default async function OperationPage(
     const { alias: aliasUnescaped } = await props.params;
     const alias = decodeRouteParam(aliasUnescaped);
     const operationsData = await getOperationsData();
-    const operation = operationsData?.find(
-        (op) => op.information.label === alias,
+    const operation = operationsData?.find((op) =>
+        matchesPageAlias(op.information.label, alias),
     );
     if (!operation) {
         notFound();
     }
 
     return (
-        <div className="py-8">
+        <div className="operation-page py-8">
             <Stack spacing={4}>
                 <Breadcrumbs
                     items={[
@@ -90,7 +92,7 @@ export default async function OperationPage(
                                 topic={'www/operations/information'}
                                 data={{
                                     operationId: operation.id,
-                                    operationAlias: alias,
+                                    operationAlias: operation.information.label,
                                 }}
                                 className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
                             />
@@ -106,7 +108,7 @@ export default async function OperationPage(
                                 topic={'www/operations/attributes'}
                                 data={{
                                     operationId: operation.id,
-                                    operationAlias: alias,
+                                    operationAlias: operation.information.label,
                                 }}
                                 className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
                             />
@@ -140,7 +142,7 @@ export default async function OperationPage(
                         topic="www/operations/details"
                         data={{
                             operationId: operation.id,
-                            operationAlias: alias,
+                            operationAlias: operation.information.label,
                         }}
                     />
                 </Row>
