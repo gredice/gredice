@@ -1,6 +1,5 @@
 'use server';
 
-import { randomUUID } from 'node:crypto';
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import { notifyOperationUpdate } from '@gredice/notifications';
 import {
@@ -15,7 +14,6 @@ import {
     type InsertOperation,
     knownEvents,
 } from '@gredice/storage';
-import { put } from '@vercel/blob';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
@@ -255,32 +253,14 @@ export async function completeOperation(
         revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
 }
 
-export async function completeOperationWithImages(formData: FormData) {
+export async function completeOperationWithImageUrls(
+    operationId: number,
+    completedBy: string,
+    imageUrls: string[],
+) {
     await auth(['admin']);
-    const operationId = formData.get('operationId')
-        ? Number(formData.get('operationId'))
-        : undefined;
-    const completedBy = formData.get('completedBy') as string | undefined;
     if (!operationId || !completedBy) {
         throw new Error('Operation ID and completedBy are required');
-    }
-    const files = formData.getAll('images');
-    const imageUrls: string[] = [];
-    for (const file of files) {
-        if (typeof file === 'string') continue;
-        const ext = file.name?.split('.').pop();
-        const fileName = `operations/${operationId}/${randomUUID()}${
-            ext ? `.${ext}` : ''
-        }`;
-        try {
-            const { url } = await put(fileName, file, {
-                access: 'public',
-                token: process.env.BLOB_READ_WRITE_TOKEN,
-            });
-            if (url) imageUrls.push(url);
-        } catch (err) {
-            console.error('Error uploading image', fileName, err);
-        }
     }
     await completeOperation(operationId, completedBy, imageUrls);
 }
