@@ -1140,9 +1140,6 @@ importers:
       stripe:
         specifier: 22.0.0
         version: 22.0.0(@types/node@24.12.0)
-      typescript:
-        specifier: 6.0.2
-        version: 6.0.2
     devDependencies:
       '@biomejs/biome':
         specifier: 2.4.10
@@ -1156,6 +1153,9 @@ importers:
       server-only:
         specifier: 0.0.1
         version: 0.0.1
+      typescript:
+        specifier: 6.0.2
+        version: 6.0.2
 
   packages/transactional:
     dependencies:
