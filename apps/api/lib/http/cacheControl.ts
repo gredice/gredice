@@ -1,6 +1,6 @@
 import type { Context } from 'hono';
 
-type CacheControlOptions = {
+export type CacheControlOptions = {
     maxAgeSeconds: number;
     sharedMaxAgeSeconds?: number;
     staleWhileRevalidateSeconds?: number;
@@ -20,7 +20,7 @@ export const cacheControlPresets = {
     } satisfies CacheControlOptions,
 };
 
-function buildCacheControlValue(options: CacheControlOptions): string {
+export function buildCacheControlValue(options: CacheControlOptions): string {
     const directives: string[] = [
         options.visibility ?? 'public',
         `max-age=${options.maxAgeSeconds}`,
