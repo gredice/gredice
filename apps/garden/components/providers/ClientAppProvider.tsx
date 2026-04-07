@@ -1,6 +1,6 @@
 'use client';
 
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useThemeManager } from '@gredice/game';
 import { NuqsAdapter } from '@gredice/ui/nuqs';
 import { AuthProvider } from '@signalco/auth-client/components';
@@ -20,11 +20,11 @@ export type User = {
 };
 
 async function currentUserFactory() {
-    const response = await client().api.users.current.$get();
+    const response = await clientAuthenticated().api.users.current.$get();
     if (response.status < 200 || response.status > 299) {
         if (response.status === 401) {
             // Refresh token flow sets the session cookie on 401; retry once.
-            const retryResponse = await client().api.users.current.$get();
+            const retryResponse = await clientAuthenticated().api.users.current.$get();
             if (retryResponse.ok) {
                 return (await retryResponse.json()) as User;
             }

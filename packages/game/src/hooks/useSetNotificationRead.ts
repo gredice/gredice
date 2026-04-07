@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsQueryKey } from './useNotifications';
 
@@ -14,7 +14,7 @@ export function useSetNotificationRead() {
             read: boolean;
             readWhere: string | undefined;
         }) => {
-            const res = await client().api.notifications[':id'].$patch({
+            const res = await clientAuthenticated().api.notifications[':id'].$patch({
                 param: { id: id.toString() },
                 json: {
                     read: read.toString(),

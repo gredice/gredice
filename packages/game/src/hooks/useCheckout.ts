@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation } from '@tanstack/react-query';
 
 export interface CheckoutData {
@@ -32,7 +32,7 @@ export function isCompleteDeliverySelection(
 export function useCheckout() {
     return useMutation({
         mutationFn: async (data: CheckoutData) => {
-            const response = await client().api.checkout.checkout.$post({
+            const response = await clientAuthenticated().api.checkout.checkout.$post({
                 json: data,
             });
             if (!response.ok) {

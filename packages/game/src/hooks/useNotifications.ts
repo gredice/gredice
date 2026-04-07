@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 export const notificationsQueryKey = ['notifications'];
@@ -16,7 +16,7 @@ export function useNotifications(
                 : notificationsQueryKey,
         queryFn: async () => {
             if (!userId) return [];
-            const response = await client().api.notifications.$get({
+            const response = await clientAuthenticated().api.notifications.$get({
                 query: {
                     userId,
                     read: read ? 'true' : undefined,

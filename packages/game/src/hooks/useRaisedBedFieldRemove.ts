@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { useGameState } from '../useGameState';
@@ -53,7 +53,7 @@ export function useRaisedBedFieldRemove() {
             }
 
             // Call the backend API to update the plant status to 'removed'
-            const response = await client().api.gardens[':gardenId'][
+            const response = await clientAuthenticated().api.gardens[':gardenId'][
                 'raised-beds'
             ][':raisedBedId'].fields[':positionIndex'].$patch({
                 param: {

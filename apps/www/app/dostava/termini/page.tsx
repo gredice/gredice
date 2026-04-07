@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { LocalDateTime, TimeRange } from '@gredice/ui/LocalDateTime';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Timer } from '@signalco/ui-icons';
@@ -50,7 +50,7 @@ async function fetchTimeSlots(
     toDate.setDate(toDate.getDate() + 14);
 
     try {
-        const response = await client(false).api.delivery.slots.$get({
+        const response = await clientPublic().api.delivery.slots.$get({
             query: {
                 type,
                 from: fromDate.toISOString(),

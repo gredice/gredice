@@ -1,6 +1,6 @@
 'use client';
 
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { showNotification } from '@signalco/ui-notifications';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Typography } from '@signalco/ui-primitives/Typography';
@@ -20,7 +20,7 @@ export function SendVerifyEmailButton() {
         }
 
         setIsLoading(true);
-        const response = await client().api.auth['send-verify-email'].$post({
+        const response = await clientPublic().api.auth['send-verify-email'].$post({
             json: {
                 email,
             },

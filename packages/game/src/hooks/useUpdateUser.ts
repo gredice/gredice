@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKey, useCurrentUser } from './useCurrentUser';
 
@@ -27,7 +27,7 @@ export function useUpdateUser() {
                 throw new Error('Current user data is not available');
             }
 
-            const response = await client().api.users[':userId'].$patch({
+            const response = await clientAuthenticated().api.users[':userId'].$patch({
                 param: {
                     userId: currentUser.data.id,
                 },

@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 interface SensorHistoryApiValue extends Record<string, unknown> {
@@ -37,7 +37,7 @@ export function useRaisedBedSensorHistory(
                 return null;
             }
 
-            const response = await client().api.gardens[':gardenId'][
+            const response = await clientAuthenticated().api.gardens[':gardenId'][
                 'raised-beds'
             ][':raisedBedId'].sensors[':sensorId'][':type'].$get({
                 param: {

@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useShoppingCart, useShoppingCartQueryKey } from './useShoppingCart';
 
@@ -22,7 +22,7 @@ export function useSetShoppingCartItem() {
                 throw new Error('Shopping cart is not available');
             }
 
-            const response = await client().api['shopping-cart'].$post({
+            const response = await clientAuthenticated().api['shopping-cart'].$post({
                 json: {
                     ...item,
                     cartId: cart.id,

@@ -1,4 +1,4 @@
-import { client, type GardenResponse } from '@gredice/client';
+import { clientAuthenticated, type GardenResponse } from '@gredice/client';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { Vector3 } from 'three';
 import type { Stack } from '../types/Stack';
@@ -303,7 +303,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 return null;
             }
 
-            const currentGardenResponse = await client().api.gardens[
+            const currentGardenResponse = await clientAuthenticated().api.gardens[
                 ':gardenId'
             ].$get({
                 param: {

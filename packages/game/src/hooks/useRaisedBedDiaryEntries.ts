@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 export const queryKeys = {
@@ -12,7 +12,7 @@ export function useRaisedBedDiaryEntries(
     return useQuery({
         queryKey: queryKeys.byId(raisedBedId),
         queryFn: async () => {
-            const entries = await client().api.gardens[':gardenId'][
+            const entries = await clientAuthenticated().api.gardens[':gardenId'][
                 'raised-beds'
             ][':raisedBedId']['diary-entries'].$get({
                 param: {

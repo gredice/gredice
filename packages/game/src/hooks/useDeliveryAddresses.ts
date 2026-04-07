@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 export const deliveryAddressesQueryKey = ['delivery', 'addresses'];
@@ -7,7 +7,7 @@ export function useDeliveryAddresses() {
     return useQuery({
         queryKey: deliveryAddressesQueryKey,
         queryFn: async () => {
-            const response = await client().api.delivery.addresses.$get();
+            const response = await clientAuthenticated().api.delivery.addresses.$get();
             if (response.status !== 200) {
                 throw new Error('Failed to fetch delivery addresses');
             }

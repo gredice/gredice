@@ -2,7 +2,7 @@
 
 import 'server-only';
 
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 
 export const newsletterSubscribe = async (
     _previousState: unknown,
@@ -10,7 +10,7 @@ export const newsletterSubscribe = async (
 ) => {
     const email = formData.get('email') as string;
 
-    const response = await client(false).api.newsletter.subscribe.$post({
+    const response = await clientPublic().api.newsletter.subscribe.$post({
         json: { email, source: 'www' },
     });
 

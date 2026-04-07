@@ -1,6 +1,6 @@
 'use client';
 
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { SignedIn, SignedOut } from '@signalco/auth-client/components';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
@@ -24,7 +24,7 @@ export function AcceptInvitationCard() {
 
         setLoading(true);
         try {
-            const res = await client().api.accounts.invitations.accept.$post({
+            const res = await clientAuthenticated().api.accounts.invitations.accept.$post({
                 json: { token },
             });
 

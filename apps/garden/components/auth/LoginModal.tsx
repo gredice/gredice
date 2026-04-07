@@ -1,6 +1,6 @@
 'use client';
 
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import {
     FacebookLoginButton,
     GoogleLoginButton,
@@ -27,14 +27,14 @@ export default function LoginModal() {
     const queryClient = useQueryClient();
     const [error, setError] = useState<string>();
     const fetchLastLogin = useCallback(
-        () => client().api.auth['last-login'].$get(),
+        () => clientPublic().api.auth['last-login'].$get(),
         [],
     );
     const lastLoginProvider = useLastLoginProvider(fetchLastLogin);
 
     const handleLogin = async (email: string, password: string) => {
         setError(undefined);
-        const response = await client().api.auth.login.$post({
+        const response = await clientPublic().api.auth.login.$post({
             json: {
                 email,
                 password,
@@ -87,7 +87,7 @@ export default function LoginModal() {
 
     const handleRegister = async (email: string, password: string) => {
         setError(undefined);
-        const response = await client().api.auth.register.$post({
+        const response = await clientPublic().api.auth.register.$post({
             json: {
                 email,
                 password,

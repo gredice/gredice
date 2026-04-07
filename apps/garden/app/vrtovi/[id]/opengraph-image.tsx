@@ -1,4 +1,4 @@
-import { client, directoriesClient } from '@gredice/client';
+import { clientPublic, directoriesClient } from '@gredice/client';
 import { ImageResponse } from 'next/og';
 import { GardenDisplay2D } from '../../../components/GardenDisplay2D';
 import { Logotype } from '../../../components/Logotype';
@@ -21,7 +21,7 @@ export default async function GardenOgImage({
         return new Response('Garden ID is required', { status: 400 });
     }
 
-    const gardenResponse = await client(false).api.gardens[
+    const gardenResponse = await clientPublic().api.gardens[
         ':gardenId'
     ].public.$get({
         param: {

@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deliveryRequestsQueryKey } from './useDeliveryRequests';
 
@@ -12,7 +12,7 @@ export function useCancelDeliveryRequest() {
             note?: string;
         }) => {
             const { requestId, ...cancelData } = data;
-            const response = await client().api.delivery.requests[
+            const response = await clientAuthenticated().api.delivery.requests[
                 ':id'
             ].cancel.$patch({
                 param: { id: requestId },

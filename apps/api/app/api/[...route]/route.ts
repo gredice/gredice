@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { handle } from 'hono/vercel';
 import { openAPIRouteHandler } from 'hono-openapi';
 import { openApiDocs } from '../../../lib/docs/openApiDocs';
+import { sessionCookieName } from '../../../lib/auth/sessionConfig';
 import accountsRoutes from './accountsRoutes';
 import authRoutes from './authRoutes';
 import checkoutRoutes from './checkoutRoutes';
@@ -45,7 +46,7 @@ function docs<E extends Env, S extends Schema, P extends string>(
                     cookieAuth: {
                         type: 'apiKey',
                         in: 'cookie',
-                        name: 'gredice_jwt',
+                        name: sessionCookieName,
                         description: 'Session cookie used by web clients.',
                     },
                 },
