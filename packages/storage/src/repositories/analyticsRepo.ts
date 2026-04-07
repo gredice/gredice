@@ -1,6 +1,7 @@
-import { and, count, gte, isNotNull, lt, lte, sql } from 'drizzle-orm';
+import { and, count, eq, gte, lt, lte, sql } from 'drizzle-orm';
 import {
     accounts,
+    accountUsers,
     deliveryRequests,
     events,
     farms,
@@ -8,14 +9,14 @@ import {
     gardens,
     raisedBeds,
     transactions,
-    userLogins,
     users,
 } from '../schema';
 import { storage } from '../storage';
+import { knownEventTypes } from './events/knownEventTypes';
 
 type ActiveUserRow = {
     userId: string;
-    lastLogin: Date | null;
+    activityDate: Date | string;
 };
 
 type ActiveUsersMetrics = {
@@ -38,19 +39,15 @@ function calculateActiveUsersMetrics(
     const monthlyActiveUsers = new Set<string>();
 
     for (const row of rows) {
-        if (!row.lastLogin) {
-            continue;
-        }
+        const activityDate = new Date(row.activityDate);
 
-        const lastLoginDate = new Date(row.lastLogin);
-
-        if (lastLoginDate >= lastDayThreshold) {
+        if (activityDate >= lastDayThreshold) {
             dailyActiveUsers.add(row.userId);
         }
-        if (lastLoginDate >= lastWeekThreshold) {
+        if (activityDate >= lastWeekThreshold) {
             weeklyActiveUsers.add(row.userId);
         }
-        if (lastLoginDate >= monthlyThreshold) {
+        if (activityDate >= monthlyThreshold) {
             monthlyActiveUsers.add(row.userId);
         }
     }
@@ -137,16 +134,19 @@ export async function getAnalyticsTotals(days: number = 7) {
             .where(lt(deliveryRequests.createdAt, beforeDate)),
         storage()
             .select({
-                userId: userLogins.userId,
-                lastLogin: userLogins.lastLogin,
+                userId: accountUsers.userId,
+                activityDate: sql<Date>`max(${events.createdAt})`,
             })
-            .from(userLogins)
+            .from(accountUsers)
+            .innerJoin(events, eq(events.aggregateId, accountUsers.accountId))
             .where(
                 and(
-                    gte(userLogins.lastLogin, lastMonthThreshold),
-                    isNotNull(userLogins.lastLogin),
+                    eq(events.type, knownEventTypes.accounts.earnSunflowers),
+                    gte(events.createdAt, lastMonthThreshold),
+                    sql`${events.data}->>'reason' like 'daily:%'`,
                 ),
-            ),
+            )
+            .groupBy(accountUsers.userId),
     ]);
 
     const activeUsers = calculateActiveUsersMetrics(
