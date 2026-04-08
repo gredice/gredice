@@ -1,4 +1,75 @@
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
+import type { RaisedBed } from './types';
+
+export type RaisedBedScheduleGroup = {
+    key: string;
+    physicalId: string;
+    raisedBeds: RaisedBed[];
+};
+
+function comparePhysicalIds(left: string, right: string) {
+    const leftNumber = Number(left);
+    const rightNumber = Number(right);
+
+    if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+        return leftNumber - rightNumber;
+    }
+
+    return left.localeCompare(right, undefined, { numeric: true });
+}
+
+export function groupRaisedBedsForSchedule(
+    raisedBeds: RaisedBed[],
+    affectedRaisedBedIds: number[],
+) {
+    const affectedRaisedBedIdSet = new Set(affectedRaisedBedIds);
+    const groups = new Map<string, RaisedBedScheduleGroup>();
+
+    for (const raisedBed of raisedBeds) {
+        if (
+            !raisedBed.physicalId ||
+            !affectedRaisedBedIdSet.has(raisedBed.id)
+        ) {
+            continue;
+        }
+
+        const key = [
+            raisedBed.physicalId,
+            raisedBed.gardenId ?? 'garden:null',
+            raisedBed.accountId ?? 'account:null',
+        ].join('|');
+        const existingGroup = groups.get(key);
+
+        if (existingGroup) {
+            existingGroup.raisedBeds.push(raisedBed);
+        } else {
+            groups.set(key, {
+                key,
+                physicalId: raisedBed.physicalId,
+                raisedBeds: [raisedBed],
+            });
+        }
+    }
+
+    return [...groups.values()]
+        .map((group) => ({
+            ...group,
+            raisedBeds: [...group.raisedBeds].sort((a, b) => a.id - b.id),
+        }))
+        .sort((left, right) => {
+            const physicalIdComparison = comparePhysicalIds(
+                left.physicalId,
+                right.physicalId,
+            );
+            if (physicalIdComparison !== 0) {
+                return physicalIdComparison;
+            }
+
+            return (
+                (left.raisedBeds[0]?.id ?? 0) - (right.raisedBeds[0]?.id ?? 0)
+            );
+        });
+}
 
 export const PLANTING_TASK_DURATION_MINUTES = 5;
 
