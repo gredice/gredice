@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 export const useGardensKeys = ['gardens'];
@@ -7,7 +7,7 @@ export function useGardens(disabled?: boolean) {
     return useQuery({
         queryKey: useGardensKeys,
         queryFn: async () => {
-            const resp = await client().api.gardens.$get();
+            const resp = await clientAuthenticated().api.gardens.$get();
             if (resp.status === 401) return null;
 
             return resp.json();

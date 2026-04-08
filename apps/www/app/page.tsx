@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { CountingNumber } from '@gredice/ui/CountingNumber';
 import type { SectionData } from '@signalco/cms-core/SectionData';
 import { SectionsView } from '@signalco/cms-core/SectionsView';
@@ -70,7 +70,7 @@ function PlantsStatisticsLoading() {
 
 async function PlantsStatistics() {
     try {
-        const response = await client().api.data.statistics.plants.$get();
+        const response = await clientPublic().api.data.statistics.plants.$get();
         if (!response || response.status !== 200) {
             return null;
         }

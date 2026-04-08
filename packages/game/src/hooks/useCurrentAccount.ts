@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 export const currentAccountKeys = ['accounts', 'current'];
@@ -8,8 +8,8 @@ export function useCurrentAccount() {
         queryKey: currentAccountKeys,
         queryFn: async () => {
             const [accountResponse, sunflowers] = await Promise.all([
-                client().api.accounts.current.$get(),
-                client()
+                clientAuthenticated().api.accounts.current.$get(),
+                clientAuthenticated()
                     .api.accounts.current.sunflowers.$get()
                     .then((response) => response.json()),
             ]);

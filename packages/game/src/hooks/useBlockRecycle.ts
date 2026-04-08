@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { useGameState } from '../useGameState';
@@ -22,7 +22,7 @@ async function removeShoppingCartItems(
     );
     await Promise.all(
         itemsToRemove.map((item) =>
-            client().api['shopping-cart'].$post({
+            clientAuthenticated().api['shopping-cart'].$post({
                 json: {
                     id: item.id,
                     entityTypeName: item.entityTypeName,
@@ -63,7 +63,7 @@ export function useBlockRecycle() {
                 throw new Error('No garden selected');
             }
             const gardenId = garden.id;
-            await client().api.gardens[':gardenId'].stacks.$patch({
+            await clientAuthenticated().api.gardens[':gardenId'].stacks.$patch({
                 param: {
                     gardenId: gardenId.toString(),
                 },

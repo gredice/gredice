@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 import { useCurrentUser } from './useCurrentUser';
 
@@ -9,7 +9,7 @@ export function useShoppingCart() {
     return useQuery({
         queryKey: useShoppingCartQueryKey,
         queryFn: async () => {
-            const response = await client().api['shopping-cart'].$get();
+            const response = await clientAuthenticated().api['shopping-cart'].$get();
             if (response.status === 401) {
                 return null;
             }

@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 export const queryKey = {
@@ -6,7 +6,7 @@ export const queryKey = {
 };
 
 async function getCurrentUser() {
-    const response = await client(true).api.users.current.$get();
+    const response = await clientAuthenticated().api.users.current.$get();
     if (response.status === 401) {
         return null;
     }

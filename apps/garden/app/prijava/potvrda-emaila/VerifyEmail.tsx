@@ -1,6 +1,6 @@
 'use client';
 
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { Warning } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -25,7 +25,7 @@ export function VerifyEmail() {
                 return;
             }
 
-            const response = await client().api.auth['verify-email'].$post({
+            const response = await clientPublic().api.auth['verify-email'].$post({
                 json: {
                     token,
                 },

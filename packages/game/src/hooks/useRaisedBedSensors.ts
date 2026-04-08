@@ -1,11 +1,11 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 export function useRaisedBedSensors(gardenId: number, raisedBedId: number) {
     return useQuery({
         queryKey: ['raisedBeds', raisedBedId, 'sensors'],
         queryFn: async () => {
-            const response = await client().api.gardens[':gardenId'][
+            const response = await clientAuthenticated().api.gardens[':gardenId'][
                 'raised-beds'
             ][':raisedBedId'].sensors.$get({
                 param: {

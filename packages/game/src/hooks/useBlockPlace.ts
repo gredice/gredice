@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
@@ -29,7 +29,7 @@ export function useBlockPlace() {
             }
 
             const createBlock = async () => {
-                const response = await client().api.gardens[
+                const response = await clientAuthenticated().api.gardens[
                     ':gardenId'
                 ].blocks.$post({
                     param: {
@@ -49,7 +49,7 @@ export function useBlockPlace() {
 
             const primaryBlockId = await createBlock();
 
-            await client().api.gardens[':gardenId'].stacks.$patch({
+            await clientAuthenticated().api.gardens[':gardenId'].stacks.$patch({
                 param: {
                     gardenId: garden.id.toString(),
                 },

@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys } from './useCurrentGarden';
@@ -16,7 +16,7 @@ export function useUpdateRaisedBed(gardenId: number, raisedBedId: number) {
                 throw new Error('Current user data is not available');
             }
 
-            await client().api.gardens[':gardenId']['raised-beds'][
+            await clientAuthenticated().api.gardens[':gardenId']['raised-beds'][
                 ':raisedBedId'
             ].$patch({
                 param: {

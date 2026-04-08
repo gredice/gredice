@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { handle } from 'hono/vercel';
 import { openAPIRouteHandler } from 'hono-openapi';
 import { openApiDocs } from '../../../lib/docs/openApiDocs';
+import { sessionCookieName } from '../../../lib/auth/sessionConfig';
 import accountsRoutes from './accountsRoutes';
 import authRoutes from './authRoutes';
 import checkoutRoutes from './checkoutRoutes';
@@ -30,6 +31,25 @@ function docs<E extends Env, S extends Schema, P extends string>(
             info: {
                 title,
                 version: '1.0.0',
+                description:
+                    'Security schemes are defined for authenticated endpoints (cookieAuth and bearerAuth).',
+            },
+            components: {
+                securitySchemes: {
+                    bearerAuth: {
+                        type: 'http',
+                        scheme: 'bearer',
+                        bearerFormat: 'JWT',
+                        description:
+                            'Use access token when calling API directly.',
+                    },
+                    cookieAuth: {
+                        type: 'apiKey',
+                        in: 'cookie',
+                        name: sessionCookieName,
+                        description: 'Session cookie used by web clients.',
+                    },
+                },
             },
             servers: [
                 {

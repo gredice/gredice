@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { CompanyFacebook, Security } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
@@ -35,7 +35,7 @@ export function SecurityTab() {
         if (!userName) return;
         setChangePasswordPending(true);
         try {
-            await client().api.auth['send-change-password-email'].$post({
+            await clientPublic().api.auth['send-change-password-email'].$post({
                 json: { email: userName },
             });
             setChangePasswordSent(true);

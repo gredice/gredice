@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 export const pickupLocationsQueryKey = ['delivery', 'pickupLocations'];
@@ -8,7 +8,7 @@ export function usePickupLocations() {
         queryKey: pickupLocationsQueryKey,
         queryFn: async () => {
             const response =
-                await client().api.delivery['pickup-locations'].$get();
+                await clientPublic().api.delivery['pickup-locations'].$get();
             if (response.status !== 200) {
                 throw new Error('Failed to fetch pickup locations');
             }

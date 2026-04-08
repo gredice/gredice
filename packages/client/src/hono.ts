@@ -2,14 +2,51 @@ import type { AppType } from 'api/routes';
 import { hc, type InferResponseType } from 'hono/client';
 import { createDevSafeFetch, getAppUrl } from './shared';
 
-export function client(authRequired = false) {
-    void authRequired;
+export type ClientMode = 'authenticated' | 'public';
+
+export type ClientOptions = {
+    auth?: ClientMode;
+};
+
+function resolveClientMode(options?: boolean | ClientOptions): ClientMode {
+    if (typeof options === 'boolean') {
+        return options ? 'authenticated' : 'public';
+    }
+
+    return options?.auth ?? 'public';
+}
+
+function createClient(mode: ClientMode) {
     const baseFetch = createDevSafeFetch();
-    const fetchWithCredentials: typeof fetch = (input, init) =>
-        baseFetch(input, { ...init, credentials: 'include' });
+    const fetchWithAuthControl: typeof fetch = (input, init) => {
+        const headers = new Headers(init?.headers);
+        const authRequired = mode === 'authenticated';
+
+        if (!authRequired) {
+            headers.delete('Authorization');
+        }
+
+        return baseFetch(input, {
+            ...init,
+            headers,
+            credentials: authRequired ? 'include' : 'omit',
+        });
+    };
     return hc<AppType>(getAppUrl(), {
-        fetch: fetchWithCredentials,
+        fetch: fetchWithAuthControl,
     });
+}
+
+export function client(options?: boolean | ClientOptions) {
+    return createClient(resolveClientMode(options));
+}
+
+export function clientAuthenticated() {
+    return createClient('authenticated');
+}
+
+export function clientPublic() {
+    return createClient('public');
 }
 
 export type GardenResponse = InferResponseType<

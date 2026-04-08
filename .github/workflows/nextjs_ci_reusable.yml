@@ -107,13 +107,13 @@ jobs:
             id: playwright-cache
             with:
               path: ~/.cache/ms-playwright
-              key: ${{ runner.os }}-playwright-${{ hashFiles(format('{0}/pnpm-lock.yaml', inputs.path)) }}
+              key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
               restore-keys: |
                 ${{ runner.os }}-playwright-
 
           - name: 📦️ Install playwright browsers
             if: steps.playwright-cache.outputs.cache-hit != 'true'
-            run: pnpm playwright install --with-deps
+            run: pnpm exec playwright install --with-deps chromium
             working-directory: ${{ inputs.path }}/
 
           - name: ⚒️ Test app

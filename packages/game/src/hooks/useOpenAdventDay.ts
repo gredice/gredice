@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGameState } from '../useGameState';
 import { adventCalendarKeys } from './useAdventCalendar';
@@ -13,7 +13,7 @@ export function useOpenAdventDay() {
 
     return useMutation({
         mutationFn: async (day: number) => {
-            const res = await client().api.occasions.advent[
+            const res = await clientAuthenticated().api.occasions.advent[
                 'calendar-2025'
             ].open.$post({
                 json: { day },

@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 export const accountInvitationsKeys = ['accounts', 'current', 'invitations'];
@@ -8,7 +8,7 @@ export function useAccountInvitations() {
         queryKey: accountInvitationsKeys,
         queryFn: async () => {
             const response =
-                await client().api.accounts.current.invitations.$get();
+                await clientAuthenticated().api.accounts.current.invitations.$get();
             if (response.status === 401) {
                 return [];
             }

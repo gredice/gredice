@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 export const queryKey = {
@@ -10,7 +10,7 @@ export const queryKey = {
 };
 
 async function getUserLogins(userId: string) {
-    const response = await client().api.users[':userId'].logins.$get({
+    const response = await clientAuthenticated().api.users[':userId'].logins.$get({
         param: {
             userId,
         },
