@@ -20,16 +20,6 @@ async function currentUserFactory() {
         return (await response.json()) as User;
     }
 
-    if (response.status === 401) {
-        // Refresh token flow sets the session cookie on 401; retry once.
-        const retryResponse = await fetch('/api/users/current', {
-            cache: 'no-store',
-        });
-        if (retryResponse.ok) {
-            return (await retryResponse.json()) as User;
-        }
-    }
-
     return null;
 }
 

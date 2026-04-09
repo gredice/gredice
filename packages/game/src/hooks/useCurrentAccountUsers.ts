@@ -10,7 +10,7 @@ export function useCurrentAccountUsers() {
             const response =
                 await clientAuthenticated().api.accounts.current.users.$get();
             if (response.status === 401) {
-                return [];
+                return null;
             }
             if (!response.ok) {
                 throw new Error(
@@ -19,6 +19,7 @@ export function useCurrentAccountUsers() {
             }
             return response.json();
         },
+        retry: false,
         staleTime: 1000 * 60 * 5, // 5 minutes
     });
 }
