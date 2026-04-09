@@ -16,6 +16,19 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import {
+    computeAddressDistanceData,
+    isAddressDistanceVerificationEnabled,
+    validateDeliveryDistanceLimit,
+} from '../../../lib/delivery/addressDistance';
+import {
+    buildAddressVerificationErrorResponse,
+    logAddressVerificationFailure,
+} from '../../../lib/delivery/addressVerificationError';
+import {
+    buildDeliveryAddressDistanceUpdate,
+    shouldRecalculateDeliveryAddressDistance,
+} from '../../../lib/delivery/deliveryAddressUpdate';
 import { authSecurity, publicSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
@@ -59,6 +72,16 @@ const cancelRequestSchema = z.object({
     note: z.string().max(500).optional(),
 });
 
+function hasAddressFieldChanges(data: z.infer<typeof updateAddressSchema>) {
+    return (
+        typeof data.street1 === 'string' ||
+        typeof data.street2 === 'string' ||
+        typeof data.city === 'string' ||
+        typeof data.postalCode === 'string' ||
+        typeof data.countryCode === 'string'
+    );
+}
+
 const app = new Hono<{ Variables: AuthVariables }>()
     // GET /addresses - list current user addresses
     .get(
@@ -88,6 +111,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { accountId } = context.get('authContext');
             const data = context.req.valid('json');
+            const shouldVerifyDistance = isAddressDistanceVerificationEnabled();
 
             // Validate the address data
             const validationErrors = validateDeliveryAddress(data);
@@ -98,14 +122,47 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const insertData: InsertDeliveryAddress = {
-                ...data,
-                accountId,
-            };
+            try {
+                const distanceData = shouldVerifyDistance
+                    ? await computeAddressDistanceData(data)
+                    : null;
 
-            const addressId = await createDeliveryAddress(insertData);
-            const newAddress = await getDeliveryAddress(addressId, accountId);
-            return context.json(newAddress, 201);
+                if (distanceData?.roadDistanceKm) {
+                    await validateDeliveryDistanceLimit(
+                        distanceData.roadDistanceKm,
+                    );
+                }
+
+                const insertData: InsertDeliveryAddress = {
+                    ...data,
+                    ...(distanceData
+                        ? {
+                              ...distanceData,
+                              distanceCalculatedAt: new Date(),
+                          }
+                        : {}),
+                    accountId,
+                };
+
+                const addressId = await createDeliveryAddress(insertData);
+                const newAddress = await getDeliveryAddress(
+                    addressId,
+                    accountId,
+                );
+                return context.json(newAddress, 201);
+            } catch (error) {
+                logAddressVerificationFailure('create', error);
+                const errorResponse =
+                    buildAddressVerificationErrorResponse(error);
+                if (errorResponse) {
+                    return context.json(
+                        errorResponse.body,
+                        errorResponse.status,
+                    );
+                }
+
+                throw error;
+            }
         },
     )
     // PATCH /addresses/:id - update address
@@ -123,6 +180,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { accountId } = context.get('authContext');
             const { id } = context.req.valid('param');
             const data = context.req.valid('json');
+            const shouldVerifyDistance = isAddressDistanceVerificationEnabled();
 
             // Validate the address data
             const validationErrors = validateDeliveryAddress(data);
@@ -133,14 +191,78 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const updateData: UpdateDeliveryAddress = {
-                id,
-                ...data,
-            };
+            const existingAddress = await getDeliveryAddress(id, accountId);
+            if (!existingAddress) {
+                return context.json(
+                    {
+                        error: 'Delivery address not found',
+                    },
+                    404,
+                );
+            }
 
-            await updateDeliveryAddress(updateData, accountId);
-            const updatedAddress = await getDeliveryAddress(id, accountId);
-            return context.json(updatedAddress);
+            try {
+                const existingDistanceData = {
+                    latitude: existingAddress.latitude ?? null,
+                    longitude: existingAddress.longitude ?? null,
+                    roadDistanceKm: existingAddress.roadDistanceKm ?? null,
+                    distanceCalculatedAt:
+                        existingAddress.distanceCalculatedAt ?? null,
+                };
+                const shouldRecalculateDistance =
+                    shouldVerifyDistance &&
+                    shouldRecalculateDeliveryAddressDistance(
+                        hasAddressFieldChanges(data),
+                        existingDistanceData,
+                    );
+                const distanceData = !shouldVerifyDistance
+                    ? null
+                    : shouldRecalculateDistance
+                      ? await computeAddressDistanceData({
+                            street1: data.street1 ?? existingAddress.street1,
+                            street2:
+                                data.street2 === undefined
+                                    ? (existingAddress.street2 ?? undefined)
+                                    : data.street2,
+                            city: data.city ?? existingAddress.city,
+                            postalCode:
+                                data.postalCode ?? existingAddress.postalCode,
+                            countryCode:
+                                data.countryCode ?? existingAddress.countryCode,
+                        })
+                      : existingDistanceData;
+
+                if (distanceData?.roadDistanceKm) {
+                    await validateDeliveryDistanceLimit(
+                        distanceData.roadDistanceKm,
+                    );
+                }
+
+                const updateData: UpdateDeliveryAddress = {
+                    id,
+                    ...data,
+                    ...buildDeliveryAddressDistanceUpdate(
+                        distanceData,
+                        shouldRecalculateDistance,
+                    ),
+                };
+
+                await updateDeliveryAddress(updateData, accountId);
+                const updatedAddress = await getDeliveryAddress(id, accountId);
+                return context.json(updatedAddress);
+            } catch (error) {
+                logAddressVerificationFailure('update', error);
+                const errorResponse =
+                    buildAddressVerificationErrorResponse(error);
+                if (errorResponse) {
+                    return context.json(
+                        errorResponse.body,
+                        errorResponse.status,
+                    );
+                }
+
+                throw error;
+            }
         },
     )
     // DELETE /addresses/:id - soft delete address
