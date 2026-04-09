@@ -17,9 +17,9 @@ export function useOpenGiftBox() {
             gardenId: number;
             blockId: string;
         }) => {
-            const response = await clientAuthenticated().api.gardens[':gardenId'].blocks[
-                ':blockId'
-            ]['open-gift-box'].$post({
+            const response = await clientAuthenticated().api.gardens[
+                ':gardenId'
+            ].blocks[':blockId']['open-gift-box'].$post({
                 param: {
                     gardenId: gardenId.toString(),
                     blockId,

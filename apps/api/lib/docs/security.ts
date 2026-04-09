@@ -1,6 +1,6 @@
 export const authSecurity: Array<Record<string, string[]>> = [
-	{ cookieAuth: [] },
-	{ bearerAuth: [] },
+    { cookieAuth: [] },
+    { bearerAuth: [] },
 ];
 
 export const publicSecurity: [] = [];

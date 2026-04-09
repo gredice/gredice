@@ -5,9 +5,9 @@ export function useRaisedBedSensors(gardenId: number, raisedBedId: number) {
     return useQuery({
         queryKey: ['raisedBeds', raisedBedId, 'sensors'],
         queryFn: async () => {
-            const response = await clientAuthenticated().api.gardens[':gardenId'][
-                'raised-beds'
-            ][':raisedBedId'].sensors.$get({
+            const response = await clientAuthenticated().api.gardens[
+                ':gardenId'
+            ]['raised-beds'][':raisedBedId'].sensors.$get({
                 param: {
                     gardenId: gardenId.toString(),
                     raisedBedId: raisedBedId.toString(),

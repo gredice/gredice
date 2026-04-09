@@ -16,14 +16,16 @@ export function useNotifications(
                 : notificationsQueryKey,
         queryFn: async () => {
             if (!userId) return [];
-            const response = await clientAuthenticated().api.notifications.$get({
-                query: {
-                    userId,
-                    read: read ? 'true' : undefined,
-                    page: page?.toString(),
-                    limit: limit?.toString(),
+            const response = await clientAuthenticated().api.notifications.$get(
+                {
+                    query: {
+                        userId,
+                        read: read ? 'true' : undefined,
+                        page: page?.toString(),
+                        limit: limit?.toString(),
+                    },
                 },
-            });
+            );
             if (!response.ok) {
                 throw new Error('Failed to fetch notifications');
             }

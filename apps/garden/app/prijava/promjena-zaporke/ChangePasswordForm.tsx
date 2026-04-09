@@ -30,12 +30,14 @@ export function ChangePasswordForm() {
             return;
         }
 
-        const response = await clientPublic().api.auth['change-password'].$post({
-            json: {
-                password,
-                token,
+        const response = await clientPublic().api.auth['change-password'].$post(
+            {
+                json: {
+                    password,
+                    token,
+                },
             },
-        });
+        );
 
         if (!response.ok) {
             console.error(response.statusText);

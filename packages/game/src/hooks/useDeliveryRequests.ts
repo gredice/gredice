@@ -7,7 +7,8 @@ export function useDeliveryRequests() {
     return useQuery({
         queryKey: deliveryRequestsQueryKey,
         queryFn: async () => {
-            const response = await clientAuthenticated().api.delivery.requests.$get();
+            const response =
+                await clientAuthenticated().api.delivery.requests.$get();
             if (response.status !== 200) {
                 throw new Error('Failed to fetch delivery requests');
             }

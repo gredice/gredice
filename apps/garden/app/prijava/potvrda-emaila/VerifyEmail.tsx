@@ -25,7 +25,9 @@ export function VerifyEmail() {
                 return;
             }
 
-            const response = await clientPublic().api.auth['verify-email'].$post({
+            const response = await clientPublic().api.auth[
+                'verify-email'
+            ].$post({
                 json: {
                     token,
                 },
