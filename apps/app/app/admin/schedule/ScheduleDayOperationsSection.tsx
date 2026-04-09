@@ -6,6 +6,7 @@ import {
     getScheduleOperationsData,
     getSchedulePlantSorts,
 } from './scheduleData';
+import { groupRaisedBedsForSchedule } from './scheduleShared';
 
 interface ScheduleDayOperationsSectionProps {
     isToday: boolean;
@@ -35,30 +36,18 @@ export async function ScheduleDayOperationsSection({
                 .filter((id): id is number => id !== null),
         ),
     ];
-    const physicalIds = [
-        ...new Set(
-            raisedBeds
-                .filter((raisedBed) =>
-                    affectedRaisedBedIds.includes(raisedBed.id),
-                )
-                .map((raisedBed) => raisedBed.physicalId)
-                .filter(
-                    (physicalId): physicalId is string => physicalId !== null,
-                ),
-        ),
-    ].sort((a, b) => Number(a) - Number(b));
+    const raisedBedGroups = groupRaisedBedsForSchedule(
+        raisedBeds,
+        affectedRaisedBedIds,
+    );
 
     return (
         <Stack spacing={2}>
             <Typography level="h6">Radnje</Typography>
-            {physicalIds.map((physicalId) => {
-                const beds = raisedBeds
-                    .filter((raisedBed) => raisedBed.physicalId === physicalId)
-                    .sort((a, b) => a.id - b.id);
-
+            {raisedBedGroups.map(({ key, physicalId, raisedBeds: beds }) => {
                 return (
                     <RaisedBedOperationsScheduleSection
-                        key={physicalId}
+                        key={key}
                         physicalId={physicalId}
                         raisedBeds={beds}
                         scheduledOperations={scheduledOperations}
