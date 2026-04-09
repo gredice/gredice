@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import {
     type EntityStandardized,
     getEntitiesFormatted,
@@ -9,6 +10,13 @@ const GOOGLE_DISTANCE_MATRIX_API =
 
 const DEFAULT_MAX_DELIVERY_DISTANCE_KM = 100;
 const HQ_CACHE_TTL_MS = 5 * 60 * 1000;
+const GOOGLE_REQUEST_TIMEOUT_MS = 5_000;
+const GOOGLE_REQUEST_MAX_ATTEMPTS = 2;
+const GOOGLE_REQUEST_RETRY_BASE_DELAY_MS = 250;
+
+const GOOGLE_RETRYABLE_RESPONSE_STATUSES = new Set([
+    408, 429, 500, 502, 503, 504,
+]);
 
 interface Coordinates {
     latitude: number;
@@ -35,10 +43,53 @@ interface HqLocationConfig {
     maxDistanceKm: number;
 }
 
+interface FetchGoogleMapsResponseOptions {
+    fetchImpl?: typeof fetch;
+    timeoutMs?: number;
+    maxAttempts?: number;
+    retryBaseDelayMs?: number;
+}
+
+interface HeadquarterConfigOptions {
+    getEntitiesFormattedImpl?: (
+        entityTypeName: string,
+    ) => Promise<EntityStandardized[]>;
+    now?: () => number;
+}
+
 let cachedHqLocation: {
     value: HqLocationConfig;
     expiresAt: number;
 } | null = null;
+
+export class DeliveryAddressEligibilityError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'DeliveryAddressEligibilityError';
+    }
+}
+
+export class GoogleMapsUpstreamError extends Error {
+    readonly statusCode: 503 | 504;
+
+    constructor(message: string, statusCode: 503 | 504) {
+        super(message);
+        this.name = 'GoogleMapsUpstreamError';
+        this.statusCode = statusCode;
+    }
+}
+
+export function isDeliveryAddressEligibilityError(
+    error: unknown,
+): error is DeliveryAddressEligibilityError {
+    return error instanceof DeliveryAddressEligibilityError;
+}
+
+export function isGoogleMapsUpstreamError(
+    error: unknown,
+): error is GoogleMapsUpstreamError {
+    return error instanceof GoogleMapsUpstreamError;
+}
 
 export function isAddressDistanceVerificationEnabled(): boolean {
     const configuredValue =
@@ -60,6 +111,55 @@ function getGoogleMapsApiKey(): string {
     }
 
     return apiKey;
+}
+
+function getGoogleMapsUrlSigningSecret(): string | null {
+    const signingSecret = process.env.GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET;
+
+    if (typeof signingSecret !== 'string') {
+        return null;
+    }
+
+    const normalizedSecret = signingSecret.trim();
+    return normalizedSecret.length > 0 ? normalizedSecret : null;
+}
+
+function decodeGoogleMapsSigningSecret(secret: string): Buffer {
+    const normalizedSecret = secret.replace(/-/g, '+').replace(/_/g, '/');
+    const paddingLength = (4 - (normalizedSecret.length % 4)) % 4;
+
+    return Buffer.from(
+        `${normalizedSecret}${'='.repeat(paddingLength)}`,
+        'base64',
+    );
+}
+
+function toUrlSafeBase64(value: string): string {
+    return value.replace(/\+/g, '-').replace(/\//g, '_');
+}
+
+export function buildGoogleMapsRequestUrl(
+    baseUrl: string,
+    params: URLSearchParams,
+    urlSigningSecret?: string | null,
+): string {
+    const requestUrl = new URL(baseUrl);
+    requestUrl.search = params.toString();
+
+    if (!urlSigningSecret) {
+        return requestUrl.toString();
+    }
+
+    const urlToSign = `${requestUrl.pathname}${requestUrl.search}`;
+    const signature = createHmac(
+        'sha1',
+        decodeGoogleMapsSigningSecret(urlSigningSecret),
+    )
+        .update(urlToSign)
+        .digest('base64');
+
+    requestUrl.searchParams.set('signature', toUrlSafeBase64(signature));
+    return requestUrl.toString();
 }
 
 function getMaximumAllowedDistanceKmFallback(): number {
@@ -99,7 +199,9 @@ function toUnknownRecord(value: unknown): Record<string, unknown> | undefined {
     return undefined;
 }
 
-function extractHqLocationConfig(entity: EntityStandardized): HqLocationConfig {
+export function extractHqLocationConfig(
+    entity: EntityStandardized,
+): HqLocationConfig {
     const attributes = entity.attributes;
     const information = toUnknownRecord(entity.information);
 
@@ -132,13 +234,22 @@ function extractHqLocationConfig(entity: EntityStandardized): HqLocationConfig {
     };
 }
 
-async function getHeadquarterConfig(): Promise<HqLocationConfig> {
-    if (cachedHqLocation && cachedHqLocation.expiresAt > Date.now()) {
+export function resetHeadquarterConfigCacheForTests(): void {
+    cachedHqLocation = null;
+}
+
+export async function getHeadquarterConfig(
+    options?: HeadquarterConfigOptions,
+): Promise<HqLocationConfig> {
+    const now = options?.now ?? Date.now;
+
+    if (cachedHqLocation && cachedHqLocation.expiresAt > now()) {
         return cachedHqLocation.value;
     }
 
-    const hqLocations =
-        await getEntitiesFormatted<EntityStandardized>('hqLocations');
+    const getEntitiesFormattedImpl =
+        options?.getEntitiesFormattedImpl ?? getEntitiesFormatted;
+    const hqLocations = await getEntitiesFormattedImpl('hqLocations');
     const firstHqLocation = hqLocations[0];
     if (!firstHqLocation) {
         throw new Error('No HQ location found in /entities/hqLocations');
@@ -147,12 +258,12 @@ async function getHeadquarterConfig(): Promise<HqLocationConfig> {
     const config = extractHqLocationConfig(firstHqLocation);
     cachedHqLocation = {
         value: config,
-        expiresAt: Date.now() + HQ_CACHE_TTL_MS,
+        expiresAt: now() + HQ_CACHE_TTL_MS,
     };
     return config;
 }
 
-function buildAddressString(input: DistanceComputationInput): string {
+export function buildAddressString(input: DistanceComputationInput): string {
     const addressParts = [
         input.street1,
         input.street2,
@@ -164,33 +275,178 @@ function buildAddressString(input: DistanceComputationInput): string {
     return addressParts.join(', ');
 }
 
+function isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
+}
+
+function isRetryableGoogleResponseStatus(status: number): boolean {
+    return GOOGLE_RETRYABLE_RESPONSE_STATUSES.has(status);
+}
+
+function delay(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
+}
+
+function buildGoogleStatusMessage(
+    requestName: string,
+    status: string | undefined,
+    errorMessage?: string,
+): string {
+    return `${requestName} failed with status ${status ?? 'UNKNOWN'}${
+        errorMessage ? `: ${errorMessage}` : ''
+    }`;
+}
+
+export function createGoogleStatusError(
+    requestName: string,
+    status: string | undefined,
+    errorMessage?: string,
+): DeliveryAddressEligibilityError | GoogleMapsUpstreamError {
+    if (status === 'ZERO_RESULTS' || status === 'NOT_FOUND') {
+        return new DeliveryAddressEligibilityError(
+            status === 'ZERO_RESULTS'
+                ? 'Address could not be located'
+                : 'Address could not be validated for delivery',
+        );
+    }
+
+    return new GoogleMapsUpstreamError(
+        buildGoogleStatusMessage(requestName, status, errorMessage),
+        503,
+    );
+}
+
+async function parseGoogleJsonResponse<T>(
+    response: Response,
+    requestName: string,
+): Promise<T> {
+    try {
+        const payload: T = await response.json();
+        return payload;
+    } catch {
+        throw new GoogleMapsUpstreamError(
+            `${requestName} returned an invalid JSON payload`,
+            503,
+        );
+    }
+}
+
+export async function fetchGoogleMapsResponse(
+    url: string,
+    requestName: string,
+    options?: FetchGoogleMapsResponseOptions,
+): Promise<Response> {
+    const fetchImpl = options?.fetchImpl ?? fetch;
+    const timeoutMs = options?.timeoutMs ?? GOOGLE_REQUEST_TIMEOUT_MS;
+    const maxAttempts = Math.max(
+        1,
+        options?.maxAttempts ?? GOOGLE_REQUEST_MAX_ATTEMPTS,
+    );
+    const retryBaseDelayMs =
+        options?.retryBaseDelayMs ?? GOOGLE_REQUEST_RETRY_BASE_DELAY_MS;
+    let lastError: GoogleMapsUpstreamError | null = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        let timedOut = false;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            timedOut = true;
+            controller.abort();
+        }, timeoutMs);
+
+        try {
+            const response = await fetchImpl(url, {
+                signal: controller.signal,
+            });
+
+            if (response.ok) {
+                return response;
+            }
+
+            const upstreamError = new GoogleMapsUpstreamError(
+                `${requestName} failed with status ${response.status}`,
+                503,
+            );
+
+            if (
+                !isRetryableGoogleResponseStatus(response.status) ||
+                attempt === maxAttempts
+            ) {
+                throw upstreamError;
+            }
+
+            lastError = upstreamError;
+        } catch (error) {
+            if (error instanceof GoogleMapsUpstreamError) {
+                throw error;
+            }
+
+            if (timedOut || isAbortError(error)) {
+                const timeoutError = new GoogleMapsUpstreamError(
+                    `${requestName} timed out after ${timeoutMs}ms`,
+                    504,
+                );
+
+                if (attempt === maxAttempts) {
+                    throw timeoutError;
+                }
+
+                lastError = timeoutError;
+            } else if (error instanceof TypeError) {
+                const upstreamError = new GoogleMapsUpstreamError(
+                    `${requestName} failed due to an upstream network error`,
+                    503,
+                );
+
+                if (attempt === maxAttempts) {
+                    throw upstreamError;
+                }
+
+                lastError = upstreamError;
+            } else {
+                throw error;
+            }
+        } finally {
+            clearTimeout(timeoutId);
+        }
+
+        await delay(retryBaseDelayMs * 2 ** (attempt - 1));
+    }
+
+    throw (
+        lastError ?? new GoogleMapsUpstreamError(`${requestName} failed`, 503)
+    );
+}
+
 async function geocodeAddress(
     address: string,
     apiKey: string,
+    urlSigningSecret: string | null,
 ): Promise<Coordinates> {
     const params = new URLSearchParams({
         key: apiKey,
         address,
     });
-    const response = await fetch(`${GOOGLE_GEOCODE_API}?${params.toString()}`);
+    const response = await fetchGoogleMapsResponse(
+        buildGoogleMapsRequestUrl(GOOGLE_GEOCODE_API, params, urlSigningSecret),
+        'Google geocoding request',
+    );
 
-    if (!response.ok) {
-        throw new Error(`Geocoding failed with status ${response.status}`);
-    }
-
-    const payload = (await response.json()) as {
+    const payload = await parseGoogleJsonResponse<{
         status?: string;
         error_message?: string;
         results?: Array<{
             geometry?: { location?: { lat?: number; lng?: number } };
         }>;
-    };
+    }>(response, 'Google geocoding request');
 
     if (payload.status !== 'OK') {
-        throw new Error(
-            `Geocoding failed with status ${payload.status ?? 'UNKNOWN'}${
-                payload.error_message ? `: ${payload.error_message}` : ''
-            }`,
+        throw createGoogleStatusError(
+            'Google geocoding request',
+            payload.status,
+            payload.error_message,
         );
     }
 
@@ -212,6 +468,7 @@ async function getRoadDistanceMeters(
     origin: Coordinates,
     destination: Coordinates,
     apiKey: string,
+    urlSigningSecret: string | null,
 ): Promise<number> {
     const params = new URLSearchParams({
         key: apiKey,
@@ -220,17 +477,16 @@ async function getRoadDistanceMeters(
         destinations: `${destination.latitude},${destination.longitude}`,
     });
 
-    const response = await fetch(
-        `${GOOGLE_DISTANCE_MATRIX_API}?${params.toString()}`,
+    const response = await fetchGoogleMapsResponse(
+        buildGoogleMapsRequestUrl(
+            GOOGLE_DISTANCE_MATRIX_API,
+            params,
+            urlSigningSecret,
+        ),
+        'Google distance matrix request',
     );
 
-    if (!response.ok) {
-        throw new Error(
-            `Distance matrix failed with status ${response.status}`,
-        );
-    }
-
-    const payload = (await response.json()) as {
+    const payload = await parseGoogleJsonResponse<{
         status?: string;
         error_message?: string;
         rows?: Array<{
@@ -239,21 +495,22 @@ async function getRoadDistanceMeters(
                 distance?: { value?: number };
             }>;
         }>;
-    };
+    }>(response, 'Google distance matrix request');
 
     if (payload.status !== 'OK') {
-        throw new Error(
-            `Distance matrix failed with status ${payload.status ?? 'UNKNOWN'}${
-                payload.error_message ? `: ${payload.error_message}` : ''
-            }`,
+        throw createGoogleStatusError(
+            'Google distance matrix request',
+            payload.status,
+            payload.error_message,
         );
     }
 
     const element = payload.rows?.[0]?.elements?.[0];
 
     if (!element || element.status !== 'OK') {
-        throw new Error(
-            `Distance matrix route not found (${element?.status ?? 'UNKNOWN'})`,
+        throw createGoogleStatusError(
+            'Google distance matrix request',
+            element?.status,
         );
     }
 
@@ -275,10 +532,15 @@ export async function computeAddressDistanceData(
     input: DistanceComputationInput,
 ): Promise<AddressDistanceResult> {
     const apiKey = getGoogleMapsApiKey();
+    const urlSigningSecret = getGoogleMapsUrlSigningSecret();
     const hqLocation = await getHeadquarterConfig();
 
     const addressString = buildAddressString(input);
-    const destinationCoordinates = await geocodeAddress(addressString, apiKey);
+    const destinationCoordinates = await geocodeAddress(
+        addressString,
+        apiKey,
+        urlSigningSecret,
+    );
 
     const distanceInMeters = await getRoadDistanceMeters(
         {
@@ -287,6 +549,7 @@ export async function computeAddressDistanceData(
         },
         destinationCoordinates,
         apiKey,
+        urlSigningSecret,
     );
     const distanceInKm = distanceInMeters / 1000;
 
@@ -309,7 +572,7 @@ export async function validateDeliveryDistanceLimit(
     }
 
     if (distanceKm > maxDistanceKm) {
-        throw new Error(
+        throw new DeliveryAddressEligibilityError(
             `Address is outside the delivery zone (${distanceKm.toFixed(1)}km > ${maxDistanceKm}km)`,
         );
     }
