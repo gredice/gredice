@@ -7,7 +7,8 @@ export function useDeliveryAddresses() {
     return useQuery({
         queryKey: deliveryAddressesQueryKey,
         queryFn: async () => {
-            const response = await clientAuthenticated().api.delivery.addresses.$get();
+            const response =
+                await clientAuthenticated().api.delivery.addresses.$get();
             if (response.status !== 200) {
                 throw new Error('Failed to fetch delivery addresses');
             }

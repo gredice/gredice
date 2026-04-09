@@ -24,9 +24,12 @@ export function AcceptInvitationCard() {
 
         setLoading(true);
         try {
-            const res = await clientAuthenticated().api.accounts.invitations.accept.$post({
-                json: { token },
-            });
+            const res =
+                await clientAuthenticated().api.accounts.invitations.accept.$post(
+                    {
+                        json: { token },
+                    },
+                );
 
             if (res.ok) {
                 setResult(

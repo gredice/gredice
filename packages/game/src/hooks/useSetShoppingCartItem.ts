@@ -22,7 +22,9 @@ export function useSetShoppingCartItem() {
                 throw new Error('Shopping cart is not available');
             }
 
-            const response = await clientAuthenticated().api['shopping-cart'].$post({
+            const response = await clientAuthenticated().api[
+                'shopping-cart'
+            ].$post({
                 json: {
                     ...item,
                     cartId: cart.id,

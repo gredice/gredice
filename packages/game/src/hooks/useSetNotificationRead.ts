@@ -14,7 +14,9 @@ export function useSetNotificationRead() {
             read: boolean;
             readWhere: string | undefined;
         }) => {
-            const res = await clientAuthenticated().api.notifications[':id'].$patch({
+            const res = await clientAuthenticated().api.notifications[
+                ':id'
+            ].$patch({
                 param: { id: id.toString() },
                 json: {
                     read: read.toString(),

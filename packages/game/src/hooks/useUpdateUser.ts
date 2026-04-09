@@ -27,7 +27,9 @@ export function useUpdateUser() {
                 throw new Error('Current user data is not available');
             }
 
-            const response = await clientAuthenticated().api.users[':userId'].$patch({
+            const response = await clientAuthenticated().api.users[
+                ':userId'
+            ].$patch({
                 param: {
                     userId: currentUser.data.id,
                 },

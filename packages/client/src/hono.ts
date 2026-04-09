@@ -24,6 +24,7 @@ function createClient(mode: ClientMode) {
 
         if (!authRequired) {
             headers.delete('Authorization');
+            headers.delete('authorization');
         }
 
         return baseFetch(input, {

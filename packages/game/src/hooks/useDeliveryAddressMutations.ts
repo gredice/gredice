@@ -17,9 +17,10 @@ export function useCreateDeliveryAddress() {
             countryCode?: string;
             isDefault?: boolean;
         }) => {
-            const response = await clientAuthenticated().api.delivery.addresses.$post({
-                json: data,
-            });
+            const response =
+                await clientAuthenticated().api.delivery.addresses.$post({
+                    json: data,
+                });
             if (!response.ok) {
                 throw new Error('Failed to create delivery address');
             }

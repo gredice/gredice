@@ -53,9 +53,9 @@ export function useRaisedBedFieldRemove() {
             }
 
             // Call the backend API to update the plant status to 'removed'
-            const response = await clientAuthenticated().api.gardens[':gardenId'][
-                'raised-beds'
-            ][':raisedBedId'].fields[':positionIndex'].$patch({
+            const response = await clientAuthenticated().api.gardens[
+                ':gardenId'
+            ]['raised-beds'][':raisedBedId'].fields[':positionIndex'].$patch({
                 param: {
                     gardenId: garden.id.toString(),
                     raisedBedId: raisedBedId.toString(),

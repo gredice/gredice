@@ -303,13 +303,12 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 return null;
             }
 
-            const currentGardenResponse = await clientAuthenticated().api.gardens[
-                ':gardenId'
-            ].$get({
-                param: {
-                    gardenId: currentGardenId.toString(),
-                },
-            });
+            const currentGardenResponse =
+                await clientAuthenticated().api.gardens[':gardenId'].$get({
+                    param: {
+                        gardenId: currentGardenId.toString(),
+                    },
+                });
             if (currentGardenResponse.status !== 200) {
                 console.error(
                     'Failed to fetch current garden',

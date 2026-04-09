@@ -7,9 +7,10 @@ export function useUpdateAccountTimeZone() {
 
     return useMutation({
         mutationFn: async (timeZone: string) => {
-            const response = await clientAuthenticated().api.accounts.current.$patch({
-                json: { timeZone },
-            });
+            const response =
+                await clientAuthenticated().api.accounts.current.$patch({
+                    json: { timeZone },
+                });
             return response.json();
         },
         onSuccess: () => {

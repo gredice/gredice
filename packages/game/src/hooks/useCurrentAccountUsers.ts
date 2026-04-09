@@ -7,7 +7,8 @@ export function useCurrentAccountUsers() {
     return useQuery({
         queryKey: currentAccountUsersKeys,
         queryFn: async () => {
-            const response = await clientAuthenticated().api.accounts.current.users.$get();
+            const response =
+                await clientAuthenticated().api.accounts.current.users.$get();
             if (response.status === 401) {
                 return [];
             }

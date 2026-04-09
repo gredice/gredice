@@ -20,7 +20,9 @@ export function SendVerifyEmailButton() {
         }
 
         setIsLoading(true);
-        const response = await clientPublic().api.auth['send-verify-email'].$post({
+        const response = await clientPublic().api.auth[
+            'send-verify-email'
+        ].$post({
             json: {
                 email,
             },

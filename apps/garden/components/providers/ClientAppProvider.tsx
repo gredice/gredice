@@ -24,7 +24,8 @@ async function currentUserFactory() {
     if (response.status < 200 || response.status > 299) {
         if (response.status === 401) {
             // Refresh token flow sets the session cookie on 401; retry once.
-            const retryResponse = await clientAuthenticated().api.users.current.$get();
+            const retryResponse =
+                await clientAuthenticated().api.users.current.$get();
             if (retryResponse.ok) {
                 return (await retryResponse.json()) as User;
             }

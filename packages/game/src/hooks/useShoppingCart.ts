@@ -9,7 +9,8 @@ export function useShoppingCart() {
     return useQuery({
         queryKey: useShoppingCartQueryKey,
         queryFn: async () => {
-            const response = await clientAuthenticated().api['shopping-cart'].$get();
+            const response =
+                await clientAuthenticated().api['shopping-cart'].$get();
             if (response.status === 401) {
                 return null;
             }

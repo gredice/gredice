@@ -24,7 +24,9 @@ export type CheckoutItem = {
 };
 
 type StripeCheckoutSessionCreateParams = NonNullable<
-    Parameters<ReturnType<typeof getStripe>['checkout']['sessions']['create']>[0]
+    Parameters<
+        ReturnType<typeof getStripe>['checkout']['sessions']['create']
+    >[0]
 >;
 
 async function ensureStripeCustomer(account: UserAccount): Promise<string> {

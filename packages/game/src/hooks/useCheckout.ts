@@ -32,9 +32,10 @@ export function isCompleteDeliverySelection(
 export function useCheckout() {
     return useMutation({
         mutationFn: async (data: CheckoutData) => {
-            const response = await clientAuthenticated().api.checkout.checkout.$post({
-                json: data,
-            });
+            const response =
+                await clientAuthenticated().api.checkout.checkout.$post({
+                    json: data,
+                });
             if (!response.ok) {
                 console.error(
                     'Failed to create checkout session:',

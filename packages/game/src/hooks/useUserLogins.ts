@@ -10,7 +10,9 @@ export const queryKey = {
 };
 
 async function getUserLogins(userId: string) {
-    const response = await clientAuthenticated().api.users[':userId'].logins.$get({
+    const response = await clientAuthenticated().api.users[
+        ':userId'
+    ].logins.$get({
         param: {
             userId,
         },
