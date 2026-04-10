@@ -1,4 +1,5 @@
 import { Analytics } from '@vercel/analytics/react';
+import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { VercelToolbar } from '@vercel/toolbar/next';
@@ -27,6 +28,19 @@ export default function RootLayout({
     children: ReactNode;
 }>) {
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
+    const postHogApiKey =
+        process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+    const content = (
+        <>
+            <ClientAppProvider>
+                <ImpersonationBanner />
+                {children}
+            </ClientAppProvider>
+            <Analytics />
+            {shouldInjectToolbar && <VercelToolbar />}
+        </>
+    );
 
     return (
         <html lang="hr" translate="no" suppressHydrationWarning={true}>
@@ -35,12 +49,23 @@ export default function RootLayout({
                 <meta name="apple-mobile-web-app-title" content="Gredice" />
             </Head>
             <body className="antialiased bg-muted">
-                <ClientAppProvider>
-                    <ImpersonationBanner />
-                    {children}
-                </ClientAppProvider>
-                <Analytics />
-                {shouldInjectToolbar && <VercelToolbar />}
+                {postHogApiKey ? (
+                    <PostHogProvider
+                        apiKey={postHogApiKey}
+                        clientOptions={{
+                            api_host: '/ingest',
+                            capture_exceptions: true,
+                            debug: process.env.NODE_ENV === 'development',
+                            defaults: '2026-01-30',
+                            ui_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+                        }}
+                    >
+                        <PostHogPageView />
+                        {content}
+                    </PostHogProvider>
+                ) : (
+                    content
+                )}
             </body>
         </html>
     );

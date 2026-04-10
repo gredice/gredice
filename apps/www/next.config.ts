@@ -18,14 +18,6 @@ const nextConfig: NextConfig = {
                 source: '/api/gredice/:path*',
                 destination: `${apiHost}/:path*`,
             },
-            {
-                source: '/ingest/static/:path*',
-                destination: `${process.env.NEXT_PUBLIC_POSTHOG_HOST}/static/:path*`,
-            },
-            {
-                source: '/ingest/:path*',
-                destination: `${process.env.NEXT_PUBLIC_POSTHOG_HOST}/:path*`,
-            },
         ];
     },
     experimental: {

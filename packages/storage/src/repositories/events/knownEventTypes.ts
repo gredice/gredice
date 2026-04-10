@@ -48,6 +48,7 @@ export const knownEventTypes = {
         aiAnalysis: 'raisedBedField.aiAnalysis',
     },
     operations: {
+        assign: 'operation.assign',
         schedule: 'operation.schedule',
         complete: 'operation.complete',
         fail: 'operation.fail',

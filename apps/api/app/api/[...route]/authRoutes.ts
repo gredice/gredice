@@ -316,7 +316,7 @@ const app = new Hono()
                 setRefreshCookie(context, refreshToken),
             ]);
 
-            getPostHogClient().capture({
+            (await getPostHogClient()).capture({
                 distinctId: user.id,
                 event: 'user_logged_in',
                 properties: { provider: 'password' },
@@ -424,7 +424,7 @@ const app = new Hono()
                     setRefreshCookie(context, refreshToken),
                 ]);
 
-                getPostHogClient().capture({
+                (await getPostHogClient()).capture({
                     distinctId: userId,
                     event: isNewUser ? 'user_signed_up' : 'user_logged_in',
                     properties: { provider: 'google' },
@@ -546,7 +546,7 @@ const app = new Hono()
                     setRefreshCookie(context, refreshToken),
                 ]);
 
-                getPostHogClient().capture({
+                (await getPostHogClient()).capture({
                     distinctId: userId,
                     event: isNewUser ? 'user_signed_up' : 'user_logged_in',
                     properties: { provider: 'facebook' },
@@ -697,7 +697,7 @@ const app = new Hono()
             await clearCookie(context);
             await clearRefreshCookie(context);
             if (userId) {
-                getPostHogClient().capture({
+                (await getPostHogClient()).capture({
                     distinctId: userId,
                     event: 'user_logged_out',
                 });
@@ -736,7 +736,7 @@ const app = new Hono()
             // Create user with password
             const userId = await createUserWithPassword(email, password);
 
-            getPostHogClient().capture({
+            (await getPostHogClient()).capture({
                 distinctId: userId,
                 event: 'user_signed_up',
                 properties: { provider: 'password' },
@@ -906,7 +906,7 @@ const app = new Hono()
                 isVerified: true,
             });
 
-            getPostHogClient().capture({
+            (await getPostHogClient()).capture({
                 distinctId: user.id,
                 event: 'user_email_verified',
             });

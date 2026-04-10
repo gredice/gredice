@@ -1,5 +1,6 @@
 'use client';
 
+import type { OperationAssignableFarmUser } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Calendar, Close } from '@signalco/ui-icons';
@@ -11,6 +12,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { KnownPages } from '../../../src/KnownPages';
 import { AcceptOperationModal } from './AcceptOperationModal';
+import { AssignOperationModal } from './AssignOperationModal';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
@@ -30,6 +32,10 @@ interface RaisedBedOperationsScheduleSectionProps {
     scheduledOperations: Operation[];
     plantSorts: EntityStandardized[] | null | undefined;
     operationsData: EntityStandardized[] | null | undefined;
+    assignableFarmUsersByOperationId: Record<
+        number,
+        OperationAssignableFarmUser[]
+    >;
     userId: string;
 }
 
@@ -39,6 +45,7 @@ export function RaisedBedOperationsScheduleSection({
     scheduledOperations,
     plantSorts,
     operationsData,
+    assignableFarmUsersByOperationId,
     userId,
 }: RaisedBedOperationsScheduleSectionProps) {
     if (raisedBeds.length === 0) {
@@ -275,6 +282,17 @@ export function RaisedBedOperationsScheduleSection({
                                             {operationLabel}
                                         </Typography>
                                     </a>
+                                    <AssignOperationModal
+                                        operationId={operation.id}
+                                        label={operationLabel}
+                                        farmUsers={
+                                            assignableFarmUsersByOperationId[
+                                                operation.id
+                                            ] ?? []
+                                        }
+                                        assignedUser={operation.assignedUser}
+                                        disabled={operationInactive}
+                                    />
                                     <Typography
                                         level="body2"
                                         className={`ml-1 italic ${operationStatusClassName}`}

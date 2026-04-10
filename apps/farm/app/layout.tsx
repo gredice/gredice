@@ -1,4 +1,5 @@
 import { Analytics } from '@vercel/analytics/react';
+import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
@@ -25,6 +26,18 @@ export default function RootLayout({
     children: ReactNode;
 }>) {
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
+    const postHogApiKey =
+        process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+    const content = (
+        <>
+            <ClientAppProvider>
+                <AuthAppProvider>{children}</AuthAppProvider>
+            </ClientAppProvider>
+            <Analytics />
+            {shouldInjectToolbar && <VercelToolbar />}
+        </>
+    );
 
     return (
         <html lang="hr" translate="no">
@@ -34,11 +47,23 @@ export default function RootLayout({
                 <title>Farma | Gredice</title>
             </Head>
             <body className="antialiased min-h-screen flex bg-muted">
-                <ClientAppProvider>
-                    <AuthAppProvider>{children}</AuthAppProvider>
-                </ClientAppProvider>
-                <Analytics />
-                {shouldInjectToolbar && <VercelToolbar />}
+                {postHogApiKey ? (
+                    <PostHogProvider
+                        apiKey={postHogApiKey}
+                        clientOptions={{
+                            api_host: '/ingest',
+                            capture_exceptions: true,
+                            debug: process.env.NODE_ENV === 'development',
+                            defaults: '2026-01-30',
+                            ui_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+                        }}
+                    >
+                        <PostHogPageView />
+                        {content}
+                    </PostHogProvider>
+                ) : (
+                    content
+                )}
             </body>
         </html>
     );

@@ -1,4 +1,4 @@
-import type { SelectTimeSlot } from '@gredice/storage';
+import type { OperationAssignedUser, SelectTimeSlot } from '@gredice/storage';
 
 // Type definitions shared across schedule components
 export type RaisedBedField = {
@@ -42,6 +42,10 @@ export type Operation = {
     createdAt: Date;
     isAccepted: boolean;
     isDeleted: boolean;
+    assignedUserId?: string | null;
+    assignedBy?: string;
+    assignedAt?: Date;
+    assignedUser?: OperationAssignedUser | null;
 };
 
 export type DeliveryRequestAddress = {

@@ -1,4 +1,5 @@
 import { Analytics } from '@vercel/analytics/react';
+import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Head from 'next/head';
@@ -23,6 +24,19 @@ export default function RootLayout({
 }: Readonly<{
     children: ReactNode;
 }>) {
+    const postHogApiKey =
+        process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+    const content = (
+        <>
+            <ClientAppProvider>
+                <ImpersonationBanner />
+                {children}
+            </ClientAppProvider>
+            <Analytics />
+        </>
+    );
+
     return (
         <html lang="hr" translate="no" suppressHydrationWarning={true}>
             <Head>
@@ -31,11 +45,23 @@ export default function RootLayout({
                 <title>Admin | Gredice</title>
             </Head>
             <body className="antialiased min-h-screen flex bg-muted">
-                <ClientAppProvider>
-                    <ImpersonationBanner />
-                    {children}
-                </ClientAppProvider>
-                <Analytics />
+                {postHogApiKey ? (
+                    <PostHogProvider
+                        apiKey={postHogApiKey}
+                        clientOptions={{
+                            api_host: '/ingest',
+                            capture_exceptions: true,
+                            debug: process.env.NODE_ENV === 'development',
+                            defaults: '2026-01-30',
+                            ui_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+                        }}
+                    >
+                        <PostHogPageView />
+                        {content}
+                    </PostHogProvider>
+                ) : (
+                    content
+                )}
             </body>
         </html>
     );

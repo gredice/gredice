@@ -8,6 +8,7 @@ import {
     createNotification,
     createOperation,
     earnSunflowers,
+    getAssignableFarmUsersByOperationIds,
     getEntityFormatted,
     getOperationById,
     getRaisedBed,
@@ -172,6 +173,54 @@ export async function acceptOperationAction(operationId: number) {
         revalidatePath(KnownPages.Garden(operation.gardenId));
     if (operation.raisedBedId)
         revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+}
+
+export async function assignOperationUserAction(
+    operationId: number,
+    assignedUserId: string | null,
+) {
+    const { userId } = await auth(['admin']);
+    const operation = await getOperationById(operationId);
+    if (!operation) {
+        throw new Error(`Operation with ID ${operationId} not found.`);
+    }
+
+    const normalizedAssignedUserId = assignedUserId?.trim() || null;
+    if (operation.assignedUserId === normalizedAssignedUserId) {
+        return { success: true };
+    }
+
+    if (normalizedAssignedUserId) {
+        const assignableFarmUsersByOperationId =
+            await getAssignableFarmUsersByOperationIds([operationId]);
+        const assignableFarmUsers =
+            assignableFarmUsersByOperationId[operationId] ?? [];
+
+        if (
+            !assignableFarmUsers.some(
+                (farmUser) => farmUser.id === normalizedAssignedUserId,
+            )
+        ) {
+            throw new Error('Odabrani korisnik nije dostupan za ovu radnju.');
+        }
+    }
+
+    await createEvent(
+        knownEvents.operations.assignedV1(operationId.toString(), {
+            assignedUserId: normalizedAssignedUserId,
+            assignedBy: userId,
+        }),
+    );
+
+    revalidatePath(KnownPages.Schedule);
+    if (operation.accountId)
+        revalidatePath(KnownPages.Account(operation.accountId));
+    if (operation.gardenId)
+        revalidatePath(KnownPages.Garden(operation.gardenId));
+    if (operation.raisedBedId)
+        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+
+    return { success: true };
 }
 
 export async function completeOperation(

@@ -45,6 +45,7 @@ export type {
     InvoiceCreatePayload,
     InvoicePaidPayload,
     InvoiceUpdatePayload,
+    OperationAssignPayload,
     OperationCancelPayload,
     OperationCompletePayload,
     OperationEventsAnyPayload,

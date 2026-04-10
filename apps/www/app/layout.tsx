@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { PageNav } from '@signalco/ui/Nav';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
@@ -65,6 +66,49 @@ export default async function RootLayout({
     children: ReactNode;
 }>) {
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
+    const postHogApiKey =
+        process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+    const content = (
+        <ClientAppProvider>
+            <Stack>
+                <div className="z-20">
+                    <PageNav
+                        logo={
+                            <Logotype
+                                className="w-[140px] h-[38px]"
+                                aria-label="Gredice"
+                            />
+                        }
+                        links={[
+                            {
+                                href: KnownPages.RaisedBeds,
+                                text: 'Podignuta gredica',
+                            },
+                            {
+                                href: KnownPages.Plants,
+                                text: 'Biljke',
+                            },
+                            {
+                                href: KnownPages.FAQ,
+                                text: 'Česta pitanja',
+                            },
+                        ]}
+                    >
+                        <div className="absolute bg-background/80 w-full inset-0 -z-10" />
+                        <NavUserButton href={KnownPages.GardenApp} />
+                    </PageNav>
+                </div>
+                <main className="mt-16 relative">
+                    <LayoutContainer>{children}</LayoutContainer>
+                </main>
+                <Footer />
+            </Stack>
+            <Analytics />
+            <PageViewTracker />
+            {shouldInjectToolbar && <VercelToolbar />}
+        </ClientAppProvider>
+    );
 
     return (
         <html lang="hr" translate="no" suppressHydrationWarning>
@@ -74,44 +118,23 @@ export default async function RootLayout({
                 <meta name="theme-color" content="#2e6f40" />
             </Head>
             <body className="antialiased">
-                <ClientAppProvider>
-                    <Stack>
-                        <div className="z-20">
-                            <PageNav
-                                logo={
-                                    <Logotype
-                                        className="w-[140px] h-[38px]"
-                                        aria-label="Gredice"
-                                    />
-                                }
-                                links={[
-                                    {
-                                        href: KnownPages.RaisedBeds,
-                                        text: 'Podignuta gredica',
-                                    },
-                                    {
-                                        href: KnownPages.Plants,
-                                        text: 'Biljke',
-                                    },
-                                    {
-                                        href: KnownPages.FAQ,
-                                        text: 'Česta pitanja',
-                                    },
-                                ]}
-                            >
-                                <div className="absolute bg-background/80 w-full inset-0 -z-10" />
-                                <NavUserButton href={KnownPages.GardenApp} />
-                            </PageNav>
-                        </div>
-                        <main className="mt-16 relative">
-                            <LayoutContainer>{children}</LayoutContainer>
-                        </main>
-                        <Footer />
-                    </Stack>
-                    <Analytics />
-                    <PageViewTracker />
-                    {shouldInjectToolbar && <VercelToolbar />}
-                </ClientAppProvider>
+                {postHogApiKey ? (
+                    <PostHogProvider
+                        apiKey={postHogApiKey}
+                        clientOptions={{
+                            api_host: '/ingest',
+                            capture_exceptions: true,
+                            debug: process.env.NODE_ENV === 'development',
+                            defaults: '2026-01-30',
+                            ui_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+                        }}
+                    >
+                        <PostHogPageView />
+                        {content}
+                    </PostHogProvider>
+                ) : (
+                    content
+                )}
             </body>
         </html>
     );
