@@ -13,12 +13,14 @@ export function useRaisedBedAiAnalysis() {
             gardenId,
             raisedBedId,
             imageUrl,
+            onChunk,
         }: {
             gardenId: number;
             raisedBedId: number;
             imageUrl: string;
+            onChunk?: (accumulated: string) => void;
         }) => {
-            const response = await client().api.gardens[':gardenId'][
+            const response = await client({ auth: 'authenticated' }).api.gardens[':gardenId'][
                 'raised-beds'
             ][':raisedBedId']['analyze-image'].$post({
                 param: {
@@ -37,7 +39,22 @@ export function useRaisedBedAiAnalysis() {
                 );
             }
 
-            return response.json();
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error('No response stream available.');
+            }
+
+            const decoder = new TextDecoder();
+            let markdown = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                markdown += decoder.decode(value, { stream: true });
+                onChunk?.(markdown);
+            }
+
+            return { markdown };
         },
         onSuccess: async (_data, variables) => {
             await queryClient.invalidateQueries({

@@ -50,11 +50,12 @@ function relateAiHistory(entries: DiaryEntry[] | undefined) {
             return;
         }
 
-        const relatedAiEntries = aiEntries.filter((aiEntry) =>
-            aiEntry.timestamp.getTime() >= entry.timestamp.getTime() &&
-            aiEntry.imageUrls?.some((imageUrl) =>
-                entry.imageUrls?.includes(imageUrl),
-            ),
+        const relatedAiEntries = aiEntries.filter(
+            (aiEntry) =>
+                aiEntry.timestamp.getTime() >= entry.timestamp.getTime() &&
+                aiEntry.imageUrls?.some((imageUrl) =>
+                    entry.imageUrls?.includes(imageUrl),
+                ),
         );
 
         if (!relatedAiEntries.length) {
@@ -153,72 +154,84 @@ function DiaryList({
             )}
             {entries?.map((entry) => {
                 const aiHistory = aiHistoryByEntryId.get(entry.id);
+                const entryAction = renderEntryAction?.(entry, aiHistory);
 
                 return (
-                <ListItem
-                    key={entry.id}
-                    label={
-                        <Row
-                            spacing={2}
-                            className="justify-between font-normal"
-                        >
-                            <Row
-                                spacing={2}
-                                className="items-start flex-1"
-                            >
-                                <DiaryEntryImages
-                                    name={entry.name}
-                                    imageUrls={entry.imageUrls}
-                                />
-                                <Stack>
-                                    <Typography level="body1" semiBold>
-                                        {entry.name}
-                                    </Typography>
-                                    {entry.isMarkdown ? (
-                                        <div className="prose prose-sm dark:prose-invert">
-                                            <ReactMarkdown>
-                                                {entry.description ?? ''}
-                                            </ReactMarkdown>
-                                        </div>
-                                    ) : (
-                                        <Typography level="body2">
-                                            {entry.description}
-                                        </Typography>
-                                    )}
-                                </Stack>
-                            </Row>
-                            <Stack className="items-end">
-                                {entry.status && (
-                                    <Chip
-                                        color={
-                                            entry.status === 'Novo'
-                                                ? 'warning'
-                                                : entry.status === 'Završeno'
-                                                  ? 'success'
-                                                  : entry.status === 'Planirano'
-                                                    ? 'info'
-                                                    : entry.status ===
-                                                            'Neuspješno' ||
-                                                        entry.status ===
-                                                            'Otkazano'
-                                                      ? 'error'
-                                                      : 'neutral'
-                                        }
-                                        className="shrink-0 w-fit self-end"
+                    <div
+                        key={entry.id}
+                        className={entryAction ? 'space-y-1' : undefined}
+                    >
+                        <ListItem
+                            label={
+                                <Row
+                                    spacing={2}
+                                    className="justify-between font-normal"
+                                >
+                                    <Row
+                                        spacing={2}
+                                        className="items-start flex-1"
                                     >
-                                        {entry.status}
-                                    </Chip>
-                                )}
-                                <Typography level="body2" noWrap>
-                                    {entry.timestamp.toLocaleDateString(
-                                        'hr-HR',
-                                    )}
-                                </Typography>
-                                {renderEntryAction?.(entry, aiHistory)}
-                            </Stack>
-                        </Row>
-                    }
-                />
+                                        <DiaryEntryImages
+                                            name={entry.name}
+                                            imageUrls={entry.imageUrls}
+                                        />
+                                        <Stack>
+                                            <Typography level="body1" semiBold>
+                                                {entry.name}
+                                            </Typography>
+                                            {entry.isMarkdown ? (
+                                                <div className="prose prose-sm dark:prose-invert">
+                                                    <ReactMarkdown>
+                                                        {entry.description ??
+                                                            ''}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            ) : (
+                                                <Typography level="body2">
+                                                    {entry.description}
+                                                </Typography>
+                                            )}
+                                        </Stack>
+                                    </Row>
+                                    <Stack className="items-end shrink-0">
+                                        {entry.status && (
+                                            <Chip
+                                                color={
+                                                    entry.status === 'Novo'
+                                                        ? 'warning'
+                                                        : entry.status ===
+                                                            'Završeno'
+                                                          ? 'success'
+                                                          : entry.status ===
+                                                              'Planirano'
+                                                            ? 'info'
+                                                            : entry.status ===
+                                                                    'Neuspješno' ||
+                                                                entry.status ===
+                                                                    'Otkazano'
+                                                              ? 'error'
+                                                              : 'neutral'
+                                                }
+                                                className="shrink-0 w-fit self-end"
+                                            >
+                                                {entry.status}
+                                            </Chip>
+                                        )}
+                                        <Typography level="body2" noWrap>
+                                            {entry.timestamp.toLocaleDateString(
+                                                'hr-HR',
+                                            )}
+                                        </Typography>
+                                    </Stack>
+                                </Row>
+                            }
+                        />
+                        {entryAction && (
+                            <div className="flex justify-end px-2 pb-2">
+                                {entryAction}
+                            </div>
+                        )}
+                    </div>
                 );
             })}
         </List>
@@ -240,7 +253,7 @@ export function RaisedBedFieldDiary({
         error,
     } = useRaisedBedFieldDiaryEntries(gardenId, raisedBedId, positionIndex);
     const flags = useGameFlags();
-    const renderEntryAction = Boolean(flags.raisedBedImageAI)
+    const renderEntryAction = flags.raisedBedImageAI
         ? (entry: DiaryEntry, aiHistory?: DiaryEntryAiHistory) => {
               if (!entry.imageUrls?.length || entry.isMarkdown) {
                   return null;
@@ -248,13 +261,13 @@ export function RaisedBedFieldDiary({
 
               return (
                   <RaisedBedDiaryAiAction
-                                            gardenId={gardenId}
-                                            raisedBedId={raisedBedId}
-                                            positionIndex={positionIndex}
-                                            entryName={entry.name}
-                                            imageUrls={entry.imageUrls}
-                                              historyEntries={aiHistory?.entries}
-                                    />
+                      gardenId={gardenId}
+                      raisedBedId={raisedBedId}
+                      positionIndex={positionIndex}
+                      entryName={entry.name}
+                      imageUrls={entry.imageUrls}
+                      historyEntries={aiHistory?.entries}
+                  />
               );
           }
         : undefined;
@@ -282,7 +295,7 @@ export function RaisedBedDiary({
         error,
     } = useRaisedBedDiaryEntries(gardenId, raisedBedId);
     const flags = useGameFlags();
-    const renderEntryAction = Boolean(flags.raisedBedImageAI)
+    const renderEntryAction = flags.raisedBedImageAI
         ? (entry: DiaryEntry, aiHistory?: DiaryEntryAiHistory) => {
               if (!entry.imageUrls?.length || entry.isMarkdown) {
                   return null;

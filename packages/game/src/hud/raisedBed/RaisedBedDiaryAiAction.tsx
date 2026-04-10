@@ -38,20 +38,19 @@ export function RaisedBedDiaryAiAction({
     historyEntries,
 }: RaisedBedDiaryAiActionProps) {
     const [open, setOpen] = useState(false);
-    const [selectedImageUrl, setSelectedImageUrl] = useState(imageUrls[0] ?? '');
+    const [selectedImageUrl, setSelectedImageUrl] = useState(
+        imageUrls[0] ?? '',
+    );
     const [visibleMarkdown, setVisibleMarkdown] = useState('');
     const [phase, setPhase] = useState<AnalysisPhase>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [selectedHistoryEntryId, setSelectedHistoryEntryId] = useState<
         number | null
     >(null);
-    const [resultSource, setResultSource] = useState<'history' | 'analysis' | null>(
-        null,
-    );
+    const [resultSource, setResultSource] = useState<
+        'history' | 'analysis' | null
+    >(null);
     const requestIdRef = useRef(0);
-    const typewriterTimerRef = useRef<ReturnType<typeof setInterval> | null>(
-        null,
-    );
     const raisedBedAnalysis = useRaisedBedAiAnalysis();
     const raisedBedFieldAnalysis = useRaisedBedFieldAiAnalysis();
     const activeMutation =
@@ -61,29 +60,13 @@ export function RaisedBedDiaryAiAction({
     const latestHistoryEntry = historyEntries?.[0];
 
     useEffect(() => {
-        return () => {
-            if (typewriterTimerRef.current) {
-                clearInterval(typewriterTimerRef.current);
-            }
-        };
-    }, []);
-
-    useEffect(() => {
         if (!selectedImageUrl && imageUrls[0]) {
             setSelectedImageUrl(imageUrls[0]);
         }
     }, [imageUrls, selectedImageUrl]);
 
-    function clearTypewriterTimer() {
-        if (typewriterTimerRef.current) {
-            clearInterval(typewriterTimerRef.current);
-            typewriterTimerRef.current = null;
-        }
-    }
-
     function resetPresentation() {
         requestIdRef.current += 1;
-        clearTypewriterTimer();
         setVisibleMarkdown('');
         setErrorMessage(null);
         setPhase('idle');
@@ -91,46 +74,34 @@ export function RaisedBedDiaryAiAction({
         setResultSource(null);
     }
 
-    function startTypewriter(markdown: string, requestId: number) {
-        clearTypewriterTimer();
-        setVisibleMarkdown('');
-
-        if (!markdown) {
-            setPhase('done');
-            return;
-        }
-
-        setPhase('typing');
-        let index = 0;
-        const chunkSize = Math.max(4, Math.ceil(markdown.length / 90));
-
-        typewriterTimerRef.current = setInterval(() => {
-            if (requestIdRef.current !== requestId) {
-                clearTypewriterTimer();
-                return;
-            }
-
-            index = Math.min(markdown.length, index + chunkSize);
-            setVisibleMarkdown(markdown.slice(0, index));
-
-            if (index >= markdown.length) {
-                clearTypewriterTimer();
-                setPhase('done');
-            }
-        }, 28);
-    }
-
     function beginAnalysis(nextImageUrl: string) {
         requestIdRef.current += 1;
         const requestId = requestIdRef.current;
 
-        clearTypewriterTimer();
         setSelectedImageUrl(nextImageUrl);
         setVisibleMarkdown('');
         setErrorMessage(null);
         setPhase('thinking');
         setSelectedHistoryEntryId(null);
         setResultSource('analysis');
+
+        const onChunk = (accumulated: string) => {
+            if (requestIdRef.current !== requestId) return;
+            setPhase('typing');
+            setVisibleMarkdown(accumulated);
+        };
+
+        const callbacks = {
+            onSuccess: () => {
+                if (requestIdRef.current !== requestId) return;
+                setPhase('done');
+            },
+            onError: (error: Error) => {
+                if (requestIdRef.current !== requestId) return;
+                setPhase('error');
+                setErrorMessage(error.message);
+            },
+        };
 
         if (typeof positionIndex === 'number') {
             raisedBedFieldAnalysis.mutate(
@@ -139,54 +110,21 @@ export function RaisedBedDiaryAiAction({
                     raisedBedId,
                     positionIndex,
                     imageUrl: nextImageUrl,
+                    onChunk,
                 },
-                {
-                    onSuccess: (data) => {
-                        if (requestIdRef.current !== requestId) {
-                            return;
-                        }
-
-                        startTypewriter(data.markdown, requestId);
-                    },
-                    onError: (error) => {
-                        if (requestIdRef.current !== requestId) {
-                            return;
-                        }
-
-                        clearTypewriterTimer();
-                        setPhase('error');
-                        setErrorMessage(error.message);
-                    },
-                },
+                callbacks,
             );
-            return;
+        } else {
+            raisedBedAnalysis.mutate(
+                {
+                    gardenId,
+                    raisedBedId,
+                    imageUrl: nextImageUrl,
+                    onChunk,
+                },
+                callbacks,
+            );
         }
-
-        raisedBedAnalysis.mutate(
-            {
-                gardenId,
-                raisedBedId,
-                imageUrl: nextImageUrl,
-            },
-            {
-                onSuccess: (data) => {
-                    if (requestIdRef.current !== requestId) {
-                        return;
-                    }
-
-                    startTypewriter(data.markdown, requestId);
-                },
-                onError: (error) => {
-                    if (requestIdRef.current !== requestId) {
-                        return;
-                    }
-
-                    clearTypewriterTimer();
-                    setPhase('error');
-                    setErrorMessage(error.message);
-                },
-            },
-        );
     }
 
     function handleOpen() {
@@ -205,7 +143,6 @@ export function RaisedBedDiaryAiAction({
         }
 
         requestIdRef.current += 1;
-        clearTypewriterTimer();
         setOpen(true);
         setSelectedHistoryEntryId(entry.id);
         setSelectedImageUrl(entry.imageUrls?.[0] ?? imageUrls[0] ?? '');
@@ -227,26 +164,26 @@ export function RaisedBedDiaryAiAction({
         resultSource === 'history' && phase === 'done'
             ? 'Prethodni odgovor'
             : phase === 'thinking'
-            ? 'Suncokret razmišlja...'
-            : phase === 'typing'
-              ? 'Analiza stiže...'
-              : phase === 'done'
-                ? 'Analiza je spremna'
-                : phase === 'error'
-                  ? 'Analiza nije uspjela'
-                  : 'Pitaj suncokret';
+              ? 'Suncokret razmišlja...'
+              : phase === 'typing'
+                ? 'Analiza stiže...'
+                : phase === 'done'
+                  ? 'Analiza je spremna'
+                  : phase === 'error'
+                    ? 'Analiza nije uspjela'
+                    : 'Pitaj suncokret';
     const statusDescription =
         resultSource === 'history' && phase === 'done'
             ? 'Prikazujem posljednji spremljeni AI odgovor za ovu fotografiju. Za novu provjeru pokreni analizu ponovno.'
             : phase === 'thinking'
-            ? 'Skeniram fotografiju i tražim tragove stresa, rasta i hitnih koraka.'
-            : phase === 'typing'
-              ? 'Preporuke se ispisuju u AI dnevničkom formatu.'
-              : phase === 'done'
-                ? 'Odgovor je spremljen i u dnevnik, a ovdje ga vidiš odmah.'
-                : phase === 'error'
-                  ? 'Pokušaj ponovno s istom ili drugom fotografijom iz unosa.'
-                  : 'Pokreni analizu nad fotografijom iz ovog dnevničkog unosa.';
+              ? 'Skeniram fotografiju i tražim tragove stresa, rasta i hitnih koraka.'
+              : phase === 'typing'
+                ? 'Preporuke se ispisuju u AI dnevničkom formatu.'
+                : phase === 'done'
+                  ? 'Odgovor je spremljen i u dnevnik, a ovdje ga vidiš odmah.'
+                  : phase === 'error'
+                    ? 'Pokušaj ponovno s istom ili drugom fotografijom.'
+                    : 'Pokreni analizu nad ovom fotografijom iz dnevnika.';
 
     return (
         <>
@@ -293,7 +230,7 @@ export function RaisedBedDiaryAiAction({
                         />
                     }
                 >
-                    Pitaj suncokret
+                    Pitaj suncokret za savjete
                 </ButtonGreen>
             </Stack>
             <Modal
@@ -339,7 +276,9 @@ export function RaisedBedDiaryAiAction({
                                                     ? 'border-lime-400 shadow-sm ring-2 ring-lime-200'
                                                     : 'border-black/10 opacity-80 hover:opacity-100'
                                             }`}
-                                            onClick={() => beginAnalysis(imageUrl)}
+                                            onClick={() =>
+                                                beginAnalysis(imageUrl)
+                                            }
                                         >
                                             <div className="relative size-16">
                                                 <Image

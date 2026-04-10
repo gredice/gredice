@@ -1,5 +1,5 @@
 import { getEntitiesFormatted, getOperations } from '@gredice/storage';
-import { generateText } from 'ai';
+import { streamText } from 'ai';
 
 const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5';
 
@@ -65,19 +65,21 @@ type RaisedBedAnalysisTarget = {
     }>;
 };
 
-export async function analyzeRaisedBedImage({
-    accountId,
-    gardenId,
-    raisedBed,
-    imageUrl,
-    positionIndex,
-}: {
+type AnalysisParams = {
     accountId: string;
     gardenId: number;
     raisedBed: RaisedBedAnalysisTarget;
     imageUrl: string;
     positionIndex?: number;
-}) {
+};
+
+async function buildAnalysisMessages({
+    accountId,
+    gardenId,
+    raisedBed,
+    imageUrl,
+    positionIndex,
+}: AnalysisParams) {
     const [plantSorts, operations, operationsData] = await Promise.all([
         getEntitiesFormatted<{
             id: string;
@@ -134,81 +136,78 @@ export async function analyzeRaisedBedImage({
         fieldId: op.raisedBedFieldId,
     }));
 
-    const { text, usage } = await generateText({
-        model: AI_MODEL,
-        messages: [
-            {
-                role: 'system',
-                content:
-                    'Ti si stručni agronom za urbane vrtove. Piši ISKLJUČIVO na hrvatskom jeziku i vrati odgovor kao uredno formatiran markdown.',
-            },
-            {
-                role: 'user',
-                content: [
-                    {
-                        type: 'text',
-                        text: [
-                            typeof positionIndex === 'number'
-                                ? 'Analiziraj fotografiju vrta i kontekst te napiši praktične preporuke za označeno polje i ostatak gredice.'
-                                : 'Analiziraj fotografiju gredice i kontekst te napiši praktične preporuke za cijelu gredicu.',
-                            'Odgovor MORA imati ove markdown sekcije:',
-                            '## Sažetak stanja',
-                            '## Globalne preporuke (2-4 stavke)',
-                            '## Biljke koje traže najviše pažnje (2-4 biljke, po biljci navedi problem + konkretan idući korak)',
-                            '## Plan za sljedeća 3 dana',
-                            '',
-                            'Kontekst (JSON):',
-                            JSON.stringify(
-                                {
-                                    analyzedField:
-                                        typeof positionIndex === 'number'
-                                            ? positionIndex
-                                            : null,
-                                    plantedFields,
-                                    executedOperations,
-                                },
-                                null,
-                                2,
-                            ),
-                        ].join('\n'),
-                    },
-                    {
-                        type: 'image',
-                        image: new URL(imageUrl),
-                    },
-                ],
-            },
-        ],
-    });
-
-    return {
-        markdown: text,
-        model: AI_MODEL,
-        analyzedAt: new Date().toISOString(),
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-        totalTokens: usage.totalTokens,
-    };
+    return [
+        {
+            role: 'system' as const,
+            content:
+                'Ti si stručni agronom za urbane vrtove. Piši ISKLJUČIVO na hrvatskom jeziku i vrati odgovor kao uredno formatiran markdown.',
+        },
+        {
+            role: 'user' as const,
+            content: [
+                {
+                    type: 'text' as const,
+                    text: [
+                        typeof positionIndex === 'number'
+                            ? 'Analiziraj fotografiju vrta i kontekst te napiši praktične preporuke za označeno polje i ostatak gredice.'
+                            : 'Analiziraj fotografiju gredice i kontekst te napiši praktične preporuke za cijelu gredicu.',
+                        'Odgovor MORA imati ove markdown sekcije:',
+                        '## Sažetak stanja',
+                        '## Globalne preporuke (2-4 stavke)',
+                        '## Biljke koje traže najviše pažnje (2-4 biljke, po biljci navedi problem + konkretan idući korak)',
+                        '## Plan za sljedeća 3 dana',
+                        '',
+                        'Kontekst (JSON):',
+                        JSON.stringify(
+                            {
+                                analyzedField:
+                                    typeof positionIndex === 'number'
+                                        ? positionIndex
+                                        : null,
+                                plantedFields,
+                                executedOperations,
+                            },
+                            null,
+                            2,
+                        ),
+                    ].join('\n'),
+                },
+                {
+                    type: 'image' as const,
+                    image: new URL(imageUrl),
+                },
+            ],
+        },
+    ];
 }
 
-export async function analyzeRaisedBedFieldImage({
-    accountId,
-    gardenId,
-    raisedBed,
-    positionIndex,
-    imageUrl,
-}: {
-    accountId: string;
-    gardenId: number;
-    raisedBed: RaisedBedAnalysisTarget;
-    positionIndex: number;
-    imageUrl: string;
-}) {
-    return analyzeRaisedBedImage({
-        accountId,
-        gardenId,
-        raisedBed,
-        imageUrl,
-        positionIndex,
+export async function streamRaisedBedImageAnalysis(
+    params: AnalysisParams,
+    onFinish: (result: {
+        markdown: string;
+        model: string;
+        analyzedAt: string;
+        inputTokens: number;
+        outputTokens: number;
+        totalTokens: number;
+    }) => void | Promise<void>,
+) {
+    const messages = await buildAnalysisMessages(params);
+
+    const result = streamText({
+        model: AI_MODEL,
+        messages,
+        onFinish: async ({ text, usage }) => {
+            await onFinish({
+                markdown: text,
+                model: AI_MODEL,
+                analyzedAt: new Date().toISOString(),
+                inputTokens: usage.inputTokens ?? 0,
+                outputTokens: usage.outputTokens ?? 0,
+                totalTokens: usage.totalTokens ?? 0,
+            });
+        },
     });
+
+    return result;
 }

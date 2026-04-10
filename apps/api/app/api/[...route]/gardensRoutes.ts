@@ -35,8 +35,7 @@ import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
 import {
     AI_ANALYSIS_DAILY_LIMIT,
-    analyzeRaisedBedImage,
-    analyzeRaisedBedFieldImage,
+    streamRaisedBedImageAnalysis,
     validateImageUrl,
 } from '../../../lib/garden/raisedBedAiAnalysisService';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
@@ -1381,29 +1380,32 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const analysis = await analyzeRaisedBedImage({
-                accountId,
-                gardenId: gardenIdNumber,
-                raisedBed,
-                imageUrl,
-            });
-
-            await createEvent(
-                knownEvents.raisedBeds.aiAnalysisV1(
-                    raisedBedIdNumber.toString(),
-                    {
-                        markdown: analysis.markdown,
-                        imageUrl,
-                        model: analysis.model,
-                        analyzedAt: analysis.analyzedAt,
-                        inputTokens: analysis.inputTokens,
-                        outputTokens: analysis.outputTokens,
-                        totalTokens: analysis.totalTokens,
-                    },
-                ),
+            const result = await streamRaisedBedImageAnalysis(
+                {
+                    accountId,
+                    gardenId: gardenIdNumber,
+                    raisedBed,
+                    imageUrl,
+                },
+                async (analysis) => {
+                    await createEvent(
+                        knownEvents.raisedBeds.aiAnalysisV1(
+                            raisedBedIdNumber.toString(),
+                            {
+                                markdown: analysis.markdown,
+                                imageUrl,
+                                model: analysis.model,
+                                analyzedAt: analysis.analyzedAt,
+                                inputTokens: analysis.inputTokens,
+                                outputTokens: analysis.outputTokens,
+                                totalTokens: analysis.totalTokens,
+                            },
+                        ),
+                    );
+                },
             );
 
-            return context.json({ markdown: analysis.markdown }, 201);
+            return result.toTextStreamResponse();
         },
     )
     .get(
@@ -1772,30 +1774,33 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const analysis = await analyzeRaisedBedFieldImage({
-                accountId,
-                gardenId: gardenIdNumber,
-                raisedBed,
-                positionIndex: positionIndexNumber,
-                imageUrl,
-            });
-
-            await createEvent(
-                knownEvents.raisedBedFields.aiAnalysisV1(
-                    `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
-                    {
-                        markdown: analysis.markdown,
-                        imageUrl,
-                        model: analysis.model,
-                        analyzedAt: analysis.analyzedAt,
-                        inputTokens: analysis.inputTokens,
-                        outputTokens: analysis.outputTokens,
-                        totalTokens: analysis.totalTokens,
-                    },
-                ),
+            const result = await streamRaisedBedImageAnalysis(
+                {
+                    accountId,
+                    gardenId: gardenIdNumber,
+                    raisedBed,
+                    positionIndex: positionIndexNumber,
+                    imageUrl,
+                },
+                async (analysis) => {
+                    await createEvent(
+                        knownEvents.raisedBedFields.aiAnalysisV1(
+                            `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
+                            {
+                                markdown: analysis.markdown,
+                                imageUrl,
+                                model: analysis.model,
+                                analyzedAt: analysis.analyzedAt,
+                                inputTokens: analysis.inputTokens,
+                                outputTokens: analysis.outputTokens,
+                                totalTokens: analysis.totalTokens,
+                            },
+                        ),
+                    );
+                },
             );
 
-            return context.json({ markdown: analysis.markdown }, 201);
+            return result.toTextStreamResponse();
         },
     )
     .get(
