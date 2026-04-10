@@ -36,6 +36,7 @@ export const knownEventTypes = {
         place: 'raisedBed.place',
         delete: 'raisedBed.delete',
         abandon: 'raisedBed.abandon',
+        aiAnalysis: 'raisedBed.aiAnalysis',
     },
     raisedBedFields: {
         create: 'raisedBedField.create',
@@ -44,6 +45,7 @@ export const knownEventTypes = {
         plantSchedule: 'raisedBedField.plantSchedule',
         plantUpdate: 'raisedBedField.plantUpdate',
         plantReplaceSort: 'raisedBedField.plantReplaceSort',
+        aiAnalysis: 'raisedBedField.aiAnalysis',
     },
     operations: {
         schedule: 'operation.schedule',

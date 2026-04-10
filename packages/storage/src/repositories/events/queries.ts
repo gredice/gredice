@@ -2,7 +2,11 @@ import { and, asc, count, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { events } from '../../schema';
 import { storage } from '../../storage';
 import { knownEventTypes } from './knownEventTypes';
-import type { Event, UserBirthdayRewardPayload } from './types';
+import type {
+    Event,
+    RaisedBedFieldAiAnalysisPayload,
+    UserBirthdayRewardPayload,
+} from './types';
 
 type DatabaseClient = ReturnType<typeof storage>;
 
@@ -58,6 +62,28 @@ export async function getPlantPlaceEventsCount() {
     return result[0]?.count ?? 0;
 }
 
+export async function countEventsSince(
+    type: string,
+    since: Date,
+    aggregateIds: string[],
+) {
+    if (aggregateIds.length === 0) {
+        return 0;
+    }
+
+    const result = await storage()
+        .select({ count: count() })
+        .from(events)
+        .where(
+            and(
+                eq(events.type, type),
+                gte(events.createdAt, since),
+                inArray(events.aggregateId, aggregateIds),
+            ),
+        );
+    return result[0]?.count ?? 0;
+}
+
 export function createEvent(
     { type, version, aggregateId, data }: Event,
     db: DatabaseClient = storage(),
@@ -68,6 +94,45 @@ export function createEvent(
         aggregateId,
         data,
     });
+}
+
+export async function getAiAnalysisEvents(filter?: {
+    from?: Date;
+    to?: Date;
+}) {
+    const results = await storage().query.events.findMany({
+        where: and(
+            eq(events.type, knownEventTypes.raisedBedFields.aiAnalysis),
+            filter?.from ? gte(events.createdAt, filter.from) : undefined,
+            filter?.to ? lte(events.createdAt, filter.to) : undefined,
+        ),
+        orderBy: [desc(events.createdAt)],
+    });
+
+    return results.map((event) => ({
+        ...event,
+        data: event.data as RaisedBedFieldAiAnalysisPayload | null,
+    }));
+}
+
+export async function getAiAnalysisTotals(filter?: {
+    from?: Date;
+    to?: Date;
+}) {
+    const whereConditions = [
+        eq(events.type, knownEventTypes.raisedBedFields.aiAnalysis),
+        ...(filter?.from ? [gte(events.createdAt, filter.from)] : []),
+        ...(filter?.to ? [lte(events.createdAt, filter.to)] : []),
+    ];
+
+    const result = await storage()
+        .select({ count: count() })
+        .from(events)
+        .where(and(...whereConditions));
+
+    return {
+        count: result[0]?.count ?? 0,
+    };
 }
 
 export function deleteEventById(eventId: number) {

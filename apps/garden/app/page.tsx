@@ -2,12 +2,13 @@ import { GameScene } from '@gredice/game';
 import { SignedOut } from '@signalco/auth-client/components';
 import type { ComponentProps } from 'react';
 import LoginModal from '../components/auth/LoginModal';
-import { enableDebugHudFlag, enablePlantGeneratorFlag } from './flags';
+import { enableDebugHudFlag, lsystemPlantsFlag, raisedBedImageAIFlag } from './flags';
 
 export default async function Home() {
     const flags: ComponentProps<typeof GameScene>['flags'] = {
         enableDebugHudFlag: await enableDebugHudFlag(),
-        enablePlantGeneratorFlag: await enablePlantGeneratorFlag(),
+        enablePlantGeneratorFlag: await lsystemPlantsFlag(),
+        raisedBedImageAI: await raisedBedImageAIFlag(),
     };
 
     return (

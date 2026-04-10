@@ -165,16 +165,27 @@ export type RaisedBedFieldPlantUpdatePayload = {
 export type RaisedBedFieldPlantReplaceSortPayload = {
     plantSortId: string;
 };
+export type RaisedBedFieldAiAnalysisPayload = {
+    markdown: string;
+    imageUrl: string;
+    model: string;
+    analyzedAt: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+};
 export type RaisedBedFieldPlantEventsPayload =
     | RaisedBedFieldPlantPlacePayload
     | RaisedBedFieldPlantSchedulePayload
     | RaisedBedFieldPlantUpdatePayload
-    | RaisedBedFieldPlantReplaceSortPayload;
+    | RaisedBedFieldPlantReplaceSortPayload
+    | RaisedBedFieldAiAnalysisPayload;
 export type RaisedBedFieldPlantEventsAnyPayload = Partial<
     RaisedBedFieldPlantPlacePayload &
         RaisedBedFieldPlantSchedulePayload &
         RaisedBedFieldPlantUpdatePayload &
-        RaisedBedFieldPlantReplaceSortPayload
+        RaisedBedFieldPlantReplaceSortPayload &
+        RaisedBedFieldAiAnalysisPayload
 >;
 
 // ============================================================================

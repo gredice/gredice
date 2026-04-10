@@ -24,6 +24,7 @@ import type {
     OperationSchedulePayload,
     RaisedBedAbandonPayload,
     RaisedBedCreatePayload,
+    RaisedBedFieldAiAnalysisPayload,
     RaisedBedFieldCreatePayload,
     RaisedBedFieldPlantPlacePayload,
     RaisedBedFieldPlantReplaceSortPayload,
@@ -205,6 +206,15 @@ export const knownEvents = {
             aggregateId,
             data: { status: 'abandoned' } satisfies RaisedBedAbandonPayload,
         }),
+        aiAnalysisV1: (
+            aggregateId: string,
+            data: RaisedBedFieldAiAnalysisPayload,
+        ) => ({
+            type: knownEventTypes.raisedBeds.aiAnalysis,
+            version: 1,
+            aggregateId,
+            data,
+        }),
     },
     raisedBedFields: {
         createdV1: (
@@ -253,6 +263,15 @@ export const knownEvents = {
             data: RaisedBedFieldPlantReplaceSortPayload,
         ) => ({
             type: knownEventTypes.raisedBedFields.plantReplaceSort,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        aiAnalysisV1: (
+            aggregateId: string,
+            data: RaisedBedFieldAiAnalysisPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedFields.aiAnalysis,
             version: 1,
             aggregateId,
             data,

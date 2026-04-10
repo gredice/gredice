@@ -6,8 +6,11 @@ export { knownEvents } from './knownEvents';
 export { knownEventTypes } from './knownEventTypes';
 // Query functions
 export {
+    countEventsSince,
     createEvent,
     deleteEventById,
+    getAiAnalysisEvents,
+    getAiAnalysisTotals,
     getEvents,
     getLastBirthdayRewardEvent,
     getPlantPlaceEventsCount,
@@ -52,6 +55,7 @@ export type {
     RaisedBedAbandonPayload,
     // Raised bed
     RaisedBedCreatePayload,
+    RaisedBedFieldAiAnalysisPayload,
     // Raised bed field
     RaisedBedFieldCreatePayload,
     RaisedBedFieldPlantEventsAnyPayload,

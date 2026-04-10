@@ -16,12 +16,21 @@ const hypertuneAdapter = createHypertuneAdapter<FlagValues, Context>({
     identify,
 });
 
-export const enableDebugHudFlag = flag(
-    hypertuneAdapter.declarations.enableDebugHud,
+export const deliveryChargeAtCheckoutFlag = flag(
+    hypertuneAdapter.declarations.deliveryChargeAtCheckout,
+);
+export const addressDistanceVerificationFlag = flag(
+    hypertuneAdapter.declarations.addressDistanceVerification,
+);
+export const raisedBedImageAIFlag = flag(
+    hypertuneAdapter.declarations.raisedBedImageAI,
+);
+export const lsystemPlantsFlag = flag(
+    hypertuneAdapter.declarations.lsystemPlants,
 );
 export const enableDebugCloseupFlag = flag(
     hypertuneAdapter.declarations.enableDebugCloseup,
 );
-export const enablePlantGeneratorFlag = flag(
-    hypertuneAdapter.declarations.lsystemPlants,
+export const enableDebugHudFlag = flag(
+    hypertuneAdapter.declarations.enableDebugHud,
 );

@@ -37,12 +37,18 @@ function getTodayDateValue() {
     return `${year}-${month}-${day}`;
 }
 
+type AiData = {
+    count: number;
+    totalTokens: number;
+};
+
 export function AdminDashboardClient({
     initialAnalyticsData,
     initialEntitiesData,
     initialPeriod = '7',
     initialOperationsDurationData,
     initialWeekdayRegistrations,
+    initialAiData,
     initialFrom,
     initialTo,
 }: {
@@ -51,6 +57,7 @@ export function AdminDashboardClient({
     initialPeriod?: string;
     initialOperationsDurationData: OperationsDurationData;
     initialWeekdayRegistrations: WeekdayRegistrationData[];
+    initialAiData: AiData;
     initialFrom?: string;
     initialTo?: string;
 }) {
@@ -302,6 +309,21 @@ export function AdminDashboardClient({
                         value={deliveryRequestsCount}
                         href={KnownPages.DeliveryRequests}
                         beforeValue={deliveryRequestsBeforeCount}
+                    />
+                </div>
+            </Stack>
+            <Stack spacing={1}>
+                <DashboardDivider>AI</DashboardDivider>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    <FactCard
+                        header="AI analize"
+                        value={initialAiData.count}
+                        href={KnownPages.AiAnalytics}
+                    />
+                    <FactCard
+                        header="Ukupno tokena"
+                        value={initialAiData.totalTokens.toLocaleString('hr-HR')}
+                        href={KnownPages.AiAnalytics}
                     />
                 </div>
             </Stack>

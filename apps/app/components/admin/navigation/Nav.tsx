@@ -19,6 +19,7 @@ import type { SelectEntityType } from '@gredice/storage';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { AuthProtectedSection } from '@signalco/auth-client/components';
 import {
+    AI,
     Bank,
     Calendar,
     Euro,
@@ -361,6 +362,12 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         href={KnownPages.Cache}
                         label="Cache"
                         icon={<File className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                    <NavItem
+                        href={KnownPages.AiAnalytics}
+                        label="AI analitika"
+                        icon={<AI className="size-5" />}
                         onClick={onItemClick}
                     />
                 </List>
