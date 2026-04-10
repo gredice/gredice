@@ -48,6 +48,7 @@ import {
     revokeSessionToken,
 } from '../../../lib/auth/sessionTokens';
 import { sendWelcome } from '../../../lib/email/transactional';
+import { getPostHogClient } from '../../../lib/posthog-server';
 
 const failedAttemptClearTime = 1000 * 60; // 1 minute
 const failedAttemptsBlock = 5;
@@ -315,6 +316,12 @@ const app = new Hono()
                 setRefreshCookie(context, refreshToken),
             ]);
 
+            getPostHogClient().capture({
+                distinctId: user.id,
+                event: 'user_logged_in',
+                properties: { provider: 'password' },
+            });
+
             return context.json({
                 token: accessToken,
                 refreshToken,
@@ -416,6 +423,12 @@ const app = new Hono()
                     loginSuccessful(loginId),
                     setRefreshCookie(context, refreshToken),
                 ]);
+
+                getPostHogClient().capture({
+                    distinctId: userId,
+                    event: isNewUser ? 'user_signed_up' : 'user_logged_in',
+                    properties: { provider: 'google' },
+                });
 
                 const redirectUrl = resolveRedirectUrl(
                     context,
@@ -532,6 +545,12 @@ const app = new Hono()
                     loginSuccessful(loginId),
                     setRefreshCookie(context, refreshToken),
                 ]);
+
+                getPostHogClient().capture({
+                    distinctId: userId,
+                    event: isNewUser ? 'user_signed_up' : 'user_logged_in',
+                    properties: { provider: 'facebook' },
+                });
 
                 const redirectUrl = resolveRedirectUrl(
                     context,
@@ -661,12 +680,28 @@ const app = new Hono()
             description: 'Logout user by clearing the session cookie',
         }),
         async (context) => {
+            const sessionCookie = getCookie(context, 'gredice_session');
+            let userId: string | undefined;
+            if (sessionCookie) {
+                try {
+                    const { result } = await verifyJwt(sessionCookie);
+                    userId = result?.payload.sub ?? undefined;
+                } catch {
+                    // ignore
+                }
+            }
             const refreshToken = getCookie(context, refreshTokenCookieName);
             if (refreshToken) {
                 await revokeSessionToken(refreshToken);
             }
             await clearCookie(context);
             await clearRefreshCookie(context);
+            if (userId) {
+                getPostHogClient().capture({
+                    distinctId: userId,
+                    event: 'user_logged_out',
+                });
+            }
             return context.json({
                 message: 'Logged out successfully',
             });
@@ -700,6 +735,12 @@ const app = new Hono()
 
             // Create user with password
             const userId = await createUserWithPassword(email, password);
+
+            getPostHogClient().capture({
+                distinctId: userId,
+                event: 'user_signed_up',
+                properties: { provider: 'password' },
+            });
 
             await notifyNewUserRegistered(userId);
 
@@ -863,6 +904,11 @@ const app = new Hono()
             await updateLoginData(userLogin.id, {
                 ...loginData,
                 isVerified: true,
+            });
+
+            getPostHogClient().capture({
+                distinctId: user.id,
+                event: 'user_email_verified',
             });
 
             // Send welcome message

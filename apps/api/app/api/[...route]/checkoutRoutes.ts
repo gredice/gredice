@@ -24,6 +24,7 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
 import { processItem } from '../../../lib/stripe/processCheckoutSession';
 
 const app = new Hono<{ Variables: AuthVariables }>()
@@ -284,8 +285,33 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     await assignStripeCustomerId(account.id, customerId);
                 }
 
+                getPostHogClient().capture({
+                    distinctId: accountId,
+                    event: 'checkout_initiated',
+                    properties: {
+                        cart_id: cartId,
+                        payment_method: 'stripe',
+                        item_count: stripeItems.length,
+                    },
+                });
+
                 return context.json({ sessionId, url });
             }
+
+            getPostHogClient().capture({
+                distinctId: accountId,
+                event: 'checkout_initiated',
+                properties: {
+                    cart_id: cartId,
+                    payment_method: cartInfo.items.some(
+                        (i) => i.currency === 'sunflower',
+                    )
+                        ? 'sunflower'
+                        : 'inventory',
+                    item_count: cartInfo.items.length,
+                },
+            });
+
             return context.json({ success: true });
         },
     )
@@ -341,6 +367,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     500,
                 );
             }
+
+            getPostHogClient().capture({
+                distinctId: accountId,
+                event: 'checkout_cancelled',
+                properties: { session_id: sessionId },
+            });
 
             return context.json({ success: true });
         },

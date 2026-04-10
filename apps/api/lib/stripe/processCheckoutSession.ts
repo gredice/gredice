@@ -32,6 +32,7 @@ import {
 import { calculateSunflowerAmount } from '../checkout/sunflowerCalculations';
 import { notifyDeliveryScheduled } from '../delivery/emailNotifications';
 import { notifyScheduledDeliveryEmailOnce } from '../delivery/scheduledEmailDeduper';
+import { getPostHogClient } from '../posthog-server';
 
 /**
  * Recursively sorts object keys for deterministic JSON serialization.
@@ -510,6 +511,19 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         checkoutSessionId: session.id ?? null,
         items: purchasedItems,
     });
+
+    if (accountId) {
+        getPostHogClient().capture({
+            distinctId: accountId,
+            event: 'purchase_completed',
+            properties: {
+                amount_total: session.amountTotal,
+                currency: 'eur',
+                item_count: purchasedItems.length,
+                checkout_session_id: session.id,
+            },
+        });
+    }
 }
 
 export async function processItem(itemData: {

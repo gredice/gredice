@@ -6,6 +6,7 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -36,6 +37,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const feedback = context.req.valid('json');
             const id = await createFeedback(feedback);
+            getPostHogClient().capture({
+                distinctId: 'anonymous',
+                event: 'feedback_submitted',
+                properties: {
+                    topic: feedback.topic,
+                    score: feedback.score ?? undefined,
+                },
+            });
             return context.json({ id });
         },
     );

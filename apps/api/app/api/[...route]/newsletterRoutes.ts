@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { publicSecurity } from '../../../lib/docs/security';
+import { getPostHogClient } from '../../../lib/posthog-server';
 
 const app = new Hono().post(
     '/subscribe',
@@ -23,6 +24,14 @@ const app = new Hono().post(
             const subscriber = await subscribeToNewsletter({
                 email,
                 source,
+            });
+            getPostHogClient().capture({
+                distinctId: email,
+                event: 'newsletter_subscribed',
+                properties: {
+                    source: source ?? undefined,
+                    status: subscriber.status,
+                },
             });
             return context.json({
                 success: true,
