@@ -1,9 +1,13 @@
 import { and, asc, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import {
     events,
+    farmUsers,
+    gardens,
     type InsertOperation,
     operations,
+    raisedBeds,
     type SelectOperation,
+    users,
 } from '../schema';
 import { storage } from '../storage';
 import { getEvents, knownEventTypes } from './events';
@@ -16,6 +20,25 @@ export type OperationStatus =
     | 'failed'
     | 'canceled';
 
+type OperationsFilter = {
+    from?: Date;
+    to?: Date;
+    completedFrom?: Date;
+    completedTo?: Date;
+    status?: OperationStatus | OperationStatus[];
+};
+
+export type OperationAssignedUser = {
+    id: string;
+    userName: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+};
+
+export type OperationAssignableFarmUser = OperationAssignedUser & {
+    farmId: number;
+};
+
 function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
     if (!value || typeof value !== 'object') {
         return {};
@@ -26,6 +49,16 @@ function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
 
     if (typeof record.completedBy === 'string') {
         data.completedBy = record.completedBy;
+    }
+    if (
+        'assignedUserId' in record &&
+        (typeof record.assignedUserId === 'string' ||
+            record.assignedUserId === null)
+    ) {
+        data.assignedUserId = record.assignedUserId;
+    }
+    if (typeof record.assignedBy === 'string') {
+        data.assignedBy = record.assignedBy;
     }
     if (Array.isArray(record.images)) {
         data.images = record.images.filter(
@@ -55,6 +88,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
     const aggregateIds = operations.map((op) => op.id.toString());
     const aggregatesEvents = await getEvents(
         [
+            knownEventTypes.operations.assign,
             knownEventTypes.operations.schedule,
             knownEventTypes.operations.complete,
             knownEventTypes.operations.fail,
@@ -65,12 +99,15 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         10000,
     );
 
-    return operations.map((op) => {
+    const operationsWithAggregates = operations.map((op) => {
         const events = aggregatesEvents.filter(
             (event) => event.aggregateId === op.id.toString(),
         );
 
         let status = 'new';
+        let assignedUserId: string | null | undefined;
+        let assignedBy: string | undefined;
+        let assignedAt: Date | undefined;
         let scheduledDate: Date | undefined;
         let completedAt: Date | undefined;
         let completedBy: string | undefined;
@@ -87,7 +124,13 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
 
         for (const event of events) {
             const data = parseOperationEventData(event.data);
-            if (event.type === knownEventTypes.operations.complete) {
+            if (event.type === knownEventTypes.operations.assign) {
+                if ('assignedUserId' in data) {
+                    assignedUserId = data.assignedUserId ?? null;
+                    assignedAt = event.createdAt;
+                }
+                assignedBy = asString(data?.assignedBy) ?? assignedBy;
+            } else if (event.type === knownEventTypes.operations.complete) {
                 status = 'completed';
                 completedBy = asString(data?.completedBy) ?? completedBy;
                 completedAt = event.createdAt;
@@ -116,6 +159,9 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         return {
             ...op,
             status,
+            assignedUserId: assignedUserId ?? null,
+            assignedBy,
+            assignedAt,
             completedAt,
             completedBy,
             error,
@@ -127,6 +173,43 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             imageUrls,
         };
     });
+
+    const assignedUserIds = Array.from(
+        new Set(
+            operationsWithAggregates
+                .map((operation) => operation.assignedUserId)
+                .filter(
+                    (assignedUserId): assignedUserId is string =>
+                        typeof assignedUserId === 'string' &&
+                        assignedUserId.length > 0,
+                ),
+        ),
+    );
+
+    const assignedUsers =
+        assignedUserIds.length > 0
+            ? await storage().query.users.findMany({
+                  columns: {
+                      id: true,
+                      userName: true,
+                      displayName: true,
+                      avatarUrl: true,
+                  },
+                  where: inArray(users.id, assignedUserIds),
+              })
+            : [];
+    const assignedUsersById = new Map<string, OperationAssignedUser>(
+        assignedUsers.map((user) => [user.id, user]),
+    );
+
+    return operationsWithAggregates.map((operation) => ({
+        ...operation,
+        assignedUser:
+            operation.assignedUserId &&
+            assignedUsersById.has(operation.assignedUserId)
+                ? (assignedUsersById.get(operation.assignedUserId) ?? null)
+                : null,
+    }));
 }
 
 export async function getOperations(
@@ -197,6 +280,188 @@ export async function getAllOperations(filter?: {
     }
 
     return operationsWithAggregates;
+}
+
+async function getFarmUserAcceptedOperationsByIds(
+    userId: string,
+    ids: number[],
+) {
+    const uniqueIds = Array.from(new Set(ids));
+    if (uniqueIds.length === 0) {
+        return [];
+    }
+
+    const rows = await storage()
+        .select({ operation: operations })
+        .from(operations)
+        .innerJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+        .where(
+            and(
+                inArray(operations.id, uniqueIds),
+                eq(farmUsers.userId, userId),
+                eq(operations.isAccepted, true),
+                eq(operations.isDeleted, false),
+                eq(raisedBeds.isDeleted, false),
+                eq(gardens.isDeleted, false),
+            ),
+        )
+        .orderBy(desc(operations.timestamp));
+
+    return rows.map((row) => row.operation);
+}
+
+async function getCompletedFarmUserAcceptedOperationsByCompletionDate(
+    userId: string,
+    filter: {
+        from: Date;
+        to: Date;
+    },
+) {
+    const completionEvents = await storage().query.events.findMany({
+        where: and(
+            eq(events.type, knownEventTypes.operations.complete),
+            gte(events.createdAt, filter.from),
+            lte(events.createdAt, filter.to),
+        ),
+        orderBy: [asc(events.createdAt)],
+    });
+
+    if (completionEvents.length === 0) {
+        return [];
+    }
+
+    const operationIds = completionEvents
+        .map((event) => Number.parseInt(event.aggregateId, 10))
+        .filter((id) => Number.isFinite(id));
+
+    return getFarmUserAcceptedOperationsByIds(userId, operationIds);
+}
+
+export async function getFarmUserAcceptedOperations(
+    userId: string,
+    filter?: OperationsFilter,
+) {
+    let operationsWithAggregates: Awaited<
+        ReturnType<typeof fillOperationAggregates>
+    >;
+
+    if (filter?.completedFrom || filter?.completedTo) {
+        const completedOperations =
+            await getCompletedFarmUserAcceptedOperationsByCompletionDate(
+                userId,
+                {
+                    from: filter.completedFrom || new Date('1970-01-01'),
+                    to: filter.completedTo || new Date('2099-12-31'),
+                },
+            );
+
+        operationsWithAggregates =
+            await fillOperationAggregates(completedOperations);
+    } else {
+        const rows = await storage()
+            .select({ operation: operations })
+            .from(operations)
+            .innerJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+            .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+            .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+            .where(
+                and(
+                    eq(farmUsers.userId, userId),
+                    eq(operations.isAccepted, true),
+                    eq(operations.isDeleted, false),
+                    eq(raisedBeds.isDeleted, false),
+                    eq(gardens.isDeleted, false),
+                    filter?.from
+                        ? gte(operations.timestamp, filter.from)
+                        : undefined,
+                    filter?.to
+                        ? lte(operations.timestamp, filter.to)
+                        : undefined,
+                ),
+            )
+            .orderBy(desc(operations.timestamp));
+
+        operationsWithAggregates = await fillOperationAggregates(
+            rows.map((row) => row.operation),
+        );
+    }
+
+    if (filter?.status) {
+        const statusArray = Array.isArray(filter.status)
+            ? filter.status
+            : [filter.status];
+        operationsWithAggregates = operationsWithAggregates.filter(
+            (operation) =>
+                operation &&
+                statusArray.includes(operation.status as OperationStatus),
+        );
+    }
+
+    return operationsWithAggregates;
+}
+
+export async function getAssignableFarmUsersByOperationIds(
+    operationIds: number[],
+) {
+    const uniqueOperationIds = Array.from(new Set(operationIds));
+    if (uniqueOperationIds.length === 0) {
+        const emptyAssignableFarmUsersByOperationId: Record<
+            number,
+            OperationAssignableFarmUser[]
+        > = {};
+
+        return emptyAssignableFarmUsersByOperationId;
+    }
+
+    const rows = await storage()
+        .select({
+            operationId: operations.id,
+            farmId: farmUsers.farmId,
+            userId: users.id,
+            userName: users.userName,
+            displayName: users.displayName,
+            avatarUrl: users.avatarUrl,
+        })
+        .from(operations)
+        .innerJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+        .innerJoin(users, eq(farmUsers.userId, users.id))
+        .where(
+            and(
+                inArray(operations.id, uniqueOperationIds),
+                eq(operations.isDeleted, false),
+                eq(raisedBeds.isDeleted, false),
+                eq(gardens.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(operations.id), asc(users.userName));
+
+    const assignableFarmUsersByOperationId: Record<
+        number,
+        OperationAssignableFarmUser[]
+    > = {};
+
+    for (const row of rows) {
+        const existingUsers =
+            assignableFarmUsersByOperationId[row.operationId] ?? [];
+        if (existingUsers.some((user) => user.id === row.userId)) {
+            continue;
+        }
+
+        existingUsers.push({
+            id: row.userId,
+            userName: row.userName,
+            displayName: row.displayName,
+            avatarUrl: row.avatarUrl,
+            farmId: row.farmId,
+        });
+        assignableFarmUsersByOperationId[row.operationId] = existingUsers;
+    }
+
+    return assignableFarmUsersByOperationId;
 }
 
 export async function getOperationsByIds(ids: number[]) {

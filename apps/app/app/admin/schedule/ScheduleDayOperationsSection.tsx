@@ -1,3 +1,4 @@
+import { getAssignableFarmUsersByOperationIds } from '@gredice/storage';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { RaisedBedOperationsScheduleSection } from './RaisedBedOperationsScheduleSection';
@@ -29,6 +30,11 @@ export async function ScheduleDayOperationsSection({
         return null;
     }
 
+    const assignableFarmUsersByOperationId =
+        await getAssignableFarmUsersByOperationIds(
+            scheduledOperations.map((operation) => operation.id),
+        );
+
     const affectedRaisedBedIds = [
         ...new Set(
             scheduledOperations
@@ -53,6 +59,9 @@ export async function ScheduleDayOperationsSection({
                         scheduledOperations={scheduledOperations}
                         plantSorts={plantSorts}
                         operationsData={operationsData}
+                        assignableFarmUsersByOperationId={
+                            assignableFarmUsersByOperationId
+                        }
                         userId={userId}
                     />
                 );

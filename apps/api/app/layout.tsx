@@ -1,4 +1,5 @@
 import { Analytics } from '@vercel/analytics/react';
+import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import type { Metadata } from 'next';
 import './globals.css';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -19,6 +20,29 @@ export default function RootLayout({
 }: Readonly<{
     children: ReactNode;
 }>) {
+    const postHogApiKey =
+        process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+    const content = (
+        <>
+            <Stack className="w-full">
+                <div className="h-[62px]" />
+                <div className="border-b px-4 py-2 fixed top-0 left-0 w-full z-10 bg-[#0f0f0f]">
+                    <Link href="/">
+                        <Image
+                            alt="Gredice Logotype"
+                            src="https://cdn.gredice.com/Logotype-gredice_2x.png"
+                            width={163}
+                            height={44}
+                        />
+                    </Link>
+                </div>
+                {children}
+            </Stack>
+            <Analytics />
+        </>
+    );
+
     return (
         <html lang="en" className="dark">
             <Head>
@@ -27,21 +51,23 @@ export default function RootLayout({
                 <title>API | Gredice</title>
             </Head>
             <body className="antialiased min-h-screen flex bg-[#0f0f0f]">
-                <Stack className="w-full">
-                    <div className="h-[62px]" />
-                    <div className="border-b px-4 py-2 fixed top-0 left-0 w-full z-10 bg-[#0f0f0f]">
-                        <Link href="/">
-                            <Image
-                                alt="Gredice Logotype"
-                                src="https://cdn.gredice.com/Logotype-gredice_2x.png"
-                                width={163}
-                                height={44}
-                            />
-                        </Link>
-                    </div>
-                    {children}
-                </Stack>
-                <Analytics />
+                {postHogApiKey ? (
+                    <PostHogProvider
+                        apiKey={postHogApiKey}
+                        clientOptions={{
+                            api_host: '/ingest',
+                            capture_exceptions: true,
+                            debug: process.env.NODE_ENV === 'development',
+                            defaults: '2026-01-30',
+                            ui_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+                        }}
+                    >
+                        <PostHogPageView />
+                        {content}
+                    </PostHogProvider>
+                ) : (
+                    content
+                )}
             </body>
         </html>
     );

@@ -18,6 +18,7 @@ import type {
     InvoiceCreatePayload,
     InvoicePaidPayload,
     InvoiceUpdatePayload,
+    OperationAssignPayload,
     OperationCancelPayload,
     OperationCompletePayload,
     OperationFailPayload,
@@ -278,6 +279,12 @@ export const knownEvents = {
         }),
     },
     operations: {
+        assignedV1: (aggregateId: string, data: OperationAssignPayload) => ({
+            type: knownEventTypes.operations.assign,
+            version: 1,
+            aggregateId,
+            data,
+        }),
         scheduledV1: (aggregateId: string, data: OperationSchedulePayload) => ({
             type: knownEventTypes.operations.schedule,
             version: 1,

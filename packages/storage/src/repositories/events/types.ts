@@ -195,6 +195,11 @@ export type OperationSchedulePayload = {
     scheduledDate: string;
 };
 
+export type OperationAssignPayload = {
+    assignedUserId: string | null;
+    assignedBy: string;
+};
+
 export type OperationCompletePayload = {
     completedBy: string;
     images?: string[];
@@ -212,13 +217,15 @@ export type OperationCancelPayload = {
 
 /** Union of all operation event payloads */
 export type OperationEventsPayload =
+    | OperationAssignPayload
     | OperationSchedulePayload
     | OperationCompletePayload
     | OperationFailPayload
     | OperationCancelPayload;
 
 export type OperationEventsAnyPayload = Partial<
-    OperationSchedulePayload &
+    OperationAssignPayload &
+        OperationSchedulePayload &
         OperationCompletePayload &
         OperationFailPayload &
         OperationCancelPayload

@@ -8,13 +8,24 @@ import {
 } from '@signalco/ui-primitives/Card';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { FarmScheduleOperationsSection } from './FarmScheduleOperationsSection';
+import {
+    getFarmScheduleDayData,
+    getFarmScheduleOperationsData,
+    getFarmSchedulePlantSorts,
+} from './scheduleData';
 
 interface FarmScheduleDayProps {
     date: Date;
     isToday: boolean;
+    userId: string;
 }
 
-export function FarmScheduleDay({ date, isToday }: FarmScheduleDayProps) {
+export async function FarmScheduleDay({
+    date,
+    isToday,
+    userId,
+}: FarmScheduleDayProps) {
     const isCurrentDay = new Date().toDateString() === date.toDateString();
     const dayLabel =
         isToday && isCurrentDay
@@ -24,6 +35,12 @@ export function FarmScheduleDay({ date, isToday }: FarmScheduleDayProps) {
               })
                   .format(date)
                   .substring(0, 3);
+    const [{ raisedBeds, scheduledOperations }, plantSorts, operationsData] =
+        await Promise.all([
+            getFarmScheduleDayData(userId, date.toISOString(), isToday),
+            getFarmSchedulePlantSorts(),
+            getFarmScheduleOperationsData(),
+        ]);
 
     return (
         <Card>
@@ -43,9 +60,18 @@ export function FarmScheduleDay({ date, isToday }: FarmScheduleDayProps) {
                 </Stack>
             </CardHeader>
             <CardOverflow>
-                <div className="px-6 pb-6 text-sm text-muted-foreground">
-                    Nema zakazanih zadataka za ovaj dan.
-                </div>
+                {scheduledOperations.length > 0 ? (
+                    <FarmScheduleOperationsSection
+                        raisedBeds={raisedBeds}
+                        scheduledOperations={scheduledOperations}
+                        plantSorts={plantSorts}
+                        operationsData={operationsData}
+                    />
+                ) : (
+                    <div className="px-6 pb-6 text-sm text-muted-foreground">
+                        Nema zakazanih zadataka za ovaj dan.
+                    </div>
+                )}
             </CardOverflow>
         </Card>
     );

@@ -7,6 +7,7 @@ import type { EntityStandardized } from '../@types/EntityStandardized';
 import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
 import {
     events,
+    farmUsers,
     gardenBlocks,
     gardenStacks,
     gardens,
@@ -1507,6 +1508,35 @@ export async function deleteRaisedBed(raisedBedId: number) {
         .update(raisedBeds)
         .set({ isDeleted: true })
         .where(eq(raisedBeds.id, raisedBedId));
+}
+
+export async function getFarmUserRaisedBeds(userId: string) {
+    const farmRaisedBeds = await storage()
+        .select({ raisedBed: raisedBeds })
+        .from(raisedBeds)
+        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+        .where(
+            and(
+                eq(farmUsers.userId, userId),
+                eq(raisedBeds.isDeleted, false),
+                eq(gardens.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(raisedBeds.id));
+
+    const fields = (
+        await Promise.all(
+            farmRaisedBeds
+                .map((row) => row.raisedBed.id)
+                .map(getRaisedBedFieldsWithEvents),
+        )
+    ).flat();
+
+    return farmRaisedBeds.map(({ raisedBed }) => ({
+        ...raisedBed,
+        fields: fields.filter((field) => field.raisedBedId === raisedBed.id),
+    }));
 }
 
 export async function getAllRaisedBeds() {

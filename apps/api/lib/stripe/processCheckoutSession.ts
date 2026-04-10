@@ -513,7 +513,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
     });
 
     if (accountId) {
-        getPostHogClient().capture({
+        (await getPostHogClient()).capture({
             distinctId: accountId,
             event: 'purchase_completed',
             properties: {

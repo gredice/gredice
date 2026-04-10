@@ -12,6 +12,7 @@
                 "HYPERTUNE_OUTPUT_DIRECTORY_PATH",
                 "NEXT_PUBLIC_HYPERTUNE_TOKEN",
                 "NEXT_PUBLIC_POSTHOG_HOST",
+                "NEXT_PUBLIC_POSTHOG_KEY",
                 "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN",
                 "POSTGRES_DATABASE",
                 "POSTGRES_HOST",

@@ -1,17 +1,22 @@
-import { PostHog } from 'posthog-node';
+import { getPostHog } from '@posthog/next';
 
-let posthogClient: PostHog | null = null;
+type PostHogCaptureClient = Pick<
+    Awaited<ReturnType<typeof getPostHog>>,
+    'capture'
+>;
 
-export function getPostHogClient() {
-    if (!posthogClient) {
-        posthogClient = new PostHog(
-            process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN ?? '',
-            {
-                host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
-                flushAt: 1,
-                flushInterval: 0,
-            },
-        );
+const noopPostHogClient: PostHogCaptureClient = {
+    capture: () => undefined,
+};
+
+export async function getPostHogClient(): Promise<PostHogCaptureClient> {
+    const apiKey =
+        process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+
+    if (!apiKey) {
+        return noopPostHogClient;
     }
-    return posthogClient;
+
+    return getPostHog(apiKey);
 }

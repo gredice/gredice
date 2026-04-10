@@ -37,7 +37,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const feedback = context.req.valid('json');
             const id = await createFeedback(feedback);
-            getPostHogClient().capture({
+            (await getPostHogClient()).capture({
                 distinctId: 'anonymous',
                 event: 'feedback_submitted',
                 properties: {

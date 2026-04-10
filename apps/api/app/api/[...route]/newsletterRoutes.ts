@@ -25,7 +25,7 @@ const app = new Hono().post(
                 email,
                 source,
             });
-            getPostHogClient().capture({
+            (await getPostHogClient()).capture({
                 distinctId: email,
                 event: 'newsletter_subscribed',
                 properties: {

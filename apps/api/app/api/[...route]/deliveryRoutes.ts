@@ -106,7 +106,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             const addressId = await createDeliveryAddress(insertData);
             const newAddress = await getDeliveryAddress(addressId, accountId);
-            getPostHogClient().capture({
+            (await getPostHogClient()).capture({
                 distinctId: accountId,
                 event: 'delivery_address_created',
                 properties: {
@@ -257,7 +257,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     reason: cancelReason,
                     note,
                 });
-                getPostHogClient().capture({
+                (await getPostHogClient()).capture({
                     distinctId: accountId,
                     event: 'delivery_request_cancelled',
                     properties: {

@@ -152,7 +152,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 currency,
                 forceCreate,
             );
-            getPostHogClient().capture({
+            (await getPostHogClient()).capture({
                 distinctId: accountId,
                 event: 'cart_item_updated',
                 properties: {

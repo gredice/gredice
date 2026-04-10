@@ -285,7 +285,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     await assignStripeCustomerId(account.id, customerId);
                 }
 
-                getPostHogClient().capture({
+                (await getPostHogClient()).capture({
                     distinctId: accountId,
                     event: 'checkout_initiated',
                     properties: {
@@ -298,7 +298,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ sessionId, url });
             }
 
-            getPostHogClient().capture({
+            (await getPostHogClient()).capture({
                 distinctId: accountId,
                 event: 'checkout_initiated',
                 properties: {
@@ -368,7 +368,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            getPostHogClient().capture({
+            (await getPostHogClient()).capture({
                 distinctId: accountId,
                 event: 'checkout_cancelled',
                 properties: { session_id: sessionId },
