@@ -1,7 +1,6 @@
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import * as Sentry from '@sentry/nextjs';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
@@ -12,9 +11,6 @@ export function generateMetadata(): Metadata {
     return {
         title: 'Vrt | Gredice',
         description: 'Gredice vrt - vrt po tvom',
-        other: {
-            ...Sentry.getTraceData(),
-        },
     };
 }
 

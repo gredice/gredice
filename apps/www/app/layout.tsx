@@ -1,7 +1,6 @@
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
 import './globals.css';
-import * as Sentry from '@sentry/nextjs';
 import { PageNav } from '@signalco/ui/Nav';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { VercelToolbar } from '@vercel/toolbar/next';
@@ -56,9 +55,6 @@ export function generateMetadata(): Metadata {
             title: 'Gredice - vrt po tvom',
             url: 'https://www.gredice.com',
             siteName: 'Gredice - vrt po tvom',
-        },
-        other: {
-            ...Sentry.getTraceData(),
         },
     };
 }

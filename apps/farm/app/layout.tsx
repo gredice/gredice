@@ -2,7 +2,6 @@ import { Analytics } from '@vercel/analytics/react';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import * as Sentry from '@sentry/nextjs';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { AuthAppProvider } from '../components/providers/AuthAppProvider';
@@ -12,9 +11,6 @@ export function generateMetadata(): Metadata {
     return {
         title: 'Farma | Gredice',
         description: 'Gredice farma - upravljanje farmom.',
-        other: {
-            ...Sentry.getTraceData(),
-        },
     };
 }
 

@@ -48,5 +48,3 @@ node_modules/
 
 # Generated
 /tests/sitemap-pages.json
-# Sentry Config File
-.env.sentry-build-plugin
