@@ -326,32 +326,39 @@ export function PickableGroup({
             };
         });
 
-        const movedPreviewByPosition = new Map(
-            placementPreviews.map((preview) => [
-                `${preview.destination.x}|${preview.destination.z}|${preview.destinationIndex}`,
-                preview,
-            ]),
+        const movedRaisedBedPreviewByPosition = new Map(
+            placementPreviews
+                .filter((preview) => preview.blockName === 'Raised_Bed')
+                .map((preview) => [
+                    `${preview.destination.x}|${preview.destination.z}`,
+                    preview,
+                ]),
         );
 
-        function getExternalRaisedBedBlockAtIndex(
-            x: number,
-            z: number,
-            index: number,
-        ) {
+        function getExternalRaisedBedBlockAtPosition(x: number, z: number) {
             const stackAtPosition = getStack({ x, z });
-            const candidateBlock = stackAtPosition?.blocks.filter(
-                (candidate) => !movingBlockIds.has(candidate.id),
-            )[index];
-            if (!candidateBlock || candidateBlock.name !== 'Raised_Bed') {
-                return null;
+            const candidateBlocks =
+                stackAtPosition?.blocks.filter(
+                    (candidate) => !movingBlockIds.has(candidate.id),
+                ) ?? [];
+
+            for (
+                let candidateIndex = candidateBlocks.length - 1;
+                candidateIndex >= 0;
+                candidateIndex--
+            ) {
+                const candidateBlock = candidateBlocks[candidateIndex];
+                if (candidateBlock?.name === 'Raised_Bed') {
+                    return candidateBlock;
+                }
             }
-            return candidateBlock;
+
+            return null;
         }
 
         function hasExternalRaisedBedNeighbor(
             x: number,
             z: number,
-            index: number,
             excludedPositions: Set<string>,
         ) {
             const neighbors = [
@@ -367,11 +374,7 @@ export function PickableGroup({
                 }
 
                 return Boolean(
-                    getExternalRaisedBedBlockAtIndex(
-                        neighbor.x,
-                        neighbor.z,
-                        index,
-                    ),
+                    getExternalRaisedBedBlockAtPosition(neighbor.x, neighbor.z),
                 );
             });
         }
@@ -396,8 +399,8 @@ export function PickableGroup({
                     | undefined;
 
                 for (const neighbor of neighbors) {
-                    const movedNeighbor = movedPreviewByPosition.get(
-                        `${neighbor.x}|${neighbor.z}|${preview.destinationIndex}`,
+                    const movedNeighbor = movedRaisedBedPreviewByPosition.get(
+                        `${neighbor.x}|${neighbor.z}`,
                     );
                     if (
                         movedNeighbor &&
@@ -408,10 +411,9 @@ export function PickableGroup({
                     }
 
                     const externalNeighborBlock =
-                        getExternalRaisedBedBlockAtIndex(
+                        getExternalRaisedBedBlockAtPosition(
                             neighbor.x,
                             neighbor.z,
-                            preview.destinationIndex,
                         );
                     if (externalNeighborBlock) {
                         raisedBedNeighborCount += 1;
@@ -447,7 +449,6 @@ export function PickableGroup({
                 return hasExternalRaisedBedNeighbor(
                     externalNeighbor.x,
                     externalNeighbor.z,
-                    preview.destinationIndex,
                     excludedPositions,
                 );
             });

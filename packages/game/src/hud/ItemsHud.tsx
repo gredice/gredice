@@ -1,4 +1,3 @@
-import type { BlockData } from '@gredice/client';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Info, Up } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -14,10 +13,8 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
-import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useIsEditMode } from '../hooks/useIsEditMode';
 import { KnownPages } from '../knownPages';
-import type { Stack as GardenStack } from '../types/Stack';
 import { HudCard } from './components/HudCard';
 
 type HudItemEntity = {
@@ -91,103 +88,6 @@ const items: HudItem[] = [
     },
 ];
 
-/**
- * Get the position in a spiral
- * @param step The step in the spiral
- * @returns The position in the spiral
- * @see https://stackoverflow.com/a/19287714/563228
- */
-function spiral(step: number): [number, number] {
-    // given n an index in the squared spiral
-    // p the sum of point in inner square
-    // a the position on the current square
-    // n = p + a
-
-    var r = Math.floor((Math.sqrt(step + 1) - 1) / 2) + 1;
-
-    // compute radius : inverse arithmetic sum of 8+16+24+...=
-    var p = (8 * r * (r - 1)) / 2;
-    // compute total point on radius -1 : arithmetic sum of 8+16+24+...
-
-    var en = r * 2;
-    // points by face
-
-    var a = (1 + step - p) % (r * 8);
-    // compute de position and shift it so the first is (-r,-r) but (-r+1,-r)
-    // so square can connect
-
-    var pos = [0, 0, r];
-    switch (Math.floor(a / (r * 2))) {
-        // find the face : 0 top, 1 right, 2, bottom, 3 left
-        case 0:
-            {
-                pos[0] = a - r;
-                pos[1] = -r;
-            }
-            break;
-        case 1:
-            {
-                pos[0] = r;
-                pos[1] = (a % en) - r;
-            }
-            break;
-        case 2:
-            {
-                pos[0] = r - (a % en);
-                pos[1] = r;
-            }
-            break;
-        case 3:
-            {
-                pos[0] = -r;
-                pos[1] = r - (a % en);
-            }
-            break;
-    }
-
-    return [pos[0], pos[1]];
-}
-
-function isValidPosition(
-    blockData: BlockData[],
-    stacks: GardenStack[],
-    position: [number, number],
-    type: 'block' | 'any' = 'any',
-) {
-    const stack = stacks.find(
-        (stack) =>
-            stack.position.x === position[0] &&
-            stack.position.z === position[1],
-    );
-    if (!stack) return true;
-
-    // Place block only on non-block stacks
-    if (type === 'block' && stack.blocks.length > 0) return false;
-
-    const lastBlock = stack.blocks.at(-1);
-    if (!lastBlock) return true;
-
-    const data = blockData.find(
-        (data) => data.information.name === lastBlock.name,
-    );
-    if (!data) return false;
-
-    return data.attributes.stackable ?? false;
-}
-
-function findEmptyPosition(
-    blockData: BlockData[],
-    stacks: GardenStack[],
-    type: 'block' | 'any' = 'any',
-) {
-    let current: [number, number] = [0, 0];
-    let spiralStep = 0;
-    while (!isValidPosition(blockData, stacks, current, type)) {
-        current = spiral(spiralStep++);
-    }
-    return current;
-}
-
 function PlaceEntityButton({
     name,
     simple,
@@ -195,7 +95,6 @@ function PlaceEntityButton({
     name: string;
     simple?: boolean;
 }) {
-    const { data: garden } = useCurrentGarden();
     const { data: blockData } = useBlockData();
     const placeBlock = useBlockPlace();
 
@@ -203,48 +102,54 @@ function PlaceEntityButton({
     if (!block) return null;
 
     async function placeEntity() {
-        if (!blockData || !garden) {
+        if (!blockData) {
             console.warn('Cannot place entity, missing data');
             return;
         }
 
-        const position = findEmptyPosition(
-            blockData,
-            garden?.stacks ?? [],
-            name.startsWith('Block') ? 'block' : 'any',
-        );
-
-        // Buy block and get id
         await placeBlock.mutateAsync({
             blockName: name,
-            position,
         });
     }
 
     if (!block.prices.sunflowers && simple) return null;
 
+    const errorMessage =
+        placeBlock.error instanceof Error ? placeBlock.error.message : null;
+
     return (
-        <Button
-            className={cx(!simple && 'justify-between', simple && 'py-0 h-8')}
-            onClick={placeEntity}
-            size={simple ? 'sm' : 'md'}
-            disabled={!block.prices.sunflowers}
-            endDecorator={
-                <Row
-                    className={cx(
-                        !simple &&
-                            'rounded-full p-1 gap border bg-muted w-fit pr-2',
-                        !block.prices.sunflowers && 'pl-2',
-                    )}
-                >
-                    {block.prices.sunflowers
-                        ? `🌻 ${block.prices.sunflowers}`
-                        : 'Nedostupno'}
-                </Row>
-            }
-        >
-            {!simple && <span className="self-center">Postavi</span>}
-        </Button>
+        <Stack spacing={0.5}>
+            <Button
+                className={cx(
+                    !simple && 'justify-between',
+                    simple && 'py-0 h-8',
+                )}
+                onClick={placeEntity}
+                size={simple ? 'sm' : 'md'}
+                disabled={!block.prices.sunflowers || placeBlock.isPending}
+                loading={placeBlock.isPending}
+                endDecorator={
+                    <Row
+                        className={cx(
+                            !simple &&
+                                'rounded-full p-1 gap border bg-muted w-fit pr-2',
+                            !block.prices.sunflowers && 'pl-2',
+                        )}
+                    >
+                        {block.prices.sunflowers
+                            ? `🌻 ${block.prices.sunflowers}`
+                            : 'Nedostupno'}
+                    </Row>
+                }
+            >
+                {!simple && <span className="self-center">Postavi</span>}
+            </Button>
+            {errorMessage && (
+                <Typography level="body3" className="text-red-600">
+                    {errorMessage}
+                </Typography>
+            )}
+        </Stack>
     );
 }
 

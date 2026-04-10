@@ -24,6 +24,19 @@ const nextConfig: NextConfig = {
     },
     productionBrowserSourceMaps: !shouldSkipSentrySourceMaps,
     allowedDevOrigins: ['api.gredice.test'],
+    async rewrites() {
+        return [
+            {
+                source: '/ingest/static/:path*',
+                destination: `${process.env.NEXT_PUBLIC_POSTHOG_HOST}/static/:path*`,
+            },
+            {
+                source: '/ingest/:path*',
+                destination: `${process.env.NEXT_PUBLIC_POSTHOG_HOST}/:path*`,
+            },
+        ];
+    },
+    skipTrailingSlashRedirect: true,
 };
 
 export default withSentryConfig(nextConfig, {

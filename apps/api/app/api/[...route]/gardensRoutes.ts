@@ -20,6 +20,7 @@ import {
     knownEvents,
     knownEventTypes,
     spendSunflowers,
+    deleteGardenBlock as storageDeleteGardenBlock,
     updateGarden,
     updateGardenBlock,
     updateGardenStack,
@@ -31,7 +32,9 @@ import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { publicSecurity } from '../../../lib/docs/security';
+import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
+import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
 import {
     AI_ANALYSIS_DAILY_LIMIT,
@@ -59,8 +62,9 @@ async function countRecentRaisedBedAiAnalyses(accountId: string) {
         bedId.toString(),
     );
     const raisedBedFieldAggregateIds = accountBedIds.flatMap((bedId) =>
-        Array.from({ length: 20 }, (_, index) =>
-            `${bedId.toString()}|${index.toString()}`,
+        Array.from(
+            { length: 20 },
+            (_, index) => `${bedId.toString()}|${index.toString()}`,
         ),
     );
 
@@ -974,6 +978,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 blockName: z.string(),
+                position: z
+                    .object({
+                        x: z.number().int(),
+                        y: z.number().int(),
+                    })
+                    .optional(),
             }),
         ),
         authValidator(['user', 'admin']),
@@ -987,8 +997,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // Check garden exists and is owned by user
             const { accountId } = context.get('authContext');
 
-            const [garden, blockData] = await Promise.all([
+            const [garden, gardenBlocks, blockData] = await Promise.all([
                 getGarden(gardenIdNumber),
+                getGardenBlocks(gardenIdNumber),
                 getBlockData(),
             ]);
 
@@ -1001,7 +1012,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const { blockName } = context.req.valid('json');
+            const { blockName, position } = context.req.valid('json');
 
             // Retrieve block information (cost)
             const block = blockData.find(
@@ -1021,13 +1032,65 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            // Spend sunflowers and create block in parallel
-            const [, blockId] = await Promise.all([
-                spendSunflowers(accountId, cost, `block:${blockName}`),
-                createGardenBlock(gardenIdNumber, blockName),
-            ]);
+            const blockNameById = new Map(
+                gardenBlocks.map((block) => [block.id, block.name] as const),
+            );
+            const blockDataByName = new Map<
+                string,
+                (typeof blockData)[number]
+            >();
+            for (const candidate of blockData) {
+                const candidateName = candidate.information?.name;
+                if (candidateName) {
+                    blockDataByName.set(candidateName, candidate);
+                }
+            }
+            const placement = resolveGardenBlockPlacement({
+                blockName,
+                stacks: garden.stacks,
+                blockNameById,
+                blockDataByName,
+                requestedPosition: position,
+            });
+            if (!placement.valid) {
+                return context.json({ error: placement.error }, 400);
+            }
 
-            return context.json({ id: blockId });
+            const { x, y, existingBlocks } = placement.placement;
+            const hasTargetStack = garden.stacks.some(
+                (stack) => stack.positionX === x && stack.positionY === y,
+            );
+            const purchaseResult = await purchaseGardenBlock({
+                accountId,
+                blockName,
+                cost,
+                dependencies: {
+                    createGardenBlock,
+                    createGardenStack,
+                    deleteGardenBlock: storageDeleteGardenBlock,
+                    spendSunflowers,
+                    synchronizeGardenStacksAndRaisedBeds,
+                    updateGardenStack,
+                },
+                gardenId: gardenIdNumber,
+                hasTargetStack,
+                placement: {
+                    x,
+                    y,
+                    existingBlocks,
+                },
+            });
+            if (!purchaseResult.ok) {
+                return context.json(
+                    { error: purchaseResult.error },
+                    purchaseResult.status,
+                );
+            }
+
+            return context.json({
+                id: purchaseResult.blockId,
+                position: purchaseResult.position,
+            });
         },
     )
     .put(

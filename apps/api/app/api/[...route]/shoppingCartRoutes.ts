@@ -15,6 +15,7 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -137,6 +138,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 currency,
                 forceCreate,
             } = context.req.valid('json');
+            const { accountId } = context.get('authContext');
             await upsertOrRemoveCartItem(
                 id,
                 cartId,
@@ -150,6 +152,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 currency,
                 forceCreate,
             );
+            getPostHogClient().capture({
+                distinctId: accountId,
+                event: 'cart_item_updated',
+                properties: {
+                    cart_id: cartId,
+                    entity_id: entityId,
+                    entity_type: entityTypeName,
+                    amount,
+                    currency: currency ?? undefined,
+                },
+            });
             return context.json({ success: true });
         },
     )
