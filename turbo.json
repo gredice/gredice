@@ -7,6 +7,7 @@
                 ".env*"
             ],
             "passThroughEnv": [
+                "COOKIE_DOMAIN",
                 "SENTRY_AUTH_TOKEN",
                 "SENTRY_ORG",
                 "SENTRY_OTLP_TRACES_URL",
