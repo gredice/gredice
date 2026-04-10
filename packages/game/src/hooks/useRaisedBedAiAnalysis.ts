@@ -20,9 +20,11 @@ export function useRaisedBedAiAnalysis() {
             imageUrl: string;
             onChunk?: (accumulated: string) => void;
         }) => {
-            const response = await client({ auth: 'authenticated' }).api.gardens[':gardenId'][
-                'raised-beds'
-            ][':raisedBedId']['analyze-image'].$post({
+            const response = await client({
+                auth: 'authenticated',
+            }).api.gardens[':gardenId']['raised-beds'][':raisedBedId'][
+                'analyze-image'
+            ].$post({
                 param: {
                     gardenId: gardenId.toString(),
                     raisedBedId: raisedBedId.toString(),

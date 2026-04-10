@@ -1,5 +1,5 @@
-import { Analytics } from '@vercel/analytics/react';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
+import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
 import './globals.css';
 import { Stack } from '@signalco/ui-primitives/Stack';

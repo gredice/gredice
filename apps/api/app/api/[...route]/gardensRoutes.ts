@@ -34,8 +34,8 @@ import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { publicSecurity } from '../../../lib/docs/security';
 import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
-import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
+import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import {
     AI_ANALYSIS_DAILY_LIMIT,
     streamRaisedBedImageAnalysis,

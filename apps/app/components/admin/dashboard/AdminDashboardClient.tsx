@@ -322,7 +322,9 @@ export function AdminDashboardClient({
                     />
                     <FactCard
                         header="Ukupno tokena"
-                        value={initialAiData.totalTokens.toLocaleString('hr-HR')}
+                        value={initialAiData.totalTokens.toLocaleString(
+                            'hr-HR',
+                        )}
                         href={KnownPages.AiAnalytics}
                     />
                 </div>

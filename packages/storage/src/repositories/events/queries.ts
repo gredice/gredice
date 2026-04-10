@@ -96,10 +96,7 @@ export function createEvent(
     });
 }
 
-export async function getAiAnalysisEvents(filter?: {
-    from?: Date;
-    to?: Date;
-}) {
+export async function getAiAnalysisEvents(filter?: { from?: Date; to?: Date }) {
     const results = await storage().query.events.findMany({
         where: and(
             eq(events.type, knownEventTypes.raisedBedFields.aiAnalysis),
@@ -115,10 +112,7 @@ export async function getAiAnalysisEvents(filter?: {
     }));
 }
 
-export async function getAiAnalysisTotals(filter?: {
-    from?: Date;
-    to?: Date;
-}) {
+export async function getAiAnalysisTotals(filter?: { from?: Date; to?: Date }) {
     const whereConditions = [
         eq(events.type, knownEventTypes.raisedBedFields.aiAnalysis),
         ...(filter?.from ? [gte(events.createdAt, filter.from)] : []),

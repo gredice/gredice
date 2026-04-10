@@ -22,9 +22,11 @@ export function useRaisedBedFieldAiAnalysis() {
             imageUrl: string;
             onChunk?: (accumulated: string) => void;
         }) => {
-            const response = await client({ auth: 'authenticated' }).api.gardens[':gardenId'][
-                'raised-beds'
-            ][':raisedBedId'].fields[':positionIndex']['analyze-image'].$post({
+            const response = await client({
+                auth: 'authenticated',
+            }).api.gardens[':gardenId']['raised-beds'][':raisedBedId'].fields[
+                ':positionIndex'
+            ]['analyze-image'].$post({
                 param: {
                     gardenId: gardenId.toString(),
                     raisedBedId: raisedBedId.toString(),
