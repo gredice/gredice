@@ -66,9 +66,7 @@ export default async function AiAnalyticsPage() {
                 <Card>
                     <CardOverflow>
                         <Stack className="p-2">
-                            <Typography level="body3">
-                                Zadnjih 24h
-                            </Typography>
+                            <Typography level="body3">Zadnjih 24h</Typography>
                             <Typography level="h4" semiBold>
                                 {totals24h.count}
                             </Typography>
@@ -90,9 +88,7 @@ export default async function AiAnalyticsPage() {
                 <Card>
                     <CardOverflow>
                         <Stack className="p-2">
-                            <Typography level="body3">
-                                Ukupno tokena
-                            </Typography>
+                            <Typography level="body3">Ukupno tokena</Typography>
                             <Typography level="h4" semiBold>
                                 {formatTokens(totalTokens)}
                             </Typography>
@@ -104,9 +100,7 @@ export default async function AiAnalyticsPage() {
                 <Card>
                     <CardOverflow>
                         <Stack className="p-2">
-                            <Typography level="body3">
-                                Ulazni tokeni
-                            </Typography>
+                            <Typography level="body3">Ulazni tokeni</Typography>
                             <Typography level="h4" semiBold>
                                 {formatTokens(totalInputTokens)}
                             </Typography>
@@ -177,28 +171,20 @@ export default async function AiAnalyticsPage() {
                             {events.map((event) => (
                                 <Table.Row key={event.id}>
                                     <Table.Cell>{event.id}</Table.Cell>
-                                    <Table.Cell>
-                                        {event.aggregateId}
-                                    </Table.Cell>
+                                    <Table.Cell>{event.aggregateId}</Table.Cell>
                                     <Table.Cell>
                                         <Chip size="sm">
                                             {event.data?.model ?? '-'}
                                         </Chip>
                                     </Table.Cell>
                                     <Table.Cell className="text-right">
-                                        {formatTokens(
-                                            event.data?.inputTokens,
-                                        )}
+                                        {formatTokens(event.data?.inputTokens)}
                                     </Table.Cell>
                                     <Table.Cell className="text-right">
-                                        {formatTokens(
-                                            event.data?.outputTokens,
-                                        )}
+                                        {formatTokens(event.data?.outputTokens)}
                                     </Table.Cell>
                                     <Table.Cell className="text-right">
-                                        {formatTokens(
-                                            event.data?.totalTokens,
-                                        )}
+                                        {formatTokens(event.data?.totalTokens)}
                                     </Table.Cell>
                                     <Table.Cell>
                                         <LocalDateTime>

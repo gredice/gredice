@@ -169,9 +169,7 @@ function DiaryList({
                             {entry.isMarkdown ? (
                                 <ListItem
                                     nodeId={entry.id.toString()}
-                                    onSelected={() =>
-                                        setExpandedAiEntry(entry)
-                                    }
+                                    onSelected={() => setExpandedAiEntry(entry)}
                                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                                     label={
                                         <Row
@@ -184,9 +182,7 @@ function DiaryList({
                                             >
                                                 <DiaryEntryImages
                                                     name={entry.name}
-                                                    imageUrls={
-                                                        entry.imageUrls
-                                                    }
+                                                    imageUrls={entry.imageUrls}
                                                 />
                                                 <Stack>
                                                     <Typography
@@ -196,8 +192,7 @@ function DiaryList({
                                                         {entry.name}
                                                     </Typography>
                                                     <Typography level="body2">
-                                                        Klikni za prikaz
-                                                        analize
+                                                        Klikni za prikaz analize
                                                     </Typography>
                                                 </Stack>
                                             </Row>
@@ -226,9 +221,7 @@ function DiaryList({
                                             >
                                                 <DiaryEntryImages
                                                     name={entry.name}
-                                                    imageUrls={
-                                                        entry.imageUrls
-                                                    }
+                                                    imageUrls={entry.imageUrls}
                                                 />
                                                 <Stack>
                                                     <Typography

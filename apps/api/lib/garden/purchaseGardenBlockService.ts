@@ -1,16 +1,10 @@
 type PurchaseGardenBlockDependencies = {
-    createGardenBlock: (
-        gardenId: number,
-        blockName: string,
-    ) => Promise<string>;
+    createGardenBlock: (gardenId: number, blockName: string) => Promise<string>;
     createGardenStack: (
         gardenId: number,
         position: { x: number; y: number },
     ) => Promise<unknown>;
-    deleteGardenBlock: (
-        gardenId: number,
-        blockId: string,
-    ) => Promise<unknown>;
+    deleteGardenBlock: (gardenId: number, blockId: string) => Promise<unknown>;
     spendSunflowers: (
         accountId: string,
         amount: number,
@@ -135,13 +129,16 @@ export async function purchaseGardenBlock(
         try {
             await dependencies.synchronizeGardenStacksAndRaisedBeds(gardenId);
         } catch (error) {
-            console.error('Failed to synchronize raised beds after block purchase', {
-                gardenId,
-                accountId,
-                blockId,
-                blockName,
-                error,
-            });
+            console.error(
+                'Failed to synchronize raised beds after block purchase',
+                {
+                    gardenId,
+                    accountId,
+                    blockId,
+                    blockName,
+                    error,
+                },
+            );
         }
     }
 

@@ -1,5 +1,5 @@
 import { postHogMiddleware } from '@posthog/next';
-import { NextResponse, type NextRequest } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 const postHogApiKey =
     process.env.NEXT_PUBLIC_POSTHOG_KEY ??

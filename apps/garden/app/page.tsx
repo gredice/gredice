@@ -2,7 +2,11 @@ import { GameScene } from '@gredice/game';
 import { SignedOut } from '@signalco/auth-client/components';
 import type { ComponentProps } from 'react';
 import LoginModal from '../components/auth/LoginModal';
-import { enableDebugHudFlag, lsystemPlantsFlag, raisedBedImageAIFlag } from './flags';
+import {
+    enableDebugHudFlag,
+    lsystemPlantsFlag,
+    raisedBedImageAIFlag,
+} from './flags';
 
 export default async function Home() {
     const flags: ComponentProps<typeof GameScene>['flags'] = {

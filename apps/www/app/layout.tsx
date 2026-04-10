@@ -1,9 +1,9 @@
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
 import './globals.css';
+import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { PageNav } from '@signalco/ui/Nav';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import Head from 'next/head';
 import type { ReactNode } from 'react';

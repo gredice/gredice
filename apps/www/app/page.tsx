@@ -132,8 +132,8 @@ function StepsSection() {
                                     level="body1"
                                     className="text-pretty"
                                 >
-                                    Mi postavljamo tvoju gredicu kod lokalnog OPG-a i
-                                    brzo sadimo tvoje biljke.
+                                    Mi postavljamo tvoju gredicu kod lokalnog
+                                    OPG-a i brzo sadimo tvoje biljke.
                                 </Typography>
                             </Stack>
                             <NavigatingButton
