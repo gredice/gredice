@@ -1,7 +1,6 @@
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
 import './globals.css';
-import * as Sentry from '@sentry/nextjs';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import Head from 'next/head';
 import Image from 'next/image';
@@ -12,9 +11,6 @@ export function generateMetadata(): Metadata {
     return {
         title: 'API | Gredice',
         description: 'Gredice API - programski pristup podacima',
-        other: {
-            ...Sentry.getTraceData(),
-        },
     };
 }
 

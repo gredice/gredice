@@ -30,7 +30,6 @@
             "@ffmpeg-installer/darwin-arm64",
             "@ffmpeg-installer/linux-x64",
             "@parcel/watcher",
-            "@sentry/cli",
             "bufferutil",
             "core-js",
             "es5-ext",
