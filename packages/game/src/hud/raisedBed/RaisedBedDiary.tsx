@@ -3,11 +3,12 @@ import { Alert } from '@signalco/ui/Alert';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { List } from '@signalco/ui-primitives/List';
 import { ListItem } from '@signalco/ui-primitives/ListItem';
+import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';
@@ -124,117 +125,201 @@ function DiaryList({
     ) => ReactNode;
 }) {
     const aiHistoryByEntryId = relateAiHistory(entries);
+    const [expandedAiEntry, setExpandedAiEntry] = useState<DiaryEntry | null>(
+        null,
+    );
 
     return (
-        <List>
-            {error && (
-                <Alert color="danger">
-                    <Typography level="body2">
-                        {
-                            'Došlo je do pogreške prilikom učitavanja dnevnika. Pokušaj ponovno.'
-                        }
-                    </Typography>
-                </Alert>
-            )}
-            {isLoading && (
-                <Spinner
-                    loading
-                    loadingLabel="Učitavanje dnevnika..."
-                    className="mx-auto my-8 flex items-center justify-center"
-                />
-            )}
-            {!isLoading && !entries?.length && (
-                <ListItem
-                    label={
-                        <Typography level="body2" className="px-2 py-4">
-                            Nema unosa u dnevniku.
-                        </Typography>
-                    }
-                />
-            )}
-            {entries?.map((entry) => {
-                const aiHistory = aiHistoryByEntryId.get(entry.id);
-                const entryAction = renderEntryAction?.(entry, aiHistory);
-
-                return (
-                    <div
-                        key={entry.id}
-                        className={entryAction ? 'space-y-1' : undefined}
-                    >
-                        <ListItem
-                            label={
-                                <Row
-                                    spacing={2}
-                                    className="justify-between font-normal"
-                                >
-                                    <Row
-                                        spacing={2}
-                                        className="items-start flex-1"
-                                    >
-                                        <DiaryEntryImages
-                                            name={entry.name}
-                                            imageUrls={entry.imageUrls}
-                                        />
-                                        <Stack>
-                                            <Typography level="body1" semiBold>
-                                                {entry.name}
-                                            </Typography>
-                                            {entry.isMarkdown ? (
-                                                <div className="prose prose-sm dark:prose-invert">
-                                                    <ReactMarkdown>
-                                                        {entry.description ??
-                                                            ''}
-                                                    </ReactMarkdown>
-                                                </div>
-                                            ) : (
-                                                <Typography level="body2">
-                                                    {entry.description}
-                                                </Typography>
-                                            )}
-                                        </Stack>
-                                    </Row>
-                                    <Stack className="items-end shrink-0">
-                                        {entry.status && (
-                                            <Chip
-                                                color={
-                                                    entry.status === 'Novo'
-                                                        ? 'warning'
-                                                        : entry.status ===
-                                                            'Završeno'
-                                                          ? 'success'
-                                                          : entry.status ===
-                                                              'Planirano'
-                                                            ? 'info'
-                                                            : entry.status ===
-                                                                    'Neuspješno' ||
-                                                                entry.status ===
-                                                                    'Otkazano'
-                                                              ? 'error'
-                                                              : 'neutral'
-                                                }
-                                                className="shrink-0 w-fit self-end"
-                                            >
-                                                {entry.status}
-                                            </Chip>
-                                        )}
-                                        <Typography level="body2" noWrap>
-                                            {entry.timestamp.toLocaleDateString(
-                                                'hr-HR',
-                                            )}
-                                        </Typography>
-                                    </Stack>
-                                </Row>
+        <>
+            <List>
+                {error && (
+                    <Alert color="danger">
+                        <Typography level="body2">
+                            {
+                                'Došlo je do pogreške prilikom učitavanja dnevnika. Pokušaj ponovno.'
                             }
+                        </Typography>
+                    </Alert>
+                )}
+                {isLoading && (
+                    <Spinner
+                        loading
+                        loadingLabel="Učitavanje dnevnika..."
+                        className="mx-auto my-8 flex items-center justify-center"
+                    />
+                )}
+                {!isLoading && !entries?.length && (
+                    <ListItem
+                        label={
+                            <Typography level="body2" className="px-2 py-4">
+                                Nema unosa u dnevniku.
+                            </Typography>
+                        }
+                    />
+                )}
+                {entries?.map((entry) => {
+                    const aiHistory = aiHistoryByEntryId.get(entry.id);
+                    const entryAction = renderEntryAction?.(entry, aiHistory);
+
+                    return (
+                        <div
+                            key={entry.id}
+                            className={entryAction ? 'space-y-1' : undefined}
+                        >
+                            {entry.isMarkdown ? (
+                                <ListItem
+                                    nodeId={entry.id.toString()}
+                                    onSelected={() =>
+                                        setExpandedAiEntry(entry)
+                                    }
+                                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                    label={
+                                        <Row
+                                            spacing={2}
+                                            className="justify-between font-normal"
+                                        >
+                                            <Row
+                                                spacing={2}
+                                                className="items-start flex-1"
+                                            >
+                                                <DiaryEntryImages
+                                                    name={entry.name}
+                                                    imageUrls={
+                                                        entry.imageUrls
+                                                    }
+                                                />
+                                                <Stack>
+                                                    <Typography
+                                                        level="body1"
+                                                        semiBold
+                                                    >
+                                                        {entry.name}
+                                                    </Typography>
+                                                    <Typography level="body2">
+                                                        Klikni za prikaz
+                                                        analize
+                                                    </Typography>
+                                                </Stack>
+                                            </Row>
+                                            <Typography
+                                                level="body2"
+                                                noWrap
+                                                className="shrink-0"
+                                            >
+                                                {entry.timestamp.toLocaleDateString(
+                                                    'hr-HR',
+                                                )}
+                                            </Typography>
+                                        </Row>
+                                    }
+                                />
+                            ) : (
+                                <ListItem
+                                    label={
+                                        <Row
+                                            spacing={2}
+                                            className="justify-between font-normal"
+                                        >
+                                            <Row
+                                                spacing={2}
+                                                className="items-start flex-1"
+                                            >
+                                                <DiaryEntryImages
+                                                    name={entry.name}
+                                                    imageUrls={
+                                                        entry.imageUrls
+                                                    }
+                                                />
+                                                <Stack>
+                                                    <Typography
+                                                        level="body1"
+                                                        semiBold
+                                                    >
+                                                        {entry.name}
+                                                    </Typography>
+                                                    <Typography level="body2">
+                                                        {entry.description}
+                                                    </Typography>
+                                                </Stack>
+                                            </Row>
+                                            <Stack className="items-end shrink-0">
+                                                {entry.status && (
+                                                    <Chip
+                                                        color={
+                                                            entry.status ===
+                                                            'Novo'
+                                                                ? 'warning'
+                                                                : entry.status ===
+                                                                    'Završeno'
+                                                                  ? 'success'
+                                                                  : entry.status ===
+                                                                      'Planirano'
+                                                                    ? 'info'
+                                                                    : entry.status ===
+                                                                            'Neuspješno' ||
+                                                                        entry.status ===
+                                                                            'Otkazano'
+                                                                      ? 'error'
+                                                                      : 'neutral'
+                                                        }
+                                                        className="shrink-0 w-fit self-end"
+                                                    >
+                                                        {entry.status}
+                                                    </Chip>
+                                                )}
+                                                <Typography
+                                                    level="body2"
+                                                    noWrap
+                                                >
+                                                    {entry.timestamp.toLocaleDateString(
+                                                        'hr-HR',
+                                                    )}
+                                                </Typography>
+                                            </Stack>
+                                        </Row>
+                                    }
+                                />
+                            )}
+                            {entryAction && (
+                                <div className="flex justify-end px-2 pb-2">
+                                    {entryAction}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </List>
+            <Modal
+                open={expandedAiEntry !== null}
+                onOpenChange={(open) => {
+                    if (!open) setExpandedAiEntry(null);
+                }}
+                title={expandedAiEntry?.name ?? 'AI analiza'}
+                className="md:max-w-3xl"
+            >
+                {expandedAiEntry && (
+                    <Stack spacing={2}>
+                        <DiaryEntryImages
+                            name={expandedAiEntry.name}
+                            imageUrls={expandedAiEntry.imageUrls}
                         />
-                        {entryAction && (
-                            <div className="flex justify-end px-2 pb-2">
-                                {entryAction}
-                            </div>
-                        )}
-                    </div>
-                );
-            })}
-        </List>
+                        <div className="prose prose-sm max-w-none dark:prose-invert">
+                            <ReactMarkdown>
+                                {expandedAiEntry.description ?? ''}
+                            </ReactMarkdown>
+                        </div>
+                        <Typography
+                            level="body3"
+                            className="text-muted-foreground text-right"
+                        >
+                            {expandedAiEntry.timestamp.toLocaleDateString(
+                                'hr-HR',
+                            )}
+                        </Typography>
+                    </Stack>
+                )}
+            </Modal>
+        </>
     );
 }
 

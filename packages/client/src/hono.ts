@@ -30,7 +30,7 @@ function createClient(mode: ClientMode) {
         return baseFetch(input, {
             ...init,
             headers,
-            credentials: authRequired ? 'include' : 'omit',
+            credentials: authRequired ? 'include' : 'same-origin',
         });
     };
     return hc<AppType>(getAppUrl(), {
