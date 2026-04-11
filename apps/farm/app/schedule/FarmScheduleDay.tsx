@@ -1,57 +1,48 @@
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { FarmScheduleOperationsSection } from './FarmScheduleOperationsSection';
-import { FarmSchedulePlantingsSection } from './FarmSchedulePlantingsSection';
+import { Suspense } from 'react';
+import { FarmScheduleEmptyState } from './FarmScheduleEmptyState';
+import { FarmScheduleOperationsSectionContent } from './FarmScheduleOperationsSectionContent';
+import { FarmSchedulePlantingsSectionContent } from './FarmSchedulePlantingsSectionContent';
+import { FarmScheduleSectionSkeleton } from './FarmScheduleSectionSkeleton';
 import {
-    getFarmScheduleDayData,
-    getFarmScheduleOperationsData,
+    type FarmScheduleDayData,
     getFarmSchedulePlantSorts,
 } from './scheduleData';
 
 interface FarmScheduleDayProps {
-    date: Date;
-    isToday: boolean;
+    dayDataPromise: Promise<FarmScheduleDayData>;
+    operationsDataPromise: ReturnType<
+        typeof import('./scheduleData').getFarmScheduleOperationsData
+    >;
     userId: string;
 }
 
-export async function FarmScheduleDay({
-    date,
-    isToday,
+export function FarmScheduleDay({
+    dayDataPromise,
+    operationsDataPromise,
     userId,
 }: FarmScheduleDayProps) {
-    const [
-        { raisedBeds, scheduledFields, scheduledOperations },
-        plantSorts,
-        operationsData,
-    ] = await Promise.all([
-        getFarmScheduleDayData(userId, date.toISOString(), isToday),
-        getFarmSchedulePlantSorts(),
-        getFarmScheduleOperationsData(),
-    ]);
+    const plantSortsPromise = getFarmSchedulePlantSorts();
 
     return (
         <Stack spacing={4}>
-            {scheduledFields.length > 0 && (
-                <FarmSchedulePlantingsSection
-                    raisedBeds={raisedBeds}
-                    scheduledFields={scheduledFields}
-                    plantSorts={plantSorts}
+            <Suspense fallback={null}>
+                <FarmScheduleEmptyState dayDataPromise={dayDataPromise} />
+            </Suspense>
+            <Suspense fallback={<FarmScheduleSectionSkeleton />}>
+                <FarmSchedulePlantingsSectionContent
+                    dayDataPromise={dayDataPromise}
+                    plantSortsPromise={plantSortsPromise}
                 />
-            )}
-            {scheduledOperations.length > 0 && (
-                <FarmScheduleOperationsSection
-                    raisedBeds={raisedBeds}
-                    scheduledOperations={scheduledOperations}
-                    plantSorts={plantSorts}
-                    operationsData={operationsData}
+            </Suspense>
+            <Suspense fallback={<FarmScheduleSectionSkeleton />}>
+                <FarmScheduleOperationsSectionContent
+                    dayDataPromise={dayDataPromise}
+                    plantSortsPromise={plantSortsPromise}
+                    operationsDataPromise={operationsDataPromise}
                     userId={userId}
                 />
-            )}
-            {scheduledFields.length === 0 &&
-                scheduledOperations.length === 0 && (
-                    <div className="px-6 pb-6 text-sm text-muted-foreground">
-                        Nema zakazanih zadataka za ovaj dan.
-                    </div>
-                )}
+            </Suspense>
         </Stack>
     );
 }

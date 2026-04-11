@@ -59,7 +59,7 @@ export function FarmSchedulePlantingsSection({
     );
 
     return (
-        <Stack spacing={2} className="px-6 pb-6">
+        <Stack spacing={2}>
             {raisedBedGroups.map(
                 ({ key, physicalId, raisedBeds: groupedRaisedBeds }) => {
                     const dayFields = scheduledFields
@@ -82,7 +82,7 @@ export function FarmSchedulePlantingsSection({
                         dayFields.length * PLANTING_TASK_DURATION_MINUTES;
 
                     return (
-                        <Stack key={key} spacing={1.5}>
+                        <Stack key={key} spacing={1}>
                             <Row
                                 spacing={1}
                                 className="items-center flex-wrap gap-y-1"
@@ -128,7 +128,7 @@ export function FarmSchedulePlantingsSection({
                                     return (
                                         <div
                                             key={field.id}
-                                            className="rounded-lg border border-border/60 bg-background/70 px-3 py-2"
+                                            className="rounded-lg border bg-white px-3 py-2"
                                         >
                                             <Row
                                                 spacing={1}
