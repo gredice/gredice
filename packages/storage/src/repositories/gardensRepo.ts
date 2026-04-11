@@ -467,8 +467,11 @@ function summarizePlantCycle(
             plantStatus =
                 typeof data?.status === 'string' ? data.status : plantStatus;
 
-            if (plantStatus === 'sowed') {
-                plantSowDate = plantCycleEvent.createdAt;
+            if (
+                plantStatus === 'pendingVerification' ||
+                plantStatus === 'sowed'
+            ) {
+                plantSowDate = plantSowDate ?? plantCycleEvent.createdAt;
             } else if (plantStatus === 'sprouted') {
                 plantGrowthDate = plantCycleEvent.createdAt;
             } else if (plantStatus === 'notSprouted') {
@@ -1176,8 +1179,11 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     typeof data?.status === 'string'
                         ? data?.status
                         : plantStatus;
-                if (plantStatus === 'sowed') {
-                    plantSowDate = event.createdAt;
+                if (
+                    plantStatus === 'pendingVerification' ||
+                    plantStatus === 'sowed'
+                ) {
+                    plantSowDate = plantSowDate ?? event.createdAt;
                 } else if (plantStatus === 'sprouted') {
                     plantGrowthDate = event.createdAt;
                 } else if (plantStatus === 'notSprouted') {
@@ -1726,6 +1732,8 @@ function operationStatusToLabel(status: string) {
         case 'new':
             return 'Novo';
         case 'completed':
+            return 'Završeno';
+        case 'pendingVerification':
             return 'Završeno';
         case 'planned':
             return 'Planirano';

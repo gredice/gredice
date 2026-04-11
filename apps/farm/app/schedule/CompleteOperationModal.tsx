@@ -1,5 +1,6 @@
 'use client';
 
+import type { EntityStandardized } from '@gredice/storage';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Modal } from '@signalco/ui-primitives/Modal';
@@ -8,11 +9,10 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { upload } from '@vercel/blob/client';
 import { useRef, useState } from 'react';
-import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import {
-    completeOperation,
-    completeOperationWithImageUrls,
-} from '../../(actions)/operationActions';
+    completeFarmOperation,
+    completeFarmOperationWithImageUrls,
+} from './actions';
 
 type UploadItemStatus = 'pending' | 'uploading' | 'uploaded' | 'failed';
 
@@ -84,11 +84,11 @@ function getUploadItemProgressClassName(uploadItem: UploadItem) {
     }
 }
 
-type CompleteOperationModalProps = {
+interface CompleteOperationModalProps {
     operationId: number;
     label: string;
     conditions?: EntityStandardized['conditions'];
-};
+}
 
 export function CompleteOperationModal({
     operationId,
@@ -116,9 +116,9 @@ export function CompleteOperationModal({
         }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const nextUploadItems = Array.from(e.target.files).map(
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files) {
+            const nextUploadItems = Array.from(event.target.files).map(
                 createUploadItem,
             );
             setUploadItems((currentUploadItems) => [
@@ -252,9 +252,12 @@ export function CompleteOperationModal({
 
                     imageUrls.push(uploadedUrl);
                 }
-                await completeOperationWithImageUrls(operationId, imageUrls);
+                await completeFarmOperationWithImageUrls(
+                    operationId,
+                    imageUrls,
+                );
             } else {
-                await completeOperation(operationId);
+                await completeFarmOperation(operationId);
             }
             handleOpenChange(false);
         } catch (error) {
@@ -278,7 +281,7 @@ export function CompleteOperationModal({
             onOpenChange={handleOpenChange}
             trigger={
                 <Checkbox
-                    className="size-5 mx-2"
+                    className="size-5"
                     checked={isOpen}
                     onCheckedChange={(checked: boolean) =>
                         handleOpenChange(checked)
@@ -426,3 +429,5 @@ export function CompleteOperationModal({
         </Modal>
     );
 }
+
+export default CompleteOperationModal;

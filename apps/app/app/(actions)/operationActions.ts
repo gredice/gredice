@@ -10,6 +10,7 @@ import {
     earnSunflowers,
     getAssignableFarmUsersByOperationIds,
     getEntityFormatted,
+    getFarmUserAcceptedOperationById,
     getOperationById,
     getRaisedBed,
     type InsertOperation,
@@ -223,25 +224,26 @@ export async function assignOperationUserAction(
     return { success: true };
 }
 
-export async function completeOperation(
-    operationId: number,
-    completedBy: string,
-    imageUrls?: string[],
+async function revalidateOperationPaths(
+    operation: Awaited<ReturnType<typeof getOperationById>>,
 ) {
-    await auth(['admin']);
-    const operation = await getOperationById(operationId);
-    if (!operation) {
-        throw new Error(`Operation with ID ${operationId} not found.`);
-    }
-    if (!operation.isAccepted) {
-        throw new Error('Operation must be accepted before completion');
-    }
+    revalidatePath(KnownPages.Schedule);
+    revalidatePath(KnownPages.Operations);
+    if (operation.accountId)
+        revalidatePath(KnownPages.Account(operation.accountId));
+    if (operation.gardenId)
+        revalidatePath(KnownPages.Garden(operation.gardenId));
+    if (operation.raisedBedId)
+        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+}
 
+async function buildOperationCompletionNotification(
+    operation: Awaited<ReturnType<typeof getOperationById>>,
+) {
     const operationData = await getEntityFormatted<EntityStandardized>(
         operation.entityId,
     );
 
-    // TODO: Add operation icon
     const header = `${operationData?.information?.label}`;
     let content = `Danas je određeno **${operationData?.information?.label}**.`;
     let linkUrl: string | undefined;
@@ -252,14 +254,13 @@ export async function completeOperation(
                 `Raised bed with ID ${operation.raisedBedId} not found.`,
             );
         } else {
-            // Generate the linkUrl for raised bed closeup
             if (raisedBed.name) {
                 linkUrl = getRaisedBedCloseupUrl(raisedBed.name);
             }
 
             const positionIndex = operation.raisedBedFieldId
                 ? raisedBed.fields.find(
-                      (f) => f.id === operation.raisedBedFieldId,
+                      (field) => field.id === operation.raisedBedFieldId,
                   )?.positionIndex
                 : null;
             if (typeof positionIndex === 'number') {
@@ -270,15 +271,26 @@ export async function completeOperation(
         }
     }
 
-    await createEvent(
-        knownEvents.operations.completedV1(operationId.toString(), {
-            completedBy,
-            images: imageUrls,
-        }),
-    );
+    return {
+        header,
+        content,
+        linkUrl,
+    };
+}
+
+async function notifyVerifiedOperationCompletion(
+    operation: Awaited<ReturnType<typeof getOperationById>>,
+) {
+    const { header, content, linkUrl } =
+        await buildOperationCompletionNotification(operation);
+    if (!operation.completedBy) {
+        throw new Error('Completed operation is missing a completion actor.');
+    }
 
     await Promise.all([
-        notifyOperationUpdate(operationId, 'completed', { completedBy }),
+        notifyOperationUpdate(operation.id, 'completed', {
+            completedBy: operation.completedBy,
+        }),
         operation.accountId
             ? createNotification({
                   accountId: operation.accountId,
@@ -286,32 +298,138 @@ export async function completeOperation(
                   raisedBedId: operation.raisedBedId,
                   header,
                   content,
-                  imageUrl: imageUrls?.[0],
+                  imageUrl: operation.imageUrls?.[0],
                   linkUrl,
                   timestamp: new Date(),
               })
             : undefined,
     ]);
+}
 
-    revalidatePath(KnownPages.Schedule);
-    if (operation.accountId)
-        revalidatePath(KnownPages.Account(operation.accountId));
-    if (operation.gardenId)
-        revalidatePath(KnownPages.Garden(operation.gardenId));
-    if (operation.raisedBedId)
-        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+async function assertFarmerCanCompleteOperation(
+    userId: string,
+    operation: Awaited<ReturnType<typeof getOperationById>>,
+) {
+    const farmOperation = await getFarmUserAcceptedOperationById(
+        userId,
+        operation.id,
+    );
+    if (!farmOperation) {
+        throw new Error('Nemaš dozvolu za označavanje ove radnje.');
+    }
+
+    if (
+        farmOperation.assignedUserId &&
+        farmOperation.assignedUserId !== userId
+    ) {
+        throw new Error('Ova radnja je dodijeljena drugom korisniku.');
+    }
+}
+
+async function verifyOperationCompletion(
+    operationId: number,
+    verifiedBy: string,
+) {
+    const operation = await getOperationById(operationId);
+    if (!operation) {
+        throw new Error(`Operation with ID ${operationId} not found.`);
+    }
+
+    if (operation.status === 'completed') {
+        return { success: true };
+    }
+
+    if (operation.status !== 'pendingVerification') {
+        throw new Error('Radnja ne čeka verifikaciju.');
+    }
+
+    await createEvent(
+        knownEvents.operations.verifiedV1(operationId.toString(), {
+            verifiedBy,
+        }),
+    );
+
+    const verifiedOperation = await getOperationById(operationId);
+    await notifyVerifiedOperationCompletion(verifiedOperation);
+    await revalidateOperationPaths(verifiedOperation);
+
+    return { success: true };
+}
+
+export async function completeOperation(
+    operationId: number,
+    imageUrls?: string[],
+) {
+    const {
+        user: { role },
+        userId,
+    } = await auth(['admin', 'farmer']);
+    const operation = await getOperationById(operationId);
+    if (!operation) {
+        throw new Error(`Operation with ID ${operationId} not found.`);
+    }
+    if (!operation.isAccepted) {
+        throw new Error('Operation must be accepted before completion');
+    }
+
+    if (operation.status === 'completed') {
+        return { success: true };
+    }
+
+    if (operation.status === 'pendingVerification') {
+        if (role === 'admin') {
+            return verifyOperationCompletion(operationId, userId);
+        }
+
+        throw new Error('Radnja već čeka verifikaciju.');
+    }
+
+    if (operation.status === 'failed' || operation.status === 'canceled') {
+        throw new Error(
+            `Cannot complete operation with status ${operation.status}`,
+        );
+    }
+
+    if (role === 'farmer') {
+        await assertFarmerCanCompleteOperation(userId, operation);
+    }
+
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: userId,
+            images: imageUrls,
+        }),
+    );
+
+    if (role === 'admin') {
+        await createEvent(
+            knownEvents.operations.verifiedV1(operationId.toString(), {
+                verifiedBy: userId,
+            }),
+        );
+
+        const verifiedOperation = await getOperationById(operationId);
+        await notifyVerifiedOperationCompletion(verifiedOperation);
+    }
+
+    await revalidateOperationPaths(operation);
+
+    return { success: true };
 }
 
 export async function completeOperationWithImageUrls(
     operationId: number,
-    completedBy: string,
     imageUrls: string[],
 ) {
-    await auth(['admin']);
-    if (!operationId || !completedBy) {
-        throw new Error('Operation ID and completedBy are required');
+    if (!operationId) {
+        throw new Error('Operation ID is required');
     }
-    await completeOperation(operationId, completedBy, imageUrls);
+    return completeOperation(operationId, imageUrls);
+}
+
+export async function verifyOperationAction(operationId: number) {
+    const { userId } = await auth(['admin']);
+    return verifyOperationCompletion(operationId, userId);
 }
 
 export async function cancelOperationAction(formData: FormData) {
@@ -342,6 +460,7 @@ export async function cancelOperationAction(formData: FormData) {
     // Only allow canceling new or planned operations
     if (
         operation.status === 'completed' ||
+        operation.status === 'pendingVerification' ||
         operation.status === 'failed' ||
         operation.status === 'canceled'
     ) {

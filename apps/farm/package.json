@@ -18,6 +18,7 @@
         "regenerate:feature-flags": "hypertune && node ../../scripts/sync-flags.mjs apps/farm"
     },
     "dependencies": {
+        "@vercel/blob": "2.3.3",
         "@flags-sdk/hypertune": "0.3.2",
         "@posthog/next": "0.1.0",
         "@vercel/toolbar": "0.2.2",

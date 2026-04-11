@@ -23,8 +23,10 @@ import {
     getOperationDurationMinutes,
     isOperationCancelled,
     isOperationCompleted,
+    isOperationPendingVerification,
 } from './scheduleShared';
 import type { Operation, RaisedBed } from './types';
+import { VerifyOperationModal } from './VerifyOperationModal';
 
 interface RaisedBedOperationsScheduleSectionProps {
     physicalId: string;
@@ -36,7 +38,6 @@ interface RaisedBedOperationsScheduleSectionProps {
         number,
         OperationAssignableFarmUser[]
     >;
-    userId: string;
 }
 
 export function RaisedBedOperationsScheduleSection({
@@ -46,7 +47,6 @@ export function RaisedBedOperationsScheduleSection({
     plantSorts,
     operationsData,
     assignableFarmUsersByOperationId,
-    userId,
 }: RaisedBedOperationsScheduleSectionProps) {
     if (raisedBeds.length === 0) {
         return null;
@@ -119,6 +119,7 @@ export function RaisedBedOperationsScheduleSection({
             approved:
                 operation.isAccepted &&
                 !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status),
         };
     });
@@ -154,6 +155,7 @@ export function RaisedBedOperationsScheduleSection({
             if (
                 operation.isAccepted &&
                 !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status)
             ) {
                 acc.approved += duration;
@@ -197,7 +199,14 @@ export function RaisedBedOperationsScheduleSection({
                         'raisedBedFull';
                     const operationLabel = `${isFullRaisedBed || !operation.physicalPositionIndex ? '' : `${operation.physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${operation.sort ? `: ${operation.sort.information?.name ?? 'Nepoznato'}` : ''}`;
 
-                    const operationInactive =
+                    const operationPendingVerification =
+                        isOperationPendingVerification(operation.status);
+
+                    const operationLocked =
+                        isOperationCancelled(operation.status) ||
+                        isOperationCompleted(operation.status) ||
+                        operationPendingVerification;
+                    const operationTextInactive =
                         isOperationCancelled(operation.status) ||
                         isOperationCompleted(operation.status);
 
@@ -205,20 +214,24 @@ export function RaisedBedOperationsScheduleSection({
                         operation.status,
                     )
                         ? 'Otkazano'
-                        : isOperationCompleted(operation.status)
-                          ? 'Završeno'
-                          : operation.isAccepted
-                            ? 'Potvrđeno'
-                            : 'Nije potvrđeno';
+                        : operationPendingVerification
+                          ? 'Čeka verifikaciju'
+                          : isOperationCompleted(operation.status)
+                            ? 'Završeno'
+                            : operation.isAccepted
+                              ? 'Potvrđeno'
+                              : 'Nije potvrđeno';
                     const operationStatusClassName = isOperationCancelled(
                         operation.status,
                     )
                         ? 'text-muted-foreground'
-                        : isOperationCompleted(operation.status)
-                          ? 'text-green-600'
-                          : operation.isAccepted
+                        : operationPendingVerification
+                          ? 'text-amber-600'
+                          : isOperationCompleted(operation.status)
                             ? 'text-green-600'
-                            : 'text-muted-foreground';
+                            : operation.isAccepted
+                              ? 'text-green-600'
+                              : 'text-muted-foreground';
                     const attachImages =
                         operationData?.conditions?.completionAttachImages;
                     const attachRequired =
@@ -240,7 +253,12 @@ export function RaisedBedOperationsScheduleSection({
                                             checked
                                             disabled
                                         />
-                                    ) : operationInactive ? (
+                                    ) : operationPendingVerification ? (
+                                        <VerifyOperationModal
+                                            operationId={operation.id}
+                                            label={operationLabel}
+                                        />
+                                    ) : operationLocked ? (
                                         <Checkbox
                                             className="size-5 mx-2"
                                             disabled
@@ -248,7 +266,6 @@ export function RaisedBedOperationsScheduleSection({
                                     ) : operation.isAccepted ? (
                                         <CompleteOperationModal
                                             operationId={operation.id}
-                                            userId={userId}
                                             label={operationLabel}
                                             conditions={
                                                 operationData?.conditions
@@ -274,7 +291,7 @@ export function RaisedBedOperationsScheduleSection({
                                     >
                                         <Typography
                                             className={
-                                                operationInactive
+                                                operationTextInactive
                                                     ? 'line-through text-muted-foreground'
                                                     : undefined
                                             }
@@ -291,7 +308,8 @@ export function RaisedBedOperationsScheduleSection({
                                     {imageStatusText &&
                                         !isOperationCompleted(
                                             operation.status,
-                                        ) && (
+                                        ) &&
+                                        !operationPendingVerification && (
                                             <Typography
                                                 level="body2"
                                                 className="ml-1 text-xs text-muted-foreground"
@@ -322,7 +340,7 @@ export function RaisedBedOperationsScheduleSection({
                                             ] ?? []
                                         }
                                         assignedUser={operation.assignedUser}
-                                        disabled={operationInactive}
+                                        disabled={operationLocked}
                                     />
                                     <RescheduleOperationModal
                                         operation={{
@@ -343,7 +361,7 @@ export function RaisedBedOperationsScheduleSection({
                                                         ? 'Prerasporedi radnju'
                                                         : 'Zakaži radnju'
                                                 }
-                                                disabled={operationInactive}
+                                                disabled={operationLocked}
                                             >
                                                 <Calendar className="size-4 shrink-0" />
                                             </IconButton>
@@ -365,7 +383,7 @@ export function RaisedBedOperationsScheduleSection({
                                             <IconButton
                                                 variant="plain"
                                                 title="Otkaži operaciju"
-                                                disabled={operationInactive}
+                                                disabled={operationLocked}
                                             >
                                                 <Close className="size-4 shrink-0" />
                                             </IconButton>

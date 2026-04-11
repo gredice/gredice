@@ -23,6 +23,7 @@ import type {
     OperationCompletePayload,
     OperationFailPayload,
     OperationSchedulePayload,
+    OperationVerifyPayload,
     RaisedBedAbandonPayload,
     RaisedBedCreatePayload,
     RaisedBedFieldAiAnalysisPayload,
@@ -293,6 +294,12 @@ export const knownEvents = {
         }),
         completedV1: (aggregateId: string, data: OperationCompletePayload) => ({
             type: knownEventTypes.operations.complete,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        verifiedV1: (aggregateId: string, data: OperationVerifyPayload) => ({
+            type: knownEventTypes.operations.verify,
             version: 1,
             aggregateId,
             data,

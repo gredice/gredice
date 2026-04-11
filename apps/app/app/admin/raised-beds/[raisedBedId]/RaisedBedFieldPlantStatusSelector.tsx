@@ -27,6 +27,11 @@ export function RaisedBedFieldPlantStatusSelector({
             items={[
                 { value: 'new', label: 'Novo', icon: '🆕' },
                 { value: 'planned', label: 'Planirano', icon: '🗓️' },
+                {
+                    value: 'pendingVerification',
+                    label: 'Čeka verifikaciju',
+                    icon: '🔍',
+                },
                 { value: 'sowed', label: 'Sijano', icon: '🫘' },
                 { value: 'sprouted', label: 'Proklijalo', icon: '🌱' },
                 { value: 'notSprouted', label: 'Nije proklijalo', icon: '❌' },

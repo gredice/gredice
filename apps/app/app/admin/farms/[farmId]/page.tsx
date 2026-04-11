@@ -1,11 +1,14 @@
 import { getFarm } from '@gredice/storage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
+import { ExternalLink, TextLinked } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
@@ -36,15 +39,24 @@ export default async function FarmPage({
     return (
         <Stack spacing={4}>
             <Stack spacing={2}>
-                <Breadcrumbs
-                    items={[
-                        { label: 'Farme', href: KnownPages.Farms },
-                        { label: farm.name },
-                    ]}
-                />
-                <Typography level="h1" semiBold>
-                    Farma
-                </Typography>
+                <Row spacing={2} justifyContent="space-between">
+                    <Breadcrumbs
+                        items={[
+                            { label: 'Farme', href: KnownPages.Farms },
+                            { label: farm.name },
+                        ]}
+                    />
+                    <Button
+                        href={`https://vrt.gredice.com/farme/${farm.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        startDecorator={
+                            <ExternalLink className="size-4 shrink-0" />
+                        }
+                    >
+                        Stranica farme
+                    </Button>
+                </Row>
                 <FormFields
                     fields={[
                         { name: 'ID farme', value: farm.id, mono: true },
@@ -64,16 +76,6 @@ export default async function FarmPage({
                         { name: 'Obrisana', value: farm.isDeleted },
                     ]}
                 />
-                <Typography level="body2">
-                    <Link
-                        className="text-primary hover:underline"
-                        href={`https://vrt.gredice.com/farme/${farm.id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                    >
-                        Otvori javni prikaz farme
-                    </Link>
-                </Typography>
             </Stack>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <Card>

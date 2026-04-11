@@ -9,14 +9,67 @@ import {
 import { cache } from 'react';
 
 const operationsBackDays = 90;
-const SCHEDULE_OPERATION_STATUSES = new Set(['new', 'planned', 'completed']);
+const SCHEDULE_FIELD_STATUSES = new Set([
+    'planned',
+    'pendingVerification',
+    'sowed',
+]);
+const SCHEDULE_OPERATION_STATUSES = new Set([
+    'new',
+    'planned',
+    'pendingVerification',
+    'completed',
+]);
 
 function dedupeById<T extends { id: number }>(items: T[]) {
     return Array.from(new Map(items.map((item) => [item.id, item])).values());
 }
 
 function isOperationCompleted(status?: string) {
-    return status === 'completed';
+    return status === 'completed' || status === 'pendingVerification';
+}
+
+function isFieldCompleted(status?: string) {
+    return status === 'sowed' || status === 'pendingVerification';
+}
+
+function getScheduledFieldsForDay(
+    isToday: boolean,
+    date: Date,
+    raisedBeds: FarmScheduleRaisedBed[],
+) {
+    const normalizedDate = new Date(date);
+    normalizedDate.setHours(0, 0, 0, 0);
+
+    return raisedBeds
+        .filter((raisedBed) => Boolean(raisedBed.physicalId))
+        .flatMap((raisedBed) => raisedBed.fields)
+        .filter((field) => {
+            if (!field.plantSortId) {
+                return false;
+            }
+
+            if (!SCHEDULE_FIELD_STATUSES.has(field.plantStatus ?? 'new')) {
+                return false;
+            }
+
+            if (isFieldCompleted(field.plantStatus) && field.plantSowDate) {
+                const sowDate = new Date(field.plantSowDate);
+                return sowDate.toDateString() === normalizedDate.toDateString();
+            }
+
+            if (!field.plantScheduledDate) {
+                return isToday;
+            }
+
+            const scheduledDate = new Date(field.plantScheduledDate);
+
+            return (
+                normalizedDate.toDateString() ===
+                    scheduledDate.toDateString() ||
+                (isToday && normalizedDate > scheduledDate)
+            );
+        });
 }
 
 function getScheduledOperationsForDay(
@@ -68,6 +121,7 @@ export type FarmScheduleOperation = Awaited<
 >[number];
 export type FarmScheduleDayData = {
     raisedBeds: FarmScheduleRaisedBed[];
+    scheduledFields: FarmScheduleRaisedBed['fields'];
     scheduledOperations: FarmScheduleOperation[];
 };
 
@@ -96,7 +150,7 @@ export const getFarmScheduleOperations = cache(async (userId: string) => {
             }),
             getFarmUserAcceptedOperations(userId, {
                 completedFrom: new Date(new Date().setHours(0, 0, 0, 0)),
-                status: 'completed',
+                status: ['pendingVerification', 'completed'],
             }),
         ]);
 
@@ -124,6 +178,11 @@ export const getFarmScheduleDayData = cache(
 
         return {
             raisedBeds,
+            scheduledFields: getScheduledFieldsForDay(
+                isToday,
+                date,
+                raisedBeds,
+            ),
             scheduledOperations: getScheduledOperationsForDay(
                 isToday,
                 date,

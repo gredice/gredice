@@ -21,9 +21,11 @@ import {
     formatMinutes,
     isFieldApproved,
     isFieldCompleted,
+    isFieldPendingVerification,
     PLANTING_TASK_DURATION_MINUTES,
 } from './scheduleShared';
 import type { RaisedBed, RaisedBedField } from './types';
+import { VerifyPlantingModal } from './VerifyPlantingModal';
 
 interface RaisedBedPlantingScheduleSectionProps {
     physicalId: string;
@@ -75,6 +77,7 @@ export function RaisedBedPlantingScheduleSection({
             text: `${field.physicalPositionIndex} - sijanje: ${totalPlants} ${field.plantSortId ? `${sortData?.information?.name}` : '?'}`,
             approved:
                 isFieldApproved(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus) &&
                 !isFieldCompleted(field.plantStatus),
         };
     });
@@ -83,6 +86,7 @@ export function RaisedBedPlantingScheduleSection({
         .filter(
             (field) =>
                 !isFieldApproved(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus) &&
                 !isFieldCompleted(field.plantStatus),
         )
         .map((field) => {
@@ -165,17 +169,25 @@ export function RaisedBedPlantingScheduleSection({
                     const fieldLabel = `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`;
                     const fieldStatus = field.plantStatus;
                     const fieldCompleted = isFieldCompleted(fieldStatus);
+                    const fieldPendingVerification =
+                        isFieldPendingVerification(fieldStatus);
                     const fieldApproved = isFieldApproved(fieldStatus);
                     const fieldStatusText = fieldCompleted
                         ? 'Završeno'
-                        : fieldApproved
-                          ? 'Potvrđeno'
-                          : 'Nije potvrđeno';
+                        : fieldPendingVerification
+                          ? 'Čeka verifikaciju'
+                          : fieldApproved
+                            ? 'Potvrđeno'
+                            : 'Nije potvrđeno';
                     const fieldStatusClassName = fieldCompleted
                         ? 'text-green-600'
-                        : fieldApproved
-                          ? 'text-green-600'
-                          : 'text-muted-foreground';
+                        : fieldPendingVerification
+                          ? 'text-amber-600'
+                          : fieldApproved
+                            ? 'text-green-600'
+                            : 'text-muted-foreground';
+                    const fieldLocked =
+                        fieldCompleted || fieldPendingVerification;
 
                     return (
                         <div key={field.id}>
@@ -186,6 +198,12 @@ export function RaisedBedPlantingScheduleSection({
                                             className="size-5 mx-2"
                                             checked
                                             disabled
+                                        />
+                                    ) : fieldPendingVerification ? (
+                                        <VerifyPlantingModal
+                                            raisedBedId={field.raisedBedId}
+                                            positionIndex={field.positionIndex}
+                                            label={fieldLabel}
                                         />
                                     ) : field.plantSortId && !fieldApproved ? (
                                         <AcceptRaisedBedFieldModal
@@ -248,7 +266,7 @@ export function RaisedBedPlantingScheduleSection({
                                                         ? 'Prerasporedi sijanje'
                                                         : 'Zakaži sijanje'
                                                 }
-                                                disabled={fieldCompleted}
+                                                disabled={fieldLocked}
                                             >
                                                 <Calendar className="size-4 shrink-0" />
                                             </IconButton>
@@ -264,7 +282,7 @@ export function RaisedBedPlantingScheduleSection({
                                             <IconButton
                                                 variant="plain"
                                                 title="Otkaži sijanje"
-                                                disabled={fieldCompleted}
+                                                disabled={fieldLocked}
                                             >
                                                 <Close className="size-4 shrink-0" />
                                             </IconButton>

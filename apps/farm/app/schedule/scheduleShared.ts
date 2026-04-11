@@ -1,13 +1,27 @@
-import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
-import type { RaisedBed } from './types';
+import type { EntityStandardized } from '@gredice/storage';
+import type { FarmScheduleDayData } from './scheduleData';
+
+type FarmRaisedBed = FarmScheduleDayData['raisedBeds'][number];
 
 export type RaisedBedScheduleGroup = {
     key: string;
-    physicalId: string;
-    raisedBeds: RaisedBed[];
+    physicalId: string | null;
+    raisedBeds: FarmRaisedBed[];
 };
 
-function comparePhysicalIds(left: string, right: string) {
+function comparePhysicalIds(left: string | null, right: string | null) {
+    if (!left && !right) {
+        return 0;
+    }
+
+    if (!left) {
+        return 1;
+    }
+
+    if (!right) {
+        return -1;
+    }
+
     const leftNumber = Number(left);
     const rightNumber = Number(right);
 
@@ -19,22 +33,19 @@ function comparePhysicalIds(left: string, right: string) {
 }
 
 export function groupRaisedBedsForSchedule(
-    raisedBeds: RaisedBed[],
+    raisedBeds: FarmRaisedBed[],
     affectedRaisedBedIds: number[],
 ) {
     const affectedRaisedBedIdSet = new Set(affectedRaisedBedIds);
     const groups = new Map<string, RaisedBedScheduleGroup>();
 
     for (const raisedBed of raisedBeds) {
-        if (
-            !raisedBed.physicalId ||
-            !affectedRaisedBedIdSet.has(raisedBed.id)
-        ) {
+        if (!affectedRaisedBedIdSet.has(raisedBed.id)) {
             continue;
         }
 
         const key = [
-            raisedBed.physicalId,
+            raisedBed.physicalId ?? `missing-${raisedBed.id}`,
             raisedBed.gardenId ?? 'garden:null',
             raisedBed.accountId ?? 'account:null',
         ].join('|');
@@ -54,7 +65,9 @@ export function groupRaisedBedsForSchedule(
     return [...groups.values()]
         .map((group) => ({
             ...group,
-            raisedBeds: [...group.raisedBeds].sort((a, b) => a.id - b.id),
+            raisedBeds: [...group.raisedBeds].sort(
+                (left, right) => left.id - right.id,
+            ),
         }))
         .sort((left, right) => {
             const physicalIdComparison = comparePhysicalIds(
@@ -71,55 +84,8 @@ export function groupRaisedBedsForSchedule(
         });
 }
 
-export const PLANTING_TASK_DURATION_MINUTES = 5;
-
-export const FIELD_STATUSES_TO_INCLUDE = new Set([
-    'new',
-    'planned',
-    'pendingVerification',
-    'sowed',
-]);
-export const FIELD_COMPLETED_STATUSES = new Set(['sowed']);
-export const OPERATION_STATUSES_TO_INCLUDE = new Set([
-    'new',
-    'planned',
-    'pendingVerification',
-    'completed',
-    'canceled',
-    'cancelled',
-]);
-
-export function isFieldApproved(status?: string) {
-    return status === 'planned';
-}
-
-export function isFieldCompleted(status?: string) {
-    if (!status) {
-        return false;
-    }
-
-    return FIELD_COMPLETED_STATUSES.has(status);
-}
-
-export function isFieldPendingVerification(status?: string) {
-    return status === 'pendingVerification';
-}
-
-export function isOperationCompleted(status?: string) {
-    return status === 'completed';
-}
-
-export function isOperationPendingVerification(status?: string) {
-    return status === 'pendingVerification';
-}
-
-export function isOperationCancelled(status?: string) {
-    return status === 'canceled' || status === 'cancelled';
-}
-
-export function formatMinutes(minutes: number, hideUnit = false) {
-    const rounded = Math.ceil(Math.max(0, minutes));
-    return hideUnit ? `${rounded}` : `${rounded} min`;
+export function formatMinutes(minutes: number) {
+    return `${Math.ceil(Math.max(0, minutes))} min`;
 }
 
 export function getOperationDurationMinutes(
@@ -145,4 +111,18 @@ export function getOperationDurationMinutes(
     }
 
     return 0;
+}
+
+export const PLANTING_TASK_DURATION_MINUTES = 5;
+
+export function isOperationCompleted(status?: string) {
+    return status === 'completed' || status === 'pendingVerification';
+}
+
+export function isFieldApproved(status?: string) {
+    return status === 'planned';
+}
+
+export function isFieldCompleted(status?: string) {
+    return status === 'sowed' || status === 'pendingVerification';
 }

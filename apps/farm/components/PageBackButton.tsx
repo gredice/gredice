@@ -11,8 +11,7 @@ export function PageBackButton() {
         <IconButton
             title="Povratak"
             variant="plain"
-            size="sm"
-            onClick={() => router.back()}
+            onClick={() => router.push('/')}
         >
             <ArrowLeft className="size-4 shrink-0" />
         </IconButton>

@@ -205,6 +205,10 @@ export type OperationCompletePayload = {
     images?: string[];
 };
 
+export type OperationVerifyPayload = {
+    verifiedBy: string;
+};
+
 export type OperationFailPayload = {
     error: string;
     errorCode: string;
@@ -220,6 +224,7 @@ export type OperationEventsPayload =
     | OperationAssignPayload
     | OperationSchedulePayload
     | OperationCompletePayload
+    | OperationVerifyPayload
     | OperationFailPayload
     | OperationCancelPayload;
 
@@ -227,6 +232,7 @@ export type OperationEventsAnyPayload = Partial<
     OperationAssignPayload &
         OperationSchedulePayload &
         OperationCompletePayload &
+        OperationVerifyPayload &
         OperationFailPayload &
         OperationCancelPayload
 >;

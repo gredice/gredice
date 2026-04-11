@@ -16,6 +16,7 @@ import type { OperationEventsAnyPayload } from './events/types';
 export type OperationStatus =
     | 'new'
     | 'planned'
+    | 'pendingVerification'
     | 'completed'
     | 'failed'
     | 'canceled';
@@ -74,6 +75,9 @@ function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
     if (typeof record.canceledBy === 'string') {
         data.canceledBy = record.canceledBy;
     }
+    if (typeof record.verifiedBy === 'string') {
+        data.verifiedBy = record.verifiedBy;
+    }
     if (typeof record.reason === 'string') {
         data.reason = record.reason;
     }
@@ -91,6 +95,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             knownEventTypes.operations.assign,
             knownEventTypes.operations.schedule,
             knownEventTypes.operations.complete,
+            knownEventTypes.operations.verify,
             knownEventTypes.operations.fail,
             knownEventTypes.operations.cancel,
         ],
@@ -111,6 +116,8 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         let scheduledDate: Date | undefined;
         let completedAt: Date | undefined;
         let completedBy: string | undefined;
+        let verifiedAt: Date | undefined;
+        let verifiedBy: string | undefined;
         let error: string | undefined;
         let errorCode: string | undefined;
         let canceledBy: string | undefined;
@@ -131,14 +138,18 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                 }
                 assignedBy = asString(data?.assignedBy) ?? assignedBy;
             } else if (event.type === knownEventTypes.operations.complete) {
-                status = 'completed';
+                status = 'pendingVerification';
                 completedBy = asString(data?.completedBy) ?? completedBy;
-                completedAt = event.createdAt;
+                completedAt = completedAt ?? event.createdAt;
                 if (Array.isArray(data?.images)) {
                     imageUrls = (data.images as unknown[]).filter(
                         (url): url is string => typeof url === 'string',
                     );
                 }
+            } else if (event.type === knownEventTypes.operations.verify) {
+                status = 'completed';
+                verifiedBy = asString(data?.verifiedBy) ?? verifiedBy;
+                verifiedAt = event.createdAt;
             } else if (event.type === knownEventTypes.operations.fail) {
                 status = 'failed';
                 error = asString(data?.error);
@@ -164,6 +175,8 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             assignedAt,
             completedAt,
             completedBy,
+            verifiedAt,
+            verifiedBy,
             error,
             errorCode,
             scheduledDate,
@@ -400,6 +413,15 @@ export async function getFarmUserAcceptedOperations(
     }
 
     return operationsWithAggregates;
+}
+
+export async function getFarmUserAcceptedOperationById(
+    userId: string,
+    id: number,
+) {
+    const operations = await getFarmUserAcceptedOperationsByIds(userId, [id]);
+    const [operationWithAggregates] = await fillOperationAggregates(operations);
+    return operationWithAggregates ?? null;
 }
 
 export async function getAssignableFarmUsersByOperationIds(
