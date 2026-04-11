@@ -1,20 +1,18 @@
 'use client';
 
 import { Button } from '@signalco/ui-primitives/Button';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { useActionState, useEffect, useMemo, useState } from 'react';
 import { useFormStatus } from 'react-dom';
+import {
+    UserPickerField,
+    type UserPickerOption,
+} from '../../../../components/shared/fields/UserPickerField';
 import { assignFarmUserAction } from '../../../(actions)/farmActions';
-
-type UserOption = {
-    id: string;
-    label: string;
-};
 
 type AssignFarmUserFormProps = {
     farmId: number;
-    users: UserOption[];
+    users: UserPickerOption[];
     assignedUserIds: string[];
 };
 
@@ -62,15 +60,11 @@ export function AssignFarmUserForm({
     return (
         <form action={formAction} className="space-y-2">
             <Stack spacing={1}>
-                <SelectItems
-                    label="Korisnik"
-                    placeholder="Odaberi korisnika"
+                <UserPickerField
+                    users={availableUsers}
                     value={selectedUser}
                     onValueChange={setSelectedUser}
-                    items={availableUsers.map((user) => ({
-                        value: user.id,
-                        label: user.label,
-                    }))}
+                    resetKey={state}
                 />
                 <input type="hidden" name="farmId" value={farmId} />
                 <input type="hidden" name="userId" value={selectedUser} />

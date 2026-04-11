@@ -3,12 +3,10 @@ import {
     AuthProtectedSection,
     SignedOut,
 } from '@signalco/auth-server/components';
-import { ArrowLeft } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import LoginDialog from '../../components/auth/LoginDialog';
-import { LogoutButton } from '../../components/auth/LogoutButton';
+import { PageBackButton } from '../../components/PageBackButton';
 import { auth } from '../../lib/auth/auth';
 import { FarmScheduleDay } from './FarmScheduleDay';
 
@@ -20,26 +18,12 @@ async function FarmScheduleContent() {
     return (
         <div className="max-w-5xl mx-auto w-full px-4 py-10 space-y-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
-                <Stack spacing={1}>
+                <Row spacing={1}>
+                    <PageBackButton />
                     <Typography level="h1" className="text-3xl" semiBold>
                         Raspored
                     </Typography>
-                    <Typography className="text-muted-foreground">
-                        Pregledaj dnevne zadatke i planiraj nadolazeće
-                        aktivnosti.
-                    </Typography>
-                </Stack>
-                <Stack spacing={2} className="items-end">
-                    <Button
-                        variant="outlined"
-                        size="sm"
-                        href="/"
-                        startDecorator={<ArrowLeft className="size-4" />}
-                    >
-                        Povratak na početnu
-                    </Button>
-                    <LogoutButton />
-                </Stack>
+                </Row>
             </div>
             <DailySchedule
                 renderDay={({ date, isToday }) => (

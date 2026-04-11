@@ -282,17 +282,6 @@ export function RaisedBedOperationsScheduleSection({
                                             {operationLabel}
                                         </Typography>
                                     </a>
-                                    <AssignOperationModal
-                                        operationId={operation.id}
-                                        label={operationLabel}
-                                        farmUsers={
-                                            assignableFarmUsersByOperationId[
-                                                operation.id
-                                            ] ?? []
-                                        }
-                                        assignedUser={operation.assignedUser}
-                                        disabled={operationInactive}
-                                    />
                                     <Typography
                                         level="body2"
                                         className={`ml-1 italic ${operationStatusClassName}`}
@@ -324,6 +313,17 @@ export function RaisedBedOperationsScheduleSection({
                                     </Typography>
                                 </Row>
                                 <Row>
+                                    <AssignOperationModal
+                                        operationId={operation.id}
+                                        label={operationLabel}
+                                        farmUsers={
+                                            assignableFarmUsersByOperationId[
+                                                operation.id
+                                            ] ?? []
+                                        }
+                                        assignedUser={operation.assignedUser}
+                                        disabled={operationInactive}
+                                    />
                                     <RescheduleOperationModal
                                         operation={{
                                             id: operation.id,
@@ -340,8 +340,8 @@ export function RaisedBedOperationsScheduleSection({
                                                 variant="plain"
                                                 title={
                                                     operation.scheduledDate
-                                                        ? 'Prerasporedi operaciju'
-                                                        : 'Zakaži operaciju'
+                                                        ? 'Prerasporedi radnju'
+                                                        : 'Zakaži radnju'
                                                 }
                                                 disabled={operationInactive}
                                             >
