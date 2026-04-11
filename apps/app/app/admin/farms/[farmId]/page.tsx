@@ -1,6 +1,6 @@
 import { getFarm } from '@gredice/storage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { ExternalLink, TextLinked } from '@signalco/ui-icons';
+import { ExternalLink } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
@@ -10,8 +10,6 @@ import {
 } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { FormFields } from '../../../../components/shared/fields/FormFields';
 import { auth } from '../../../../lib/auth/auth';

@@ -149,7 +149,11 @@ export const getFarmScheduleOperations = cache(async (userId: string) => {
                 status: ['new', 'planned'],
             }),
             getFarmUserAcceptedOperations(userId, {
-                completedFrom: new Date(new Date().setHours(0, 0, 0, 0)),
+                completedFrom: new Date(
+                    new Date().setDate(
+                        new Date().getDate() - operationsBackDays,
+                    ),
+                ),
                 status: ['pendingVerification', 'completed'],
             }),
         ]);
