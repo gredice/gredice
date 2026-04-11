@@ -46,7 +46,6 @@ export function FarmSlackChannelForm({
                     placeholder="npr. C1234567890"
                     value={channelValue}
                     onChange={(event) => setChannelValue(event.target.value)}
-                    helperText="Unesi ID Slack kanala na koji šaljemo obavijesti."
                 />
                 <input type="hidden" name="farmId" value={farmId} />
                 <SubmitButton />
