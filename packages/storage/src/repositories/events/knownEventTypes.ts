@@ -51,6 +51,7 @@ export const knownEventTypes = {
         assign: 'operation.assign',
         schedule: 'operation.schedule',
         complete: 'operation.complete',
+        verify: 'operation.verify',
         fail: 'operation.fail',
         cancel: 'operation.cancel',
     },

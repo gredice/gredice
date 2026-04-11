@@ -13,10 +13,9 @@ import { ScheduleDayPlantingsSkeleton } from './ScheduleDayPlantingsSkeleton';
 interface ScheduleDayProps {
     isToday: boolean;
     date: Date;
-    userId: string;
 }
 
-export function ScheduleDay({ isToday, date, userId }: ScheduleDayProps) {
+export function ScheduleDay({ isToday, date }: ScheduleDayProps) {
     return (
         <Stack className="grow" spacing={2}>
             <Suspense fallback={<ScheduleDayHeaderSkeleton />}>
@@ -29,11 +28,7 @@ export function ScheduleDay({ isToday, date, userId }: ScheduleDayProps) {
                 <ScheduleDayPlantingsSection isToday={isToday} date={date} />
             </Suspense>
             <Suspense fallback={<ScheduleDayOperationsSkeleton />}>
-                <ScheduleDayOperationsSection
-                    isToday={isToday}
-                    date={date}
-                    userId={userId}
-                />
+                <ScheduleDayOperationsSection isToday={isToday} date={date} />
             </Suspense>
             <Suspense fallback={<ScheduleDayDeliveriesSkeleton />}>
                 <ScheduleDayDeliveriesSection isToday={isToday} date={date} />

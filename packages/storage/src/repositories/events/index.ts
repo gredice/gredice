@@ -53,6 +53,7 @@ export type {
     OperationFailPayload,
     // Operation
     OperationSchedulePayload,
+    OperationVerifyPayload,
     RaisedBedAbandonPayload,
     // Raised bed
     RaisedBedCreatePayload,

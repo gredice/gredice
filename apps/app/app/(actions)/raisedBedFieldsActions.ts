@@ -7,6 +7,7 @@ import {
     deleteRaisedBedField,
     earnSunflowers,
     getEntityFormatted,
+    getFarmUserRaisedBeds,
     getRaisedBed,
     knownEvents,
     moveRaisedBedFieldPlantHistory,
@@ -16,41 +17,29 @@ import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
 
-export async function raisedBedPlanted(
-    raisedBedId: number,
-    positionIndex: number,
-    plantSortId: number,
+async function revalidateRaisedBedPaths(
+    raisedBed: NonNullable<Awaited<ReturnType<typeof getRaisedBed>>>,
 ) {
-    await raisedBedFieldUpdatePlant({
-        raisedBedId,
-        positionIndex,
-        status: 'sowed',
-        plantSortId,
-    });
-
     revalidatePath(KnownPages.Schedule);
+    if (raisedBed.accountId)
+        revalidatePath(KnownPages.Account(raisedBed.accountId));
+    if (raisedBed.gardenId)
+        revalidatePath(KnownPages.Garden(raisedBed.gardenId));
+    revalidatePath(KnownPages.RaisedBed(raisedBed.id));
 }
 
-export async function raisedBedFieldUpdatePlant({
-    raisedBedId,
+async function applyRaisedBedFieldPlantUpdate({
+    raisedBed,
     positionIndex,
     status,
     plantSortId,
 }: {
-    raisedBedId: number;
+    raisedBed: NonNullable<Awaited<ReturnType<typeof getRaisedBed>>>;
     positionIndex: number;
     status?: string;
     plantSortId?: number;
 }) {
-    await auth(['admin']);
-
-    const raisedBed = await getRaisedBed(raisedBedId);
-    if (!raisedBed) {
-        throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
-    }
-
-    // If a plant sort id is provided and differs from current field, place the plant
-    const aggregateId = `${raisedBedId.toString()}|${positionIndex.toString()}`;
+    const aggregateId = `${raisedBed.id.toString()}|${positionIndex.toString()}`;
     const existingField = raisedBed.fields.find(
         (field) => field.positionIndex === positionIndex && field.active,
     );
@@ -65,7 +54,7 @@ export async function raisedBedFieldUpdatePlant({
     if (status) {
         await createEvent(
             knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
-                status: status,
+                status,
             }),
         );
     }
@@ -75,35 +64,27 @@ export async function raisedBedFieldUpdatePlant({
         const sortData =
             await getEntityFormatted<EntityStandardized>(sortIdToUse);
         if (sortData) {
-            // Create sprouted notification
             let header: string | null = null;
             let content: string | null = null;
             if (status === 'planned') {
-                // TODO: Add not sprouted image
                 header = `📅 Biljka ${sortData.information?.name} je na rasporedu!`;
                 content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** biljka **${sortData.information?.name}** je na rasporedu za sijanje.`;
             } else if (status === 'sowed') {
-                // TODO: Add seed image
                 header = `Biljka ${sortData.information?.name} je posijana!`;
                 content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** posijana je biljka **${sortData.information?.name}**.`;
             } else if (status === 'sprouted') {
-                // TODO: Add sprouted image
                 header = `🌱 Proklijala je biljka ${sortData.information?.name}!`;
                 content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** proklijala je biljka **${sortData.information?.name}**.`;
             } else if (status === 'notSprouted') {
-                // TODO: Add not sprouted image
                 header = `😢 Biljka ${sortData.information?.name} nije proklijala!`;
                 content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** biljka **${sortData.information?.name}** nije proklijala. Polje je spremno za nove biljke.`;
             } else if (status === 'died') {
-                // TODO: Add died image
                 header = `😢 Biljka ${sortData.information?.name} nije uspjela!`;
                 content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** biljka **${sortData.information?.name}** nije uspjela. Veselimo se novim biljkama koje će rasti na ovom mestu.`;
             } else if (status === 'ready') {
-                // TODO: Add ready image
                 header = `🌿 Biljka ${sortData.information?.name} je spremna za berbu!`;
                 content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** biljka **${sortData.information?.name}** je spremna za berbu.`;
             } else if (status === 'harvested') {
-                // TODO: Add harvested image
                 header = `🌾 Biljka ${sortData.information?.name} je ubrana!`;
                 content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** biljka **${sortData.information?.name}** je ubrana. Polje je spremno za nove biljke.`;
             } else if (status === 'removed') {
@@ -126,16 +107,125 @@ export async function raisedBedFieldUpdatePlant({
             }
         } else {
             console.warn(
-                `No plant sort data found for raised bed ${raisedBedId} at position ${positionIndex}.`,
+                `No plant sort data found for raised bed ${raisedBed.id} at position ${positionIndex}.`,
             );
         }
     } else if (status && !sortIdToUse) {
         console.warn(
-            `No plant sort found for raised bed ${raisedBedId} at position ${positionIndex}.`,
+            `No plant sort found for raised bed ${raisedBed.id} at position ${positionIndex}.`,
+        );
+    }
+}
+
+async function assertFarmerCanUpdateRaisedBedField(
+    userId: string,
+    raisedBedId: number,
+    positionIndex: number,
+) {
+    const raisedBeds = await getFarmUserRaisedBeds(userId);
+    const raisedBed = raisedBeds.find((item) => item.id === raisedBedId);
+    const field = raisedBed?.fields.find(
+        (item) => item.positionIndex === positionIndex && item.active,
+    );
+
+    if (!raisedBed || !field) {
+        throw new Error('Nemaš dozvolu za ažuriranje ovog sijanja.');
+    }
+}
+
+export async function raisedBedPlanted(
+    raisedBedId: number,
+    positionIndex: number,
+    plantSortId: number,
+) {
+    const {
+        user: { role },
+        userId,
+    } = await auth(['admin', 'farmer']);
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (!raisedBed) {
+        throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
+    }
+
+    if (role === 'farmer') {
+        await assertFarmerCanUpdateRaisedBedField(
+            userId,
+            raisedBedId,
+            positionIndex,
         );
     }
 
-    revalidatePath(KnownPages.RaisedBed(raisedBedId));
+    await applyRaisedBedFieldPlantUpdate({
+        raisedBed,
+        positionIndex,
+        status: role === 'admin' ? 'sowed' : 'pendingVerification',
+        plantSortId,
+    });
+
+    await revalidateRaisedBedPaths(raisedBed);
+
+    return { success: true };
+}
+
+export async function raisedBedFieldUpdatePlant({
+    raisedBedId,
+    positionIndex,
+    status,
+    plantSortId,
+}: {
+    raisedBedId: number;
+    positionIndex: number;
+    status?: string;
+    plantSortId?: number;
+}) {
+    await auth(['admin']);
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (!raisedBed) {
+        throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
+    }
+
+    await applyRaisedBedFieldPlantUpdate({
+        raisedBed,
+        positionIndex,
+        status,
+        plantSortId,
+    });
+
+    await revalidateRaisedBedPaths(raisedBed);
+
+    return { success: true };
+}
+
+export async function verifyRaisedBedPlantingAction(
+    raisedBedId: number,
+    positionIndex: number,
+) {
+    await auth(['admin']);
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (!raisedBed) {
+        throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
+    }
+
+    const field = raisedBed.fields.find(
+        (item) => item.positionIndex === positionIndex && item.active,
+    );
+    if (!field || field.plantStatus !== 'pendingVerification') {
+        throw new Error('Sijanje ne čeka verifikaciju.');
+    }
+
+    await applyRaisedBedFieldPlantUpdate({
+        raisedBed,
+        positionIndex,
+        status: 'sowed',
+        plantSortId: field.plantSortId,
+    });
+
+    await revalidateRaisedBedPaths(raisedBed);
+
+    return { success: true };
 }
 
 export async function moveRaisedBedFieldPlantAction({
@@ -250,7 +340,7 @@ export async function rescheduleRaisedBedFieldAction(formData: FormData) {
     const field = raisedBed.fields.find(
         (f) => f.positionIndex === positionIndex && f.active,
     );
-    if (!field || !field.plantSortId) {
+    if (!field?.plantSortId) {
         throw new Error('Field or plant sort not found.');
     }
 

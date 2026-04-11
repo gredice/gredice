@@ -12,13 +12,11 @@ import { groupRaisedBedsForSchedule } from './scheduleShared';
 interface ScheduleDayOperationsSectionProps {
     isToday: boolean;
     date: Date;
-    userId: string;
 }
 
 export async function ScheduleDayOperationsSection({
     isToday,
     date,
-    userId,
 }: ScheduleDayOperationsSectionProps) {
     const [{ raisedBeds, scheduledOperations }, plantSorts, operationsData] =
         await Promise.all([
@@ -62,7 +60,6 @@ export async function ScheduleDayOperationsSection({
                         assignableFarmUsersByOperationId={
                             assignableFarmUsersByOperationId
                         }
-                        userId={userId}
                     />
                 );
             })}

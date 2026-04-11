@@ -2,129 +2,28 @@ import type { EntityStandardized } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
+import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { CompleteOperationModal } from './CompleteOperationModal';
 import type { FarmScheduleDayData } from './scheduleData';
+import {
+    formatMinutes,
+    getOperationDurationMinutes,
+    groupRaisedBedsForSchedule,
+    isOperationCompleted,
+} from './scheduleShared';
 
 type FarmRaisedBed = FarmScheduleDayData['raisedBeds'][number];
 type FarmOperation = FarmScheduleDayData['scheduledOperations'][number];
-
-type RaisedBedScheduleGroup = {
-    key: string;
-    physicalId: string | null;
-    raisedBeds: FarmRaisedBed[];
-};
 
 interface FarmScheduleOperationsSectionProps {
     raisedBeds: FarmScheduleDayData['raisedBeds'];
     scheduledOperations: FarmScheduleDayData['scheduledOperations'];
     plantSorts: EntityStandardized[] | null | undefined;
     operationsData: EntityStandardized[] | null | undefined;
-}
-
-function comparePhysicalIds(left: string | null, right: string | null) {
-    if (!left && !right) {
-        return 0;
-    }
-
-    if (!left) {
-        return 1;
-    }
-
-    if (!right) {
-        return -1;
-    }
-
-    const leftNumber = Number(left);
-    const rightNumber = Number(right);
-
-    if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
-        return leftNumber - rightNumber;
-    }
-
-    return left.localeCompare(right, undefined, { numeric: true });
-}
-
-function groupRaisedBedsForSchedule(
-    raisedBeds: FarmRaisedBed[],
-    affectedRaisedBedIds: number[],
-) {
-    const affectedRaisedBedIdSet = new Set(affectedRaisedBedIds);
-    const groups = new Map<string, RaisedBedScheduleGroup>();
-
-    for (const raisedBed of raisedBeds) {
-        if (!affectedRaisedBedIdSet.has(raisedBed.id)) {
-            continue;
-        }
-
-        const key = [
-            raisedBed.physicalId ?? `missing-${raisedBed.id}`,
-            raisedBed.gardenId ?? 'garden:null',
-            raisedBed.accountId ?? 'account:null',
-        ].join('|');
-        const existingGroup = groups.get(key);
-
-        if (existingGroup) {
-            existingGroup.raisedBeds.push(raisedBed);
-        } else {
-            groups.set(key, {
-                key,
-                physicalId: raisedBed.physicalId,
-                raisedBeds: [raisedBed],
-            });
-        }
-    }
-
-    return [...groups.values()]
-        .map((group) => ({
-            ...group,
-            raisedBeds: [...group.raisedBeds].sort(
-                (left, right) => left.id - right.id,
-            ),
-        }))
-        .sort((left, right) => {
-            const physicalIdComparison = comparePhysicalIds(
-                left.physicalId,
-                right.physicalId,
-            );
-            if (physicalIdComparison !== 0) {
-                return physicalIdComparison;
-            }
-
-            return (
-                (left.raisedBeds[0]?.id ?? 0) - (right.raisedBeds[0]?.id ?? 0)
-            );
-        });
-}
-
-function formatMinutes(minutes: number) {
-    return `${Math.ceil(Math.max(0, minutes))} min`;
-}
-
-function getOperationDurationMinutes(
-    operationData: EntityStandardized | undefined,
-) {
-    if (!operationData) {
-        return 0;
-    }
-
-    const durationValue = (
-        operationData as { attributes?: { duration?: unknown } }
-    )?.attributes?.duration;
-
-    if (typeof durationValue === 'number' && Number.isFinite(durationValue)) {
-        return Math.max(durationValue, 0);
-    }
-
-    if (typeof durationValue === 'string') {
-        const parsed = Number.parseFloat(durationValue);
-        if (Number.isFinite(parsed)) {
-            return Math.max(parsed, 0);
-        }
-    }
-
-    return 0;
+    userId: string;
 }
 
 function buildOperationLabel(
@@ -154,15 +53,12 @@ function buildOperationLabel(
     return `${isFullRaisedBed || !physicalPositionIndex ? '' : `${physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${sort ? `: ${sort.information?.name ?? 'Nepoznato'}` : ''}`;
 }
 
-function isOperationCompleted(status?: string) {
-    return status === 'completed';
-}
-
 export function FarmScheduleOperationsSection({
     raisedBeds,
     scheduledOperations,
     plantSorts,
     operationsData,
+    userId,
 }: FarmScheduleOperationsSectionProps) {
     if (scheduledOperations.length === 0) {
         return null;
@@ -268,6 +164,11 @@ export function FarmScheduleOperationsSection({
                                     const completed = isOperationCompleted(
                                         operation.status,
                                     );
+                                    const canComplete =
+                                        !completed &&
+                                        (!operation.assignedUserId ||
+                                            operation.assignedUserId ===
+                                                userId);
 
                                     return (
                                         <div
@@ -278,69 +179,102 @@ export function FarmScheduleOperationsSection({
                                                 spacing={1}
                                                 className="items-start justify-between gap-3"
                                             >
-                                                <Stack
-                                                    spacing={0.5}
-                                                    className="min-w-0 grow"
+                                                <Row
+                                                    spacing={1}
+                                                    className="min-w-0 grow items-start"
                                                 >
-                                                    <Typography
-                                                        className={
-                                                            completed
-                                                                ? 'line-through text-muted-foreground'
-                                                                : undefined
-                                                        }
-                                                    >
-                                                        {operation.label}
-                                                    </Typography>
-                                                    <Row
-                                                        spacing={1}
-                                                        className="items-center flex-wrap gap-y-1"
+                                                    {completed ? (
+                                                        <Checkbox
+                                                            className="size-5"
+                                                            checked
+                                                            disabled
+                                                        />
+                                                    ) : canComplete ? (
+                                                        <CompleteOperationModal
+                                                            operationId={
+                                                                operation.id
+                                                            }
+                                                            label={
+                                                                operation.label
+                                                            }
+                                                            conditions={
+                                                                operationDataById.get(
+                                                                    operation.entityId,
+                                                                )?.conditions
+                                                            }
+                                                        />
+                                                    ) : (
+                                                        <div title="Radnja je dodijeljena drugom korisniku.">
+                                                            <Checkbox
+                                                                className="size-5"
+                                                                disabled
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    <Stack
+                                                        spacing={0.5}
+                                                        className="min-w-0 grow"
                                                     >
                                                         <Typography
-                                                            level="body2"
                                                             className={
                                                                 completed
-                                                                    ? 'text-green-600'
-                                                                    : 'text-muted-foreground'
+                                                                    ? 'line-through text-muted-foreground'
+                                                                    : undefined
                                                             }
                                                         >
-                                                            {completed
-                                                                ? 'Završeno'
-                                                                : 'Potvrđeno'}
+                                                            {operation.label}
                                                         </Typography>
-                                                        {operation.durationMinutes >
-                                                            0 && (
+                                                        <Row
+                                                            spacing={1}
+                                                            className="items-center flex-wrap gap-y-1"
+                                                        >
+                                                            <Typography
+                                                                level="body2"
+                                                                className={
+                                                                    completed
+                                                                        ? 'text-green-600'
+                                                                        : 'text-muted-foreground'
+                                                                }
+                                                            >
+                                                                {completed
+                                                                    ? 'Završeno'
+                                                                    : 'Potvrđeno'}
+                                                            </Typography>
+                                                            {operation.durationMinutes >
+                                                                0 && (
+                                                                <Typography
+                                                                    level="body2"
+                                                                    className="text-muted-foreground"
+                                                                >
+                                                                    {formatMinutes(
+                                                                        operation.durationMinutes,
+                                                                    )}
+                                                                </Typography>
+                                                            )}
                                                             <Typography
                                                                 level="body2"
                                                                 className="text-muted-foreground"
                                                             >
-                                                                {formatMinutes(
-                                                                    operation.durationMinutes,
+                                                                {operation.scheduledDate ? (
+                                                                    <>
+                                                                        Planirano:{' '}
+                                                                        <LocalDateTime
+                                                                            time={
+                                                                                false
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                operation.scheduledDate
+                                                                            }
+                                                                        </LocalDateTime>
+                                                                    </>
+                                                                ) : (
+                                                                    'Danas'
                                                                 )}
                                                             </Typography>
-                                                        )}
-                                                        <Typography
-                                                            level="body2"
-                                                            className="text-muted-foreground"
-                                                        >
-                                                            {operation.scheduledDate ? (
-                                                                <>
-                                                                    Planirano:{' '}
-                                                                    <LocalDateTime
-                                                                        time={
-                                                                            false
-                                                                        }
-                                                                    >
-                                                                        {
-                                                                            operation.scheduledDate
-                                                                        }
-                                                                    </LocalDateTime>
-                                                                </>
-                                                            ) : (
-                                                                'Danas'
-                                                            )}
-                                                        </Typography>
-                                                    </Row>
-                                                </Stack>
+                                                        </Row>
+                                                    </Stack>
+                                                </Row>
                                                 {operation.assignedUser && (
                                                     <div
                                                         className="shrink-0"

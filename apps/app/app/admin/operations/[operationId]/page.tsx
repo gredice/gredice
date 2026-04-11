@@ -107,14 +107,19 @@ export default async function OperationDetailsPage({
                                 color={
                                     operation.status === 'completed'
                                         ? 'success'
-                                        : operation.status === 'planned'
-                                          ? 'info'
-                                          : operation.status === 'canceled'
-                                            ? 'neutral'
-                                            : 'warning'
+                                        : operation.status ===
+                                            'pendingVerification'
+                                          ? 'warning'
+                                          : operation.status === 'planned'
+                                            ? 'info'
+                                            : operation.status === 'canceled'
+                                              ? 'neutral'
+                                              : 'warning'
                                 }
                             >
-                                {operation.status}
+                                {operation.status === 'pendingVerification'
+                                    ? 'Čeka verifikaciju'
+                                    : operation.status}
                             </Chip>
                         }
                     />
@@ -140,6 +145,42 @@ export default async function OperationDetailsPage({
                             {operation.completedAt && (
                                 <Field
                                     name="Izvršeno"
+                                    value={
+                                        <LocalDateTime time={false}>
+                                            {operation.completedAt}
+                                        </LocalDateTime>
+                                    }
+                                />
+                            )}
+                            {operation.verifiedBy && (
+                                <Field
+                                    name="Verificirao"
+                                    value={operation.verifiedBy}
+                                />
+                            )}
+                            {operation.verifiedAt && (
+                                <Field
+                                    name="Verificirano"
+                                    value={
+                                        <LocalDateTime time={false}>
+                                            {operation.verifiedAt}
+                                        </LocalDateTime>
+                                    }
+                                />
+                            )}
+                        </>
+                    )}
+                    {operation.status === 'pendingVerification' && (
+                        <>
+                            {operation.completedBy && (
+                                <Field
+                                    name="Označio završeno"
+                                    value={operation.completedBy}
+                                />
+                            )}
+                            {operation.completedAt && (
+                                <Field
+                                    name="Označeno završeno"
                                     value={
                                         <LocalDateTime time={false}>
                                             {operation.completedAt}

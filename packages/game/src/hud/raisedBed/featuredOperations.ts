@@ -12,6 +12,7 @@ export type PlantStageName =
 export type PlantFieldStatus =
     | 'new'
     | 'planned'
+    | 'pendingVerification'
     | 'sowed'
     | 'sprouted'
     | 'notSprouted'
@@ -125,6 +126,7 @@ export const PLANT_STATUS_STAGE_SEQUENCE: Record<
 > = {
     new: ['soilPreparation', 'sowing'],
     planned: ['soilPreparation', 'sowing', 'planting'],
+    pendingVerification: ['sowing', 'watering'],
     sowed: ['sowing', 'watering'],
     sprouted: ['maintenance', 'growth', 'watering'],
     notSprouted: ['sowing', 'maintenance'],

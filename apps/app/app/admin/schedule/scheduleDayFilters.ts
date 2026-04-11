@@ -1,7 +1,9 @@
 import {
     FIELD_STATUSES_TO_INCLUDE,
+    isFieldPendingVerification,
     isOperationCancelled,
     isOperationCompleted,
+    isOperationPendingVerification,
     OPERATION_STATUSES_TO_INCLUDE,
 } from './scheduleShared';
 import type { DeliveryRequest, Operation, RaisedBed } from './types';
@@ -28,7 +30,11 @@ export function getScheduledFieldsForDay(
                 return false;
             }
 
-            if (field.plantStatus === 'sowed' && field.plantSowDate) {
+            if (
+                (field.plantStatus === 'sowed' ||
+                    isFieldPendingVerification(field.plantStatus)) &&
+                field.plantSowDate
+            ) {
                 const sowDate = new Date(field.plantSowDate);
                 return sowDate.toDateString() === normalizedDate.toDateString();
             }
@@ -64,7 +70,11 @@ export function getScheduledOperationsForDay(
             return false;
         }
 
-        if (isOperationCompleted(operation.status) && operation.completedAt) {
+        if (
+            (isOperationCompleted(operation.status) ||
+                isOperationPendingVerification(operation.status)) &&
+            operation.completedAt
+        ) {
             const completedDate = new Date(operation.completedAt);
             return (
                 completedDate.toDateString() === normalizedDate.toDateString()
@@ -83,6 +93,7 @@ export function getScheduledOperationsForDay(
             isToday &&
             normalizedDate > scheduledDate &&
             !isOperationCompleted(operation.status) &&
+            !isOperationPendingVerification(operation.status) &&
             !isOperationCancelled(operation.status);
 
         return sameDay || isUnscheduledToday || isOverdueToday;

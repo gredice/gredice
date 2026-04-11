@@ -12,7 +12,7 @@ import { ScheduleDayPlantingsSkeleton } from './ScheduleDayPlantingsSkeleton';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminSchedulePage() {
-    const { userId } = await auth(['admin']);
+    await auth(['admin']);
 
     return (
         <Stack spacing={2}>
@@ -31,11 +31,7 @@ export default async function AdminSchedulePage() {
                             </Stack>
                         }
                     >
-                        <ScheduleDay
-                            isToday={isToday}
-                            date={date}
-                            userId={userId}
-                        />
+                        <ScheduleDay isToday={isToday} date={date} />
                     </Suspense>
                 )}
             />

@@ -15,6 +15,7 @@ export function plantFieldStatusLabel(status: string | undefined) {
                     'Termin sijanja je određen i biljka čeka svoj red.',
             };
         case 'sowed':
+        case 'pendingVerification':
             return {
                 shortLabel: 'Posijana',
                 label: 'Biljka je posijana',
