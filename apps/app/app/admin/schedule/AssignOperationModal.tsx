@@ -10,10 +10,13 @@ import { Button } from '@signalco/ui-primitives/Button';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useEffect, useMemo, useState } from 'react';
+import {
+    UserPickerField,
+    type UserPickerOption,
+} from '../../../components/shared/fields/UserPickerField';
 import { assignOperationUserAction } from '../../(actions)/operationActions';
 
 const unassignedValue = '__unassigned__';
@@ -64,6 +67,16 @@ export function AssignOperationModal({
 
         return [...usersById.values()];
     }, [farmUsers, assignedUser]);
+
+    const pickerUsers = useMemo<UserPickerOption[]>(
+        () =>
+            selectableUsers.map((user) => ({
+                id: user.id,
+                label: getUserLabel(user),
+                searchText: `${user.displayName ?? ''} ${user.userName}`,
+            })),
+        [selectableUsers],
+    );
 
     const initialSelection = assignedUser?.id ?? unassignedValue;
     const canOpen = !disabled && (selectableUsers.length > 0 || !!assignedUser);
@@ -135,21 +148,15 @@ export function AssignOperationModal({
                 </Typography>
 
                 {selectableUsers.length > 0 ? (
-                    <SelectItems
-                        label="Korisnik"
-                        placeholder="Odaberi korisnika"
+                    <UserPickerField
+                        users={pickerUsers}
                         value={selectedUserId}
                         onValueChange={setSelectedUserId}
-                        items={[
-                            {
-                                value: unassignedValue,
-                                label: 'Bez dodjele',
-                            },
-                            ...selectableUsers.map((user) => ({
-                                value: user.id,
-                                label: getUserLabel(user),
-                            })),
-                        ]}
+                        emptyOption={{
+                            value: unassignedValue,
+                            label: 'Bez dodjele',
+                        }}
+                        resetKey={open}
                     />
                 ) : (
                     <Typography level="body2" className="text-muted-foreground">
