@@ -56,10 +56,7 @@ export function SlackChannelSettingForm({
                     placeholder="npr. C1234567890"
                     value={channelValue}
                     onChange={(event) => setChannelValue(event.target.value)}
-                    helperText={
-                        helperText ??
-                        'Unesi ID Slack kanala na koji šaljemo obavijesti.'
-                    }
+                    helperText={helperText}
                 />
                 <input type="hidden" name="settingKey" value={settingKey} />
                 <SubmitButton />
