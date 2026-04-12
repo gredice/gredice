@@ -19,7 +19,238 @@ export const currentGardenKeys = (
     ...(gardenId != null ? [gardenId] : []),
 ];
 
-function mockGarden(winterMode: WinterMode) {
+type useCurrentGardenResponse = Omit<
+    GardenResponse,
+    'stacks' | 'latitude' | 'longitude' | 'createdAt' | 'updatedAt'
+> & {
+    stacks: Stack[];
+    location: {
+        lat: number;
+        lon: number;
+    };
+};
+
+type MockRaisedBed = useCurrentGardenResponse['raisedBeds'][number];
+type MockRaisedBedField = MockRaisedBed['fields'][number];
+
+const DEMO_PLANT_SORT_IDS = {
+    tomato: 337,
+    carrot: 230,
+    spinach: 284,
+    lettuce: 357,
+    cucumber: 226,
+    pepper: 219,
+    onion: 373,
+    broccoli: 353,
+} as const;
+
+type MockRaisedBedFieldConfig = {
+    positionIndex: number;
+    plantSortId: number;
+    plantStatus: 'sprouted' | 'ready';
+    sowDaysAgo: number;
+    growthDaysAgo: number;
+    readyDaysAgo?: number;
+};
+
+// Use live sort IDs that resolve to supported in-game plant presets.
+const DEMO_RAISED_BED_FIELD_LAYOUT: MockRaisedBedFieldConfig[] = [
+    {
+        positionIndex: 0,
+        plantSortId: DEMO_PLANT_SORT_IDS.carrot,
+        plantStatus: 'ready',
+        sowDaysAgo: 78,
+        growthDaysAgo: 66,
+        readyDaysAgo: 0,
+    },
+    {
+        positionIndex: 1,
+        plantSortId: DEMO_PLANT_SORT_IDS.carrot,
+        plantStatus: 'ready',
+        sowDaysAgo: 88,
+        growthDaysAgo: 76,
+        readyDaysAgo: 0,
+    },
+    {
+        positionIndex: 2,
+        plantSortId: DEMO_PLANT_SORT_IDS.carrot,
+        plantStatus: 'ready',
+        sowDaysAgo: 98,
+        growthDaysAgo: 86,
+        readyDaysAgo: 0,
+    },
+    {
+        positionIndex: 3,
+        plantSortId: DEMO_PLANT_SORT_IDS.spinach,
+        plantStatus: 'ready',
+        sowDaysAgo: 79,
+        growthDaysAgo: 68,
+        readyDaysAgo: 60,
+    },
+    {
+        positionIndex: 4,
+        plantSortId: DEMO_PLANT_SORT_IDS.spinach,
+        plantStatus: 'ready',
+        sowDaysAgo: 79,
+        growthDaysAgo: 68,
+        readyDaysAgo: 60,
+    },
+    {
+        positionIndex: 5,
+        plantSortId: DEMO_PLANT_SORT_IDS.spinach,
+        plantStatus: 'ready',
+        sowDaysAgo: 79,
+        growthDaysAgo: 68,
+        readyDaysAgo: 60,
+    },
+    {
+        positionIndex: 8,
+        plantSortId: DEMO_PLANT_SORT_IDS.lettuce,
+        plantStatus: 'ready',
+        sowDaysAgo: 74,
+        growthDaysAgo: 66,
+        readyDaysAgo: 60,
+    },
+    {
+        positionIndex: 11,
+        plantSortId: DEMO_PLANT_SORT_IDS.lettuce,
+        plantStatus: 'ready',
+        sowDaysAgo: 74,
+        growthDaysAgo: 66,
+        readyDaysAgo: 60,
+    },
+    {
+        positionIndex: 14,
+        plantSortId: DEMO_PLANT_SORT_IDS.lettuce,
+        plantStatus: 'ready',
+        sowDaysAgo: 74,
+        growthDaysAgo: 66,
+        readyDaysAgo: 60,
+    },
+    {
+        positionIndex: 17,
+        plantSortId: DEMO_PLANT_SORT_IDS.lettuce,
+        plantStatus: 'ready',
+        sowDaysAgo: 74,
+        growthDaysAgo: 66,
+        readyDaysAgo: 60,
+    },
+    {
+        positionIndex: 7,
+        plantSortId: DEMO_PLANT_SORT_IDS.cucumber,
+        plantStatus: 'ready',
+        sowDaysAgo: 90,
+        growthDaysAgo: 78,
+        readyDaysAgo: 64,
+    },
+    {
+        positionIndex: 10,
+        plantSortId: DEMO_PLANT_SORT_IDS.cucumber,
+        plantStatus: 'ready',
+        sowDaysAgo: 90,
+        growthDaysAgo: 78,
+        readyDaysAgo: 64,
+    },
+    {
+        positionIndex: 13,
+        plantSortId: DEMO_PLANT_SORT_IDS.cucumber,
+        plantStatus: 'ready',
+        sowDaysAgo: 90,
+        growthDaysAgo: 78,
+        readyDaysAgo: 64,
+    },
+    {
+        positionIndex: 16,
+        plantSortId: DEMO_PLANT_SORT_IDS.cucumber,
+        plantStatus: 'ready',
+        sowDaysAgo: 190,
+        growthDaysAgo: 178,
+        readyDaysAgo: 64,
+    },
+    {
+        positionIndex: 6,
+        plantSortId: DEMO_PLANT_SORT_IDS.onion,
+        plantStatus: 'ready',
+        sowDaysAgo: 86,
+        growthDaysAgo: 73,
+        readyDaysAgo: 60,
+    },
+    {
+        positionIndex: 9,
+        plantSortId: DEMO_PLANT_SORT_IDS.onion,
+        plantStatus: 'ready',
+        sowDaysAgo: 126,
+        growthDaysAgo: 133,
+        readyDaysAgo: 60,
+    },
+    {
+        positionIndex: 12,
+        plantSortId: DEMO_PLANT_SORT_IDS.onion,
+        plantStatus: 'ready',
+        sowDaysAgo: 186,
+        growthDaysAgo: 173,
+        readyDaysAgo: 60,
+    },
+    {
+        positionIndex: 15,
+        plantSortId: DEMO_PLANT_SORT_IDS.onion,
+        plantStatus: 'ready',
+        sowDaysAgo: 186,
+        growthDaysAgo: 173,
+        readyDaysAgo: 60,
+    },
+];
+
+function mockDaysAgoIso(daysAgo: number) {
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    return date.toISOString();
+}
+
+function mockRaisedBedField(
+    raisedBedId: number,
+    id: number,
+    field: MockRaisedBedFieldConfig,
+): MockRaisedBedField {
+    const plantSowDate = mockDaysAgoIso(field.sowDaysAgo);
+    const plantGrowthDate = mockDaysAgoIso(field.growthDaysAgo);
+    const plantReadyDate =
+        field.readyDaysAgo != null
+            ? mockDaysAgoIso(field.readyDaysAgo)
+            : undefined;
+
+    return {
+        id,
+        raisedBedId,
+        isDeleted: false,
+        active: true,
+        toBeRemoved: false,
+        stoppedDate: undefined,
+        positionIndex: field.positionIndex,
+        plantSortId: field.plantSortId,
+        plantStatus: field.plantStatus,
+        plantScheduledDate: undefined,
+        plantSowDate,
+        plantGrowthDate,
+        plantReadyDate,
+        plantDeadDate: undefined,
+        plantHarvestedDate: undefined,
+        plantRemovedDate: undefined,
+        createdAt: plantSowDate,
+        updatedAt: plantReadyDate ?? plantGrowthDate,
+    };
+}
+
+function mockRaisedBedFields(
+    raisedBedId: number,
+    idOffset: number,
+): MockRaisedBed['fields'] {
+    return DEMO_RAISED_BED_FIELD_LAYOUT.map((field, index) =>
+        mockRaisedBedField(raisedBedId, idOffset + index + 1, field),
+    );
+}
+
+function mockGarden(winterMode: WinterMode): useCurrentGardenResponse {
     const treeName =
         winterMode === 'holiday'
             ? 'PineAdvent'
@@ -27,6 +258,36 @@ function mockGarden(winterMode: WinterMode) {
               ? 'Pine'
               : 'Tree';
     const isHolidayMode = winterMode === 'holiday';
+    const now = new Date().toISOString();
+    const raisedBeds: useCurrentGardenResponse['raisedBeds'] = [
+        {
+            id: 1,
+            name: 'Raised Bed 1',
+            blockId: '3',
+            physicalId: '42',
+            fields: mockRaisedBedFields(1, 0),
+            appliedOperations: [],
+            status: 'new',
+            updatedAt: now,
+            createdAt: now,
+            isValid: true,
+            orientation: 'horizontal',
+        },
+        {
+            id: 2,
+            name: 'Raised Bed 2',
+            physicalId: '42',
+            blockId: '8',
+            fields: mockRaisedBedFields(2, 100),
+            appliedOperations: [],
+            status: 'new',
+            updatedAt: now,
+            createdAt: now,
+            isValid: true,
+            orientation: 'horizontal',
+        },
+    ];
+
     return {
         id: 99999,
         name: 'Moj vrt',
@@ -226,47 +487,9 @@ function mockGarden(winterMode: WinterMode) {
             },
         ],
         location: { lat: 45.739, lon: 16.572 },
-        raisedBeds: [
-            {
-                id: 1,
-                name: 'Raised Bed 1',
-                blockId: '3',
-                physicalId: '42',
-                fields: [],
-                appliedOperations: [],
-                status: 'new',
-                updatedAt: new Date().toISOString(),
-                createdAt: new Date().toISOString(),
-                isValid: true,
-                orientation: 'vertical',
-            },
-            {
-                id: 2,
-                name: 'Raised Bed 2',
-                physicalId: '42',
-                blockId: '4',
-                fields: [],
-                appliedOperations: [],
-                status: 'new',
-                updatedAt: new Date().toISOString(),
-                createdAt: new Date().toISOString(),
-                isValid: true,
-                orientation: 'vertical',
-            },
-        ],
-    } as useCurrentGardenResponse;
-}
-
-type useCurrentGardenResponse = Omit<
-    GardenResponse,
-    'stacks' | 'latitude' | 'longitude' | 'createdAt' | 'updatedAt'
-> & {
-    stacks: Stack[];
-    location: {
-        lat: number;
-        lon: number;
+        raisedBeds,
     };
-};
+}
 
 export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | null> {
     const isMock = useGameState((state) => state.isMock);
