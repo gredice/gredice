@@ -1,4 +1,4 @@
-import { type Logger, logs } from '@opentelemetry/api-logs';
+import { type Logger, logs, SeverityNumber } from '@opentelemetry/api-logs';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
@@ -16,6 +16,10 @@ type PostHogCaptureClient = {
 
 export const POSTHOG_SERVICE_NAME = 'gredice-garden';
 
+const postHogConsoleForwardingKey = Symbol.for(
+    `${POSTHOG_SERVICE_NAME}.console-forwarding`,
+);
+
 const postHogApiKey =
     process.env.NEXT_PUBLIC_POSTHOG_KEY ??
     process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
@@ -27,6 +31,16 @@ const postHogLogsUrl = process.env.NEXT_PUBLIC_POSTHOG_HOST
 const noopPostHogClient: PostHogCaptureClient = {
     capture: () => undefined,
 };
+
+const originalConsole = {
+    debug: console.debug.bind(console),
+    error: console.error.bind(console),
+    info: console.info.bind(console),
+    log: console.log.bind(console),
+    warn: console.warn.bind(console),
+};
+
+let pendingLogFlush: Promise<void> | null = null;
 
 const postHogLogsProcessor =
     postHogApiKey && postHogLogsUrl
@@ -63,6 +77,99 @@ export function getPostHogLogger(scope = POSTHOG_SERVICE_NAME): Logger {
     return loggerProvider.getLogger(scope);
 }
 
+function stringifyConsoleArgument(value: unknown): string {
+    if (value instanceof Error) {
+        return value.stack ?? `${value.name}: ${value.message}`;
+    }
+
+    if (typeof value === 'string') {
+        return value;
+    }
+
+    if (
+        typeof value === 'number' ||
+        typeof value === 'boolean' ||
+        typeof value === 'bigint' ||
+        typeof value === 'symbol' ||
+        value === null ||
+        value === undefined
+    ) {
+        return String(value);
+    }
+
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return Object.prototype.toString.call(value);
+    }
+}
+
+function schedulePostHogLogFlush(): void {
+    if (!isPostHogLoggingEnabled() || pendingLogFlush) {
+        return;
+    }
+
+    pendingLogFlush = loggerProvider.forceFlush().catch((error) => {
+        originalConsole.warn('PostHog log flush failed', error);
+    });
+
+    void pendingLogFlush.finally(() => {
+        pendingLogFlush = null;
+    });
+}
+
+export function registerPostHogConsoleForwarding(): void {
+    if (!isPostHogLoggingEnabled()) {
+        return;
+    }
+
+    const globalState = globalThis as typeof globalThis & {
+        [postHogConsoleForwardingKey]?: boolean;
+    };
+
+    if (globalState[postHogConsoleForwardingKey]) {
+        return;
+    }
+
+    const consoleLogger = getPostHogLogger(`${POSTHOG_SERVICE_NAME}.console`);
+
+    const wrapConsoleMethod = (
+        method: keyof typeof originalConsole,
+        severityNumber: SeverityNumber,
+        severityText: string,
+    ) => {
+        const originalMethod = originalConsole[method];
+
+        console[method] = (...args: unknown[]) => {
+            originalMethod(...args);
+
+            if (!isPostHogLoggingEnabled()) {
+                return;
+            }
+
+            consoleLogger.emit({
+                attributes: {
+                    'console.method': method,
+                    'posthog.log_type': 'console',
+                },
+                body: args.map(stringifyConsoleArgument).join(' '),
+                severityNumber,
+                severityText,
+            });
+
+            schedulePostHogLogFlush();
+        };
+    };
+
+    wrapConsoleMethod('debug', SeverityNumber.DEBUG, 'DEBUG');
+    wrapConsoleMethod('log', SeverityNumber.INFO, 'INFO');
+    wrapConsoleMethod('info', SeverityNumber.INFO, 'INFO');
+    wrapConsoleMethod('warn', SeverityNumber.WARN, 'WARN');
+    wrapConsoleMethod('error', SeverityNumber.ERROR, 'ERROR');
+
+    globalState[postHogConsoleForwardingKey] = true;
+}
+
 export async function flushPostHogLogs(): Promise<void> {
     if (!isPostHogLoggingEnabled()) {
         return;
@@ -71,7 +178,7 @@ export async function flushPostHogLogs(): Promise<void> {
     try {
         await loggerProvider.forceFlush();
     } catch (error) {
-        console.warn('PostHog log flush failed', error);
+        originalConsole.warn('PostHog log flush failed', error);
     }
 }
 

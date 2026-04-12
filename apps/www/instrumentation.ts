@@ -6,6 +6,7 @@ import {
     getPostHogLogger,
     isPostHogLoggingEnabled,
     POSTHOG_SERVICE_NAME,
+    registerPostHogConsoleForwarding,
     registerPostHogLoggerProvider,
 } from './lib/posthog-server';
 
@@ -13,6 +14,7 @@ const requestLogger = getPostHogLogger(`${POSTHOG_SERVICE_NAME}.request`);
 
 export async function register() {
     registerPostHogLoggerProvider();
+    registerPostHogConsoleForwarding();
 }
 
 export const onRequestError: Instrumentation.onRequestError = async (
