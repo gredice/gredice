@@ -1,7 +1,7 @@
-import { GameScene } from '@gredice/game';
 import { SignedOut } from '@signalco/auth-client/components';
 import type { ComponentProps } from 'react';
 import LoginModal from '../components/auth/LoginModal';
+import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytics';
 import {
     enableDebugHudFlag,
     lsystemPlantsFlag,
@@ -9,7 +9,7 @@ import {
 } from './flags';
 
 export default async function Home() {
-    const flags: ComponentProps<typeof GameScene>['flags'] = {
+    const flags: ComponentProps<typeof GameSceneWithAnalytics>['flags'] = {
         enableDebugHudFlag: await enableDebugHudFlag(),
         enablePlantGeneratorFlag: await lsystemPlantsFlag(),
         raisedBedImageAI: await raisedBedImageAIFlag(),
@@ -17,7 +17,7 @@ export default async function Home() {
 
     return (
         <div className="grid grid-cols-1 h-[100dvh] relative overflow-hidden">
-            <GameScene flags={flags} />
+            <GameSceneWithAnalytics flags={flags} />
             <SignedOut>
                 <div className="relative h-full">
                     <LoginModal />

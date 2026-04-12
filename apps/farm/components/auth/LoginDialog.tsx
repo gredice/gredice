@@ -96,7 +96,7 @@ export function LoginDialog() {
         }
     }, null);
     const handleOAuthLogin = (provider: OAuthProvider) => {
-        posthog?.capture('user_oauth_login_started', {
+        posthog?.capture('user_oauth_started', {
             provider,
             surface: 'farm',
         });

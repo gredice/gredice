@@ -3,6 +3,7 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { type SubmitEvent, useState } from 'react';
+import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCreateGarden } from '../../hooks/useCreateGarden';
 
 type CreateGardenModalProps = {
@@ -15,6 +16,7 @@ export function CreateGardenModal({
     onOpenChange,
 }: CreateGardenModalProps) {
     const createGarden = useCreateGarden();
+    const { track } = useGameAnalytics();
     const [newGardenName, setNewGardenName] = useState('');
 
     const trimmedNewGardenName = newGardenName.trim();
@@ -28,6 +30,9 @@ export function CreateGardenModal({
         }
 
         try {
+            track('game_garden_create_submitted', {
+                name_length: nextName.length,
+            });
             await createGarden.mutateAsync({ name: nextName });
             setNewGardenName('');
             onOpenChange(false);

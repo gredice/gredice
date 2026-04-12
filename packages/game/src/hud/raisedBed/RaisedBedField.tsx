@@ -9,6 +9,7 @@ import {
     useSensors,
 } from '@dnd-kit/core';
 import { rectSwappingStrategy, SortableContext } from '@dnd-kit/sortable';
+import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { useSwapShoppingCartPositions } from '../../hooks/useSwapShoppingCartPositions';
@@ -28,6 +29,7 @@ export function RaisedBedField({
 }) {
     const { data: garden } = useCurrentGarden();
     const { data: cart } = useShoppingCart();
+    const { track } = useGameAnalytics();
     const swapPositions = useSwapShoppingCartPositions();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
 
@@ -123,6 +125,13 @@ export function RaisedBedField({
         // Don't allow moving to a planted position
         if (plantedPositions.has(overPos)) return;
 
+        track('game_raised_bed_field_moved', {
+            from_position_index: activePos,
+            garden_id: gardenId,
+            raised_bed_id: raisedBedId,
+            replaced_existing_cart_item: Boolean(overCartItem),
+            to_position_index: overPos,
+        });
         swapPositions.mutate({
             itemA: activeCartItem,
             itemB: overCartItem,

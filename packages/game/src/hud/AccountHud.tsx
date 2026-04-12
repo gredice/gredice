@@ -30,6 +30,7 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useGardens } from '../hooks/useGardens';
@@ -45,8 +46,12 @@ import { NotificationList } from './NotificationList';
 function NotificationsCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
     const markAllNotificationsRead = useMarkAllNotificationsRead();
+    const { track } = useGameAnalytics();
 
     const handleMarkAllNotificationsRead = () => {
+        track('game_notifications_mark_all_read', {
+            source: 'quick_panel',
+        });
         markAllNotificationsRead.mutate({ readWhere: 'game' });
     };
 
@@ -79,7 +84,12 @@ function NotificationsCard() {
                     size="sm"
                     fullWidth
                     className="rounded-t-none"
-                    onClick={() => setProfileModalOpen('obavijesti')}
+                    onClick={() => {
+                        track('game_notifications_view_all_opened', {
+                            source: 'quick_panel',
+                        });
+                        setProfileModalOpen('obavijesti');
+                    }}
                 >
                     Prikaži sve obavijesti
                 </Button>
@@ -91,6 +101,7 @@ function NotificationsCard() {
 function ProfileCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
     const [, setSelectedGardenId] = useCurrentGardenIdParam();
+    const { track } = useGameAnalytics();
     const { data: currentUser } = useCurrentUser();
     const { data: currentGarden } = useCurrentGarden();
     const { data: gardens, isLoading: gardensLoading } = useGardens();
@@ -112,7 +123,14 @@ function ProfileCard() {
                 <DropdownMenuItem
                     key={garden.id}
                     className="gap-3"
-                    onClick={() => setSelectedGardenId(garden.id)}
+                    onClick={() => {
+                        track('game_garden_switched', {
+                            from_garden_id: currentGarden?.id,
+                            to_garden_id: garden.id,
+                            to_garden_name: garden.name,
+                        });
+                        setSelectedGardenId(garden.id);
+                    }}
                 >
                     <Check
                         aria-hidden={garden.id !== currentGarden?.id}
@@ -167,6 +185,12 @@ function ProfileCard() {
             <DropdownMenuItem
                 className="gap-3 justify-between"
                 href={KnownPages.GredicePlants}
+                onClick={() =>
+                    track('game_external_link_opened', {
+                        destination: 'plant_database',
+                        source: 'profile_menu',
+                    })
+                }
             >
                 <Row spacing={1.5}>
                     <Sprout className="size-4" />
@@ -177,6 +201,12 @@ function ProfileCard() {
             <DropdownMenuItem
                 className="gap-3 justify-between"
                 href={KnownPages.GrediceContact}
+                onClick={() =>
+                    track('game_external_link_opened', {
+                        destination: 'contact',
+                        source: 'profile_menu',
+                    })
+                }
             >
                 <Row spacing={1.5}>
                     <Comment className="size-4" />
@@ -194,6 +224,7 @@ function ProfileCard() {
 }
 
 export function AccountHud() {
+    const { track } = useGameAnalytics();
     const { data: currentUser } = useCurrentUser();
     const { data: currentGarden, isLoading } = useCurrentGarden();
     const { data: gardens } = useGardens();
@@ -219,6 +250,7 @@ export function AccountHud() {
                             className="size-10 md:size-auto relative rounded-full p-0.5 aspect-square shrink-0 md:hover:outline outline-offset-2 outline-tertiary-foreground"
                             variant="plain"
                             title="Profil"
+                            onClick={() => track('game_profile_menu_opened')}
                         >
                             <ProfileAvatar variant="transparentOnMobile" />
                             {hasUnreadNotifications && (
@@ -245,6 +277,13 @@ export function AccountHud() {
                                     // Set to null when selecting the first garden (default)
                                     const isDefault =
                                         gardens?.[0]?.id === gardenId;
+                                    track('game_garden_switched', {
+                                        from_garden_id: currentGarden.id,
+                                        to_garden_id: gardenId,
+                                        to_garden_name: gardens?.find(
+                                            (garden) => garden.id === gardenId,
+                                        )?.name,
+                                    });
                                     setSelectedGardenId(
                                         isDefault ? null : gardenId,
                                     );
@@ -267,6 +306,11 @@ export function AccountHud() {
                                 className="relative rounded-full p-0 aspect-square"
                                 variant="plain"
                                 title="Obavijesti"
+                                onClick={() =>
+                                    track('game_notifications_opened', {
+                                        source: 'quick_panel',
+                                    })
+                                }
                             >
                                 {hasUnreadNotifications && (
                                     <div className="absolute right-1 top-1">

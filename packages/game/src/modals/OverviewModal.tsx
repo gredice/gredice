@@ -5,6 +5,8 @@ import { Modal } from '@signalco/ui-primitives/Modal';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useEffect } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
 import { AccountUsersTab } from './components/AccountUsersTab';
 import { AchievementsTab } from './components/AchievementsTab';
@@ -92,6 +94,17 @@ const allNavItems = navGroups.flatMap((g) => g.items);
 
 export function OverviewModal() {
     const [settingsMode, setProfileModalOpen] = useSearchParam('pregled');
+    const { track } = useGameAnalytics();
+
+    useEffect(() => {
+        if (!settingsMode) {
+            return;
+        }
+
+        track('game_overview_section_opened', {
+            section: settingsMode,
+        });
+    }, [settingsMode, track]);
 
     const handleOpenChange = (open: boolean) => {
         if (!open) {

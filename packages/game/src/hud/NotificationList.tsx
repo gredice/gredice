@@ -14,6 +14,7 @@ import type { Route } from 'next';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useNotifications } from '../hooks/useNotifications';
@@ -43,6 +44,7 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
     const router = useRouter();
     const { id, header, content, linkUrl, readAt, timestamp, raisedBedId } =
         notification;
+    const { track } = useGameAnalytics();
     const setNotificationRead = useSetNotificationRead();
     const { data: currentGarden } = useCurrentGarden();
 
@@ -67,7 +69,15 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
         return '#';
     }, [linkUrl, raisedBedId, currentGarden]);
 
+    const isRead = Boolean(readAt);
+
     function handleSetNotificationRead() {
+        track('game_notification_read_toggled', {
+            has_link: computedLinkUrl !== '#',
+            notification_id: id,
+            raised_bed_id: raisedBedId,
+            read: !isRead,
+        });
         setNotificationRead.mutate({
             id,
             read: !readAt,
@@ -76,6 +86,13 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
     }
 
     function handleNotificationSelected() {
+        track('game_notification_opened', {
+            has_link: computedLinkUrl !== '#',
+            notification_id: id,
+            raised_bed_id: raisedBedId,
+            was_read: isRead,
+        });
+
         if (!readAt) {
             setNotificationRead.mutate({
                 id,
@@ -88,8 +105,6 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
             router.push(computedLinkUrl as Route);
         }
     }
-
-    const isRead = Boolean(readAt);
 
     return (
         <div className="relative">

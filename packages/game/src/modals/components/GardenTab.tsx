@@ -7,6 +7,7 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useGardens } from '../../hooks/useGardens';
 import { useCurrentGardenIdParam } from '../../useUrlState';
 import { CreateGardenModal } from './CreateGardenModal';
@@ -14,6 +15,7 @@ import { GardenNameCard } from './GardenNameCard';
 
 function NoGardensCard() {
     const [createGardenModalOpen, setCreateGardenModalOpen] = useState(false);
+    const { track } = useGameAnalytics();
 
     return (
         <>
@@ -25,7 +27,12 @@ function NoGardensCard() {
                         </Typography>
                         <Button
                             variant="solid"
-                            onClick={() => setCreateGardenModalOpen(true)}
+                            onClick={() => {
+                                track('game_garden_create_opened', {
+                                    source: 'empty_state',
+                                });
+                                setCreateGardenModalOpen(true);
+                            }}
                             startDecorator={<Add className="size-4" />}
                         >
                             Kreiraj svoj prvi vrt
@@ -45,6 +52,7 @@ function GardensSelector() {
     const { data: gardens } = useGardens();
     const [createGardenModalOpen, setCreateGardenModalOpen] = useState(false);
     const [selectedGardenId, setSelectedGardenId] = useCurrentGardenIdParam();
+    const { track } = useGameAnalytics();
     const selectedGarden =
         gardens?.find((g) => g.id === selectedGardenId) ?? gardens?.[0];
 
@@ -57,9 +65,19 @@ function GardensSelector() {
                             selectedGardenId?.toString() ??
                             selectedGarden?.id.toString()
                         }
-                        onValueChange={(value) =>
-                            setSelectedGardenId(parseInt(value, 10) || 0)
-                        }
+                        onValueChange={(value) => {
+                            const nextGardenId =
+                                Number.parseInt(value, 10) || 0;
+                            const nextGarden = gardens?.find(
+                                (garden) => garden.id === nextGardenId,
+                            );
+                            track('game_garden_switched', {
+                                from_garden_id: selectedGarden?.id,
+                                to_garden_id: nextGardenId,
+                                to_garden_name: nextGarden?.name,
+                            });
+                            setSelectedGardenId(nextGardenId);
+                        }}
                         items={
                             gardens?.map((g) => ({
                                 label: (
@@ -78,7 +96,12 @@ function GardensSelector() {
                 <IconButton
                     title="Kreiraj novi vrt"
                     variant="plain"
-                    onClick={() => setCreateGardenModalOpen(true)}
+                    onClick={() => {
+                        track('game_garden_create_opened', {
+                            source: 'garden_tab',
+                        });
+                        setCreateGardenModalOpen(true);
+                    }}
                 >
                     <Add className="size-4" />
                 </IconButton>

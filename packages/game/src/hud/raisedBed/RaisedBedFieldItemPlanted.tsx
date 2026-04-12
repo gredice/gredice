@@ -21,6 +21,7 @@ import {
 } from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { KnownPages } from '../../knownPages';
@@ -43,6 +44,7 @@ export function RaisedBedFieldItemPlanted({
     positionIndex: number;
 }) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
+    const { track } = useGameAnalytics();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
     const field = findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
     const plantSortId = field?.plantSortId;
@@ -57,13 +59,14 @@ export function RaisedBedFieldItemPlanted({
         harvestPercentage,
     } = useRaisedBedFieldLifecycleData(raisedBedId, positionIndex);
     const isHarvested = field?.plantHarvestedDate;
+    const [open, setOpen] = useState(false);
     const [activeTab, setActiveTab] =
         useState<RaisedBedFieldTabValue>('lifecycle');
 
     if (!raisedBed) {
         return null;
     }
-    if (!field || !field.plantSortId) {
+    if (!field?.plantSortId) {
         console.error(
             `Field not found for raised bed ${raisedBedId} at position index ${positionIndex}`,
             raisedBed.fields,
@@ -137,6 +140,18 @@ export function RaisedBedFieldItemPlanted({
 
     return (
         <Modal
+            open={open}
+            onOpenChange={(nextOpen) => {
+                if (nextOpen) {
+                    track('game_planted_item_opened', {
+                        active_tab: activeTab,
+                        plant_sort_id: plantSort.id,
+                        position_index: positionIndex,
+                        raised_bed_id: raisedBedId,
+                    });
+                }
+                setOpen(nextOpen);
+            }}
             title={`Biljka "${plantSort.information.name}"`}
             modal={false}
             className="md:border-tertiary md:border-b-4 max-w-xl"
@@ -196,6 +211,13 @@ export function RaisedBedFieldItemPlanted({
                             target="_blank"
                             aria-label="Detalji o biljci"
                             className="inline-flex mb-1 items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-muted-foreground/60 shrink-0"
+                            onClick={() =>
+                                track('game_field_plant_details_opened', {
+                                    plant_sort_id: plantSort.id,
+                                    position_index: positionIndex,
+                                    raised_bed_id: raisedBedId,
+                                })
+                            }
                         >
                             <ExternalLink className="size-4" />
                             <span className="hidden sm:inline">Detalji</span>
@@ -205,6 +227,12 @@ export function RaisedBedFieldItemPlanted({
                 <Tabs
                     value={activeTab}
                     onValueChange={(value: string) => {
+                        track('game_raised_bed_tab_opened', {
+                            plant_sort_id: plantSort.id,
+                            position_index: positionIndex,
+                            raised_bed_id: raisedBedId,
+                            tab: value,
+                        });
                         setActiveTab(value as RaisedBedFieldTabValue);
                     }}
                     className="flex flex-col"
