@@ -1,6 +1,7 @@
 'use client';
 
 import { GameScene } from '@gredice/game';
+import { getGardenBaseUrl } from '@gredice/js/urls';
 import { NavigatingButton } from '@signalco/ui/NavigatingButton';
 import { useEffect, useState } from 'react';
 import {
@@ -8,7 +9,6 @@ import {
     useWinterMode,
 } from '../components/providers/WinterModeProvider';
 import { useCurrentUser } from '../hooks/useCurrentUser';
-import { KnownPages } from '../src/KnownPages';
 
 // Summer weather - warm and sunny
 const summerWeather = {
@@ -34,6 +34,7 @@ const winterWeather = {
 
 export function LandingGameScene() {
     const { isWinter } = useWinterMode();
+    const gardenBaseUrl = getGardenBaseUrl();
     const winterMode = isWinter
         ? isChristmasHolidaySeason()
             ? 'holiday'
@@ -62,6 +63,7 @@ export function LandingGameScene() {
         <>
             <GameScene
                 appBaseUrl="https://vrt.gredice.com"
+                spriteBaseUrl=""
                 zoom={isMobile ? 'far' : 'normal'}
                 hideHud
                 noControls
@@ -79,7 +81,7 @@ export function LandingGameScene() {
             {isLoggedIn && (
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
                     <NavigatingButton
-                        href={KnownPages.GardenApp}
+                        href={gardenBaseUrl}
                         variant="solid"
                         className="rounded-full shadow-lg"
                     >

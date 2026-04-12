@@ -85,6 +85,7 @@ export type GameState = {
     winterMode: WinterMode;
     setWinterMode: (winterMode: WinterMode) => void;
     appBaseUrl: string;
+    spriteBaseUrl: string;
     audio: {
         ambient: ReturnType<typeof audioMixer>;
         effects: ReturnType<typeof audioMixer>;
@@ -154,11 +155,13 @@ const defaultLocation = { lat: 45.739, lon: 16.572 };
 
 export function createGameState({
     appBaseUrl,
+    spriteBaseUrl,
     freezeTime,
     isMock,
     winterMode,
 }: {
     appBaseUrl: string;
+    spriteBaseUrl?: string;
     freezeTime: Date | null;
     isMock: boolean;
     winterMode?: WinterMode;
@@ -170,6 +173,7 @@ export function createGameState({
         winterMode: winterMode ?? 'summer',
         setWinterMode: (winterMode) => set({ winterMode }),
         appBaseUrl: appBaseUrl,
+        spriteBaseUrl: spriteBaseUrl ?? appBaseUrl,
         audio: {
             ambient: audioMixer(
                 audioConfig().config.ambientVolume *

@@ -22,6 +22,7 @@ Gredice is a Turborepo monorepo that powers the entire Gredice platform. It incl
 - [Database migrations](#database-migrations)
 - [Assets workflow](#assets-workflow)
   - [Regenerating game assets](#regenerating-game-assets)
+  - [Sprite atlas workflow](#sprite-atlas-workflow)
   - [Adding a new entity model](#adding-a-new-entity-model)
 - [Contributing](#contributing)
 - [License](#license)
@@ -185,6 +186,52 @@ If you need to run the steps separately:
    ```bash
    pnpm generate:models-types
    ```
+
+### Sprite atlas workflow
+
+The garden client supports texture atlases for billboard-style sprites such as ground decorations. The current decoration atlas pipeline lives in `packages/cdn/scripts/` and is designed so atlas pages stay stable as the input set grows.
+
+The current ground-cover source sheets live in `apps/garden/data/sriptes/` and are processed in three stages:
+
+1. `extract-decoration-sprites.ts` cuts individual transparent sprite images out of the source sheets.
+2. `create-decoration-atlas.ts` packs those images into one or more atlas pages and writes a manifest.
+3. `compress-atlas-ktx2.ts` compresses each atlas page to KTX2 and refreshes the Basis transcoder assets used at runtime.
+
+Use these commands from the repository root:
+
+```bash
+pnpm --filter @gredice/cdn run regenerate-cdn:decoration-atlas
+pnpm --filter @gredice/cdn run regenerate-cdn:decoration-atlas:ktx2
+```
+
+The atlas generator writes:
+
+- `apps/garden/public/assets/sprites/decorations/<name>.atlas.png`
+- `apps/garden/public/assets/sprites/decorations/<name>.atlas.json`
+- Additional pages as `.../<name>.atlas.1.png`, `.../<name>.atlas.2.png`, etc. when the category grows beyond a single page
+
+The KTX2 step writes matching compressed pages:
+
+- `apps/garden/public/assets/sprites/decorations/<name>.atlas.ktx2`
+- Additional pages as `.../<name>.atlas.1.ktx2`, `.../<name>.atlas.2.ktx2`, etc.
+- Basis transcoders into `apps/garden/public/assets/basis/`
+
+The atlas manifest is the source of truth for runtime loading. It contains:
+
+- Stable sprite metadata keyed by sprite name
+- Page metadata for multi-page atlases
+- Grid layout metadata so page slots remain deterministic
+
+Atlas slot assignment is intentionally stable. Existing sprites keep their previous page and cell when you regenerate, so adding or removing a few input files does not force the entire category to shift around. For categories where stability matters, lock the page grid with explicit `--columns` and `--rows` values in the corresponding package script. When a page fills up, new sprites spill onto a new atlas page instead of shrinking or repacking the old page.
+
+When adding new input sprites to an existing category:
+
+1. Put the extracted source images under the category input directory.
+2. Keep sprite names stable, because the manifest uses the relative input path as the sprite id.
+3. Regenerate the atlas JSON/PNG first.
+4. Regenerate KTX2 pages after the atlas output looks correct.
+
+If `toktx` is not available on your machine, the PNG atlas and JSON manifest are still usable in development because the game falls back from KTX2 to PNG automatically.
 
 ### Adding a new entity model
 

@@ -7,7 +7,7 @@
  * - Production: https://vrt.gredice.com
  * - Development: https://vrt.gredice.test
  */
-function getGardenBaseUrl(): string {
+export function getGardenBaseUrl(): string {
     // Check if we're in a browser environment
     if (typeof globalThis !== 'undefined' && 'location' in globalThis) {
         // Use .test domain if current hostname includes .test
