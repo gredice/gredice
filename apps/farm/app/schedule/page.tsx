@@ -4,12 +4,14 @@ import {
 } from '@signalco/auth-server/components';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { Suspense } from 'react';
 import LoginDialog from '../../components/auth/LoginDialog';
-import { PageBackButton } from '../../components/PageBackButton';
+import { HomeButton } from '../../components/HomeButton';
 import { auth } from '../../lib/auth/auth';
 import { FarmScheduleDay } from './FarmScheduleDay';
 import { ScheduleDateNavigation } from './ScheduleDateNavigation';
-import { ScheduleDaySummary } from './ScheduleDaySummary';
+import { ScheduleDaySummarySection } from './ScheduleDaySummarySection';
+import { ScheduleDaySummarySkeleton } from './ScheduleDaySummarySkeleton';
 import {
     getFarmScheduleDayData,
     getFarmScheduleOperationsData,
@@ -20,28 +22,32 @@ export const dynamic = 'force-dynamic';
 async function FarmScheduleContent({ date }: { date: Date }) {
     const { userId } = await auth(['farmer', 'admin']);
     const isToday = new Date().toDateString() === date.toDateString();
-
-    const [dayData, operationsData] = await Promise.all([
-        getFarmScheduleDayData(userId, date.toISOString(), isToday),
-        getFarmScheduleOperationsData(),
-    ]);
+    const dateKey = date.toISOString();
+    const dayDataPromise = getFarmScheduleDayData(userId, dateKey, isToday);
+    const operationsDataPromise = getFarmScheduleOperationsData();
 
     return (
-        <div className="max-w-5xl mx-auto w-full px-4 py-10 space-y-6">
+        <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
             <Row spacing={2} justifyContent="space-between">
                 <Row spacing={1}>
-                    <PageBackButton />
+                    <HomeButton />
                     <Typography level="h4" component="h1">
                         Raspored
                     </Typography>
                 </Row>
                 <ScheduleDateNavigation date={date} />
-                <ScheduleDaySummary
-                    dayData={dayData}
-                    operationsData={operationsData}
-                />
+                <Suspense fallback={<ScheduleDaySummarySkeleton />}>
+                    <ScheduleDaySummarySection
+                        dayDataPromise={dayDataPromise}
+                        operationsDataPromise={operationsDataPromise}
+                    />
+                </Suspense>
             </Row>
-            <FarmScheduleDay date={date} isToday={isToday} userId={userId} />
+            <FarmScheduleDay
+                dayDataPromise={dayDataPromise}
+                operationsDataPromise={operationsDataPromise}
+                userId={userId}
+            />
         </div>
     );
 }
