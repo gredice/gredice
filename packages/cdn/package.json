@@ -10,12 +10,15 @@
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
         "regenerate-cdn": "pnpm run /^regenerate-cdn:.*/",
+        "regenerate-cdn:decoration-atlas": "node --experimental-strip-types ./scripts/extract-decoration-sprites.ts --input apps/garden/data/sriptes/grass_grass_examples.png --output-dir apps/garden/data/sriptes/extracted/ground-cover/grass --min-alpha 24 --min-pixels 1400 --merge-gap 48 --padding 24 --limit 8 && node --experimental-strip-types ./scripts/extract-decoration-sprites.ts --input apps/garden/data/sriptes/desert_grass_examples.png --output-dir apps/garden/data/sriptes/extracted/ground-cover/desert --min-alpha 24 --min-pixels 1400 --merge-gap 48 --padding 24 --limit 8 && node --experimental-strip-types ./scripts/create-decoration-atlas.ts --input-dir apps/garden/data/sriptes/extracted/ground-cover --output-png apps/garden/public/assets/sprites/decorations/ground-cover.atlas.png --padding 16 --size 2048 --columns 4 --rows 4",
+        "regenerate-cdn:decoration-atlas:ktx2": "node --experimental-strip-types ./scripts/compress-atlas-ktx2.ts --input apps/garden/public/assets/sprites/decorations/ground-cover.atlas.json --transcoder-output-dir apps/garden/public/assets/basis",
         "regenerate-cdn:sounds": "node --env-file=.env --experimental-strip-types ./scripts/regenerate-sounds.ts"
     },
     "devDependencies": {
-        "@aws-sdk/client-s3": "3.1024.0",
-        "@biomejs/biome": "2.4.10",
+        "@aws-sdk/client-s3": "3.1029.0",
+        "@biomejs/biome": "2.4.11",
         "@ffmpeg-installer/ffmpeg": "1.1.0",
-        "@types/node": "24.12.0"
+        "@types/node": "24.12.0",
+        "sharp": "0.34.5"
     }
 }

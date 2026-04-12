@@ -22,13 +22,13 @@
         "test:node": "pnpm run test:db:start && pnpm run test:db:migrate && node --import tsx --test --env-file=.env.test --conditions=react-server ./tests/**/*.node.spec.ts && pnpm run test:db:stop"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.10",
+        "@biomejs/biome": "2.4.11",
         "@gredice/directory-types": "workspace:*",
         "@gredice/js": "workspace:*",
         "@neondatabase/serverless": "1.0.2",
         "@signalco/js": "0.1.0",
         "@upstash/redis": "1.37.0",
-        "dotenv": "17.4.0",
+        "dotenv": "17.4.2",
         "drizzle-kit": "0.31.10",
         "drizzle-orm": "0.45.2",
         "openapi-types": "12.1.3",

@@ -11,6 +11,17 @@ export {
     PLANT_STAGE_LABELS,
     PLANT_STAGES,
 } from './hud/raisedBed/featuredOperations';
+export { resolveSpriteAtlasAssetPaths } from './sprites/resolveSpriteAtlasAssetPaths';
+export { SpriteAtlasBillboard } from './sprites/SpriteAtlasBillboard';
+export type {
+    SpriteAtlasAssetPaths,
+    SpriteAtlasGrid,
+    SpriteAtlasManifest,
+    SpriteAtlasPage,
+    SpriteAtlasSprite,
+} from './sprites/types';
+export { useSpriteAtlasManifest } from './sprites/useSpriteAtlasManifest';
+export { useSpriteAtlasTexture } from './sprites/useSpriteAtlasTexture';
 export type { EntityGridViewerProps } from './viewers/EntityGridViewer';
 export { EntityGridViewer } from './viewers/EntityGridViewer';
 export type { EntityViewerProps } from './viewers/EntityViewer';

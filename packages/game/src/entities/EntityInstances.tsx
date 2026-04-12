@@ -1,4 +1,3 @@
-import { MeshWobbleMaterial } from '@react-three/drei';
 import { useMemo } from 'react';
 import { MeshStandardMaterial } from 'three';
 import { snowPresets } from '../snow/snowPresets';
@@ -6,6 +5,7 @@ import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { EntityInstancesBlock } from './EntityInstancesBlock';
+import { GroundBlockDecorations } from './groundDecorations/GroundBlockDecorations';
 
 export const instancedBlockNames = [
     'Block_Grass',
@@ -70,32 +70,6 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
             />
             <EntityInstancesBlock
                 stacks={stacks}
-                name="Block_Grass"
-                yOffset={0.2}
-                geometry={nodes.Block_Grass_1_1.geometry}
-                materialNode={
-                    <MeshWobbleMaterial
-                        {...materials['Material.GrassPart']}
-                        factor={0.01}
-                        speed={4}
-                    />
-                }
-            />
-            <EntityInstancesBlock
-                stacks={stacks}
-                name="Block_Grass_Angle"
-                yOffset={0.2}
-                geometry={nodes.Block_Grass_Angle_1_1.geometry}
-                materialNode={
-                    <MeshWobbleMaterial
-                        {...materials['Material.GrassPart']}
-                        factor={0.01}
-                        speed={4}
-                    />
-                }
-            />
-            <EntityInstancesBlock
-                stacks={stacks}
                 name="Block_Sand"
                 yOffset={0.2}
                 geometry={nodes.Block_Sand_1.geometry}
@@ -130,6 +104,7 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
                 snow={snowPresets.snowAngle}
                 snowLift={0.003}
             />
+            <GroundBlockDecorations stacks={stacks} />
             <EntityInstancesBlock
                 stacks={stacks}
                 name="Tree"

@@ -26,6 +26,7 @@ import { useRaisedBedCloseup } from './useRaisedBedCloseup';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string;
+    spriteBaseUrl?: string;
     zoom?: 'far' | 'normal';
 
     // Demo purposes only
