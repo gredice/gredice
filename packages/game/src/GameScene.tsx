@@ -8,6 +8,7 @@ import {
     EntityInstances,
     instancedBlockNames,
 } from './entities/EntityInstances';
+import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
 import type { GameFeatureFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
 import { useBlockData } from './hooks/useBlockData';
@@ -103,6 +104,7 @@ export function GameScene({
                                 />
                             )),
                         )}
+                        <RaisedBedMulchOverlays />
                         <EntityInstances stacks={garden?.stacks} />
                     </group>
                     {!noControls && <Controls />}
