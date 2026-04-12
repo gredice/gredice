@@ -39,7 +39,14 @@ function formatDate(date?: Date | string | null) {
     });
 }
 
-const roleConfig: Record<string, { label: string; icon: typeof Fence; color: 'neutral' | 'success' | 'warning' }> = {
+const roleConfig: Record<
+    string,
+    {
+        label: string;
+        icon: typeof Fence;
+        color: 'neutral' | 'success' | 'warning';
+    }
+> = {
     user: { label: 'Korisnik', icon: User, color: 'neutral' },
     farmer: { label: 'Poljoprivrednik', icon: Fence, color: 'success' },
     admin: { label: 'Administrator', icon: Shield, color: 'warning' },

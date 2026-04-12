@@ -5,6 +5,7 @@ import {
     GoogleLoginButton,
     useLastLoginProvider,
 } from '@gredice/ui/auth';
+import { usePostHog } from '@posthog/next';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { Alert } from '@signalco/ui/Alert';
 import { Warning } from '@signalco/ui-icons';
@@ -19,6 +20,7 @@ import { invalidatePage } from '../../../app/(actions)/sharedActions';
 import { queryClient } from '../../providers/ClientAppProvider';
 
 export function LoginDialog() {
+    const posthog = usePostHog();
     const fetchLastLogin = useCallback(
         () => fetch('/api/gredice/api/auth/last-login'),
         [],
@@ -38,6 +40,10 @@ export function LoginDialog() {
             const password = passwordValue;
 
             // Send the form data to the server
+            posthog?.capture('user_login_started', {
+                provider: 'password',
+                surface: 'app_admin',
+            });
             const response = await fetch('/api/login', {
                 method: 'POST',
                 headers: {
@@ -46,6 +52,12 @@ export function LoginDialog() {
                 body: JSON.stringify({ email, password }),
             });
             if (response.status !== 200) {
+                posthog?.capture('user_login_failed', {
+                    provider: 'password',
+                    reason: 'invalid_credentials_or_access',
+                    status: response.status,
+                    surface: 'app_admin',
+                });
                 console.error('Login failed with status', response.status);
                 return { error: true };
             }
@@ -61,6 +73,10 @@ export function LoginDialog() {
     );
 
     const handleOAuthLogin = (provider: 'google' | 'facebook') => {
+        posthog?.capture('user_oauth_login_started', {
+            provider,
+            surface: 'app_admin',
+        });
         const callbackPath =
             provider === 'google'
                 ? '/prijava/google-prijava/povratak'

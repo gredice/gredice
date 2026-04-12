@@ -52,6 +52,7 @@ import {
     authValidator,
 } from '../../../lib/hono/authValidator';
 import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
+import { getPostHogClient } from '../../../lib/posthog-server';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
 
@@ -82,6 +83,23 @@ async function countRecentRaisedBedAiAnalyses(accountId: string) {
     ]);
 
     return raisedBedCount + raisedBedFieldCount;
+}
+
+async function trackGardenCreated(input: {
+    accountId: string;
+    gardenId: number;
+    name?: string;
+    userId: string;
+}) {
+    await (await getPostHogClient()).capture({
+        distinctId: input.userId,
+        event: 'garden_created',
+        properties: {
+            account_id: input.accountId,
+            garden_id: input.gardenId,
+            has_custom_name: Boolean(input.name?.trim()),
+        },
+    });
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
@@ -116,12 +134,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
         ),
         authValidator(['user', 'admin']),
         async (context) => {
-            const { accountId } = context.get('authContext');
+            const { accountId, userId } = context.get('authContext');
             const { name } = context.req.valid('json');
             const gardenId = await createDefaultGardenForAccount({
                 accountId,
                 name,
             });
+            await trackGardenCreated({ accountId, gardenId, name, userId });
             return context.json({ id: gardenId }, 201);
         },
     )
@@ -138,12 +157,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
         ),
         authValidator(['user', 'admin']),
         async (context) => {
-            const { accountId } = context.get('authContext');
+            const { accountId, userId } = context.get('authContext');
             const { name } = context.req.valid('json');
             const gardenId = await createDefaultGardenForAccount({
                 accountId,
                 name,
             });
+            await trackGardenCreated({ accountId, gardenId, name, userId });
             return context.json({ id: gardenId }, 201);
         },
     )

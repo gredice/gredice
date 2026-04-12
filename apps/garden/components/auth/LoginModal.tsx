@@ -6,6 +6,7 @@ import {
     GoogleLoginButton,
     useLastLoginProvider,
 } from '@gredice/ui/auth';
+import { usePostHog } from '@posthog/next';
 import { Alert } from '@signalco/ui/Alert';
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { Modal } from '@signalco/ui-primitives/Modal';
@@ -23,6 +24,7 @@ import { EmailPasswordForm } from './EmailPasswordForm';
 import LoginBanner from './LoginBanner';
 
 export default function LoginModal() {
+    const posthog = usePostHog();
     const router = useRouter();
     const queryClient = useQueryClient();
     const [error, setError] = useState<string>();
@@ -34,6 +36,10 @@ export default function LoginModal() {
 
     const handleLogin = async (email: string, password: string) => {
         setError(undefined);
+        posthog?.capture('user_login_started', {
+            provider: 'password',
+            surface: 'garden',
+        });
         const response = await clientPublic().api.auth.login.$post({
             json: {
                 email,
@@ -49,6 +55,12 @@ export default function LoginModal() {
             const json = await response.json();
             if ('errorCode' in json) {
                 if (json.errorCode === 'verify_email') {
+                    posthog?.capture('user_login_failed', {
+                        provider: 'password',
+                        reason: 'verify_email',
+                        status: response.status,
+                        surface: 'garden',
+                    });
                     console.debug('User email not verified', email);
                     router.push(
                         `/prijava/potvrda-emaila/posalji?email=${email}`,
@@ -61,6 +73,12 @@ export default function LoginModal() {
                     json.blockedUntil &&
                     typeof json.blockedUntil === 'string'
                 ) {
+                    posthog?.capture('user_login_failed', {
+                        provider: 'password',
+                        reason: 'user_blocked',
+                        status: response.status,
+                        surface: 'garden',
+                    });
                     console.debug('User is blocked until', json.blockedUntil);
                     setError(
                         `Korisnik je blokiran do ${new Date(json.blockedUntil).toLocaleString('hr-HR')}. Pokušaj ponovno kasnije.`,
@@ -68,6 +86,13 @@ export default function LoginModal() {
                     return;
                 }
                 if ('leftAttempts' in json) {
+                    posthog?.capture('user_login_failed', {
+                        left_attempts: json.leftAttempts,
+                        provider: 'password',
+                        reason: 'invalid_credentials',
+                        status: response.status,
+                        surface: 'garden',
+                    });
                     console.debug(
                         'Login failed with left attempts',
                         json.leftAttempts,
@@ -79,6 +104,12 @@ export default function LoginModal() {
                 }
             }
 
+            posthog?.capture('user_login_failed', {
+                provider: 'password',
+                reason: 'unknown',
+                status: response.status,
+                surface: 'garden',
+            });
             console.error('Login failed with status', response.status);
             setError('Prijava nije uspjela. Pokušaj ponovno.');
             return;
@@ -87,6 +118,10 @@ export default function LoginModal() {
 
     const handleRegister = async (email: string, password: string) => {
         setError(undefined);
+        posthog?.capture('user_signup_started', {
+            provider: 'password',
+            surface: 'garden',
+        });
         const response = await clientPublic().api.auth.register.$post({
             json: {
                 email,
@@ -104,6 +139,10 @@ export default function LoginModal() {
     };
 
     const handleOAuthLogin = (provider: 'google' | 'facebook') => {
+        posthog?.capture('user_oauth_login_started', {
+            provider,
+            surface: 'garden',
+        });
         window.location.href = `https://api.gredice.com/api/auth/${provider}`;
     };
 
