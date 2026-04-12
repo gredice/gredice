@@ -68,7 +68,11 @@ export async function flushPostHogLogs(): Promise<void> {
         return;
     }
 
-    await loggerProvider.forceFlush();
+    try {
+        await loggerProvider.forceFlush();
+    } catch (error) {
+        console.warn('PostHog log flush failed', error);
+    }
 }
 
 export async function getPostHogClient(): Promise<PostHogCaptureClient> {

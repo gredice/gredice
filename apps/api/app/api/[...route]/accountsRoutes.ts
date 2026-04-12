@@ -32,12 +32,19 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
 
 const dailyRewards = [5, 10, 15, 20, 25, 50];
 const DAILY_REWARD_TIME_ZONE = 'Europe/Zagreb';
 
 function rewardForDay(day: number) {
     return dailyRewards[Math.min(day, dailyRewards.length) - 1] ?? 0;
+}
+
+function getEmailDomain(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const [, domain] = normalizedEmail.split('@');
+    return domain ?? 'unknown';
 }
 
 async function getDailyRewardState(accountId: string) {
@@ -440,6 +447,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            await (await getPostHogClient()).capture({
+                distinctId: userId,
+                event: 'account_invitation_sent',
+                properties: {
+                    account_id: accountId,
+                    invitation_id: invitation.id,
+                    invited_email_domain: getEmailDomain(email),
+                },
+            });
+
             return context.json(
                 {
                     id: invitation.id,
@@ -543,6 +560,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 sameSite: 'Lax',
                 domain: cookieDomain,
                 maxAge: 365 * 24 * 60 * 60, // 1 year
+            });
+
+            await (await getPostHogClient()).capture({
+                distinctId: userId,
+                event: 'account_invitation_accepted',
+                properties: {
+                    account_id: result.accountId,
+                    invitation_id: invitation.id,
+                    invited_by_user_id: invitation.invitedByUserId,
+                },
             });
 
             return context.json({ success: true, accountId: result.accountId });

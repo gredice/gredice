@@ -11,6 +11,7 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
 import {
     type BirthdayRewardUser,
     grantBirthdayReward,
@@ -37,6 +38,66 @@ const birthdaySchema = z
             .nullable(),
     })
     .strict();
+
+function getUpdatedProfileFields(input: {
+    dbUser: Awaited<ReturnType<typeof getUser>>;
+    userInfo: {
+        userName?: string;
+        displayName?: string;
+        avatarUrl?: string | null;
+        birthday?: {
+            day: number;
+            month: number;
+            year?: number | null;
+        } | null;
+    };
+}) {
+    const updatedFields: string[] = [];
+
+    if (
+        input.userInfo.displayName !== undefined &&
+        input.userInfo.displayName !== input.dbUser?.displayName
+    ) {
+        updatedFields.push('display_name');
+    }
+
+    if (
+        input.userInfo.avatarUrl !== undefined &&
+        input.userInfo.avatarUrl !== input.dbUser?.avatarUrl
+    ) {
+        updatedFields.push('avatar_url');
+    }
+
+    if (
+        input.userInfo.userName !== undefined &&
+        input.userInfo.userName !== input.dbUser?.userName
+    ) {
+        updatedFields.push('user_name');
+    }
+
+    if (Object.hasOwn(input.userInfo, 'birthday')) {
+        const nextBirthday = input.userInfo.birthday;
+
+        if (nextBirthday === undefined) {
+            return updatedFields;
+        }
+
+        const birthdayChanged =
+            nextBirthday === null ||
+            !input.dbUser ||
+            nextBirthday.day !== input.dbUser.birthdayDay ||
+            nextBirthday.month !== input.dbUser.birthdayMonth ||
+            (nextBirthday.year ?? null) !== (input.dbUser.birthdayYear ?? null);
+
+        if (birthdayChanged) {
+            updatedFields.push(
+                nextBirthday === null ? 'birthday_cleared' : 'birthday',
+            );
+        }
+    }
+
+    return updatedFields;
+}
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -281,6 +342,25 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     user: updatedUser,
                     rewardDate,
                     isLate: rewardIsLate,
+                });
+            }
+
+            const updatedFields = getUpdatedProfileFields({
+                dbUser,
+                userInfo,
+            });
+
+            if (updatedFields.length > 0) {
+                await (await getPostHogClient()).capture({
+                    distinctId: userId,
+                    event: 'user_profile_updated',
+                    properties: {
+                        updated_fields: updatedFields,
+                        birthday_reward_granted: Boolean(
+                            rewardResult?.rewarded,
+                        ),
+                        birthday_reward_late: rewardIsLate,
+                    },
                 });
             }
 

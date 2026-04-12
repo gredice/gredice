@@ -5,6 +5,7 @@ import {
     GoogleLoginButton,
     useLastLoginProvider,
 } from '@gredice/ui/auth';
+import { usePostHog } from '@posthog/next';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { Alert } from '@signalco/ui/Alert';
 import { Warning } from '@signalco/ui-icons';
@@ -22,6 +23,7 @@ import { queryClient } from '../providers/ClientAppProvider';
 type OAuthProvider = 'google' | 'facebook';
 
 export function LoginDialog() {
+    const posthog = usePostHog();
     const router = useRouter();
     const fetchLastLogin = useCallback(
         () => fetch('/api/gredice/api/auth/last-login'),
@@ -40,6 +42,10 @@ export function LoginDialog() {
         }
 
         try {
+            posthog?.capture('user_login_started', {
+                provider: 'password',
+                surface: 'farm',
+            });
             const response = await fetch('/api/login', {
                 method: 'POST',
                 headers: {
@@ -49,6 +55,12 @@ export function LoginDialog() {
             });
 
             if (!response.ok) {
+                posthog?.capture('user_login_failed', {
+                    provider: 'password',
+                    reason: 'invalid_credentials_or_access',
+                    status: response.status,
+                    surface: 'farm',
+                });
                 console.error('Login failed with status', response.status);
                 return 'Prijava nije uspjela. Provjeri podatke i pokušaj ponovno.';
             }
@@ -59,6 +71,12 @@ export function LoginDialog() {
 
             const currentUserResponse = await fetch('/api/users/current');
             if (!currentUserResponse.ok) {
+                posthog?.capture('user_login_failed', {
+                    provider: 'password',
+                    reason: 'no_farm_access',
+                    status: currentUserResponse.status,
+                    surface: 'farm',
+                });
                 return 'Tvoj korisnički račun nema pristup Gredice farmi.';
             }
 
@@ -68,11 +86,20 @@ export function LoginDialog() {
             router.refresh();
             return null;
         } catch (cause) {
+            posthog?.capture('user_login_failed', {
+                provider: 'password',
+                reason: 'unexpected_error',
+                surface: 'farm',
+            });
             console.error('Login request failed', cause);
             return 'Dogodila se neočekivana greška. Pokušaj ponovno kasnije.';
         }
     }, null);
     const handleOAuthLogin = (provider: OAuthProvider) => {
+        posthog?.capture('user_oauth_login_started', {
+            provider,
+            surface: 'farm',
+        });
         const callbackPath =
             provider === 'google'
                 ? '/prijava/google-prijava/povratak'
