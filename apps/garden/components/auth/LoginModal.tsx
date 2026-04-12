@@ -139,7 +139,7 @@ export default function LoginModal() {
     };
 
     const handleOAuthLogin = (provider: 'google' | 'facebook') => {
-        posthog?.capture('user_oauth_login_started', {
+        posthog?.capture('user_oauth_started', {
             provider,
             surface: 'garden',
         });

@@ -1,3 +1,7 @@
+export {
+    GameAnalyticsProvider,
+    useGameAnalytics,
+} from './analytics/GameAnalyticsContext';
 export type { GameSceneProps } from './GameScene';
 export { GameSceneDynamic as GameScene } from './GameSceneDynamic';
 export { PlantEditor } from './generators/plant/editor/PlantEditor';

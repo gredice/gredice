@@ -15,6 +15,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { CSSProperties } from 'react';
+import { useGameAnalytics } from '../../../analytics/GameAnalyticsContext';
 import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
 import { useInventory } from '../../../hooks/useInventory';
@@ -27,6 +28,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
     const { data: account } = useCurrentAccount();
     const { data: inventory } = useInventory();
+    const { track } = useGameAnalytics();
 
     const hasDiscount = typeof item.shopData.discountPrice === 'number';
     const hasRaisedBed = Boolean(item.raisedBedId);
@@ -52,6 +54,11 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     )?.amount;
 
     async function handleChangePaymentType(isSunflower: boolean) {
+        track('game_cart_payment_method_changed', {
+            entity_id: item.entityId,
+            entity_type: item.entityTypeName,
+            payment_method: isSunflower ? 'sunflower' : 'eur',
+        });
         await changeCurrencyShoppingCartItem.mutateAsync({
             id: item.id,
             amount: item.amount,
@@ -66,6 +73,11 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     }
 
     async function handleRemoveItem() {
+        track('game_cart_item_removed', {
+            entity_id: item.entityId,
+            entity_type: item.entityTypeName,
+            item_id: item.id,
+        });
         await removeShoppingCartItem.mutateAsync({
             id: item.id,
             amount: 0,
@@ -75,6 +87,12 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     }
 
     async function handleToggleInventory() {
+        track('game_cart_item_inventory_toggled', {
+            entity_id: item.entityId,
+            entity_type: item.entityTypeName,
+            item_id: item.id,
+            use_inventory: !usesInventory,
+        });
         await changeCurrencyShoppingCartItem.mutateAsync({
             id: item.id,
             amount: item.amount,

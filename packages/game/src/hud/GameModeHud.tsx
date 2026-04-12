@@ -1,6 +1,7 @@
 import { Check } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { useEffect } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { ShovelIcon } from '../icons/Shovel';
 import { useGameState } from '../useGameState';
 import { useGameModeParam } from '../useUrlState';
@@ -8,6 +9,7 @@ import { HudCard } from './components/HudCard';
 
 export function GameModeHud() {
     const [isEditMode, setIsEditMode] = useGameModeParam();
+    const { track } = useGameAnalytics();
     const mode = useGameState((state) => state.mode);
     const setMode = useGameState((state) => state.setMode);
 
@@ -21,6 +23,9 @@ export function GameModeHud() {
 
     const handleToggleMode = () => {
         const newEditMode = !isEditMode;
+        track('game_mode_changed', {
+            mode: newEditMode ? 'edit' : 'normal',
+        });
         setIsEditMode(newEditMode);
         setMode(newEditMode ? 'edit' : 'normal');
     };
