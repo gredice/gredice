@@ -12,6 +12,7 @@ import {
     getGarden,
     getGardenBlocks,
     getGardenStack,
+    getOperations,
     getRaisedBed,
     getRaisedBedDiaryEntries,
     getRaisedBedFieldDiaryEntries,
@@ -102,6 +103,24 @@ async function trackGardenCreated(input: {
     });
 }
 
+function isAppliedRaisedBedOperationStatus(status: string) {
+    return status === 'completed' || status === 'pendingVerification';
+}
+
+function serializeAppliedRaisedBedOperation(
+    operation: Awaited<ReturnType<typeof getOperations>>[number],
+) {
+    return {
+        id: operation.id,
+        entityId: operation.entityId,
+        raisedBedFieldId: operation.raisedBedFieldId,
+        status: operation.status,
+        createdAt: operation.createdAt.toISOString(),
+        completedAt: operation.completedAt?.toISOString() ?? null,
+        scheduledDate: operation.scheduledDate?.toISOString() ?? null,
+    };
+}
+
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/',
@@ -187,13 +206,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const { accountId } = context.get('authContext');
-            const [garden, /*blockPlaceEventsRaw,*/ blocks] = await Promise.all(
-                [
+            const [garden, /*blockPlaceEventsRaw,*/ blocks, operations] =
+                await Promise.all([
                     getGarden(gardenIdNumber),
                     // getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 10000),
                     getGardenBlocks(gardenIdNumber),
-                ],
-            );
+                    getOperations(accountId, gardenIdNumber),
+                ]);
             if (!garden || garden.accountId !== accountId) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
@@ -203,6 +222,27 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
             const blockNameById = new Map(
                 blocks.map((block) => [block.id, block.name] as const),
+            );
+            const appliedOperationsByRaisedBedId = operations.reduce(
+                (acc, operation) => {
+                    if (
+                        !operation.raisedBedId ||
+                        !isAppliedRaisedBedOperationStatus(operation.status)
+                    ) {
+                        return acc;
+                    }
+
+                    const existing = acc.get(operation.raisedBedId) ?? [];
+                    existing.push(
+                        serializeAppliedRaisedBedOperation(operation),
+                    );
+                    acc.set(operation.raisedBedId, existing);
+                    return acc;
+                },
+                new Map<
+                    number,
+                    ReturnType<typeof serializeAppliedRaisedBedOperation>[]
+                >(),
             );
 
             // Stacks: group by x then by y
@@ -265,6 +305,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         status: raisedBed.status,
                         orientation: raisedBed.orientation,
                         fields: raisedBed.fields,
+                        appliedOperations:
+                            appliedOperationsByRaisedBedId.get(raisedBed.id) ??
+                            [],
                         createdAt: raisedBed.createdAt,
                         updatedAt: raisedBed.updatedAt,
                         isValid: validityMap.get(raisedBed.id) ?? false,
