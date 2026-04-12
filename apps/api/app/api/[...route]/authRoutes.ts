@@ -174,6 +174,85 @@ function resolveRedirectUrl(context: Context, fallbackPath: string) {
     }
 }
 
+type AuthProvider = 'password' | 'google' | 'facebook';
+
+type TrackAuthEventInput = {
+    distinctId: string;
+    event: string;
+    email?: string;
+    provider?: AuthProvider;
+    properties?: Record<string, unknown>;
+    setProperties?: Record<string, unknown>;
+    setOnceProperties?: Record<string, unknown>;
+};
+
+function normalizeEmail(email?: string) {
+    return email?.trim().toLowerCase();
+}
+
+function getEmailDomain(email?: string) {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) {
+        return undefined;
+    }
+
+    const atIndex = normalizedEmail.lastIndexOf('@');
+    if (atIndex === -1 || atIndex === normalizedEmail.length - 1) {
+        return undefined;
+    }
+
+    return normalizedEmail.slice(atIndex + 1);
+}
+
+function compactProperties(properties: Record<string, unknown>) {
+    const compacted: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(properties)) {
+        if (value !== undefined) {
+            compacted[key] = value;
+        }
+    }
+    return compacted;
+}
+
+async function trackAuthEvent({
+    distinctId,
+    event,
+    email,
+    provider,
+    properties,
+    setProperties,
+    setOnceProperties,
+}: TrackAuthEventInput) {
+    const normalizedEmail = normalizeEmail(email);
+    const eventProperties = compactProperties({
+        email_domain: getEmailDomain(normalizedEmail),
+        provider,
+        ...properties,
+    });
+    const personProperties = compactProperties({
+        auth_provider: provider,
+        email: normalizedEmail,
+        ...setProperties,
+    });
+    const personPropertiesOnce = compactProperties({
+        ...setOnceProperties,
+    });
+
+    await (await getPostHogClient()).capture({
+        distinctId,
+        event,
+        properties: compactProperties({
+            ...eventProperties,
+            ...(Object.keys(personProperties).length > 0
+                ? { $set: personProperties }
+                : {}),
+            ...(Object.keys(personPropertiesOnce).length > 0
+                ? { $set_once: personPropertiesOnce }
+                : {}),
+        }),
+    });
+}
+
 const app = new Hono()
     .post(
         '/login',
@@ -316,10 +395,11 @@ const app = new Hono()
                 setRefreshCookie(context, refreshToken),
             ]);
 
-            (await getPostHogClient()).capture({
+            await trackAuthEvent({
                 distinctId: user.id,
+                email: user.userName,
                 event: 'user_logged_in',
-                properties: { provider: 'password' },
+                provider: 'password',
             });
 
             return context.json({
@@ -424,11 +504,36 @@ const app = new Hono()
                     setRefreshCookie(context, refreshToken),
                 ]);
 
-                (await getPostHogClient()).capture({
+                await trackAuthEvent({
                     distinctId: userId,
+                    email: userInfo.email,
                     event: isNewUser ? 'user_signed_up' : 'user_logged_in',
-                    properties: { provider: 'google' },
+                    provider: 'google',
+                    setProperties: {
+                        name: userInfo.name,
+                    },
+                    setOnceProperties: isNewUser
+                        ? {
+                              signed_up_at: new Date().toISOString(),
+                              signup_provider: 'google',
+                          }
+                        : undefined,
                 });
+
+                if (currentUserId && !isNewUser) {
+                    await trackAuthEvent({
+                        distinctId: userId,
+                        email: userInfo.email,
+                        event: 'user_auth_method_added',
+                        provider: 'google',
+                        properties: {
+                            auth_method: 'google',
+                        },
+                        setProperties: {
+                            name: userInfo.name,
+                        },
+                    });
+                }
 
                 const redirectUrl = resolveRedirectUrl(
                     context,
@@ -546,11 +651,36 @@ const app = new Hono()
                     setRefreshCookie(context, refreshToken),
                 ]);
 
-                (await getPostHogClient()).capture({
+                await trackAuthEvent({
                     distinctId: userId,
+                    email: userInfo.email,
                     event: isNewUser ? 'user_signed_up' : 'user_logged_in',
-                    properties: { provider: 'facebook' },
+                    provider: 'facebook',
+                    setProperties: {
+                        name: userInfo.name,
+                    },
+                    setOnceProperties: isNewUser
+                        ? {
+                              signed_up_at: new Date().toISOString(),
+                              signup_provider: 'facebook',
+                          }
+                        : undefined,
                 });
+
+                if (currentUserId && !isNewUser) {
+                    await trackAuthEvent({
+                        distinctId: userId,
+                        email: userInfo.email,
+                        event: 'user_auth_method_added',
+                        provider: 'facebook',
+                        properties: {
+                            auth_method: 'facebook',
+                        },
+                        setProperties: {
+                            name: userInfo.name,
+                        },
+                    });
+                }
 
                 const redirectUrl = resolveRedirectUrl(
                     context,
@@ -649,6 +779,7 @@ const app = new Hono()
                     login.loginId === emailOrUserId &&
                     login.loginType === 'password',
             );
+            const isAddingPasswordLogin = !userLogin;
             if (!userLogin) {
                 console.debug(
                     'User password login not found',
@@ -668,6 +799,26 @@ const app = new Hono()
                 );
                 await changePassword(userLogin.id, password);
             }
+
+            if (isAddingPasswordLogin) {
+                await trackAuthEvent({
+                    distinctId: userWithLogins.id,
+                    email: userWithLogins.userName,
+                    event: 'user_auth_method_added',
+                    provider: 'password',
+                    properties: {
+                        auth_method: 'password',
+                        source: 'change_password',
+                    },
+                });
+            }
+
+            await trackAuthEvent({
+                distinctId: userWithLogins.id,
+                email: userWithLogins.userName,
+                event: 'password_changed',
+                provider: 'password',
+            });
 
             return context.json({
                 message: 'Password changed successfully',
@@ -697,7 +848,7 @@ const app = new Hono()
             await clearCookie(context);
             await clearRefreshCookie(context);
             if (userId) {
-                (await getPostHogClient()).capture({
+                await trackAuthEvent({
                     distinctId: userId,
                     event: 'user_logged_out',
                 });
@@ -724,6 +875,15 @@ const app = new Hono()
             const user = await getUserWithLogins(email);
             if (user) {
                 console.debug('User already exists', email);
+                await trackAuthEvent({
+                    distinctId: user.id,
+                    email: user.userName,
+                    event: 'user_signup_failed',
+                    provider: 'password',
+                    properties: {
+                        reason: 'already_exists',
+                    },
+                });
                 // TODO: Instead, do login flow (redirect to login url)
                 return context.json(
                     {
@@ -736,15 +896,30 @@ const app = new Hono()
             // Create user with password
             const userId = await createUserWithPassword(email, password);
 
-            (await getPostHogClient()).capture({
+            await trackAuthEvent({
                 distinctId: userId,
+                email,
                 event: 'user_signed_up',
-                properties: { provider: 'password' },
+                provider: 'password',
+                setOnceProperties: {
+                    signed_up_at: new Date().toISOString(),
+                    signup_provider: 'password',
+                },
             });
 
             await notifyNewUserRegistered(userId);
 
             await sendEmailVerification(email);
+
+            await trackAuthEvent({
+                distinctId: userId,
+                email,
+                event: 'user_verification_email_sent',
+                provider: 'password',
+                properties: {
+                    trigger: 'signup',
+                },
+            });
 
             return context.json(
                 {
@@ -781,6 +956,13 @@ const app = new Hono()
             // Send email
             await sendChangePassword(email);
 
+            await trackAuthEvent({
+                distinctId: user.id,
+                email: user.userName,
+                event: 'password_reset_requested',
+                provider: 'password',
+            });
+
             return context.json({
                 message: 'Change password email sent successfully',
             });
@@ -812,6 +994,16 @@ const app = new Hono()
 
             // Send email
             await sendEmailVerification(email);
+
+            await trackAuthEvent({
+                distinctId: user.id,
+                email: user.userName,
+                event: 'user_verification_email_sent',
+                provider: 'password',
+                properties: {
+                    trigger: 'manual',
+                },
+            });
 
             return context.json({
                 message: 'Verify email sent successfully',
@@ -906,9 +1098,14 @@ const app = new Hono()
                 isVerified: true,
             });
 
-            (await getPostHogClient()).capture({
+            await trackAuthEvent({
                 distinctId: user.id,
+                email: user.userName,
                 event: 'user_email_verified',
+                provider: 'password',
+                properties: {
+                    verification_method: 'email_link',
+                },
             });
 
             // Send welcome message
