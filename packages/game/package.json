@@ -71,8 +71,8 @@
         "next": "15.x || 16.x",
         "next-themes": "0.4.x",
         "nuqs": "2.8.9",
-        "react": "19.2.4",
-        "react-dom": "19.2.4",
+        "react": "19.2.5",
+        "react-dom": "19.2.5",
         "tailwindcss": ">=3",
         "tailwindcss-animate": ">=1"
     },
