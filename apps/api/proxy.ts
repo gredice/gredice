@@ -18,8 +18,10 @@ const postHogApiKey =
     process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
 const postHogProxyHost =
     process.env.POSTHOG_PROXY_HOST ??
-    process.env.NEXT_PUBLIC_POSTHOG_HOST
-        ?.replace('://app.posthog.com', '://us.i.posthog.com')
+    process.env.NEXT_PUBLIC_POSTHOG_HOST?.replace(
+        '://app.posthog.com',
+        '://us.i.posthog.com',
+    )
         .replace('://us.posthog.com', '://us.i.posthog.com')
         .replace('://eu.posthog.com', '://eu.i.posthog.com');
 
