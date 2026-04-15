@@ -164,7 +164,7 @@ function withJsonExtension(outputPngPath: string): string {
 }
 
 function stripKnownExtension(filePath: string) {
-    return filePath.replace(/\.(png|json|ktx2)$/u, '');
+    return filePath.replace(/\.(png|json)$/u, '');
 }
 
 function getPageBasePath(outputPngPath: string, pageIndex: number) {

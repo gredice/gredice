@@ -22,9 +22,11 @@
                 "HYPERTUNE_INCLUDE_INIT_DATA",
                 "HYPERTUNE_OUTPUT_DIRECTORY_PATH",
                 "NEXT_PUBLIC_HYPERTUNE_TOKEN",
+                "NEXT_PUBLIC_POSTHOG_API_HOST",
                 "NEXT_PUBLIC_POSTHOG_HOST",
                 "NEXT_PUBLIC_POSTHOG_KEY",
                 "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN",
+                "NEXT_PUBLIC_POSTHOG_UI_HOST",
                 "PLANTS_SILO_KV_REST_API_READ_ONLY_TOKEN",
                 "PLANTS_SILO_KV_REST_API_TOKEN",
                 "PLANTS_SILO_KV_REST_API_URL",
@@ -38,6 +40,7 @@
                 "POSTGRES_URL_NON_POOLING",
                 "POSTGRES_URL_NO_SSL",
                 "POSTGRES_USER",
+                "POSTHOG_SERVER_HOST",
                 "SIGNALCO_API_KEY",
                 "VERCEL_OIDC_TOKEN"
             ]

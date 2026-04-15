@@ -16,7 +16,14 @@ import {
 const postHogApiKey =
     process.env.NEXT_PUBLIC_POSTHOG_KEY ??
     process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
-const POSTHOG_TRANSPORT_PATH_PREFIX = '/ingest';
+const postHogProxyHost =
+    process.env.POSTHOG_PROXY_HOST ??
+    process.env.NEXT_PUBLIC_POSTHOG_HOST?.replace(
+        '://app.posthog.com',
+        '://us.i.posthog.com',
+    )
+        .replace('://us.posthog.com', '://us.i.posthog.com')
+        .replace('://eu.posthog.com', '://eu.i.posthog.com');
 
 const requestLogger = getPostHogLogger(`${POSTHOG_SERVICE_NAME}.request`);
 
@@ -46,7 +53,7 @@ function getProxyAttributes(response: Response) {
 const baseProxyHandler: NextProxy = postHogApiKey
     ? postHogMiddleware({
           apiKey: postHogApiKey,
-          proxy: true,
+          proxy: postHogProxyHost ? { host: postHogProxyHost } : true,
       })
     : function proxy(_request: NextRequest) {
           return NextResponse.next();
@@ -59,10 +66,7 @@ const proxyHandler: NextProxy = async (
     const response =
         (await baseProxyHandler(request, event)) ?? NextResponse.next();
 
-    if (
-        isPostHogLoggingEnabled() &&
-        !request.nextUrl.pathname.startsWith(POSTHOG_TRANSPORT_PATH_PREFIX)
-    ) {
+    if (isPostHogLoggingEnabled()) {
         requestLogger.emit({
             attributes: {
                 'http.method': request.method,

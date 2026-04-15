@@ -37,10 +37,9 @@ export function authValidator(roles: string[]) {
             }
             context.set('authContext', authContext);
             return await next();
-        } catch (error) {
+        } catch {
             const refreshToken = getCookie(context, refreshTokenCookieName);
             if (!refreshToken) {
-                console.warn('Unauthorized:', error);
                 return context.newResponse('Unauthorized', { status: 401 });
             }
 

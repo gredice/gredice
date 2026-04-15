@@ -109,11 +109,19 @@ export function SpriteAtlasBillboard({
     }, [geometry]);
 
     if (manifestError) {
-        throw manifestError;
+        console.error(
+            `Failed to load sprite atlas manifest "${atlasBasePath}":`,
+            manifestError,
+        );
+        return null;
     }
 
     if (textureError) {
-        throw textureError;
+        console.error(
+            `Failed to load sprite atlas texture "${atlasBasePath}":`,
+            textureError,
+        );
+        return null;
     }
 
     if (!manifest) {
@@ -121,9 +129,10 @@ export function SpriteAtlasBillboard({
     }
 
     if (!sprite) {
-        throw new Error(
+        console.warn(
             `Sprite "${spriteName}" was not found in atlas "${atlasBasePath}".`,
         );
+        return null;
     }
 
     if (!texture || !geometry) {

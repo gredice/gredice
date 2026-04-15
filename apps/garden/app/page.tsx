@@ -1,4 +1,4 @@
-import { SignedOut } from '@signalco/auth-client/components';
+import { SignedIn, SignedOut } from '@signalco/auth-client/components';
 import type { ComponentProps } from 'react';
 import LoginModal from '../components/auth/LoginModal';
 import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytics';
@@ -17,7 +17,12 @@ export default async function Home() {
 
     return (
         <div className="grid grid-cols-1 h-[100dvh] relative overflow-hidden">
-            <GameSceneWithAnalytics flags={flags} />
+            <SignedIn>
+                <GameSceneWithAnalytics flags={flags} />
+            </SignedIn>
+            <SignedOut>
+                <GameSceneWithAnalytics flags={flags} mockGarden hideHud />
+            </SignedOut>
             <SignedOut>
                 <div className="relative h-full">
                     <LoginModal />

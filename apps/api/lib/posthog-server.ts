@@ -23,9 +23,13 @@ const postHogConsoleForwardingKey = Symbol.for(
 const postHogApiKey =
     process.env.NEXT_PUBLIC_POSTHOG_KEY ??
     process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+const postHogServerHost =
+    process.env.POSTHOG_SERVER_HOST ??
+    process.env.NEXT_PUBLIC_POSTHOG_UI_HOST ??
+    process.env.NEXT_PUBLIC_POSTHOG_HOST;
 
-const postHogLogsUrl = process.env.NEXT_PUBLIC_POSTHOG_HOST
-    ? `${process.env.NEXT_PUBLIC_POSTHOG_HOST.replace(/\/$/, '')}/i/v1/logs`
+const postHogLogsUrl = postHogServerHost
+    ? `${postHogServerHost.replace(/\/$/, '')}/i/v1/logs`
     : null;
 
 const noopPostHogClient: PostHogCaptureClient = {
@@ -189,5 +193,8 @@ export async function getPostHogClient(): Promise<PostHogCaptureClient> {
 
     const { getPostHog } = await import('@posthog/next');
 
-    return getPostHog(postHogApiKey);
+    return getPostHog(
+        postHogApiKey,
+        postHogServerHost ? { host: postHogServerHost } : undefined,
+    );
 }

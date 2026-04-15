@@ -12,7 +12,6 @@ export type SpriteAtlasGrid = {
 
 export type SpriteAtlasAssetPaths = {
     basePath: string;
-    ktx2Url: string;
     manifestUrl: string;
     pngUrl: string;
 };
