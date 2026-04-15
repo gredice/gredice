@@ -69,6 +69,10 @@ export default async function RootLayout({
     const postHogApiKey =
         process.env.NEXT_PUBLIC_POSTHOG_KEY ??
         process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+    const postHogApiHost = '/ingest';
+    const postHogUiHost =
+        process.env.NEXT_PUBLIC_POSTHOG_UI_HOST ??
+        process.env.NEXT_PUBLIC_POSTHOG_HOST;
     const content = (
         <ClientAppProvider>
             <Stack>
@@ -122,11 +126,11 @@ export default async function RootLayout({
                     <PostHogProvider
                         apiKey={postHogApiKey}
                         clientOptions={{
-                            api_host: '/ingest',
+                            api_host: postHogApiHost,
                             capture_exceptions: true,
                             debug: process.env.NODE_ENV === 'development',
                             defaults: '2026-01-30',
-                            ui_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+                            ui_host: postHogUiHost ?? null,
                         }}
                     >
                         <PostHogPageView />

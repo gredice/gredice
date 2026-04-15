@@ -18,7 +18,7 @@ export function GroundBlockDecorations({
 }: GroundBlockDecorationsProps) {
     const { data: blockData } = useBlockData();
 
-    if (!stacks || !blockData) {
+    if (!stacks) {
         return null;
     }
 

@@ -15,9 +15,11 @@
                 "HYPERTUNE_INCLUDE_INIT_DATA",
                 "HYPERTUNE_OUTPUT_DIRECTORY_PATH",
                 "NEXT_PUBLIC_HYPERTUNE_TOKEN",
+                "NEXT_PUBLIC_POSTHOG_API_HOST",
                 "NEXT_PUBLIC_POSTHOG_HOST",
                 "NEXT_PUBLIC_POSTHOG_KEY",
                 "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN",
+                "NEXT_PUBLIC_POSTHOG_UI_HOST",
                 "NEXT_PUBLIC_VERCEL_ENV",
                 "POSTGRES_DATABASE",
                 "POSTGRES_HOST",
@@ -27,6 +29,7 @@
                 "POSTGRES_URL_NON_POOLING",
                 "POSTGRES_URL_NO_SSL",
                 "POSTGRES_USER",
+                "POSTHOG_SERVER_HOST",
                 "VERCEL_OIDC_TOKEN"
             ]
         }

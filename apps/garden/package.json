@@ -35,7 +35,7 @@
         "server-only": "0.0.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.11",
+        "@biomejs/biome": "2.4.12",
         "@gredice/client": "workspace:*",
         "@gredice/game": "workspace:*",
         "@gredice/ui": "workspace:*",
@@ -57,7 +57,7 @@
         "@types/react-dom": "19.2.3",
         "@vercel/analytics": "2.0.1",
         "babel-plugin-react-compiler": "19.1.0-rc.3",
-        "postcss": "8.5.9",
+        "postcss": "8.5.10",
         "sass": "1.99.0",
         "tailwindcss": "3.4.19",
         "tailwindcss-animate": "1.0.7",
