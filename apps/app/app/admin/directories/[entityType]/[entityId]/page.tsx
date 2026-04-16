@@ -15,6 +15,7 @@ import {
 } from '@signalco/ui-primitives/Tabs';
 import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
+import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
 import { Field } from '../../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../../components/shared/fields/FieldSet';
 import { ServerActionIconButton } from '../../../../../components/shared/ServerActionIconButton';
@@ -91,7 +92,13 @@ export default async function EntityDetailsPage(props: {
                             </TabsTrigger>
                         ))}
                     </TabsList>
-                    <Row className="self-end" spacing={1}>
+                    <Row className="self-end items-center" spacing={1}>
+                        <div className="w-28">
+                            <EntityAttributeProgress
+                                entity={entity}
+                                definitions={attributeDefinitions}
+                            />
+                        </div>
                         <EntityStateSelect entity={entity} />
                         <EntityImportMenu importAction={importAction} />
                         <ServerActionIconButton
