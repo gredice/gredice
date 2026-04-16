@@ -1,5 +1,5 @@
-import { SeverityNumber } from '@opentelemetry/api-logs';
 import { decodeRouteParam } from '@gredice/js/uri';
+import { SeverityNumber } from '@opentelemetry/api-logs';
 import { postHogMiddleware } from '@posthog/next';
 import {
     type NextFetchEvent,
@@ -29,15 +29,17 @@ const postHogProxyHost =
 
 const requestLogger = getPostHogLogger(`${POSTHOG_SERVICE_NAME}.request`);
 
-function normalizeSlugSegment(segment: string): string {
-    return toPageAlias(decodeRouteParam(segment));
+function normalizeSlugSegment(segment: string): string | null {
+    const normalized = toPageAlias(decodeRouteParam(segment));
+    return normalized.length > 0 ? normalized : null;
 }
 
 function getCanonicalPathname(pathname: string): string | null {
     const segments = pathname.split('/').filter(Boolean);
 
     if (segments.length === 2 && segments[0] === 'biljke') {
-        return `/biljke/${normalizeSlugSegment(segments[1])}`;
+        const plantAlias = normalizeSlugSegment(segments[1]);
+        return plantAlias ? `/biljke/${plantAlias}` : null;
     }
 
     if (
@@ -45,17 +47,17 @@ function getCanonicalPathname(pathname: string): string | null {
         segments[0] === 'biljke' &&
         segments[2] === 'sorte'
     ) {
-        return [
-            '',
-            'biljke',
-            normalizeSlugSegment(segments[1]),
-            'sorte',
-            normalizeSlugSegment(segments[3]),
-        ].join('/');
+        const plantAlias = normalizeSlugSegment(segments[1]);
+        const sortAlias = normalizeSlugSegment(segments[3]);
+        if (!plantAlias || !sortAlias) {
+            return null;
+        }
+        return ['', 'biljke', plantAlias, 'sorte', sortAlias].join('/');
     }
 
     if (segments.length === 2 && segments[0] === 'radnje') {
-        return `/radnje/${normalizeSlugSegment(segments[1])}`;
+        const operationAlias = normalizeSlugSegment(segments[1]);
+        return operationAlias ? `/radnje/${operationAlias}` : null;
     }
 
     if (
@@ -63,7 +65,8 @@ function getCanonicalPathname(pathname: string): string | null {
         segments[0] === 'blokovi' &&
         segments[1] !== 'biljke'
     ) {
-        return `/blokovi/${normalizeSlugSegment(segments[1])}`;
+        const blockAlias = normalizeSlugSegment(segments[1]);
+        return blockAlias ? `/blokovi/${blockAlias}` : null;
     }
 
     if (
@@ -72,7 +75,8 @@ function getCanonicalPathname(pathname: string): string | null {
         segments[1] === 'biljke' &&
         segments[2] !== 'generator'
     ) {
-        return `/blokovi/biljke/${normalizeSlugSegment(segments[2])}`;
+        const plantAlias = normalizeSlugSegment(segments[2]);
+        return plantAlias ? `/blokovi/biljke/${plantAlias}` : null;
     }
 
     return null;
