@@ -1,4 +1,3 @@
-import { Alert } from '@signalco/ui/Alert';
 import {
     Card,
     CardContent,
@@ -7,7 +6,9 @@ import {
 } from '@signalco/ui-primitives/Card';
 import { Container } from '@signalco/ui-primitives/Container';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
+import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { getHqLocationsData } from '../../lib/getHqLocationsData';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
@@ -57,14 +58,10 @@ export default async function PricingPage() {
                     subHeader="Sve cijene na jednom mjestu: biljke, radnje i dostava"
                 />
 
-                <Alert startDecorator={'ℹ️'} color="info">
-                    Cijene na ovoj stranici učitavaju se direktno iz API-ja i
-                    redovito se osvježavaju.
-                </Alert>
-
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="flex-row items-center justify-between">
                         <CardTitle>Cijene biljaka (po biljci)</CardTitle>
+                        <FeedbackModal topic="www/pricing/plants" />
                     </CardHeader>
                     <CardContent>
                         <div className="overflow-x-auto">
@@ -102,8 +99,9 @@ export default async function PricingPage() {
                 </Card>
 
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="flex-row items-center justify-between">
                         <CardTitle>Cijene radnji (po radnji)</CardTitle>
+                        <FeedbackModal topic="www/pricing/operations" />
                     </CardHeader>
                     <CardContent>
                         <div className="overflow-x-auto">
@@ -142,8 +140,9 @@ export default async function PricingPage() {
                 </Card>
 
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="flex-row items-center justify-between">
                         <CardTitle>Cijene dostave</CardTitle>
+                        <FeedbackModal topic="www/pricing/delivery" />
                     </CardHeader>
                     <CardContent>
                         <div className="overflow-x-auto">
@@ -192,6 +191,19 @@ export default async function PricingPage() {
                                 </tbody>
                             </table>
                         </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Podijeli povratnu informaciju</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-between gap-4">
+                        <Typography level="body2" secondary>
+                            Nedostaje li cijena ili želiš predložiti poboljšanje
+                            cjenika?
+                        </Typography>
+                        <FeedbackModal topic="www/pricing" />
                     </CardContent>
                 </Card>
             </Stack>
