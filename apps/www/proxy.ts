@@ -1,4 +1,5 @@
 import { SeverityNumber } from '@opentelemetry/api-logs';
+import { decodeRouteParam } from '@gredice/js/uri';
 import { postHogMiddleware } from '@posthog/next';
 import {
     type NextFetchEvent,
@@ -12,6 +13,7 @@ import {
     isPostHogLoggingEnabled,
     POSTHOG_SERVICE_NAME,
 } from './lib/posthog-server';
+import { toPageAlias } from './src/pageAliases';
 
 const postHogApiKey =
     process.env.NEXT_PUBLIC_POSTHOG_KEY ??
@@ -26,6 +28,55 @@ const postHogProxyHost =
         .replace('://eu.posthog.com', '://eu.i.posthog.com');
 
 const requestLogger = getPostHogLogger(`${POSTHOG_SERVICE_NAME}.request`);
+
+function normalizeSlugSegment(segment: string): string {
+    return toPageAlias(decodeRouteParam(segment));
+}
+
+function getCanonicalPathname(pathname: string): string | null {
+    const segments = pathname.split('/').filter(Boolean);
+
+    if (segments.length === 2 && segments[0] === 'biljke') {
+        return `/biljke/${normalizeSlugSegment(segments[1])}`;
+    }
+
+    if (
+        segments.length === 4 &&
+        segments[0] === 'biljke' &&
+        segments[2] === 'sorte'
+    ) {
+        return [
+            '',
+            'biljke',
+            normalizeSlugSegment(segments[1]),
+            'sorte',
+            normalizeSlugSegment(segments[3]),
+        ].join('/');
+    }
+
+    if (segments.length === 2 && segments[0] === 'radnje') {
+        return `/radnje/${normalizeSlugSegment(segments[1])}`;
+    }
+
+    if (
+        segments.length === 2 &&
+        segments[0] === 'blokovi' &&
+        segments[1] !== 'biljke'
+    ) {
+        return `/blokovi/${normalizeSlugSegment(segments[1])}`;
+    }
+
+    if (
+        segments.length === 3 &&
+        segments[0] === 'blokovi' &&
+        segments[1] === 'biljke' &&
+        segments[2] !== 'generator'
+    ) {
+        return `/blokovi/biljke/${normalizeSlugSegment(segments[2])}`;
+    }
+
+    return null;
+}
 
 function getProxyAttributes(response: Response) {
     const rewriteTarget = response.headers.get('x-middleware-rewrite');
@@ -63,8 +114,18 @@ const proxyHandler: NextProxy = async (
     request: NextRequest,
     event: NextFetchEvent,
 ) => {
-    const response =
-        (await baseProxyHandler(request, event)) ?? NextResponse.next();
+    const canonicalPathname = getCanonicalPathname(request.nextUrl.pathname);
+    let response: Response;
+    if (canonicalPathname && canonicalPathname !== request.nextUrl.pathname) {
+        const url = request.nextUrl.clone();
+        // Next derives implicit cache tags from the pathname.
+        // Redirect slug-backed routes before rendering so headers stay ASCII-safe.
+        url.pathname = canonicalPathname;
+        response = NextResponse.redirect(url, 308);
+    } else {
+        response =
+            (await baseProxyHandler(request, event)) ?? NextResponse.next();
+    }
 
     if (isPostHogLoggingEnabled()) {
         requestLogger.emit({
