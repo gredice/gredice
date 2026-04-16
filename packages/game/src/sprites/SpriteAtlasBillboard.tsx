@@ -107,6 +107,31 @@ export function SpriteAtlasBillboard({
             speed: rng.nextRange(0.9, 1.35),
         };
     }, [atlasBasePath, position, spriteName]);
+    const wobbleAnimation = useMemo(() => {
+        const windStrength = Math.max(0, Math.min(1, windSpeed / 16));
+        if (windStrength <= 0.001) {
+            return null;
+        }
+
+        const windDirectionRadians = (windDirection * Math.PI) / 180;
+
+        return {
+            crossPrimaryFrequency: 1.1 + windStrength * 0.6,
+            crossSecondaryFrequency: 0.58 + windStrength * 0.4,
+            directionX: Math.sin(windDirectionRadians),
+            directionZ: -Math.cos(windDirectionRadians),
+            directionalPrimaryFrequency:
+                (1.35 + windStrength * 1.45) * wobbleProfile.speed,
+            directionalSecondaryFrequency:
+                (1 + windStrength * 0.9) * (2 - wobbleProfile.speed),
+            gustFrequency: 0.6 + windStrength * 0.8,
+            gustScale: wobbleProfile.gust * windStrength * 0.7,
+            phase: wobbleProfile.phase,
+            secondaryPhase: wobbleProfile.secondaryPhase,
+            wobbleAmplitude:
+                (0.035 + windStrength * 0.2) * wobbleProfile.amplitude,
+        };
+    }, [windDirection, windSpeed, wobbleProfile]);
     const { error: manifestError, manifest } = useSpriteAtlasManifest(
         assetPaths.manifestUrl,
     );
@@ -176,60 +201,67 @@ export function SpriteAtlasBillboard({
         };
     }, [geometry]);
 
-    useFrame(({ clock }) => {
-        const mesh = meshRef.current;
-        if (!mesh) {
-            return;
-        }
+    useFrame(
+        ({ clock }) => {
+            const mesh = meshRef.current;
+            if (!mesh) {
+                return;
+            }
 
-        const windStrength = Math.max(0, Math.min(1, windSpeed / 16));
-        if (windStrength <= 0.001) {
-            mesh.rotation.x = 0;
-            mesh.rotation.z = 0;
-            return;
-        }
+            if (!wobbleAnimation) {
+                mesh.rotation.x = 0;
+                mesh.rotation.z = 0;
+                return;
+            }
 
-        const time = clock.getElapsedTime();
-        const windDirectionRadians = (windDirection * Math.PI) / 180;
-        const directionX = Math.sin(windDirectionRadians);
-        const directionZ = -Math.cos(windDirectionRadians);
-        const directionalWave =
-            Math.sin(
-                time * (1.35 + windStrength * 1.45) * wobbleProfile.speed +
-                    wobbleProfile.phase,
-            ) *
-                0.9 +
-            Math.cos(
-                time * (1 + windStrength * 0.9) * (2 - wobbleProfile.speed) +
-                    wobbleProfile.secondaryPhase,
-            ) *
-                0.35 +
-            Math.sin(
-                time * (0.6 + windStrength * 0.8) + wobbleProfile.phase * 0.5,
-            ) *
-                wobbleProfile.gust *
-                windStrength *
-                0.7;
-        const crossWave =
-            Math.sin(
-                time * (1.1 + windStrength * 0.6) +
-                    wobbleProfile.secondaryPhase * 0.7,
-            ) *
-                0.75 +
-            Math.cos(
-                time * (0.58 + windStrength * 0.4) + wobbleProfile.phase,
-            ) *
-                0.3;
-        const wobbleAmplitude =
-            (0.035 + windStrength * 0.2) * wobbleProfile.amplitude;
+            const time = clock.getElapsedTime();
+            const directionalWave =
+                Math.sin(
+                    time * wobbleAnimation.directionalPrimaryFrequency +
+                        wobbleAnimation.phase,
+                ) *
+                    0.9 +
+                Math.cos(
+                    time * wobbleAnimation.directionalSecondaryFrequency +
+                        wobbleAnimation.secondaryPhase,
+                ) *
+                    0.35 +
+                Math.sin(
+                    time * wobbleAnimation.gustFrequency +
+                        wobbleAnimation.phase * 0.5,
+                ) *
+                    wobbleAnimation.gustScale;
+            const crossWave =
+                Math.sin(
+                    time * wobbleAnimation.crossPrimaryFrequency +
+                        wobbleAnimation.secondaryPhase * 0.7,
+                ) *
+                    0.75 +
+                Math.cos(
+                    time * wobbleAnimation.crossSecondaryFrequency +
+                        wobbleAnimation.phase,
+                ) *
+                    0.3;
 
-        mesh.rotation.x =
-            directionZ * directionalWave * wobbleAmplitude +
-            directionX * crossWave * wobbleAmplitude * 0.55;
-        mesh.rotation.z =
-            -directionX * directionalWave * wobbleAmplitude +
-            directionZ * crossWave * wobbleAmplitude * 0.55;
-    });
+            mesh.rotation.x =
+                wobbleAnimation.directionZ *
+                    directionalWave *
+                    wobbleAnimation.wobbleAmplitude +
+                wobbleAnimation.directionX *
+                    crossWave *
+                    wobbleAnimation.wobbleAmplitude *
+                    0.55;
+            mesh.rotation.z =
+                -wobbleAnimation.directionX *
+                    directionalWave *
+                    wobbleAnimation.wobbleAmplitude +
+                wobbleAnimation.directionZ *
+                    crossWave *
+                    wobbleAnimation.wobbleAmplitude *
+                    0.55;
+        },
+        [wobbleAnimation],
+    );
 
     if (manifestError) {
         console.error(
@@ -264,7 +296,7 @@ export function SpriteAtlasBillboard({
     }
 
     return (
-        <Billboard follow={follow} position={position}>
+        <Billboard follow={follow} lockX lockZ position={position}>
             <mesh ref={meshRef} renderOrder={renderOrder} receiveShadow>
                 <primitive attach="geometry" object={geometry} />
                 <meshLambertMaterial
