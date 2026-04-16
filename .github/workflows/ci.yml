@@ -17,10 +17,10 @@ jobs:
       pull-requests: read
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 1
-      - uses: dorny/paths-filter@v4
+      - uses: dorny/paths-filter@v4.0.1
         id: filter
         with:
           filters: |
@@ -167,17 +167,17 @@ jobs:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_APP }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v3.0.0
         name: ✨ Install pnpm
         with:
           version: 10.33.0
 
       - name: ✨ Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: "24.14.1"
 
@@ -186,7 +186,7 @@ jobs:
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - uses: actions/cache@v5
+      - uses: actions/cache@v5.0.5
         name: ✨ Setup pnpm cache
         with:
           path: ${{ env.STORE_PATH }}
@@ -211,10 +211,10 @@ jobs:
     name: "CI - verify app package filters"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
 
       - name: ✨ Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: "24.14.1"
 
