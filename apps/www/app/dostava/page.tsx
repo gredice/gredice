@@ -16,6 +16,7 @@ import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
+import { formatPrice } from '../../lib/formatPrice';
 import { KnownPages } from '../../src/KnownPages';
 
 export const metadata: Metadata = {
@@ -32,10 +33,6 @@ const deliveryLocations = [
     { name: 'Sisak', distance: 60 },
     { name: 'Varaždin', distance: 90 },
 ] as const;
-
-function formatPrice(price: number): string {
-    return `${price.toFixed(2).replace('.', ',')} €`;
-}
 
 export default function DeliveryPage() {
     return (
