@@ -34,6 +34,7 @@ export function CompletePlantingModal({
             setIsSubmitting(true);
             setOpen(false);
             await onConfirm();
+            handleOpenChange(false);
         } catch (error) {
             console.error('Error completing planting:', error);
             setErrorMessage('Spremanje nije uspjelo. Pokušajte ponovno.');
