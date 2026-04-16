@@ -28,17 +28,17 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v3.0.0
         name: ✨ Install pnpm
         with:
           version: 10.33.0
 
       - name: ✨ Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: "24.14.1"
 
@@ -47,7 +47,7 @@ jobs:
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - uses: actions/cache@v5
+      - uses: actions/cache@v5.0.5
         name: ✨ Setup pnpm cache
         with:
           path: ${{ env.STORE_PATH }}
@@ -65,17 +65,17 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v3.0.0
         name: ✨ Install pnpm
         with:
           version: 10.33.0
 
       - name: ✨ Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: "24.14.1"
 
@@ -84,7 +84,7 @@ jobs:
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - uses: actions/cache@v5
+      - uses: actions/cache@v5.0.5
         name: ✨ Setup pnpm cache
         with:
           path: ${{ env.STORE_PATH }}
@@ -103,7 +103,7 @@ jobs:
         working-directory: ${{ inputs.path }}/
 
       - name: ✨ Cache Playwright browsers
-        uses: actions/cache@v5
+        uses: actions/cache@v5.0.5
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
