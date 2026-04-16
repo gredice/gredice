@@ -46,6 +46,7 @@ import { KnownPages } from '../../../src/KnownPages';
 import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 import { CreateAttributeDefinitionButton } from '../buttons/CreateAttributeDefinitionButton';
 import { CreateAttributeDefinitionCategoryButton } from '../buttons/CreateAttributeDefinitionCategoryButton';
+import { TableAttributeOrderSection } from './TableAttributeOrderSection';
 
 function AttributeDataTypeIcon({
     dataType,
@@ -388,6 +389,10 @@ export function AttributeDefinitionsListClient({
                 </DndContext>
             </Stack>
             <Stack spacing={2} className="ml-4">
+                <TableAttributeOrderSection
+                    entityTypeName={entityTypeName}
+                    attributeDefinitions={attributeDefinitions}
+                />
                 {categories.length <= 0 && <NoDataPlaceholder />}
                 {categories.map((category) => (
                     <CategorySection
