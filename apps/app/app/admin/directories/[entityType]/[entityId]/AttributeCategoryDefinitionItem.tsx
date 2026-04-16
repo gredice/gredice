@@ -9,6 +9,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { AttributeInput } from '../../../../../components/shared/attributes/AttributeInput';
 import { handleValueSave } from '../../../../(actions)/entityActions';
+import { useEntityDetailsSave } from './EntityDetailsSaveContext';
 
 type AttributeCategoryDefinitionItemProps = {
     entity: {
@@ -23,6 +24,16 @@ export function AttributeCategoryDefinitionItem({
     attributeDefinition,
     entity,
 }: AttributeCategoryDefinitionItemProps) {
+    const { trackSave } = useEntityDetailsSave();
+
+    function handleAdd() {
+        void trackSave(() =>
+            handleValueSave(entity.entityTypeName, entity.id, attributeDefinition),
+        ).catch((error) => {
+            console.error('AttributeCategoryDefinitionItem handleAdd error', error);
+        });
+    }
+
     return (
         <Stack key={attributeDefinition.id} spacing={1}>
             <Stack>
@@ -68,15 +79,7 @@ export function AttributeCategoryDefinitionItem({
                     />
                 )}
                 {attributeDefinition.multiple && (
-                    <Button
-                        onClick={() =>
-                            handleValueSave(
-                                entity.entityTypeName,
-                                entity.id,
-                                attributeDefinition,
-                            )
-                        }
-                    >
+                    <Button onClick={handleAdd}>
                         Dodaj
                     </Button>
                 )}
