@@ -4,6 +4,7 @@ import {
     closestCenter,
     DndContext,
     type DragEndEvent,
+    KeyboardSensor,
     PointerSensor,
     useSensor,
     useSensors,
@@ -11,6 +12,7 @@ import {
 import {
     arrayMove,
     SortableContext,
+    sortableKeyboardCoordinates,
     useSortable,
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
@@ -35,6 +37,8 @@ function SortableTableAttributeRow({
     attribute: ExtendedAttributeDefinition;
     preventClick: boolean;
 }) {
+    const categoryLabel =
+        attribute.categoryDefinition?.label ?? attribute.category;
     const {
         attributes,
         listeners,
@@ -68,7 +72,7 @@ function SortableTableAttributeRow({
                 <Card>
                     <Row spacing={1} justifyContent="space-between">
                         <Typography level="body2">{attribute.label}</Typography>
-                        <Chip>{attribute.categoryDefinition?.label}</Chip>
+                        {categoryLabel ? <Chip>{categoryLabel}</Chip> : null}
                     </Row>
                 </Card>
             </Link>
@@ -87,7 +91,16 @@ export function TableAttributeOrderSection({
         attributeDefinitions.filter((attribute) => attribute.display),
     );
     const [preventClick, setPreventClick] = useState(false);
-    const sensors = useSensors(useSensor(PointerSensor));
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        }),
+    );
 
     useEffect(() => {
         setDisplayAttributes(
@@ -105,6 +118,7 @@ export function TableAttributeOrderSection({
 
     async function handleDragEnd(event: DragEndEvent) {
         const { active, over } = event;
+        setPreventClick(true);
         if (!over || active.id === over.id) return;
 
         const oldIndex = displayAttributes.findIndex(
@@ -116,7 +130,6 @@ export function TableAttributeOrderSection({
 
         const newItems = arrayMove(displayAttributes, oldIndex, newIndex);
         setDisplayAttributes(newItems);
-        setPreventClick(true);
 
         const prev = newItems[newIndex - 1]?.order ?? null;
         const next = newItems[newIndex + 1]?.order ?? null;
@@ -144,6 +157,8 @@ export function TableAttributeOrderSection({
             <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
+                onDragStart={() => setPreventClick(true)}
+                onDragCancel={() => setPreventClick(true)}
                 onDragEnd={handleDragEnd}
             >
                 <SortableContext
