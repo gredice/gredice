@@ -10,6 +10,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { formatPrice } from '../../lib/formatPrice';
 import { getHqLocationsData } from '../../lib/getHqLocationsData';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
@@ -19,10 +20,6 @@ export const metadata: Metadata = {
     description:
         'Pregled svih cijena: biljke, radnje i dostava na jednom mjestu.',
 };
-
-function formatPrice(price: number): string {
-    return `${price.toFixed(2).replace('.', ',')} €`;
-}
 
 export default async function PricingPage() {
     const [plantsData, operationsData, hqLocations] = await Promise.all([
@@ -45,7 +42,7 @@ export default async function PricingPage() {
             a.information.label.localeCompare(b.information.label, 'hr-HR'),
         );
 
-    const sortedHqLocations = hqLocations.sort((a, b) =>
+    const sortedHqLocations = [...hqLocations].sort((a, b) =>
         a.information.label.localeCompare(b.information.label, 'hr-HR'),
     );
 
