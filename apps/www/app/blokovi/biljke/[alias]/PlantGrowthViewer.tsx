@@ -9,7 +9,6 @@ import { cx } from '@signalco/ui-primitives/cx';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { KnownPages } from '../../../../src/KnownPages';
 import { resolvePlantType } from '../../plantNamesWithLSystem';

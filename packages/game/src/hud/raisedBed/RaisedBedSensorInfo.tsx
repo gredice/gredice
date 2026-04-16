@@ -57,7 +57,7 @@ function CustomTooltip({
     label,
     unit,
 }: CustomTooltipProps) {
-    if (active && payload && payload.length) {
+    if (active && payload?.length) {
         const payloadFormatted = label
             ? new Date(String(label)).toLocaleDateString('hr-HR', {
                   month: 'short',
