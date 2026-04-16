@@ -9,6 +9,7 @@ import { Duplicate } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import Image from 'next/image';
 import Link from 'next/link';
 import { KnownPages } from '../../../src/KnownPages';
 import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
@@ -76,12 +77,10 @@ export function EntitiesTable({
                         </Table.Cell>
                         {displayDefinitions.map((d) => (
                             <Table.Cell key={d.id}>
-                                <Typography secondary>
-                                    {entityAttributeValueByDefinitionId(
-                                        entity,
-                                        d.id,
-                                    ) ?? '-'}
-                                </Typography>
+                                <EntityAttributeValueCell
+                                    entity={entity}
+                                    definition={d}
+                                />
                             </Table.Cell>
                         ))}
                         <Table.Cell>
@@ -131,6 +130,36 @@ export function EntitiesTable({
     );
 }
 
+function EntityAttributeValueCell({
+    entity,
+    definition,
+}: {
+    entity: Entities[number];
+    definition: SelectAttributeDefinition;
+}) {
+    const value = entityAttributeValueByDefinitionId(entity, definition.id);
+    if (!value) {
+        return <Typography secondary>-</Typography>;
+    }
+
+    if (definition.dataType === 'image') {
+        const imageUrl = imageAttributeValue(value);
+        if (imageUrl) {
+            return (
+                <Image
+                    src={imageUrl}
+                    alt={definition.label}
+                    width={40}
+                    height={40}
+                    className="size-10 rounded-md object-cover"
+                />
+            );
+        }
+    }
+
+    return <Typography secondary>{value}</Typography>;
+}
+
 function entityDisplayName(entity: Entities[number]) {
     return (
         entityAttributeValue(entity, 'information', 'label') ??
@@ -158,4 +187,17 @@ function entityAttributeValueByDefinitionId(
     return entity.attributes.find(
         (a) => a.attributeDefinitionId === definitionId,
     )?.value;
+}
+
+function imageAttributeValue(value: string) {
+    try {
+        const data = JSON.parse(value);
+        if (data && typeof data.url === 'string') {
+            return data.url;
+        }
+    } catch {
+        // ignored intentionally
+    }
+
+    return null;
 }
