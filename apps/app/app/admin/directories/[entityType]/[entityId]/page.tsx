@@ -24,6 +24,8 @@ import { entityDisplayName } from '../../../../../src/entities/entityAttributes'
 import { KnownPages } from '../../../../../src/KnownPages';
 import { handleEntityDelete } from '../../../../(actions)/entityActions';
 import { AttributeCategoryDetails } from './AttributeCategoryDetails';
+import { EntityDetailsSaveIndicator } from './EntityDetailsSaveIndicator';
+import { EntityDetailsSaveProvider } from './EntityDetailsSaveProvider';
 import { EntityDetailsStickyHeader } from './EntityDetailsStickyHeader';
 import { EntityImportMenu } from './EntityImportMenu';
 import { EntityStateSelect } from './EntityStateSelect';
@@ -69,88 +71,96 @@ export default async function EntityDetailsPage(props: {
     const displayDefinitions = attributeDefinitions.filter((d) => d.display);
 
     return (
-        <Tabs defaultValue={attributeCategories.at(0)?.name}>
-            <Stack spacing={2}>
-                <EntityDetailsStickyHeader
-                    breadcrumbs={
-                        <Breadcrumbs
-                            items={[
-                                {
-                                    label: entity.entityType.label,
-                                    href: KnownPages.DirectoryEntityType(
-                                        params.entityType,
-                                    ),
-                                },
-                                { label: entityDisplayName(entity) },
-                            ]}
-                        />
-                    }
-                    tabs={
-                        <TabsList>
-                            {attributeCategories.map((category) => (
-                                <TabsTrigger
-                                    key={category.name}
-                                    value={category.name}
-                                >
-                                    {category.label}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    }
-                    actions={
-                        <Row className="items-center" spacing={1}>
-                            <div className="w-28">
-                                <EntityAttributeProgress
-                                    entity={entity}
-                                    definitions={attributeDefinitions}
-                                />
-                            </div>
-                            <EntityStateSelect entity={entity} />
-                            <EntityImportMenu importAction={importAction} />
-                            <ServerActionIconButton
-                                title="Obriši"
-                                onClick={entityDeleteBound}
-                                variant="plain"
-                            >
-                                <Delete />
-                            </ServerActionIconButton>
-                        </Row>
-                    }
-                />
+        <EntityDetailsSaveProvider>
+            <Tabs defaultValue={attributeCategories.at(0)?.name}>
                 <Stack spacing={2}>
-                    <FieldSet>
-                        <Field
-                            name="Datum kreiranja"
-                            value={entity.createdAt}
-                        />
-                        <Field
-                            name="Datum zadnje izmjene"
-                            value={entity.updatedAt}
-                        />
-                        <Field name="Datum objave" value={entity.publishedAt} />
-                        {displayDefinitions.map((d) => (
-                            <Field
-                                key={d.id}
-                                name={d.label}
-                                value={
-                                    entity.attributes.find(
-                                        (a) => a.attributeDefinitionId === d.id,
-                                    )?.value ?? '-'
-                                }
+                    <EntityDetailsStickyHeader
+                        breadcrumbs={
+                            <Breadcrumbs
+                                items={[
+                                    {
+                                        label: entity.entityType.label,
+                                        href: KnownPages.DirectoryEntityType(
+                                            params.entityType,
+                                        ),
+                                    },
+                                    { label: entityDisplayName(entity) },
+                                ]}
                             />
-                        ))}
-                    </FieldSet>
+                        }
+                        tabs={
+                            <TabsList>
+                                {attributeCategories.map((category) => (
+                                    <TabsTrigger
+                                        key={category.name}
+                                        value={category.name}
+                                    >
+                                        {category.label}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                        }
+                        actions={
+                            <Row className="items-center" spacing={1}>
+                                <EntityDetailsSaveIndicator />
+                                <div className="w-28">
+                                    <EntityAttributeProgress
+                                        entity={entity}
+                                        definitions={attributeDefinitions}
+                                    />
+                                </div>
+                                <EntityStateSelect entity={entity} />
+                                <EntityImportMenu importAction={importAction} />
+                                <ServerActionIconButton
+                                    title="Obriši"
+                                    onClick={entityDeleteBound}
+                                    variant="plain"
+                                >
+                                    <Delete />
+                                </ServerActionIconButton>
+                            </Row>
+                        }
+                    />
+                    <Stack spacing={2}>
+                        <FieldSet>
+                            <Field
+                                name="Datum kreiranja"
+                                value={entity.createdAt}
+                            />
+                            <Field
+                                name="Datum zadnje izmjene"
+                                value={entity.updatedAt}
+                            />
+                            <Field
+                                name="Datum objave"
+                                value={entity.publishedAt}
+                            />
+                            {displayDefinitions.map((d) => (
+                                <Field
+                                    key={d.id}
+                                    name={d.label}
+                                    value={
+                                        entity.attributes.find(
+                                            (a) =>
+                                                a.attributeDefinitionId ===
+                                                d.id,
+                                        )?.value ?? '-'
+                                    }
+                                />
+                            ))}
+                        </FieldSet>
+                    </Stack>
+                    {attributeCategories.map((category) => (
+                        <TabsContent value={category.name} key={category.name}>
+                            <AttributeCategoryDetails
+                                entity={entity}
+                                category={category}
+                                attributeDefinitions={attributeDefinitions}
+                            />
+                        </TabsContent>
+                    ))}
                 </Stack>
-                {attributeCategories.map((category) => (
-                    <TabsContent value={category.name} key={category.name}>
-                        <AttributeCategoryDetails
-                            entity={entity}
-                            category={category}
-                            attributeDefinitions={attributeDefinitions}
-                        />
-                    </TabsContent>
-                ))}
-            </Stack>
-        </Tabs>
+            </Tabs>
+        </EntityDetailsSaveProvider>
     );
 }

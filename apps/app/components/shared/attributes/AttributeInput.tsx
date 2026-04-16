@@ -13,6 +13,7 @@ import {
     handleValueDelete,
     handleValueSave,
 } from '../../../app/(actions)/entityActions';
+import { useEntityDetailsSave } from '../../../app/admin/directories/[entityType]/[entityId]/EntityDetailsSaveContext';
 import type { AttributeInputProps } from './AttributeInputProps';
 import { BarcodeInput } from './typed/BarcodeInput';
 import { BooleanInput } from './typed/BooleanInput';
@@ -44,6 +45,8 @@ export function AttributeInput({
     attributeDefinition: SelectAttributeDefinition;
     attributeValue: SelectAttributeValue | undefined | null;
 }) {
+    const { trackSave } = useEntityDetailsSave();
+
     const handleChange = async (value: string | null) => {
         console.debug(
             'AttributeInput handleChange',
@@ -62,12 +65,14 @@ export function AttributeInput({
         }
 
         try {
-            await handleValueSave(
-                entityType,
-                entityId,
-                attributeDefinition,
-                attributeValue?.id,
-                value,
+            await trackSave(() =>
+                handleValueSave(
+                    entityType,
+                    entityId,
+                    attributeDefinition,
+                    attributeValue?.id,
+                    value,
+                ),
             );
         } catch (error) {
             console.error('AttributeInput handleChange error', error);
@@ -79,7 +84,13 @@ export function AttributeInput({
         if (!attributeValue) {
             return;
         }
-        await handleValueDelete(attributeValue);
+
+        try {
+            await trackSave(() => handleValueDelete(attributeValue));
+        } catch (error) {
+            console.error('AttributeInput handleDelete error', error);
+            // TODO: Display error notification
+        }
     };
 
     let AttributeInputComponent: ComponentType<AttributeInputProps> = TextInput;

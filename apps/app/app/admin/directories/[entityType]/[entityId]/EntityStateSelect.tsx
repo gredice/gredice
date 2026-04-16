@@ -5,16 +5,20 @@ import { Edit, Megaphone } from '@signalco/ui-icons';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { useState } from 'react';
 import { updateEntity } from '../../../../(actions)/entityActions';
+import { useEntityDetailsSave } from './EntityDetailsSaveContext';
 
 export function EntityStateSelect({ entity }: { entity: SelectEntity }) {
     const [state, setState] = useState(entity.state);
+    const { trackSave } = useEntityDetailsSave();
 
     async function handleStateChange(newState: string) {
         setState(newState);
-        await updateEntity({
-            id: entity.id,
-            state: newState,
-        });
+        await trackSave(() =>
+            updateEntity({
+                id: entity.id,
+                state: newState,
+            }),
+        );
     }
 
     const items = [
