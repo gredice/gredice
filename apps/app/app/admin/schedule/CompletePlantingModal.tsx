@@ -32,7 +32,7 @@ export function CompletePlantingModal({
         try {
             setErrorMessage(null);
             setIsSubmitting(true);
-            setOpen(false);
+            handleOpenChange(false);
             await onConfirm();
             handleOpenChange(false);
         } catch (error) {
