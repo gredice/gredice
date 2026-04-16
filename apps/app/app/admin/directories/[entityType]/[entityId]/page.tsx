@@ -98,7 +98,7 @@ export default async function EntityDetailsPage(props: {
                         </TabsList>
                     }
                     actions={
-                        <Row className="self-end items-center" spacing={1}>
+                        <Row className="items-center" spacing={1}>
                             <div className="w-28">
                                 <EntityAttributeProgress
                                     entity={entity}

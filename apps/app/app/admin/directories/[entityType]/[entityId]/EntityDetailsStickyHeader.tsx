@@ -29,7 +29,7 @@ export function EntityDetailsStickyHeader({
             },
             {
                 rootMargin: '-8px 0px 0px 0px',
-                threshold: 1,
+                threshold: 0,
             },
         );
 
@@ -52,7 +52,7 @@ export function EntityDetailsStickyHeader({
             >
                 <div className="flex flex-row items-center justify-between gap-2">
                     <div className="min-w-0">{breadcrumbs}</div>
-                    <div className="overflow-x-auto">{tabs}</div>
+                    <div className="min-w-0 flex-1 overflow-x-auto">{tabs}</div>
                     <div className="shrink-0">{actions}</div>
                 </div>
             </div>
