@@ -24,6 +24,7 @@ import { entityDisplayName } from '../../../../../src/entities/entityAttributes'
 import { KnownPages } from '../../../../../src/KnownPages';
 import { handleEntityDelete } from '../../../../(actions)/entityActions';
 import { AttributeCategoryDetails } from './AttributeCategoryDetails';
+import { EntityDetailsStickyHeader } from './EntityDetailsStickyHeader';
 import { EntityImportMenu } from './EntityImportMenu';
 import { EntityStateSelect } from './EntityStateSelect';
 
@@ -70,46 +71,52 @@ export default async function EntityDetailsPage(props: {
     return (
         <Tabs defaultValue={attributeCategories.at(0)?.name}>
             <Stack spacing={2}>
-                <div className="flex flex-row justify-between items-center">
-                    <Breadcrumbs
-                        items={[
-                            {
-                                label: entity.entityType.label,
-                                href: KnownPages.DirectoryEntityType(
-                                    params.entityType,
-                                ),
-                            },
-                            { label: entityDisplayName(entity) },
-                        ]}
-                    />
-                    <TabsList>
-                        {attributeCategories.map((category) => (
-                            <TabsTrigger
-                                key={category.name}
-                                value={category.name}
+                <EntityDetailsStickyHeader
+                    breadcrumbs={
+                        <Breadcrumbs
+                            items={[
+                                {
+                                    label: entity.entityType.label,
+                                    href: KnownPages.DirectoryEntityType(
+                                        params.entityType,
+                                    ),
+                                },
+                                { label: entityDisplayName(entity) },
+                            ]}
+                        />
+                    }
+                    tabs={
+                        <TabsList>
+                            {attributeCategories.map((category) => (
+                                <TabsTrigger
+                                    key={category.name}
+                                    value={category.name}
+                                >
+                                    {category.label}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    }
+                    actions={
+                        <Row className="items-center" spacing={1}>
+                            <div className="w-28">
+                                <EntityAttributeProgress
+                                    entity={entity}
+                                    definitions={attributeDefinitions}
+                                />
+                            </div>
+                            <EntityStateSelect entity={entity} />
+                            <EntityImportMenu importAction={importAction} />
+                            <ServerActionIconButton
+                                title="Obriši"
+                                onClick={entityDeleteBound}
+                                variant="plain"
                             >
-                                {category.label}
-                            </TabsTrigger>
-                        ))}
-                    </TabsList>
-                    <Row className="self-end items-center" spacing={1}>
-                        <div className="w-28">
-                            <EntityAttributeProgress
-                                entity={entity}
-                                definitions={attributeDefinitions}
-                            />
-                        </div>
-                        <EntityStateSelect entity={entity} />
-                        <EntityImportMenu importAction={importAction} />
-                        <ServerActionIconButton
-                            title="Obriši"
-                            onClick={entityDeleteBound}
-                            variant="plain"
-                        >
-                            <Delete />
-                        </ServerActionIconButton>
-                    </Row>
-                </div>
+                                <Delete />
+                            </ServerActionIconButton>
+                        </Row>
+                    }
+                />
                 <Stack spacing={2}>
                     <FieldSet>
                         <Field
