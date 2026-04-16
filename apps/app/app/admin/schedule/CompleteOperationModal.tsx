@@ -231,6 +231,7 @@ export function CompleteOperationModal({
         try {
             setErrorMessage(null);
             setIsSubmitting(true);
+            let shouldResetModalState = false;
             if (attachImages && uploadItems.length > 0) {
                 const imageUrls: string[] = [];
                 for (const uploadItem of uploadItems) {
@@ -252,14 +253,21 @@ export function CompleteOperationModal({
 
                     imageUrls.push(uploadedUrl);
                 }
+                setIsOpen(false);
                 await completeOperationWithImageUrls(operationId, imageUrls);
+                shouldResetModalState = true;
             } else {
+                setIsOpen(false);
                 await completeOperation(operationId);
+                shouldResetModalState = true;
             }
-            handleOpenChange(false);
+            if (shouldResetModalState) {
+                handleOpenChange(false);
+            }
         } catch (error) {
             console.error('Error completing operation:', error);
-            setErrorMessage('Spremanje slika nije uspjelo. Pokušajte ponovno.');
+            setIsOpen(true);
+            setErrorMessage('Spremanje nije uspjelo. Pokušajte ponovno.');
         } finally {
             setIsSubmitting(false);
         }
@@ -395,12 +403,12 @@ export function CompleteOperationModal({
                                 Učitavanje slika u tijeku...
                             </Typography>
                         )}
-                        {errorMessage && (
-                            <Typography level="body2" className="text-red-600">
-                                {errorMessage}
-                            </Typography>
-                        )}
                     </Stack>
+                )}
+                {errorMessage && (
+                    <Typography level="body2" className="text-red-600">
+                        {errorMessage}
+                    </Typography>
                 )}
                 <Row spacing={1} justifyContent="end">
                     <Button

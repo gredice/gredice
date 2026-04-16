@@ -19,14 +19,26 @@ export function CompletePlantingModal({
 }: CompletePlantingModalProps) {
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    const handleOpenChange = (nextOpen: boolean) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+            setErrorMessage(null);
+        }
+    };
 
     const handleConfirm = async () => {
         try {
+            setErrorMessage(null);
             setIsSubmitting(true);
+            handleOpenChange(false);
             await onConfirm();
-            setOpen(false);
+            handleOpenChange(false);
         } catch (error) {
             console.error('Error completing planting:', error);
+            setErrorMessage('Spremanje nije uspjelo. Pokušajte ponovno.');
+            setOpen(true);
         } finally {
             setIsSubmitting(false);
         }
@@ -36,12 +48,14 @@ export function CompletePlantingModal({
         <Modal
             title="Potvrda sijanja"
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={handleOpenChange}
             trigger={
                 <Checkbox
                     className="size-5 mx-2"
                     checked={open}
-                    onCheckedChange={(checked: boolean) => setOpen(checked)}
+                    onCheckedChange={(checked: boolean) =>
+                        handleOpenChange(checked)
+                    }
                 />
             }
         >
@@ -53,7 +67,7 @@ export function CompletePlantingModal({
                 <Row spacing={1} justifyContent="end">
                     <Button
                         variant="outlined"
-                        onClick={() => setOpen(false)}
+                        onClick={() => handleOpenChange(false)}
                         disabled={isSubmitting}
                     >
                         Odustani
@@ -67,6 +81,11 @@ export function CompletePlantingModal({
                         Potvrdi
                     </Button>
                 </Row>
+                {errorMessage && (
+                    <Typography level="body2" className="text-red-600">
+                        {errorMessage}
+                    </Typography>
+                )}
             </Stack>
         </Modal>
     );
