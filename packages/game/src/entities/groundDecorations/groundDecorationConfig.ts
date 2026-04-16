@@ -32,7 +32,7 @@ export const groundDecorationOptions: Record<
         minDistance: 0.17,
         opacityRange: [0.8, 0.9],
         positionRange: 0.25,
-        spawnChance: 2,
+        spawnChance: 1,
     },
     sand: {
         angleLiftPerUnit: 0.3,
