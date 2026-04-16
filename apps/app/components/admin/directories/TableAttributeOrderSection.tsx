@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { ExtendedAttributeDefinition } from '@gredice/storage';
-import { Table } from '@signalco/ui-icons';
+import { Tablet } from '@signalco/ui-icons';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -149,7 +149,7 @@ export function TableAttributeOrderSection({
     return (
         <Stack spacing={1}>
             <Row spacing={1}>
-                <Table className="size-5 text-tertiary-foreground" />
+                <Tablet className="size-5 text-tertiary-foreground" />
                 <Typography level="body2">
                     Poredak atributa u tablici
                 </Typography>
