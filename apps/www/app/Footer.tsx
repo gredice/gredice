@@ -44,6 +44,7 @@ const sectionsData: SectionData[] = [
                 header: 'Informacije',
                 ctas: [
                     { label: 'Dostava', href: KnownPages.Delivery },
+                    { label: 'Cjenik', href: KnownPages.Pricing },
                     {
                         label: 'Termini dostave',
                         href: KnownPages.DeliverySlots,

@@ -27,6 +27,7 @@ export const KnownPages = {
     AboutUs: '/o-nama',
     FAQ: '/cesta-pitanja',
     Contact: '/kontakt',
+    Pricing: '/cjenik',
 
     LegalPrivacy: '/legalno/politika-privatnosti',
     LegalTerms: '/legalno/uvjeti-koristenja',
