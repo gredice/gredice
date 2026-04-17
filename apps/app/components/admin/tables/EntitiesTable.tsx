@@ -214,13 +214,5 @@ function imageAttributeValue(value: string) {
 }
 
 function booleanAttributeValue(value: string) {
-    if (value === 'true') {
-        return true;
-    }
-
-    if (value === 'false') {
-        return false;
-    }
-
-    return null;
+    return value === 'true' ? true : value === 'false' ? false : null;
 }
