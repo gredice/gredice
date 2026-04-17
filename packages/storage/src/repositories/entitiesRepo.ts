@@ -512,7 +512,7 @@ export async function getEntityIncomingLinks(
         .map((definition) => definition.id);
     const linkAttributeValues = [...exactValueMatches];
     if (multipleDefinitionIds.length > 0) {
-        const escapedEntityNameJson = escapeForLike(JSON.stringify(entityName));
+        const escapedJsonEntityName = escapeForLike(JSON.stringify(entityName));
         const legacyJsonArrayMatches =
             await storage().query.attributeValues.findMany({
                 where: and(
@@ -521,7 +521,7 @@ export async function getEntityIncomingLinks(
                         multipleDefinitionIds,
                     ),
                     eq(attributeValues.isDeleted, false),
-                    like(attributeValues.value, `%${escapedEntityNameJson}%`),
+                    like(attributeValues.value, `%${escapedJsonEntityName}%`),
                 ),
             });
 
