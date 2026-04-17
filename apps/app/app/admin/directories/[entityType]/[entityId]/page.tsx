@@ -5,6 +5,7 @@ import {
 } from '@gredice/storage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Delete } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
@@ -13,6 +14,7 @@ import {
     TabsList,
     TabsTrigger,
 } from '@signalco/ui-primitives/Tabs';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
 import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
@@ -110,6 +112,16 @@ export default async function EntityDetailsPage(props: {
                                     />
                                 </div>
                                 <EntityStateSelect entity={entity} />
+                                <Link
+                                    href={KnownPages.DirectoryEntityLinks(
+                                        params.entityType,
+                                        parseInt(params.entityId, 10),
+                                    )}
+                                >
+                                    <Button variant="plain">
+                                        Povezani zapisi
+                                    </Button>
+                                </Link>
                                 <EntityImportMenu importAction={importAction} />
                                 <ServerActionIconButton
                                     title="Obriši"

@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, count, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, like, or } from 'drizzle-orm';
 import {
     attributeDefinitions,
     attributeValues,
@@ -127,6 +127,19 @@ interface EntityWithAttributesAndType extends SelectEntity {
 interface EntityTypeCache {
     [key: string]: Promise<EntityWithAttributesAndType[]>;
 }
+
+export type IncomingEntityLinkGroup = {
+    entityTypeName: string;
+    entityTypeLabel: string;
+    entities: {
+        id: number;
+        displayName: string;
+        linkedBy: {
+            name: string;
+            label: string;
+        }[];
+    }[];
+};
 
 // Update expandEntity to accept a cache
 async function expandEntity(
@@ -393,6 +406,201 @@ export async function getEntityRaw(id: number) {
         return undefined;
     }
     return populateMissingAttributes(entity);
+}
+
+function escapeForLike(value: string) {
+    return value.replace(/[\\%_]/g, '\\$&');
+}
+
+function entityNameFromAttributes(
+    entity: SelectEntity & {
+        attributes: (SelectAttributeValue & {
+            attributeDefinition: SelectAttributeDefinition;
+        })[];
+    },
+) {
+    return (
+        entity.attributes.find(
+            (a) =>
+                a.attributeDefinition.category === 'information' &&
+                a.attributeDefinition.name === 'name',
+        )?.value ?? null
+    );
+}
+
+function entityDisplayNameFromAttributes(
+    entity: SelectEntity & {
+        entityType: SelectEntityType;
+        attributes: (SelectAttributeValue & {
+            attributeDefinition: SelectAttributeDefinition;
+        })[];
+    },
+) {
+    const label = entity.attributes.find(
+        (a) =>
+            a.attributeDefinition.category === 'information' &&
+            a.attributeDefinition.name === 'label',
+    )?.value;
+    const name = entityNameFromAttributes(entity);
+    return label ?? name ?? `${entity.entityType.label} ${entity.id}`;
+}
+
+function attributeValueContainsEntityName(
+    value: string | null,
+    entityName: string,
+    multiple: boolean,
+) {
+    if (!value) {
+        return false;
+    }
+    if (!multiple) {
+        return value === entityName;
+    }
+
+    try {
+        const parsed = JSON.parse(value);
+        if (!Array.isArray(parsed)) {
+            return value === entityName;
+        }
+
+        return parsed.some((item) =>
+            typeof item === 'string'
+                ? item === entityName
+                : JSON.stringify(item) === entityName,
+        );
+    } catch {
+        return value === entityName;
+    }
+}
+
+export async function getEntityIncomingLinks(
+    entityId: number,
+): Promise<IncomingEntityLinkGroup[]> {
+    const entity = await getEntityRaw(entityId);
+    if (!entity) {
+        return [];
+    }
+
+    const entityName = entityNameFromAttributes(entity);
+    if (!entityName) {
+        return [];
+    }
+
+    const refDefinitions = await storage().query.attributeDefinitions.findMany({
+        where: and(
+            eq(attributeDefinitions.isDeleted, false),
+            eq(attributeDefinitions.dataType, `ref:${entity.entityTypeName}`),
+        ),
+    });
+    if (refDefinitions.length === 0) {
+        return [];
+    }
+
+    const definitionById = new Map(refDefinitions.map((d) => [d.id, d]));
+    const definitionIds = refDefinitions.map((d) => d.id);
+    const escapedName = escapeForLike(entityName);
+
+    const linkAttributeValues = await storage().query.attributeValues.findMany({
+        where: and(
+            inArray(attributeValues.attributeDefinitionId, definitionIds),
+            eq(attributeValues.isDeleted, false),
+            or(
+                eq(attributeValues.value, entityName),
+                like(attributeValues.value, `%"${escapedName}"%`),
+            ),
+        ),
+    });
+
+    const entityToDefinitionIds = new Map<number, Set<number>>();
+    for (const attributeValue of linkAttributeValues) {
+        if (attributeValue.entityId === entityId) {
+            continue;
+        }
+        const definition = definitionById.get(
+            attributeValue.attributeDefinitionId,
+        );
+        if (!definition) {
+            continue;
+        }
+        if (
+            !attributeValueContainsEntityName(
+                attributeValue.value,
+                entityName,
+                definition.multiple,
+            )
+        ) {
+            continue;
+        }
+
+        const definitionIdsByEntity =
+            entityToDefinitionIds.get(attributeValue.entityId) ?? new Set();
+        definitionIdsByEntity.add(definition.id);
+        entityToDefinitionIds.set(
+            attributeValue.entityId,
+            definitionIdsByEntity,
+        );
+    }
+
+    const sourceEntityIds = Array.from(entityToDefinitionIds.keys());
+    if (sourceEntityIds.length === 0) {
+        return [];
+    }
+
+    const sourceEntities = await storage().query.entities.findMany({
+        where: and(
+            inArray(entities.id, sourceEntityIds),
+            eq(entities.isDeleted, false),
+        ),
+        with: {
+            attributes: {
+                where: eq(attributeValues.isDeleted, false),
+                with: {
+                    attributeDefinition: true,
+                },
+            },
+            entityType: true,
+        },
+    });
+
+    const grouped = new Map<string, IncomingEntityLinkGroup>();
+    for (const sourceEntity of sourceEntities) {
+        const linkedByIds = entityToDefinitionIds.get(sourceEntity.id);
+        if (!linkedByIds) {
+            continue;
+        }
+
+        const linkedBy = Array.from(linkedByIds)
+            .map((definitionId) => definitionById.get(definitionId))
+            .filter((definition): definition is SelectAttributeDefinition =>
+                Boolean(definition),
+            )
+            .map((definition) => ({
+                name: definition.name,
+                label: definition.label,
+            }))
+            .sort((a, b) => a.label.localeCompare(b.label));
+
+        const group = grouped.get(sourceEntity.entityTypeName) ?? {
+            entityTypeName: sourceEntity.entityTypeName,
+            entityTypeLabel: sourceEntity.entityType.label,
+            entities: [],
+        };
+        group.entities.push({
+            id: sourceEntity.id,
+            displayName: entityDisplayNameFromAttributes(sourceEntity),
+            linkedBy,
+        });
+        grouped.set(sourceEntity.entityTypeName, group);
+    }
+
+    return Array.from(grouped.values())
+        .map((group) => ({
+            ...group,
+            entities: group.entities.sort((a, b) =>
+                a.displayName.localeCompare(b.displayName),
+            ),
+        }))
+        .sort((a, b) => a.entityTypeLabel.localeCompare(b.entityTypeLabel));
 }
 
 export async function createEntity(entityTypeName: string) {
