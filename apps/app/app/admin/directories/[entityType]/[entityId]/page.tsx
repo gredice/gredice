@@ -13,6 +13,7 @@ import {
     TabsList,
     TabsTrigger,
 } from '@signalco/ui-primitives/Tabs';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
 import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
@@ -31,6 +32,19 @@ import { EntityImportMenu } from './EntityImportMenu';
 import { EntityStateSelect } from './EntityStateSelect';
 
 export const dynamic = 'force-dynamic';
+
+function imageAttributeValue(value: string) {
+    try {
+        const data = JSON.parse(value);
+        if (data && typeof data.url === 'string') {
+            return data.url;
+        }
+    } catch {
+        // ignored intentionally
+    }
+
+    return null;
+}
 
 export default async function EntityDetailsPage(props: {
     params: Promise<{ entityType: string; entityId: string }>;
@@ -139,13 +153,34 @@ export default async function EntityDetailsPage(props: {
                                 <Field
                                     key={d.id}
                                     name={d.label}
-                                    value={
-                                        entity.attributes.find(
+                                    value={(() => {
+                                        const value = entity.attributes.find(
                                             (a) =>
                                                 a.attributeDefinitionId ===
                                                 d.id,
-                                        )?.value ?? '-'
-                                    }
+                                        )?.value;
+                                        if (!value) {
+                                            return '-';
+                                        }
+
+                                        if (d.dataType === 'image') {
+                                            const imageUrl =
+                                                imageAttributeValue(value);
+                                            if (imageUrl) {
+                                                return (
+                                                    <Image
+                                                        src={imageUrl}
+                                                        alt={d.label}
+                                                        width={40}
+                                                        height={40}
+                                                        className="size-10 rounded-md object-cover"
+                                                    />
+                                                );
+                                            }
+                                        }
+
+                                        return value;
+                                    })()}
                                 />
                             ))}
                         </FieldSet>
