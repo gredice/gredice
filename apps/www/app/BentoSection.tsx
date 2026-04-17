@@ -1,5 +1,6 @@
-import { Bell, Droplets, MapPinHouse, Truck } from '@signalco/ui-icons';
+import { Droplets, MapPinHouse, Megaphone, Truck } from '@signalco/ui-icons';
 import Image from 'next/image';
+import './BentoSection.css';
 
 export function BentoSection() {
     return (
@@ -16,7 +17,7 @@ export function BentoSection() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-6 gap-4 md:gap-5 auto-rows-[minmax(180px,auto)]">
-                <article className="md:col-span-4 md:row-span-2 rounded-2xl bg-primary text-primary-foreground p-8 md:p-10 flex flex-col justify-between relative overflow-hidden border border-tertiary border-b-4">
+                <article className="tilt-card md:col-span-4 md:row-span-2 rounded-2xl bg-primary text-primary-foreground p-8 md:p-10 flex flex-col justify-between relative overflow-hidden border border-tertiary border-b-4">
                     <div className="absolute -right-10 -top-10 w-48 h-48 rounded-full bg-accent/30 blur-2xl" />
                     <div className="flex items-center gap-2 text-sm font-medium opacity-80">
                         <MapPinHouse className="size-4" /> Tvoja gredica uživo
@@ -43,7 +44,7 @@ export function BentoSection() {
                     </div>
                 </article>
 
-                <article className="md:col-span-2 rounded-2xl bg-sky/20 p-6 flex flex-col justify-between border border-tertiary border-b-4">
+                <article className="tilt-card md:col-span-2 rounded-2xl bg-sky/20 p-6 flex flex-col justify-between border border-tertiary border-b-4">
                     <Droplets className="size-8 text-primary" />
                     <div>
                         <h3 className="text-2xl font-semibold text-primary">
@@ -56,7 +57,20 @@ export function BentoSection() {
                     </div>
                 </article>
 
-                <article className="md:col-span-2 rounded-2xl bg-accent p-6 flex flex-col justify-between text-accent-foreground border border-tertiary border-b-4">
+                {/* Water */}
+                <article className="tilt-card md:col-span-2 rounded-3xl bg-sky/20 p-6 flex flex-col justify-between border border-border">
+                    <Droplets className="w-8 h-8 text-primary" />
+                    <div>
+                        <h3 className="font-display text-2xl font-semibold text-primary">
+                            Pametno zalijevanje
+                        </h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Senzori reagiraju na vrijeme. Ni kap previše.
+                        </p>
+                    </div>
+                </article>
+
+                <article className="tilt-card md:col-span-2 rounded-2xl bg-accent p-6 flex flex-col justify-between text-accent-foreground border border-tertiary border-b-4">
                     <Truck className="size-8" />
                     <div>
                         <h3 className="text-2xl font-semibold">
@@ -69,7 +83,7 @@ export function BentoSection() {
                     </div>
                 </article>
 
-                <article className="md:col-span-2 rounded-2xl bg-tomato text-tomato-foreground p-6 flex flex-col justify-between border border-tertiary border-b-4">
+                <article className="tilt-card md:col-span-2 rounded-2xl bg-tomato text-tomato-foreground p-6 flex flex-col justify-between border border-tertiary border-b-4">
                     <MapPinHouse className="size-8" />
                     <div>
                         <h3 className="text-2xl font-semibold">
@@ -82,8 +96,8 @@ export function BentoSection() {
                     </div>
                 </article>
 
-                <article className="md:col-span-2 rounded-2xl bg-background border border-tertiary border-b-4 p-6 flex flex-col justify-between">
-                    <Bell className="size-8 text-primary" />
+                <article className="tilt-card md:col-span-2 rounded-2xl bg-background border border-tertiary border-b-4 p-6 flex flex-col justify-between">
+                    <Megaphone className="size-8 text-primary" />
                     <div>
                         <h3 className="text-2xl font-semibold text-primary">
                             Obavijesti i fotke
