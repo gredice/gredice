@@ -16,4 +16,6 @@ const hypertuneAdapter = createHypertuneAdapter<FlagValues, Context>({
     identify,
 });
 
-export const showUIFlag = flag(hypertuneAdapter.declarations.showUI);
+export const showUIFlag = flag(
+    hypertuneAdapter.declarations.showUI,
+);
