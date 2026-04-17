@@ -570,9 +570,11 @@ function summarizePlantCycle(
                 data?.assignedUserId === null
             ) {
                 assignedUserId = data.assignedUserId;
-                assignedAt = plantCycleEvent.createdAt;
                 if (data.assignedUserId === null) {
                     assignedBy = null;
+                    assignedAt = undefined;
+                } else {
+                    assignedAt = plantCycleEvent.createdAt;
                 }
             }
             if (typeof data?.assignedBy === 'string') {
@@ -1305,9 +1307,11 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     data?.assignedUserId === null
                 ) {
                     assignedUserId = data.assignedUserId;
-                    assignedAt = event.createdAt;
                     if (data.assignedUserId === null) {
                         assignedBy = null;
+                        assignedAt = undefined;
+                    } else {
+                        assignedAt = event.createdAt;
                     }
                 }
                 if (typeof data?.assignedBy === 'string') {

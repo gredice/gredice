@@ -944,13 +944,13 @@ test('raised bed field assignment metadata is projected for assign and unassign 
     assert.ok(plantCycle);
     assert.strictEqual(plantCycle.assignedUserId, null);
     assert.strictEqual(plantCycle.assignedBy, null);
-    assert.ok(plantCycle.assignedAt instanceof Date);
+    assert.strictEqual(plantCycle.assignedAt, undefined);
 
     [field] = await getRaisedBedFieldsWithEvents(raisedBedId);
     assert.ok(field);
     assert.strictEqual(field.assignedUserId, null);
     assert.strictEqual(field.assignedBy, null);
-    assert.ok(field.assignedAt instanceof Date);
+    assert.strictEqual(field.assignedAt, undefined);
 });
 
 test('upsertRaisedBedField reuses the same row after a field is deleted and planted again', async () => {
