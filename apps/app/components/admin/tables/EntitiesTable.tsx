@@ -142,6 +142,17 @@ function EntityAttributeValueCell({
         return <Typography secondary>-</Typography>;
     }
 
+    if (definition.dataType === 'boolean') {
+        const booleanValue = booleanAttributeValue(value);
+        if (booleanValue !== null) {
+            return (
+                <Chip color={booleanValue ? 'success' : 'neutral'}>
+                    {booleanValue ? 'Da' : 'Ne'}
+                </Chip>
+            );
+        }
+    }
+
     if (definition.dataType === 'image') {
         const imageUrl = imageAttributeValue(value);
         if (imageUrl) {
@@ -200,4 +211,8 @@ function imageAttributeValue(value: string) {
     }
 
     return null;
+}
+
+function booleanAttributeValue(value: string) {
+    return value === 'true' ? true : value === 'false' ? false : null;
 }
