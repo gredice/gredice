@@ -14,6 +14,7 @@ import { KnownPages } from '../../../src/KnownPages';
 import { AcceptOperationModal } from './AcceptOperationModal';
 import { AssignOperationModal } from './AssignOperationModal';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
+import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { CopyTasksButton } from './CopyTasksButton';
@@ -142,6 +143,9 @@ export function RaisedBedOperationsScheduleSection({
                 label,
             };
         });
+    const operationsToReschedule = operationsToApprove.map((operation) => ({
+        id: operation.id,
+    }));
 
     const durations = dayOperations.reduce(
         (acc, operation) => {
@@ -172,6 +176,11 @@ export function RaisedBedOperationsScheduleSection({
                     physicalId={physicalId.toString()}
                     fields={[]}
                     operations={operationsToApprove}
+                />
+                <BulkRescheduleRaisedBedButton
+                    physicalId={physicalId.toString()}
+                    fields={[]}
+                    operations={operationsToReschedule}
                 />
                 <RaisedBedLabel physicalId={physicalId} />
                 <Typography level="body2" className="text-muted-foreground">

@@ -13,6 +13,7 @@ import type { EntityStandardized } from '../../../lib/@types/EntityStandardized'
 import { raisedBedPlanted } from '../../(actions)/raisedBedFieldsActions';
 import { AcceptRaisedBedFieldModal } from './AcceptRaisedBedFieldModal';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
+import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import { CancelRaisedBedFieldModal } from './CancelRaisedBedFieldModal';
 import { CompletePlantingModal } from './CompletePlantingModal';
 import { CopyTasksButton } from './CopyTasksButton';
@@ -106,6 +107,10 @@ export function RaisedBedPlantingScheduleSection({
                 label: `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`,
             };
         });
+    const fieldsToReschedule = fieldsToApprove.map((field) => ({
+        raisedBedId: field.raisedBedId,
+        positionIndex: field.positionIndex,
+    }));
 
     const durations = dayFields.reduce(
         (acc, field) => {
@@ -127,6 +132,11 @@ export function RaisedBedPlantingScheduleSection({
                 <BulkApproveRaisedBedButton
                     physicalId={physicalId.toString()}
                     fields={fieldsToApprove}
+                    operations={[]}
+                />
+                <BulkRescheduleRaisedBedButton
+                    physicalId={physicalId.toString()}
+                    fields={fieldsToReschedule}
                     operations={[]}
                 />
                 <RaisedBedLabel physicalId={physicalId} />
