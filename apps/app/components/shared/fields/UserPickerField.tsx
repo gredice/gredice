@@ -23,10 +23,12 @@ type UserPickerFieldProps = {
     };
     /**
      * @deprecated Use `noUsersMessage`. Retained for backwards compatibility.
+     * Ignored when `noUsersMessage` is also provided.
      */
     noResultsMessage?: string;
     /**
      * Message shown when there are no selectable users.
+     * Takes precedence over `noResultsMessage` when both are provided.
      */
     noUsersMessage?: string;
 };
