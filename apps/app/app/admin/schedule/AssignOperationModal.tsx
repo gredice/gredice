@@ -156,7 +156,6 @@ export function AssignOperationModal({
                             value: unassignedValue,
                             label: 'Bez dodjele',
                         }}
-                        resetKey={open}
                     />
                 ) : (
                     <Typography level="body2" className="text-muted-foreground">

@@ -22,7 +22,7 @@ type UserPickerFieldProps = {
         label: string;
     };
     noResultsMessage?: string;
-    resetKey?: unknown;
+    noUsersMessage?: string;
 };
 
 export function UserPickerField({
@@ -32,7 +32,8 @@ export function UserPickerField({
     label = 'Korisnik',
     placeholder = 'Odaberi korisnika',
     emptyOption,
-    noResultsMessage = 'Nema korisnika koji odgovara pretrazi.',
+    noResultsMessage,
+    noUsersMessage,
 }: UserPickerFieldProps) {
     const items = useMemo(
         () => [
@@ -57,7 +58,9 @@ export function UserPickerField({
                 />
             ) : (
                 <Typography level="body2" className="text-muted-foreground">
-                    {noResultsMessage}
+                    {noUsersMessage ??
+                        noResultsMessage ??
+                        'Nema dostupnih korisnika.'}
                 </Typography>
             )}
         </Stack>
