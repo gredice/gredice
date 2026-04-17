@@ -46,10 +46,16 @@ export function UserProfileCard() {
                                     displayName={currentUser.data?.displayName}
                                     onChange={handleAvatarChange}
                                 >
-                                    <ProfileAvatar
-                                        size="lg"
-                                        className="[&_img]:size-auto hover:outline min-w-20 min-h-20 shrink-0"
-                                    />
+                                    <button
+                                        type="button"
+                                        className="cursor-pointer rounded-full disabled:cursor-not-allowed disabled:opacity-60"
+                                        disabled={updateUser.isPending}
+                                    >
+                                        <ProfileAvatar
+                                            size="lg"
+                                            className="[&_img]:size-auto hover:outline min-w-20 min-h-20 shrink-0"
+                                        />
+                                    </button>
                                 </AvatarSelectionMenu>
                                 <Stack spacing={1}>
                                     <Input

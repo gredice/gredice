@@ -34,7 +34,7 @@ export function SelectUserAvatar({
             >
                 <UserAvatar
                     avatarUrl={avatarUrl}
-                    username={displayName ?? undefined}
+                    displayName={displayName ?? ''}
                     size="lg"
                 />
             </button>

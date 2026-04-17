@@ -10,12 +10,12 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@signalco/ui-primitives/Menu';
-import type { ReactNode } from 'react';
+import type { ReactElement } from 'react';
 import { AVATAR_OPTIONS } from './avatarOptions';
 
 export type AvatarSelectionMenuProps = {
     displayName?: string | null;
-    children: ReactNode;
+    children: ReactElement;
     onChange: (avatarUrl: string | null) => void;
     title?: string;
     emptyLabel?: string;
@@ -30,7 +30,7 @@ export function AvatarSelectionMenu({
 }: AvatarSelectionMenuProps) {
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger>{children}</DropdownMenuTrigger>
+            <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
             <DropdownMenuContent>
                 <DropdownMenuLabel>{title}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -47,11 +47,17 @@ export function AvatarSelectionMenu({
                         key={option.label}
                         onClick={() => onChange(option.avatarUrl)}
                         startDecorator={
-                            <Avatar
-                                src={option.avatarUrl ?? undefined}
-                                alt={option.label}
-                                size="lg"
-                            />
+                            option.avatarUrl ? (
+                                <Avatar
+                                    src={option.avatarUrl}
+                                    alt={option.label}
+                                    size="lg"
+                                />
+                            ) : (
+                                <Avatar size="lg">
+                                    {initials(option.label)}
+                                </Avatar>
+                            )
                         }
                     >
                         <DropdownMenuLabel>{option.label}</DropdownMenuLabel>
