@@ -1,6 +1,7 @@
 export type GroundDecorationSurface = 'grass' | 'sand';
 
 type GroundDecorationOptions = {
+    angleLiftPerUnit: number;
     baseY: number;
     clusterChance: number;
     heightRange: [number, number];
@@ -23,24 +24,26 @@ export const groundDecorationOptions: Record<
     GroundDecorationOptions
 > = {
     grass: {
-        baseY: 0.04,
-        clusterChance: 0.22,
-        heightRange: [0.32, 0.44],
-        maxCount: 2,
+        angleLiftPerUnit: 0.3,
+        baseY: 0.16,
+        clusterChance: 0.42,
+        heightRange: [0.09, 0.14],
+        maxCount: 5,
         minDistance: 0.17,
-        opacityRange: [0.92, 1],
-        positionRange: 0.28,
-        spawnChance: 0.8,
+        opacityRange: [0.8, 0.9],
+        positionRange: 0.25,
+        spawnChance: 1,
     },
     sand: {
-        baseY: 0.035,
-        clusterChance: 0.08,
-        heightRange: [0.22, 0.32],
+        angleLiftPerUnit: 0.3,
+        baseY: 0.2,
+        clusterChance: 0.1,
+        heightRange: [0.09, 0.25],
         maxCount: 2,
         minDistance: 0.2,
-        opacityRange: [0.88, 0.98],
+        opacityRange: [0.8, 0.9],
         positionRange: 0.26,
-        spawnChance: 0.42,
+        spawnChance: 1,
     },
 };
 

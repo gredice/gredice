@@ -13,6 +13,18 @@ export type BlockSurfaceDecorationPlacement = {
     spriteName: string;
 };
 
+function resolveDecorationBaseY(
+    block: Block,
+    options: (typeof groundDecorationOptions)[GroundDecorationSurface],
+    z: number,
+) {
+    if (!block.name.endsWith('_Angle')) {
+        return options.baseY;
+    }
+
+    return options.baseY + z * options.angleLiftPerUnit;
+}
+
 function getDecorationCount(
     rng: SeededRNG,
     options: (typeof groundDecorationOptions)[GroundDecorationSurface],
@@ -98,7 +110,12 @@ export function getBlockSurfaceDecorations(options: {
                 decorationOptions.opacityRange[0],
                 decorationOptions.opacityRange[1],
             ),
-            position: [x, decorationOptions.baseY + index * 0.002, z],
+            position: [
+                x,
+                resolveDecorationBaseY(block, decorationOptions, z) +
+                    index * 0.002,
+                z,
+            ],
             spriteName: pickSpriteName(rng, surface),
         });
     }

@@ -28,9 +28,16 @@ export function AttributeCategoryDefinitionItem({
 
     function handleAdd() {
         void trackSave(() =>
-            handleValueSave(entity.entityTypeName, entity.id, attributeDefinition),
+            handleValueSave(
+                entity.entityTypeName,
+                entity.id,
+                attributeDefinition,
+            ),
         ).catch((error) => {
-            console.error('AttributeCategoryDefinitionItem handleAdd error', error);
+            console.error(
+                'AttributeCategoryDefinitionItem handleAdd error',
+                error,
+            );
         });
     }
 
@@ -79,9 +86,7 @@ export function AttributeCategoryDefinitionItem({
                     />
                 )}
                 {attributeDefinition.multiple && (
-                    <Button onClick={handleAdd}>
-                        Dodaj
-                    </Button>
+                    <Button onClick={handleAdd}>Dodaj</Button>
                 )}
             </Stack>
         </Stack>
