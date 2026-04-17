@@ -201,67 +201,64 @@ export function SpriteAtlasBillboard({
         };
     }, [geometry]);
 
-    useFrame(
-        ({ clock }) => {
-            const mesh = meshRef.current;
-            if (!mesh) {
-                return;
-            }
+    useFrame(({ clock }) => {
+        const mesh = meshRef.current;
+        if (!mesh) {
+            return;
+        }
 
-            if (!wobbleAnimation) {
-                mesh.rotation.x = 0;
-                mesh.rotation.z = 0;
-                return;
-            }
+        if (!wobbleAnimation) {
+            mesh.rotation.x = 0;
+            mesh.rotation.z = 0;
+            return;
+        }
 
-            const time = clock.getElapsedTime();
-            const directionalWave =
-                Math.sin(
-                    time * wobbleAnimation.directionalPrimaryFrequency +
-                        wobbleAnimation.phase,
-                ) *
-                    0.9 +
-                Math.cos(
-                    time * wobbleAnimation.directionalSecondaryFrequency +
-                        wobbleAnimation.secondaryPhase,
-                ) *
-                    0.35 +
-                Math.sin(
-                    time * wobbleAnimation.gustFrequency +
-                        wobbleAnimation.phase * 0.5,
-                ) *
-                    wobbleAnimation.gustScale;
-            const crossWave =
-                Math.sin(
-                    time * wobbleAnimation.crossPrimaryFrequency +
-                        wobbleAnimation.secondaryPhase * 0.7,
-                ) *
-                    0.75 +
-                Math.cos(
-                    time * wobbleAnimation.crossSecondaryFrequency +
-                        wobbleAnimation.phase,
-                ) *
-                    0.3;
+        const time = clock.getElapsedTime();
+        const directionalWave =
+            Math.sin(
+                time * wobbleAnimation.directionalPrimaryFrequency +
+                    wobbleAnimation.phase,
+            ) *
+                0.9 +
+            Math.cos(
+                time * wobbleAnimation.directionalSecondaryFrequency +
+                    wobbleAnimation.secondaryPhase,
+            ) *
+                0.35 +
+            Math.sin(
+                time * wobbleAnimation.gustFrequency +
+                    wobbleAnimation.phase * 0.5,
+            ) *
+                wobbleAnimation.gustScale;
+        const crossWave =
+            Math.sin(
+                time * wobbleAnimation.crossPrimaryFrequency +
+                    wobbleAnimation.secondaryPhase * 0.7,
+            ) *
+                0.75 +
+            Math.cos(
+                time * wobbleAnimation.crossSecondaryFrequency +
+                    wobbleAnimation.phase,
+            ) *
+                0.3;
 
-            mesh.rotation.x =
-                wobbleAnimation.directionZ *
-                    directionalWave *
-                    wobbleAnimation.wobbleAmplitude +
-                wobbleAnimation.directionX *
-                    crossWave *
-                    wobbleAnimation.wobbleAmplitude *
-                    0.55;
-            mesh.rotation.z =
-                -wobbleAnimation.directionX *
-                    directionalWave *
-                    wobbleAnimation.wobbleAmplitude +
-                wobbleAnimation.directionZ *
-                    crossWave *
-                    wobbleAnimation.wobbleAmplitude *
-                    0.55;
-        },
-        [wobbleAnimation],
-    );
+        mesh.rotation.x =
+            wobbleAnimation.directionZ *
+                directionalWave *
+                wobbleAnimation.wobbleAmplitude +
+            wobbleAnimation.directionX *
+                crossWave *
+                wobbleAnimation.wobbleAmplitude *
+                0.55;
+        mesh.rotation.z =
+            -wobbleAnimation.directionX *
+                directionalWave *
+                wobbleAnimation.wobbleAmplitude +
+            wobbleAnimation.directionZ *
+                crossWave *
+                wobbleAnimation.wobbleAmplitude *
+                0.55;
+    });
 
     if (manifestError) {
         console.error(
@@ -305,7 +302,6 @@ export function SpriteAtlasBillboard({
                     depthWrite={depthWrite}
                     map={texture}
                     opacity={opacity}
-                    side={DoubleSide}
                     transparent
                 />
             </mesh>
