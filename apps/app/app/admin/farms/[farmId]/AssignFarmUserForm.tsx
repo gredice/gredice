@@ -64,7 +64,6 @@ export function AssignFarmUserForm({
                     users={availableUsers}
                     value={selectedUser}
                     onValueChange={setSelectedUser}
-                    resetKey={state}
                 />
                 <input type="hidden" name="farmId" value={farmId} />
                 <input type="hidden" name="userId" value={selectedUser} />
