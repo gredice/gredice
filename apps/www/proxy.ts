@@ -1,3 +1,4 @@
+import { decodeRouteParam } from '@gredice/js/uri';
 import { SeverityNumber } from '@opentelemetry/api-logs';
 import { postHogMiddleware } from '@posthog/next';
 import {
@@ -12,6 +13,7 @@ import {
     isPostHogLoggingEnabled,
     POSTHOG_SERVICE_NAME,
 } from './lib/posthog-server';
+import { toPageAlias } from './src/pageAliases';
 
 const postHogApiKey =
     process.env.NEXT_PUBLIC_POSTHOG_KEY ??
@@ -26,6 +28,59 @@ const postHogProxyHost =
         .replace('://eu.posthog.com', '://eu.i.posthog.com');
 
 const requestLogger = getPostHogLogger(`${POSTHOG_SERVICE_NAME}.request`);
+
+function normalizeSlugSegment(segment: string): string | null {
+    const normalized = toPageAlias(decodeRouteParam(segment));
+    return normalized.length > 0 ? normalized : null;
+}
+
+function getCanonicalPathname(pathname: string): string | null {
+    const segments = pathname.split('/').filter(Boolean);
+
+    if (segments.length === 2 && segments[0] === 'biljke') {
+        const plantAlias = normalizeSlugSegment(segments[1]);
+        return plantAlias ? `/biljke/${plantAlias}` : null;
+    }
+
+    if (
+        segments.length === 4 &&
+        segments[0] === 'biljke' &&
+        segments[2] === 'sorte'
+    ) {
+        const plantAlias = normalizeSlugSegment(segments[1]);
+        const sortAlias = normalizeSlugSegment(segments[3]);
+        if (!plantAlias || !sortAlias) {
+            return null;
+        }
+        return ['', 'biljke', plantAlias, 'sorte', sortAlias].join('/');
+    }
+
+    if (segments.length === 2 && segments[0] === 'radnje') {
+        const operationAlias = normalizeSlugSegment(segments[1]);
+        return operationAlias ? `/radnje/${operationAlias}` : null;
+    }
+
+    if (
+        segments.length === 2 &&
+        segments[0] === 'blokovi' &&
+        segments[1] !== 'biljke'
+    ) {
+        const blockAlias = normalizeSlugSegment(segments[1]);
+        return blockAlias ? `/blokovi/${blockAlias}` : null;
+    }
+
+    if (
+        segments.length === 3 &&
+        segments[0] === 'blokovi' &&
+        segments[1] === 'biljke' &&
+        segments[2] !== 'generator'
+    ) {
+        const plantAlias = normalizeSlugSegment(segments[2]);
+        return plantAlias ? `/blokovi/biljke/${plantAlias}` : null;
+    }
+
+    return null;
+}
 
 function getProxyAttributes(response: Response) {
     const rewriteTarget = response.headers.get('x-middleware-rewrite');
@@ -63,8 +118,18 @@ const proxyHandler: NextProxy = async (
     request: NextRequest,
     event: NextFetchEvent,
 ) => {
-    const response =
-        (await baseProxyHandler(request, event)) ?? NextResponse.next();
+    const canonicalPathname = getCanonicalPathname(request.nextUrl.pathname);
+    let response: Response;
+    if (canonicalPathname && canonicalPathname !== request.nextUrl.pathname) {
+        const url = request.nextUrl.clone();
+        // Next derives implicit cache tags from the pathname.
+        // Redirect slug-backed routes before rendering so headers stay ASCII-safe.
+        url.pathname = canonicalPathname;
+        response = NextResponse.redirect(url, 308);
+    } else {
+        response =
+            (await baseProxyHandler(request, event)) ?? NextResponse.next();
+    }
 
     if (isPostHogLoggingEnabled()) {
         requestLogger.emit({
