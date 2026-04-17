@@ -296,7 +296,7 @@ export function SpriteAtlasBillboard({
     }
 
     return (
-        <Billboard follow={follow} lockX lockZ position={position}>
+        <Billboard follow={follow} position={position}>
             <mesh ref={meshRef} renderOrder={renderOrder} receiveShadow>
                 <primitive attach="geometry" object={geometry} />
                 <meshLambertMaterial
