@@ -14,7 +14,7 @@
     "devDependencies": {
         "@biomejs/biome": "2.4.12",
         "@types/node": "24.12.2",
-        "typescript": "6.0.2"
+        "typescript": "6.0.3"
     },
     "dependencies": {
         "@signalco/js": "0.1.0"

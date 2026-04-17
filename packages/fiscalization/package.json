@@ -21,7 +21,7 @@
         "@types/qrcode": "1.5.6",
         "@types/xml2js": "0.4.14",
         "tsx": "4.21.0",
-        "typescript": "6.0.2",
+        "typescript": "6.0.3",
         "wsdl-tsclient": "1.7.1"
     },
     "dependencies": {
