@@ -12,7 +12,7 @@ export type RaisedBedField = {
     plantGrowthDate?: Date;
     plantReadyDate?: Date;
     assignedUserId?: string | null;
-    assignedBy?: string;
+    assignedBy?: string | null;
     assignedAt?: Date;
     createdAt: Date;
     updatedAt: Date;

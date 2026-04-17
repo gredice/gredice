@@ -6,11 +6,12 @@ import {
     createNotification,
     deleteRaisedBedField,
     earnSunflowers,
-    getAllRaisedBeds,
     getAssignableFarmUsersByRaisedBedFieldIds,
     getEntityFormatted,
     getFarmUserRaisedBeds,
     getRaisedBed,
+    getRaisedBedFieldContext,
+    getRaisedBedFieldsWithEvents,
     knownEvents,
     moveRaisedBedFieldPlantHistory,
 } from '@gredice/storage';
@@ -457,13 +458,12 @@ export async function assignRaisedBedFieldUserAction(
     assignedUserId: string | null,
 ) {
     const { userId } = await auth(['admin']);
-    const allRaisedBeds = await getAllRaisedBeds();
-    const matchedRaisedBed = allRaisedBeds.find((item) =>
-        item.fields.some((field) => field.id === raisedBedFieldId),
-    );
-    const matchedField = matchedRaisedBed?.fields.find(
-        (field) => field.id === raisedBedFieldId,
-    );
+    const matchedRaisedBed = await getRaisedBedFieldContext(raisedBedFieldId);
+    const matchedField = matchedRaisedBed
+        ? (await getRaisedBedFieldsWithEvents(matchedRaisedBed.id)).find(
+              (field) => field.id === raisedBedFieldId,
+          )
+        : undefined;
 
     if (!matchedRaisedBed || !matchedField) {
         throw new Error('Polje za sijanje nije pronađeno.');

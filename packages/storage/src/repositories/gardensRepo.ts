@@ -76,7 +76,7 @@ export type RaisedBedFieldPlantCycle = {
     stoppedDate?: Date;
     toBeRemoved: boolean;
     assignedUserId?: string | null;
-    assignedBy?: string;
+    assignedBy?: string | null;
     assignedAt?: Date;
 };
 
@@ -133,10 +133,6 @@ export async function getAssignableFarmUsersByRaisedBedFieldIds(
     for (const row of rows) {
         const existingUsers =
             assignableFarmUsersByRaisedBedFieldId[row.raisedBedFieldId] ?? [];
-        if (existingUsers.some((user) => user.id === row.userId)) {
-            continue;
-        }
-
         existingUsers.push({
             id: row.userId,
             userName: row.userName,
@@ -149,6 +145,28 @@ export async function getAssignableFarmUsersByRaisedBedFieldIds(
     }
 
     return assignableFarmUsersByRaisedBedFieldId;
+}
+
+export async function getRaisedBedFieldContext(raisedBedFieldId: number) {
+    const rows = await storage()
+        .select({
+            id: raisedBeds.id,
+            gardenId: raisedBeds.gardenId,
+            accountId: raisedBeds.accountId,
+            positionIndex: raisedBedFields.positionIndex,
+        })
+        .from(raisedBedFields)
+        .innerJoin(raisedBeds, eq(raisedBedFields.raisedBedId, raisedBeds.id))
+        .where(
+            and(
+                eq(raisedBedFields.id, raisedBedFieldId),
+                eq(raisedBedFields.isDeleted, false),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        )
+        .limit(1);
+
+    return rows[0] ?? null;
 }
 
 function fieldRowPriority(
@@ -472,7 +490,7 @@ function summarizePlantCycle(
     let toBeRemoved = false;
     let stoppedDate: Date | undefined;
     let assignedUserId: string | null | undefined;
-    let assignedBy: string | undefined;
+    let assignedBy: string | null | undefined;
     let assignedAt: Date | undefined;
 
     for (const plantCycleEvent of plantCycleEvents) {
@@ -553,6 +571,9 @@ function summarizePlantCycle(
             ) {
                 assignedUserId = data.assignedUserId;
                 assignedAt = plantCycleEvent.createdAt;
+                if (data.assignedUserId === null) {
+                    assignedBy = null;
+                }
             }
             if (typeof data?.assignedBy === 'string') {
                 assignedBy = data.assignedBy;
@@ -1202,7 +1223,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         let toBeRemoved = false;
         let stoppedDate: Date | undefined;
         let assignedUserId: string | null | undefined;
-        let assignedBy: string | undefined;
+        let assignedBy: string | null | undefined;
         let assignedAt: Date | undefined;
 
         for (const event of events) {
@@ -1285,6 +1306,9 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 ) {
                     assignedUserId = data.assignedUserId;
                     assignedAt = event.createdAt;
+                    if (data.assignedUserId === null) {
+                        assignedBy = null;
+                    }
                 }
                 if (typeof data?.assignedBy === 'string') {
                     assignedBy = data.assignedBy;

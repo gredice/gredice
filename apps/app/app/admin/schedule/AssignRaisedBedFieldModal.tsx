@@ -17,6 +17,7 @@ import {
 import { assignRaisedBedFieldUserAction } from '../../(actions)/raisedBedFieldsActions';
 
 const unassignedValue = '__unassigned__';
+const missingAssignedUserLabel = 'Trenutno dodijeljeni korisnik';
 
 type AssignableUser = Pick<
     RaisedBedFieldAssignableFarmUser,
@@ -57,8 +58,17 @@ export function AssignRaisedBedFieldModal({
             usersById.set(farmUser.id, farmUser);
         }
 
+        if (assignedUserId && !usersById.has(assignedUserId)) {
+            usersById.set(assignedUserId, {
+                id: assignedUserId,
+                userName: missingAssignedUserLabel,
+                displayName: null,
+                avatarUrl: null,
+            });
+        }
+
         return [...usersById.values()];
-    }, [farmUsers]);
+    }, [assignedUserId, farmUsers]);
 
     const pickerUsers = useMemo<UserPickerOption[]>(
         () =>
@@ -112,6 +122,7 @@ export function AssignRaisedBedFieldModal({
             type="button"
             className="rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
             title={`Dodjela: ${getUserLabel(selectedUser)}`}
+            aria-label={`Dodjela: ${getUserLabel(selectedUser)}`}
             disabled={!canOpen}
         >
             <UserAvatar
@@ -124,6 +135,11 @@ export function AssignRaisedBedFieldModal({
         <IconButton
             variant="plain"
             title={
+                canOpen
+                    ? 'Dodijeli korisnika'
+                    : 'Nema dostupnih korisnika za dodjelu'
+            }
+            aria-label={
                 canOpen
                     ? 'Dodijeli korisnika'
                     : 'Nema dostupnih korisnika za dodjelu'

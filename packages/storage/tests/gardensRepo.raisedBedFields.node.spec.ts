@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    assignUserToFarm,
     createAccount,
     createEvent,
     createNotification,
     createOperation,
+    createUserWithPassword,
     deleteRaisedBedField,
     getAllOperations,
     getNotifications,
     getOrCreateShoppingCart,
     getRaisedBed,
+    getRaisedBedFieldPlantCycles,
     getRaisedBedFieldsWithEvents,
     knownEvents,
     knownEventTypes,
@@ -878,6 +881,76 @@ test('getRaisedBed returns the latest plant cycle after a field is removed and r
     assert.strictEqual(field?.plantRemovedDate, undefined);
     assert.strictEqual(field?.stoppedDate, undefined);
     assert.strictEqual(field?.toBeRemoved, false);
+});
+
+test('raised bed field assignment metadata is projected for assign and unassign updates', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'block-assignment');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const assignedUserId = await createUserWithPassword(
+        'assigned-user@example.com',
+        'password',
+    );
+    const assignedByUserId = await createUserWithPassword(
+        'assigned-by@example.com',
+        'password',
+    );
+
+    await Promise.all([
+        assignUserToFarm(farmId, assignedUserId),
+        assignUserToFarm(farmId, assignedByUserId),
+        upsertRaisedBedField({
+            raisedBedId,
+            positionIndex: 0,
+        }),
+    ]);
+
+    const aggregateId = `${raisedBedId.toString()}|0`;
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+            plantSortId: '101',
+            scheduledDate: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            assignedUserId,
+            assignedBy: assignedByUserId,
+        }),
+    );
+
+    let [plantCycle] = await getRaisedBedFieldPlantCycles(raisedBedId);
+    assert.ok(plantCycle);
+    assert.strictEqual(plantCycle.assignedUserId, assignedUserId);
+    assert.strictEqual(plantCycle.assignedBy, assignedByUserId);
+    assert.ok(plantCycle.assignedAt instanceof Date);
+
+    let [field] = await getRaisedBedFieldsWithEvents(raisedBedId);
+    assert.ok(field);
+    assert.strictEqual(field.assignedUserId, assignedUserId);
+    assert.strictEqual(field.assignedBy, assignedByUserId);
+    assert.ok(field.assignedAt instanceof Date);
+
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            assignedUserId: null,
+        }),
+    );
+
+    [plantCycle] = await getRaisedBedFieldPlantCycles(raisedBedId);
+    assert.ok(plantCycle);
+    assert.strictEqual(plantCycle.assignedUserId, null);
+    assert.strictEqual(plantCycle.assignedBy, null);
+    assert.ok(plantCycle.assignedAt instanceof Date);
+
+    [field] = await getRaisedBedFieldsWithEvents(raisedBedId);
+    assert.ok(field);
+    assert.strictEqual(field.assignedUserId, null);
+    assert.strictEqual(field.assignedBy, null);
+    assert.ok(field.assignedAt instanceof Date);
 });
 
 test('upsertRaisedBedField reuses the same row after a field is deleted and planted again', async () => {
