@@ -21,7 +21,13 @@ type UserPickerFieldProps = {
         value: string;
         label: string;
     };
+    /**
+     * @deprecated Use `noUsersMessage`. Retained for backwards compatibility.
+     */
     noResultsMessage?: string;
+    /**
+     * Message shown when there are no selectable users.
+     */
     noUsersMessage?: string;
 };
 
@@ -35,6 +41,9 @@ export function UserPickerField({
     noResultsMessage,
     noUsersMessage,
 }: UserPickerFieldProps) {
+    const emptyUsersMessage =
+        noUsersMessage ?? noResultsMessage ?? 'Nema dostupnih korisnika.';
+
     const items = useMemo(
         () => [
             ...(emptyOption ? [emptyOption] : []),
@@ -58,9 +67,7 @@ export function UserPickerField({
                 />
             ) : (
                 <Typography level="body2" className="text-muted-foreground">
-                    {noUsersMessage ??
-                        noResultsMessage ??
-                        'Nema dostupnih korisnika.'}
+                    {emptyUsersMessage}
                 </Typography>
             )}
         </Stack>
