@@ -20,14 +20,12 @@ export default async function EntityLinksPage(props: {
 }) {
     const params = await props.params;
     const entityId = parseInt(params.entityId, 10);
-    const [entity, incomingLinks] = await Promise.all([
-        getEntityRaw(entityId),
-        getEntityIncomingLinks(entityId),
-    ]);
+    const entity = await getEntityRaw(entityId);
 
     if (!entity) {
         notFound();
     }
+    const incomingLinks = await getEntityIncomingLinks(entityId, entity);
 
     return (
         <Stack spacing={2}>

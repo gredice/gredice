@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, count, desc, eq, inArray, like, or } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, like } from 'drizzle-orm';
 import {
     attributeDefinitions,
     attributeValues,
@@ -475,8 +475,9 @@ function attributeValueContainsEntityName(
 
 export async function getEntityIncomingLinks(
     entityId: number,
+    sourceEntity?: NonNullable<Awaited<ReturnType<typeof getEntityRaw>>>,
 ): Promise<IncomingEntityLinkGroup[]> {
-    const entity = await getEntityRaw(entityId);
+    const entity = sourceEntity ?? (await getEntityRaw(entityId));
     if (!entity) {
         return [];
     }
@@ -498,19 +499,46 @@ export async function getEntityIncomingLinks(
 
     const definitionById = new Map(refDefinitions.map((d) => [d.id, d]));
     const definitionIds = refDefinitions.map((d) => d.id);
-    const escapedName = escapeForLike(entityName);
-
-    const linkAttributeValues = await storage().query.attributeValues.findMany({
+    const exactValueMatches = await storage().query.attributeValues.findMany({
         where: and(
             inArray(attributeValues.attributeDefinitionId, definitionIds),
             eq(attributeValues.isDeleted, false),
-            or(
-                eq(attributeValues.value, entityName),
-                like(attributeValues.value, `%"${escapedName}"%`),
-            ),
+            eq(attributeValues.value, entityName),
         ),
     });
 
+    const multipleDefinitionIds = refDefinitions
+        .filter((definition) => definition.multiple)
+        .map((definition) => definition.id);
+    const linkAttributeValues = [...exactValueMatches];
+    if (multipleDefinitionIds.length > 0) {
+        const escapedJsonEncodedName = escapeForLike(
+            JSON.stringify(entityName),
+        );
+        const legacyJsonArrayMatches =
+            await storage().query.attributeValues.findMany({
+                where: and(
+                    inArray(
+                        attributeValues.attributeDefinitionId,
+                        multipleDefinitionIds,
+                    ),
+                    eq(attributeValues.isDeleted, false),
+                    like(attributeValues.value, `%${escapedJsonEncodedName}%`),
+                ),
+            });
+
+        const seenAttributeValueIds = new Set(
+            linkAttributeValues.map((v) => v.id),
+        );
+        for (const legacyJsonArrayMatch of legacyJsonArrayMatches) {
+            if (seenAttributeValueIds.has(legacyJsonArrayMatch.id)) {
+                continue;
+            }
+
+            linkAttributeValues.push(legacyJsonArrayMatch);
+            seenAttributeValueIds.add(legacyJsonArrayMatch.id);
+        }
+    }
     const entityToDefinitionIds = new Map<number, Set<number>>();
     for (const attributeValue of linkAttributeValues) {
         if (attributeValue.entityId === entityId) {

@@ -14,7 +14,6 @@ import {
     TabsList,
     TabsTrigger,
 } from '@signalco/ui-primitives/Tabs';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
 import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
@@ -112,16 +111,15 @@ export default async function EntityDetailsPage(props: {
                                     />
                                 </div>
                                 <EntityStateSelect entity={entity} />
-                                <Link
+                                <Button
+                                    variant="plain"
                                     href={KnownPages.DirectoryEntityLinks(
                                         params.entityType,
                                         parseInt(params.entityId, 10),
                                     )}
                                 >
-                                    <Button variant="plain">
-                                        Povezani zapisi
-                                    </Button>
-                                </Link>
+                                    Povezani zapisi
+                                </Button>
                                 <EntityImportMenu importAction={importAction} />
                                 <ServerActionIconButton
                                     title="Obriši"
