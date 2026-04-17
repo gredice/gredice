@@ -22,6 +22,7 @@ import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { unblockUserLogin } from '../../../(actions)/userActions';
 import { ButtonImpersonateUser } from '../ButtonImpersonateUser';
+import { SelectUserAvatar } from '../SelectUserAvatar';
 import { SelectUserRole } from '../SelectUserRole';
 
 export default async function UserPage({
@@ -38,7 +39,15 @@ export default async function UserPage({
 
     const logins = await getUserWithLogins(user.userName);
 
-    const { id, createdAt, updatedAt, userName, accounts } = user;
+    const {
+        id,
+        createdAt,
+        updatedAt,
+        userName,
+        accounts,
+        avatarUrl,
+        displayName,
+    } = user;
 
     return (
         <Stack spacing={4}>
@@ -56,6 +65,16 @@ export default async function UserPage({
                     <FieldSet>
                         <Field name="ID korisnika" value={id} mono />
                         <Field name="Korisničko ime" value={userName} />
+                        <Field
+                            name="Avatar"
+                            value={
+                                <SelectUserAvatar
+                                    userId={id}
+                                    avatarUrl={avatarUrl}
+                                    displayName={displayName ?? userName}
+                                />
+                            }
+                        />
                         <Field
                             name="Uloga"
                             value={<SelectUserRole user={user} />}
