@@ -6,6 +6,8 @@ import {
     createNotification,
     deleteRaisedBedField,
     earnSunflowers,
+    getAllRaisedBeds,
+    getAssignableFarmUsersByRaisedBedFieldIds,
     getEntityFormatted,
     getFarmUserRaisedBeds,
     getRaisedBed,
@@ -446,6 +448,58 @@ export async function cancelRaisedBedFieldAction(formData: FormData) {
     if (raisedBed.gardenId)
         revalidatePath(KnownPages.Garden(raisedBed.gardenId));
     revalidatePath(KnownPages.RaisedBed(raisedBedId));
+
+    return { success: true };
+}
+
+export async function assignRaisedBedFieldUserAction(
+    raisedBedFieldId: number,
+    assignedUserId: string | null,
+) {
+    const { userId } = await auth(['admin']);
+    const allRaisedBeds = await getAllRaisedBeds();
+    const matchedRaisedBed = allRaisedBeds.find((item) =>
+        item.fields.some((field) => field.id === raisedBedFieldId),
+    );
+    const matchedField = matchedRaisedBed?.fields.find(
+        (field) => field.id === raisedBedFieldId,
+    );
+
+    if (!matchedRaisedBed || !matchedField) {
+        throw new Error('Polje za sijanje nije pronađeno.');
+    }
+
+    const normalizedAssignedUserId = assignedUserId?.trim() || null;
+    if (matchedField.assignedUserId === normalizedAssignedUserId) {
+        return { success: true };
+    }
+
+    if (normalizedAssignedUserId) {
+        const assignableFarmUsersByRaisedBedFieldId =
+            await getAssignableFarmUsersByRaisedBedFieldIds([raisedBedFieldId]);
+        const assignableFarmUsers =
+            assignableFarmUsersByRaisedBedFieldId[raisedBedFieldId] ?? [];
+
+        if (
+            !assignableFarmUsers.some(
+                (farmUser) => farmUser.id === normalizedAssignedUserId,
+            )
+        ) {
+            throw new Error('Odabrani korisnik nije dostupan za ovo sijanje.');
+        }
+    }
+
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(
+            `${matchedRaisedBed.id.toString()}|${matchedField.positionIndex.toString()}`,
+            {
+                assignedUserId: normalizedAssignedUserId,
+                assignedBy: userId,
+            },
+        ),
+    );
+
+    await revalidateRaisedBedPaths(matchedRaisedBed);
 
     return { success: true };
 }

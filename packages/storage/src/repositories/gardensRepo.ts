@@ -22,6 +22,7 @@ import {
     type UpdateGardenBlock,
     type UpdateGardenStack,
     type UpdateRaisedBed,
+    users,
 } from '../schema';
 import {
     type InsertRaisedBedField,
@@ -74,7 +75,81 @@ export type RaisedBedFieldPlantCycle = {
     plantRemovedDate?: Date;
     stoppedDate?: Date;
     toBeRemoved: boolean;
+    assignedUserId?: string | null;
+    assignedBy?: string;
+    assignedAt?: Date;
 };
+
+export type RaisedBedFieldAssignableFarmUser = {
+    id: string;
+    userName: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    farmId: number;
+};
+
+export async function getAssignableFarmUsersByRaisedBedFieldIds(
+    raisedBedFieldIds: number[],
+) {
+    const uniqueRaisedBedFieldIds = Array.from(new Set(raisedBedFieldIds));
+    if (uniqueRaisedBedFieldIds.length === 0) {
+        const emptyAssignableFarmUsersByRaisedBedFieldId: Record<
+            number,
+            RaisedBedFieldAssignableFarmUser[]
+        > = {};
+
+        return emptyAssignableFarmUsersByRaisedBedFieldId;
+    }
+
+    const rows = await storage()
+        .select({
+            raisedBedFieldId: raisedBedFields.id,
+            farmId: farmUsers.farmId,
+            userId: users.id,
+            userName: users.userName,
+            displayName: users.displayName,
+            avatarUrl: users.avatarUrl,
+        })
+        .from(raisedBedFields)
+        .innerJoin(raisedBeds, eq(raisedBedFields.raisedBedId, raisedBeds.id))
+        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+        .innerJoin(users, eq(farmUsers.userId, users.id))
+        .where(
+            and(
+                inArray(raisedBedFields.id, uniqueRaisedBedFieldIds),
+                eq(raisedBedFields.isDeleted, false),
+                eq(raisedBeds.isDeleted, false),
+                eq(gardens.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(raisedBedFields.id), asc(users.userName));
+
+    const assignableFarmUsersByRaisedBedFieldId: Record<
+        number,
+        RaisedBedFieldAssignableFarmUser[]
+    > = {};
+
+    for (const row of rows) {
+        const existingUsers =
+            assignableFarmUsersByRaisedBedFieldId[row.raisedBedFieldId] ?? [];
+        if (existingUsers.some((user) => user.id === row.userId)) {
+            continue;
+        }
+
+        existingUsers.push({
+            id: row.userId,
+            userName: row.userName,
+            displayName: row.displayName,
+            avatarUrl: row.avatarUrl,
+            farmId: row.farmId,
+        });
+        assignableFarmUsersByRaisedBedFieldId[row.raisedBedFieldId] =
+            existingUsers;
+    }
+
+    return assignableFarmUsersByRaisedBedFieldId;
+}
 
 function fieldRowPriority(
     field: SelectRaisedBedField,
@@ -396,6 +471,9 @@ function summarizePlantCycle(
     let active = false;
     let toBeRemoved = false;
     let stoppedDate: Date | undefined;
+    let assignedUserId: string | null | undefined;
+    let assignedBy: string | undefined;
+    let assignedAt: Date | undefined;
 
     for (const plantCycleEvent of plantCycleEvents) {
         const data = plantCycleEvent.data as
@@ -429,6 +507,9 @@ function summarizePlantCycle(
             plantDeadDate = undefined;
             plantHarvestedDate = undefined;
             plantRemovedDate = undefined;
+            assignedUserId = undefined;
+            assignedBy = undefined;
+            assignedAt = undefined;
             continue;
         }
 
@@ -466,6 +547,16 @@ function summarizePlantCycle(
         ) {
             plantStatus =
                 typeof data?.status === 'string' ? data.status : plantStatus;
+            if (
+                typeof data?.assignedUserId === 'string' ||
+                data?.assignedUserId === null
+            ) {
+                assignedUserId = data.assignedUserId;
+                assignedAt = plantCycleEvent.createdAt;
+            }
+            if (typeof data?.assignedBy === 'string') {
+                assignedBy = data.assignedBy;
+            }
 
             if (
                 plantStatus === 'pendingVerification' ||
@@ -518,6 +609,9 @@ function summarizePlantCycle(
         plantRemovedDate,
         stoppedDate,
         toBeRemoved,
+        assignedUserId,
+        assignedBy,
+        assignedAt,
     };
 }
 
@@ -1107,6 +1201,9 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         let active = true;
         let toBeRemoved = false;
         let stoppedDate: Date | undefined;
+        let assignedUserId: string | null | undefined;
+        let assignedBy: string | undefined;
+        let assignedAt: Date | undefined;
 
         for (const event of events) {
             const data = event.data as Record<string, unknown> | undefined;
@@ -1126,6 +1223,9 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 plantDeadDate = undefined;
                 plantHarvestedDate = undefined;
                 plantRemovedDate = undefined;
+                assignedUserId = undefined;
+                assignedBy = undefined;
+                assignedAt = undefined;
 
                 // Parse plant sort ID if provided
                 if (typeof data?.plantSortId === 'number') {
@@ -1179,6 +1279,16 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     typeof data?.status === 'string'
                         ? data?.status
                         : plantStatus;
+                if (
+                    typeof data?.assignedUserId === 'string' ||
+                    data?.assignedUserId === null
+                ) {
+                    assignedUserId = data.assignedUserId;
+                    assignedAt = event.createdAt;
+                }
+                if (typeof data?.assignedBy === 'string') {
+                    assignedBy = data.assignedBy;
+                }
                 if (
                     plantStatus === 'pendingVerification' ||
                     plantStatus === 'sowed'
@@ -1239,6 +1349,9 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             active,
             toBeRemoved,
             stoppedDate,
+            assignedUserId,
+            assignedBy,
+            assignedAt,
         };
     });
 }

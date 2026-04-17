@@ -1,3 +1,4 @@
+import { getAssignableFarmUsersByRaisedBedFieldIds } from '@gredice/storage';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { RaisedBedPlantingScheduleSection } from './RaisedBedPlantingScheduleSection';
@@ -24,6 +25,10 @@ export async function ScheduleDayPlantingsSection({
     const affectedRaisedBedIds = [
         ...new Set(scheduledFields.map((field) => field.raisedBedId)),
     ];
+    const assignableFarmUsersByRaisedBedFieldId =
+        await getAssignableFarmUsersByRaisedBedFieldIds(
+            scheduledFields.map((field) => field.id),
+        );
     const raisedBedGroups = groupRaisedBedsForSchedule(
         raisedBeds,
         affectedRaisedBedIds,
@@ -40,6 +45,9 @@ export async function ScheduleDayPlantingsSection({
                         raisedBeds={beds}
                         scheduledFields={scheduledFields}
                         plantSorts={plantSorts}
+                        assignableFarmUsersByRaisedBedFieldId={
+                            assignableFarmUsersByRaisedBedFieldId
+                        }
                     />
                 );
             })}

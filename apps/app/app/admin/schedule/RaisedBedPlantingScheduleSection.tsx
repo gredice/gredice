@@ -1,6 +1,7 @@
 'use client';
 
 import { calculatePlantsPerField, FIELD_SIZE_CM } from '@gredice/js/plants';
+import type { RaisedBedFieldAssignableFarmUser } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Calendar, Close } from '@signalco/ui-icons';
@@ -12,6 +13,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { raisedBedPlanted } from '../../(actions)/raisedBedFieldsActions';
 import { AcceptRaisedBedFieldModal } from './AcceptRaisedBedFieldModal';
+import { AssignRaisedBedFieldModal } from './AssignRaisedBedFieldModal';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
 import { CancelRaisedBedFieldModal } from './CancelRaisedBedFieldModal';
 import { CompletePlantingModal } from './CompletePlantingModal';
@@ -32,6 +34,10 @@ interface RaisedBedPlantingScheduleSectionProps {
     raisedBeds: RaisedBed[];
     scheduledFields: RaisedBedField[];
     plantSorts: EntityStandardized[] | null | undefined;
+    assignableFarmUsersByRaisedBedFieldId: Record<
+        number,
+        RaisedBedFieldAssignableFarmUser[]
+    >;
 }
 
 export function RaisedBedPlantingScheduleSection({
@@ -39,6 +45,7 @@ export function RaisedBedPlantingScheduleSection({
     raisedBeds,
     scheduledFields,
     plantSorts,
+    assignableFarmUsersByRaisedBedFieldId,
 }: RaisedBedPlantingScheduleSectionProps) {
     if (raisedBeds.length === 0) {
         return null;
@@ -246,6 +253,17 @@ export function RaisedBedPlantingScheduleSection({
                                     </Typography>
                                 </Row>
                                 <Row>
+                                    <AssignRaisedBedFieldModal
+                                        raisedBedFieldId={field.id}
+                                        label={fieldLabel}
+                                        farmUsers={
+                                            assignableFarmUsersByRaisedBedFieldId[
+                                                field.id
+                                            ] ?? []
+                                        }
+                                        assignedUserId={field.assignedUserId}
+                                        disabled={fieldLocked}
+                                    />
                                     <RescheduleRaisedBedFieldModal
                                         field={{
                                             raisedBedId: field.raisedBedId,
