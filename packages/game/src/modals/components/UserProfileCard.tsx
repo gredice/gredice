@@ -1,16 +1,7 @@
-import { initials } from '@signalco/js';
-import { Avatar } from '@signalco/ui-primitives/Avatar';
+import { AvatarSelectionMenu } from '@gredice/ui/AvatarSelectionMenu';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card, CardActions, CardContent } from '@signalco/ui-primitives/Card';
 import { Input } from '@signalco/ui-primitives/Input';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
@@ -51,73 +42,21 @@ export function UserProfileCard() {
                     <form onSubmit={handleProfileUpdate}>
                         <Stack spacing={2}>
                             <Row spacing={2}>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger>
+                                <AvatarSelectionMenu
+                                    displayName={currentUser.data?.displayName}
+                                    onChange={handleAvatarChange}
+                                >
+                                    <button
+                                        type="button"
+                                        className="cursor-pointer rounded-full disabled:cursor-not-allowed disabled:opacity-60"
+                                        disabled={updateUser.isPending}
+                                    >
                                         <ProfileAvatar
                                             size="lg"
                                             className="[&_img]:size-auto hover:outline min-w-20 min-h-20 shrink-0"
                                         />
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                        <DropdownMenuLabel>
-                                            Odaberi avatar
-                                        </DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                            onClick={() =>
-                                                handleAvatarChange(null)
-                                            }
-                                            startDecorator={
-                                                <Avatar size="lg">
-                                                    {initials(
-                                                        currentUser.data
-                                                            ?.displayName ?? '',
-                                                    )}
-                                                </Avatar>
-                                            }
-                                        >
-                                            <DropdownMenuLabel>
-                                                Prazno
-                                            </DropdownMenuLabel>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() =>
-                                                handleAvatarChange(
-                                                    'https://cdn.gredice.com/avatars/farmer-male.png',
-                                                )
-                                            }
-                                            startDecorator={
-                                                <Avatar
-                                                    src="https://cdn.gredice.com/avatars/farmer-male.png"
-                                                    alt="Farmer Avatar"
-                                                    size="lg"
-                                                />
-                                            }
-                                        >
-                                            <DropdownMenuLabel>
-                                                Farmer
-                                            </DropdownMenuLabel>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() =>
-                                                handleAvatarChange(
-                                                    'https://cdn.gredice.com/avatars/farmer-female.png',
-                                                )
-                                            }
-                                            startDecorator={
-                                                <Avatar
-                                                    src="https://cdn.gredice.com/avatars/farmer-female.png"
-                                                    alt="Farmer Avatar"
-                                                    size="lg"
-                                                />
-                                            }
-                                        >
-                                            <DropdownMenuLabel>
-                                                Farmerka
-                                            </DropdownMenuLabel>
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                    </button>
+                                </AvatarSelectionMenu>
                                 <Stack spacing={1}>
                                     <Input
                                         name="displayName"
