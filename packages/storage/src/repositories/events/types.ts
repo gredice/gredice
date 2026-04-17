@@ -161,8 +161,8 @@ export type RaisedBedFieldPlantSchedulePayload = {
 export type RaisedBedFieldPlantUpdatePayload =
     | {
           status: string;
-          assignedUserId?: string | null;
-          assignedBy?: string | null;
+          assignedUserId?: undefined;
+          assignedBy?: undefined;
       }
     | {
           status?: string;

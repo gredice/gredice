@@ -102,7 +102,7 @@ export async function getAssignableFarmUsersByRaisedBedFieldIds(
     }
 
     const rows = await storage()
-        .select({
+        .selectDistinct({
             raisedBedFieldId: raisedBedFields.id,
             farmId: farmUsers.farmId,
             userId: users.id,
