@@ -236,6 +236,9 @@ function mockRaisedBedField(
         plantDeadDate: undefined,
         plantHarvestedDate: undefined,
         plantRemovedDate: undefined,
+        assignedUserId: null,
+        assignedBy: null,
+        assignedAt: undefined,
         createdAt: plantSowDate,
         updatedAt: plantReadyDate ?? plantGrowthDate,
     };

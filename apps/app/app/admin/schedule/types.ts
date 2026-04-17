@@ -11,6 +11,9 @@ export type RaisedBedField = {
     plantSowDate?: Date;
     plantGrowthDate?: Date;
     plantReadyDate?: Date;
+    assignedUserId?: string | null;
+    assignedBy?: string | null;
+    assignedAt?: Date;
     createdAt: Date;
     updatedAt: Date;
     isDeleted: boolean;

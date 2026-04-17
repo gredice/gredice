@@ -158,9 +158,22 @@ export type RaisedBedFieldPlantSchedulePayload = {
     scheduledDate: string | null | undefined;
 };
 
-export type RaisedBedFieldPlantUpdatePayload = {
-    status: string;
-};
+export type RaisedBedFieldPlantUpdatePayload =
+    | {
+          status: string;
+          assignedUserId?: undefined;
+          assignedBy?: undefined;
+      }
+    | {
+          status?: string;
+          assignedUserId: string;
+          assignedBy: string;
+      }
+    | {
+          status?: string;
+          assignedUserId: null;
+          assignedBy?: string | null;
+      };
 
 export type RaisedBedFieldPlantReplaceSortPayload = {
     plantSortId: string;
