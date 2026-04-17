@@ -82,11 +82,18 @@ export function LoginDialog() {
                 ? '/prijava/google-prijava/povratak'
                 : '/prijava/facebook-prijava/povratak';
         const redirectUrl = `${window.location.origin}${callbackPath}`;
-        const authUrl = new URL(
-            `/api/gredice/api/auth/${provider}`,
-            window.location.origin,
-        );
+        const apiBaseUrl =
+            window.location.hostname.endsWith('.test') ||
+            window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1'
+                ? 'https://api.gredice.test'
+                : 'https://api.gredice.com';
+        const authUrl = new URL(`/api/auth/${provider}`, apiBaseUrl);
         authUrl.searchParams.set('redirect', redirectUrl);
+        authUrl.searchParams.set(
+            'timeZone',
+            Intl.DateTimeFormat().resolvedOptions().timeZone,
+        );
         window.location.href = authUrl.toString();
     };
 
