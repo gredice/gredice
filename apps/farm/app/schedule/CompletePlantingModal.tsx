@@ -7,15 +7,18 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { completeFarmPlanting } from './actions';
 
 interface CompletePlantingModalProps {
     label: string;
-    onConfirm: () => Promise<void>;
+    raisedBedId: number;
+    positionIndex: number;
 }
 
 export function CompletePlantingModal({
     label,
-    onConfirm,
+    raisedBedId,
+    positionIndex,
 }: CompletePlantingModalProps) {
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,7 +26,7 @@ export function CompletePlantingModal({
     const handleConfirm = async () => {
         try {
             setIsSubmitting(true);
-            await onConfirm();
+            await completeFarmPlanting(raisedBedId, positionIndex);
             setOpen(false);
         } catch (error) {
             console.error('Error completing planting:', error);

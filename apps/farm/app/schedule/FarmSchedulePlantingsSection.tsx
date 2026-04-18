@@ -5,7 +5,6 @@ import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { completeFarmPlanting } from './actions';
 import { CompletePlantingModal } from './CompletePlantingModal';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
@@ -118,13 +117,6 @@ export function FarmSchedulePlantingsSection({
                                         field.plantStatus,
                                     );
 
-                                    const handleConfirm = async () => {
-                                        await completeFarmPlanting(
-                                            field.raisedBedId,
-                                            field.positionIndex,
-                                        );
-                                    };
-
                                     return (
                                         <div
                                             key={field.id}
@@ -147,8 +139,11 @@ export function FarmSchedulePlantingsSection({
                                                     ) : (
                                                         <CompletePlantingModal
                                                             label={field.label}
-                                                            onConfirm={
-                                                                handleConfirm
+                                                            raisedBedId={
+                                                                field.raisedBedId
+                                                            }
+                                                            positionIndex={
+                                                                field.positionIndex
                                                             }
                                                         />
                                                     )}
