@@ -80,7 +80,7 @@ export type RaisedBedFieldPlantCycle = {
     assignedAt?: Date;
 };
 
-export type RaisedBedFieldAssignableFarmUser = {
+export type AssignableFarmUser = {
     id: string;
     userName: string;
     displayName: string | null;
@@ -88,13 +88,11 @@ export type RaisedBedFieldAssignableFarmUser = {
     farmId: number;
 };
 
-export type GardenAssignableFarmUser = {
-    id: string;
-    userName: string;
-    displayName: string | null;
-    avatarUrl: string | null;
-    farmId: number;
-};
+export type RaisedBedFieldAssignableFarmUser = AssignableFarmUser;
+
+export type GardenAssignableFarmUser = AssignableFarmUser;
+
+export type UniqueGardenAssignableFarmUser = Omit<AssignableFarmUser, 'farmId'>;
 
 type FarmAssignableUserRow = {
     farmId: number;
@@ -153,12 +151,9 @@ export async function getAssignableFarmUsersByGardenIds(gardenIds: number[]) {
         gardenFarmRows.map((row) => row.farmId),
     );
 
-    const assignableFarmUsersByFarmId: Record<
-        number,
-        GardenAssignableFarmUser[]
-    > = {};
+    const usersByFarmId: Record<number, GardenAssignableFarmUser[]> = {};
     for (const row of farmUserRows) {
-        const existingUsers = assignableFarmUsersByFarmId[row.farmId] ?? [];
+        const existingUsers = usersByFarmId[row.farmId] ?? [];
         existingUsers.push({
             id: row.userId,
             userName: row.userName,
@@ -166,7 +161,7 @@ export async function getAssignableFarmUsersByGardenIds(gardenIds: number[]) {
             avatarUrl: row.avatarUrl,
             farmId: row.farmId,
         });
-        assignableFarmUsersByFarmId[row.farmId] = existingUsers;
+        usersByFarmId[row.farmId] = existingUsers;
     }
 
     const assignableFarmUsersByGardenId: Record<
@@ -176,7 +171,7 @@ export async function getAssignableFarmUsersByGardenIds(gardenIds: number[]) {
 
     for (const row of gardenFarmRows) {
         assignableFarmUsersByGardenId[row.gardenId] =
-            assignableFarmUsersByFarmId[row.farmId] ?? [];
+            usersByFarmId[row.farmId] ?? [];
     }
 
     return assignableFarmUsersByGardenId;
@@ -187,7 +182,7 @@ export async function getUniqueAssignableFarmUsersByGardenIds(
 ) {
     const uniqueGardenIds = Array.from(new Set(gardenIds));
     if (uniqueGardenIds.length === 0) {
-        return [] as GardenAssignableFarmUser[];
+        return [] as UniqueGardenAssignableFarmUser[];
     }
 
     const gardenFarmRows = await storage()
@@ -214,7 +209,6 @@ export async function getUniqueAssignableFarmUsersByGardenIds(
                     userName: row.userName,
                     displayName: row.displayName,
                     avatarUrl: row.avatarUrl,
-                    farmId: row.farmId,
                 },
             ]),
         ).values(),
