@@ -7,9 +7,12 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useEffect, useMemo, useState } from 'react';
 import { getEntities } from '../../../components/shared/attributes/actions/entitiesActions';
+import { UserPickerField } from '../../../components/shared/fields/UserPickerField';
 import { bulkCreateOperationsAction } from '../../(actions)/operationActions';
 import { SelectEntity } from '../raised-beds/[raisedBedId]/SelectEntity';
 import { TargetsSelectionList } from './TargetsSelectionList';
+
+const unassignedValue = '__unassigned__';
 
 export type BulkOperationCreateModalProps = {
     gardens: Array<{
@@ -25,17 +28,25 @@ export type BulkOperationCreateModalProps = {
         gardenId?: number | null;
         fields: Array<{ id: number; positionIndex: number }>;
     }>;
+    assignableUsers: Array<{
+        id: string;
+        userName: string;
+        displayName: string | null;
+    }>;
 };
 
 export function BulkOperationCreateModal({
     gardens,
     raisedBeds,
+    assignableUsers,
 }: BulkOperationCreateModalProps) {
     const [selectedOperationId, setSelectedOperationId] = useState<
         string | null
     >(null);
     const [operations, setOperations] =
         useState<Awaited<ReturnType<typeof getEntities>>>();
+    const [selectedAssignedUserId, setSelectedAssignedUserId] =
+        useState(unassignedValue);
 
     useEffect(() => {
         // Load operations metadata to determine application type
@@ -81,6 +92,33 @@ export function BulkOperationCreateModal({
                         name="scheduledDate"
                         type="datetime-local"
                         label="Planirani datum (opcionalno)"
+                    />
+                    <UserPickerField
+                        users={assignableUsers.map((user) => ({
+                            id: user.id,
+                            label: user.displayName
+                                ? `${user.displayName} (${user.userName})`
+                                : user.userName,
+                            searchText: `${user.displayName ?? ''} ${
+                                user.userName
+                            }`,
+                        }))}
+                        value={selectedAssignedUserId}
+                        onValueChange={setSelectedAssignedUserId}
+                        label="Dodijeljeni korisnik (opcionalno)"
+                        emptyOption={{
+                            value: unassignedValue,
+                            label: 'Bez dodjele',
+                        }}
+                    />
+                    <input
+                        type="hidden"
+                        name="assignedUserId"
+                        value={
+                            selectedAssignedUserId === unassignedValue
+                                ? ''
+                                : selectedAssignedUserId
+                        }
                     />
                     <TargetsSelectionList
                         name="targets"

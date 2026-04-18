@@ -88,6 +88,65 @@ export type RaisedBedFieldAssignableFarmUser = {
     farmId: number;
 };
 
+export type GardenAssignableFarmUser = {
+    id: string;
+    userName: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    farmId: number;
+};
+
+export async function getAssignableFarmUsersByGardenIds(gardenIds: number[]) {
+    const uniqueGardenIds = Array.from(new Set(gardenIds));
+    if (uniqueGardenIds.length === 0) {
+        const emptyAssignableFarmUsersByGardenId: Record<
+            number,
+            GardenAssignableFarmUser[]
+        > = {};
+
+        return emptyAssignableFarmUsersByGardenId;
+    }
+
+    const rows = await storage()
+        .selectDistinct({
+            gardenId: gardens.id,
+            farmId: farmUsers.farmId,
+            userId: users.id,
+            userName: users.userName,
+            displayName: users.displayName,
+            avatarUrl: users.avatarUrl,
+        })
+        .from(gardens)
+        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+        .innerJoin(users, eq(farmUsers.userId, users.id))
+        .where(
+            and(
+                inArray(gardens.id, uniqueGardenIds),
+                eq(gardens.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(gardens.id), asc(users.userName));
+
+    const assignableFarmUsersByGardenId: Record<
+        number,
+        GardenAssignableFarmUser[]
+    > = {};
+
+    for (const row of rows) {
+        const existingUsers = assignableFarmUsersByGardenId[row.gardenId] ?? [];
+        existingUsers.push({
+            id: row.userId,
+            userName: row.userName,
+            displayName: row.displayName,
+            avatarUrl: row.avatarUrl,
+            farmId: row.farmId,
+        });
+        assignableFarmUsersByGardenId[row.gardenId] = existingUsers;
+    }
+
+    return assignableFarmUsersByGardenId;
+}
+
 export async function getAssignableFarmUsersByRaisedBedFieldIds(
     raisedBedFieldIds: number[],
 ) {

@@ -8,6 +8,7 @@ import {
     createNotification,
     createOperation,
     earnSunflowers,
+    getAssignableFarmUsersByGardenIds,
     getAssignableFarmUsersByOperationIds,
     getEntityFormatted,
     getFarmUserAcceptedOperationById,
@@ -77,7 +78,7 @@ export async function createOperationAction(formData: FormData) {
 }
 
 export async function bulkCreateOperationsAction(formData: FormData) {
-    await auth(['admin']);
+    const { userId } = await auth(['admin']);
     const entityId = formData.get('entityId')
         ? Number(formData.get('entityId'))
         : undefined;
@@ -87,7 +88,34 @@ export async function bulkCreateOperationsAction(formData: FormData) {
     const scheduledDate = formData.get('scheduledDate')
         ? new Date(formData.get('scheduledDate') as string)
         : undefined;
+    const selectedAssignedUserId =
+        (formData.get('assignedUserId') as string | null)?.trim() || undefined;
     const targets = formData.getAll('targets') as string[];
+
+    if (selectedAssignedUserId) {
+        const uniqueGardenIds = Array.from(
+            new Set(
+                targets
+                    .map((target) => target.split('|')[1])
+                    .filter((gardenId) => gardenId)
+                    .map((gardenId) => Number(gardenId))
+                    .filter((gardenId) => !Number.isNaN(gardenId)),
+            ),
+        );
+        const assignableFarmUsersByGardenId =
+            await getAssignableFarmUsersByGardenIds(uniqueGardenIds);
+        for (const gardenId of uniqueGardenIds) {
+            const isUserAssignableToGarden =
+                assignableFarmUsersByGardenId[gardenId]?.some(
+                    (user) => user.id === selectedAssignedUserId,
+                ) ?? false;
+            if (!isUserAssignableToGarden) {
+                throw new Error(
+                    'Odabrani korisnik nije dostupan za sve odabrane radnje.',
+                );
+            }
+        }
+    }
 
     for (const target of targets) {
         const [accountId, gardenId, raisedBedId, raisedBedFieldId] =
@@ -113,6 +141,14 @@ export async function bulkCreateOperationsAction(formData: FormData) {
             await notifyOperationUpdate(operationId, 'scheduled', {
                 scheduledDate: scheduledDate.toISOString(),
             });
+        }
+        if (selectedAssignedUserId) {
+            await createEvent(
+                knownEvents.operations.assignedV1(operationId.toString(), {
+                    assignedUserId: selectedAssignedUserId,
+                    assignedBy: userId,
+                }),
+            );
         }
     }
     revalidatePath(KnownPages.Schedule);
