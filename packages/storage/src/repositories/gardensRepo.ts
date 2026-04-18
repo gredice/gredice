@@ -80,13 +80,140 @@ export type RaisedBedFieldPlantCycle = {
     assignedAt?: Date;
 };
 
-export type RaisedBedFieldAssignableFarmUser = {
+export type AssignableFarmUser = {
     id: string;
     userName: string;
     displayName: string | null;
     avatarUrl: string | null;
     farmId: number;
 };
+
+export type RaisedBedFieldAssignableFarmUser = AssignableFarmUser;
+
+export type GardenAssignableFarmUser = AssignableFarmUser;
+
+export type UniqueGardenAssignableFarmUser = Omit<AssignableFarmUser, 'farmId'>;
+
+type FarmAssignableUserRow = {
+    farmId: number;
+    userId: string;
+    userName: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+};
+
+async function getAssignableFarmUserRowsByFarmIds(farmIds: number[]) {
+    const uniqueFarmIds = Array.from(new Set(farmIds));
+    if (uniqueFarmIds.length === 0) {
+        return [] as FarmAssignableUserRow[];
+    }
+
+    return storage()
+        .selectDistinct({
+            farmId: farmUsers.farmId,
+            userId: users.id,
+            userName: users.userName,
+            displayName: users.displayName,
+            avatarUrl: users.avatarUrl,
+        })
+        .from(farmUsers)
+        .innerJoin(users, eq(farmUsers.userId, users.id))
+        .where(inArray(farmUsers.farmId, uniqueFarmIds))
+        .orderBy(asc(farmUsers.farmId), asc(users.userName));
+}
+
+export async function getAssignableFarmUsersByGardenIds(gardenIds: number[]) {
+    const uniqueGardenIds = Array.from(new Set(gardenIds));
+    if (uniqueGardenIds.length === 0) {
+        const emptyAssignableFarmUsersByGardenId: Record<
+            number,
+            GardenAssignableFarmUser[]
+        > = {};
+
+        return emptyAssignableFarmUsersByGardenId;
+    }
+
+    const gardenFarmRows = await storage()
+        .select({
+            gardenId: gardens.id,
+            farmId: gardens.farmId,
+        })
+        .from(gardens)
+        .where(
+            and(
+                inArray(gardens.id, uniqueGardenIds),
+                eq(gardens.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(gardens.id));
+
+    const farmUserRows = await getAssignableFarmUserRowsByFarmIds(
+        gardenFarmRows.map((row) => row.farmId),
+    );
+
+    const usersByFarmId: Record<number, GardenAssignableFarmUser[]> = {};
+    for (const row of farmUserRows) {
+        const existingUsers = usersByFarmId[row.farmId] ?? [];
+        existingUsers.push({
+            id: row.userId,
+            userName: row.userName,
+            displayName: row.displayName,
+            avatarUrl: row.avatarUrl,
+            farmId: row.farmId,
+        });
+        usersByFarmId[row.farmId] = existingUsers;
+    }
+
+    const assignableFarmUsersByGardenId: Record<
+        number,
+        GardenAssignableFarmUser[]
+    > = {};
+
+    for (const row of gardenFarmRows) {
+        assignableFarmUsersByGardenId[row.gardenId] =
+            usersByFarmId[row.farmId] ?? [];
+    }
+
+    return assignableFarmUsersByGardenId;
+}
+
+export async function getUniqueAssignableFarmUsersByGardenIds(
+    gardenIds: number[],
+) {
+    const uniqueGardenIds = Array.from(new Set(gardenIds));
+    if (uniqueGardenIds.length === 0) {
+        return [] as UniqueGardenAssignableFarmUser[];
+    }
+
+    const gardenFarmRows = await storage()
+        .select({
+            farmId: gardens.farmId,
+        })
+        .from(gardens)
+        .where(
+            and(
+                inArray(gardens.id, uniqueGardenIds),
+                eq(gardens.isDeleted, false),
+            ),
+        );
+    const farmUserRows = await getAssignableFarmUserRowsByFarmIds(
+        gardenFarmRows.map((row) => row.farmId),
+    );
+
+    return Array.from(
+        new Map(
+            farmUserRows.map((row) => [
+                row.userId,
+                {
+                    id: row.userId,
+                    userName: row.userName,
+                    displayName: row.displayName,
+                    avatarUrl: row.avatarUrl,
+                },
+            ]),
+        ).values(),
+    );
+}
 
 export async function getAssignableFarmUsersByRaisedBedFieldIds(
     raisedBedFieldIds: number[],
