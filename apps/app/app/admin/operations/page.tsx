@@ -1,7 +1,7 @@
 import {
     getAllRaisedBeds,
-    getAssignableFarmUsersByGardenIds,
     getGardens,
+    getUniqueAssignableFarmUsersByGardenIds,
 } from '@gredice/storage';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -25,24 +25,15 @@ export default async function OperationsPage({
         getGardens(),
         getAllRaisedBeds(),
     ]);
-    const assignableFarmUsersByGardenId =
-        await getAssignableFarmUsersByGardenIds(
+    const assignableUsers = (
+        await getUniqueAssignableFarmUsersByGardenIds(
             gardens.map((garden) => garden.id),
-        );
-    const assignableUsers = Array.from(
-        new Map(
-            Object.values(assignableFarmUsersByGardenId)
-                .flat()
-                .map((user) => [
-                    user.id,
-                    {
-                        id: user.id,
-                        userName: user.userName,
-                        displayName: user.displayName,
-                    },
-                ]),
-        ).values(),
-    );
+        )
+    ).map((user) => ({
+        id: user.id,
+        userName: user.userName,
+        displayName: user.displayName,
+    }));
 
     const params = await searchParams;
     const fromFilter =

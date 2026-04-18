@@ -96,6 +96,34 @@ export type GardenAssignableFarmUser = {
     farmId: number;
 };
 
+type FarmAssignableUserRow = {
+    farmId: number;
+    userId: string;
+    userName: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+};
+
+async function getAssignableFarmUserRowsByFarmIds(farmIds: number[]) {
+    const uniqueFarmIds = Array.from(new Set(farmIds));
+    if (uniqueFarmIds.length === 0) {
+        return [] as FarmAssignableUserRow[];
+    }
+
+    return storage()
+        .selectDistinct({
+            farmId: farmUsers.farmId,
+            userId: users.id,
+            userName: users.userName,
+            displayName: users.displayName,
+            avatarUrl: users.avatarUrl,
+        })
+        .from(farmUsers)
+        .innerJoin(users, eq(farmUsers.userId, users.id))
+        .where(inArray(farmUsers.farmId, uniqueFarmIds))
+        .orderBy(asc(farmUsers.farmId), asc(users.userName));
+}
+
 export async function getAssignableFarmUsersByGardenIds(gardenIds: number[]) {
     const uniqueGardenIds = Array.from(new Set(gardenIds));
     if (uniqueGardenIds.length === 0) {
@@ -107,33 +135,30 @@ export async function getAssignableFarmUsersByGardenIds(gardenIds: number[]) {
         return emptyAssignableFarmUsersByGardenId;
     }
 
-    const rows = await storage()
-        .selectDistinct({
+    const gardenFarmRows = await storage()
+        .select({
             gardenId: gardens.id,
-            farmId: farmUsers.farmId,
-            userId: users.id,
-            userName: users.userName,
-            displayName: users.displayName,
-            avatarUrl: users.avatarUrl,
+            farmId: gardens.farmId,
         })
         .from(gardens)
-        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
-        .innerJoin(users, eq(farmUsers.userId, users.id))
         .where(
             and(
                 inArray(gardens.id, uniqueGardenIds),
                 eq(gardens.isDeleted, false),
             ),
         )
-        .orderBy(asc(gardens.id), asc(users.userName));
+        .orderBy(asc(gardens.id));
 
-    const assignableFarmUsersByGardenId: Record<
+    const farmUserRows = await getAssignableFarmUserRowsByFarmIds(
+        gardenFarmRows.map((row) => row.farmId),
+    );
+
+    const assignableFarmUsersByFarmId: Record<
         number,
         GardenAssignableFarmUser[]
     > = {};
-
-    for (const row of rows) {
-        const existingUsers = assignableFarmUsersByGardenId[row.gardenId] ?? [];
+    for (const row of farmUserRows) {
+        const existingUsers = assignableFarmUsersByFarmId[row.farmId] ?? [];
         existingUsers.push({
             id: row.userId,
             userName: row.userName,
@@ -141,10 +166,59 @@ export async function getAssignableFarmUsersByGardenIds(gardenIds: number[]) {
             avatarUrl: row.avatarUrl,
             farmId: row.farmId,
         });
-        assignableFarmUsersByGardenId[row.gardenId] = existingUsers;
+        assignableFarmUsersByFarmId[row.farmId] = existingUsers;
+    }
+
+    const assignableFarmUsersByGardenId: Record<
+        number,
+        GardenAssignableFarmUser[]
+    > = {};
+
+    for (const row of gardenFarmRows) {
+        assignableFarmUsersByGardenId[row.gardenId] =
+            assignableFarmUsersByFarmId[row.farmId] ?? [];
     }
 
     return assignableFarmUsersByGardenId;
+}
+
+export async function getUniqueAssignableFarmUsersByGardenIds(
+    gardenIds: number[],
+) {
+    const uniqueGardenIds = Array.from(new Set(gardenIds));
+    if (uniqueGardenIds.length === 0) {
+        return [] as GardenAssignableFarmUser[];
+    }
+
+    const gardenFarmRows = await storage()
+        .select({
+            farmId: gardens.farmId,
+        })
+        .from(gardens)
+        .where(
+            and(
+                inArray(gardens.id, uniqueGardenIds),
+                eq(gardens.isDeleted, false),
+            ),
+        );
+    const farmUserRows = await getAssignableFarmUserRowsByFarmIds(
+        gardenFarmRows.map((row) => row.farmId),
+    );
+
+    return Array.from(
+        new Map(
+            farmUserRows.map((row) => [
+                row.userId,
+                {
+                    id: row.userId,
+                    userName: row.userName,
+                    displayName: row.displayName,
+                    avatarUrl: row.avatarUrl,
+                    farmId: row.farmId,
+                },
+            ]),
+        ).values(),
+    );
 }
 
 export async function getAssignableFarmUsersByRaisedBedFieldIds(
