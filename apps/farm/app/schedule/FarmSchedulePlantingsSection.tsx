@@ -37,10 +37,7 @@ function buildFieldLabel(
     const sort = field.plantSortId
         ? plantSortById.get(field.plantSortId)
         : null;
-    if (!field.plantSortId) {
-        return `${field.positionIndex + 1} - sijanje: ?`;
-    }
-    if (!sort) {
+    if (!field.plantSortId || !sort) {
         return `${field.positionIndex + 1} - sijanje: ? Nepoznato`;
     }
 
@@ -48,8 +45,8 @@ function buildFieldLabel(
         sort.information?.plant?.attributes?.seedingDistance;
     const totalPlants = seedingDistance
         ? calculatePlantsPerField(seedingDistance).totalPlants
-        : '?';
-    return `${field.positionIndex + 1} - sijanje: ${totalPlants} ${sort.information?.name ?? 'Nepoznato'}`;
+        : null;
+    return `${field.positionIndex + 1} - sijanje: ${totalPlants ?? '?'} ${sort.information?.name ?? 'Nepoznato'}`;
 }
 
 export function FarmSchedulePlantingsSection({
