@@ -429,6 +429,9 @@ importers:
       '@gredice/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@gredice/js':
+        specifier: workspace:*
+        version: link:../../packages/js
       '@gredice/storage':
         specifier: workspace:*
         version: link:../../packages/storage

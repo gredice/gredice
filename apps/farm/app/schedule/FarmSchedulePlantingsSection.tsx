@@ -5,7 +5,7 @@ import type {
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
-import { UserAvatar } from '@gredice/ui/users';
+import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -37,10 +37,19 @@ function buildFieldLabel(
     const sort = field.plantSortId
         ? plantSortById.get(field.plantSortId)
         : null;
-    const { totalPlants } = calculatePlantsPerField(
-        sort?.information?.plant?.attributes?.seedingDistance,
-    );
-    return `${field.positionIndex + 1} - sijanje: ${totalPlants}${sort ? ` ${sort.information?.name ?? 'Nepoznato'}` : ''}`;
+    if (!field.plantSortId) {
+        return `${field.positionIndex + 1} - sijanje: ?`;
+    }
+    if (!sort) {
+        return `${field.positionIndex + 1} - sijanje: ? Nepoznato`;
+    }
+
+    const seedingDistance =
+        sort.information?.plant?.attributes?.seedingDistance;
+    const totalPlants = seedingDistance
+        ? calculatePlantsPerField(seedingDistance).totalPlants
+        : '?';
+    return `${field.positionIndex + 1} - sijanje: ${totalPlants} ${sort.information?.name ?? 'Nepoznato'}`;
 }
 
 export function FarmSchedulePlantingsSection({
@@ -128,17 +137,19 @@ export function FarmSchedulePlantingsSection({
                                     const approved = isFieldApproved(
                                         field.plantStatus,
                                     );
-                                    const canComplete =
+                                    const lockedByAssignment =
                                         !completed &&
-                                        (!field.assignedUserId ||
-                                            field.assignedUserId === userId);
+                                        !!field.assignedUserId &&
+                                        field.assignedUserId !== userId;
+                                    const canComplete =
+                                        !completed && !lockedByAssignment;
                                     const assignedUser =
                                         assignedUserByFieldId.get(field.id);
 
                                     return (
                                         <div
                                             key={field.id}
-                                            className={`rounded-lg border bg-white px-3 py-2 ${!canComplete ? 'opacity-70' : ''}`}
+                                            className={`rounded-lg border bg-white px-3 py-2 ${lockedByAssignment ? 'opacity-70' : ''}`}
                                         >
                                             <Row
                                                 spacing={1}
