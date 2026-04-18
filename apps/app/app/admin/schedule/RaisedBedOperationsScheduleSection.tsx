@@ -14,6 +14,7 @@ import { KnownPages } from '../../../src/KnownPages';
 import { AcceptOperationModal } from './AcceptOperationModal';
 import { AssignOperationModal } from './AssignOperationModal';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
+import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
 import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
@@ -146,6 +147,17 @@ export function RaisedBedOperationsScheduleSection({
     const operationsToReschedule = operationsToApprove.map((operation) => ({
         id: operation.id,
     }));
+    const operationsToAssign = dayOperations
+        .filter(
+            (operation) =>
+                !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
+                !isOperationCancelled(operation.status),
+        )
+        .map((operation) => ({
+            id: operation.id,
+            farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
+        }));
 
     const durations = dayOperations.reduce(
         (acc, operation) => {
@@ -181,6 +193,11 @@ export function RaisedBedOperationsScheduleSection({
                     physicalId={physicalId.toString()}
                     fields={[]}
                     operations={operationsToReschedule}
+                />
+                <BulkAssignRaisedBedButton
+                    physicalId={physicalId.toString()}
+                    fields={[]}
+                    operations={operationsToAssign}
                 />
                 <RaisedBedLabel physicalId={physicalId} />
                 <Typography level="body2" className="text-muted-foreground">

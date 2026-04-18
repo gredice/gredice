@@ -15,6 +15,7 @@ import { raisedBedPlanted } from '../../(actions)/raisedBedFieldsActions';
 import { AcceptRaisedBedFieldModal } from './AcceptRaisedBedFieldModal';
 import { AssignRaisedBedFieldModal } from './AssignRaisedBedFieldModal';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
+import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
 import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import { CancelRaisedBedFieldModal } from './CancelRaisedBedFieldModal';
 import { CompletePlantingModal } from './CompletePlantingModal';
@@ -118,6 +119,16 @@ export function RaisedBedPlantingScheduleSection({
         raisedBedId: field.raisedBedId,
         positionIndex: field.positionIndex,
     }));
+    const fieldsToAssign = dayFields
+        .filter(
+            (field) =>
+                !isFieldCompleted(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus),
+        )
+        .map((field) => ({
+            id: field.id,
+            farmUsers: assignableFarmUsersByRaisedBedFieldId[field.id] ?? [],
+        }));
 
     const durations = dayFields.reduce(
         (acc, field) => {
@@ -144,6 +155,11 @@ export function RaisedBedPlantingScheduleSection({
                 <BulkRescheduleRaisedBedButton
                     physicalId={physicalId.toString()}
                     fields={fieldsToReschedule}
+                    operations={[]}
+                />
+                <BulkAssignRaisedBedButton
+                    physicalId={physicalId.toString()}
+                    fields={fieldsToAssign}
                     operations={[]}
                 />
                 <RaisedBedLabel physicalId={physicalId} />
