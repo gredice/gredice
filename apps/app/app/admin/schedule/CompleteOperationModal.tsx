@@ -100,6 +100,7 @@ export function CompleteOperationModal({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
 
     const attachImages = conditions?.completionAttachImages;
     const attachRequired = conditions?.completionAttachImagesRequired;
@@ -113,6 +114,7 @@ export function CompleteOperationModal({
         if (!open) {
             setUploadItems([]);
             if (fileInputRef.current) fileInputRef.current.value = '';
+            if (cameraInputRef.current) cameraInputRef.current.value = '';
         }
     };
 
@@ -128,6 +130,7 @@ export function CompleteOperationModal({
             setErrorMessage(null);
         }
         if (fileInputRef.current) fileInputRef.current.value = '';
+        if (cameraInputRef.current) cameraInputRef.current.value = '';
     };
 
     const updateUploadItem = (
@@ -314,6 +317,22 @@ export function CompleteOperationModal({
                             className="hidden"
                             onChange={handleFileChange}
                         />
+                        <input
+                            ref={cameraInputRef}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={handleFileChange}
+                        />
+                        <Button
+                            variant="outlined"
+                            type="button"
+                            onClick={() => cameraInputRef.current?.click()}
+                            disabled={isSubmitting}
+                        >
+                            Uslikaj fotografiju
+                        </Button>
                         <Button
                             variant="outlined"
                             type="button"
