@@ -33,6 +33,7 @@ export function FarmScheduleDay({
                 <FarmSchedulePlantingsSectionContent
                     dayDataPromise={dayDataPromise}
                     plantSortsPromise={plantSortsPromise}
+                    userId={userId}
                 />
             </Suspense>
             <Suspense fallback={<FarmScheduleSectionSkeleton />}>
