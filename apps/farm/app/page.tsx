@@ -135,6 +135,23 @@ async function FarmerDashboard() {
                                 Pregled dnevnih zadataka
                             </Button>
                             <Button
+                                variant="outlined"
+                                size="lg"
+                                className="justify-start"
+                                startDecorator={<Fence className="size-4" />}
+                                href="/raised-beds"
+                            >
+                                Pregled svih gredica
+                            </Button>
+                            <Button
+                                variant="soft"
+                                size="lg"
+                                className="justify-start"
+                                href="/operations"
+                            >
+                                Priručnik operacija
+                            </Button>
+                            <Button
                                 variant="soft"
                                 size="lg"
                                 className="justify-start"
