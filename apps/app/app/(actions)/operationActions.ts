@@ -235,6 +235,11 @@ export async function acceptOperationAction(operationId: number) {
     if (!operation) {
         throw new Error(`Operation with ID ${operationId} not found.`);
     }
+    if (!operation.assignedUserId) {
+        throw new Error(
+            'Radnja ne može biti potvrđena prije nego što korisnik bude dodijeljen.',
+        );
+    }
     await acceptOperation(operationId);
     await notifyOperationUpdate(operationId, 'approved');
     revalidatePath(KnownPages.Schedule);

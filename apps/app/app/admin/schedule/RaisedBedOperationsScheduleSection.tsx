@@ -131,7 +131,8 @@ export function RaisedBedOperationsScheduleSection({
             (operation) =>
                 !operation.isAccepted &&
                 !isOperationCompleted(operation.status) &&
-                !isOperationCancelled(operation.status),
+                !isOperationCancelled(operation.status) &&
+                !!operation.assignedUserId,
         )
         .map((operation) => {
             const operationData = operationDataById.get(operation.entityId);
@@ -144,9 +145,16 @@ export function RaisedBedOperationsScheduleSection({
                 label,
             };
         });
-    const operationsToReschedule = operationsToApprove.map((operation) => ({
-        id: operation.id,
-    }));
+    const operationsToReschedule = dayOperations
+        .filter(
+            (operation) =>
+                !operation.isAccepted &&
+                !isOperationCompleted(operation.status) &&
+                !isOperationCancelled(operation.status),
+        )
+        .map((operation) => ({
+            id: operation.id,
+        }));
     const operationsToAssign = dayOperations
         .filter(
             (operation) =>
@@ -308,6 +316,7 @@ export function RaisedBedOperationsScheduleSection({
                                         <AcceptOperationModal
                                             operationId={operation.id}
                                             label={operationLabel}
+                                            disabled={!operation.assignedUserId}
                                         />
                                     )}
                                     <a
