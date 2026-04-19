@@ -116,7 +116,7 @@ export function AssignOperationModal({
             <UserAvatar
                 avatarUrl={assignedUser.avatarUrl}
                 displayName={assignedUser.displayName ?? assignedUser.userName}
-                className="size-7"
+                className="size-7 rounded-full"
             />
         </button>
     ) : (

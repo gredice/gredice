@@ -128,7 +128,7 @@ export function AssignRaisedBedFieldModal({
             <UserAvatar
                 avatarUrl={selectedUser.avatarUrl}
                 displayName={selectedUser.displayName ?? selectedUser.userName}
-                className="size-7"
+                className="size-7 rounded-full"
             />
         </button>
     ) : (
