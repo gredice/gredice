@@ -77,82 +77,116 @@ export async function createOperationAction(formData: FormData) {
     return { success: true };
 }
 
-export async function bulkCreateOperationsAction(formData: FormData) {
-    const { userId } = await auth(['admin']);
-    const entityId = formData.get('entityId')
-        ? Number(formData.get('entityId'))
-        : undefined;
-    if (!entityId) {
-        throw new Error('Entity ID is required');
-    }
-    const scheduledDate = formData.get('scheduledDate')
-        ? new Date(formData.get('scheduledDate') as string)
-        : undefined;
-    const selectedAssignedUserId =
-        (formData.get('assignedUserId') as string | null)?.trim() || undefined;
-    const targets = formData.getAll('targets') as string[];
+export type BulkCreateOperationsActionState = {
+    success: boolean;
+    message: string;
+    createdCount?: number;
+    totalCount?: number;
+};
 
-    if (selectedAssignedUserId) {
-        const uniqueGardenIds = Array.from(
-            new Set(
-                targets
-                    .map((target) => target.split('|')[1])
-                    .filter((gardenId) => gardenId)
-                    .map((gardenId) => Number(gardenId))
-                    .filter((gardenId) => !Number.isNaN(gardenId)),
-            ),
-        );
-        const assignableFarmUsersByGardenId =
-            await getAssignableFarmUsersByGardenIds(uniqueGardenIds);
-        for (const gardenId of uniqueGardenIds) {
-            const isUserAssignableToGarden =
-                assignableFarmUsersByGardenId[gardenId]?.some(
-                    (user) => user.id === selectedAssignedUserId,
-                ) ?? false;
-            if (!isUserAssignableToGarden) {
-                throw new Error(
-                    'Odabrani korisnik nije dostupan za sve odabrane radnje.',
-                );
+export async function bulkCreateOperationsAction(
+    _previousState: BulkCreateOperationsActionState | null,
+    formData: FormData,
+): Promise<BulkCreateOperationsActionState> {
+    try {
+        const { userId } = await auth(['admin']);
+        const entityId = formData.get('entityId')
+            ? Number(formData.get('entityId'))
+            : undefined;
+        if (!entityId) {
+            throw new Error('Entity ID is required');
+        }
+        const scheduledDate = formData.get('scheduledDate')
+            ? new Date(formData.get('scheduledDate') as string)
+            : undefined;
+        const selectedAssignedUserId =
+            (formData.get('assignedUserId') as string | null)?.trim() ||
+            undefined;
+        const targets = formData.getAll('targets') as string[];
+        if (targets.length === 0) {
+            throw new Error('Odaberite barem jednu ciljnu lokaciju.');
+        }
+
+        if (selectedAssignedUserId) {
+            const uniqueGardenIds = Array.from(
+                new Set(
+                    targets
+                        .map((target) => target.split('|')[1])
+                        .filter((gardenId) => gardenId)
+                        .map((gardenId) => Number(gardenId))
+                        .filter((gardenId) => !Number.isNaN(gardenId)),
+                ),
+            );
+            const assignableFarmUsersByGardenId =
+                await getAssignableFarmUsersByGardenIds(uniqueGardenIds);
+            for (const gardenId of uniqueGardenIds) {
+                const isUserAssignableToGarden =
+                    assignableFarmUsersByGardenId[gardenId]?.some(
+                        (user) => user.id === selectedAssignedUserId,
+                    ) ?? false;
+                if (!isUserAssignableToGarden) {
+                    throw new Error(
+                        'Odabrani korisnik nije dostupan za sve odabrane radnje.',
+                    );
+                }
             }
         }
-    }
 
-    for (const target of targets) {
-        const [accountId, gardenId, raisedBedId, raisedBedFieldId] =
-            target.split('|');
-        const operation: InsertOperation = {
-            entityId,
-            entityTypeName: 'operation',
-            accountId: accountId || undefined,
-            gardenId: gardenId ? Number(gardenId) : undefined,
-            raisedBedId: raisedBedId ? Number(raisedBedId) : undefined,
-            raisedBedFieldId: raisedBedFieldId
-                ? Number(raisedBedFieldId)
-                : undefined,
-            timestamp: undefined,
-        };
-        const operationId = await createOperation(operation);
-        if (scheduledDate) {
-            await createEvent(
-                knownEvents.operations.scheduledV1(operationId.toString(), {
+        let createdCount = 0;
+        for (const target of targets) {
+            const [accountId, gardenId, raisedBedId, raisedBedFieldId] =
+                target.split('|');
+            const operation: InsertOperation = {
+                entityId,
+                entityTypeName: 'operation',
+                accountId: accountId || undefined,
+                gardenId: gardenId ? Number(gardenId) : undefined,
+                raisedBedId: raisedBedId ? Number(raisedBedId) : undefined,
+                raisedBedFieldId: raisedBedFieldId
+                    ? Number(raisedBedFieldId)
+                    : undefined,
+                timestamp: undefined,
+            };
+            const operationId = await createOperation(operation);
+            if (scheduledDate) {
+                await createEvent(
+                    knownEvents.operations.scheduledV1(operationId.toString(), {
+                        scheduledDate: scheduledDate.toISOString(),
+                    }),
+                );
+                await notifyOperationUpdate(operationId, 'scheduled', {
                     scheduledDate: scheduledDate.toISOString(),
-                }),
-            );
-            await notifyOperationUpdate(operationId, 'scheduled', {
-                scheduledDate: scheduledDate.toISOString(),
-            });
+                });
+            }
+            if (selectedAssignedUserId) {
+                await createEvent(
+                    knownEvents.operations.assignedV1(operationId.toString(), {
+                        assignedUserId: selectedAssignedUserId,
+                        assignedBy: userId,
+                    }),
+                );
+            }
+            createdCount += 1;
         }
-        if (selectedAssignedUserId) {
-            await createEvent(
-                knownEvents.operations.assignedV1(operationId.toString(), {
-                    assignedUserId: selectedAssignedUserId,
-                    assignedBy: userId,
-                }),
-            );
-        }
+
+        revalidatePath(KnownPages.Schedule);
+        revalidatePath(KnownPages.Operations);
+
+        return {
+            success: true,
+            message: `Uspješno kreirano ${createdCount} radnji.`,
+            createdCount,
+            totalCount: targets.length,
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Došlo je do greške pri kreiranju radnji.',
+        };
     }
-    revalidatePath(KnownPages.Schedule);
-    revalidatePath(KnownPages.Operations);
 }
 
 export async function rescheduleOperationAction(formData: FormData) {
