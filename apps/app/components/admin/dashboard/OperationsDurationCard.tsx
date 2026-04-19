@@ -21,6 +21,12 @@ export type OperationsDurationData = {
     totalMinutes: number;
     operationsMinutes: number;
     sowingMinutes: number;
+    byUser: {
+        userId: string;
+        userName: string;
+        operationsMinutes: number;
+        operationsCount: number;
+    }[];
     daily: OperationsDurationPoint[];
 };
 
@@ -267,6 +273,38 @@ export function OperationsDurationCard({
                             </div>
                         </>
                     )}
+                    {data.byUser.length > 0 ? (
+                        <Stack spacing={1.5} className="pt-2">
+                            <Typography level="body3" className="font-medium">
+                                Po korisniku (dodijeljene radnje)
+                            </Typography>
+                            <Stack spacing={1}>
+                                {data.byUser.map((user) => (
+                                    <Row
+                                        key={user.userId}
+                                        className="items-center justify-between gap-3 rounded-md border border-border/40 px-2 py-1.5"
+                                    >
+                                        <Stack spacing={0}>
+                                            <Typography level="body3" semiBold>
+                                                {user.userName}
+                                            </Typography>
+                                            <Typography
+                                                level="body3"
+                                                className="text-muted-foreground"
+                                            >
+                                                Radnji: {user.operationsCount}
+                                            </Typography>
+                                        </Stack>
+                                        <Typography level="body3" semiBold>
+                                            {formatTooltipDuration(
+                                                user.operationsMinutes,
+                                            )}
+                                        </Typography>
+                                    </Row>
+                                ))}
+                            </Stack>
+                        </Stack>
+                    ) : null}
                 </Stack>
             </CardOverflow>
         </Card>
