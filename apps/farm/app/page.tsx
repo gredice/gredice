@@ -63,6 +63,7 @@ function formatCoordinate(value?: number | null) {
 async function FarmerDashboard() {
     const { userId } = await auth(['farmer', 'admin']);
     const [dbUser, farms] = await Promise.all([getUser(userId), getFarms()]);
+    const showDebugTools = process.env.NODE_ENV === 'development';
 
     if (!dbUser) {
         return (
@@ -134,6 +135,16 @@ async function FarmerDashboard() {
                             >
                                 Pregled dnevnih zadataka
                             </Button>
+                            {showDebugTools && (
+                                <Button
+                                    variant="outlined"
+                                    size="lg"
+                                    className="justify-start"
+                                    href="/debug/labels"
+                                >
+                                    Debug etiketa
+                                </Button>
+                            )}
                         </Stack>
                     </CardOverflow>
                 </Card>

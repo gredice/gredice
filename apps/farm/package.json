@@ -37,6 +37,7 @@
     "devDependencies": {
         "@biomejs/biome": "2.4.12",
         "@gredice/client": "workspace:*",
+        "@gredice/label-printer": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/ui": "workspace:*",
         "@mdxeditor/editor": "3.54.1",

@@ -1,0 +1,24 @@
+{
+	"name": "@gredice/label-printer",
+	"version": "0.0.0",
+	"private": true,
+	"sideEffects": false,
+	"type": "module",
+	"license": "MIT",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
+		"lint": "biome check --write",
+		"lint:migrate": "biome migrate --write"
+	},
+	"dependencies": {
+		"@mmote/niimbluelib": "0.0.1-alpha.39"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.12",
+		"@types/node": "24.12.2",
+		"typescript": "6.0.3"
+	}
+}
