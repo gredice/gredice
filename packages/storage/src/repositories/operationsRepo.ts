@@ -36,6 +36,31 @@ export type OperationAssignedUser = {
     avatarUrl: string | null;
 };
 
+function normalizeAssignedUserIds(
+    assignedUserIds: string[] | undefined,
+    assignedUserId: string | null | undefined,
+) {
+    if (Array.isArray(assignedUserIds)) {
+        const uniqueAssignedUserIds = Array.from(
+            new Set(
+                assignedUserIds.filter(
+                    (value): value is string =>
+                        typeof value === 'string' && value.length > 0,
+                ),
+            ),
+        );
+        if (uniqueAssignedUserIds.length > 0) {
+            return uniqueAssignedUserIds;
+        }
+    }
+
+    if (typeof assignedUserId === 'string' && assignedUserId.length > 0) {
+        return [assignedUserId];
+    }
+
+    return [] as string[];
+}
+
 export type OperationAssignableFarmUser = OperationAssignedUser & {
     farmId: number;
 };
@@ -60,6 +85,11 @@ function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
     }
     if (typeof record.assignedBy === 'string') {
         data.assignedBy = record.assignedBy;
+    }
+    if (Array.isArray(record.assignedUserIds)) {
+        data.assignedUserIds = record.assignedUserIds.filter(
+            (value): value is string => typeof value === 'string',
+        );
     }
     if (Array.isArray(record.images)) {
         data.images = record.images.filter(
@@ -111,6 +141,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
 
         let status = 'new';
         let assignedUserId: string | null | undefined;
+        let assignedUserIds: string[] | undefined;
         let assignedBy: string | undefined;
         let assignedAt: Date | undefined;
         let scheduledDate: Date | undefined;
@@ -134,6 +165,13 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             if (event.type === knownEventTypes.operations.assign) {
                 if ('assignedUserId' in data) {
                     assignedUserId = data.assignedUserId ?? null;
+                    assignedAt = event.createdAt;
+                }
+                if (Array.isArray(data.assignedUserIds)) {
+                    assignedUserIds = normalizeAssignedUserIds(
+                        data.assignedUserIds,
+                        data.assignedUserId,
+                    );
                     assignedAt = event.createdAt;
                 }
                 assignedBy = asString(data?.assignedBy) ?? assignedBy;
@@ -170,6 +208,10 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         return {
             ...op,
             status,
+            assignedUserIds: normalizeAssignedUserIds(
+                assignedUserIds,
+                assignedUserId,
+            ),
             assignedUserId: assignedUserId ?? null,
             assignedBy,
             assignedAt,
@@ -189,13 +231,9 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
 
     const assignedUserIds = Array.from(
         new Set(
-            operationsWithAggregates
-                .map((operation) => operation.assignedUserId)
-                .filter(
-                    (assignedUserId): assignedUserId is string =>
-                        typeof assignedUserId === 'string' &&
-                        assignedUserId.length > 0,
-                ),
+            operationsWithAggregates.flatMap((operation) =>
+                operation.assignedUserIds ?? [],
+            ),
         ),
     );
 
@@ -217,10 +255,17 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
 
     return operationsWithAggregates.map((operation) => ({
         ...operation,
+        assignedUsers: (operation.assignedUserIds ?? [])
+            .map((assignedUserId) => assignedUsersById.get(assignedUserId))
+            .filter(
+                (assignedUser): assignedUser is OperationAssignedUser =>
+                    Boolean(assignedUser),
+            ),
         assignedUser:
-            operation.assignedUserId &&
-            assignedUsersById.has(operation.assignedUserId)
-                ? (assignedUsersById.get(operation.assignedUserId) ?? null)
+            operation.assignedUserIds &&
+            operation.assignedUserIds.length > 0 &&
+            assignedUsersById.has(operation.assignedUserIds[0])
+                ? (assignedUsersById.get(operation.assignedUserIds[0]) ?? null)
                 : null,
     }));
 }

@@ -372,7 +372,7 @@ export function RaisedBedOperationsScheduleSection({
                                                 operation.id
                                             ] ?? []
                                         }
-                                        assignedUser={operation.assignedUser}
+                                        assignedUsers={operation.assignedUsers}
                                         disabled={operationLocked}
                                     />
                                     <RescheduleOperationModal

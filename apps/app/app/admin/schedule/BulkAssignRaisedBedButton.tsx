@@ -116,16 +116,16 @@ export function BulkAssignRaisedBedButton({
 
         setIsSubmitting(true);
         setErrorMessage(null);
-        const assignedUserId =
-            selectedUserId === unassignedValue ? null : selectedUserId;
+        const assignedUserIds =
+            selectedUserId === unassignedValue ? [] : [selectedUserId];
 
         try {
             await Promise.all([
                 ...fields.map((field) =>
-                    assignRaisedBedFieldUserAction(field.id, assignedUserId),
+                    assignRaisedBedFieldUserAction(field.id, assignedUserIds),
                 ),
                 ...operations.map((operation) =>
-                    assignOperationUserAction(operation.id, assignedUserId),
+                    assignOperationUserAction(operation.id, assignedUserIds),
                 ),
             ]);
             setOpen(false);

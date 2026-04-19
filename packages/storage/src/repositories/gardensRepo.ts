@@ -76,6 +76,7 @@ export type RaisedBedFieldPlantCycle = {
     stoppedDate?: Date;
     toBeRemoved: boolean;
     assignedUserId?: string | null;
+    assignedUserIds?: string[];
     assignedBy?: string | null;
     assignedAt?: Date;
 };
@@ -101,6 +102,31 @@ type FarmAssignableUserRow = {
     displayName: string | null;
     avatarUrl: string | null;
 };
+
+function normalizeAssignedUserIds(
+    assignedUserIds: string[] | undefined,
+    assignedUserId: string | null | undefined,
+) {
+    if (Array.isArray(assignedUserIds)) {
+        const uniqueAssignedUserIds = Array.from(
+            new Set(
+                assignedUserIds.filter(
+                    (value): value is string =>
+                        typeof value === 'string' && value.length > 0,
+                ),
+            ),
+        );
+        if (uniqueAssignedUserIds.length > 0) {
+            return uniqueAssignedUserIds;
+        }
+    }
+
+    if (typeof assignedUserId === 'string' && assignedUserId.length > 0) {
+        return [assignedUserId];
+    }
+
+    return [] as string[];
+}
 
 async function getAssignableFarmUserRowsByFarmIds(farmIds: number[]) {
     const uniqueFarmIds = Array.from(new Set(farmIds));
@@ -617,6 +643,7 @@ function summarizePlantCycle(
     let toBeRemoved = false;
     let stoppedDate: Date | undefined;
     let assignedUserId: string | null | undefined;
+    let assignedUserIds: string[] | undefined;
     let assignedBy: string | null | undefined;
     let assignedAt: Date | undefined;
 
@@ -653,6 +680,7 @@ function summarizePlantCycle(
             plantHarvestedDate = undefined;
             plantRemovedDate = undefined;
             assignedUserId = undefined;
+            assignedUserIds = undefined;
             assignedBy = undefined;
             assignedAt = undefined;
             continue;
@@ -697,12 +725,28 @@ function summarizePlantCycle(
                 data?.assignedUserId === null
             ) {
                 assignedUserId = data.assignedUserId;
+                assignedUserIds = undefined;
                 if (data.assignedUserId === null) {
                     assignedBy = null;
                     assignedAt = undefined;
                 } else {
                     assignedAt = plantCycleEvent.createdAt;
                 }
+            }
+            if (Array.isArray(data?.assignedUserIds)) {
+                const eventAssignedUserId =
+                    typeof data?.assignedUserId === 'string' ||
+                    data?.assignedUserId === null
+                        ? data.assignedUserId
+                        : undefined;
+                assignedUserIds = normalizeAssignedUserIds(
+                    data.assignedUserIds.filter(
+                        (value): value is string => typeof value === 'string',
+                    ),
+                    eventAssignedUserId,
+                );
+                assignedUserId = assignedUserIds[0] ?? null;
+                assignedAt = plantCycleEvent.createdAt;
             }
             if (typeof data?.assignedBy === 'string') {
                 assignedBy = data.assignedBy;
@@ -759,6 +803,10 @@ function summarizePlantCycle(
         plantRemovedDate,
         stoppedDate,
         toBeRemoved,
+        assignedUserIds: normalizeAssignedUserIds(
+            assignedUserIds,
+            assignedUserId,
+        ),
         assignedUserId,
         assignedBy,
         assignedAt,
@@ -1352,6 +1400,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         let toBeRemoved = false;
         let stoppedDate: Date | undefined;
         let assignedUserId: string | null | undefined;
+        let assignedUserIds: string[] | undefined;
         let assignedBy: string | null | undefined;
         let assignedAt: Date | undefined;
 
@@ -1374,6 +1423,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 plantHarvestedDate = undefined;
                 plantRemovedDate = undefined;
                 assignedUserId = undefined;
+                assignedUserIds = undefined;
                 assignedBy = undefined;
                 assignedAt = undefined;
 
@@ -1434,12 +1484,29 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     data?.assignedUserId === null
                 ) {
                     assignedUserId = data.assignedUserId;
+                    assignedUserIds = undefined;
                     if (data.assignedUserId === null) {
                         assignedBy = null;
                         assignedAt = undefined;
                     } else {
                         assignedAt = event.createdAt;
                     }
+                }
+                if (Array.isArray(data?.assignedUserIds)) {
+                    const eventAssignedUserId =
+                        typeof data?.assignedUserId === 'string' ||
+                        data?.assignedUserId === null
+                            ? data.assignedUserId
+                            : undefined;
+                    assignedUserIds = normalizeAssignedUserIds(
+                        data.assignedUserIds.filter(
+                            (value): value is string =>
+                                typeof value === 'string',
+                        ),
+                        eventAssignedUserId,
+                    );
+                    assignedUserId = assignedUserIds[0] ?? null;
+                    assignedAt = event.createdAt;
                 }
                 if (typeof data?.assignedBy === 'string') {
                     assignedBy = data.assignedBy;
@@ -1504,6 +1571,10 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             active,
             toBeRemoved,
             stoppedDate,
+            assignedUserIds: normalizeAssignedUserIds(
+                assignedUserIds,
+                assignedUserId,
+            ),
             assignedUserId,
             assignedBy,
             assignedAt,
