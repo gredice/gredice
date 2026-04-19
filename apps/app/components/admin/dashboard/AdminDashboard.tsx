@@ -1,4 +1,10 @@
+import { getEntityTypes, getSetting, SettingsKeys } from '@gredice/storage';
 import { auth } from '../../../lib/auth/auth';
+import {
+    buildDashboardQuickActionOptions,
+    getDashboardQuickActionsFromConfig,
+    getDefaultDashboardQuickActions,
+} from '../../../src/dashboardQuickActions';
 import { AdminDashboardClient } from './AdminDashboardClient';
 import { getAnalyticsData } from './actions';
 
@@ -11,11 +17,36 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
     const params = await searchParams;
     const selectedPeriod = params?.period || '7';
 
-    const data = await getAnalyticsData(
-        selectedPeriod === 'custom' ? undefined : Number(selectedPeriod),
-        params?.from,
-        params?.to,
+    const [data, entityTypes, dashboardQuickActionsSetting] = await Promise.all(
+        [
+            getAnalyticsData(
+                selectedPeriod === 'custom'
+                    ? undefined
+                    : Number(selectedPeriod),
+                params?.from,
+                params?.to,
+            ),
+            getEntityTypes(),
+            getSetting(SettingsKeys.DashboardQuickActions),
+        ],
     );
+
+    const quickActionOptions = buildDashboardQuickActionOptions(
+        entityTypes.map((entityType) => ({
+            name: entityType.name,
+            label: entityType.label,
+        })),
+    );
+
+    const configuredQuickActions = getDashboardQuickActionsFromConfig(
+        dashboardQuickActionsSetting?.value,
+        quickActionOptions,
+    );
+
+    const quickActions =
+        configuredQuickActions.length > 0
+            ? configuredQuickActions
+            : getDefaultDashboardQuickActions(quickActionOptions);
 
     return (
         <AdminDashboardClient
@@ -24,6 +55,7 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
             initialOperationsDurationData={data.operationsDuration}
             initialWeekdayRegistrations={data.weekdayRegistrations}
             initialAiData={data.ai}
+            initialQuickActions={quickActions}
             initialPeriod={selectedPeriod}
             initialFrom={params?.from}
             initialTo={params?.to}

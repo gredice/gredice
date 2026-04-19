@@ -1,6 +1,6 @@
 {
-  "id": "87ba4425-c201-4be0-af5a-124149b6c965",
-  "prevId": "2702ad13-1767-4cd1-ab29-3800aa529585",
+  "id": "d12fceb0-9e7d-4c07-a70e-735cf7898f67",
+  "prevId": "87ba4425-c201-4be0-af5a-124149b6c965",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -4872,6 +4872,45 @@
           "onUpdate": "no action"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.settings": {
+      "name": "settings",
+      "schema": "",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},

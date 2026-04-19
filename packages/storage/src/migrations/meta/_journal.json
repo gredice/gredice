@@ -134,6 +134,13 @@
       "when": 1775001600000,
       "tag": "0018_backfill_operation_verify_events",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1776621478472,
+      "tag": "0019_black_green_goblin",
+      "breakpoints": true
     }
   ]
 }

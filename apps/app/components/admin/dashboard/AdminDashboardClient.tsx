@@ -1,8 +1,6 @@
 'use client';
 
 import type { getAnalyticsTotals } from '@gredice/storage';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
-import { Calendar } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -11,6 +9,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
+import type { DashboardQuickActionOption } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { FactCard } from '../cards/FactCard';
 import { DashboardDivider } from './DashboardDivider';
@@ -45,6 +44,7 @@ type AiData = {
 export function AdminDashboardClient({
     initialAnalyticsData,
     initialEntitiesData,
+    initialQuickActions,
     initialPeriod = '7',
     initialOperationsDurationData,
     initialWeekdayRegistrations,
@@ -53,6 +53,7 @@ export function AdminDashboardClient({
     initialTo,
 }: {
     initialAnalyticsData: Awaited<ReturnType<typeof getAnalyticsTotals>>;
+    initialQuickActions: DashboardQuickActionOption[];
     initialEntitiesData: EntityData[];
     initialPeriod?: string;
     initialOperationsDurationData: OperationsDurationData;
@@ -163,30 +164,18 @@ export function AdminDashboardClient({
 
     return (
         <Stack spacing={2}>
-            <Row spacing={1}>
-                <Button
-                    variant="outlined"
-                    className="rounded-full"
-                    size="sm"
-                    startDecorator={<Calendar className="size-4 shrink-0" />}
-                    href={KnownPages.Schedule}
-                >
-                    Raspored
-                </Button>
-                <Button
-                    variant="outlined"
-                    size="sm"
-                    className="rounded-full"
-                    startDecorator={
-                        <RaisedBedIcon
-                            className="size-4 shrink-0"
-                            physicalId={null}
-                        />
-                    }
-                    href={KnownPages.RaisedBeds}
-                >
-                    Gredice
-                </Button>
+            <Row spacing={1} className="flex-wrap">
+                {initialQuickActions.map((quickAction) => (
+                    <Button
+                        key={quickAction.id}
+                        variant="outlined"
+                        className="rounded-full"
+                        size="sm"
+                        href={quickAction.href}
+                    >
+                        {quickAction.label}
+                    </Button>
+                ))}
             </Row>
             <Stack spacing={1}>
                 <Row justifyContent="space-between">
