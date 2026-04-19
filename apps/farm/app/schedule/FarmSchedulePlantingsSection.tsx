@@ -1,6 +1,11 @@
-import type { EntityStandardized } from '@gredice/storage';
+import { calculatePlantsPerField } from '@gredice/js/plants';
+import type {
+    EntityStandardized,
+    RaisedBedFieldAssignableFarmUser,
+} from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
+import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -21,6 +26,8 @@ interface FarmSchedulePlantingsSectionProps {
     raisedBeds: FarmScheduleDayData['raisedBeds'];
     scheduledFields: FarmScheduleDayData['scheduledFields'];
     plantSorts: EntityStandardized[] | null | undefined;
+    userId: string;
+    assignedUserByFieldId: Map<number, RaisedBedFieldAssignableFarmUser>;
 }
 
 function buildFieldLabel(
@@ -30,13 +37,24 @@ function buildFieldLabel(
     const sort = field.plantSortId
         ? plantSortById.get(field.plantSortId)
         : null;
-    return `${field.positionIndex + 1} - sijanje${sort ? `: ${sort.information?.name ?? 'Nepoznato'}` : ''}`;
+    if (!field.plantSortId || !sort) {
+        return `${field.positionIndex + 1} - sijanje: ? Nepoznato`;
+    }
+
+    const seedingDistance =
+        sort.information?.plant?.attributes?.seedingDistance;
+    const totalPlants = seedingDistance
+        ? calculatePlantsPerField(seedingDistance).totalPlants
+        : null;
+    return `${field.positionIndex + 1} - sijanje: ${totalPlants ?? '?'} ${sort.information?.name ?? 'Nepoznato'}`;
 }
 
 export function FarmSchedulePlantingsSection({
     raisedBeds,
     scheduledFields,
     plantSorts,
+    userId,
+    assignedUserByFieldId,
 }: FarmSchedulePlantingsSectionProps) {
     if (scheduledFields.length === 0) {
         return null;
@@ -116,11 +134,19 @@ export function FarmSchedulePlantingsSection({
                                     const approved = isFieldApproved(
                                         field.plantStatus,
                                     );
+                                    const lockedByAssignment =
+                                        !completed &&
+                                        !!field.assignedUserId &&
+                                        field.assignedUserId !== userId;
+                                    const canComplete =
+                                        !completed && !lockedByAssignment;
+                                    const assignedUser =
+                                        assignedUserByFieldId.get(field.id);
 
                                     return (
                                         <div
                                             key={field.id}
-                                            className="rounded-lg border bg-white px-3 py-2"
+                                            className={`rounded-lg border bg-white px-3 py-2 ${lockedByAssignment ? 'opacity-70' : ''}`}
                                         >
                                             <Row
                                                 spacing={1}
@@ -136,7 +162,7 @@ export function FarmSchedulePlantingsSection({
                                                             checked
                                                             disabled
                                                         />
-                                                    ) : (
+                                                    ) : canComplete ? (
                                                         <CompletePlantingModal
                                                             label={field.label}
                                                             raisedBedId={
@@ -146,6 +172,13 @@ export function FarmSchedulePlantingsSection({
                                                                 field.positionIndex
                                                             }
                                                         />
+                                                    ) : (
+                                                        <div title="Sijanje je dodijeljeno drugom korisniku.">
+                                                            <Checkbox
+                                                                className="size-5"
+                                                                disabled
+                                                            />
+                                                        </div>
                                                     )}
                                                     <Stack
                                                         spacing={0.5}
@@ -211,6 +244,23 @@ export function FarmSchedulePlantingsSection({
                                                         </Row>
                                                     </Stack>
                                                 </Row>
+                                                {assignedUser && (
+                                                    <div
+                                                        className="shrink-0"
+                                                        title={`Dodijeljeno: ${assignedUser.displayName ?? assignedUser.userName}`}
+                                                    >
+                                                        <UserAvatar
+                                                            avatarUrl={
+                                                                assignedUser.avatarUrl
+                                                            }
+                                                            displayName={
+                                                                assignedUser.displayName ??
+                                                                assignedUser.userName
+                                                            }
+                                                            className="size-7"
+                                                        />
+                                                    </div>
+                                                )}
                                             </Row>
                                         </div>
                                     );
