@@ -6,7 +6,6 @@ import {
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { OperationsTable } from '../../../components/operations/OperationsTable';
 import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
@@ -43,9 +42,6 @@ export default async function OperationsPage({
     return (
         <Stack spacing={2}>
             <Row justifyContent="space-between">
-                <Typography level="h1" className="text-2xl" semiBold>
-                    Radnje
-                </Typography>
                 <BulkOperationCreateModal
                     gardens={gardens}
                     raisedBeds={raisedBeds}

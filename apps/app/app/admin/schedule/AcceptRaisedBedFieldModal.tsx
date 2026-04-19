@@ -10,12 +10,14 @@ interface AcceptRaisedBedFieldModalProps {
     raisedBedId: number;
     positionIndex: number;
     label: string;
+    disabled?: boolean;
 }
 
 export function AcceptRaisedBedFieldModal({
     raisedBedId,
     positionIndex,
     label,
+    disabled = false,
 }: AcceptRaisedBedFieldModalProps) {
     const [loading, setLoading] = useState(false);
     const handleConfirm = async () => {
@@ -38,6 +40,7 @@ export function AcceptRaisedBedFieldModal({
                     variant="plain"
                     title="Potvrdi sijanje"
                     loading={loading}
+                    disabled={disabled}
                 >
                     <Check className="size-4 shrink-0" />
                 </IconButton>

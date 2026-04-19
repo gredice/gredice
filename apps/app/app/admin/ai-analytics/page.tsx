@@ -45,9 +45,6 @@ export default async function AiAnalyticsPage() {
     return (
         <Stack spacing={2}>
             <Row spacing={1}>
-                <Typography level="h1" className="text-2xl" semiBold>
-                    AI analitika
-                </Typography>
                 <Chip color="primary">{events.length}</Chip>
             </Row>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

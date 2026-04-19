@@ -96,7 +96,8 @@ export function RaisedBedPlantingScheduleSection({
             (field) =>
                 !isFieldApproved(field.plantStatus) &&
                 !isFieldPendingVerification(field.plantStatus) &&
-                !isFieldCompleted(field.plantStatus),
+                !isFieldCompleted(field.plantStatus) &&
+                !!field.assignedUserId,
         )
         .map((field) => {
             const sortData = plantSorts?.find(
@@ -115,10 +116,17 @@ export function RaisedBedPlantingScheduleSection({
                 label: `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`,
             };
         });
-    const fieldsToReschedule = fieldsToApprove.map((field) => ({
-        raisedBedId: field.raisedBedId,
-        positionIndex: field.positionIndex,
-    }));
+    const fieldsToReschedule = dayFields
+        .filter(
+            (field) =>
+                !isFieldApproved(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus) &&
+                !isFieldCompleted(field.plantStatus),
+        )
+        .map((field) => ({
+            raisedBedId: field.raisedBedId,
+            positionIndex: field.positionIndex,
+        }));
     const fieldsToAssign = dayFields
         .filter(
             (field) =>
@@ -250,6 +258,7 @@ export function RaisedBedPlantingScheduleSection({
                                             raisedBedId={field.raisedBedId}
                                             positionIndex={field.positionIndex}
                                             label={fieldLabel}
+                                            disabled={!field.assignedUserId}
                                         />
                                     ) : (
                                         <CompletePlantingModal

@@ -311,6 +311,21 @@ export async function acceptRaisedBedFieldAction(
     positionIndex: number,
 ) {
     await auth(['admin']);
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (!raisedBed) {
+        throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
+    }
+    const field = raisedBed.fields.find(
+        (item) => item.positionIndex === positionIndex && item.active,
+    );
+    if (!field) {
+        throw new Error('Polje za sijanje nije pronađeno.');
+    }
+    if (!field.assignedUserId) {
+        throw new Error(
+            'Sijanje ne može biti potvrđeno prije nego što korisnik bude dodijeljen.',
+        );
+    }
     await raisedBedFieldUpdatePlant({
         raisedBedId,
         positionIndex,

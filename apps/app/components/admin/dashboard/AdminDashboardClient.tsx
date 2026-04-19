@@ -331,9 +331,11 @@ export function AdminDashboardClient({
             </Stack>
             <Stack spacing={1}>
                 <DashboardDivider>Registracije</DashboardDivider>
-                <UsersRegistrationWeekdayCard
-                    data={initialWeekdayRegistrations}
-                />
+                <div className="w-full lg:max-w-2xl">
+                    <UsersRegistrationWeekdayCard
+                        data={initialWeekdayRegistrations}
+                    />
+                </div>
             </Stack>
             <Stack spacing={1}>
                 <DashboardDivider>Radnje</DashboardDivider>
