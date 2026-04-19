@@ -43,14 +43,13 @@ function formatDate(value?: Date | string | null) {
 
 function resolvePlantName(
     plantSortId: number | null | undefined,
-    sorts: EntityStandardized[] | null | undefined,
+    plantSortNamesById: Map<number, string>,
 ) {
     if (!plantSortId) {
         return 'Prazno';
     }
 
-    const name = sorts?.find((sort) => sort.id === plantSortId)?.attributes
-        ?.information?.name;
+    const name = plantSortNamesById.get(plantSortId);
 
     return name ? String(name) : `Sorta #${plantSortId}`;
 }
@@ -65,6 +64,15 @@ async function RaisedBedDetailPageContent({
         getFarmUserRaisedBeds(userId),
         getEntitiesFormatted<EntityStandardized>('plantSort'),
     ]);
+    const plantSortNamesById = new Map<number, string>();
+    if (plantSorts) {
+        for (const plantSort of plantSorts) {
+            const name = plantSort.information?.name;
+            if (name) {
+                plantSortNamesById.set(plantSort.id, name);
+            }
+        }
+    }
 
     const raisedBed = raisedBeds.find((item) => item.id === raisedBedId);
     if (!raisedBed) {
@@ -78,6 +86,11 @@ async function RaisedBedDetailPageContent({
     const orderedPositions = Array.from(
         { length: highestPositionIndex + 1 },
         (_, index) => index,
+    );
+    const activeFieldsByPosition = new Map(
+        raisedBed.fields
+            .filter((field) => field.active)
+            .map((field) => [field.positionIndex, field]),
     );
 
     return (
@@ -116,11 +129,10 @@ async function RaisedBedDetailPageContent({
                             </Table.Header>
                             <Table.Body>
                                 {orderedPositions.map((positionIndex) => {
-                                    const field = raisedBed.fields.find(
-                                        (item) =>
-                                            item.positionIndex ===
-                                                positionIndex && item.active,
-                                    );
+                                    const field =
+                                        activeFieldsByPosition.get(
+                                            positionIndex,
+                                        );
 
                                     return (
                                         <Table.Row key={positionIndex}>
@@ -130,7 +142,7 @@ async function RaisedBedDetailPageContent({
                                             <Table.Cell>
                                                 {resolvePlantName(
                                                     field?.plantSortId,
-                                                    plantSorts,
+                                                    plantSortNamesById,
                                                 )}
                                             </Table.Cell>
                                             <Table.Cell>

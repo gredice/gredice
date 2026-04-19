@@ -29,12 +29,23 @@ function getPlantPreview(
     fields: Awaited<ReturnType<typeof getFarmUserRaisedBeds>>[number]['fields'],
     sorts: EntityStandardized[] | null | undefined,
 ) {
+    const plantSortNamesById = new Map<number, string>();
+    if (sorts) {
+        for (const sort of sorts) {
+            const name = sort.information?.name;
+            if (name) {
+                plantSortNamesById.set(sort.id, name);
+            }
+        }
+    }
+
     const activePlants = fields
-        .filter((field) => field.active && field.plantSortId)
+        .filter(
+            (field): field is typeof field & { plantSortId: number } =>
+                field.active && typeof field.plantSortId === 'number',
+        )
         .map((field) => {
-            const plantName = sorts?.find(
-                (sort) => sort.id === field.plantSortId,
-            )?.attributes?.information?.name;
+            const plantName = plantSortNamesById.get(field.plantSortId);
 
             return plantName
                 ? String(plantName)
