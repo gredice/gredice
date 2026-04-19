@@ -12,6 +12,7 @@ export type RaisedBedField = {
     plantGrowthDate?: Date;
     plantReadyDate?: Date;
     assignedUserId?: string | null;
+    assignedUserIds?: string[];
     assignedBy?: string | null;
     assignedAt?: Date;
     createdAt: Date;
@@ -46,9 +47,11 @@ export type Operation = {
     isAccepted: boolean;
     isDeleted: boolean;
     assignedUserId?: string | null;
+    assignedUserIds?: string[];
     assignedBy?: string;
     assignedAt?: Date;
     assignedUser?: OperationAssignedUser | null;
+    assignedUsers?: OperationAssignedUser[];
 };
 
 export type DeliveryRequestAddress = {

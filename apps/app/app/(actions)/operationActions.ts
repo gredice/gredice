@@ -253,7 +253,7 @@ export async function acceptOperationAction(operationId: number) {
 
 export async function assignOperationUserAction(
     operationId: number,
-    assignedUserId: string | null,
+    assignedUserIds: string[],
 ) {
     const { userId } = await auth(['admin']);
     const operation = await getOperationById(operationId);
@@ -261,29 +261,46 @@ export async function assignOperationUserAction(
         throw new Error(`Operation with ID ${operationId} not found.`);
     }
 
-    const normalizedAssignedUserId = assignedUserId?.trim() || null;
-    if (operation.assignedUserId === normalizedAssignedUserId) {
+    const normalizedAssignedUserIds = Array.from(
+        new Set(
+            assignedUserIds
+                .map((assignedUserId) => assignedUserId.trim())
+                .filter((assignedUserId) => assignedUserId.length > 0),
+        ),
+    );
+    const operationAssignedUserIds = operation.assignedUserIds ?? [];
+    if (
+        normalizedAssignedUserIds.length === operationAssignedUserIds.length &&
+        normalizedAssignedUserIds.every((assignedUserId) =>
+            operationAssignedUserIds.includes(assignedUserId),
+        )
+    ) {
         return { success: true };
     }
 
-    if (normalizedAssignedUserId) {
+    if (normalizedAssignedUserIds.length > 0) {
         const assignableFarmUsersByOperationId =
             await getAssignableFarmUsersByOperationIds([operationId]);
         const assignableFarmUsers =
             assignableFarmUsersByOperationId[operationId] ?? [];
 
         if (
-            !assignableFarmUsers.some(
-                (farmUser) => farmUser.id === normalizedAssignedUserId,
+            !normalizedAssignedUserIds.every((assignedUserId) =>
+                assignableFarmUsers.some(
+                    (farmUser) => farmUser.id === assignedUserId,
+                ),
             )
         ) {
-            throw new Error('Odabrani korisnik nije dostupan za ovu radnju.');
+            throw new Error(
+                'Jedan od odabranih korisnika nije dostupan za ovu radnju.',
+            );
         }
     }
 
     await createEvent(
         knownEvents.operations.assignedV1(operationId.toString(), {
-            assignedUserId: normalizedAssignedUserId,
+            assignedUserId: normalizedAssignedUserIds[0] ?? null,
+            assignedUserIds: normalizedAssignedUserIds,
             assignedBy: userId,
         }),
     );
@@ -394,8 +411,8 @@ async function assertFarmerCanCompleteOperation(
     }
 
     if (
-        farmOperation.assignedUserId &&
-        farmOperation.assignedUserId !== userId
+        (farmOperation.assignedUserIds?.length ?? 0) > 0 &&
+        !farmOperation.assignedUserIds?.includes(userId)
     ) {
         throw new Error('Ova radnja je dodijeljena drugom korisniku.');
     }

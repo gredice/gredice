@@ -32,6 +32,7 @@ import {
     type SelectRaisedBedField,
     type UpdateRaisedBedSensor,
 } from '../schema/gardenSchema';
+import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
 import {
     createEvent,
     getEvents,
@@ -76,6 +77,7 @@ export type RaisedBedFieldPlantCycle = {
     stoppedDate?: Date;
     toBeRemoved: boolean;
     assignedUserId?: string | null;
+    assignedUserIds?: string[];
     assignedBy?: string | null;
     assignedAt?: Date;
 };
@@ -617,6 +619,7 @@ function summarizePlantCycle(
     let toBeRemoved = false;
     let stoppedDate: Date | undefined;
     let assignedUserId: string | null | undefined;
+    let assignedUserIds: string[] | undefined;
     let assignedBy: string | null | undefined;
     let assignedAt: Date | undefined;
 
@@ -653,6 +656,7 @@ function summarizePlantCycle(
             plantHarvestedDate = undefined;
             plantRemovedDate = undefined;
             assignedUserId = undefined;
+            assignedUserIds = undefined;
             assignedBy = undefined;
             assignedAt = undefined;
             continue;
@@ -690,6 +694,7 @@ function summarizePlantCycle(
         if (
             plantCycleEvent.type === knownEventTypes.raisedBedFields.plantUpdate
         ) {
+            let shouldApplyAssignedBy = true;
             plantStatus =
                 typeof data?.status === 'string' ? data.status : plantStatus;
             if (
@@ -697,14 +702,37 @@ function summarizePlantCycle(
                 data?.assignedUserId === null
             ) {
                 assignedUserId = data.assignedUserId;
+                assignedUserIds = undefined;
                 if (data.assignedUserId === null) {
                     assignedBy = null;
                     assignedAt = undefined;
+                    shouldApplyAssignedBy = false;
                 } else {
                     assignedAt = plantCycleEvent.createdAt;
                 }
             }
-            if (typeof data?.assignedBy === 'string') {
+            if (Array.isArray(data?.assignedUserIds)) {
+                const eventAssignedUserId =
+                    typeof data?.assignedUserId === 'string' ||
+                    data?.assignedUserId === null
+                        ? data.assignedUserId
+                        : undefined;
+                assignedUserIds = normalizeAssignedUserIds(
+                    data.assignedUserIds.filter(
+                        (value): value is string => typeof value === 'string',
+                    ),
+                    eventAssignedUserId,
+                );
+                assignedUserId = assignedUserIds[0] ?? null;
+                if (assignedUserIds.length === 0) {
+                    assignedBy = null;
+                    assignedAt = undefined;
+                    shouldApplyAssignedBy = false;
+                } else {
+                    assignedAt = plantCycleEvent.createdAt;
+                }
+            }
+            if (shouldApplyAssignedBy && typeof data?.assignedBy === 'string') {
                 assignedBy = data.assignedBy;
             }
 
@@ -759,6 +787,10 @@ function summarizePlantCycle(
         plantRemovedDate,
         stoppedDate,
         toBeRemoved,
+        assignedUserIds: normalizeAssignedUserIds(
+            assignedUserIds,
+            assignedUserId,
+        ),
         assignedUserId,
         assignedBy,
         assignedAt,
@@ -1352,6 +1384,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         let toBeRemoved = false;
         let stoppedDate: Date | undefined;
         let assignedUserId: string | null | undefined;
+        let assignedUserIds: string[] | undefined;
         let assignedBy: string | null | undefined;
         let assignedAt: Date | undefined;
 
@@ -1374,6 +1407,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 plantHarvestedDate = undefined;
                 plantRemovedDate = undefined;
                 assignedUserId = undefined;
+                assignedUserIds = undefined;
                 assignedBy = undefined;
                 assignedAt = undefined;
 
@@ -1425,6 +1459,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             else if (
                 event.type === knownEventTypes.raisedBedFields.plantUpdate
             ) {
+                let shouldApplyAssignedBy = true;
                 plantStatus =
                     typeof data?.status === 'string'
                         ? data?.status
@@ -1434,14 +1469,41 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     data?.assignedUserId === null
                 ) {
                     assignedUserId = data.assignedUserId;
+                    assignedUserIds = undefined;
                     if (data.assignedUserId === null) {
                         assignedBy = null;
                         assignedAt = undefined;
+                        shouldApplyAssignedBy = false;
                     } else {
                         assignedAt = event.createdAt;
                     }
                 }
-                if (typeof data?.assignedBy === 'string') {
+                if (Array.isArray(data?.assignedUserIds)) {
+                    const eventAssignedUserId =
+                        typeof data?.assignedUserId === 'string' ||
+                        data?.assignedUserId === null
+                            ? data.assignedUserId
+                            : undefined;
+                    assignedUserIds = normalizeAssignedUserIds(
+                        data.assignedUserIds.filter(
+                            (value): value is string =>
+                                typeof value === 'string',
+                        ),
+                        eventAssignedUserId,
+                    );
+                    assignedUserId = assignedUserIds[0] ?? null;
+                    if (assignedUserIds.length === 0) {
+                        assignedBy = null;
+                        assignedAt = undefined;
+                        shouldApplyAssignedBy = false;
+                    } else {
+                        assignedAt = event.createdAt;
+                    }
+                }
+                if (
+                    shouldApplyAssignedBy &&
+                    typeof data?.assignedBy === 'string'
+                ) {
                     assignedBy = data.assignedBy;
                 }
                 if (
@@ -1504,6 +1566,10 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             active,
             toBeRemoved,
             stoppedDate,
+            assignedUserIds: normalizeAssignedUserIds(
+                assignedUserIds,
+                assignedUserId,
+            ),
             assignedUserId,
             assignedBy,
             assignedAt,

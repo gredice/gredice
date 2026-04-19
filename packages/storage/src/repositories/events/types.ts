@@ -162,16 +162,24 @@ export type RaisedBedFieldPlantUpdatePayload =
     | {
           status: string;
           assignedUserId?: undefined;
+          assignedUserIds?: undefined;
           assignedBy?: undefined;
       }
     | {
           status?: string;
           assignedUserId: string;
+          assignedUserIds?: string[];
           assignedBy: string;
       }
     | {
           status?: string;
           assignedUserId: null;
+          assignedUserIds?: string[];
+          assignedBy?: string | null;
+      }
+    | {
+          status?: string;
+          assignedUserIds: string[];
           assignedBy?: string | null;
       };
 
@@ -208,10 +216,22 @@ export type OperationSchedulePayload = {
     scheduledDate: string;
 };
 
-export type OperationAssignPayload = {
-    assignedUserId: string | null;
-    assignedBy: string;
-};
+export type OperationAssignPayload =
+    | {
+          assignedUserId: string;
+          assignedUserIds?: string[];
+          assignedBy: string;
+      }
+    | {
+          assignedUserId: null;
+          assignedUserIds?: string[];
+          assignedBy: string;
+      }
+    | {
+          assignedUserId?: string | null;
+          assignedUserIds: string[];
+          assignedBy: string;
+      };
 
 export type OperationCompletePayload = {
     completedBy: string;

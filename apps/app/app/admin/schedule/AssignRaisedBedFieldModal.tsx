@@ -4,19 +4,15 @@ import type { RaisedBedFieldAssignableFarmUser } from '@gredice/storage';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { User } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useEffect, useMemo, useState } from 'react';
-import {
-    UserPickerField,
-    type UserPickerOption,
-} from '../../../components/shared/fields/UserPickerField';
 import { assignRaisedBedFieldUserAction } from '../../(actions)/raisedBedFieldsActions';
 
-const unassignedValue = '__unassigned__';
 const missingAssignedUserLabel = 'Trenutno dodijeljeni korisnik';
 
 type AssignableUser = Pick<
@@ -28,7 +24,7 @@ interface AssignRaisedBedFieldModalProps {
     raisedBedFieldId: number;
     label: string;
     farmUsers: AssignableUser[];
-    assignedUserId?: string | null;
+    assignedUserIds?: string[];
     disabled?: boolean;
 }
 
@@ -42,12 +38,16 @@ export function AssignRaisedBedFieldModal({
     raisedBedFieldId,
     label,
     farmUsers,
-    assignedUserId,
+    assignedUserIds,
     disabled = false,
 }: AssignRaisedBedFieldModalProps) {
     const [open, setOpen] = useState(false);
-    const [selectedUserId, setSelectedUserId] = useState(
-        assignedUserId ?? unassignedValue,
+    const initialAssignedUserIds = useMemo(
+        () => Array.from(new Set(assignedUserIds ?? [])),
+        [assignedUserIds],
+    );
+    const [selectedUserIds, setSelectedUserIds] = useState<string[]>(
+        initialAssignedUserIds,
     );
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -58,46 +58,57 @@ export function AssignRaisedBedFieldModal({
             usersById.set(farmUser.id, farmUser);
         }
 
-        if (assignedUserId && !usersById.has(assignedUserId)) {
-            usersById.set(assignedUserId, {
-                id: assignedUserId,
-                userName: missingAssignedUserLabel,
-                displayName: null,
-                avatarUrl: null,
-            });
+        for (const assignedUserId of initialAssignedUserIds) {
+            if (!usersById.has(assignedUserId)) {
+                usersById.set(assignedUserId, {
+                    id: assignedUserId,
+                    userName: missingAssignedUserLabel,
+                    displayName: null,
+                    avatarUrl: null,
+                });
+            }
         }
 
         return [...usersById.values()];
-    }, [assignedUserId, farmUsers]);
+    }, [farmUsers, initialAssignedUserIds]);
 
-    const pickerUsers = useMemo<UserPickerOption[]>(
-        () =>
-            selectableUsers.map((user) => ({
-                id: user.id,
-                label: getUserLabel(user),
-                searchText: `${user.displayName ?? ''} ${user.userName}`,
-            })),
-        [selectableUsers],
-    );
-
-    const initialSelection = assignedUserId ?? unassignedValue;
     const canOpen =
-        !disabled && (selectableUsers.length > 0 || !!assignedUserId);
+        !disabled &&
+        (selectableUsers.length > 0 || initialAssignedUserIds.length > 0);
 
     useEffect(() => {
         if (!open) {
-            setSelectedUserId(initialSelection);
+            setSelectedUserIds(initialAssignedUserIds);
             setErrorMessage(null);
         }
-    }, [initialSelection, open]);
+    }, [initialAssignedUserIds, open]);
 
-    const selectedUser = useMemo(
+    const selectedUsers = useMemo(
         () =>
-            assignedUserId
-                ? selectableUsers.find((user) => user.id === assignedUserId)
-                : undefined,
-        [assignedUserId, selectableUsers],
+            initialAssignedUserIds
+                .map((assignedUserId) =>
+                    selectableUsers.find((user) => user.id === assignedUserId),
+                )
+                .filter((selectedUser): selectedUser is AssignableUser =>
+                    Boolean(selectedUser),
+                ),
+        [initialAssignedUserIds, selectableUsers],
     );
+
+    const toggleSelectedUser = (userId: string, checked: boolean) => {
+        if (checked) {
+            setSelectedUserIds((currentIds) =>
+                currentIds.includes(userId)
+                    ? currentIds
+                    : [...currentIds, userId],
+            );
+            return;
+        }
+
+        setSelectedUserIds((currentIds) =>
+            currentIds.filter((selectedUserId) => selectedUserId !== userId),
+        );
+    };
 
     const handleSubmit = async () => {
         setIsLoading(true);
@@ -106,7 +117,7 @@ export function AssignRaisedBedFieldModal({
         try {
             await assignRaisedBedFieldUserAction(
                 raisedBedFieldId,
-                selectedUserId === unassignedValue ? null : selectedUserId,
+                selectedUserIds,
             );
             setOpen(false);
         } catch (error) {
@@ -117,38 +128,52 @@ export function AssignRaisedBedFieldModal({
         }
     };
 
-    const trigger = selectedUser ? (
-        <button
-            type="button"
-            className="rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
-            title={`Dodjela: ${getUserLabel(selectedUser)}`}
-            aria-label={`Dodjela: ${getUserLabel(selectedUser)}`}
-            disabled={!canOpen}
-        >
-            <UserAvatar
-                avatarUrl={selectedUser.avatarUrl}
-                displayName={selectedUser.displayName ?? selectedUser.userName}
-                className="size-7 rounded-full"
-            />
-        </button>
-    ) : (
-        <IconButton
-            variant="plain"
-            title={
-                canOpen
-                    ? 'Dodijeli korisnika'
-                    : 'Nema dostupnih korisnika za dodjelu'
-            }
-            aria-label={
-                canOpen
-                    ? 'Dodijeli korisnika'
-                    : 'Nema dostupnih korisnika za dodjelu'
-            }
-            disabled={!canOpen}
-        >
-            <User className="size-4 shrink-0" />
-        </IconButton>
-    );
+    const trigger =
+        selectedUsers.length > 0 ? (
+            <button
+                type="button"
+                className="rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                title={`Dodijeljeno korisnika: ${selectedUsers.length}`}
+                aria-label={`Dodijeljeno korisnika: ${selectedUsers.length}`}
+                disabled={!canOpen}
+            >
+                <Row spacing={-1}>
+                    {selectedUsers.slice(0, 2).map((selectedUser) => (
+                        <UserAvatar
+                            key={selectedUser.id}
+                            avatarUrl={selectedUser.avatarUrl}
+                            displayName={
+                                selectedUser.displayName ??
+                                selectedUser.userName
+                            }
+                            className="size-7 ring-2 ring-background"
+                        />
+                    ))}
+                    {selectedUsers.length > 2 && (
+                        <Typography level="body3">
+                            +{selectedUsers.length - 2}
+                        </Typography>
+                    )}
+                </Row>
+            </button>
+        ) : (
+            <IconButton
+                variant="plain"
+                title={
+                    canOpen
+                        ? 'Dodijeli korisnika'
+                        : 'Nema dostupnih korisnika za dodjelu'
+                }
+                aria-label={
+                    canOpen
+                        ? 'Dodijeli korisnika'
+                        : 'Nema dostupnih korisnika za dodjelu'
+                }
+                disabled={!canOpen}
+            >
+                <User className="size-4 shrink-0" />
+            </IconButton>
+        );
 
     return (
         <Modal
@@ -160,21 +185,34 @@ export function AssignRaisedBedFieldModal({
             <Stack spacing={2}>
                 <Typography level="h5">Dodjela sijanja</Typography>
                 <Typography>
-                    Odaberi korisnika kojem želiš dodijeliti zadatak{' '}
+                    Odaberi korisnike kojima želiš dodijeliti zadatak{' '}
                     <strong>{label}</strong>.
                 </Typography>
 
                 {selectableUsers.length > 0 ? (
-                    <UserPickerField
-                        users={pickerUsers}
-                        value={selectedUserId}
-                        onValueChange={setSelectedUserId}
-                        emptyOption={{
-                            value: unassignedValue,
-                            label: 'Bez dodjele',
-                        }}
-                        resetKey={open}
-                    />
+                    <Stack spacing={1}>
+                        <Button
+                            variant="plain"
+                            className="justify-start px-0"
+                            onClick={() => setSelectedUserIds([])}
+                            disabled={selectedUserIds.length === 0}
+                        >
+                            Ukloni sve dodjele
+                        </Button>
+                        {selectableUsers.map((user) => (
+                            <Checkbox
+                                key={user.id}
+                                label={getUserLabel(user)}
+                                checked={selectedUserIds.includes(user.id)}
+                                onCheckedChange={(checked) =>
+                                    toggleSelectedUser(
+                                        user.id,
+                                        Boolean(checked),
+                                    )
+                                }
+                            />
+                        ))}
+                    </Stack>
                 ) : (
                     <Typography level="body2" className="text-muted-foreground">
                         Na ovu farmu još nije dodijeljen nijedan korisnik.
@@ -201,8 +239,15 @@ export function AssignRaisedBedFieldModal({
                         loading={isLoading}
                         disabled={
                             isLoading ||
-                            selectedUserId === initialSelection ||
-                            (selectableUsers.length === 0 && !assignedUserId)
+                            (selectedUserIds.length ===
+                                initialAssignedUserIds.length &&
+                                selectedUserIds.every((selectedUserId) =>
+                                    initialAssignedUserIds.includes(
+                                        selectedUserId,
+                                    ),
+                                )) ||
+                            (selectableUsers.length === 0 &&
+                                initialAssignedUserIds.length === 0)
                         }
                     >
                         Spremi dodjelu

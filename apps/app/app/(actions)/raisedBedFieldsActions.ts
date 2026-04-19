@@ -470,7 +470,7 @@ export async function cancelRaisedBedFieldAction(formData: FormData) {
 
 export async function assignRaisedBedFieldUserAction(
     raisedBedFieldId: number,
-    assignedUserId: string | null,
+    assignedUserIds: string[],
 ) {
     const { userId } = await auth(['admin']);
     const matchedRaisedBed = await getRaisedBedFieldContext(raisedBedFieldId);
@@ -484,23 +484,39 @@ export async function assignRaisedBedFieldUserAction(
         throw new Error('Polje za sijanje nije pronađeno.');
     }
 
-    const normalizedAssignedUserId = assignedUserId?.trim() || null;
-    if (matchedField.assignedUserId === normalizedAssignedUserId) {
+    const normalizedAssignedUserIds = Array.from(
+        new Set(
+            assignedUserIds
+                .map((assignedUserId) => assignedUserId.trim())
+                .filter((assignedUserId) => assignedUserId.length > 0),
+        ),
+    );
+    const fieldAssignedUserIds = matchedField.assignedUserIds ?? [];
+    if (
+        normalizedAssignedUserIds.length === fieldAssignedUserIds.length &&
+        normalizedAssignedUserIds.every((assignedUserId) =>
+            fieldAssignedUserIds.includes(assignedUserId),
+        )
+    ) {
         return { success: true };
     }
 
-    if (normalizedAssignedUserId) {
+    if (normalizedAssignedUserIds.length > 0) {
         const assignableFarmUsersByRaisedBedFieldId =
             await getAssignableFarmUsersByRaisedBedFieldIds([raisedBedFieldId]);
         const assignableFarmUsers =
             assignableFarmUsersByRaisedBedFieldId[raisedBedFieldId] ?? [];
 
         if (
-            !assignableFarmUsers.some(
-                (farmUser) => farmUser.id === normalizedAssignedUserId,
+            !normalizedAssignedUserIds.every((assignedUserId) =>
+                assignableFarmUsers.some(
+                    (farmUser) => farmUser.id === assignedUserId,
+                ),
             )
         ) {
-            throw new Error('Odabrani korisnik nije dostupan za ovo sijanje.');
+            throw new Error(
+                'Jedan od odabranih korisnika nije dostupan za ovo sijanje.',
+            );
         }
     }
 
@@ -508,7 +524,8 @@ export async function assignRaisedBedFieldUserAction(
         knownEvents.raisedBedFields.plantUpdateV1(
             `${matchedRaisedBed.id.toString()}|${matchedField.positionIndex.toString()}`,
             {
-                assignedUserId: normalizedAssignedUserId,
+                assignedUserId: normalizedAssignedUserIds[0] ?? null,
+                assignedUserIds: normalizedAssignedUserIds,
                 assignedBy: userId,
             },
         ),

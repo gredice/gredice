@@ -303,7 +303,7 @@ export function RaisedBedPlantingScheduleSection({
                                                 field.id
                                             ] ?? []
                                         }
-                                        assignedUserId={field.assignedUserId}
+                                        assignedUserIds={field.assignedUserIds}
                                         disabled={fieldLocked}
                                     />
                                     <RescheduleRaisedBedFieldModal
