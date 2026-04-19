@@ -145,9 +145,16 @@ export function RaisedBedOperationsScheduleSection({
                 label,
             };
         });
-    const operationsToReschedule = operationsToApprove.map((operation) => ({
-        id: operation.id,
-    }));
+    const operationsToReschedule = dayOperations
+        .filter(
+            (operation) =>
+                !operation.isAccepted &&
+                !isOperationCompleted(operation.status) &&
+                !isOperationCancelled(operation.status),
+        )
+        .map((operation) => ({
+            id: operation.id,
+        }));
     const operationsToAssign = dayOperations
         .filter(
             (operation) =>
