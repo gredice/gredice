@@ -116,6 +116,7 @@ export function AssignOperationModal({
                 type="button"
                 className="rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
                 title={`Dodijeljeno korisnika: ${assignedUsers?.length ?? 0}`}
+                aria-label={`Dodijeljeno korisnika: ${assignedUsers?.length ?? 0}`}
                 disabled={!canOpen}
             >
                 <Row spacing={-1}>

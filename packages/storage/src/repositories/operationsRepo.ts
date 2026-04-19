@@ -11,6 +11,7 @@ import {
 } from '../schema';
 import { storage } from '../storage';
 import { getEvents, knownEventTypes } from './events';
+import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
 import type { OperationEventsAnyPayload } from './events/types';
 
 export type OperationStatus =
@@ -35,31 +36,6 @@ export type OperationAssignedUser = {
     displayName: string | null;
     avatarUrl: string | null;
 };
-
-function normalizeAssignedUserIds(
-    assignedUserIds: string[] | undefined,
-    assignedUserId: string | null | undefined,
-) {
-    if (Array.isArray(assignedUserIds)) {
-        const uniqueAssignedUserIds = Array.from(
-            new Set(
-                assignedUserIds.filter(
-                    (value): value is string =>
-                        typeof value === 'string' && value.length > 0,
-                ),
-            ),
-        );
-        if (uniqueAssignedUserIds.length > 0) {
-            return uniqueAssignedUserIds;
-        }
-    }
-
-    if (typeof assignedUserId === 'string' && assignedUserId.length > 0) {
-        return [assignedUserId];
-    }
-
-    return [] as string[];
-}
 
 export type OperationAssignableFarmUser = OperationAssignedUser & {
     farmId: number;
@@ -231,8 +207,8 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
 
     const assignedUserIds = Array.from(
         new Set(
-            operationsWithAggregates.flatMap((operation) =>
-                operation.assignedUserIds ?? [],
+            operationsWithAggregates.flatMap(
+                (operation) => operation.assignedUserIds ?? [],
             ),
         ),
     );
@@ -257,9 +233,8 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         ...operation,
         assignedUsers: (operation.assignedUserIds ?? [])
             .map((assignedUserId) => assignedUsersById.get(assignedUserId))
-            .filter(
-                (assignedUser): assignedUser is OperationAssignedUser =>
-                    Boolean(assignedUser),
+            .filter((assignedUser): assignedUser is OperationAssignedUser =>
+                Boolean(assignedUser),
             ),
         assignedUser:
             operation.assignedUserIds &&

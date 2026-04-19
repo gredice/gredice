@@ -216,11 +216,22 @@ export type OperationSchedulePayload = {
     scheduledDate: string;
 };
 
-export type OperationAssignPayload = {
-    assignedUserId?: string | null;
-    assignedUserIds?: string[];
-    assignedBy: string;
-};
+export type OperationAssignPayload =
+    | {
+          assignedUserId: string;
+          assignedUserIds?: string[];
+          assignedBy: string;
+      }
+    | {
+          assignedUserId: null;
+          assignedUserIds?: string[];
+          assignedBy: string;
+      }
+    | {
+          assignedUserId?: string | null;
+          assignedUserIds: string[];
+          assignedBy: string;
+      };
 
 export type OperationCompletePayload = {
     completedBy: string;

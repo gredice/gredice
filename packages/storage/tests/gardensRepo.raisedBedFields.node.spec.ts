@@ -937,6 +937,8 @@ test('raised bed field assignment metadata is projected for assign and unassign 
     await createEvent(
         knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
             assignedUserId: null,
+            assignedUserIds: [],
+            assignedBy: assignedByUserId,
         }),
     );
 

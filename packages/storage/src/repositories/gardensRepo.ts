@@ -32,6 +32,7 @@ import {
     type SelectRaisedBedField,
     type UpdateRaisedBedSensor,
 } from '../schema/gardenSchema';
+import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
 import {
     createEvent,
     getEvents,
@@ -102,31 +103,6 @@ type FarmAssignableUserRow = {
     displayName: string | null;
     avatarUrl: string | null;
 };
-
-function normalizeAssignedUserIds(
-    assignedUserIds: string[] | undefined,
-    assignedUserId: string | null | undefined,
-) {
-    if (Array.isArray(assignedUserIds)) {
-        const uniqueAssignedUserIds = Array.from(
-            new Set(
-                assignedUserIds.filter(
-                    (value): value is string =>
-                        typeof value === 'string' && value.length > 0,
-                ),
-            ),
-        );
-        if (uniqueAssignedUserIds.length > 0) {
-            return uniqueAssignedUserIds;
-        }
-    }
-
-    if (typeof assignedUserId === 'string' && assignedUserId.length > 0) {
-        return [assignedUserId];
-    }
-
-    return [] as string[];
-}
 
 async function getAssignableFarmUserRowsByFarmIds(farmIds: number[]) {
     const uniqueFarmIds = Array.from(new Set(farmIds));
@@ -718,6 +694,7 @@ function summarizePlantCycle(
         if (
             plantCycleEvent.type === knownEventTypes.raisedBedFields.plantUpdate
         ) {
+            let shouldApplyAssignedBy = true;
             plantStatus =
                 typeof data?.status === 'string' ? data.status : plantStatus;
             if (
@@ -729,6 +706,7 @@ function summarizePlantCycle(
                 if (data.assignedUserId === null) {
                     assignedBy = null;
                     assignedAt = undefined;
+                    shouldApplyAssignedBy = false;
                 } else {
                     assignedAt = plantCycleEvent.createdAt;
                 }
@@ -746,9 +724,15 @@ function summarizePlantCycle(
                     eventAssignedUserId,
                 );
                 assignedUserId = assignedUserIds[0] ?? null;
-                assignedAt = plantCycleEvent.createdAt;
+                if (assignedUserIds.length === 0) {
+                    assignedBy = null;
+                    assignedAt = undefined;
+                    shouldApplyAssignedBy = false;
+                } else {
+                    assignedAt = plantCycleEvent.createdAt;
+                }
             }
-            if (typeof data?.assignedBy === 'string') {
+            if (shouldApplyAssignedBy && typeof data?.assignedBy === 'string') {
                 assignedBy = data.assignedBy;
             }
 
@@ -1475,6 +1459,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             else if (
                 event.type === knownEventTypes.raisedBedFields.plantUpdate
             ) {
+                let shouldApplyAssignedBy = true;
                 plantStatus =
                     typeof data?.status === 'string'
                         ? data?.status
@@ -1488,6 +1473,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     if (data.assignedUserId === null) {
                         assignedBy = null;
                         assignedAt = undefined;
+                        shouldApplyAssignedBy = false;
                     } else {
                         assignedAt = event.createdAt;
                     }
@@ -1506,9 +1492,18 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                         eventAssignedUserId,
                     );
                     assignedUserId = assignedUserIds[0] ?? null;
-                    assignedAt = event.createdAt;
+                    if (assignedUserIds.length === 0) {
+                        assignedBy = null;
+                        assignedAt = undefined;
+                        shouldApplyAssignedBy = false;
+                    } else {
+                        assignedAt = event.createdAt;
+                    }
                 }
-                if (typeof data?.assignedBy === 'string') {
+                if (
+                    shouldApplyAssignedBy &&
+                    typeof data?.assignedBy === 'string'
+                ) {
                     assignedBy = data.assignedBy;
                 }
                 if (
