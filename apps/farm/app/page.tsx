@@ -151,6 +151,14 @@ async function FarmerDashboard() {
                             >
                                 Priručnik operacija
                             </Button>
+                            <Button
+                                variant="soft"
+                                size="lg"
+                                className="justify-start"
+                                href="/operations"
+                            >
+                                Priručnik operacija
+                            </Button>
                         </Stack>
                     </CardOverflow>
                 </Card>
