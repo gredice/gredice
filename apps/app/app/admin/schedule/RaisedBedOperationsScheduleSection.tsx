@@ -183,32 +183,39 @@ export function RaisedBedOperationsScheduleSection({
 
     return (
         <Stack key={physicalId} spacing={1}>
-            <Row spacing={0.5} className="items-center flex-wrap gap-y-1">
+            <Row spacing={1} className="w-full items-center flex-wrap gap-y-1">
                 <BulkApproveRaisedBedButton
                     physicalId={physicalId.toString()}
                     fields={[]}
                     operations={operationsToApprove}
                 />
-                <BulkRescheduleRaisedBedButton
-                    physicalId={physicalId.toString()}
-                    fields={[]}
-                    operations={operationsToReschedule}
-                />
-                <BulkAssignRaisedBedButton
-                    physicalId={physicalId.toString()}
-                    fields={[]}
-                    operations={operationsToAssign}
-                />
-                <RaisedBedLabel physicalId={physicalId} />
-                <Typography level="body2" className="text-muted-foreground">
-                    Vrijeme: {formatMinutes(durations.completed, true)} /{' '}
-                    {formatMinutes(durations.approved)} (
-                    {formatMinutes(durations.total)})
-                </Typography>
-                <CopyTasksButton
-                    physicalId={physicalId.toString()}
-                    tasks={copyTasks}
-                />
+                <Row
+                    spacing={0.5}
+                    className="min-w-0 grow items-center flex-wrap gap-y-1"
+                >
+                    <RaisedBedLabel physicalId={physicalId} />
+                    <Typography level="body2" className="text-muted-foreground">
+                        Vrijeme: {formatMinutes(durations.completed, true)} /{' '}
+                        {formatMinutes(durations.approved)} (
+                        {formatMinutes(durations.total)})
+                    </Typography>
+                    <CopyTasksButton
+                        physicalId={physicalId.toString()}
+                        tasks={copyTasks}
+                    />
+                </Row>
+                <Row spacing={0.5} className="ml-auto shrink-0 items-center">
+                    <BulkAssignRaisedBedButton
+                        physicalId={physicalId.toString()}
+                        fields={[]}
+                        operations={operationsToAssign}
+                    />
+                    <BulkRescheduleRaisedBedButton
+                        physicalId={physicalId.toString()}
+                        fields={[]}
+                        operations={operationsToReschedule}
+                    />
+                </Row>
             </Row>
             <Stack spacing={1}>
                 {!dayOperations.length && (
