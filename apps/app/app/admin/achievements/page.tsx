@@ -16,7 +16,6 @@ import { Divider } from '@signalco/ui-primitives/Divider';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
@@ -77,9 +76,6 @@ export default async function AchievementsPage({
     return (
         <Stack spacing={4}>
             <Stack spacing={2}>
-                <Typography level="h1" semiBold>
-                    Postignuća
-                </Typography>
                 <Typography level="body2">
                     Pregled najnovijih postignuća i ručno odobravanje nagrada.
                 </Typography>

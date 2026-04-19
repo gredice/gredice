@@ -5,7 +5,6 @@ import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
 
@@ -45,9 +44,6 @@ export default async function AiAnalyticsPage() {
     return (
         <Stack spacing={2}>
             <Row spacing={1}>
-                <Typography level="h1" className="text-2xl" semiBold>
-                    AI analitika
-                </Typography>
                 <Chip color="primary">{events.length}</Chip>
             </Row>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
