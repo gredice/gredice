@@ -4,7 +4,6 @@ import { Button } from '@signalco/ui-primitives/Button';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { auth } from '../../../../lib/auth/auth';
 import { ArchiveClosedSlotsButton } from './ArchiveClosedSlotsButton';
 import { BulkGenerateModal } from './BulkGenerateModal';
@@ -40,9 +39,6 @@ export default async function AdminTimeSlotsPage({
     return (
         <Stack spacing={4}>
             <Row justifyContent="space-between">
-                <Typography level="h1" className="text-2xl">
-                    Upravljanje vremenskim slotovima dostave
-                </Typography>
                 <Row spacing={2}>
                     <ArchiveClosedSlotsButton
                         slotIds={archivableClosedSlotIds}

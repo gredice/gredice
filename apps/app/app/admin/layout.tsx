@@ -6,6 +6,7 @@ import { SignedOut } from '@signalco/auth-client/components';
 import { AuthProtectedSection } from '@signalco/auth-server/components';
 import { type PropsWithChildren, Suspense } from 'react';
 import {
+    AdminPageBreadcrumbs,
     LoginDialog,
     MobileHeader,
     Nav,
@@ -50,7 +51,12 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                             <div className="min-h-full grow md:pt-2">
                                 <div className="p-2 md:p-4 bg-background rounded-t-xl md:border-l md:border-t md:rounded-tr-none min-h-full">
                                     <AuthProtectedSection auth={authAdmin}>
-                                        <Suspense>{children}</Suspense>
+                                        <Suspense>
+                                            <div className="mb-3">
+                                                <AdminPageBreadcrumbs />
+                                            </div>
+                                            {children}
+                                        </Suspense>
                                     </AuthProtectedSection>
                                 </div>
                             </div>

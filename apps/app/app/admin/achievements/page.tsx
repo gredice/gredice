@@ -77,9 +77,6 @@ export default async function AchievementsPage({
     return (
         <Stack spacing={4}>
             <Stack spacing={2}>
-                <Typography level="h1" semiBold>
-                    Postignuća
-                </Typography>
                 <Typography level="body2">
                     Pregled najnovijih postignuća i ručno odobravanje nagrada.
                 </Typography>

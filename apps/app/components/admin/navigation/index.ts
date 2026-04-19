@@ -1,3 +1,4 @@
+export { AdminPageBreadcrumbs } from './AdminPageBreadcrumbs';
 export { LoginDialog } from './LoginDialog';
 export { MobileHeader } from './MobileHeader';
 export { MobileNav } from './MobileNav';

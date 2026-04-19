@@ -3,7 +3,6 @@ import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { TransactionsTable } from '../../../components/admin/tables';
 import { auth } from '../../../lib/auth/auth';
 
@@ -26,9 +25,6 @@ export default async function TransactionsPage() {
     return (
         <Stack spacing={2}>
             <Row spacing={1}>
-                <Typography level="h1" className="text-2xl" semiBold>
-                    {'Transakcije'}
-                </Typography>
                 <Chip color="primary">{transactions.length}</Chip>
                 {transactionsWithoutInvoices.length > 0 && (
                     <Chip color="success">

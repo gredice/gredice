@@ -47,6 +47,7 @@ import { useContext, useState } from 'react';
 import { reorderEntityType } from '../../../app/(actions)/entityActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { EntityTypeIcon } from '../directories/EntityTypeIcon';
+import { adminPages } from './adminPages';
 import { NavContext } from './NavContext';
 import { NavItem } from './NavItem';
 import { ProfileNavItem } from './ProfileNavItem';
@@ -143,8 +144,8 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
             <List>
                 <ProfileNavItem onItemClick={onItemClick} />
                 <NavItem
-                    href={KnownPages.Dashboard}
-                    label="Početna"
+                    href={adminPages.Dashboard.href}
+                    label={adminPages.Dashboard.label}
                     icon={<Home className="size-5" />}
                     strictMatch
                     onClick={onItemClick}
@@ -201,63 +202,63 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                 <ListHeader header="Administracija" />
                 <List>
                     <NavItem
-                        href={KnownPages.Accounts}
-                        label="Korisnički računi"
+                        href={adminPages.Accounts.href}
+                        label={adminPages.Accounts.label}
                         icon={<Bank className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.Achievements}
-                        label="Postignuća"
+                        href={adminPages.Achievements.href}
+                        label={adminPages.Achievements.label}
                         icon={<Success className="size-5" />}
                         onClick={onItemClick}
                         badge={pendingAchievementsCount}
                     />
                     <NavItem
-                        href={KnownPages.ShoppingCarts}
-                        label="Košarice"
+                        href={adminPages.ShoppingCarts.href}
+                        label={adminPages.ShoppingCarts.label}
                         icon={<ShoppingCart className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.Invoices}
-                        label="Ponude"
+                        href={adminPages.Invoices.href}
+                        label={adminPages.Invoices.label}
                         icon={<File className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.Transactions}
-                        label="Transakcije"
+                        href={adminPages.Transactions.href}
+                        label={adminPages.Transactions.label}
                         icon={<Euro className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.Receipts}
-                        label="Fiskalni računi"
+                        href={adminPages.Receipts.href}
+                        label={adminPages.Receipts.label}
                         icon={<File className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.Users}
-                        label="Korisnici"
+                        href={adminPages.Users.href}
+                        label={adminPages.Users.label}
                         icon={<User className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.Farms}
-                        label="Farme"
+                        href={adminPages.Farms.href}
+                        label={adminPages.Farms.label}
                         icon={<MapIcon className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.Gardens}
-                        label="Vrtovi"
+                        href={adminPages.Gardens.href}
+                        label={adminPages.Gardens.label}
                         icon={<Fence className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.RaisedBeds}
-                        label="Gredice"
+                        href={adminPages.RaisedBeds.href}
+                        label={adminPages.RaisedBeds.label}
                         icon={
                             <RaisedBedIcon
                                 className="size-5"
@@ -267,8 +268,8 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.Operations}
-                        label="Radnje"
+                        href={adminPages.Operations.href}
+                        label={adminPages.Operations.label}
                         icon={<Hammer className="size-5" />}
                         onClick={onItemClick}
                     />
@@ -278,32 +279,32 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                 <ListHeader header="Upravljanje" />
                 <List>
                     <NavItem
-                        href={KnownPages.Inventory}
-                        label="Zalihe"
+                        href={adminPages.Inventory.href}
+                        label={adminPages.Inventory.label}
                         icon={<Tally3 className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.Occasions}
-                        label="Prigode"
+                        href={adminPages.Occasions.href}
+                        label={adminPages.Occasions.label}
                         icon={<Calendar className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.Schedule}
-                        label="Raspored"
+                        href={adminPages.Schedule.href}
+                        label={adminPages.Schedule.label}
                         icon={<Calendar className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.DeliverySlots}
-                        label="Dostava - Slotovi"
+                        href={adminPages.DeliverySlots.href}
+                        label={adminPages.DeliverySlots.label}
                         icon={<Truck className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.DeliveryRequests}
-                        label="Dostava - Zahtjevi"
+                        href={adminPages.DeliveryRequests.href}
+                        label={adminPages.DeliveryRequests.label}
                         icon={<Truck className="size-5" />}
                         onClick={onItemClick}
                     />
@@ -313,26 +314,26 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                 <ListHeader header="Komunikacija" />
                 <List>
                     <NavItem
-                        href={KnownPages.CommunicationInbox}
-                        label="Sandučić"
+                        href={adminPages.CommunicationInbox.href}
+                        label={adminPages.CommunicationInbox.label}
                         icon={<Inbox className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.CommunicationEmails}
-                        label="Poslani emailovi"
+                        href={adminPages.CommunicationEmails.href}
+                        label={adminPages.CommunicationEmails.label}
                         icon={<Mail className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.Notifications}
-                        label="Obavijesti"
+                        href={adminPages.Notifications.href}
+                        label={adminPages.Notifications.label}
                         icon={<Megaphone className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.Feedback}
-                        label="Povratne informacije"
+                        href={adminPages.Feedback.href}
+                        label={adminPages.Feedback.label}
                         icon={<SmileHappy className="size-5" />}
                         onClick={onItemClick}
                     />
@@ -342,8 +343,8 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                 <ListHeader header="Postavke" />
                 <List>
                     <NavItem
-                        href={KnownPages.Settings}
-                        label="Postavke"
+                        href={adminPages.Settings.href}
+                        label={adminPages.Settings.label}
                         icon={<Settings className="size-5" />}
                         onClick={onItemClick}
                     />
@@ -353,20 +354,20 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                 <ListHeader header="Sustavi" />
                 <List>
                     <NavItem
-                        href={KnownPages.Sensors}
-                        label="Senzori"
+                        href={adminPages.Sensors.href}
+                        label={adminPages.Sensors.label}
                         icon={<File className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.Cache}
-                        label="Cache"
+                        href={adminPages.Cache.href}
+                        label={adminPages.Cache.label}
                         icon={<File className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
-                        href={KnownPages.AiAnalytics}
-                        label="AI analitika"
+                        href={adminPages.AiAnalytics.href}
+                        label={adminPages.AiAnalytics.label}
                         icon={<AI className="size-5" />}
                         onClick={onItemClick}
                     />
