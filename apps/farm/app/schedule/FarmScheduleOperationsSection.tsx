@@ -294,7 +294,7 @@ export function FarmScheduleOperationsSection({
                                                                     .assignedUser
                                                                     .userName
                                                             }
-                                                            className="size-7"
+                                                            className="size-7 rounded-full"
                                                         />
                                                     </div>
                                                 )}
