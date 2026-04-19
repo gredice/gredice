@@ -24,6 +24,12 @@ type OperationsDurationData = {
     totalMinutes: number;
     operationsMinutes: number;
     sowingMinutes: number;
+    byUser: {
+        userId: string;
+        userName: string;
+        operationsMinutes: number;
+        operationsCount: number;
+    }[];
     daily: OperationsDurationPoint[];
 };
 
@@ -110,6 +116,7 @@ function formatOperationsDurationData(
         totalMinutes,
         operationsMinutes,
         sowingMinutes,
+        byUser: [],
         daily,
     };
 }
@@ -228,6 +235,16 @@ export async function getAnalyticsData(
         operationDurations.set(operation.id, duration);
     }
 
+    const operationsByUser = new Map<
+        string,
+        {
+            userId: string;
+            userName: string;
+            operationsMinutes: number;
+            operationsCount: number;
+        }
+    >();
+
     for (const operation of operationsList) {
         if (operation.status !== 'completed' || !operation.completedAt) {
             continue;
@@ -247,6 +264,25 @@ export async function getAnalyticsData(
             key,
             (operationsTotals.get(key) ?? 0) + durationMinutes,
         );
+
+        const userId = operation.assignedUser?.id ?? 'unassigned';
+        const userName =
+            operation.assignedUser?.displayName ??
+            operation.assignedUser?.userName ??
+            'Nedodijeljeno';
+        const existingUserStats = operationsByUser.get(userId);
+        if (!existingUserStats) {
+            operationsByUser.set(userId, {
+                userId,
+                userName,
+                operationsMinutes: durationMinutes,
+                operationsCount: 1,
+            });
+            continue;
+        }
+
+        existingUserStats.operationsMinutes += durationMinutes;
+        existingUserStats.operationsCount += 1;
     }
 
     const sowingEvents = await getPlantUpdateEvents({
@@ -271,6 +307,10 @@ export async function getAnalyticsData(
         dateKeys,
         operationsTotals,
         sowingTotals,
+    );
+
+    operationsDuration.byUser = Array.from(operationsByUser.values()).sort(
+        (a, b) => b.operationsMinutes - a.operationsMinutes,
     );
 
     const weekdayRegistrations = WEEKDAY_LABELS.map((label, index) => ({
