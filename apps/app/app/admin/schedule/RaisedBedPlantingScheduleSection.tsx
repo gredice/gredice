@@ -96,7 +96,8 @@ export function RaisedBedPlantingScheduleSection({
             (field) =>
                 !isFieldApproved(field.plantStatus) &&
                 !isFieldPendingVerification(field.plantStatus) &&
-                !isFieldCompleted(field.plantStatus),
+                !isFieldCompleted(field.plantStatus) &&
+                !!field.assignedUserId,
         )
         .map((field) => {
             const sortData = plantSorts?.find(
@@ -250,6 +251,7 @@ export function RaisedBedPlantingScheduleSection({
                                             raisedBedId={field.raisedBedId}
                                             positionIndex={field.positionIndex}
                                             label={fieldLabel}
+                                            disabled={!field.assignedUserId}
                                         />
                                     ) : (
                                         <CompletePlantingModal
