@@ -43,7 +43,6 @@ export function EntitiesTable({
         <Table>
             <Table.Header>
                 <Table.Row>
-                    <Table.Head>Status</Table.Head>
                     <Table.Head>Naziv</Table.Head>
                     {displayDefinitions.map((d) => (
                         <Table.Head key={d.id}>{d.label}</Table.Head>
@@ -56,7 +55,7 @@ export function EntitiesTable({
             <Table.Body>
                 {!filteredEntities.length && (
                     <Table.Row>
-                        <Table.Cell colSpan={5 + displayDefinitions.length}>
+                        <Table.Cell colSpan={4 + displayDefinitions.length}>
                             <NoDataPlaceholder />
                         </Table.Cell>
                     </Table.Row>
@@ -64,24 +63,22 @@ export function EntitiesTable({
                 {filteredEntities.map((entity) => (
                     <Table.Row key={entity.id} className="group">
                         <Table.Cell>
-                            {entity.state === 'draft' ? (
-                                <div className="flex">
-                                    <Chip color="neutral" className="w-fit">
-                                        Draft
-                                    </Chip>
-                                </div>
-                            ) : null}
-                        </Table.Cell>
-                        <Table.Cell>
                             <Link
                                 href={KnownPages.DirectoryEntity(
                                     entityTypeName,
                                     entity.id,
                                 )}
                             >
-                                <Typography>
-                                    {entityDisplayName(entity)}
-                                </Typography>
+                                <div className="flex items-center gap-2">
+                                    {entity.state === 'draft' ? (
+                                        <Chip color="neutral" className="w-fit">
+                                            Draft
+                                        </Chip>
+                                    ) : null}
+                                    <Typography>
+                                        {entityDisplayName(entity)}
+                                    </Typography>
+                                </div>
                             </Link>
                         </Table.Cell>
                         {displayDefinitions.map((d) => (
