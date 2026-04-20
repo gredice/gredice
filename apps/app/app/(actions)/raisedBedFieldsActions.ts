@@ -55,9 +55,17 @@ async function applyRaisedBedFieldPlantUpdate({
     }
 
     if (status) {
+        const assignedUserIds = existingField?.assignedUserIds?.filter(
+            (assignedUserId): assignedUserId is string =>
+                typeof assignedUserId === 'string' && assignedUserId.length > 0,
+        );
+        const assignedUserId = assignedUserIds?.[0] ?? null;
+
         await createEvent(
             knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
                 status,
+                assignedUserId,
+                assignedUserIds,
             }),
         );
     }
