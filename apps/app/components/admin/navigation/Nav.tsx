@@ -336,6 +336,12 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         onClick={onItemClick}
                     />
                     <NavItem
+                        href={adminPages.SowingStatistics.href}
+                        label={adminPages.SowingStatistics.label}
+                        icon={<Tally3 className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                    <NavItem
                         href={adminPages.DeliverySlots.href}
                         label={adminPages.DeliverySlots.label}
                         icon={<Truck className="size-5" />}
