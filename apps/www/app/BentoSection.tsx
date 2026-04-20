@@ -27,7 +27,7 @@ export function BentoSection() {
                             alt="Biljka rajčice"
                             className="mb-4 h-24 w-24 md:h-32 md:w-32 object-contain"
                             height={128}
-                            src="/assets/vegetables/tomato-realistic-340.png"
+                            src="https://cdn.gredice.com/entity-attributes/4b222ee1-2411-485c-9732-aab8c7d4a204-tomato-realistic-340.png"
                             width={128}
                         />
                         <h3 className="text-3xl md:text-5xl font-medium leading-tight">
