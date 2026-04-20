@@ -268,6 +268,7 @@ async function expandValue(
         if (!value) return null;
         return tryParseAttributeJson(value, attributeDefinition);
     } else if (attributeDefinition.dataType === 'image') {
+        if (!value) return null;
         const data = tryParseAttributeJson(value, attributeDefinition);
         if (!data || typeof data !== 'object') {
             return null;
