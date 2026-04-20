@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import {
     entityTypeCategories,
     entityTypes,
@@ -13,7 +13,7 @@ export function getEntityTypes() {
         .select()
         .from(entityTypes)
         .where(eq(entityTypes.isDeleted, false))
-        .orderBy(entityTypes.order);
+        .orderBy(asc(entityTypes.order), asc(entityTypes.id));
 }
 
 export function getEntityTypesWithCategory() {
@@ -22,7 +22,7 @@ export function getEntityTypesWithCategory() {
         with: {
             category: true,
         },
-        orderBy: entityTypes.order,
+        orderBy: (table) => [asc(table.order), asc(table.id)],
     });
 }
 
@@ -32,7 +32,7 @@ export function getEntityTypesByCategory(categoryId: number) {
             eq(entityTypes.categoryId, categoryId),
             eq(entityTypes.isDeleted, false),
         ),
-        orderBy: entityTypes.order,
+        orderBy: (table) => [asc(table.order), asc(table.id)],
     });
 }
 
@@ -42,7 +42,7 @@ export function getEntityTypesWithoutCategory() {
             isNull(entityTypes.categoryId),
             eq(entityTypes.isDeleted, false),
         ),
-        orderBy: entityTypes.order,
+        orderBy: (table) => [asc(table.order), asc(table.id)],
     });
 }
 
@@ -78,10 +78,10 @@ export async function getEntityTypesOrganizedByCategories() {
                             eq(entityTypes.isDeleted, false),
                             eq(entityTypes.isRoot, true),
                         ),
-                        orderBy: entityTypes.order,
+                        orderBy: (table) => [asc(table.order), asc(table.id)],
                     },
                 },
-                orderBy: entityTypeCategories.order,
+                orderBy: (table) => [asc(table.order), asc(table.id)],
             }),
             getEntityTypesWithoutCategory(),
             storage().query.entityTypes.findMany({
@@ -89,7 +89,7 @@ export async function getEntityTypesOrganizedByCategories() {
                     eq(entityTypes.isDeleted, false),
                     eq(entityTypes.isRoot, false),
                 ),
-                orderBy: entityTypes.order,
+                orderBy: (table) => [asc(table.order), asc(table.id)],
             }),
         ]);
 
