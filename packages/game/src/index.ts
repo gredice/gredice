@@ -34,3 +34,9 @@ export {
     PlantViewer,
     plantTypes,
 } from './viewers/PlantViewer';
+export type {
+    PublicGardenBlock,
+    PublicGardenStack,
+    PublicGardenViewerProps,
+} from './viewers/PublicGardenViewer';
+export { PublicGardenViewer } from './viewers/PublicGardenViewer';

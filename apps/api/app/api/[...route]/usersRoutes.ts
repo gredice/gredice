@@ -1,4 +1,7 @@
+import { publicIdToUserId, userIdToPublicId } from '@gredice/js/publicId';
 import {
+    getAccountAchievements,
+    getAccountGardens,
     getLastBirthdayRewardEvent,
     getUser,
     getUserWithLogins,
@@ -100,6 +103,69 @@ function getUpdatedProfileFields(input: {
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
+    .get(
+        '/public/:publicId/profile',
+        describeRoute({
+            description: 'Get public user profile information by public ID.',
+            security: [{}, { bearerAuth: [] }, { cookieAuth: [] }],
+        }),
+        zValidator(
+            'param',
+            z.object({
+                publicId: z.string(),
+            }),
+        ),
+        async (context) => {
+            const { publicId } = context.req.valid('param');
+            const userId = publicIdToUserId(publicId);
+            if (!userId) {
+                return context.json({ error: 'User not found' }, 404);
+            }
+
+            const dbUser = await getUser(userId);
+            if (!dbUser) {
+                return context.json({ error: 'User not found' }, 404);
+            }
+
+            const primaryAccountId = dbUser.accounts[0]?.accountId;
+            if (!primaryAccountId) {
+                return context.json({ error: 'User not found' }, 404);
+            }
+
+            const [gardens, achievements] = await Promise.all([
+                getAccountGardens(primaryAccountId),
+                getAccountAchievements(primaryAccountId),
+            ]);
+
+            return context.json({
+                user: {
+                    id: dbUser.id,
+                    publicId: userIdToPublicId(dbUser.id),
+                    userName: dbUser.userName,
+                    displayName: dbUser.displayName ?? dbUser.userName,
+                    avatarUrl: dbUser.avatarUrl,
+                    createdAt: dbUser.createdAt,
+                },
+                gardens: gardens.map((garden) => ({
+                    id: garden.id,
+                    name: garden.name,
+                    createdAt: garden.createdAt,
+                })),
+                achievements: achievements.map((achievement) => ({
+                    id: achievement.id,
+                    key: achievement.achievementKey,
+                    status: achievement.status,
+                    rewardSunflowers: achievement.rewardSunflowers,
+                    progressValue: achievement.progressValue,
+                    threshold: achievement.threshold,
+                    rewardGrantedAt:
+                        achievement.rewardGrantedAt?.toISOString() ?? null,
+                    createdAt: achievement.createdAt,
+                    updatedAt: achievement.updatedAt,
+                })),
+            });
+        },
+    )
     .get(
         '/current',
         describeRoute({
