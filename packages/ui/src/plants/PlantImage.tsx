@@ -149,8 +149,8 @@ function PlantImageFallback({
 export function PlantOrSortImage(props: PlantOrSortImageProps) {
     if ('plant' in props) {
         const { plant, alt, ...imageProps } = props;
-        const resolvedAlt = alt ?? plant.information?.name ?? 'Slika biljke';
-        const resolvedCoverUrl = plant.image?.cover?.url;
+        const resolvedAlt = alt ?? plant?.information?.name ?? 'Slika biljke';
+        const resolvedCoverUrl = plant?.image?.cover?.url;
 
         if (!resolvedCoverUrl) {
             warnAboutPlantImageFallback('missing', resolvedAlt);
