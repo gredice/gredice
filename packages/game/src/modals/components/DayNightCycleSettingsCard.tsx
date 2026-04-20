@@ -20,7 +20,7 @@ export function DayNightCycleSettingsCard() {
                         label="Uvijek dan"
                         checked={dayNightCycleDisabled}
                         onCheckedChange={(checked: boolean) =>
-                            setDayNightCycleDisabled(Boolean(checked))
+                            setDayNightCycleDisabled(checked)
                         }
                     />
                     <Typography level="body3" secondary>
