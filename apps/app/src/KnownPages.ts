@@ -33,6 +33,7 @@ export const KnownPages = {
     Users: '/admin/users',
     User: (userId: string) => `/admin/users/${userId}` as Route,
     Schedule: '/admin/schedule',
+    SowingStatistics: '/admin/statistics/sowing',
     Accounts: '/admin/accounts',
     Account: (accountId: string) => `/admin/accounts/${accountId}` as Route,
     Farms: '/admin/farms',
