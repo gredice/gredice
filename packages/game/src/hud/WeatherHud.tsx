@@ -6,14 +6,20 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useWeatherForecast } from '../hooks/useWeatherForecast';
 import { useWeatherNow } from '../hooks/useWeatherNow';
+import { useGameState } from '../useGameState';
 import { HudCard } from './components/HudCard';
 import { WeatherForecastDetails } from './components/weather/WeatherForecastDetails';
 import { weatherIcons } from './components/weather/WeatherIcons';
 import { WeatherNowDetails } from './components/weather/WeatherNowDetails';
 
 export function WeatherHud() {
-    const { data: weatherData } = useWeatherNow();
-    const { data: forecastData } = useWeatherForecast();
+    const weatherVisualizationDisabled = useGameState(
+        (state) => state.weatherVisualizationDisabled,
+    );
+    const weatherEnabled = !weatherVisualizationDisabled;
+    const { data: weatherData } = useWeatherNow(weatherEnabled);
+    const { data: forecastData } = useWeatherForecast(weatherEnabled);
+    if (weatherVisualizationDisabled) return null;
     if (!forecastData || !weatherData) return null;
     // TODO: Add loading indicator
     // TODO: Add error message

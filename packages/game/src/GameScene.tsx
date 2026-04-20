@@ -26,7 +26,7 @@ import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import { Scene } from './scene/Scene';
-import type { GameState, WinterMode } from './useGameState';
+import { type GameState, useGameState, type WinterMode } from './useGameState';
 import { useRaisedBedCloseup } from './useRaisedBedCloseup';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
@@ -64,11 +64,15 @@ export function GameScene({
     useGameTimeManager();
     useFocusPlacedBlock();
     useRaisedBedCloseup();
+    const weatherVisualizationDisabled = useGameState(
+        (state) => state.weatherVisualizationDisabled,
+    );
+    const weatherEnabled = !noWeather && !weatherVisualizationDisabled;
 
     // Prelaod all required data
     const { isLoading: blockDataLoading } = useBlockData();
     const { data: garden, isLoading: gardenLoading } = useCurrentGarden();
-    const { isLoading: weatherLoading } = useWeatherNow(!noWeather);
+    const { isLoading: weatherLoading } = useWeatherNow(weatherEnabled);
     const isLoading = gardenLoading || blockDataLoading || weatherLoading;
     if (isLoading) {
         return <GardenLoadingIndicator />;
@@ -90,7 +94,7 @@ export function GameScene({
                     <EditModeGrid />
                     <Environment
                         noBackground={noBackground}
-                        noWeather={noWeather}
+                        noWeather={!weatherEnabled}
                         noSound={noSound}
                         weather={weather}
                     />

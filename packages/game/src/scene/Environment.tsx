@@ -222,6 +222,10 @@ export function Environment({
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
     const setSnowCoverage = useGameState((state) => state.setSnowCoverage);
+    const weatherVisualizationDisabled = useGameState(
+        (state) => state.weatherVisualizationDisabled,
+    );
+    const weatherEnabled = !noWeather && !weatherVisualizationDisabled;
 
     const { data: garden } = useCurrentGarden();
     const location = garden
@@ -235,10 +239,12 @@ export function Environment({
           };
 
     const gameWeather = useGameState((state) => state.weather);
-    const { data: weatherNow } = useWeatherNow(!noWeather);
-    const overrideWeather = weather ?? gameWeather;
-    const actualWeather: typeof weatherNow = weatherNow;
-    if ((weather || gameWeather) && actualWeather) {
+    const { data: weatherNow } = useWeatherNow(weatherEnabled);
+    const overrideWeather = weatherEnabled
+        ? (weather ?? gameWeather)
+        : undefined;
+    const actualWeather = weatherEnabled ? weatherNow : undefined;
+    if (overrideWeather && actualWeather) {
         console.debug('Overriding weather', overrideWeather);
         actualWeather.rainy = overrideWeather?.rainy ?? actualWeather.rainy;
         actualWeather.foggy = overrideWeather?.foggy ?? actualWeather.foggy;
@@ -420,13 +426,13 @@ export function Environment({
                     ]}
                 />
             </directionalLight>
-            {!noWeather && fog > 0 && (
+            {weatherEnabled && fog > 0 && (
                 <fog attach="fog" args={[fogColor, fogNear, 190]} />
             )}
-            {!noWeather && rain > 0 && (
+            {weatherEnabled && rain > 0 && (
                 <Drops count={rain < 0.4 ? 200 : rain > 0.9 ? 2000 : 600} />
             )}
-            {!noWeather && snowParticles > 0 && (
+            {weatherEnabled && snowParticles > 0 && (
                 <Snow
                     count={snowParticles * 5000}
                     windSpeed={windSpeed}

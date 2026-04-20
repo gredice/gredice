@@ -11,6 +11,10 @@ import {
     setDayNightCycleDisabled as persistDayNightCycleDisabled,
 } from './utils/dayNightCycle';
 import { triggerSelectionHaptic } from './utils/haptics';
+import {
+    isWeatherVisualizationDisabled,
+    setWeatherVisualizationDisabled as persistWeatherVisualizationDisabled,
+} from './utils/weather';
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
@@ -105,6 +109,8 @@ export type GameState = {
     setFreezeTime: (freezeTime: Date | null) => void;
     dayNightCycleDisabled: boolean;
     setDayNightCycleDisabled: (disabled: boolean) => void;
+    weatherVisualizationDisabled: boolean;
+    setWeatherVisualizationDisabled: (disabled: boolean) => void;
     currentTime: Date;
     timeOfDay: number;
     sunsetTime: Date | null;
@@ -180,6 +186,7 @@ export function createGameState({
     winterMode?: WinterMode;
 }) {
     const dayNightCycleDisabled = isDayNightCycleDisabled();
+    const weatherVisualizationDisabled = isWeatherVisualizationDisabled();
     const now = freezeTime ?? new Date();
     const timeOfDay = resolveTimeOfDay(now, dayNightCycleDisabled);
     const { sunrise, sunset } = getSunriseSunset(defaultLocation, now);
@@ -225,6 +232,13 @@ export function createGameState({
             set({
                 dayNightCycleDisabled: disabled,
                 timeOfDay: resolveTimeOfDay(get().currentTime, disabled),
+            });
+        },
+        weatherVisualizationDisabled,
+        setWeatherVisualizationDisabled: (disabled) => {
+            persistWeatherVisualizationDisabled(disabled);
+            set({
+                weatherVisualizationDisabled: disabled,
             });
         },
         currentTime: now,
