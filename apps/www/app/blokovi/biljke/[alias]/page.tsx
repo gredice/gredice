@@ -70,9 +70,34 @@ export default async function BlockPlantDetailPage(
 
     const sorts = (
         allSorts?.filter(
-            (sort) =>
-                sort.information.plant.information?.name?.toLowerCase() ===
-                plant.information.name.toLowerCase(),
+            (sort, index) => {
+                const sortName = sort?.information?.name;
+                const sortPlantName = sort?.information?.plant?.information?.name;
+
+                if (!sortName || !sortPlantName) {
+                    console.error(
+                        'Invalid plant sort while filtering sorts for block plant detail page',
+                        {
+                            plantAlias: alias,
+                            plantName: plant.information.name,
+                            index,
+                            sortId: sort?.id ?? null,
+                            sortName: sortName ?? null,
+                            plantId: sort?.information?.plant?.id ?? null,
+                            sortPlantName: sortPlantName ?? null,
+                        },
+                    );
+
+                    throw new Error(
+                        'Invalid plant sort data while rendering /blokovi/biljke/[alias]',
+                    );
+                }
+
+                return (
+                    sortPlantName.toLowerCase() ===
+                    plant.information.name.toLowerCase()
+                );
+            },
         ) ?? []
     ).sort((a, b) => a.information.name.localeCompare(b.information.name));
 
