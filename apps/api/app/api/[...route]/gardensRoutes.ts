@@ -1,5 +1,6 @@
 import { signalcoClient } from '@gredice/signalco';
 import {
+    buildRaisedBedFieldPlantUpdatePayload,
     countEventsSince,
     createDefaultGardenForAccount,
     createEvent,
@@ -1789,21 +1790,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Call the storage function to create the event and update the plant status
             try {
-                const assignedUserIds =
-                    field.assignedUserIds?.filter(
-                        (assignedUserId): assignedUserId is string =>
-                            typeof assignedUserId === 'string' &&
-                            assignedUserId.length > 0,
-                    ) ?? [];
-                const plantUpdateData =
-                    assignedUserIds.length > 0
-                        ? { status, assignedUserIds }
-                        : { status };
-
                 await createEvent(
                     knownEvents.raisedBedFields.plantUpdateV1(
                         `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
-                        plantUpdateData,
+                        buildRaisedBedFieldPlantUpdatePayload(
+                            status,
+                            field.assignedUserIds,
+                        ),
                     ),
                 );
 

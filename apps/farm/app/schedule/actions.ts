@@ -1,6 +1,7 @@
 'use server';
 
 import {
+    buildRaisedBedFieldPlantUpdatePayload,
     createEvent,
     getFarmUserAcceptedOperationById,
     getFarmUserRaisedBeds,
@@ -154,23 +155,13 @@ export async function completeFarmPlanting(
         throw new Error('Sijanje mora biti potvrđeno prije završetka.');
     }
 
-    const assignedUserIds =
-        field.assignedUserIds?.filter(
-            (assignedUserId): assignedUserId is string =>
-                typeof assignedUserId === 'string' && assignedUserId.length > 0,
-        ) ?? [];
-    const plantUpdateData =
-        assignedUserIds.length > 0
-            ? {
-                  status: role === 'admin' ? 'sowed' : 'pendingVerification',
-                  assignedUserIds,
-              }
-            : { status: role === 'admin' ? 'sowed' : 'pendingVerification' };
-
     await createEvent(
         knownEvents.raisedBedFields.plantUpdateV1(
             `${raisedBedId}|${positionIndex}`,
-            plantUpdateData,
+            buildRaisedBedFieldPlantUpdatePayload(
+                role === 'admin' ? 'sowed' : 'pendingVerification',
+                field.assignedUserIds,
+            ),
         ),
     );
 

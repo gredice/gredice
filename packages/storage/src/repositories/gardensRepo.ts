@@ -108,6 +108,17 @@ function parseAssignedUserId(value: unknown) {
     return typeof value === 'string' || value === null ? value : undefined;
 }
 
+function shouldApplyAssignedUsersForPlantUpdate(data: {
+    status?: unknown;
+    assignedBy?: unknown;
+}) {
+    return (
+        typeof data.status !== 'string' ||
+        typeof data.assignedBy === 'string' ||
+        data.assignedBy === null
+    );
+}
+
 async function getAssignableFarmUserRowsByFarmIds(farmIds: number[]) {
     const uniqueFarmIds = Array.from(new Set(farmIds));
     if (uniqueFarmIds.length === 0) {
@@ -700,9 +711,7 @@ function summarizePlantCycle(
         ) {
             let shouldApplyAssignedBy = true;
             const shouldApplyAssignedUsers =
-                typeof data?.status !== 'string' ||
-                typeof data?.assignedBy === 'string' ||
-                data?.assignedBy === null;
+                shouldApplyAssignedUsersForPlantUpdate(data ?? {});
             const hasAssignedUserIdUpdate =
                 shouldApplyAssignedUsers &&
                 parseAssignedUserId(data?.assignedUserId) !== undefined;
@@ -1473,9 +1482,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             ) {
                 let shouldApplyAssignedBy = true;
                 const shouldApplyAssignedUsers =
-                    typeof data?.status !== 'string' ||
-                    typeof data?.assignedBy === 'string' ||
-                    data?.assignedBy === null;
+                    shouldApplyAssignedUsersForPlantUpdate(data ?? {});
                 const hasAssignedUserIdUpdate =
                     shouldApplyAssignedUsers &&
                     parseAssignedUserId(data?.assignedUserId) !== undefined;
