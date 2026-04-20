@@ -132,10 +132,15 @@ export default async function EntityDetailsPage(props: {
                                             {categoriesWithMissingRequiredAttributes.has(
                                                 category.name,
                                             ) && (
-                                                <span
-                                                    className="size-2 rounded-full bg-red-500"
-                                                    aria-hidden
-                                                />
+                                                <>
+                                                    <span
+                                                        className="size-2 rounded-full bg-red-500"
+                                                        aria-hidden
+                                                    />
+                                                    <span className="sr-only">
+                                                        Nedostaju obavezni atributi
+                                                    </span>
+                                                </>
                                             )}
                                         </Row>
                                     </TabsTrigger>
