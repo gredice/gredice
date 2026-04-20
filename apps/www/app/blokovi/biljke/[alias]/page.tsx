@@ -68,38 +68,37 @@ export default async function BlockPlantDetailPage(
         notFound();
     }
 
-    const sorts = (
+    const normalizedPlantName = plant.information.name.toLowerCase();
+    const matchingSorts =
         allSorts?.filter(
-            (sort, index) => {
-                const sortName = sort?.information?.name;
-                const sortPlantName = sort?.information?.plant?.information?.name;
+            (sort) =>
+                sort?.information?.plant?.information?.name?.toLowerCase() ===
+                normalizedPlantName,
+        ) ?? [];
 
-                if (!sortName || !sortPlantName) {
-                    console.error(
-                        'Invalid plant sort while filtering sorts for block plant detail page',
-                        {
-                            plantAlias: alias,
-                            plantName: plant.information.name,
-                            index,
-                            sortId: sort?.id ?? null,
-                            sortName: sortName ?? null,
-                            plantId: sort?.information?.plant?.id ?? null,
-                            sortPlantName: sortPlantName ?? null,
-                        },
-                    );
-
-                    throw new Error(
-                        'Invalid plant sort data while rendering /blokovi/biljke/[alias]',
-                    );
-                }
-
-                return (
-                    sortPlantName.toLowerCase() ===
-                    plant.information.name.toLowerCase()
-                );
+    const invalidMatchingSorts = matchingSorts.filter(
+        (sort) => !sort?.information?.name,
+    );
+    if (invalidMatchingSorts.length > 0) {
+        console.error(
+            'Invalid plant sorts while rendering block plant detail page',
+            {
+                plantAlias: alias,
+                plantName: plant.information.name,
+                invalidSorts: invalidMatchingSorts.map((sort) => ({
+                    sortId: sort?.id ?? null,
+                    sortName: sort?.information?.name ?? null,
+                    plantId: sort?.information?.plant?.id ?? null,
+                    sortPlantName:
+                        sort?.information?.plant?.information?.name ?? null,
+                })),
             },
-        ) ?? []
-    ).sort((a, b) => a.information.name.localeCompare(b.information.name));
+        );
+    }
+
+    const sorts = matchingSorts
+        .filter((sort) => Boolean(sort?.information?.name))
+        .sort((a, b) => a.information.name.localeCompare(b.information.name));
 
     return (
         <div className="py-8">

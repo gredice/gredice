@@ -70,7 +70,7 @@ type PlantOrSortImageProps = Omit<ImageProps, 'src' | 'alt'> &
  *   height={60}
  * />
  *
- * // Using with direct URL (backward compatibility)
+ * // Using with direct URL (backward compatibility, no fallback)
  * <PlantOrSortImage
  *   coverUrl={plantSort.image?.cover?.url}
  *   alt={plantSort.information.name}
@@ -88,7 +88,10 @@ export function PlantOrSortImage(props: PlantOrSortImageProps) {
 
     // Resolve cover URL from plantSort or plant object
     const resolvedCoverUrl =
-        coverUrl ?? plantSort?.image?.cover?.url ?? plant?.image?.cover?.url;
+        coverUrl ??
+        plantSort?.image?.cover?.url ??
+        plantSort?.information?.plant?.image?.cover?.url ??
+        plant?.image?.cover?.url;
 
     if (!resolvedCoverUrl) {
         throw new Error(

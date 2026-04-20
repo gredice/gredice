@@ -36,15 +36,21 @@ export function PlantPageHeader({
     return (
         <PageHeader
             visual={
-                <PlantOrSortImage
-                    coverUrl={
-                        sort ? sort.image?.cover?.url : plant.image?.cover?.url
-                    }
-                    alt={sort?.information?.name ?? plant.information.name}
-                    preload
-                    width={192}
-                    height={192}
-                />
+                sort ? (
+                    <PlantOrSortImage
+                        plantSort={sort}
+                        preload
+                        width={192}
+                        height={192}
+                    />
+                ) : (
+                    <PlantOrSortImage
+                        plant={plant}
+                        preload
+                        width={192}
+                        height={192}
+                    />
+                )
             }
             header={sort?.information?.name ?? plant.information.name}
             alternativeName={
