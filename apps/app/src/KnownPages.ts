@@ -94,4 +94,6 @@ export const KnownPages = {
     GrediceOperations: `https://www.gredice.com/radnje`,
     GrediceOperation: (operationAlias: string) =>
         `https://www.gredice.com/radnje/${slugify(operationAlias)}`,
+    GrediceUser: (publicId: string) =>
+        `https://www.gredice.com/korisnici/${publicId}`,
 } as const;
