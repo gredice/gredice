@@ -1,6 +1,8 @@
 import {
     getEntityTypesOrganizedByCategories,
     getPendingAchievementsCount,
+    getSetting,
+    SettingsKeys,
 } from '@gredice/storage';
 import { SignedOut } from '@signalco/auth-client/components';
 import { AuthProtectedSection } from '@signalco/auth-server/components';
@@ -14,6 +16,11 @@ import {
 import { AdminClientProvider } from '../../components/admin/providers';
 import { AuthAppProvider } from '../../components/providers/AuthAppProvider';
 import { auth } from '../../lib/auth/auth';
+import {
+    buildDashboardQuickActionOptions,
+    getDashboardQuickActionsFromConfig,
+    getDefaultDashboardQuickActions,
+} from '../../src/dashboardQuickActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,10 +33,32 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
     const [
         { categorizedTypes, uncategorizedTypes, shadowTypes },
         pendingAchievementsCount,
+        dashboardQuickActionsSetting,
     ] = await Promise.all([
         getEntityTypesOrganizedByCategories(),
         isAdmin ? getPendingAchievementsCount() : Promise.resolve(0),
+        getSetting(SettingsKeys.DashboardQuickActions),
     ]);
+
+    const quickActionEntityTypes = [
+        ...categorizedTypes.flatMap((category) => category.entityTypes),
+        ...uncategorizedTypes,
+        ...shadowTypes,
+    ];
+    const quickActionOptions = buildDashboardQuickActionOptions(
+        quickActionEntityTypes.map((entityType) => ({
+            name: entityType.name,
+            label: entityType.label,
+        })),
+    );
+    const configuredQuickActions = getDashboardQuickActionsFromConfig(
+        dashboardQuickActionsSetting?.value,
+        quickActionOptions,
+    );
+    const quickActions =
+        configuredQuickActions.length > 0
+            ? configuredQuickActions
+            : getDefaultDashboardQuickActions(quickActionOptions);
 
     return (
         <AuthAppProvider>
@@ -38,6 +67,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                 uncategorizedTypes={uncategorizedTypes}
                 shadowTypes={shadowTypes}
                 pendingAchievementsCount={pendingAchievementsCount}
+                quickActions={quickActions}
             >
                 <div className="grow bg-secondary">
                     <MobileHeader />
