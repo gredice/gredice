@@ -1,10 +1,11 @@
 import type { DashboardQuickActionConfigItem } from '@gredice/storage';
+import type { Route } from 'next';
 import { KnownPages } from './KnownPages';
 
 export type DashboardQuickActionOption = {
     id: string;
     label: string;
-    href: string;
+    href: Route;
     description: string;
 };
 

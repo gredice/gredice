@@ -7,12 +7,14 @@ export function AdminClientProvider({
     uncategorizedTypes,
     shadowTypes,
     pendingAchievementsCount,
+    quickActions,
     children,
 }: {
     categorizedTypes: NavContextType['categorizedTypes'];
     uncategorizedTypes: NavContextType['uncategorizedTypes'];
     shadowTypes: NavContextType['shadowTypes'];
     pendingAchievementsCount: number;
+    quickActions: NavContextType['quickActions'];
     children: React.ReactNode;
 }) {
     return (
@@ -22,6 +24,7 @@ export function AdminClientProvider({
                 uncategorizedTypes,
                 shadowTypes,
                 pendingAchievementsCount,
+                quickActions,
             }}
         >
             {children}

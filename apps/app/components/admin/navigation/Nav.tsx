@@ -138,6 +138,7 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
     const uncategorizedTypes = navContext?.uncategorizedTypes || [];
     const shadowTypes = navContext?.shadowTypes || [];
     const pendingAchievementsCount = navContext?.pendingAchievementsCount ?? 0;
+    const quickActions = navContext?.quickActions || [];
 
     return (
         <Stack spacing={2}>
@@ -150,6 +151,15 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                     strictMatch
                     onClick={onItemClick}
                 />
+                {quickActions.map((quickAction) => (
+                    <NavItem
+                        key={quickAction.id}
+                        href={quickAction.href}
+                        label={quickAction.label}
+                        icon={<File className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                ))}
             </List>
             <Stack spacing={1}>
                 <AuthProtectedSection>
