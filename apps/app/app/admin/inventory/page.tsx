@@ -8,6 +8,7 @@ import {
 } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { auth } from '../../../lib/auth/auth';
 import { KnownPages } from '../../../src/KnownPages';
