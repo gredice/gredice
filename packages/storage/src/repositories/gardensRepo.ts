@@ -104,10 +104,13 @@ type FarmAssignableUserRow = {
     avatarUrl: string | null;
 };
 
+// Parse assignment metadata carried on events without trusting arbitrary payload shapes.
 function parseAssignedUserId(value: unknown) {
     return typeof value === 'string' || value === null ? value : undefined;
 }
 
+// Status updates can include assignee metadata for analytics, but only explicit
+// assignment events should mutate the projected assignment state.
 function shouldApplyAssignedUsersForPlantUpdate(data: {
     status?: unknown;
     assignedBy?: unknown;
