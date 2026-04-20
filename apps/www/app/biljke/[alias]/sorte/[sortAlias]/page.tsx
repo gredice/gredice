@@ -55,12 +55,32 @@ export async function generateMetadata(
 export async function generateStaticParams() {
     const sorts = await getPlantSortsData();
     return (
-        sorts?.map((entity) => ({
-            alias: toPageAlias(
-                String(entity.information.plant.information?.name),
-            ),
-            sortAlias: toPageAlias(String(entity.information.name)),
-        })) ?? []
+        sorts?.map((entity, index) => {
+            const sortName = entity?.information?.name;
+            const plantName = entity?.information?.plant?.information?.name;
+
+            if (!sortName || !plantName) {
+                console.error(
+                    'Invalid plant sort while generating static params for plant sort page',
+                    {
+                        index,
+                        sortId: entity?.id ?? null,
+                        sortName: sortName ?? null,
+                        plantId: entity?.information?.plant?.id ?? null,
+                        plantName: plantName ?? null,
+                    },
+                );
+
+                throw new Error(
+                    'Invalid plant sort data while generating static params for /biljke/[alias]/sorte/[sortAlias]',
+                );
+            }
+
+            return {
+                alias: toPageAlias(String(plantName)),
+                sortAlias: toPageAlias(String(sortName)),
+            };
+        }) ?? []
     );
 }
 
