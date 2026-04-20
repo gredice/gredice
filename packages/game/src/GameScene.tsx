@@ -67,12 +67,12 @@ export function GameScene({
     const weatherVisualizationDisabled = useGameState(
         (state) => state.weatherVisualizationDisabled,
     );
-    const weatherEnabled = !noWeather && !weatherVisualizationDisabled;
+    const weatherDisabled = noWeather || weatherVisualizationDisabled;
 
     // Prelaod all required data
     const { isLoading: blockDataLoading } = useBlockData();
     const { data: garden, isLoading: gardenLoading } = useCurrentGarden();
-    const { isLoading: weatherLoading } = useWeatherNow(weatherEnabled);
+    const { isLoading: weatherLoading } = useWeatherNow(!weatherDisabled);
     const isLoading = gardenLoading || blockDataLoading || weatherLoading;
     if (isLoading) {
         return <GardenLoadingIndicator />;
@@ -94,7 +94,7 @@ export function GameScene({
                     <EditModeGrid />
                     <Environment
                         noBackground={noBackground}
-                        noWeather={!weatherEnabled}
+                        noWeather={weatherDisabled}
                         noSound={noSound}
                         weather={weather}
                     />

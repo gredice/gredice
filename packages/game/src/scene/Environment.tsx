@@ -225,7 +225,7 @@ export function Environment({
     const weatherVisualizationDisabled = useGameState(
         (state) => state.weatherVisualizationDisabled,
     );
-    const weatherEnabled = !noWeather && !weatherVisualizationDisabled;
+    const weatherDisabled = noWeather || weatherVisualizationDisabled;
 
     const { data: garden } = useCurrentGarden();
     const location = garden
@@ -239,11 +239,11 @@ export function Environment({
           };
 
     const gameWeather = useGameState((state) => state.weather);
-    const { data: weatherNow } = useWeatherNow(weatherEnabled);
-    const overrideWeather = weatherEnabled
-        ? (weather ?? gameWeather)
-        : undefined;
-    const actualWeather = weatherEnabled ? weatherNow : undefined;
+    const { data: weatherNow } = useWeatherNow(!weatherDisabled);
+    const overrideWeather = weatherDisabled
+        ? undefined
+        : (weather ?? gameWeather);
+    const actualWeather = weatherDisabled ? undefined : weatherNow;
     if (overrideWeather && actualWeather) {
         console.debug('Overriding weather', overrideWeather);
         actualWeather.rainy = overrideWeather?.rainy ?? actualWeather.rainy;
@@ -426,13 +426,13 @@ export function Environment({
                     ]}
                 />
             </directionalLight>
-            {weatherEnabled && fog > 0 && (
+            {!weatherDisabled && fog > 0 && (
                 <fog attach="fog" args={[fogColor, fogNear, 190]} />
             )}
-            {weatherEnabled && rain > 0 && (
+            {!weatherDisabled && rain > 0 && (
                 <Drops count={rain < 0.4 ? 200 : rain > 0.9 ? 2000 : 600} />
             )}
-            {weatherEnabled && snowParticles > 0 && (
+            {!weatherDisabled && snowParticles > 0 && (
                 <Snow
                     count={snowParticles * 5000}
                     windSpeed={windSpeed}
