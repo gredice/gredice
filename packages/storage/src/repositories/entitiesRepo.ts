@@ -37,6 +37,17 @@ function tryParseAttributeJson(
     }
 }
 
+function isRangeValue(value: unknown): value is { min: number; max: number } {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        'min' in value &&
+        'max' in value &&
+        typeof value.min === 'number' &&
+        typeof value.max === 'number'
+    );
+}
+
 function populateMissingAttributes(
     entity: SelectEntity & {
         attributes: (SelectAttributeValue & {
@@ -262,6 +273,18 @@ async function expandValue(
     }
     if (attributeDefinition.dataType === 'number') {
         return parseFloat(value);
+    } else if (
+        attributeDefinition.dataType === 'range' ||
+        attributeDefinition.dataType.startsWith('range|')
+    ) {
+        const parsedRangeValue = tryParseAttributeJson(
+            value,
+            attributeDefinition,
+        );
+        if (isRangeValue(parsedRangeValue)) {
+            return parsedRangeValue;
+        }
+        return null;
     } else if (attributeDefinition.dataType === 'boolean') {
         return value === 'true';
     } else if (attributeDefinition.dataType.startsWith('json')) {
@@ -275,10 +298,7 @@ async function expandValue(
         }
 
         let url = '';
-        if (
-            'url' in data &&
-            typeof data.url === 'string'
-        ) {
+        if ('url' in data && typeof data.url === 'string') {
             url = data.url;
         }
         return {
