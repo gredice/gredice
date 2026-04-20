@@ -49,6 +49,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
         quickActionEntityTypes.map((entityType) => ({
             name: entityType.name,
             label: entityType.label,
+            icon: entityType.icon,
         })),
     );
     const configuredQuickActions = getDashboardQuickActionsFromConfig(

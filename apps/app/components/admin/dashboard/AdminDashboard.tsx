@@ -35,6 +35,7 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
         entityTypes.map((entityType) => ({
             name: entityType.name,
             label: entityType.label,
+            icon: entityType.icon,
         })),
     );
 

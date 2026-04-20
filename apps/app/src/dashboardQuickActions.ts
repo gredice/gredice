@@ -7,11 +7,13 @@ export type DashboardQuickActionOption = {
     label: string;
     href: Route;
     description: string;
+    icon?: string | null;
 };
 
 type DashboardEntityTypeOption = {
     name: string;
     label: string;
+    icon?: string | null;
 };
 
 const DASHBOARD_BUILTIN_QUICK_ACTIONS = [
@@ -113,6 +115,7 @@ export function buildDashboardQuickActionOptions(
             label: entityType.label,
             href: KnownPages.DirectoryEntityType(entityType.name),
             description: `Otvara zapise tipa „${entityType.label}”.`,
+            icon: entityType.icon,
         }),
     );
 
