@@ -10,7 +10,9 @@ import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import Link from 'next/link';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
+import { KnownPages } from '../../../src/KnownPages';
 import { raisedBedPlanted } from '../../(actions)/raisedBedFieldsActions';
 import { AcceptRaisedBedFieldModal } from './AcceptRaisedBedFieldModal';
 import { AssignRaisedBedFieldModal } from './AssignRaisedBedFieldModal';
@@ -54,6 +56,10 @@ export function RaisedBedPlantingScheduleSection({
     }
 
     const sortedRaisedBeds = [...raisedBeds].sort((a, b) => a.id - b.id);
+    const firstRaisedBed = sortedRaisedBeds.at(0);
+    const raisedBedDetailsLink = firstRaisedBed
+        ? KnownPages.RaisedBed(firstRaisedBed.id)
+        : null;
 
     const dayFields = scheduledFields
         .filter((field) =>
@@ -164,7 +170,13 @@ export function RaisedBedPlantingScheduleSection({
                     spacing={0.5}
                     className="min-w-0 grow items-center flex-wrap gap-y-1"
                 >
-                    <RaisedBedLabel physicalId={physicalId} />
+                    {raisedBedDetailsLink ? (
+                        <Link href={raisedBedDetailsLink}>
+                            <RaisedBedLabel physicalId={physicalId} />
+                        </Link>
+                    ) : (
+                        <RaisedBedLabel physicalId={physicalId} />
+                    )}
                     <Typography level="body2" className="text-muted-foreground">
                         Vrijeme: {formatMinutes(durations.completed, true)} /{' '}
                         {formatMinutes(durations.approved)} (
