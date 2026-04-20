@@ -11,6 +11,7 @@ import { notFound } from 'next/navigation';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../../components/shared/PageHeader';
+import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { KnownPages } from '../../../src/KnownPages';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
@@ -64,6 +65,30 @@ export default async function OperationPage(
 
     return (
         <div className="operation-page py-8">
+            <StructuredDataScript
+                data={{
+                    '@context': 'https://schema.org',
+                    '@type': 'Product',
+                    name: operation.information.label,
+                    description:
+                        operation.information.shortDescription ??
+                        operation.information.description,
+                    category: 'Radnja',
+                    image: operation.image?.cover?.url,
+                    brand: {
+                        '@type': 'Brand',
+                        name: 'Gredice',
+                    },
+                    url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
+                    offers: {
+                        '@type': 'Offer',
+                        price: operation.prices.perOperation.toFixed(2),
+                        priceCurrency: 'EUR',
+                        availability: 'https://schema.org/InStock',
+                        url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
+                    },
+                }}
+            />
             <Stack spacing={4}>
                 <Breadcrumbs
                     items={[

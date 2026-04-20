@@ -20,7 +20,9 @@ import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInput } from '../../components/shared/PageFilterInput';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { NoDataPlaceholder } from '../../components/shared/placeholders/NoDataPlaceholder';
+import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
+import { KnownPages } from '../../src/KnownPages';
 import { OperationCard } from './OperationCard';
 
 const stageIcons: Record<
@@ -68,9 +70,56 @@ export default async function OperationsPage({
     const availableStages = PLANT_STAGES.filter((stage) =>
         stageNamesInOperations.has(stage.name),
     );
+    const stageOperations = new Map<
+        PlantStageName,
+        NonNullable<typeof filteredOperations>
+    >(
+        availableStages.map<
+            [PlantStageName, NonNullable<typeof filteredOperations>]
+        >((stage) => [
+            stage.name,
+            filteredOperations
+                ?.filter(
+                    (op) =>
+                        op.attributes.stage?.information?.name === stage.name,
+                )
+                .sort((a, b) =>
+                    a.information.label.localeCompare(b.information.label),
+                ) ?? [],
+        ]),
+    );
+    const orderedOperations = availableStages.flatMap(
+        (stage) => stageOperations.get(stage.name) ?? [],
+    );
 
     return (
         <Stack spacing={4}>
+            <StructuredDataScript
+                data={{
+                    '@context': 'https://schema.org',
+                    '@type': 'ItemList',
+                    name: 'Radnje',
+                    itemListElement: orderedOperations.map(
+                        (operation, index) => ({
+                            '@type': 'ListItem',
+                            position: index + 1,
+                            item: {
+                                '@type': 'Product',
+                                name: operation.information.label,
+                                url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
+                                image: operation.image?.cover?.url,
+                                offers: {
+                                    '@type': 'Offer',
+                                    price: operation.prices.perOperation.toFixed(
+                                        2,
+                                    ),
+                                    priceCurrency: 'EUR',
+                                },
+                            },
+                        }),
+                    ),
+                }}
+            />
             <PageHeader header="Radnje" subHeader={pageDescription} padded>
                 <Suspense>
                     <PageFilterInput
@@ -109,18 +158,8 @@ export default async function OperationsPage({
                     </div>
                 )}
                 {availableStages.map((stage) => {
-                    const stageOperations =
-                        filteredOperations
-                            ?.filter(
-                                (op) =>
-                                    op.attributes.stage?.information?.name ===
-                                    stage.name,
-                            )
-                            .sort((a, b) =>
-                                a.information.label.localeCompare(
-                                    b.information.label,
-                                ),
-                            ) || [];
+                    const operationsForStage =
+                        stageOperations.get(stage.name) ?? [];
                     const Icon = stageIcons[stage.name];
                     return (
                         <Stack
@@ -136,7 +175,7 @@ export default async function OperationsPage({
                                 </Typography>
                             </Row>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                                {stageOperations.map((operation) => (
+                                {operationsForStage.map((operation) => (
                                     <OperationCard
                                         key={operation.id}
                                         operation={operation}

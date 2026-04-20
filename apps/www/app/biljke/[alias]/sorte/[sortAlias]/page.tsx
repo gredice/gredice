@@ -6,6 +6,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { FeedbackModal } from '../../../../../components/shared/feedback/FeedbackModal';
+import { StructuredDataScript } from '../../../../../components/shared/seo/StructuredDataScript';
 import { getPlantSortsData } from '../../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../../lib/plants/getPlantsData';
 import { KnownPages } from '../../../../../src/KnownPages';
@@ -160,6 +161,46 @@ export default async function PlantSortPage(
 
     return (
         <div className="py-8">
+            <StructuredDataScript
+                data={{
+                    '@context': 'https://schema.org',
+                    '@type': 'Product',
+                    name: sortData.information.name,
+                    description:
+                        sortData.information.shortDescription ??
+                        sortData.information.description ??
+                        basePlantData.information.description,
+                    category: 'Sorta biljke',
+                    image:
+                        sortData.image?.cover?.url ??
+                        basePlantData.image?.cover?.url,
+                    brand: {
+                        '@type': 'Brand',
+                        name: 'Gredice',
+                    },
+                    isVariantOf: {
+                        '@type': 'Product',
+                        name: basePlantData.information.name,
+                        url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
+                    },
+                    url: `https://www.gredice.com${KnownPages.PlantSort(alias, sortData.information.name)}`,
+                    offers:
+                        typeof basePlantData.prices?.perPlant === 'number'
+                            ? {
+                                  '@type': 'Offer',
+                                  price: basePlantData.prices.perPlant.toFixed(
+                                      2,
+                                  ),
+                                  priceCurrency: 'EUR',
+                                  availability:
+                                      sortData.store?.availableInStore === false
+                                          ? 'https://schema.org/OutOfStock'
+                                          : 'https://schema.org/InStock',
+                                  url: `https://www.gredice.com${KnownPages.PlantSort(alias, sortData.information.name)}`,
+                              }
+                            : undefined,
+                }}
+            />
             <Stack spacing={4}>
                 <Breadcrumbs
                     items={[

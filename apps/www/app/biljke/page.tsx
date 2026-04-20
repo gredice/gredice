@@ -1,3 +1,4 @@
+import { orderBy } from '@signalco/js';
 import { Calendar, LayoutGrid } from '@signalco/ui-icons';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -15,7 +16,9 @@ import { Suspense } from 'react';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
+import { KnownPages } from '../../src/KnownPages';
 import { PlantsCalendar } from './PlantsCalendar';
 import { PlantsGallery } from './PlantsGallery';
 import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
@@ -38,8 +41,41 @@ export default async function PlantsPage({
         (Array.isArray(seedTimeFilter) ? seedTimeFilter[0] : seedTimeFilter) ===
         '1';
     const entities = await getPlantsData();
+    const isCanonicalView = !search && !isSeedTimeFilterEnabled;
+    const sortedEntities = orderBy(entities ?? [], (a, b) =>
+        a.information.name.localeCompare(b.information.name),
+    );
     return (
         <Stack>
+            {isCanonicalView && (
+                <StructuredDataScript
+                    data={{
+                        '@context': 'https://schema.org',
+                        '@type': 'ItemList',
+                        name: 'Biljke',
+                        itemListElement: sortedEntities.map((plant, index) => ({
+                            '@type': 'ListItem',
+                            position: index + 1,
+                            item: {
+                                '@type': 'Product',
+                                name: plant.information.name,
+                                url: `https://www.gredice.com${KnownPages.Plant(plant.information.name)}`,
+                                image: plant.image?.cover?.url,
+                                offers:
+                                    typeof plant.prices?.perPlant === 'number'
+                                        ? {
+                                              '@type': 'Offer',
+                                              price: plant.prices.perPlant.toFixed(
+                                                  2,
+                                              ),
+                                              priceCurrency: 'EUR',
+                                          }
+                                        : undefined,
+                            },
+                        })),
+                    }}
+                />
+            )}
             <PageHeader
                 padded
                 header="Biljke"
