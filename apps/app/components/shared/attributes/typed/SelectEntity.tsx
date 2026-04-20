@@ -29,15 +29,21 @@ export function SelectEntity({
             });
     }, [entityTypeName]);
 
+    const selectableEntities = useMemo(
+        () =>
+            entities?.flatMap((entity) => {
+                const name = entity.information?.name;
+                return name ? [{ entity, name }] : [];
+            }) ?? [],
+        [entities],
+    );
+
     const items = [
         { value: '-', label: '-' },
-        ...(entities?.map((entity, entityIndex) => ({
-            value: entity.information?.name ?? entityIndex.toString(),
-            label:
-                entity.information?.label ??
-                entity.information?.name ??
-                `${entityTypeName} ${entityIndex + 1}`,
-        })) ?? []),
+        ...selectableEntities.map(({ entity, name }) => ({
+            value: name,
+            label: entity.information?.label ?? name,
+        })),
     ];
 
     const selectedEntity = useMemo(() => {
@@ -45,11 +51,10 @@ export function SelectEntity({
             return null;
         }
 
-        return entities?.find(
-            (entity, entityIndex) =>
-                (entity.information?.name ?? entityIndex.toString()) === value,
+        return (
+            selectableEntities.find(({ name }) => name === value)?.entity ?? null
         );
-    }, [entities, value]);
+    }, [selectableEntities, value]);
 
     const handleOnChange = (newValue: string) => {
         onChange(newValue !== '-' ? newValue : null);
@@ -60,7 +65,7 @@ export function SelectEntity({
             <div className="flex-1">
                 <SelectItems
                     items={items}
-                    value={value ?? '-'}
+                    value={selectedEntity?.information?.name ?? '-'}
                     onValueChange={handleOnChange}
                 />
             </div>
