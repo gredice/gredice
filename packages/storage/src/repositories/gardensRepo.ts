@@ -111,15 +111,12 @@ function parseAssignedUserId(value: unknown) {
 
 // Status updates can include assignee metadata for analytics, but only explicit
 // assignment events should mutate the projected assignment state.
-function shouldApplyAssignedUsersForPlantUpdate(data: {
-    status?: unknown;
-    assignedBy?: unknown;
-}) {
-    return (
-        typeof data.status !== 'string' ||
-        typeof data.assignedBy === 'string' ||
-        data.assignedBy === null
-    );
+function isAssignmentEvent(data: { status?: unknown; assignedBy?: unknown }) {
+    const hasStatus = typeof data.status === 'string';
+    const hasAssignedBy =
+        typeof data.assignedBy === 'string' || data.assignedBy === null;
+
+    return !hasStatus || hasAssignedBy;
 }
 
 async function getAssignableFarmUserRowsByFarmIds(farmIds: number[]) {
@@ -713,8 +710,7 @@ function summarizePlantCycle(
             plantCycleEvent.type === knownEventTypes.raisedBedFields.plantUpdate
         ) {
             let shouldApplyAssignedBy = true;
-            const shouldApplyAssignedUsers =
-                shouldApplyAssignedUsersForPlantUpdate(data ?? {});
+            const shouldApplyAssignedUsers = isAssignmentEvent(data ?? {});
             const hasAssignedUserIdUpdate =
                 shouldApplyAssignedUsers &&
                 parseAssignedUserId(data?.assignedUserId) !== undefined;
@@ -1484,8 +1480,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 event.type === knownEventTypes.raisedBedFields.plantUpdate
             ) {
                 let shouldApplyAssignedBy = true;
-                const shouldApplyAssignedUsers =
-                    shouldApplyAssignedUsersForPlantUpdate(data ?? {});
+                const shouldApplyAssignedUsers = isAssignmentEvent(data ?? {});
                 const hasAssignedUserIdUpdate =
                     shouldApplyAssignedUsers &&
                     parseAssignedUserId(data?.assignedUserId) !== undefined;
