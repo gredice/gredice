@@ -11,6 +11,11 @@ import {
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
 import type { GameFeatureFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
+import {
+    defaultGameCameraPosition,
+    defaultGameCameraZoom,
+    farGameCameraZoom,
+} from './gameCamera';
 import { useBlockData } from './hooks/useBlockData';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
@@ -44,8 +49,6 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     flags?: GameFeatureFlags;
 };
 
-const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
-
 export function GameScene({
     zoom = 'normal',
     noControls,
@@ -77,8 +80,10 @@ export function GameScene({
             {...rest}
         >
             <Scene
-                position={cameraPosition}
-                zoom={zoom === 'far' ? 75 : 100}
+                position={defaultGameCameraPosition}
+                zoom={
+                    zoom === 'far' ? farGameCameraZoom : defaultGameCameraZoom
+                }
                 className="!absolute"
             >
                 <ParticleSystemProvider>
