@@ -1,13 +1,19 @@
 const DAY_NIGHT_CYCLE_DISABLED_STORAGE_KEY = 'game-day-night-cycle-disabled';
+let cachedDayNightCycleDisabled: boolean | undefined;
 
+// Normalized midpoint of the day-night cycle, equivalent to noon.
 export const ALWAYS_DAY_TIME = 0.5;
 
 export function isDayNightCycleDisabled() {
-    return (
+    if (cachedDayNightCycleDisabled !== undefined) {
+        return cachedDayNightCycleDisabled;
+    }
+
+    cachedDayNightCycleDisabled =
         typeof window !== 'undefined' &&
         window.localStorage.getItem(DAY_NIGHT_CYCLE_DISABLED_STORAGE_KEY) ===
-            'true'
-    );
+            'true';
+    return cachedDayNightCycleDisabled;
 }
 
 export function setDayNightCycleDisabled(disabled: boolean) {
@@ -15,6 +21,7 @@ export function setDayNightCycleDisabled(disabled: boolean) {
         return;
     }
 
+    cachedDayNightCycleDisabled = disabled;
     window.localStorage.setItem(
         DAY_NIGHT_CYCLE_DISABLED_STORAGE_KEY,
         String(disabled),
