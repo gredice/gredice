@@ -154,12 +154,23 @@ export async function completeFarmPlanting(
         throw new Error('Sijanje mora biti potvrđeno prije završetka.');
     }
 
+    const assignedUserIds =
+        field.assignedUserIds?.filter(
+            (assignedUserId): assignedUserId is string =>
+                typeof assignedUserId === 'string' && assignedUserId.length > 0,
+        ) ?? [];
+    const plantUpdateData =
+        assignedUserIds.length > 0
+            ? {
+                  status: role === 'admin' ? 'sowed' : 'pendingVerification',
+                  assignedUserIds,
+              }
+            : { status: role === 'admin' ? 'sowed' : 'pendingVerification' };
+
     await createEvent(
         knownEvents.raisedBedFields.plantUpdateV1(
             `${raisedBedId}|${positionIndex}`,
-            {
-                status: role === 'admin' ? 'sowed' : 'pendingVerification',
-            },
+            plantUpdateData,
         ),
     );
 

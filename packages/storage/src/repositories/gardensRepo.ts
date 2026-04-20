@@ -695,15 +695,25 @@ function summarizePlantCycle(
             plantCycleEvent.type === knownEventTypes.raisedBedFields.plantUpdate
         ) {
             let shouldApplyAssignedBy = true;
+            const shouldApplyAssignedUsers =
+                typeof data?.status !== 'string' ||
+                typeof data?.assignedBy === 'string' ||
+                data?.assignedBy === null;
+            const hasAssignedUserIdUpdate =
+                shouldApplyAssignedUsers &&
+                (typeof data?.assignedUserId === 'string' ||
+                    data?.assignedUserId === null);
             plantStatus =
                 typeof data?.status === 'string' ? data.status : plantStatus;
-            if (
-                typeof data?.assignedUserId === 'string' ||
-                data?.assignedUserId === null
-            ) {
-                assignedUserId = data.assignedUserId;
+            if (hasAssignedUserIdUpdate) {
+                const nextAssignedUserId =
+                    typeof data?.assignedUserId === 'string' ||
+                    data?.assignedUserId === null
+                        ? data.assignedUserId
+                        : undefined;
+                assignedUserId = nextAssignedUserId;
                 assignedUserIds = undefined;
-                if (data.assignedUserId === null) {
+                if (nextAssignedUserId === null) {
                     assignedBy = null;
                     assignedAt = undefined;
                     shouldApplyAssignedBy = false;
@@ -711,7 +721,10 @@ function summarizePlantCycle(
                     assignedAt = plantCycleEvent.createdAt;
                 }
             }
-            if (Array.isArray(data?.assignedUserIds)) {
+            if (
+                shouldApplyAssignedUsers &&
+                Array.isArray(data?.assignedUserIds)
+            ) {
                 const eventAssignedUserId =
                     typeof data?.assignedUserId === 'string' ||
                     data?.assignedUserId === null
@@ -1460,17 +1473,27 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 event.type === knownEventTypes.raisedBedFields.plantUpdate
             ) {
                 let shouldApplyAssignedBy = true;
+                const shouldApplyAssignedUsers =
+                    typeof data?.status !== 'string' ||
+                    typeof data?.assignedBy === 'string' ||
+                    data?.assignedBy === null;
+                const hasAssignedUserIdUpdate =
+                    shouldApplyAssignedUsers &&
+                    (typeof data?.assignedUserId === 'string' ||
+                        data?.assignedUserId === null);
                 plantStatus =
                     typeof data?.status === 'string'
                         ? data?.status
                         : plantStatus;
-                if (
-                    typeof data?.assignedUserId === 'string' ||
-                    data?.assignedUserId === null
-                ) {
-                    assignedUserId = data.assignedUserId;
+                if (hasAssignedUserIdUpdate) {
+                    const nextAssignedUserId =
+                        typeof data?.assignedUserId === 'string' ||
+                        data?.assignedUserId === null
+                            ? data.assignedUserId
+                            : undefined;
+                    assignedUserId = nextAssignedUserId;
                     assignedUserIds = undefined;
-                    if (data.assignedUserId === null) {
+                    if (nextAssignedUserId === null) {
                         assignedBy = null;
                         assignedAt = undefined;
                         shouldApplyAssignedBy = false;
@@ -1478,7 +1501,10 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                         assignedAt = event.createdAt;
                     }
                 }
-                if (Array.isArray(data?.assignedUserIds)) {
+                if (
+                    shouldApplyAssignedUsers &&
+                    Array.isArray(data?.assignedUserIds)
+                ) {
                     const eventAssignedUserId =
                         typeof data?.assignedUserId === 'string' ||
                         data?.assignedUserId === null

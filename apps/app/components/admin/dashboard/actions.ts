@@ -123,6 +123,7 @@ function addDurationToUsers({
     userName,
     operationsByUser,
     dailyOperationsByUser,
+    includeInDailyTotals = true,
 }: {
     date: string;
     durationMinutes: number;
@@ -144,19 +145,22 @@ function addDurationToUsers({
             { userId: string; userName: string; operationsMinutes: number }
         >
     >;
+    includeInDailyTotals?: boolean;
 }) {
-    const dateUserStats = dailyOperationsByUser.get(date) ?? new Map();
-    const existingDailyStats = dateUserStats.get(userId);
-    if (!existingDailyStats) {
-        dateUserStats.set(userId, {
-            userId,
-            userName,
-            operationsMinutes: durationMinutes,
-        });
-    } else {
-        existingDailyStats.operationsMinutes += durationMinutes;
+    if (includeInDailyTotals) {
+        const dateUserStats = dailyOperationsByUser.get(date) ?? new Map();
+        const existingDailyStats = dateUserStats.get(userId);
+        if (!existingDailyStats) {
+            dateUserStats.set(userId, {
+                userId,
+                userName,
+                operationsMinutes: durationMinutes,
+            });
+        } else {
+            existingDailyStats.operationsMinutes += durationMinutes;
+        }
+        dailyOperationsByUser.set(date, dateUserStats);
     }
-    dailyOperationsByUser.set(date, dateUserStats);
 
     const existingUserStats = operationsByUser.get(userId);
     if (!existingUserStats) {
@@ -424,6 +428,7 @@ export async function getAnalyticsData(
                 userName,
                 operationsByUser,
                 dailyOperationsByUser,
+                includeInDailyTotals: false,
             });
         }
     }
