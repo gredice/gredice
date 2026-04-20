@@ -13,7 +13,7 @@ type ErrorPageProps = {
     reset: () => void;
 };
 
-export default function GlobalError({ error, reset }: ErrorPageProps) {
+export default function ErrorPage({ error, reset }: ErrorPageProps) {
     const posthog = usePostHog();
     const correlationId = useMemo(() => generateCorrelationId(), []);
 
@@ -21,18 +21,7 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
         error,
         correlationId,
         capture: posthog?.capture.bind(posthog),
-        boundary: 'global',
     });
 
-    return (
-        <html lang="hr">
-            <body>
-                <ErrorFallback
-                    correlationId={correlationId}
-                    onRetry={reset}
-                    variant="global"
-                />
-            </body>
-        </html>
-    );
+    return <ErrorFallback correlationId={correlationId} onRetry={reset} />;
 }
