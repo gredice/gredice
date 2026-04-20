@@ -105,7 +105,7 @@ type FarmAssignableUserRow = {
 };
 
 // Parse assignment metadata carried on events without trusting arbitrary payload shapes.
-function parseAssignedUserId(value: unknown) {
+function extractAssignedUserId(value: unknown) {
     return typeof value === 'string' || value === null ? value : undefined;
 }
 
@@ -116,6 +116,8 @@ function isAssignmentEvent(data: { status?: unknown; assignedBy?: unknown }) {
     const hasAssignedBy =
         typeof data.assignedBy === 'string' || data.assignedBy === null;
 
+    // Apply assignment mutations for pure assignment events, or for combined
+    // updates that explicitly carry assignment ownership via `assignedBy`.
     return !hasStatus || hasAssignedBy;
 }
 
@@ -713,11 +715,11 @@ function summarizePlantCycle(
             const shouldApplyAssignedUsers = isAssignmentEvent(data ?? {});
             const hasAssignedUserIdUpdate =
                 shouldApplyAssignedUsers &&
-                parseAssignedUserId(data?.assignedUserId) !== undefined;
+                extractAssignedUserId(data?.assignedUserId) !== undefined;
             plantStatus =
                 typeof data?.status === 'string' ? data.status : plantStatus;
             if (hasAssignedUserIdUpdate) {
-                const nextAssignedUserId = parseAssignedUserId(
+                const nextAssignedUserId = extractAssignedUserId(
                     data?.assignedUserId,
                 );
                 assignedUserId = nextAssignedUserId;
@@ -734,7 +736,7 @@ function summarizePlantCycle(
                 shouldApplyAssignedUsers &&
                 Array.isArray(data?.assignedUserIds)
             ) {
-                const eventAssignedUserId = parseAssignedUserId(
+                const eventAssignedUserId = extractAssignedUserId(
                     data?.assignedUserId,
                 );
                 assignedUserIds = normalizeAssignedUserIds(
@@ -1483,13 +1485,13 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 const shouldApplyAssignedUsers = isAssignmentEvent(data ?? {});
                 const hasAssignedUserIdUpdate =
                     shouldApplyAssignedUsers &&
-                    parseAssignedUserId(data?.assignedUserId) !== undefined;
+                    extractAssignedUserId(data?.assignedUserId) !== undefined;
                 plantStatus =
                     typeof data?.status === 'string'
                         ? data?.status
                         : plantStatus;
                 if (hasAssignedUserIdUpdate) {
-                    const nextAssignedUserId = parseAssignedUserId(
+                    const nextAssignedUserId = extractAssignedUserId(
                         data?.assignedUserId,
                     );
                     assignedUserId = nextAssignedUserId;
@@ -1506,7 +1508,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     shouldApplyAssignedUsers &&
                     Array.isArray(data?.assignedUserIds)
                 ) {
-                    const eventAssignedUserId = parseAssignedUserId(
+                    const eventAssignedUserId = extractAssignedUserId(
                         data?.assignedUserId,
                     );
                     assignedUserIds = normalizeAssignedUserIds(
