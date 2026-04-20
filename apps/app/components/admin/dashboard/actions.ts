@@ -18,6 +18,11 @@ type OperationsDurationPoint = {
     operationsMinutes: number;
     sowingMinutes: number;
     totalMinutes: number;
+    byUser: {
+        userId: string;
+        userName: string;
+        operationsMinutes: number;
+    }[];
 };
 
 type OperationsDurationData = {
@@ -101,6 +106,7 @@ function formatOperationsDurationData(
         sowingMinutes: sowingTotals.get(date) ?? 0,
         totalMinutes:
             (operationsTotals.get(date) ?? 0) + (sowingTotals.get(date) ?? 0),
+        byUser: [],
     }));
     const operationsMinutes = daily.reduce(
         (total, day) => total + day.operationsMinutes,
@@ -244,6 +250,13 @@ export async function getAnalyticsData(
             operationsCount: number;
         }
     >();
+    const dailyOperationsByUser = new Map<
+        string,
+        Map<
+            string,
+            { userId: string; userName: string; operationsMinutes: number }
+        >
+    >();
 
     for (const operation of operationsList) {
         if (operation.status !== 'completed' || !operation.completedAt) {
@@ -270,6 +283,19 @@ export async function getAnalyticsData(
             operation.assignedUser?.displayName ??
             operation.assignedUser?.userName ??
             'Nedodijeljeno';
+        const dateUserStats = dailyOperationsByUser.get(key) ?? new Map();
+        const existingDailyStats = dateUserStats.get(userId);
+        if (!existingDailyStats) {
+            dateUserStats.set(userId, {
+                userId,
+                userName,
+                operationsMinutes: durationMinutes,
+            });
+        } else {
+            existingDailyStats.operationsMinutes += durationMinutes;
+        }
+        dailyOperationsByUser.set(key, dateUserStats);
+
         const existingUserStats = operationsByUser.get(userId);
         if (!existingUserStats) {
             operationsByUser.set(userId, {
@@ -312,6 +338,12 @@ export async function getAnalyticsData(
     operationsDuration.byUser = Array.from(operationsByUser.values()).sort(
         (a, b) => b.operationsMinutes - a.operationsMinutes,
     );
+    operationsDuration.daily = operationsDuration.daily.map((day) => ({
+        ...day,
+        byUser: Array.from(dailyOperationsByUser.get(day.date)?.values() ?? [])
+            .filter((user) => user.operationsMinutes > 0)
+            .sort((a, b) => b.operationsMinutes - a.operationsMinutes),
+    }));
 
     const weekdayRegistrations = WEEKDAY_LABELS.map((label, index) => ({
         label,

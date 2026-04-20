@@ -3,18 +3,27 @@
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from '@signalco/ui-primitives/Tooltip';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import {
+    Bar,
+    BarChart,
+    CartesianGrid,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from 'recharts';
 
 export type OperationsDurationPoint = {
     date: string;
     operationsMinutes: number;
     sowingMinutes: number;
     totalMinutes: number;
+    byUser: {
+        userId: string;
+        userName: string;
+        operationsMinutes: number;
+    }[];
 };
 
 export type OperationsDurationData = {
@@ -34,6 +43,17 @@ const dateFormatter = new Intl.DateTimeFormat('hr-HR', {
     day: '2-digit',
     month: '2-digit',
 });
+
+const USER_BAR_COLORS = [
+    'hsl(var(--primary) / 0.8)',
+    'hsl(221 83% 53% / 0.8)',
+    'hsl(262 83% 58% / 0.8)',
+    'hsl(16 84% 55% / 0.8)',
+    'hsl(142 71% 45% / 0.8)',
+    'hsl(338 80% 56% / 0.8)',
+    'hsl(199 89% 48% / 0.8)',
+    'hsl(32 95% 44% / 0.8)',
+];
 
 function formatTotalDuration(totalMinutes: number) {
     const hours = Math.floor(totalMinutes / 60);
@@ -70,34 +90,28 @@ export function OperationsDurationCard({
 }: {
     data: OperationsDurationData;
 }) {
-    const maxMinutes = Math.max(
-        0,
-        ...data.daily.map((day) => day.totalMinutes),
-    );
-    const hasData = maxMinutes > 0;
+    const userSegments = data.byUser.map((user, index) => ({
+        userId: user.userId,
+        userName: user.userName,
+        color: USER_BAR_COLORS[index % USER_BAR_COLORS.length],
+    }));
+    const chartData = data.daily.map((day) => {
+        const valuesByUser = Object.fromEntries(
+            day.byUser.map((user) => [user.userId, user.operationsMinutes]),
+        );
+
+        return {
+            ...valuesByUser,
+            date: day.date,
+            label: formatDateLabel(day.date),
+            sowingMinutes: day.sowingMinutes,
+        };
+    });
     const maxVisibleLabels = 10;
     const labelStep = Math.max(
         1,
-        Math.ceil(data.daily.length / maxVisibleLabels),
+        Math.ceil(Math.max(chartData.length, 1) / maxVisibleLabels),
     );
-    const points = data.daily.map((day, index) => {
-        const normalizedHeight = maxMinutes
-            ? (day.totalMinutes / maxMinutes) * 100
-            : 0;
-        const heightPercent =
-            day.totalMinutes > 0 ? Math.max(4, normalizedHeight) : 0;
-        const barHasSegments =
-            day.operationsMinutes > 0 || day.sowingMinutes > 0;
-        const shouldShowLabel =
-            index % labelStep === 0 || index === data.daily.length - 1;
-
-        return {
-            barHasSegments,
-            day,
-            heightPercent,
-            shouldShowLabel,
-        };
-    });
 
     return (
         <Card>
@@ -135,7 +149,7 @@ export function OperationsDurationCard({
                             Prikazane su samo završene radnje
                         </Typography>
                     </Stack>
-                    {data.daily.length === 0 || !hasData ? (
+                    {chartData.length === 0 ? (
                         <Typography
                             level="body2"
                             className="text-muted-foreground"
@@ -143,135 +157,195 @@ export function OperationsDurationCard({
                             Nema podataka za odabrani period.
                         </Typography>
                     ) : (
-                        <>
-                            <div className="flex h-48 w-full items-end gap-[3px] sm:gap-2">
-                                {points.map(
-                                    ({
-                                        barHasSegments,
-                                        day,
-                                        heightPercent,
-                                    }) => (
-                                        <Tooltip key={day.date}>
-                                            <TooltipTrigger asChild>
-                                                <div className="flex h-full min-w-[6px] flex-1 basis-0 items-end">
-                                                    <div
-                                                        className="flex w-full min-w-0 flex-col justify-end overflow-hidden rounded-t bg-primary/10"
-                                                        style={{
-                                                            height: `${heightPercent}%`,
-                                                        }}
-                                                    >
-                                                        {barHasSegments ? (
-                                                            <>
-                                                                {day.operationsMinutes >
-                                                                    0 && (
-                                                                    <div
-                                                                        className="bg-primary/60"
-                                                                        style={{
-                                                                            flexGrow:
-                                                                                day.operationsMinutes,
-                                                                            flexBasis: 0,
-                                                                        }}
-                                                                    />
-                                                                )}
-                                                                {day.sowingMinutes >
-                                                                    0 && (
-                                                                    <div
-                                                                        className="bg-emerald-500/60"
-                                                                        style={{
-                                                                            flexGrow:
-                                                                                day.sowingMinutes,
-                                                                            flexBasis: 0,
-                                                                        }}
-                                                                    />
-                                                                )}
-                                                            </>
-                                                        ) : null}
-                                                    </div>
-                                                </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <Stack spacing={0.5}>
+                        <div className="h-56 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={chartData}
+                                    margin={{
+                                        top: 8,
+                                        right: 8,
+                                        left: -16,
+                                        bottom: 0,
+                                    }}
+                                >
+                                    <CartesianGrid
+                                        strokeDasharray="3 3"
+                                        className="stroke-border"
+                                    />
+                                    <XAxis
+                                        dataKey="label"
+                                        tickLine={false}
+                                        axisLine={false}
+                                        interval={0}
+                                        tick={({ x, y, payload, index }) => {
+                                            if (
+                                                index % labelStep !== 0 &&
+                                                index !== chartData.length - 1
+                                            ) {
+                                                return null;
+                                            }
+
+                                            return (
+                                                <text
+                                                    x={x}
+                                                    y={y + 12}
+                                                    textAnchor="middle"
+                                                    className="fill-muted-foreground text-xs"
+                                                >
+                                                    {payload.value}
+                                                </text>
+                                            );
+                                        }}
+                                    />
+                                    <YAxis
+                                        tickLine={false}
+                                        axisLine={false}
+                                        width={36}
+                                        tick={{ fontSize: 12 }}
+                                        tickFormatter={(value: number) =>
+                                            `${Math.round(value)}m`
+                                        }
+                                    />
+                                    <Tooltip
+                                        cursor={{
+                                            fill: 'hsl(var(--primary) / 0.08)',
+                                        }}
+                                        contentStyle={{
+                                            border: '1px solid hsl(var(--border))',
+                                            borderRadius: '0.5rem',
+                                            backgroundColor:
+                                                'hsl(var(--background))',
+                                        }}
+                                        content={({
+                                            active,
+                                            payload,
+                                            label,
+                                        }) => {
+                                            if (
+                                                !active ||
+                                                !payload ||
+                                                payload.length === 0
+                                            ) {
+                                                return null;
+                                            }
+
+                                            const values = payload
+                                                .map((item) =>
+                                                    typeof item.value ===
+                                                    'number'
+                                                        ? item.value
+                                                        : 0,
+                                                )
+                                                .filter((value) => value > 0);
+                                            const totalMinutes = values.reduce(
+                                                (sum, value) => sum + value,
+                                                0,
+                                            );
+                                            const sowingEntry = payload.find(
+                                                (item) =>
+                                                    String(item.dataKey) ===
+                                                    'sowingMinutes',
+                                            );
+                                            const sowingMinutes =
+                                                typeof sowingEntry?.value ===
+                                                'number'
+                                                    ? sowingEntry.value
+                                                    : 0;
+                                            const byUserEntries = payload
+                                                .filter(
+                                                    (item) =>
+                                                        String(item.dataKey) !==
+                                                            'sowingMinutes' &&
+                                                        typeof item.value ===
+                                                            'number' &&
+                                                        item.value > 0,
+                                                )
+                                                .sort(
+                                                    (a, b) =>
+                                                        Number(b.value) -
+                                                        Number(a.value),
+                                                );
+
+                                            return (
+                                                <Stack
+                                                    spacing={0.5}
+                                                    className="text-xs"
+                                                >
                                                     <Typography level="body2">
-                                                        {formatDateLabel(
-                                                            day.date,
-                                                        )}
+                                                        {label}
                                                     </Typography>
-                                                    <Typography level="body3">
+                                                    <Typography
+                                                        level="body3"
+                                                        semiBold
+                                                    >
                                                         Ukupno:{' '}
                                                         {formatTooltipDuration(
-                                                            day.totalMinutes,
+                                                            totalMinutes,
                                                         )}
                                                     </Typography>
-                                                    <Typography
-                                                        level="body3"
-                                                        className="text-muted-foreground"
-                                                    >
-                                                        Radnje:{' '}
-                                                        {formatTooltipDuration(
-                                                            day.operationsMinutes,
-                                                        )}
-                                                    </Typography>
-                                                    <Typography
-                                                        level="body3"
-                                                        className="text-muted-foreground"
-                                                    >
-                                                        Sijanje:{' '}
-                                                        {formatTooltipDuration(
-                                                            day.sowingMinutes,
-                                                        )}
-                                                    </Typography>
+                                                    {byUserEntries.length >
+                                                    0 ? (
+                                                        byUserEntries.map(
+                                                            (user) => (
+                                                                <Typography
+                                                                    key={String(
+                                                                        user.dataKey,
+                                                                    )}
+                                                                    level="body3"
+                                                                    className="text-muted-foreground"
+                                                                >
+                                                                    {user.name}:{' '}
+                                                                    {formatTooltipDuration(
+                                                                        Number(
+                                                                            user.value,
+                                                                        ),
+                                                                    )}
+                                                                </Typography>
+                                                            ),
+                                                        )
+                                                    ) : (
+                                                        <Typography
+                                                            level="body3"
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            Nema dodijeljenih
+                                                            korisnika
+                                                        </Typography>
+                                                    )}
+                                                    {sowingMinutes > 0 ? (
+                                                        <Typography
+                                                            level="body3"
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            Sijanje:{' '}
+                                                            {formatTooltipDuration(
+                                                                sowingMinutes,
+                                                            )}
+                                                        </Typography>
+                                                    ) : null}
                                                 </Stack>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    ),
-                                )}
-                            </div>
-                            <div className="mt-2 flex w-full gap-[3px] sm:gap-2">
-                                {points.map(({ day, shouldShowLabel }) => (
-                                    <div
-                                        key={`${day.date}-label`}
-                                        className="min-w-[6px] flex-1 basis-0 text-center"
-                                    >
-                                        {shouldShowLabel ? (
-                                            <Stack
-                                                spacing={0}
-                                                className="min-w-0 items-center text-center"
-                                            >
-                                                <Typography
-                                                    level="body3"
-                                                    className="text-xs font-medium leading-tight"
-                                                >
-                                                    {formatDateLabel(day.date)}
-                                                </Typography>
-                                                <Stack
-                                                    spacing={0}
-                                                    className="hidden min-w-0 items-center text-[10px] leading-tight text-muted-foreground md:flex"
-                                                >
-                                                    <Typography level="body3">
-                                                        Ukupno{' '}
-                                                        {formatTooltipDuration(
-                                                            day.totalMinutes,
-                                                        )}
-                                                    </Typography>
-                                                    <Typography level="body3">
-                                                        Radnje{' '}
-                                                        {formatTooltipDuration(
-                                                            day.operationsMinutes,
-                                                        )}
-                                                    </Typography>
-                                                    <Typography level="body3">
-                                                        Sijanje{' '}
-                                                        {formatTooltipDuration(
-                                                            day.sowingMinutes,
-                                                        )}
-                                                    </Typography>
-                                                </Stack>
-                                            </Stack>
-                                        ) : null}
-                                    </div>
-                                ))}
-                            </div>
-                        </>
+                                            );
+                                        }}
+                                    />
+                                    {userSegments.map((user) => (
+                                        <Bar
+                                            key={user.userId}
+                                            dataKey={user.userId}
+                                            stackId="duration"
+                                            fill={user.color}
+                                            radius={[4, 4, 0, 0]}
+                                            name={user.userName}
+                                        />
+                                    ))}
+                                    <Bar
+                                        dataKey="sowingMinutes"
+                                        stackId="duration"
+                                        fill="hsl(142 71% 45% / 0.65)"
+                                        name="Sijanje"
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     )}
                     {data.byUser.length > 0 ? (
                         <Stack spacing={1.5} className="pt-2">
