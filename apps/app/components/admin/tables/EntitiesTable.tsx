@@ -43,12 +43,12 @@ export function EntitiesTable({
         <Table>
             <Table.Header>
                 <Table.Row>
+                    <Table.Head>Status</Table.Head>
                     <Table.Head>Naziv</Table.Head>
                     {displayDefinitions.map((d) => (
                         <Table.Head key={d.id}>{d.label}</Table.Head>
                     ))}
                     <Table.Head>Ispunjenost</Table.Head>
-                    <Table.Head>Status</Table.Head>
                     <Table.Head>Zadnja izmjena</Table.Head>
                     <Table.Head></Table.Head>
                 </Table.Row>
@@ -63,6 +63,15 @@ export function EntitiesTable({
                 )}
                 {filteredEntities.map((entity) => (
                     <Table.Row key={entity.id} className="group">
+                        <Table.Cell>
+                            {entity.state === 'draft' ? (
+                                <div className="flex">
+                                    <Chip color="neutral" className="w-fit">
+                                        Draft
+                                    </Chip>
+                                </div>
+                            ) : null}
+                        </Table.Cell>
                         <Table.Cell>
                             <Link
                                 href={KnownPages.DirectoryEntity(
@@ -89,21 +98,6 @@ export function EntitiesTable({
                                     entity={entity}
                                     definitions={attributeDefinitions}
                                 />
-                            </div>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <div className="flex">
-                                <Chip
-                                    color={
-                                        entity.state === 'draft'
-                                            ? 'neutral'
-                                            : 'success'
-                                    }
-                                >
-                                    {entity.state === 'draft'
-                                        ? 'U izradi'
-                                        : 'Objavljeno'}
-                                </Chip>
                             </div>
                         </Table.Cell>
                         <Table.Cell>
@@ -146,7 +140,11 @@ function EntityAttributeValueCell({
         const booleanValue = booleanAttributeValue(value);
         if (booleanValue !== null) {
             return (
-                <Chip color={booleanValue ? 'success' : 'neutral'}>
+                <Chip
+                    color={booleanValue ? 'primary' : 'neutral'}
+                    className="w-fit"
+                    size="sm"
+                >
                     {booleanValue ? 'Da' : 'Ne'}
                 </Chip>
             );
