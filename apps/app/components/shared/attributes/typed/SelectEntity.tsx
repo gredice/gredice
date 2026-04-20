@@ -52,7 +52,8 @@ export function SelectEntity({
         }
 
         return (
-            selectableEntities.find(({ name }) => name === value)?.entity ?? null
+            selectableEntities.find(({ name }) => name === value)?.entity ??
+            null
         );
     }, [selectableEntities, value]);
 
