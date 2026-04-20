@@ -9,7 +9,13 @@ import {
 } from '@signalco/ui-icons';
 import type { HTMLAttributes, ReactNode } from 'react';
 
-export const attributeDataTypeItems = [
+export type AttributeDataTypeItem = {
+    value: string;
+    label: string;
+    icon?: ReactNode;
+};
+
+export const attributeDataTypeItems: AttributeDataTypeItem[] = [
     {
         value: 'text',
         label: 'Tekst',
@@ -50,7 +56,7 @@ export const attributeDataTypeItems = [
         label: 'JSON',
         icon: <Code className="size-5" />,
     },
-] as const;
+];
 
 export function AttributeDataTypeIcon({
     dataType,
