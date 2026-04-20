@@ -46,9 +46,6 @@ export function DeliveryRequestRow({
     const displayName = hasPlantSort
         ? plantSort?.information?.name
         : operationData?.information?.label || operationData?.information?.name;
-    const displayImageUrl = hasPlantSort
-        ? plantSort?.image?.cover?.url
-        : operationData?.image?.cover?.url;
     const hasOperationDetails = displayName;
     const raisedBedName = request.raisedBed?.name;
     const raisedBedPhysicalId = request.raisedBed?.physicalId;
@@ -65,13 +62,23 @@ export function DeliveryRequestRow({
                 {/* Operation/Plant details */}
                 {hasOperationDetails && (
                     <Row spacing={1}>
-                        <PlantOrSortImage
-                            coverUrl={displayImageUrl}
-                            alt={displayName || 'Biljka'}
-                            width={48}
-                            height={48}
-                            className="rounded-md shrink-0"
-                        />
+                        {hasPlantSort ? (
+                            <PlantOrSortImage
+                                plantSort={plantSort}
+                                alt={displayName || 'Biljka'}
+                                width={48}
+                                height={48}
+                                className="rounded-md shrink-0"
+                            />
+                        ) : (
+                            <PlantOrSortImage
+                                coverUrl={operationData?.image?.cover?.url}
+                                alt={displayName || 'Biljka'}
+                                width={48}
+                                height={48}
+                                className="rounded-md shrink-0"
+                            />
+                        )}
                         <Stack className="w-full min-w-0">
                             <Typography level="body1" semiBold noWrap>
                                 {displayName}

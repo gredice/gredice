@@ -13,6 +13,7 @@ export type ShoppingCartDiscount = {
 };
 
 export type ShoppingCartItemWithShopData = SelectShoppingCartItem & {
+    entityData: EntityStandardized;
     shopData: {
         name?: string;
         description?: string;
@@ -123,6 +124,7 @@ export async function getCartInfo(
                 ...item,
                 usesInventory: wantsInventory,
                 inventoryAvailable,
+                entityData,
                 shopData: {
                     name:
                         entityData.information?.label ??
@@ -130,7 +132,11 @@ export async function getCartInfo(
                     description:
                         entityData.information?.shortDescription ??
                         entityData.information?.description,
-                    image: entityData.image?.cover?.url,
+                    image:
+                        entityData.image?.cover?.url ??
+                        entityData.images?.cover?.url ??
+                        entityData.information?.plant?.image?.cover?.url ??
+                        entityData.information?.plant?.images?.cover?.url,
                     price:
                         entityData.prices?.perOperation ??
                         entityData.prices?.perPlant ??

@@ -209,7 +209,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 const valueInCents = Math.round((finalPrice ?? 0) * 100);
                 const quantity = item.amount;
                 const imageUrls = item.shopData.image
-                    ? [`https://www.gredice.com${item.shopData.image}`]
+                    ? [
+                          /^https?:\/\//u.test(item.shopData.image)
+                              ? item.shopData.image
+                              : `https://www.gredice.com${item.shopData.image}`,
+                      ]
                     : [];
 
                 // TODO: Validate item data

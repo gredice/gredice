@@ -1,17 +1,44 @@
-import type { PlantData, PlantSortData } from '@gredice/client';
 import { Sprout } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import Image, { type ImageProps } from 'next/image';
 
 /**
- * Minimal type for plant data - compatible with PlantData from @gredice/client
+ * Minimal image shape accepted by PlantOrSortImage.
  */
-type PlantLike = Pick<PlantData, 'image' | 'information'>;
+type ImageLike = {
+    cover?: {
+        url?: string | null;
+    } | null;
+} | null;
 
 /**
- * Minimal type for plant sort data - compatible with PlantSortData from @gredice/client
+ * Minimal type for plant data accepted by PlantOrSortImage.
  */
-type PlantSortLike = Pick<PlantSortData, 'image' | 'information'>;
+type PlantLike =
+    | {
+          image?: ImageLike;
+          images?: ImageLike;
+          information?: {
+              name?: string | null;
+          } | null;
+      }
+    | null
+    | undefined;
+
+/**
+ * Minimal type for plant sort data accepted by PlantOrSortImage.
+ */
+type PlantSortLike =
+    | {
+          image?: ImageLike;
+          images?: ImageLike;
+          information?: {
+              name?: string | null;
+              plant?: PlantLike;
+          } | null;
+      }
+    | null
+    | undefined;
 
 type PlantOrSortImageProps = Omit<ImageProps, 'src' | 'alt'> &
     (
@@ -150,7 +177,8 @@ export function PlantOrSortImage(props: PlantOrSortImageProps) {
     if ('plant' in props) {
         const { plant, alt, ...imageProps } = props;
         const resolvedAlt = alt ?? plant?.information?.name ?? 'Slika biljke';
-        const resolvedCoverUrl = plant?.image?.cover?.url;
+        const resolvedCoverUrl =
+            plant?.image?.cover?.url ?? plant?.images?.cover?.url;
 
         if (!resolvedCoverUrl) {
             warnAboutPlantImageFallback('missing', resolvedAlt);
@@ -173,7 +201,9 @@ export function PlantOrSortImage(props: PlantOrSortImageProps) {
             alt ?? plantSort?.information?.name ?? 'Slika biljke';
         const resolvedCoverUrl =
             plantSort?.image?.cover?.url ??
-            plantSort?.information?.plant?.image?.cover?.url;
+            plantSort?.images?.cover?.url ??
+            plantSort?.information?.plant?.image?.cover?.url ??
+            plantSort?.information?.plant?.images?.cover?.url;
 
         if (!resolvedCoverUrl) {
             warnAboutPlantImageFallback('missing', resolvedAlt);
