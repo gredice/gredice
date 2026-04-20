@@ -84,17 +84,18 @@ export default async function EntityDetailsPage(props: {
     }
 
     const displayDefinitions = attributeDefinitions.filter((d) => d.display);
+    const populatedAttributeDefinitionIds = new Set(
+        entity.attributes
+            .filter((attribute) => (attribute.value?.length ?? 0) > 0)
+            .map((attribute) => attribute.attributeDefinitionId),
+    );
     const categoriesWithMissingRequiredAttributes = new Set(
         attributeDefinitions
             .filter(
                 (definition) =>
                     definition.required &&
                     !definition.defaultValue &&
-                    !entity.attributes.some(
-                        (attribute) =>
-                            attribute.attributeDefinitionId === definition.id &&
-                            (attribute.value?.length ?? 0) > 0,
-                    ),
+                    !populatedAttributeDefinitionIds.has(definition.id),
             )
             .map((definition) => definition.category),
     );
