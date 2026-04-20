@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
         ],
     },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'cdn.gredice.com',
+            },
+        ],
+    },
     productionBrowserSourceMaps: !process.env.CI,
     allowedDevOrigins: ['farma.gredice.test'],
 };
