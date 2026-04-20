@@ -20,6 +20,7 @@ import { BooleanInput } from './typed/BooleanInput';
 import { ImageInput } from './typed/ImageInput';
 import { JsonInput } from './typed/JsonInput';
 import { NumberInput } from './typed/NumberInput';
+import { RangeInput } from './typed/RangeInput';
 import { SelectEntity } from './typed/SelectEntity';
 import { TextInput } from './typed/TextInput';
 
@@ -103,6 +104,11 @@ export function AttributeInput({
         AttributeInputComponent = MarkdownInput;
     } else if (attributeDefinition.dataType === 'number') {
         AttributeInputComponent = NumberInput;
+    } else if (
+        attributeDefinition.dataType === 'range' ||
+        attributeDefinition.dataType.startsWith('range|')
+    ) {
+        AttributeInputComponent = RangeInput;
     } else if (attributeDefinition.dataType === 'barcode') {
         AttributeInputComponent = BarcodeInput;
     } else if (attributeDefinition.dataType === 'image') {

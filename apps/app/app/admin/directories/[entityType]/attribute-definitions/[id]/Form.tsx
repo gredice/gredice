@@ -8,7 +8,9 @@ import { type ChangeEvent, useState } from 'react';
 import { upsertAttributeDefinition } from '../../../../../(actions)/definitionActions';
 import {
     attributeDataTypeItems,
+    buildRangeDataType,
     getAttributeDataTypeLabel,
+    parseRangeDataType,
 } from '../AttributeDataTypes';
 
 type GetAttributeDefinition = Exclude<
@@ -61,12 +63,34 @@ export function FormDataTypeSelect({
     value: string;
 }) {
     const [internalValue, setValue] = useState(value);
+    const parsedRangeDataType = parseRangeDataType(internalValue);
+    const [rangeMinValue, setRangeMinValue] = useState(parsedRangeDataType.min);
+    const [rangeMaxValue, setRangeMaxValue] = useState(parsedRangeDataType.max);
+    const isRangeDataType =
+        internalValue === 'range' || internalValue.startsWith('range|');
 
     const handleValueChange = async (nextValue: string) => {
-        setValue(nextValue);
+        const normalizedValue =
+            nextValue === 'range'
+                ? buildRangeDataType(rangeMinValue, rangeMaxValue)
+                : nextValue;
+        setValue(normalizedValue);
         await upsertAttributeDefinition({
             id: definition.id,
-            dataType: nextValue,
+            dataType: normalizedValue,
+        });
+    };
+
+    const handleRangeBlur = async () => {
+        if (!isRangeDataType) {
+            return;
+        }
+
+        const rangeDataType = buildRangeDataType(rangeMinValue, rangeMaxValue);
+        setValue(rangeDataType);
+        await upsertAttributeDefinition({
+            id: definition.id,
+            dataType: rangeDataType,
         });
     };
 
@@ -83,13 +107,37 @@ export function FormDataTypeSelect({
           ];
 
     return (
-        <SelectItems
-            label="Tip podatka"
-            value={internalValue}
-            onValueChange={handleValueChange}
-            items={items}
-            placeholder={getAttributeDataTypeLabel(value)}
-        />
+        <>
+            <SelectItems
+                label="Tip podatka"
+                value={internalValue}
+                onValueChange={handleValueChange}
+                items={items}
+                placeholder={getAttributeDataTypeLabel(value)}
+            />
+            {isRangeDataType && (
+                <div className="grid grid-cols-2 gap-2">
+                    <Input
+                        type="number"
+                        label="Minimalna vrijednost"
+                        value={rangeMinValue}
+                        onChange={(event) =>
+                            setRangeMinValue(event.target.value)
+                        }
+                        onBlur={handleRangeBlur}
+                    />
+                    <Input
+                        type="number"
+                        label="Maksimalna vrijednost"
+                        value={rangeMaxValue}
+                        onChange={(event) =>
+                            setRangeMaxValue(event.target.value)
+                        }
+                        onBlur={handleRangeBlur}
+                    />
+                </div>
+            )}
+        </>
     );
 }
 
