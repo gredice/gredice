@@ -5,6 +5,11 @@ import { createStore, useStore } from 'zustand';
 import { audioMixer } from './audio/audioMixer';
 import type { Block } from './types/Block';
 import { audioConfig } from './utils/audioConfig';
+import {
+    ALWAYS_DAY_TIME,
+    isDayNightCycleDisabled,
+    setDayNightCycleDisabled as persistDayNightCycleDisabled,
+} from './utils/dayNightCycle';
 import { triggerSelectionHaptic } from './utils/haptics';
 
 const sunriseValue = 0.2;
@@ -63,6 +68,12 @@ function getTimeOfDay(
     }
 }
 
+function resolveTimeOfDay(currentTime: Date, dayNightCycleDisabled: boolean) {
+    return dayNightCycleDisabled
+        ? ALWAYS_DAY_TIME
+        : getTimeOfDay(defaultLocation, currentTime);
+}
+
 type GameMode = 'normal' | 'edit';
 export type WinterMode = 'summer' | 'winter' | 'holiday';
 
@@ -92,6 +103,8 @@ export type GameState = {
     };
     freezeTime?: Date | null;
     setFreezeTime: (freezeTime: Date | null) => void;
+    dayNightCycleDisabled: boolean;
+    setDayNightCycleDisabled: (disabled: boolean) => void;
     currentTime: Date;
     timeOfDay: number;
     sunsetTime: Date | null;
@@ -166,8 +179,10 @@ export function createGameState({
     isMock: boolean;
     winterMode?: WinterMode;
 }) {
+    const dayNightCycleDisabled = isDayNightCycleDisabled();
     const now = freezeTime ?? new Date();
-    const timeOfDay = getTimeOfDay(defaultLocation, now);
+    const timeOfDay = resolveTimeOfDay(now, dayNightCycleDisabled);
+    const { sunrise, sunset } = getSunriseSunset(defaultLocation, now);
     return createStore<GameState>((set, get) => ({
         isMock: isMock,
         winterMode: winterMode ?? 'summer',
@@ -187,15 +202,35 @@ export function createGameState({
             ),
         },
         freezeTime,
-        setFreezeTime: (freezeTime) =>
+        setFreezeTime: (freezeTime) => {
+            const currentTime = freezeTime ?? new Date();
+            const { sunrise, sunset } = getSunriseSunset(
+                defaultLocation,
+                currentTime,
+            );
             set({
                 freezeTime,
-                currentTime: freezeTime ? freezeTime : new Date(),
-            }),
+                currentTime,
+                timeOfDay: resolveTimeOfDay(
+                    currentTime,
+                    get().dayNightCycleDisabled,
+                ),
+                sunriseTime: sunrise,
+                sunsetTime: sunset,
+            });
+        },
+        dayNightCycleDisabled,
+        setDayNightCycleDisabled: (disabled) => {
+            persistDayNightCycleDisabled(disabled);
+            set({
+                dayNightCycleDisabled: disabled,
+                timeOfDay: resolveTimeOfDay(get().currentTime, disabled),
+            });
+        },
         currentTime: now,
         timeOfDay,
-        sunriseTime: getSunriseSunset(defaultLocation, now).sunrise,
-        sunsetTime: getSunriseSunset(defaultLocation, now).sunset,
+        sunriseTime: sunrise,
+        sunsetTime: sunset,
 
         // Game
         mode: 'normal',
@@ -251,7 +286,10 @@ export function createGameState({
 
             return set({
                 currentTime,
-                timeOfDay: getTimeOfDay(defaultLocation, currentTime),
+                timeOfDay: resolveTimeOfDay(
+                    currentTime,
+                    get().dayNightCycleDisabled,
+                ),
                 sunriseTime: getSunriseSunset(defaultLocation, currentTime)
                     .sunrise,
                 sunsetTime: getSunriseSunset(defaultLocation, currentTime)
