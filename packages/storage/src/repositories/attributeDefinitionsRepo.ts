@@ -39,10 +39,14 @@ export function getAttributeDefinition(id: number) {
     });
 }
 
-export function createAttributeDefinition(
+export async function createAttributeDefinition(
     definition: InsertAttributeDefinition,
-) {
-    return storage().insert(attributeDefinitions).values(definition);
+): Promise<number> {
+    const [inserted] = await storage()
+        .insert(attributeDefinitions)
+        .values(definition)
+        .returning({ id: attributeDefinitions.id });
+    return inserted.id;
 }
 
 export function updateAttributeDefinition(
