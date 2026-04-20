@@ -38,7 +38,7 @@ export function PlantPageHeader({
             visual={
                 <PlantOrSortImage
                     coverUrl={
-                        sort?.image?.cover?.url ?? plant.image?.cover?.url
+                        sort ? sort.image?.cover?.url : plant.image?.cover?.url
                     }
                     alt={sort?.information?.name ?? plant.information.name}
                     preload

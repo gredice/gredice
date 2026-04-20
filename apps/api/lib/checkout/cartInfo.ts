@@ -130,11 +130,7 @@ export async function getCartInfo(
                     description:
                         entityData.information?.shortDescription ??
                         entityData.information?.description,
-                    image:
-                        entityData.image?.cover?.url ??
-                        entityData.images?.cover?.url ??
-                        entityData.information?.plant?.image?.cover?.url ??
-                        entityData.information?.plant?.images?.cover?.url,
+                    image: entityData.image?.cover?.url,
                     price:
                         entityData.prices?.perOperation ??
                         entityData.prices?.perPlant ??

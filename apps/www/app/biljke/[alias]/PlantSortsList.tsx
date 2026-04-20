@@ -56,10 +56,7 @@ async function PlantSortsListContent({
                         >
                             <Row spacing={2}>
                                 <PlantOrSortImage
-                                    coverUrl={
-                                        sort.image?.cover?.url ??
-                                        sort.information.plant.image?.cover?.url
-                                    }
+                                    coverUrl={sort.image?.cover?.url}
                                     alt={sort.information.name}
                                     width={72}
                                     height={72}

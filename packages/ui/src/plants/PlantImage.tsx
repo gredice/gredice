@@ -1,5 +1,4 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
-import { isAbsoluteUrl } from '@signalco/js';
 import Image, { type ImageProps } from 'next/image';
 
 /**
@@ -39,7 +38,7 @@ type PlantOrSortImageProps = Omit<ImageProps, 'src' | 'alt'> &
           }
         | {
               /**
-               * Direct cover URL (for backward compatibility)
+               * Direct absolute image URL.
                */
               coverUrl: string | null | undefined;
               plant?: never;
@@ -49,26 +48,15 @@ type PlantOrSortImageProps = Omit<ImageProps, 'src' | 'alt'> &
                */
               alt: string;
           }
-    ) & {
-        /**
-         * Base URL to prepend to relative paths. Defaults to 'https://www.gredice.com'
-         */
-        baseUrl?: string;
-        /**
-         * Fallback image URL to use when no image is available.
-         * Defaults to '/assets/plants/placeholder.png'
-         */
-        fallbackUrl?: string;
-    };
+    );
 
 /**
- * A component for rendering plant or plant sort images with automatic URL resolution.
- * Handles both absolute URLs and relative paths, with fallback to placeholder.
- * Automatically resolves cover URLs from plant or plantSort objects.
+ * A component for rendering plant or plant sort images from absolute URLs.
+ * Image data is expected to be complete in the API payload.
  *
  * @example
  * ```tsx
- * // Using with plantSort object (preferred - will fall back to plant image)
+ * // Using with plantSort object
  * <PlantOrSortImage
  *   plantSort={plantSort}
  *   width={60}
@@ -92,23 +80,27 @@ type PlantOrSortImageProps = Omit<ImageProps, 'src' | 'alt'> &
  * ```
  */
 export function PlantOrSortImage(props: PlantOrSortImageProps) {
-    const {
-        baseUrl = 'https://www.gredice.com',
-        fallbackUrl = '/assets/plants/placeholder.png',
-    } = props;
-
     // Extract the specific props based on the discriminated union
     const plant = 'plant' in props ? props.plant : undefined;
     const plantSort = 'plantSort' in props ? props.plantSort : undefined;
     const coverUrl = 'coverUrl' in props ? props.coverUrl : undefined;
     const alt = 'alt' in props ? props.alt : undefined;
 
-    // Resolve cover URL from plantSort (with fallback to plant) or plant object
+    // Resolve cover URL from plantSort or plant object
     const resolvedCoverUrl =
-        coverUrl ??
-        plantSort?.image?.cover?.url ??
-        plantSort?.information?.plant?.image?.cover?.url ??
-        plant?.image?.cover?.url;
+        coverUrl ?? plantSort?.image?.cover?.url ?? plant?.image?.cover?.url;
+
+    if (!resolvedCoverUrl) {
+        throw new Error(
+            'PlantOrSortImage requires image.cover.url to be present in data.',
+        );
+    }
+
+    if (!/^https?:\/\//u.test(resolvedCoverUrl)) {
+        throw new Error(
+            'PlantOrSortImage requires image.cover.url to be an absolute URL.',
+        );
+    }
 
     // Resolve alt text
     const resolvedAlt =
@@ -117,26 +109,16 @@ export function PlantOrSortImage(props: PlantOrSortImageProps) {
         plant?.information?.name ??
         'Slika biljke';
 
-    // Use the resolved or fallback URL
-    const effectiveCoverUrl = resolvedCoverUrl ?? fallbackUrl;
-
-    // Resolve to absolute URL
-    const resolvedUrl = isAbsoluteUrl(effectiveCoverUrl)
-        ? effectiveCoverUrl
-        : `${baseUrl}/${effectiveCoverUrl.replace(/^\//, '')}`;
-
     // Prepare remaining image props
-    // Exclude plant, plantSort, coverUrl, alt, baseUrl, fallbackUrl from being passed to Image
+    // Exclude plant, plantSort, coverUrl, alt from being passed to Image
     const {
         plant: _,
         plantSort: __,
         coverUrl: ___,
         alt: ____,
-        baseUrl: _____,
-        fallbackUrl: ______,
         ...imageProps
         // biome-ignore lint/suspicious/noExplicitAny: Destructuring discriminated union requires type assertion
     } = props as any;
 
-    return <Image src={resolvedUrl} alt={resolvedAlt} {...imageProps} />;
+    return <Image src={resolvedCoverUrl} alt={resolvedAlt} {...imageProps} />;
 }
