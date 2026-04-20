@@ -18,6 +18,10 @@ import {
     type OperationsDurationData,
 } from './OperationsDurationCard';
 import {
+    SunflowersDailyCard,
+    type SunflowersDailyData,
+} from './SunflowersDailyCard';
+import {
     UsersRegistrationWeekdayCard,
     type WeekdayRegistrationData,
 } from './UsersRegistrationWeekdayCard';
@@ -49,6 +53,7 @@ export function AdminDashboardClient({
     initialOperationsDurationData,
     initialWeekdayRegistrations,
     initialAiData,
+    initialSunflowersData,
     initialFrom,
     initialTo,
 }: {
@@ -59,6 +64,7 @@ export function AdminDashboardClient({
     initialOperationsDurationData: OperationsDurationData;
     initialWeekdayRegistrations: WeekdayRegistrationData[];
     initialAiData: AiData;
+    initialSunflowersData: SunflowersDailyData[];
     initialFrom?: string;
     initialTo?: string;
 }) {
@@ -346,6 +352,10 @@ export function AdminDashboardClient({
                         ),
                     )}
                 </div>
+            </Stack>
+            <Stack spacing={1}>
+                <DashboardDivider>Suncokreti</DashboardDivider>
+                <SunflowersDailyCard data={initialSunflowersData} />
             </Stack>
         </Stack>
     );

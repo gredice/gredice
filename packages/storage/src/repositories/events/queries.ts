@@ -129,6 +129,62 @@ export async function getAiAnalysisTotals(filter?: { from?: Date; to?: Date }) {
     };
 }
 
+type SunflowersDailyPoint = {
+    date: string;
+    spent: number;
+    gifted: number;
+};
+
+export async function getSunflowersDailyTotals(filter?: {
+    from?: Date;
+    to?: Date;
+}) {
+    const results = await storage().query.events.findMany({
+        where: and(
+            inArray(events.type, [
+                knownEventTypes.accounts.earnSunflowers,
+                knownEventTypes.accounts.spendSunflowers,
+            ]),
+            filter?.from ? gte(events.createdAt, filter.from) : undefined,
+            filter?.to ? lte(events.createdAt, filter.to) : undefined,
+        ),
+        orderBy: [asc(events.createdAt)],
+    });
+
+    const byDay = new Map<string, SunflowersDailyPoint>();
+
+    for (const event of results) {
+        const key = event.createdAt.toISOString().split('T')[0];
+        const existing = byDay.get(key) ?? { date: key, spent: 0, gifted: 0 };
+        const payload = event.data as
+            | { amount?: unknown; reason?: unknown }
+            | null
+            | undefined;
+        const amount =
+            typeof payload?.amount === 'number' &&
+            Number.isFinite(payload.amount)
+                ? Math.max(0, payload.amount)
+                : 0;
+        const reason =
+            typeof payload?.reason === 'string' ? payload.reason : undefined;
+
+        if (event.type === knownEventTypes.accounts.spendSunflowers) {
+            existing.spent += amount;
+        } else if (
+            event.type === knownEventTypes.accounts.earnSunflowers &&
+            reason === 'gift'
+        ) {
+            existing.gifted += amount;
+        }
+
+        byDay.set(key, existing);
+    }
+
+    return Array.from(byDay.values()).sort((a, b) =>
+        a.date.localeCompare(b.date),
+    );
+}
+
 export function deleteEventById(eventId: number) {
     return storage().delete(events).where(eq(events.id, eventId));
 }

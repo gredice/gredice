@@ -15,6 +15,7 @@ export {
     getLastBirthdayRewardEvent,
     getPlantPlaceEventsCount,
     getPlantUpdateEvents,
+    getSunflowersDailyTotals,
 } from './queries';
 export type {
     // Account

@@ -9,6 +9,7 @@ import {
     getEntitiesRaw,
     getEntityTypes,
     getPlantUpdateEvents,
+    getSunflowersDailyTotals,
     getUserRegistrationsByWeekday,
 } from '@gredice/storage';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
@@ -36,6 +37,12 @@ type OperationsDurationData = {
 type DateRange = {
     startDate: Date;
     endDate: Date;
+};
+
+type SunflowersDailyTotalsPoint = {
+    date: string;
+    spent: number;
+    gifted: number;
 };
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -197,6 +204,7 @@ export async function getAnalyticsData(
         weekdayRegistrationsRaw,
         aiTotals,
         aiEvents,
+        sunflowersDailyTotalsRaw,
     ] = await Promise.all([
         getAnalyticsTotals(rangeDays),
         getEntityTypes(),
@@ -208,6 +216,7 @@ export async function getAnalyticsData(
         getUserRegistrationsByWeekday(startDate, endDate),
         getAiAnalysisTotals({ from: startDate, to: endDate }),
         getAiAnalysisEvents({ from: startDate, to: endDate }),
+        getSunflowersDailyTotals({ from: startDate, to: endDate }),
     ]);
 
     const entitiesCounts = await Promise.all(
@@ -318,6 +327,19 @@ export async function getAnalyticsData(
         count: weekdayRegistrationsRaw[index] ?? 0,
     }));
 
+    const sunflowersByDate = new Map<string, SunflowersDailyTotalsPoint>();
+    for (const day of sunflowersDailyTotalsRaw) {
+        sunflowersByDate.set(day.date, day);
+    }
+    const sunflowersDailyTotals = dateKeys.map((date) => {
+        const day = sunflowersByDate.get(date);
+        return {
+            date,
+            spent: day?.spent ?? 0,
+            gifted: day?.gifted ?? 0,
+        };
+    });
+
     const aiTotalTokens = aiEvents.reduce(
         (sum, e) => sum + (e.data?.totalTokens ?? 0),
         0,
@@ -332,5 +354,6 @@ export async function getAnalyticsData(
             count: aiTotals.count,
             totalTokens: aiTotalTokens,
         },
+        sunflowers: sunflowersDailyTotals,
     };
 }

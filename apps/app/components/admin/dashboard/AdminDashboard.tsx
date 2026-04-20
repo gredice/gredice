@@ -55,6 +55,7 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
             initialOperationsDurationData={data.operationsDuration}
             initialWeekdayRegistrations={data.weekdayRegistrations}
             initialAiData={data.ai}
+            initialSunflowersData={data.sunflowers}
             initialQuickActions={quickActions}
             initialPeriod={selectedPeriod}
             initialFrom={params?.from}
