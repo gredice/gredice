@@ -9,10 +9,14 @@ export function isDayNightCycleDisabled() {
         return cachedDayNightCycleDisabled;
     }
 
-    cachedDayNightCycleDisabled =
-        typeof window !== 'undefined' &&
-        window.localStorage.getItem(DAY_NIGHT_CYCLE_DISABLED_STORAGE_KEY) ===
-            'true';
+    try {
+        cachedDayNightCycleDisabled =
+            typeof window !== 'undefined' &&
+            window.localStorage.getItem(DAY_NIGHT_CYCLE_DISABLED_STORAGE_KEY) ===
+                'true';
+    } catch {
+        cachedDayNightCycleDisabled = false;
+    }
     return cachedDayNightCycleDisabled;
 }
 
