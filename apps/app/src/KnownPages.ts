@@ -54,6 +54,7 @@ export const KnownPages = {
     Transactions: '/admin/transactions',
     Transaction: (transactionId: number) =>
         `/admin/transactions/${transactionId}` as Route,
+    Sunflowers: '/admin/sunflowers',
     Invoices: '/admin/invoices',
     CreateInvoice: '/admin/invoices/create',
     Invoice: (invoiceId: number) => `/admin/invoices/${invoiceId}` as Route,

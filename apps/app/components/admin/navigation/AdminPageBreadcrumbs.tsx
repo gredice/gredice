@@ -102,6 +102,7 @@ const breadcrumbSections: {
                 ...adminPages.Transactions,
                 icon: <Euro className="size-4" />,
             },
+            { ...adminPages.Sunflowers, icon: <Success className="size-4" /> },
             { ...adminPages.Receipts, icon: <File className="size-4" /> },
             { ...adminPages.Users, icon: <User className="size-4" /> },
             { ...adminPages.Farms, icon: <MapIcon className="size-4" /> },
