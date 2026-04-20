@@ -11,8 +11,28 @@ import { ScheduleDayPlantingsSkeleton } from './ScheduleDayPlantingsSkeleton';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminSchedulePage() {
+function parseDateParam(dateParam?: string): Date | undefined {
+    if (!dateParam) {
+        return undefined;
+    }
+
+    const parsedDate = new Date(dateParam);
+    if (Number.isNaN(parsedDate.getTime())) {
+        return undefined;
+    }
+
+    parsedDate.setHours(0, 0, 0, 0);
+    return parsedDate;
+}
+
+export default async function AdminSchedulePage({
+    searchParams,
+}: {
+    searchParams?: Promise<{ date?: string }>;
+}) {
     await auth(['admin']);
+    const resolvedSearchParams = await searchParams;
+    const startDate = parseDateParam(resolvedSearchParams?.date);
 
     return (
         <Stack spacing={2}>
@@ -20,6 +40,7 @@ export default async function AdminSchedulePage() {
                 Rasprored
             </Typography>
             <DailySchedule
+                startDate={startDate}
                 renderDay={({ date, isToday }) => (
                     <Suspense
                         fallback={
