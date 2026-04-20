@@ -1,4 +1,6 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
+import { Sprout } from '@signalco/ui-icons';
+import { cx } from '@signalco/ui-primitives/cx';
 import Image, { type ImageProps } from 'next/image';
 
 /**
@@ -50,6 +52,71 @@ type PlantOrSortImageProps = Omit<ImageProps, 'src' | 'alt'> &
           }
     );
 
+const loggedFallbackWarnings = new Set<string>();
+
+function warnAboutPlantImageFallback(
+    reason: 'missing' | 'invalid',
+    entityName: string,
+) {
+    const key = `${reason}:${entityName}`;
+    if (loggedFallbackWarnings.has(key)) {
+        return;
+    }
+
+    loggedFallbackWarnings.add(key);
+    console.warn(
+        `PlantOrSortImage rendered a fallback because the image URL is ${reason}.`,
+        entityName,
+    );
+}
+
+function toCssDimension(value: number | string | undefined) {
+    return typeof value === 'number' ? `${value}px` : value;
+}
+
+function PlantImageFallback({
+    alt,
+    fill,
+    width,
+    height,
+    className,
+    style,
+}: Pick<
+    ImageProps,
+    'alt' | 'fill' | 'width' | 'height' | 'className' | 'style'
+>) {
+    const iconSize =
+        typeof width === 'number' && typeof height === 'number'
+            ? Math.max(16, Math.min(width, height) * 0.5)
+            : 24;
+
+    return (
+        <div
+            role="img"
+            aria-label={alt}
+            className={cx(
+                'flex items-center justify-center overflow-hidden bg-muted text-muted-foreground',
+                fill && 'absolute inset-0 size-full',
+                className,
+            )}
+            style={{
+                ...style,
+                width: fill ? undefined : toCssDimension(width),
+                height: fill ? undefined : toCssDimension(height),
+            }}
+        >
+            <Sprout
+                aria-hidden="true"
+                style={{
+                    width: `${iconSize}px`,
+                    height: `${iconSize}px`,
+                }}
+                className="shrink-0 opacity-70"
+            />
+        </div>
+    );
+}
+
 /**
  * A component for rendering plant or plant sort images from absolute URLs.
  * Image data is expected to be complete in the API payload.
@@ -80,48 +147,60 @@ type PlantOrSortImageProps = Omit<ImageProps, 'src' | 'alt'> &
  * ```
  */
 export function PlantOrSortImage(props: PlantOrSortImageProps) {
-    // Extract the specific props based on the discriminated union
-    const plant = 'plant' in props ? props.plant : undefined;
-    const plantSort = 'plantSort' in props ? props.plantSort : undefined;
-    const coverUrl = 'coverUrl' in props ? props.coverUrl : undefined;
-    const alt = 'alt' in props ? props.alt : undefined;
+    if ('plant' in props) {
+        const { plant, alt, ...imageProps } = props;
+        const resolvedAlt = alt ?? plant?.information?.name ?? 'Slika biljke';
+        const resolvedCoverUrl = plant?.image?.cover?.url;
 
-    // Resolve cover URL from plantSort or plant object
-    const resolvedCoverUrl =
-        coverUrl ??
-        plantSort?.image?.cover?.url ??
-        plantSort?.information?.plant?.image?.cover?.url ??
-        plant?.image?.cover?.url;
+        if (!resolvedCoverUrl) {
+            warnAboutPlantImageFallback('missing', resolvedAlt);
+            return <PlantImageFallback alt={resolvedAlt} {...imageProps} />;
+        }
 
-    if (!resolvedCoverUrl) {
-        throw new Error(
-            'PlantOrSortImage requires image.cover.url to be present in data.',
+        if (!/^https?:\/\//u.test(resolvedCoverUrl)) {
+            warnAboutPlantImageFallback('invalid', resolvedAlt);
+            return <PlantImageFallback alt={resolvedAlt} {...imageProps} />;
+        }
+
+        return (
+            <Image src={resolvedCoverUrl} alt={resolvedAlt} {...imageProps} />
         );
     }
 
-    if (!/^https?:\/\//u.test(resolvedCoverUrl)) {
-        throw new Error(
-            'PlantOrSortImage requires image.cover.url to be an absolute URL.',
+    if ('plantSort' in props) {
+        const { plantSort, alt, ...imageProps } = props;
+        const resolvedAlt =
+            alt ?? plantSort?.information?.name ?? 'Slika biljke';
+        const resolvedCoverUrl =
+            plantSort?.image?.cover?.url ??
+            plantSort?.information?.plant?.image?.cover?.url;
+
+        if (!resolvedCoverUrl) {
+            warnAboutPlantImageFallback('missing', resolvedAlt);
+            return <PlantImageFallback alt={resolvedAlt} {...imageProps} />;
+        }
+
+        if (!/^https?:\/\//u.test(resolvedCoverUrl)) {
+            warnAboutPlantImageFallback('invalid', resolvedAlt);
+            return <PlantImageFallback alt={resolvedAlt} {...imageProps} />;
+        }
+
+        return (
+            <Image src={resolvedCoverUrl} alt={resolvedAlt} {...imageProps} />
         );
     }
 
-    // Resolve alt text
-    const resolvedAlt =
-        alt ??
-        plantSort?.information?.name ??
-        plant?.information?.name ??
-        'Slika biljke';
+    const { coverUrl, alt, ...imageProps } = props;
 
-    // Prepare remaining image props
-    // Exclude plant, plantSort, coverUrl, alt from being passed to Image
-    const {
-        plant: _,
-        plantSort: __,
-        coverUrl: ___,
-        alt: ____,
-        ...imageProps
-        // biome-ignore lint/suspicious/noExplicitAny: Destructuring discriminated union requires type assertion
-    } = props as any;
+    if (!coverUrl) {
+        warnAboutPlantImageFallback('missing', alt);
+        return <PlantImageFallback alt={alt} {...imageProps} />;
+    }
 
-    return <Image src={resolvedCoverUrl} alt={resolvedAlt} {...imageProps} />;
+    if (!/^https?:\/\//u.test(coverUrl)) {
+        warnAboutPlantImageFallback('invalid', alt);
+        return <PlantImageFallback alt={alt} {...imageProps} />;
+    }
+
+    return <Image src={coverUrl} alt={alt} {...imageProps} />;
 }
