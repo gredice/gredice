@@ -1,5 +1,8 @@
+import { ExternalLink } from '@signalco/ui-icons';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { KnownPages } from '../../../../src/KnownPages';
 import type { AttributeInputProps } from '../AttributeInputProps';
 import { getEntities } from '../actions/entitiesActions';
 
@@ -26,26 +29,60 @@ export function SelectEntity({
             });
     }, [entityTypeName]);
 
+    const selectableEntities = useMemo(
+        () =>
+            entities?.flatMap((entity) => {
+                const name = entity.information?.name;
+                return name ? [{ entity, name }] : [];
+            }) ?? [],
+        [entities],
+    );
+
     const items = [
         { value: '-', label: '-' },
-        ...(entities?.map((entity, entityIndex) => ({
-            value: entity.information?.name ?? entityIndex.toString(),
-            label:
-                entity.information?.label ??
-                entity.information?.name ??
-                `${entityTypeName} ${entityIndex + 1}`,
-        })) ?? []),
+        ...selectableEntities.map(({ entity, name }) => ({
+            value: name,
+            label: entity.information?.label ?? name,
+        })),
     ];
+
+    const selectedEntity = useMemo(() => {
+        if (!value || value === '-') {
+            return null;
+        }
+
+        return (
+            selectableEntities.find(({ name }) => name === value)?.entity ??
+            null
+        );
+    }, [selectableEntities, value]);
 
     const handleOnChange = (newValue: string) => {
         onChange(newValue !== '-' ? newValue : null);
     };
 
     return (
-        <SelectItems
-            items={items}
-            value={value ?? '-'}
-            onValueChange={handleOnChange}
-        />
+        <div className="flex items-center gap-2">
+            <div className="flex-1">
+                <SelectItems
+                    items={items}
+                    value={selectedEntity?.information?.name ?? '-'}
+                    onValueChange={handleOnChange}
+                />
+            </div>
+            {entityTypeName && selectedEntity && (
+                <Link
+                    href={KnownPages.DirectoryEntity(
+                        entityTypeName,
+                        selectedEntity.id,
+                    )}
+                    title="Otvori detalje povezanog zapisa"
+                    aria-label="Otvori detalje povezanog zapisa"
+                    className="inline-flex text-muted-foreground hover:text-foreground transition-colors"
+                >
+                    <ExternalLink className="size-4" />
+                </Link>
+            )}
+        </div>
     );
 }
