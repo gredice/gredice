@@ -47,8 +47,7 @@ export function DeliveryRequestRow({
         ? plantSort?.information?.name
         : operationData?.information?.label || operationData?.information?.name;
     const displayImageUrl = hasPlantSort
-        ? (plantSort?.image?.cover?.url ??
-          plantSort?.information?.plant?.image?.cover?.url)
+        ? plantSort?.image?.cover?.url
         : operationData?.image?.cover?.url;
     const hasOperationDetails = displayName;
     const raisedBedName = request.raisedBed?.name;

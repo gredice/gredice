@@ -135,7 +135,6 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     height={56}
                     alt={item.shopData.name ?? 'Nepoznato'}
                     coverUrl={item.shopData.image}
-                    baseUrl="https://www.gredice.com"
                 />
             )}
             <Stack className="grow">
