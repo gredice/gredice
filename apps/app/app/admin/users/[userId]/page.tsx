@@ -1,3 +1,4 @@
+import { userIdToPublicId } from '@gredice/js/publicId';
 import { getUser, getUserWithLogins } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
@@ -48,6 +49,7 @@ export default async function UserPage({
         avatarUrl,
         displayName,
     } = user;
+    const publicProfileUrl = KnownPages.GrediceUser(userIdToPublicId(id));
 
     return (
         <Stack spacing={4}>
@@ -65,6 +67,18 @@ export default async function UserPage({
                     <FieldSet>
                         <Field name="ID korisnika" value={id} mono />
                         <Field name="Korisničko ime" value={userName} />
+                        <Field
+                            name="Javni profil"
+                            value={
+                                <Link
+                                    href={publicProfileUrl}
+                                    rel="noreferrer"
+                                    target="_blank"
+                                >
+                                    Otvori javni profil
+                                </Link>
+                            }
+                        />
                         <Field
                             name="Avatar"
                             value={
