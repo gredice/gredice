@@ -19,6 +19,24 @@ import {
 
 const entityCacheTtl = 60 * 60; // 1 hour
 
+function tryParseAttributeJson(
+    value: string,
+    attributeDefinition: SelectAttributeDefinition,
+) {
+    try {
+        return JSON.parse(value) as unknown;
+    } catch (error) {
+        console.error('Failed to parse entity attribute JSON value', {
+            attributeDefinitionId: attributeDefinition.id,
+            category: attributeDefinition.category,
+            name: attributeDefinition.name,
+            dataType: attributeDefinition.dataType,
+            error,
+        });
+        return null;
+    }
+}
+
 function populateMissingAttributes(
     entity: SelectEntity & {
         attributes: (SelectAttributeValue & {
@@ -248,14 +266,16 @@ async function expandValue(
         return value === 'true';
     } else if (attributeDefinition.dataType.startsWith('json')) {
         if (!value) return null;
-        return JSON.parse(value);
+        return tryParseAttributeJson(value, attributeDefinition);
     } else if (attributeDefinition.dataType === 'image') {
-        // Assuming the value is a URL or path to the image
-        const data = JSON.parse(value) as unknown;
+        if (!value) return null;
+        const data = tryParseAttributeJson(value, attributeDefinition);
+        if (!data || typeof data !== 'object') {
+            return null;
+        }
+
         let url = '';
         if (
-            typeof data === 'object' &&
-            data !== null &&
             'url' in data &&
             typeof data.url === 'string'
         ) {
