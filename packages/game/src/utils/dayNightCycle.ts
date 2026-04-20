@@ -26,8 +26,12 @@ export function setDayNightCycleDisabled(disabled: boolean) {
     }
 
     cachedDayNightCycleDisabled = disabled;
-    window.localStorage.setItem(
-        DAY_NIGHT_CYCLE_DISABLED_STORAGE_KEY,
-        String(disabled),
-    );
+    try {
+        window.localStorage.setItem(
+            DAY_NIGHT_CYCLE_DISABLED_STORAGE_KEY,
+            String(disabled),
+        );
+    } catch {
+        // Ignore storage failures and keep the in-memory state updated.
+    }
 }
