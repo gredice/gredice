@@ -132,7 +132,7 @@ export async function getAiAnalysisTotals(filter?: { from?: Date; to?: Date }) {
 type SunflowersDailyPoint = {
     date: string;
     spent: number;
-    gifted: number;
+    earned: number;
 };
 
 export async function getSunflowersDailyTotals(filter?: {
@@ -155,7 +155,7 @@ export async function getSunflowersDailyTotals(filter?: {
 
     for (const event of results) {
         const key = event.createdAt.toISOString().split('T')[0];
-        const existing = byDay.get(key) ?? { date: key, spent: 0, gifted: 0 };
+        const existing = byDay.get(key) ?? { date: key, spent: 0, earned: 0 };
         const payload = event.data as
             | { amount?: unknown; reason?: unknown }
             | null
@@ -165,16 +165,10 @@ export async function getSunflowersDailyTotals(filter?: {
             Number.isFinite(payload.amount)
                 ? Math.max(0, payload.amount)
                 : 0;
-        const reason =
-            typeof payload?.reason === 'string' ? payload.reason : undefined;
-
         if (event.type === knownEventTypes.accounts.spendSunflowers) {
             existing.spent += amount;
-        } else if (
-            event.type === knownEventTypes.accounts.earnSunflowers &&
-            reason === 'gift'
-        ) {
-            existing.gifted += amount;
+        } else if (event.type === knownEventTypes.accounts.earnSunflowers) {
+            existing.earned += amount;
         }
 
         byDay.set(key, existing);

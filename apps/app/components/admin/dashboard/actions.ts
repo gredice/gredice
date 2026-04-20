@@ -47,7 +47,7 @@ type DateRange = {
 type SunflowersDailyTotalsPoint = {
     date: string;
     spent: number;
-    gifted: number;
+    earned: number;
 };
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -368,7 +368,7 @@ export async function getAnalyticsData(
         return {
             date,
             spent: day?.spent ?? 0,
-            gifted: day?.gifted ?? 0,
+            earned: day?.earned ?? 0,
         };
     });
 

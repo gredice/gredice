@@ -16,7 +16,7 @@ import {
 export type SunflowersDailyData = {
     date: string;
     spent: number;
-    gifted: number;
+    earned: number;
 };
 
 const dateFormatter = new Intl.DateTimeFormat('hr-HR', {
@@ -30,8 +30,8 @@ function formatDate(date: string) {
 
 export function SunflowersDailyCard({ data }: { data: SunflowersDailyData[] }) {
     const totalSpent = data.reduce((sum, day) => sum + day.spent, 0);
-    const totalGifted = data.reduce((sum, day) => sum + day.gifted, 0);
-    const hasData = data.some((day) => day.spent > 0 || day.gifted > 0);
+    const totalEarned = data.reduce((sum, day) => sum + day.earned, 0);
+    const hasData = data.some((day) => day.spent > 0 || day.earned > 0);
 
     return (
         <Card>
@@ -42,13 +42,13 @@ export function SunflowersDailyCard({ data }: { data: SunflowersDailyData[] }) {
                             Suncokreti po danu
                         </Typography>
                         <Typography level="h4" semiBold>
-                            Potrošeno {totalSpent} · Poklonjeno {totalGifted}
+                            Potrošeno {totalSpent} · Zarađeno {totalEarned}
                         </Typography>
                         <Typography
                             level="body3"
                             className="text-muted-foreground"
                         >
-                            Prikaz potrošnje i poklona kroz odabrani period
+                            Prikaz potrošnje i zarade kroz odabrani period
                         </Typography>
                     </Stack>
                     {!hasData ? (
@@ -105,13 +105,13 @@ export function SunflowersDailyCard({ data }: { data: SunflowersDailyData[] }) {
                                     <Bar
                                         dataKey="spent"
                                         name="Potrošeno"
-                                        fill="hsl(var(--destructive) / 0.7)"
+                                        fill="#f59e0b"
                                         radius={[4, 4, 0, 0]}
                                     />
                                     <Bar
-                                        dataKey="gifted"
-                                        name="Poklonjeno"
-                                        fill="hsl(var(--primary) / 0.7)"
+                                        dataKey="earned"
+                                        name="Zarađeno"
+                                        fill="#facc15"
                                         radius={[4, 4, 0, 0]}
                                     />
                                 </BarChart>
