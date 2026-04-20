@@ -88,6 +88,7 @@ export default async function SettingsPage() {
         entityTypes.map((entityType) => ({
             name: entityType.name,
             label: entityType.label,
+            icon: entityType.icon,
         })),
     );
 

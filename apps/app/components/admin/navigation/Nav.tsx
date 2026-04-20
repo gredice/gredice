@@ -52,6 +52,27 @@ import { NavContext } from './NavContext';
 import { NavItem } from './NavItem';
 import { ProfileNavItem } from './ProfileNavItem';
 
+function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
+    if (quickAction.icon) {
+        return <EntityTypeIcon icon={quickAction.icon} className="size-5" />;
+    }
+
+    switch (quickAction.href) {
+        case KnownPages.Schedule:
+            return <Calendar className="size-5" />;
+        case KnownPages.RaisedBeds:
+            return <RaisedBedIcon className="size-5" />;
+        case KnownPages.Operations:
+            return <Hammer className="size-5" />;
+        case KnownPages.DeliveryRequests:
+            return <Truck className="size-5" />;
+        case KnownPages.Transactions:
+            return <Euro className="size-5" />;
+        default:
+            return <File className="size-5" />;
+    }
+}
+
 function SortableNavItem({
     entityType,
     onClick,
@@ -156,7 +177,7 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         key={quickAction.id}
                         href={quickAction.href}
                         label={quickAction.label}
-                        icon={<File className="size-5" />}
+                        icon={quickActionIcon(quickAction)}
                         onClick={onItemClick}
                     />
                 ))}
