@@ -104,6 +104,10 @@ type FarmAssignableUserRow = {
     avatarUrl: string | null;
 };
 
+function parseAssignedUserId(value: unknown) {
+    return typeof value === 'string' || value === null ? value : undefined;
+}
+
 async function getAssignableFarmUserRowsByFarmIds(farmIds: number[]) {
     const uniqueFarmIds = Array.from(new Set(farmIds));
     if (uniqueFarmIds.length === 0) {
@@ -701,16 +705,13 @@ function summarizePlantCycle(
                 data?.assignedBy === null;
             const hasAssignedUserIdUpdate =
                 shouldApplyAssignedUsers &&
-                (typeof data?.assignedUserId === 'string' ||
-                    data?.assignedUserId === null);
+                parseAssignedUserId(data?.assignedUserId) !== undefined;
             plantStatus =
                 typeof data?.status === 'string' ? data.status : plantStatus;
             if (hasAssignedUserIdUpdate) {
-                const nextAssignedUserId =
-                    typeof data?.assignedUserId === 'string' ||
-                    data?.assignedUserId === null
-                        ? data.assignedUserId
-                        : undefined;
+                const nextAssignedUserId = parseAssignedUserId(
+                    data?.assignedUserId,
+                );
                 assignedUserId = nextAssignedUserId;
                 assignedUserIds = undefined;
                 if (nextAssignedUserId === null) {
@@ -725,11 +726,9 @@ function summarizePlantCycle(
                 shouldApplyAssignedUsers &&
                 Array.isArray(data?.assignedUserIds)
             ) {
-                const eventAssignedUserId =
-                    typeof data?.assignedUserId === 'string' ||
-                    data?.assignedUserId === null
-                        ? data.assignedUserId
-                        : undefined;
+                const eventAssignedUserId = parseAssignedUserId(
+                    data?.assignedUserId,
+                );
                 assignedUserIds = normalizeAssignedUserIds(
                     data.assignedUserIds.filter(
                         (value): value is string => typeof value === 'string',
@@ -1479,18 +1478,15 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     data?.assignedBy === null;
                 const hasAssignedUserIdUpdate =
                     shouldApplyAssignedUsers &&
-                    (typeof data?.assignedUserId === 'string' ||
-                        data?.assignedUserId === null);
+                    parseAssignedUserId(data?.assignedUserId) !== undefined;
                 plantStatus =
                     typeof data?.status === 'string'
                         ? data?.status
                         : plantStatus;
                 if (hasAssignedUserIdUpdate) {
-                    const nextAssignedUserId =
-                        typeof data?.assignedUserId === 'string' ||
-                        data?.assignedUserId === null
-                            ? data.assignedUserId
-                            : undefined;
+                    const nextAssignedUserId = parseAssignedUserId(
+                        data?.assignedUserId,
+                    );
                     assignedUserId = nextAssignedUserId;
                     assignedUserIds = undefined;
                     if (nextAssignedUserId === null) {
@@ -1505,11 +1501,9 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     shouldApplyAssignedUsers &&
                     Array.isArray(data?.assignedUserIds)
                 ) {
-                    const eventAssignedUserId =
-                        typeof data?.assignedUserId === 'string' ||
-                        data?.assignedUserId === null
-                            ? data.assignedUserId
-                            : undefined;
+                    const eventAssignedUserId = parseAssignedUserId(
+                        data?.assignedUserId,
+                    );
                     assignedUserIds = normalizeAssignedUserIds(
                         data.assignedUserIds.filter(
                             (value): value is string =>
