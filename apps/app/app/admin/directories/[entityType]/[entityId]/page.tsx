@@ -84,6 +84,20 @@ export default async function EntityDetailsPage(props: {
     }
 
     const displayDefinitions = attributeDefinitions.filter((d) => d.display);
+    const categoriesWithMissingRequiredAttributes = new Set(
+        attributeDefinitions
+            .filter(
+                (definition) =>
+                    definition.required &&
+                    !definition.defaultValue &&
+                    !entity.attributes.some(
+                        (attribute) =>
+                            attribute.attributeDefinitionId === definition.id &&
+                            (attribute.value?.length ?? 0) > 0,
+                    ),
+            )
+            .map((definition) => definition.category),
+    );
 
     return (
         <EntityDetailsSaveProvider>
@@ -110,7 +124,20 @@ export default async function EntityDetailsPage(props: {
                                         key={category.name}
                                         value={category.name}
                                     >
-                                        {category.label}
+                                        <Row
+                                            spacing={1}
+                                            className="items-center"
+                                        >
+                                            <span>{category.label}</span>
+                                            {categoriesWithMissingRequiredAttributes.has(
+                                                category.name,
+                                            ) && (
+                                                <span
+                                                    className="size-2 rounded-full bg-red-500"
+                                                    aria-hidden
+                                                />
+                                            )}
+                                        </Row>
                                     </TabsTrigger>
                                 ))}
                             </TabsList>
