@@ -1,3 +1,4 @@
+import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
 import { signalcoClient } from '@gredice/signalco';
 import {
     countEventsSince,
@@ -1726,16 +1727,22 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 status: z.string(),
+                timestamp: z.string().datetime().optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId, positionIndex } =
                 context.req.valid('param');
-            const { status } = context.req.valid('json');
+            const { status, timestamp } = context.req.valid('json');
 
-            // For now, we only support 'remove' status update this way
-            if (status !== 'removed') {
+            // Build reverse lookup: target status → allowed source statuses
+            const allowedTargetStatuses = new Set([
+                ...Object.values(userAllowedPlantStatusTransitions).flat(),
+                'removed',
+            ]);
+
+            if (!allowedTargetStatuses.has(status)) {
                 return context.json({ error: 'Invalid status' }, 400);
             }
 
@@ -1787,14 +1794,46 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            // Validate state transition for user-allowed statuses
+            // Find allowed source states by looking up which current statuses can transition to the target
+            const allowedFromStates = Object.entries(
+                userAllowedPlantStatusTransitions,
+            )
+                .filter(([, targets]) => targets.includes(status))
+                .map(([source]) => source);
+            if (
+                allowedFromStates.length > 0 &&
+                (!field.plantStatus ||
+                    !allowedFromStates.includes(field.plantStatus))
+            ) {
+                return context.json(
+                    {
+                        error: `Cannot change from '${field.plantStatus}' to '${status}'. Allowed source states: ${allowedFromStates.join(', ')}`,
+                    },
+                    400,
+                );
+            }
+
+            // Validate timestamp if provided
+            let createdAt: Date | undefined;
+            if (timestamp) {
+                createdAt = new Date(timestamp);
+                if (Number.isNaN(createdAt.getTime())) {
+                    return context.json({ error: 'Invalid timestamp' }, 400);
+                }
+            }
+
             // Call the storage function to create the event and update the plant status
             try {
-                await createEvent(
-                    knownEvents.raisedBedFields.plantUpdateV1(
-                        `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
-                        { status: status },
-                    ),
+                const event = knownEvents.raisedBedFields.plantUpdateV1(
+                    `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
+                    { status: status },
                 );
+
+                await createEvent({
+                    ...event,
+                    ...(createdAt && { createdAt }),
+                });
 
                 return context.json({ success: true }, 200);
             } catch (error) {

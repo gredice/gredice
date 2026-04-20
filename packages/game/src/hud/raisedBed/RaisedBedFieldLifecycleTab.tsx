@@ -13,6 +13,7 @@ import { ShovelIcon } from '../../icons/Shovel';
 import { findRaisedBedOccupiedField } from '../../utils/raisedBedFields';
 import type { PlantFieldStatus } from './featuredOperations';
 import { PlantStageSection } from './PlantStageSection';
+import { RaisedBedFieldStatusChange } from './RaisedBedFieldStatusChange';
 import { RecommendationsCard } from './RecommendationsCard';
 
 // TODO: Move to a separate file
@@ -383,6 +384,12 @@ export function RaisedBedFieldLifecycleTab({
                     />
                 </Stack>
             </Row>
+
+            <RaisedBedFieldStatusChange
+                raisedBedId={raisedBedId}
+                positionIndex={positionIndex}
+                currentStatus={field.plantStatus}
+            />
 
             <RecommendationsCard
                 onShowOperations={onShowOperations}
