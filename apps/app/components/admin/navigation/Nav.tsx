@@ -68,6 +68,8 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
             return <Truck className="size-5" />;
         case KnownPages.Transactions:
             return <Euro className="size-5" />;
+        case KnownPages.Sunflowers:
+            return <Success className="size-5" />;
         default:
             return <File className="size-5" />;
     }
@@ -261,6 +263,12 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         href={adminPages.Transactions.href}
                         label={adminPages.Transactions.label}
                         icon={<Euro className="size-5" />}
+                        onClick={onItemClick}
+                    />
+                    <NavItem
+                        href={adminPages.Sunflowers.href}
+                        label={adminPages.Sunflowers.label}
+                        icon={<Success className="size-5" />}
                         onClick={onItemClick}
                     />
                     <NavItem
