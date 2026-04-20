@@ -26,10 +26,16 @@ function parseSunflowerData(data: unknown) {
     }
 
     const record = data as Record<string, unknown>;
-    const amount =
-        typeof record.amount === 'number' && Number.isFinite(record.amount)
-            ? record.amount
-            : 0;
+    const amountValue = record.amount;
+    let amount = 0;
+    if (typeof amountValue === 'number' && Number.isFinite(amountValue)) {
+        amount = amountValue;
+    } else if (typeof amountValue === 'string') {
+        const parsedAmount = Number.parseFloat(amountValue);
+        if (!Number.isNaN(parsedAmount)) {
+            amount = parsedAmount;
+        }
+    }
     const reason = typeof record.reason === 'string' ? record.reason : '-';
 
     return { amount, reason };
@@ -43,7 +49,8 @@ export default async function SunflowersPage({
     await auth(['admin']);
 
     const params = await searchParams;
-    const fromFilter = typeof params.from === 'string' ? params.from : '';
+    const fromFilter =
+        typeof params.from === 'string' ? params.from : 'last-30-days';
     const fromDate = getDateFromTimeFilter(fromFilter);
     const userIdFilter = typeof params.userId === 'string' ? params.userId : '';
     const accountIdFilter =
@@ -102,7 +109,6 @@ export default async function SunflowersPage({
             : await storage().query.events.findMany({
                   where: and(...whereConditions),
                   orderBy: [desc(events.createdAt)],
-                  limit: 2000,
               });
 
     const parsedEvents = sunflowerEvents.map((event) => {
