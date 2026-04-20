@@ -1,5 +1,6 @@
 import { signalcoClient } from '@gredice/signalco';
 import {
+    buildRaisedBedFieldPlantUpdatePayload,
     countEventsSince,
     createDefaultGardenForAccount,
     createEvent,
@@ -1792,7 +1793,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 await createEvent(
                     knownEvents.raisedBedFields.plantUpdateV1(
                         `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
-                        { status: status },
+                        buildRaisedBedFieldPlantUpdatePayload(
+                            status,
+                            field.assignedUserIds,
+                        ),
                     ),
                 );
 

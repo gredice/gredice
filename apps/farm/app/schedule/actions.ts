@@ -1,6 +1,7 @@
 'use server';
 
 import {
+    buildRaisedBedFieldPlantUpdatePayload,
     createEvent,
     getFarmUserAcceptedOperationById,
     getFarmUserRaisedBeds,
@@ -157,9 +158,10 @@ export async function completeFarmPlanting(
     await createEvent(
         knownEvents.raisedBedFields.plantUpdateV1(
             `${raisedBedId}|${positionIndex}`,
-            {
-                status: role === 'admin' ? 'sowed' : 'pendingVerification',
-            },
+            buildRaisedBedFieldPlantUpdatePayload(
+                role === 'admin' ? 'sowed' : 'pendingVerification',
+                field.assignedUserIds,
+            ),
         ),
     );
 

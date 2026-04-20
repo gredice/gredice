@@ -2,6 +2,7 @@
 
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import {
+    buildRaisedBedFieldPlantUpdatePayload,
     createEvent,
     createNotification,
     deleteRaisedBedField,
@@ -56,9 +57,13 @@ async function applyRaisedBedFieldPlantUpdate({
 
     if (status) {
         await createEvent(
-            knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
-                status,
-            }),
+            knownEvents.raisedBedFields.plantUpdateV1(
+                aggregateId,
+                buildRaisedBedFieldPlantUpdatePayload(
+                    status,
+                    existingField?.assignedUserIds,
+                ),
+            ),
         );
     }
 
