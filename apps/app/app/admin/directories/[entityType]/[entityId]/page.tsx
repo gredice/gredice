@@ -84,6 +84,21 @@ export default async function EntityDetailsPage(props: {
     }
 
     const displayDefinitions = attributeDefinitions.filter((d) => d.display);
+    const populatedAttributeDefinitionIds = new Set(
+        entity.attributes
+            .filter((attribute) => (attribute.value?.length ?? 0) > 0)
+            .map((attribute) => attribute.attributeDefinitionId),
+    );
+    const categoriesWithMissingRequiredAttributes = new Set(
+        attributeDefinitions
+            .filter(
+                (definition) =>
+                    definition.required &&
+                    !definition.defaultValue &&
+                    !populatedAttributeDefinitionIds.has(definition.id),
+            )
+            .map((definition) => definition.category),
+    );
 
     return (
         <EntityDetailsSaveProvider>
@@ -110,7 +125,25 @@ export default async function EntityDetailsPage(props: {
                                         key={category.name}
                                         value={category.name}
                                     >
-                                        {category.label}
+                                        <Row
+                                            spacing={1}
+                                            className="items-center"
+                                        >
+                                            <span>{category.label}</span>
+                                            {categoriesWithMissingRequiredAttributes.has(
+                                                category.name,
+                                            ) && (
+                                                <>
+                                                    <span
+                                                        className="size-2 rounded-full bg-red-500"
+                                                        aria-hidden
+                                                    />
+                                                    <span className="sr-only">
+                                                        Nedostaju obavezni atributi
+                                                    </span>
+                                                </>
+                                            )}
+                                        </Row>
                                     </TabsTrigger>
                                 ))}
                             </TabsList>
