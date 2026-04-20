@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import {
     entityTypeCategories,
     entityTypes,
@@ -13,7 +13,7 @@ export function getEntityTypeCategories() {
         .select()
         .from(entityTypeCategories)
         .where(eq(entityTypeCategories.isDeleted, false))
-        .orderBy(entityTypeCategories.order);
+        .orderBy(asc(entityTypeCategories.order), asc(entityTypeCategories.id));
 }
 
 export function getEntityTypeCategoryById(id: number) {
@@ -63,8 +63,9 @@ export function getEntityTypeCategoriesWithEntityTypes() {
         with: {
             entityTypes: {
                 where: eq(entityTypes.isDeleted, false),
+                orderBy: (table) => [asc(table.order), asc(table.id)],
             },
         },
-        orderBy: entityTypeCategories.order,
+        orderBy: (table) => [asc(table.order), asc(table.id)],
     });
 }

@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import {
     attributeDefinitionCategories,
     attributeDefinitions,
@@ -26,7 +26,7 @@ export function getAttributeDefinitions(
             categoryDefinition: true,
             entityType: true,
         },
-        orderBy: attributeDefinitions.order,
+        orderBy: (table) => [asc(table.order), asc(table.id)],
     });
 }
 
@@ -67,7 +67,10 @@ export async function getAttributeDefinitionCategories(
     const query = storage()
         .select()
         .from(attributeDefinitionCategories)
-        .orderBy(attributeDefinitionCategories.order);
+        .orderBy(
+            asc(attributeDefinitionCategories.order),
+            asc(attributeDefinitionCategories.id),
+        );
 
     return entityType
         ? query.where(
