@@ -120,7 +120,7 @@ export function GameScene({
                     {!noControls && <Controls />}
                 </ParticleSystemProvider>
             </Scene>
-            {!hideHud && <GameHud flags={flags} />}
+            {!hideHud && <GameHud flags={flags} noWeather={weatherDisabled} />}
         </div>
     );
 }

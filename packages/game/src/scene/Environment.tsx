@@ -1,7 +1,7 @@
 'use client';
 
 import chroma from 'chroma-js';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { getPosition } from 'suncalc';
 import { Color, Quaternion, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
@@ -243,24 +243,34 @@ export function Environment({
     const overrideWeather = weatherDisabled
         ? undefined
         : (weather ?? gameWeather);
-    const actualWeather = weatherDisabled ? undefined : weatherNow;
-    if (overrideWeather && actualWeather) {
-        console.debug('Overriding weather', overrideWeather);
-        actualWeather.rainy = overrideWeather?.rainy ?? actualWeather.rainy;
-        actualWeather.foggy = overrideWeather?.foggy ?? actualWeather.foggy;
-        actualWeather.cloudy = overrideWeather?.cloudy ?? actualWeather.cloudy;
-        actualWeather.snowy = overrideWeather?.snowy ?? actualWeather.snowy;
-        actualWeather.windSpeed =
-            overrideWeather?.windSpeed ?? actualWeather.windSpeed;
-        if (typeof overrideWeather?.windDirection === 'number') {
-            // Convert numeric wind direction (0-360 degrees) to compass direction string
-            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-            const index = Math.round(overrideWeather.windDirection / 45) % 8;
-            actualWeather.windDirection = directions[index];
+    const actualWeather = useMemo(() => {
+        if (weatherDisabled || !weatherNow) {
+            return undefined;
         }
-        actualWeather.snowAccumulation =
-            overrideWeather?.snowAccumulation ?? actualWeather.snowAccumulation;
-    }
+
+        if (!overrideWeather) {
+            return weatherNow;
+        }
+
+        console.debug('Overriding weather', overrideWeather);
+        const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        const windDirection =
+            typeof overrideWeather.windDirection === 'number'
+                ? directions[Math.round(overrideWeather.windDirection / 45) % 8]
+                : weatherNow.windDirection;
+
+        return {
+            ...weatherNow,
+            rainy: overrideWeather.rainy ?? weatherNow.rainy,
+            foggy: overrideWeather.foggy ?? weatherNow.foggy,
+            cloudy: overrideWeather.cloudy ?? weatherNow.cloudy,
+            snowy: overrideWeather.snowy ?? weatherNow.snowy,
+            windSpeed: overrideWeather.windSpeed ?? weatherNow.windSpeed,
+            windDirection,
+            snowAccumulation:
+                overrideWeather.snowAccumulation ?? weatherNow.snowAccumulation,
+        };
+    }, [overrideWeather, weatherDisabled, weatherNow]);
 
     // Sound management
     const morningAmbient = ambientAudioMixer.useMusic(

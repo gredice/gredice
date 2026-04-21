@@ -12,14 +12,14 @@ import { WeatherForecastDetails } from './components/weather/WeatherForecastDeta
 import { weatherIcons } from './components/weather/WeatherIcons';
 import { WeatherNowDetails } from './components/weather/WeatherNowDetails';
 
-export function WeatherHud() {
+export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
     const weatherVisualizationDisabled = useGameState(
         (state) => state.weatherVisualizationDisabled,
     );
-    const weatherEnabled = !weatherVisualizationDisabled;
+    const weatherEnabled = !noWeather && !weatherVisualizationDisabled;
     const { data: weatherData } = useWeatherNow(weatherEnabled);
     const { data: forecastData } = useWeatherForecast(weatherEnabled);
-    if (weatherVisualizationDisabled) return null;
+    if (!weatherEnabled) return null;
     if (!forecastData || !weatherData) return null;
     // TODO: Add loading indicator
     // TODO: Add error message
