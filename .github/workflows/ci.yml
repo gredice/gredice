@@ -179,7 +179,7 @@ jobs:
       - name: ✨ Setup Node
         uses: actions/setup-node@v6.3.0
         with:
-          node-version: "24.14.1"
+          node-version: "24.15.0"
 
       - name: ✨ Get pnpm store directory
         shell: bash
@@ -217,7 +217,7 @@ jobs:
       - name: ✨ Setup Node
         uses: actions/setup-node@v6.3.0
         with:
-          node-version: "24.14.1"
+          node-version: "24.15.0"
 
       - name: 🔎 Verify CI app filters
         run: node ./scripts/check-ci-filters.mjs
