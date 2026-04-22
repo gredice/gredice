@@ -17,7 +17,6 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import type { SelectEntityType } from '@gredice/storage';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
-import { AuthProtectedSection } from '@signalco/auth-client/components';
 import {
     AI,
     Bank,
@@ -185,51 +184,47 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                 ))}
             </List>
             <Stack spacing={1}>
-                <AuthProtectedSection>
-                    {/* Categories with their entity types */}
-                    {categorizedTypes.map((category) => (
-                        <Stack key={category.id} spacing={1}>
-                            <ListHeader header={category.label} />
-                            <EntityTypeList
-                                items={category.entityTypes}
-                                onItemClick={onItemClick}
-                            />
-                        </Stack>
-                    ))}
-                </AuthProtectedSection>
-
-                <ListHeader header="Zapisi" />
-                <AuthProtectedSection>
-                    {/* Shadow entity types */}
-                    {shadowTypes.length > 0 && (
-                        <ListTreeItem label="Ostalo">
-                            {shadowTypes.map((entityType) => (
-                                <NavItem
-                                    key={entityType.id}
-                                    href={KnownPages.DirectoryEntityType(
-                                        entityType.name,
-                                    )}
-                                    label={entityType.label}
-                                    icon={
-                                        <EntityTypeIcon
-                                            icon={entityType.icon}
-                                            className="size-5"
-                                        />
-                                    }
-                                    onClick={onItemClick}
-                                />
-                            ))}
-                        </ListTreeItem>
-                    )}
-
-                    {/* Entity types without category come first */}
-                    {uncategorizedTypes.length > 0 && (
+                {/* Categories with their entity types */}
+                {categorizedTypes.map((category) => (
+                    <Stack key={category.id} spacing={1}>
+                        <ListHeader header={category.label} />
                         <EntityTypeList
-                            items={uncategorizedTypes}
+                            items={category.entityTypes}
                             onItemClick={onItemClick}
                         />
-                    )}
-                </AuthProtectedSection>
+                    </Stack>
+                ))}
+
+                <ListHeader header="Zapisi" />
+                {/* Shadow entity types */}
+                {shadowTypes.length > 0 && (
+                    <ListTreeItem label="Ostalo">
+                        {shadowTypes.map((entityType) => (
+                            <NavItem
+                                key={entityType.id}
+                                href={KnownPages.DirectoryEntityType(
+                                    entityType.name,
+                                )}
+                                label={entityType.label}
+                                icon={
+                                    <EntityTypeIcon
+                                        icon={entityType.icon}
+                                        className="size-5"
+                                    />
+                                }
+                                onClick={onItemClick}
+                            />
+                        ))}
+                    </ListTreeItem>
+                )}
+
+                {/* Entity types without category come first */}
+                {uncategorizedTypes.length > 0 && (
+                    <EntityTypeList
+                        items={uncategorizedTypes}
+                        onItemClick={onItemClick}
+                    />
+                )}
             </Stack>
             <Stack spacing={1}>
                 <ListHeader header="Administracija" />
