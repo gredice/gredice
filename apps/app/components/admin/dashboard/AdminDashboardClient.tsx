@@ -1,6 +1,8 @@
 'use client';
 
 import type { getAnalyticsTotals } from '@gredice/storage';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
+import { Calendar, Euro, File, Hammer, Truck } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -12,6 +14,7 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import type { DashboardQuickActionOption } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { FactCard } from '../cards/FactCard';
+import { EntityTypeIcon } from '../directories/EntityTypeIcon';
 import { DashboardDivider } from './DashboardDivider';
 import {
     OperationsDurationCard,
@@ -44,6 +47,27 @@ type AiData = {
     count: number;
     totalTokens: number;
 };
+
+function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
+    if (quickAction.icon) {
+        return <EntityTypeIcon icon={quickAction.icon} className="size-4" />;
+    }
+
+    switch (quickAction.href) {
+        case KnownPages.Schedule:
+            return <Calendar className="size-4" />;
+        case KnownPages.RaisedBeds:
+            return <RaisedBedIcon className="size-4" />;
+        case KnownPages.Operations:
+            return <Hammer className="size-4" />;
+        case KnownPages.DeliveryRequests:
+            return <Truck className="size-4" />;
+        case KnownPages.Transactions:
+            return <Euro className="size-4" />;
+        default:
+            return <File className="size-4" />;
+    }
+}
 
 export function AdminDashboardClient({
     initialAnalyticsData,
@@ -179,7 +203,10 @@ export function AdminDashboardClient({
                         size="sm"
                         href={quickAction.href}
                     >
-                        {quickAction.label}
+                        <Row spacing={0.5} className="items-center">
+                            {quickActionIcon(quickAction)}
+                            <span>{quickAction.label}</span>
+                        </Row>
                     </Button>
                 ))}
             </Row>
