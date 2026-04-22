@@ -681,8 +681,8 @@ importers:
         version: 0.0.1
     devDependencies:
       '@axe-core/playwright':
-        specifier: 4.11.1
-        version: 4.11.1(playwright-core@1.59.1)
+        specifier: 4.11.2
+        version: 4.11.2(playwright-core@1.59.1)
       '@biomejs/biome':
         specifier: 2.4.12
         version: 2.4.12
@@ -1539,8 +1539,8 @@ packages:
     resolution: {integrity: sha512-iY8yvjE0y651BixKNPgmv1WrQc+GZ142sb0z4gYnChDDY2YqI4P/jsSopBWrKfAt7LOJAkOXt7rC/hms+WclQQ==}
     engines: {node: '>=18.0.0'}
 
-  '@axe-core/playwright@4.11.1':
-    resolution: {integrity: sha512-mKEfoUIB1MkVTht0BGZFXtSAEKXMJoDkyV5YZ9jbBmZCcWDz71tegNsdTkIN8zc/yMi5Gm2kx7Z5YQ9PfWNAWw==}
+  '@axe-core/playwright@4.11.2':
+    resolution: {integrity: sha512-iP6hfNl9G0j/SEUSo8M7D80RbcDo9KRAAfDP4IT5OHB+Wm6zUHIrm8Y51BKI+Oyqduvipf9u1hcRy57zCBKzWQ==}
     peerDependencies:
       playwright-core: '>= 1.0.0'
 
@@ -6341,8 +6341,8 @@ packages:
     peerDependencies:
       postcss: ^8.1.0
 
-  axe-core@4.11.2:
-    resolution: {integrity: sha512-byD6KPdvo72y/wj2T/4zGEvvlis+PsZsn/yPS3pEO+sFpcrqRpX/TJCxvVaEsNeMrfQbCr7w163YqoD9IYwHXw==}
+  axe-core@4.11.3:
+    resolution: {integrity: sha512-zBQouZixDTbo3jMGqHKyePxYxr1e5W8UdTmBQ7sNtaA9M2bE32daxxPLS/jojhKOHxQ7LWwPjfiwf/fhaJWzlg==}
     engines: {node: '>=4'}
 
   axios-ntlm@1.4.6:
@@ -11604,9 +11604,9 @@ snapshots:
 
   '@aws/lambda-invoke-store@0.2.4': {}
 
-  '@axe-core/playwright@4.11.1(playwright-core@1.59.1)':
+  '@axe-core/playwright@4.11.2(playwright-core@1.59.1)':
     dependencies:
-      axe-core: 4.11.2
+      axe-core: 4.11.3
       playwright-core: 1.59.1
 
   '@azure-rest/core-client@2.5.1':
@@ -17214,7 +17214,7 @@ snapshots:
       postcss-value-parser: 4.2.0
     optional: true
 
-  axe-core@4.11.2: {}
+  axe-core@4.11.3: {}
 
   axios-ntlm@1.4.6(debug@4.4.3(supports-color@8.1.1)):
     dependencies:
