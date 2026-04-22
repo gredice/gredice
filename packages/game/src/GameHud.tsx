@@ -22,7 +22,13 @@ import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
 import { useGameState } from './useGameState';
 
-export function GameHud({ flags }: { flags: GameSceneProps['flags'] }) {
+export function GameHud({
+    flags,
+    noWeather,
+}: {
+    flags: GameSceneProps['flags'];
+    noWeather?: boolean;
+}) {
     const isCloseup = useGameState((state) => state.view) === 'closeup';
 
     return (
@@ -36,7 +42,7 @@ export function GameHud({ flags }: { flags: GameSceneProps['flags'] }) {
             </div>
             <div className="absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2">
                 <div className={cx(isCloseup && 'hidden md:block')}>
-                    <WeatherHud />
+                    <WeatherHud noWeather={noWeather} />
                 </div>
                 <SunflowersHud />
             </div>

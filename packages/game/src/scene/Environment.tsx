@@ -1,7 +1,7 @@
 'use client';
 
 import chroma from 'chroma-js';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { getPosition } from 'suncalc';
 import { Color, Quaternion, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
@@ -222,6 +222,10 @@ export function Environment({
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
     const setSnowCoverage = useGameState((state) => state.setSnowCoverage);
+    const weatherVisualizationDisabled = useGameState(
+        (state) => state.weatherVisualizationDisabled,
+    );
+    const weatherDisabled = noWeather || weatherVisualizationDisabled;
 
     const { data: garden } = useCurrentGarden();
     const location = garden
@@ -235,26 +239,38 @@ export function Environment({
           };
 
     const gameWeather = useGameState((state) => state.weather);
-    const { data: weatherNow } = useWeatherNow(!noWeather);
-    const overrideWeather = weather ?? gameWeather;
-    const actualWeather: typeof weatherNow = weatherNow;
-    if ((weather || gameWeather) && actualWeather) {
-        console.debug('Overriding weather', overrideWeather);
-        actualWeather.rainy = overrideWeather?.rainy ?? actualWeather.rainy;
-        actualWeather.foggy = overrideWeather?.foggy ?? actualWeather.foggy;
-        actualWeather.cloudy = overrideWeather?.cloudy ?? actualWeather.cloudy;
-        actualWeather.snowy = overrideWeather?.snowy ?? actualWeather.snowy;
-        actualWeather.windSpeed =
-            overrideWeather?.windSpeed ?? actualWeather.windSpeed;
-        if (typeof overrideWeather?.windDirection === 'number') {
-            // Convert numeric wind direction (0-360 degrees) to compass direction string
-            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-            const index = Math.round(overrideWeather.windDirection / 45) % 8;
-            actualWeather.windDirection = directions[index];
+    const { data: weatherNow } = useWeatherNow(!weatherDisabled);
+    const overrideWeather = weatherDisabled
+        ? undefined
+        : (weather ?? gameWeather);
+    const actualWeather = useMemo(() => {
+        if (weatherDisabled || !weatherNow) {
+            return undefined;
         }
-        actualWeather.snowAccumulation =
-            overrideWeather?.snowAccumulation ?? actualWeather.snowAccumulation;
-    }
+
+        if (!overrideWeather) {
+            return weatherNow;
+        }
+
+        console.debug('Overriding weather', overrideWeather);
+        const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        const windDirection =
+            typeof overrideWeather.windDirection === 'number'
+                ? directions[Math.round(overrideWeather.windDirection / 45) % 8]
+                : weatherNow.windDirection;
+
+        return {
+            ...weatherNow,
+            rainy: overrideWeather.rainy ?? weatherNow.rainy,
+            foggy: overrideWeather.foggy ?? weatherNow.foggy,
+            cloudy: overrideWeather.cloudy ?? weatherNow.cloudy,
+            snowy: overrideWeather.snowy ?? weatherNow.snowy,
+            windSpeed: overrideWeather.windSpeed ?? weatherNow.windSpeed,
+            windDirection,
+            snowAccumulation:
+                overrideWeather.snowAccumulation ?? weatherNow.snowAccumulation,
+        };
+    }, [overrideWeather, weatherDisabled, weatherNow]);
 
     // Sound management
     const morningAmbient = ambientAudioMixer.useMusic(
@@ -420,13 +436,13 @@ export function Environment({
                     ]}
                 />
             </directionalLight>
-            {!noWeather && fog > 0 && (
+            {!weatherDisabled && fog > 0 && (
                 <fog attach="fog" args={[fogColor, fogNear, 190]} />
             )}
-            {!noWeather && rain > 0 && (
+            {!weatherDisabled && rain > 0 && (
                 <Drops count={rain < 0.4 ? 200 : rain > 0.9 ? 2000 : 600} />
             )}
-            {!noWeather && snowParticles > 0 && (
+            {!weatherDisabled && snowParticles > 0 && (
                 <Snow
                     count={snowParticles * 5000}
                     windSpeed={windSpeed}
