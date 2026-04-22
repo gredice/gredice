@@ -8,8 +8,16 @@ import {
 export async function POST() {
     const refreshToken = await getRefreshTokenCookie();
     if (refreshToken) {
-        await revokeRefreshToken(refreshToken);
+        try {
+            await revokeRefreshToken(refreshToken);
+        } catch (cause) {
+            console.error(
+                'Failed to revoke refresh token during logout',
+                cause,
+            );
+        }
     }
+
     await clearCookie();
     await clearRefreshCookie();
 
