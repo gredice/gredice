@@ -18,7 +18,7 @@ import {
 import { AdminClientProvider } from '../../components/admin/providers';
 import { AuthAppProvider } from '../../components/providers/AuthAppProvider';
 import { auth } from '../../lib/auth/auth';
-import { impersonationFlagCookieName } from '../../lib/auth/sessionConfig';
+import { impersonationRefreshCookieName } from '../../lib/auth/sessionConfig';
 import {
     buildDashboardQuickActionOptions,
     getDashboardQuickActionsFromConfig,
@@ -40,7 +40,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
         () => false,
     );
     const isImpersonating =
-        (await cookies()).get(impersonationFlagCookieName)?.value === '1';
+        (await cookies()).get(impersonationRefreshCookieName) !== undefined;
 
     if (!isAdmin && !isImpersonating) {
         redirect(landingUrl);
