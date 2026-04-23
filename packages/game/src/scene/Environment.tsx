@@ -10,6 +10,7 @@ import { type GameState, useGameState } from '../useGameState';
 import { Drops } from './Rain/Drops';
 import Snow from './Snow/Snow';
 import { Stars } from './Stars';
+import { SunMoon } from './SunMoon';
 
 const backgroundColorScale = chroma
     .scale([
@@ -46,47 +47,48 @@ const hemisphereSkyColorScale = chroma
     ])
     .domain([0.2, 0.25, 0.3, 0.75, 0.8, 0.85]);
 
+const STAR_NIGHT_VISIBILITY = {
+    dawnFadeStart: 0.2,
+    dayStart: 0.25,
+    duskStart: 0.75,
+    nightStart: 0.8,
+};
+
+export function timeOfDayToDate(currentTime: Date, timeOfDay: number) {
+    const hours = Math.trunc(timeOfDay * 24);
+    const minutes = Math.trunc((timeOfDay * 24 - hours) * 60);
+    return new Date(
+        currentTime.getFullYear(),
+        currentTime.getMonth(),
+        currentTime.getDate(),
+        hours,
+        minutes,
+        0,
+    );
+}
+
+// Maps astronomical altitude/azimuth into the stylized scene sky so both the
+// visible sun/moon discs and the directional light share the same trajectory.
+export function altAzToScenePosition(altitude: number, azimuth: number) {
+    const pos = new Vector3(5, 20, 0);
+    const hinge = new Quaternion();
+    const rotator = new Quaternion();
+    rotator.setFromAxisAngle(new Vector3(0, -1, 0), altitude);
+    hinge.premultiply(rotator);
+    rotator.setFromAxisAngle(new Vector3(0.8, 0, 0), azimuth);
+    hinge.premultiply(rotator);
+    pos.applyQuaternion(hinge);
+    return pos;
+}
+
 function getSunPosition(
     { lat, lon }: { lat: number; lon: number },
     currentTime: Date,
     timeOfDay: number,
 ) {
-    const date = new Date(
-        currentTime.getFullYear(),
-        currentTime.getMonth(),
-        currentTime.getDate(),
-    );
-    date.setHours(Math.trunc(timeOfDay * 24));
-    date.setMinutes(
-        Math.trunc((timeOfDay * 24 - Math.trunc(timeOfDay * 24)) * 60),
-    );
-
-    const sunPosition = getPosition(
-        new Date(
-            date.getFullYear(),
-            date.getMonth(),
-            date.getDate(),
-            Math.trunc(timeOfDay * 24),
-            Math.trunc((timeOfDay * 24 - Math.trunc(timeOfDay * 24)) * 60),
-            0,
-        ),
-        lat,
-        lon,
-    );
-
-    const pos = new Vector3(5, 20, 0);
-
-    const hinge = new Quaternion();
-
-    const rotator = new Quaternion();
-    rotator.setFromAxisAngle(new Vector3(0, -1, 0), sunPosition.altitude);
-    hinge.premultiply(rotator);
-    rotator.setFromAxisAngle(new Vector3(0.8, 0, 0), sunPosition.azimuth);
-    hinge.premultiply(rotator);
-
-    pos.applyQuaternion(hinge);
-
-    return pos;
+    const date = timeOfDayToDate(currentTime, timeOfDay);
+    const { altitude, azimuth } = getPosition(date, lat, lon);
+    return altAzToScenePosition(altitude, azimuth);
 }
 
 export function environmentState(
@@ -375,12 +377,41 @@ export function Environment({
     // Handle snow particles - based on current weather (snowy intensity 0-1)
     const snowParticles = actualWeather?.snowy ?? 0;
 
-    // Light clouds keep only a few faint bright stars visible.
+    const dawnVisibility =
+        timeOfDay <= STAR_NIGHT_VISIBILITY.dawnFadeStart
+            ? 1
+            : timeOfDay >= STAR_NIGHT_VISIBILITY.dayStart
+              ? 0
+              : 1 -
+                (timeOfDay - STAR_NIGHT_VISIBILITY.dawnFadeStart) /
+                    (STAR_NIGHT_VISIBILITY.dayStart -
+                        STAR_NIGHT_VISIBILITY.dawnFadeStart);
+    const duskVisibility =
+        timeOfDay <= STAR_NIGHT_VISIBILITY.duskStart
+            ? 0
+            : timeOfDay >= STAR_NIGHT_VISIBILITY.nightStart
+              ? 1
+              : (timeOfDay - STAR_NIGHT_VISIBILITY.duskStart) /
+                (STAR_NIGHT_VISIBILITY.nightStart -
+                    STAR_NIGHT_VISIBILITY.duskStart);
+    const nightVisibility = Math.max(dawnVisibility, duskVisibility);
+
+    // Light clouds keep only a few faint bright stars visible, but only at
+    // night or during twilight transitions.
     const cloudCover = actualWeather?.cloudy ?? 1;
+    const fogCover = actualWeather?.foggy ?? 0;
     const starVisibility = weatherDisabled
         ? 0
-        : Math.max(0, 1 - cloudCover / 0.6) ** 1.5;
+        : Math.max(0, 1 - cloudCover / 0.6) ** 1.5 * nightVisibility;
     const showStars = starVisibility > 0;
+    // Dense clouds or fog dim the sun/moon discs toward a small residual
+    // glow. The curve drops fast so 70%+ overcast reads as "no sun" rather
+    // than a dimmer but still-solid disc, but never fully hits zero — matching
+    // the directional light which still casts minimal shadows at full cover.
+    const obstruction = Math.min(1, Math.max(cloudCover, fogCover));
+    const bodyVisibility = weatherDisabled
+        ? 1
+        : Math.max(0.05, (1 - obstruction) ** 2);
 
     // Handle ground snow coverage - based on accumulated snow in cm
     const snowAccumulationCm = actualWeather?.snowAccumulation ?? 0;
@@ -445,6 +476,7 @@ export function Environment({
                 />
             </directionalLight>
             {showStars && <Stars visibility={starVisibility} />}
+            <SunMoon visibility={bodyVisibility} />
             {!weatherDisabled && fog > 0 && (
                 <fog attach="fog" args={[fogColor, fogNear, 190]} />
             )}
