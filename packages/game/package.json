@@ -62,7 +62,7 @@
         "three-stdlib": "2.36.1",
         "tsx": "4.21.0",
         "typescript": "6.0.3",
-        "uuid": "13.0.0",
+        "uuid": "14.0.0",
         "zustand": "5.0.12"
     },
     "peerDependencies": {
