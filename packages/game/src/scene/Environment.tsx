@@ -9,6 +9,7 @@ import { useWeatherNow } from '../hooks/useWeatherNow';
 import { type GameState, useGameState } from '../useGameState';
 import { Drops } from './Rain/Drops';
 import Snow from './Snow/Snow';
+import { Stars } from './Stars';
 
 const backgroundColorScale = chroma
     .scale([
@@ -374,6 +375,13 @@ export function Environment({
     // Handle snow particles - based on current weather (snowy intensity 0-1)
     const snowParticles = actualWeather?.snowy ?? 0;
 
+    // Light clouds keep only a few faint bright stars visible.
+    const cloudCover = actualWeather?.cloudy ?? 1;
+    const starVisibility = weatherDisabled
+        ? 0
+        : Math.max(0, 1 - cloudCover / 0.6) ** 1.5;
+    const showStars = starVisibility > 0;
+
     // Handle ground snow coverage - based on accumulated snow in cm
     const snowAccumulationCm = actualWeather?.snowAccumulation ?? 0;
     const snowCoverage = Math.min(1, snowAccumulationCm / 30); // Scale: 0cm=0, 30cm=1
@@ -436,6 +444,7 @@ export function Environment({
                     ]}
                 />
             </directionalLight>
+            {showStars && <Stars visibility={starVisibility} />}
             {!weatherDisabled && fog > 0 && (
                 <fog attach="fog" args={[fogColor, fogNear, 190]} />
             )}
