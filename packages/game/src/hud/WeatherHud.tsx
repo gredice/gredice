@@ -14,11 +14,8 @@ import { weatherIcons } from './components/weather/WeatherIcons';
 import { WeatherNowDetails } from './components/weather/WeatherNowDetails';
 
 export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
-    const weatherVisualizationDisabled = useGameState(
-        (state) => state.weatherVisualizationDisabled,
-    );
     const currentTime = useGameState((state) => state.currentTime);
-    const weatherEnabled = !noWeather && !weatherVisualizationDisabled;
+    const weatherEnabled = !noWeather;
     const { data: weatherData } = useWeatherNow(weatherEnabled);
     const { data: forecastData } = useWeatherForecast(weatherEnabled);
     if (!weatherEnabled) return null;
