@@ -39,10 +39,7 @@ export function ErrorFallback({
                         Oprosti, nešto je pošlo po krivu. Možeš pokušati ponovno
                         ili se vratiti na početnu stranicu.
                     </Typography>
-                    <Typography
-                        level="body2"
-                        className="break-all text-muted-foreground"
-                    >
+                    <Typography level="body3" className="break-all">
                         Referenca greške: {correlationId}
                     </Typography>
                     <Row
