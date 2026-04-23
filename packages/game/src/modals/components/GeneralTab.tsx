@@ -1,6 +1,5 @@
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { EnvironmentSettingsCard } from './EnvironmentSettingsCard';
 import { TimeZoneSettingsCard } from './TimeZoneSettingsCard';
 import { UserBirthdayCard } from './UserBirthdayCard';
 import { UserProfileCard } from './UserProfileCard';
@@ -12,7 +11,6 @@ export function GeneralTab() {
                 ⚙️ Profil
             </Typography>
             <Stack spacing={1}>
-                <EnvironmentSettingsCard />
                 <UserProfileCard />
                 <UserBirthdayCard />
                 <TimeZoneSettingsCard />

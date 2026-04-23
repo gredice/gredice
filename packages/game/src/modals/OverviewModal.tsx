@@ -11,6 +11,7 @@ import { ProfileInfo } from '../shared-ui/ProfileInfo';
 import { AccountUsersTab } from './components/AccountUsersTab';
 import { AchievementsTab } from './components/AchievementsTab';
 import { DeliveryTab } from './components/DeliveryTab';
+import { GameTab } from './components/GameTab';
 import { GardenTab } from './components/GardenTab';
 import { GeneralTab } from './components/GeneralTab';
 import { NotificationsTab } from './components/NotificationsTab';
@@ -74,6 +75,12 @@ const navGroups = [
     {
         label: 'Postavke',
         items: [
+            {
+                nodeId: 'settings-game',
+                icon: '🎮',
+                label: 'Igra',
+                value: 'igra',
+            },
             {
                 nodeId: 'profile-security',
                 icon: '🔒',
@@ -164,6 +171,7 @@ export function OverviewModal() {
                 <div className="md:pl-6">
                     {settingsMode === 'generalno' && <GeneralTab />}
                     {settingsMode === 'vrt' && <GardenTab />}
+                    {settingsMode === 'igra' && <GameTab />}
                     {settingsMode === 'sigurnost' && <SecurityTab />}
                     {settingsMode === 'dostava' && <DeliveryTab />}
                     {settingsMode === 'zvuk' && <SoundTab />}

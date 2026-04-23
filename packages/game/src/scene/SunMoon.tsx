@@ -3,11 +3,7 @@
 import { useFrame } from '@react-three/fiber';
 import chroma from 'chroma-js';
 import { useMemo, useRef } from 'react';
-import {
-    getMoonIllumination,
-    getMoonPosition,
-    getPosition,
-} from 'suncalc';
+import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc';
 import {
     AdditiveBlending,
     Color,
@@ -143,6 +139,9 @@ type SunMoonProps = {
 export function SunMoon({ visibility = 1 }: SunMoonProps) {
     const currentTime = useGameState((state) => state.currentTime);
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    const dayNightCycleDisabled = useGameState(
+        (state) => state.dayNightCycleDisabled,
+    );
     const { data: garden } = useCurrentGarden();
 
     const location = useMemo(
@@ -211,7 +210,8 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
 
         const halfHeight = orthographic.top / orthographic.zoom;
         const skyRadius = halfHeight * SKY_SCREEN_FRACTION;
-        const screenScale = (REFERENCE_ZOOM / orthographic.zoom) * SIZE_MULTIPLIER;
+        const screenScale =
+            (REFERENCE_ZOOM / orthographic.zoom) * SIZE_MULTIPLIER;
         sunMesh.current.scale.setScalar(screenScale);
         moonMesh.current.scale.setScalar(screenScale);
 
@@ -258,8 +258,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         );
         // Fade the moon down while the sun is well above the horizon so it
         // reads as a pale daytime moon rather than a competing sun.
-        const moonDayFade =
-            1 - 0.85 * smoothstep(-0.05, 0.3, sun.altitude);
+        const moonDayFade = 1 - 0.85 * smoothstep(-0.05, 0.3, sun.altitude);
         const moonOpacity = moonHorizonOpacity * moonDayFade * visibility;
         if (moonOpacity > 0.001) {
             const moonDir = altAzToScenePosition(
@@ -281,7 +280,9 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
             moonMaterial.uniforms.uOpacity.value = moonOpacity;
             // Warm the tint toward white as the sun rises so the daytime moon
             // doesn't read as a cool blue spot against a bright sky.
-            const dayBlend = smoothstep(-0.05, 0.3, sun.altitude);
+            const dayBlend = dayNightCycleDisabled
+                ? 1
+                : smoothstep(-0.05, 0.3, sun.altitude);
             (moonMaterial.uniforms.uColor.value as Color)
                 .copy(MOON_NIGHT_COLOR)
                 .lerp(MOON_DAY_COLOR, dayBlend);
