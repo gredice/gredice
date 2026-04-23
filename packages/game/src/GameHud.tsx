@@ -9,6 +9,7 @@ import { CameraHud } from './hud/CameraHud';
 import { DayNightCycleHud } from './hud/DayNightCycleHud';
 import { DebugHud } from './hud/DebugHud';
 import { GameModeHud } from './hud/GameModeHud';
+import { GardenOperationsHud } from './hud/GardenOperationsHud';
 import { InventoryHud } from './hud/InventoryHud';
 import { ItemsHud } from './hud/ItemsHud';
 import { PaymentSuccessfulMessage } from './hud/PaymentSuccessfulMessage';
@@ -34,7 +35,10 @@ export function GameHud({
     return (
         <>
             <div className="absolute top-2 left-2 flex flex-col items-start gap-2">
-                <AccountHud />
+                <div className="flex items-start gap-2">
+                    <AccountHud />
+                    <GardenOperationsHud />
+                </div>
                 {!isCloseup && <GameModeHud />}
                 {!isCloseup && <AdventHud />}
                 {!isCloseup && <InventoryHud />}
