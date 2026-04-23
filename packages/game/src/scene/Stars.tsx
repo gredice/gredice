@@ -1,6 +1,12 @@
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
-import { AdditiveBlending, type Points, Vector3 } from 'three';
+import {
+    AdditiveBlending,
+    type OrthographicCamera,
+    type Points,
+    Vector3,
+} from 'three';
+import { defaultGameCameraZoom } from '../gameCamera';
 
 const STAR_VISIBILITY = {
     min: 0,
@@ -198,6 +204,13 @@ export function Stars({ visibility = 1 }: StarsProps) {
         if (!pointsRef.current) {
             return;
         }
+
+        const orthographic = camera as OrthographicCamera;
+        pointsRef.current.scale.setScalar(
+            orthographic.isOrthographicCamera
+                ? defaultGameCameraZoom / orthographic.zoom
+                : 1,
+        );
 
         camera.getWorldDirection(cameraForwardRef.current);
         pointsRef.current.position

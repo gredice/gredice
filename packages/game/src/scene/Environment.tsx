@@ -7,6 +7,7 @@ import { Color, Quaternion, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { type GameState, useGameState } from '../useGameState';
+import { CloudLayer } from './CloudLayer';
 import { Drops } from './Rain/Drops';
 import Snow from './Snow/Snow';
 import { Stars } from './Stars';
@@ -89,6 +90,11 @@ function getSunPosition(
     const date = timeOfDayToDate(currentTime, timeOfDay);
     const { altitude, azimuth } = getPosition(date, lat, lon);
     return altAzToScenePosition(altitude, azimuth);
+}
+
+function smoothstep(edge0: number, edge1: number, value: number) {
+    const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
+    return t * t * (3 - 2 * t);
 }
 
 export function environmentState(
@@ -218,7 +224,7 @@ export function Environment({
     noWeather,
     weather,
 }: EnvironmentProps) {
-    const cameraShadowSize = 20;
+    const baseCameraShadowSize = 20;
     const shadowMapSize = 8;
 
     const currentTime = useGameState((state) => state.currentTime);
@@ -240,6 +246,21 @@ export function Environment({
               lat: 45.739,
               lon: 16.572,
           };
+    const shadowCameraSize = useMemo(() => {
+        const stacks = garden?.stacks;
+        if (!stacks?.length) {
+            return baseCameraShadowSize;
+        }
+
+        const xs = stacks.map((stack) => stack.position.x);
+        const zs = stacks.map((stack) => stack.position.z);
+        const spanX = Math.max(...xs) - Math.min(...xs);
+        const spanZ = Math.max(...zs) - Math.min(...zs);
+        return Math.max(
+            baseCameraShadowSize,
+            Math.max(spanX, spanZ) * 0.6 + 12,
+        );
+    }, [garden]);
 
     const gameWeather = useGameState((state) => state.weather);
     const { data: weatherNow } = useWeatherNow(!weatherDisabled);
@@ -400,6 +421,7 @@ export function Environment({
     // night or during twilight transitions.
     const cloudCover = actualWeather?.cloudy ?? 1;
     const fogCover = actualWeather?.foggy ?? 0;
+    const effectiveCloudCover = Math.min(1, cloudCover + fogCover * 0.35);
     const starVisibility = weatherDisabled
         ? 0
         : Math.max(0, 1 - cloudCover / 0.6) ** 1.5 * nightVisibility;
@@ -412,6 +434,22 @@ export function Environment({
     const bodyVisibility = weatherDisabled
         ? 1
         : Math.max(0.05, (1 - obstruction) ** 2);
+    const daylightVisibility = Math.min(
+        smoothstep(0.18, 0.28, timeOfDay),
+        1 - smoothstep(0.72, 0.82, timeOfDay),
+    );
+    const shadowVisibility = weatherDisabled
+        ? 1
+        : Math.max(
+              0,
+              daylightVisibility *
+                  (1 - smoothstep(0.42, 0.95, effectiveCloudCover)),
+          );
+    const cloudShadowStrength = weatherDisabled
+        ? 0
+        : daylightVisibility *
+          smoothstep(0.08, 0.22, cloudCover) *
+          (1 - smoothstep(0.5, 0.9, effectiveCloudCover));
 
     // Handle ground snow coverage - based on accumulated snow in cm
     const snowAccumulationCm = actualWeather?.snowAccumulation ?? 0;
@@ -459,7 +497,9 @@ export function Environment({
                 intensity={directionalLight.intensity}
                 color={directionalLight.color}
                 position={directionalLight.position}
+                shadow-intensity={shadowVisibility}
                 shadow-mapSize={shadowMapSize * 1024}
+                shadow-radius={2.2}
                 // shadow-near={0.01}
                 // shadow-far={1000}
                 shadow-normalBias={0.03}
@@ -468,13 +508,24 @@ export function Environment({
                 <orthographicCamera
                     attach="shadow-camera"
                     args={[
-                        -cameraShadowSize,
-                        cameraShadowSize,
-                        cameraShadowSize,
-                        -cameraShadowSize,
+                        -shadowCameraSize,
+                        shadowCameraSize,
+                        shadowCameraSize,
+                        -shadowCameraSize,
                     ]}
                 />
             </directionalLight>
+            {!weatherDisabled && actualWeather && (
+                <CloudLayer
+                    cloudy={actualWeather.cloudy}
+                    foggy={actualWeather.foggy}
+                    shadowStrength={cloudShadowStrength}
+                    stacks={garden?.stacks}
+                    timeOfDay={timeOfDay}
+                    windDirection={windDirection}
+                    windSpeed={windSpeed}
+                />
+            )}
             {showStars && <Stars visibility={starVisibility} />}
             <SunMoon visibility={bodyVisibility} />
             {!weatherDisabled && fog > 0 && (
