@@ -31,12 +31,11 @@ export function CreateAttributeDefinitionButton({
     async function submitForm(formData: FormData) {
         const name = formData.get('name') as string;
         const label = formData.get('label') as string;
-        const selectedType = formData.get('dataType') as string;
         const defaultValue = formData.get('defaultValue') as string;
         const dataType =
-            selectedType === 'range'
+            selectedDataType === 'range'
                 ? buildRangeDataType(rangeMinValue, rangeMaxValue)
-                : selectedType;
+                : selectedDataType;
 
         await upsertAttributeDefinition({
             name,
@@ -72,7 +71,7 @@ export function CreateAttributeDefinitionButton({
                             <SelectItems
                                 name="dataType"
                                 label="Vrsta podatka"
-                                defaultValue={attributeDataTypeItems[0].value}
+                                value={selectedDataType}
                                 items={attributeDataTypeItems}
                                 onValueChange={setSelectedDataType}
                             />
