@@ -11,8 +11,14 @@ import {
 const allowedOrigins = [
     'https://app.gredice.com',
     'https://app.gredice.test',
+    'https://www.gredice.com',
+    'https://www.gredice.test',
     'https://garden.gredice.com',
     'https://garden.gredice.test',
+    'https://vrt.gredice.test',
+    'https://farm.gredice.com',
+    'https://farm.gredice.test',
+    'https://farma.gredice.test',
 ];
 
 function getAdminUrl(request: Request) {
