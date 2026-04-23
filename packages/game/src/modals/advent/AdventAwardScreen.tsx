@@ -56,6 +56,7 @@ function AwardImage({ award }: { award: AdventAward }) {
                         alt="Suncokret"
                         width={120}
                         height={120}
+                        loading="eager"
                     />
                 </div>
             );

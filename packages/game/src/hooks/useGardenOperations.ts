@@ -3,19 +3,23 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useCurrentGarden } from './useCurrentGarden';
 
 const DEFAULT_PAGE_SIZE = 20;
-const gardenOperationStatuses = new Set<string>([
-    'new',
-    'planned',
-    'pendingVerification',
-    'completed',
-    'failed',
-    'canceled',
-]);
+
+const backendStatusMap: Record<string, GardenOperationStatus> = {
+    new: 'new',
+    planned: 'planned',
+    assigned: 'assigned',
+    pendingVerification: 'confirmed',
+    confirmed: 'confirmed',
+    completed: 'completed',
+    failed: 'failed',
+    canceled: 'canceled',
+};
 
 export type GardenOperationStatus =
     | 'new'
     | 'planned'
-    | 'pendingVerification'
+    | 'assigned'
+    | 'confirmed'
     | 'completed'
     | 'failed'
     | 'canceled';
@@ -59,18 +63,13 @@ type GardenOperationsPageResponse = Omit<GardenOperationsPage, 'items'> & {
     items: GardenOperationItemResponse[];
 };
 
-function isGardenOperationStatus(
-    value: string,
-): value is GardenOperationStatus {
-    return gardenOperationStatuses.has(value);
-}
-
 function parseGardenOperationStatus(status: string): GardenOperationStatus {
-    if (!isGardenOperationStatus(status)) {
+    const mapped = backendStatusMap[status];
+    if (!mapped) {
         throw new Error(`Unknown garden operation status: ${status}`);
     }
 
-    return status;
+    return mapped;
 }
 
 function parseGardenOperationItem(

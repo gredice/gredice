@@ -1,4 +1,4 @@
-import { Check } from '@signalco/ui-icons';
+import { Check, Close } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Fragment, type HTMLAttributes } from 'react';
 import { Progress } from './Progress';
@@ -8,7 +8,9 @@ export type SegmentedProgressProps = {
         value: number;
         indeterminate?: boolean;
         highlighted?: boolean;
+        failed?: boolean;
         label?: string;
+        title?: string;
         onClick?: () => void;
     }[];
 } & HTMLAttributes<HTMLDivElement>;
@@ -43,10 +45,14 @@ export function SegmentedProgress({
                         <CircleComponent
                             onClick={segment.onClick}
                             type={segment.onClick ? 'button' : undefined}
+                            title={segment.title}
                             className={cx(
                                 'relative size-4 rounded-full -ml-1 -mt-1 bg-background border-2 border-tertiary shrink-0 z-10',
-                                segment.value >= 100 && 'bg-green-500',
-                                segment.value >= 100 && 'border-green-600',
+                                segment.value >= 100 &&
+                                    !segment.failed &&
+                                    'bg-green-500 border-green-600',
+                                segment.failed &&
+                                    'bg-red-500/10 border-red-400',
                                 segment.indeterminate && 'border-none',
                                 segment.onClick &&
                                     'cursor-pointer hover:outline outline-offset-1 outline-2',
@@ -60,16 +66,22 @@ export function SegmentedProgress({
                                         'border-green-500 border-2 rounded-full animate-pulse',
                                 )}
                             >
-                                <Check
-                                    className={cx(
-                                        'size-3 text-white',
-                                        segment.value < 100 && 'hidden',
-                                    )}
-                                />
+                                {segment.failed ? (
+                                    <Close className="size-3 text-red-500" />
+                                ) : (
+                                    <Check
+                                        className={cx(
+                                            'size-3 text-white',
+                                            segment.value < 100 && 'hidden',
+                                        )}
+                                    />
+                                )}
                             </div>
-                            <div className="select-none text-xs text-center absolute left-1/2 top-full transform -translate-x-1/2 pt-1">
-                                {segment.label}
-                            </div>
+                            {segment.label && (
+                                <div className="select-none text-xs text-center absolute left-1/2 top-full transform -translate-x-1/2 pt-1">
+                                    {segment.label}
+                                </div>
+                            )}
                         </CircleComponent>
                     </Fragment>
                 );

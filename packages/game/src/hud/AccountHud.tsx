@@ -41,6 +41,7 @@ import { ProfileAvatar } from '../shared-ui/ProfileAvatar';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
 import { useCurrentGardenIdParam } from '../useUrlState';
 import { HudCard } from './components/HudCard';
+import { GardenOperationsHud } from './GardenOperationsHud';
 import { NotificationList } from './NotificationList';
 
 function NotificationsCard() {
@@ -262,7 +263,10 @@ export function AccountHud() {
                     </DropdownMenuTrigger>
                     <ProfileCard />
                 </DropdownMenu>
-                <div className="hidden md:block">
+                <div className="md:order-3">
+                    <GardenOperationsHud />
+                </div>
+                <div className="hidden md:block md:order-1">
                     {isLoading ? (
                         <Skeleton className="w-32 h-7" />
                     ) : (
@@ -296,7 +300,7 @@ export function AccountHud() {
                         )
                     )}
                 </div>
-                <div className="hidden md:block">
+                <div className="hidden md:block md:order-2">
                     <Popper
                         className="overflow-hidden border-tertiary border-b-4 w-96"
                         side="bottom"

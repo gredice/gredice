@@ -84,7 +84,10 @@ function sunflowerReasonToDescription(reason: string) {
             label: 'Plaćanje',
         };
     }
-    if (reason.startsWith('shoppingCartItem')) {
+    if (
+        reason.startsWith('shoppingCart:') ||
+        reason.startsWith('shoppingCartItem:')
+    ) {
         return {
             icon: <span className="text-4xl text-center size-10">🛒</span>,
             label: 'Kupnja',

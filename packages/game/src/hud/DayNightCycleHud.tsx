@@ -21,7 +21,7 @@ export function DayNightCycleHud() {
                 className="w-64 -left-8 top-0"
                 position="top"
             >
-                <TimeDisplay />
+                <TimeDisplay variant="overlay" />
             </HudCard>
             <svg
                 viewBox="0 0 100 20"
