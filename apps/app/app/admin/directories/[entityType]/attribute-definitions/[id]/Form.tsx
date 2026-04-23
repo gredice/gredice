@@ -63,22 +63,26 @@ export function FormDataTypeSelect({
     definition: GetAttributeDefinition;
     value: string;
 }) {
-    const [internalValue, setValue] = useState(value);
-    const parsedRangeDataType = parseRangeDataType(internalValue);
+    const isInitialRangeDataType =
+        value === 'range' || value.startsWith('range|');
+    const [selectedDataType, setSelectedDataType] = useState(
+        isInitialRangeDataType ? 'range' : value,
+    );
+    const parsedRangeDataType = parseRangeDataType(value);
     const [rangeMinValue, setRangeMinValue] = useState(parsedRangeDataType.min);
     const [rangeMaxValue, setRangeMaxValue] = useState(parsedRangeDataType.max);
-    const isRangeDataType =
-        internalValue === 'range' || internalValue.startsWith('range|');
+    const isRangeDataType = selectedDataType === 'range';
 
     const handleValueChange = async (nextValue: string) => {
-        const normalizedValue =
+        setSelectedDataType(nextValue);
+
+        const nextDataType =
             nextValue === 'range'
                 ? buildRangeDataType(rangeMinValue, rangeMaxValue)
                 : nextValue;
-        setValue(normalizedValue);
         await upsertAttributeDefinition({
             id: definition.id,
-            dataType: normalizedValue,
+            dataType: nextDataType,
         });
     };
 
@@ -88,7 +92,6 @@ export function FormDataTypeSelect({
         }
 
         const rangeDataType = buildRangeDataType(rangeMinValue, rangeMaxValue);
-        setValue(rangeDataType);
         await upsertAttributeDefinition({
             id: definition.id,
             dataType: rangeDataType,
@@ -96,14 +99,14 @@ export function FormDataTypeSelect({
     };
 
     const items = attributeDataTypeItems.some(
-        (item) => item.value === internalValue,
+        (item) => item.value === selectedDataType,
     )
         ? attributeDataTypeItems
         : [
               ...attributeDataTypeItems,
               {
-                  value: internalValue,
-                  label: getAttributeDataTypeLabel(internalValue),
+                  value: selectedDataType,
+                  label: getAttributeDataTypeLabel(selectedDataType),
               },
           ];
 
@@ -111,7 +114,7 @@ export function FormDataTypeSelect({
         <Stack spacing={1} className="grow">
             <SelectItems
                 label="Tip podatka"
-                value={internalValue}
+                value={selectedDataType}
                 onValueChange={handleValueChange}
                 items={items}
                 placeholder={getAttributeDataTypeLabel(value)}
